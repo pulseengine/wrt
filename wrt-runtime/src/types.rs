@@ -38,9 +38,9 @@ pub type ValueStackVec = Vec<wrt_foundation::Value>;
 pub type ValueStackVec = BoundedVec<wrt_foundation::Value, MAX_VALUE_STACK, NoStdProvider<{ MAX_VALUE_STACK * 16 }>>;
 
 #[cfg(feature = "std")]
-pub type CallStackVec = Vec<crate::execution::CallFrame>;
+pub type CallStackVec = Vec<crate::core_types::CallFrame>;
 #[cfg(not(feature = "std"))]
-pub type CallStackVec = BoundedVec<crate::execution::CallFrame, MAX_CALL_STACK, NoStdProvider<{ MAX_CALL_STACK * 128 }>>;
+pub type CallStackVec = BoundedVec<crate::core_types::CallFrame, MAX_CALL_STACK, NoStdProvider<{ MAX_CALL_STACK * 128 }>>;
 
 #[cfg(feature = "std")]
 pub type LocalsVec = Vec<wrt_foundation::Value>;

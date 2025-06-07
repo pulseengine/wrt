@@ -1,10 +1,16 @@
+// WRT - wrt-foundation
+// Module: Simplified Unified Type System
+// SW-REQ-ID: REQ_TYPE_UNIFIED_001, REQ_TYPE_PLATFORM_001
+//
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Simplified Unified Type System for WRT Foundation
 //!
 //! This module provides a simplified version of the unified type system
 //! that avoids complex type alias issues while still providing the
 //! core functionality for Agent A deliverables.
-
-#![cfg_attr(not(feature = "std"), no_std)]
 
 use core::marker::PhantomData;
 

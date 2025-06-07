@@ -6,7 +6,7 @@
 extern crate alloc;
 
 use wrt_foundation::{
-    types::{Limits as WrtLimits, TableType as WrtTableType, ValueType as WrtValueType},
+    types::{Limits as WrtLimits, TableType as WrtTableType, ValueType as WrtValueType, RefType},
     values::{Value as WrtValue, FuncRef as WrtFuncRef, ExternRef as WrtExternRef},
 };
 
@@ -702,7 +702,7 @@ impl TableManager {
     /// Create a new table manager
     pub fn new() -> Result<Self> {
         Ok(Self {
-            tables: Vec::new()?,
+            tables: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
         })
     }
     
@@ -765,16 +765,14 @@ impl TableOperations for TableManager {
             Some(wrt_value) => {
                 match wrt_value {
                     WrtValue::FuncRef(func_ref) => {
-                        use wrt_foundation::values::FuncRef;
                         match func_ref {
-                            Some(func_idx) => Ok(Value::FuncRef(Some(FuncRef { index: func_idx }))),
+                            Some(func_idx) => Ok(Value::FuncRef(Some(func_idx))),
                             None => Ok(Value::FuncRef(None)),
                         }
                     }
                     WrtValue::ExternRef(extern_ref) => {
-                        use wrt_foundation::values::ExternRef;
                         match extern_ref {
-                            Some(ext_idx) => Ok(Value::ExternRef(Some(ExternRef { index: ext_idx }))),
+                            Some(ext_idx) => Ok(Value::ExternRef(Some(ext_idx))),
                             None => Ok(Value::ExternRef(None)),
                         }
                     }
@@ -789,13 +787,8 @@ impl TableOperations for TableManager {
             None => {
                 // Return appropriate null reference based on table element type
                 match table.ty.element_type {
-                    WrtValueType::FuncRef => Ok(Value::FuncRef(None)),
-                    WrtValueType::ExternRef => Ok(Value::ExternRef(None)),
-                    _ => Err(Error::new(
-                        ErrorCategory::Type,
-                        codes::INVALID_TYPE,
-                        "Runtime operation error",
-                    )),
+                    RefType::Funcref => Ok(Value::FuncRef(None)),
+                    RefType::Externref => Ok(Value::ExternRef(None)),
                 }
             }
         }
@@ -903,7 +896,7 @@ impl TableOperations for TableManager {
             // First, read the source elements
             let src_elements = {
                 let src_table = self.get_table(src_table)?;
-                let mut elements = Vec::new()?;
+                let mut elements = Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?;
                 for i in 0..len {
                     let elem = src_table.get(src_index + i)?;
                     elements.push(elem).map_err(|_| Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Failed to push table element"))?;
@@ -941,16 +934,14 @@ impl TableOperations for Table {
             Some(wrt_value) => {
                 match wrt_value {
                     WrtValue::FuncRef(func_ref) => {
-                        use wrt_foundation::values::FuncRef;
                         match func_ref {
-                            Some(func_idx) => Ok(Value::FuncRef(Some(FuncRef { index: func_idx }))),
+                            Some(func_idx) => Ok(Value::FuncRef(Some(func_idx))),
                             None => Ok(Value::FuncRef(None)),
                         }
                     }
                     WrtValue::ExternRef(extern_ref) => {
-                        use wrt_foundation::values::ExternRef;
                         match extern_ref {
-                            Some(ext_idx) => Ok(Value::ExternRef(Some(ExternRef { index: ext_idx }))),
+                            Some(ext_idx) => Ok(Value::ExternRef(Some(ext_idx))),
                             None => Ok(Value::ExternRef(None)),
                         }
                     }
@@ -965,13 +956,8 @@ impl TableOperations for Table {
             None => {
                 // Return appropriate null reference based on table element type
                 match self.ty.element_type {
-                    WrtValueType::FuncRef => Ok(Value::FuncRef(None)),
-                    WrtValueType::ExternRef => Ok(Value::ExternRef(None)),
-                    _ => Err(Error::new(
-                        ErrorCategory::Type,
-                        codes::INVALID_TYPE,
-                        "Runtime operation error",
-                    )),
+                    RefType::Funcref => Ok(Value::FuncRef(None)),
+                    RefType::Externref => Ok(Value::ExternRef(None)),
                 }
             }
         }

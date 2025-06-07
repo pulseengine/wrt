@@ -169,6 +169,8 @@ pub mod verify;
 pub mod unified_types_simple;
 /// Memory provider hierarchy for predictable allocation behavior
 pub mod memory_system;
+/// Global memory configuration and platform-aware allocation system
+pub mod global_memory_config;
 /// ASIL-aware safety primitives for safety-critical applications
 pub mod safety_system;
 /// ASIL-tagged testing framework for safety verification
@@ -202,8 +204,8 @@ pub mod memory_builder;
 pub mod runtime_memory;
 
 // Binary std/no_std choice
-#[cfg(not(any(feature = "std", )))]
-/// Binary std/no_std choice
+#[cfg(not(feature = "std"))]
+/// No-std hash map implementation
 pub mod no_std_hashmap;
 // pub mod no_std_compat;
 
@@ -285,7 +287,13 @@ pub use memory_system::UnifiedStdProvider;
 
 // Re-export safety system types
 pub use safety_system::{
+    // Traditional ASIL types
     AsilLevel, SafetyContext, SafetyGuard, SafeMemoryAllocation,
+    // Universal safety system types
+    SafetyStandard, SafetyStandardType, SafetyStandardConversion,
+    UniversalSafetyContext, SeverityScore, SafetyError,
+    // Additional safety standard levels
+    DalLevel, SilLevel, MedicalClass, RailwaySil, AgricultureLevel,
 };
 
 /// The WebAssembly binary format magic number: \0asm

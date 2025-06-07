@@ -26,12 +26,14 @@ pub use core::fmt::Write as FmtWrite;
 // Arc is not available in pure no_std, use a reference wrapper
 #[cfg(not(feature = "std"))]
 #[derive(Debug, Clone)]
+/// Arc-like wrapper for no_std environments
 pub struct Arc<T> {
     inner: T,
 }
 
 #[cfg(not(feature = "std"))]
 impl<T> Arc<T> {
+    /// Create a new Arc-like wrapper
     pub fn new(value: T) -> Self {
         Self { inner: value }
     }

@@ -281,8 +281,16 @@ mod tests {
         // Perform an atomic write
         atomic_ops.atomic_write_with_checksum(0, &test_data).unwrap();
 
-        // Read back the data using the read_data method
+        // Read back the data using appropriate method for the feature set
+        #[cfg(feature = "std")]
         let read_data = atomic_ops.read_data(0, test_data.len()).unwrap();
+        
+        #[cfg(not(feature = "std"))]
+        let read_data = {
+            let handler = atomic_ops.handler.lock();
+            let slice = handler.borrow_slice(0, test_data.len()).unwrap();
+            slice.data().unwrap()
+        };
 
         // Verify the data
         assert_eq!(read_data, &test_data);
@@ -308,7 +316,7 @@ mod tests {
         assert!(handler.provider().verify_integrity().is_ok());
 
         // Manually calculate expected checksum
-        let _expected_checksum = Checksum::compute(&test_data);
+        let _expected_checksum = crate::verification::Checksum::compute(&test_data);
 
         // Access the internal slice to check its checksum
         let slice = handler.borrow_slice(0, test_data.len()).unwrap();
@@ -336,7 +344,15 @@ mod tests {
         atomic_ops.atomic_copy_within(2, 20, 5).unwrap();
 
         // Read back the copied data
+        #[cfg(feature = "std")]
         let read_data = atomic_ops.read_data(20, 5).unwrap();
+        
+        #[cfg(not(feature = "std"))]
+        let read_data = {
+            let handler = atomic_ops.handler.lock();
+            let slice = handler.borrow_slice(20, 5).unwrap();
+            slice.data().unwrap()
+        };
 
         // Verify the data was copied correctly
         assert_eq!(read_data, &[3, 4, 5, 6, 7]);

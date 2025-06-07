@@ -10,10 +10,15 @@
 // Binary std/no_std choice
 #[cfg(not(feature = "std"))]
 pub use wrt_foundation::{
-    BoundedMap as HashMap,
-    BoundedSet as HashSet,
     NoStdProvider,
 };
+
+// Define HashMap and HashSet type aliases with all required generics
+#[cfg(not(feature = "std"))]
+pub type HashMap<K, V> = wrt_foundation::BoundedMap<K, V, 128, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+
+#[cfg(not(feature = "std"))]
+pub type HashSet<T> = wrt_foundation::BoundedSet<T, 128, wrt_foundation::safe_memory::NoStdProvider<1024>>;
 
 // For pure no_std, we'll rely on explicit BoundedVec usage instead of Vec alias
 // to avoid conflicts with other crates' Vec definitions
@@ -39,6 +44,31 @@ macro_rules! vec_new {
 #[cfg(not(feature = "std"))]
 pub fn vec_with_capacity<T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + core::fmt::Debug + PartialEq + Eq>(_capacity: usize) -> wrt_foundation::bounded::BoundedVec<T, 256, wrt_foundation::safe_memory::NoStdProvider<1024>> {
     wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
+}
+
+// Add vec! macro for no_std environments
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[macro_export]
+macro_rules! vec {
+    () => {
+        Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
+    };
+    ($elem:expr; $n:expr) => {
+        {
+            let mut v = Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+            for _ in 0..$n {
+                v.push($elem).unwrap();
+            }
+            v
+        }
+    };
+    ($($x:expr),*) => {
+        {
+            let mut v = Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+            $(v.push($x).unwrap();)*
+            v
+        }
+    };
 }
 
 // Simple format! implementation for no_std mode using a fixed buffer
@@ -125,14 +155,18 @@ impl ToString for str {
     }
 }
 
-// Arc is not available in pure no_std, use a reference wrapper
-#[cfg(not(feature = "std"))]
+// Arc and Mutex for no_std with alloc
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use alloc::sync::Arc;
+
+// For pure no_std without alloc, use reference wrapper
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 #[derive(Debug, Clone)]
 pub struct Arc<T> {
     inner: T,
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 impl<T> Arc<T> {
     pub fn new(value: T) -> Self {
         Self { inner: value }
@@ -144,49 +178,21 @@ impl<T> Arc<T> {
     }
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 impl<T: PartialEq> PartialEq for Arc<T> {
     fn eq(&self, other: &Self) -> bool {
         self.inner == other.inner
     }
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 impl<T: Eq> Eq for Arc<T> {}
 
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 impl<T> core::ops::Deref for Arc<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
         &self.inner
-    }
-}
-
-#[cfg(not(feature = "std"))]
-#[derive(Debug)]
-pub struct Box<T: ?Sized> {
-    inner: T,
-}
-
-#[cfg(not(feature = "std"))]
-impl<T> Box<T> {
-    pub fn new(value: T) -> Self {
-        Self { inner: value }
-    }
-}
-
-#[cfg(not(feature = "std"))]
-impl<T> core::ops::Deref for Box<T> {
-    type Target = T;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-#[cfg(not(feature = "std"))]
-impl<T> core::ops::DerefMut for Box<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
     }
 }
 pub use core::{
@@ -212,6 +218,18 @@ pub use std::{
     vec,
     vec::Vec,
 };
+
+// Re-export from alloc when available but not std
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use alloc::{
+    boxed::Box,
+    format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
+
+// Remove duplicate definitions - Vec and String are already defined above
 
 // Re-export from wrt-decoder (aliased to avoid name clashes)
 // Component module is temporarily disabled in wrt-decoder

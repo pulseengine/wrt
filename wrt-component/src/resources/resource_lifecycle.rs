@@ -4,17 +4,17 @@
 //! destruction, ownership transfer, and borrowing semantics as defined by
 //! the Component Model specification.
 
-#[cfg(not(any(feature = "std", )))]
+#[cfg(not(feature = "std"))]
 use wrt_foundation::bounded::{BoundedString, BoundedVec};
 
 use crate::prelude::*;
 
 /// Maximum number of active resources in pure no_std environments
-#[cfg(not(any(feature = "std", )))]
+#[cfg(not(feature = "std"))]
 const MAX_RESOURCES: usize = 1024;
 
 /// Maximum number of active borrows per resource in pure no_std
-#[cfg(not(any(feature = "std", )))]
+#[cfg(not(feature = "std"))]
 const MAX_BORROWS_PER_RESOURCE: usize = 16;
 
 /// Resource handle type
@@ -46,7 +46,7 @@ pub struct ResourceType {
     /// Resource type name
     #[cfg(feature = "std")]
     pub name: String,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(feature = "std"))]
     pub name: BoundedString<64>,
     /// Destructor function index (if any)
     pub destructor: Option<u32>,
@@ -79,7 +79,7 @@ pub struct ResourceMetadata {
     /// Custom user data
     #[cfg(feature = "std")]
     pub user_data: Option<Vec<u8>>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(feature = "std"))]
     pub user_data: Option<BoundedVec<u8, 256>>,
 }
 
@@ -90,13 +90,13 @@ pub struct ResourceLifecycleManager {
     /// Active resources
     #[cfg(feature = "std")]
     resources: HashMap<ResourceHandle, Resource>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(feature = "std"))]
     resources:
         wrt_foundation::no_std_hashmap::SimpleHashMap<ResourceHandle, Resource, MAX_RESOURCES>,
     /// Borrow tracking
     #[cfg(feature = "std")]
     borrows: HashMap<ResourceHandle, Vec<BorrowInfo>>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(feature = "std"))]
     borrows: wrt_foundation::no_std_hashmap::SimpleHashMap<
         ResourceHandle,
         BoundedVec<BorrowInfo, MAX_BORROWS_PER_RESOURCE>,
@@ -105,7 +105,7 @@ pub struct ResourceLifecycleManager {
     /// Resource type registry
     #[cfg(feature = "std")]
     types: HashMap<u32, ResourceType>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(feature = "std"))]
     types: wrt_foundation::no_std_hashmap::SimpleHashMap<u32, ResourceType, 256>,
     /// Lifecycle hooks
     hooks: LifecycleHooks,
@@ -174,15 +174,15 @@ impl ResourceLifecycleManager {
             next_handle: 1, // 0 is reserved for invalid handle
             #[cfg(feature = "std")]
             resources: HashMap::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(feature = "std"))]
             resources: wrt_foundation::no_std_hashmap::SimpleHashMap::new(),
             #[cfg(feature = "std")]
             borrows: HashMap::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(feature = "std"))]
             borrows: wrt_foundation::no_std_hashmap::SimpleHashMap::new(),
             #[cfg(feature = "std")]
             types: HashMap::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(feature = "std"))]
             types: wrt_foundation::no_std_hashmap::SimpleHashMap::new(),
             hooks: LifecycleHooks::default(),
             metrics: ResourceMetrics::default(),
@@ -200,7 +200,7 @@ impl ResourceLifecycleManager {
             type_idx,
             #[cfg(feature = "std")]
             name: name.to_string(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(feature = "std"))]
             name: BoundedString::try_from(name).map_err(|_| {
                 Error::new(
                     ErrorCategory::Resource,
@@ -243,7 +243,7 @@ impl ResourceLifecycleManager {
             })?
             .clone();
 
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         let resource_type = self
             .types
             .get(&type_idx)
@@ -279,7 +279,7 @@ impl ResourceLifecycleManager {
                 owner: creator,
                 #[cfg(feature = "std")]
                 user_data: user_data.map(|d| d.to_vec()),
-                #[cfg(not(any(feature = "std", )))]
+                #[cfg(not(feature = "std"))]
                 user_data: user_data.and_then(|d| BoundedVec::try_from(d).ok()),
             },
         };
@@ -316,7 +316,7 @@ impl ResourceLifecycleManager {
             )
         })?;
 
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         let mut resource = self
             .resources
             .remove(&handle)
@@ -365,7 +365,7 @@ impl ResourceLifecycleManager {
         #[cfg(feature = "std")]
         self.borrows.remove(&handle);
 
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         let _ = self.borrows.remove(&handle);
 
         // Update metrics
@@ -392,7 +392,7 @@ impl ResourceLifecycleManager {
             )
         })?;
 
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         let resource = self
             .resources
             .get_mut(&handle)
@@ -448,7 +448,7 @@ impl ResourceLifecycleManager {
             self.borrows.entry(handle).or_insert_with(Vec::new).push(borrow_info);
         }
 
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         {
             let borrows =
                 self.borrows.get_mut_or_insert(handle, BoundedVec::new).map_err(|_| {
@@ -486,7 +486,7 @@ impl ResourceLifecycleManager {
             )
         })?;
 
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         let resource = self
             .resources
             .get_mut(&handle)
@@ -523,7 +523,7 @@ impl ResourceLifecycleManager {
             borrows.remove(pos)
         };
 
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         let borrow_info = {
             let borrows = self
                 .borrows
@@ -583,7 +583,7 @@ impl ResourceLifecycleManager {
             )
         })?;
 
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         let resource = self
             .resources
             .get_mut(&handle)
@@ -652,7 +652,7 @@ impl ResourceLifecycleManager {
             })
         }
 
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         {
             self.resources
                 .get(&handle)

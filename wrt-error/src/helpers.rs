@@ -95,48 +95,57 @@ pub const fn conversion_error(message: &'static str) -> Error {
 
 // Agent B helper stubs
 /// Create a platform detection failed error
+#[must_use]
 pub const fn platform_detection_failed_error(message: &'static str) -> Error {
     Error::new(ErrorCategory::System, codes::PLATFORM_DETECTION_FAILED, message)
 }
 
 /// Create a memory limit exceeded error
+#[must_use]
 pub const fn memory_limit_exceeded_error(message: &'static str) -> Error {
     Error::new(ErrorCategory::Capacity, codes::MEMORY_LIMIT_EXCEEDED, message)
 }
 
 /// Create a stack limit exceeded error
+#[must_use]
 pub const fn stack_limit_exceeded_error(message: &'static str) -> Error {
     Error::new(ErrorCategory::Capacity, codes::STACK_LIMIT_EXCEEDED, message)
 }
 
 // Agent C helper stubs
 /// Create a WIT input too large error
+#[must_use]
 pub const fn wit_input_too_large_error(message: &'static str) -> Error {
     Error::new(ErrorCategory::Parse, codes::WIT_INPUT_TOO_LARGE, message)
 }
 
 /// Create an insufficient memory error
+#[must_use]
 pub const fn insufficient_memory_error(message: &'static str) -> Error {
     Error::new(ErrorCategory::Memory, codes::INSUFFICIENT_MEMORY, message)
 }
 
 /// Create a resource type limit exceeded error
+#[must_use]
 pub const fn resource_type_limit_exceeded_error(message: &'static str) -> Error {
     Error::new(ErrorCategory::Resource, codes::RESOURCE_TYPE_LIMIT_EXCEEDED, message)
 }
 
 // Agent D helper stubs
 /// Create a CFI validation failed error
+#[must_use]
 pub const fn cfi_validation_failed_error(message: &'static str) -> Error {
     Error::new(ErrorCategory::Safety, codes::CFI_VALIDATION_FAILED, message)
 }
 
 /// Create a CFI unsupported error
+#[must_use]
 pub const fn cfi_unsupported_error(message: &'static str) -> Error {
     Error::new(ErrorCategory::NotSupported, codes::CFI_UNSUPPORTED, message)
 }
 
 /// Create an execution engine error
+#[must_use]
 pub const fn execution_engine_error(message: &'static str) -> Error {
     Error::new(ErrorCategory::Runtime, codes::EXECUTION_ENGINE_ERROR, message)
 }

@@ -34,7 +34,7 @@ wrt-runtime = { workspace = true }
 # Logging functionality
 wrt-logging = { workspace = true }
 # Platform abstraction layer
-wrt-platform = { workspace = true }
+wrt-platform = { workspace = true, features = ["disable-panic-handler"] }
 # Math operations
 wrt-math = { workspace = true }
 
@@ -148,6 +148,8 @@ safety = ["wrt-foundation/safety",
           "wrt-component/safety"]
 # Platform and Helper Mode Features
 helper-mode = ["wrt-platform/helper-mode"]
+# Disable panic handler for library usage
+disable-panic-handler = []
 platform-macos = ["wrt-platform/platform-macos"]
 # Platform feature enables SIMD operations
 platform = ["wrt-math/platform"]

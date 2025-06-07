@@ -92,6 +92,7 @@ pub enum Command {
     SafetyReport(SafetyReportArgs),
     SafetyDashboard,
     InitRequirements,
+    CiSafety(CiSafetyArgs),
 }
 
 // Args structs for existing commands
@@ -208,6 +209,16 @@ pub struct SafetyReportArgs {
 }
 
 #[derive(Debug, Parser)]
+pub struct CiSafetyArgs {
+    #[clap(long, default_value = "70.0", help = "Minimum certification readiness threshold (percentage)")]
+    pub threshold: f64,
+    #[clap(long, help = "Fail CI if safety verification fails")]
+    pub fail_on_safety_issues: bool,
+    #[clap(long, help = "Generate JSON output for CI processing")]
+    pub json_output: bool,
+}
+
+#[derive(Debug, Parser)]
 pub struct FsArgs {
     #[clap(subcommand)]
     pub command: FsCommands,
@@ -241,6 +252,143 @@ pub enum WasmCommands {
 //     #[clap(required = true, num_args = 1.., help = "List of tools to install
 // (e.g., mdbook, cargo-nextest)")]     pub tools: Vec<String>,
 // }
+
+/// Run comprehensive safety verification for CI pipeline
+async fn run_ci_safety_verification(args: &CiSafetyArgs) -> Result<()> {
+    use std::process::exit;
+    
+    println!("🛡️ WRT CI Safety Verification Pipeline");
+    println!("=======================================");
+    println!("Threshold: {:.1}%", args.threshold);
+    
+    // Step 1: Initialize requirements if missing
+    let requirements_path = PathBuf::from("requirements.toml");
+    if !requirements_path.exists() {
+        println!("📋 Initializing requirements file...");
+        safety_verification::init_requirements(&requirements_path)?;
+    }
+    
+    // Step 2: Verify requirements
+    println!("🔍 Verifying requirements implementation...");
+    let config = safety_verification::SafetyVerificationConfig {
+        requirements_file: requirements_path.clone(),
+        output_format: if args.json_output {
+            safety_verification::OutputFormat::Json
+        } else {
+            safety_verification::OutputFormat::Text
+        },
+        verify_files: true,
+        generate_report: true,
+    };
+    
+    let mut verification_passed = true;
+    
+    if let Err(e) = safety_verification::run_safety_verification(config) {
+        println!("⚠️ Requirements verification issues detected: {}", e);
+        verification_passed = false;
+    }
+    
+    // Step 3: Generate comprehensive safety report
+    println!("📊 Generating safety verification report...");
+    let requirements = safety_verification::load_requirements(&requirements_path)?;
+    let missing_files = safety_verification::verify_files_exist(&requirements)?;
+    let report = safety_verification::generate_safety_report(&requirements, &missing_files)?;
+    
+    // Step 4: Evaluate certification readiness
+    let readiness = report.certification_readiness.overall_readiness;
+    println!("🎯 Overall Certification Readiness: {:.1}%", readiness);
+    
+    // Step 5: Apply CI gate logic
+    let gate_result = if readiness >= args.threshold {
+        if readiness >= 85.0 {
+            println!("✅ EXCELLENT: Safety verification PASSED - Production ready");
+            "PASS"
+        } else if readiness >= 75.0 {
+            println!("✅ GOOD: Safety verification PASSED - Ready for staging");
+            "PASS"
+        } else {
+            println!("✅ ACCEPTABLE: Safety verification PASSED - Continue development");
+            "PASS"
+        }
+    } else if readiness >= 60.0 {
+        println!("⚠️ WARNING: Safety verification below threshold - Address key gaps");
+        if args.fail_on_safety_issues {
+            println!("❌ CI configured to fail on safety issues");
+            "FAIL"
+        } else {
+            println!("⚠️ CI configured to continue with warnings");
+            "WARN"
+        }
+    } else {
+        println!("❌ CRITICAL: Safety verification FAILED - Significant work required");
+        "FAIL"
+    };
+    
+    // Step 6: Generate summary for CI systems
+    if args.json_output {
+        let ci_summary = serde_json::json!({
+            "safety_verification": {
+                "status": gate_result,
+                "readiness_score": readiness,
+                "threshold": args.threshold,
+                "verification_passed": verification_passed,
+                "missing_files_count": missing_files.len(),
+                "requirements_count": requirements.requirement.len(),
+                "timestamp": chrono::Utc::now().to_rfc3339(),
+                "recommendations": generate_recommendations(readiness, &missing_files)
+            }
+        });
+        println!("{}", serde_json::to_string_pretty(&ci_summary)?);
+    }
+    
+    // Step 7: Exit with appropriate code
+    match gate_result {
+        "PASS" => {
+            println!("🎉 CI Safety Verification: PASSED");
+            Ok(())
+        }
+        "WARN" => {
+            println!("⚠️ CI Safety Verification: WARNING");
+            Ok(()) // Don't fail CI for warnings unless explicitly requested
+        }
+        "FAIL" => {
+            println!("💥 CI Safety Verification: FAILED");
+            if args.fail_on_safety_issues {
+                exit(1);
+            } else {
+                println!("ℹ️ CI configured to continue despite safety issues");
+                Ok(())
+            }
+        }
+        _ => unreachable!(),
+    }
+}
+
+/// Generate recommendations based on safety verification results
+fn generate_recommendations(readiness: f64, missing_files: &[String]) -> Vec<String> {
+    let mut recommendations = Vec::new();
+    
+    if readiness < 70.0 {
+        recommendations.push("Increase test coverage, especially for ASIL-C and ASIL-D requirements".to_string());
+        recommendations.push("Complete missing documentation and architecture specifications".to_string());
+        recommendations.push("Implement formal verification for critical components".to_string());
+    }
+    
+    if !missing_files.is_empty() {
+        recommendations.push(format!("Address {} missing files in requirements traceability", missing_files.len()));
+    }
+    
+    if readiness < 85.0 {
+        recommendations.push("Enhance static analysis coverage and MISRA C compliance".to_string());
+        recommendations.push("Implement comprehensive code review processes".to_string());
+    }
+    
+    if recommendations.is_empty() {
+        recommendations.push("Maintain current safety practices and consider additional automation".to_string());
+    }
+    
+    recommendations
+}
 
 // Make main async to support async Dagger tasks directly
 #[tokio::main]
@@ -535,6 +683,9 @@ async fn main() -> Result<()> {
             let requirements_path = PathBuf::from("requirements.toml");
             safety_verification::init_requirements(&requirements_path)?;
             return Ok(());
+        }
+        Command::CiSafety(args) => {
+            return run_ci_safety_verification(args).await;
         }
         _ => {
             // Continue to Dagger handling

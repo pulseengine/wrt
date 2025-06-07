@@ -14,6 +14,7 @@ use crate::prelude::*;
 // In no_std mode, we can't use Box<dyn Any>, so we'll use a wrapper type
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+/// Callback data for no_std environments
 pub struct CallbackData {
     _phantom: core::marker::PhantomData<()>,
 }
@@ -40,12 +41,14 @@ type StringVec = wrt_foundation::BoundedVec<wrt_foundation::bounded::BoundedStri
 type StringRefVec<'a> = Vec<&'a String>;
 
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
+#[allow(dead_code)]
 type StringRefVec<'a> = StringVec; // In no_std, we return owned strings instead of references
 
 
 // For no_std mode, we'll use a simpler approach without nested maps
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+/// Host functions registry for no_std environments
 pub struct HostFunctionsNoStd {
     // In no_std mode, we'll just store a flag indicating functions are registered
     // This is a placeholder - a real implementation would need a different approach

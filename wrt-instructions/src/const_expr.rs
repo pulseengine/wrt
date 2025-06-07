@@ -109,7 +109,7 @@ impl ConstExprSequence {
     }
     
     /// Helper to pop from stack in both std and no_std environments
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(feature = "std"))]
     fn stack_pop(stack: &mut BoundedVec<Value, 8, wrt_foundation::NoStdProvider<128>>) -> Result<Value> {
         match stack.pop() {
             Ok(Some(val)) => Ok(val),
@@ -123,7 +123,7 @@ impl ConstExprSequence {
         #[cfg(feature = "std")]
         let mut stack = Vec::new();
         
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         let mut stack = BoundedVec::<Value, 8, wrt_foundation::NoStdProvider<128>>::new(
             wrt_foundation::NoStdProvider::<128>::default()
         ).unwrap();
@@ -137,7 +137,7 @@ impl ConstExprSequence {
                     #[cfg(feature = "std")]
                     stack.push(Value::I32(*v));
                     
-                    #[cfg(not(any(feature = "std", )))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::I32(*v)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -146,7 +146,7 @@ impl ConstExprSequence {
                     #[cfg(feature = "std")]
                     stack.push(Value::I64(*v));
                     
-                    #[cfg(not(any(feature = "std", )))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::I64(*v)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -156,7 +156,7 @@ impl ConstExprSequence {
                     #[cfg(feature = "std")]
                     stack.push(Value::F32(float_bits));
                     
-                    #[cfg(not(any(feature = "std", )))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::F32(float_bits)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -166,7 +166,7 @@ impl ConstExprSequence {
                     #[cfg(feature = "std")]
                     stack.push(Value::F64(float_bits));
                     
-                    #[cfg(not(any(feature = "std", )))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::F64(float_bits)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -180,7 +180,7 @@ impl ConstExprSequence {
                     #[cfg(feature = "std")]
                     stack.push(value);
                     
-                    #[cfg(not(any(feature = "std", )))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(value).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -195,7 +195,7 @@ impl ConstExprSequence {
                     #[cfg(feature = "std")]
                     stack.push(Value::FuncRef(Some(func_ref)));
                     
-                    #[cfg(not(any(feature = "std", )))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::FuncRef(Some(func_ref))).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -206,7 +206,7 @@ impl ConstExprSequence {
                     #[cfg(feature = "std")]
                     stack.push(value);
                     
-                    #[cfg(not(any(feature = "std", )))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(value).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -225,7 +225,7 @@ impl ConstExprSequence {
                     #[cfg(feature = "std")]
                     stack.push(Value::I32(result));
                     
-                    #[cfg(not(any(feature = "std", )))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::I32(result)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -244,7 +244,7 @@ impl ConstExprSequence {
                     #[cfg(feature = "std")]
                     stack.push(Value::I32(result));
                     
-                    #[cfg(not(any(feature = "std", )))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::I32(result)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -263,7 +263,7 @@ impl ConstExprSequence {
                     #[cfg(feature = "std")]
                     stack.push(Value::I32(result));
                     
-                    #[cfg(not(any(feature = "std", )))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::I32(result)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -282,7 +282,7 @@ impl ConstExprSequence {
                     #[cfg(feature = "std")]
                     stack.push(Value::I64(result));
                     
-                    #[cfg(not(any(feature = "std", )))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::I64(result)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -301,7 +301,7 @@ impl ConstExprSequence {
                     #[cfg(feature = "std")]
                     stack.push(Value::I64(result));
                     
-                    #[cfg(not(any(feature = "std", )))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::I64(result)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -320,7 +320,7 @@ impl ConstExprSequence {
                     #[cfg(feature = "std")]
                     stack.push(Value::I64(result));
                     
-                    #[cfg(not(any(feature = "std", )))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::I64(result)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;

@@ -19,6 +19,7 @@ use core::arch::aarch64::*;
 pub struct AArch64SimdProvider {
     level: SimdLevel,
     has_neon: bool,
+    #[allow(dead_code)]
     has_sve: bool,
     scalar_fallback: ScalarSimdProvider,
 }

@@ -94,8 +94,13 @@ ci-test:
     @echo "CI: Running all tests (Daggerized with feature configs)..."
     cargo xtask run-tests
 
-# Aggregate CI check - runs most critical checks
-ci-main: default ci-integrity-checks fmt-check ci-static-analysis ci-test ci-doc-check
+# Safety verification for CI
+ci-safety:
+    @echo "CI: Running SCORE-inspired safety verification pipeline..."
+    cargo xtask ci-safety --threshold 70.0 --fail-on-safety-issues
+
+# Aggregate CI check - runs most critical checks including safety
+ci-main: default ci-integrity-checks fmt-check ci-static-analysis ci-test ci-doc-check ci-safety
 
 # Full CI suite - includes longer running checks
 ci-full: ci-main ci-advanced-tests

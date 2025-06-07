@@ -194,6 +194,7 @@ impl SimdCapabilities {
     }
     
     #[cfg(target_arch = "aarch64")]
+    #[allow(dead_code)]
     fn detect_aarch64() -> Self {
         // ARM64 always has NEON
         let has_neon = true;
@@ -471,6 +472,7 @@ pub struct SimdRuntime {
 }
 
 // Global initialization flag
+#[allow(dead_code)]
 static SIMD_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 #[cfg(feature = "std")]

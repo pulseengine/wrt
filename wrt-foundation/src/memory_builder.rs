@@ -145,11 +145,11 @@ mod tests {
         let builder = PalMemoryProviderBuilder::new(allocator)
             .with_initial_pages(2)
             .with_maximum_pages(10)
-            .with_verification_level(VerificationLevel::Critical);
+            .with_verification_level(VerificationLevel::Full);
 
         let provider = builder.build().unwrap();
         assert_eq!(provider.pages(), 2);
-        assert_eq!(provider.verification_level(), VerificationLevel::Critical);
+        assert_eq!(provider.verification_level(), VerificationLevel::Full);
     }
 
     #[cfg(all(feature = "platform-memory", feature = "platform-macos", target_os = "macos"))]
@@ -161,7 +161,7 @@ mod tests {
         let builder = LinearMemoryBuilder::new(allocator)
             .with_initial_pages(2)
             .with_maximum_pages(10)
-            .with_verification_level(VerificationLevel::Critical);
+            .with_verification_level(VerificationLevel::Full);
 
         let memory = builder.build().unwrap();
         // LinearMemory delegates to the provider, so we know these will match

@@ -446,7 +446,7 @@ impl WitAwareDebugger for WitDebugger {
             let runtime_error = Error::runtime_error(&format!("{}", error_str));
             self.source_map.map_error_to_diagnostic(&runtime_error, error.binary_offset)
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         {
             // Binary std/no_std choice
             None

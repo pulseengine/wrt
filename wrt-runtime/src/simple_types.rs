@@ -9,6 +9,7 @@ use wrt_foundation::{
     traits::{Checksummable, ToBytes, FromBytes},
     prelude::*,
 };
+use wrt_instructions::Value;
 
 // =============================================================================
 // CONCRETE RUNTIME TYPES

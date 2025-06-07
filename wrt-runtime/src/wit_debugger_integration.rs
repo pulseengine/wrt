@@ -579,8 +579,8 @@ pub fn create_component_metadata(
         source_span,
         binary_start,
         binary_end,
-        exports: Vec::new(),
-        imports: Vec::new(),
+        exports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
+        imports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
     })
 }
 
@@ -599,8 +599,8 @@ pub fn create_function_metadata(
             .map_err(|_| Error::runtime_error("Function name too long"))?,
         source_span,
         binary_offset,
-        param_types: Vec::new(),
-        return_types: Vec::new(),
+        param_types: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
+        return_types: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
         is_async,
     })
 }

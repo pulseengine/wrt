@@ -103,7 +103,7 @@ pub use errors::{Error, ErrorCategory, ErrorSource};
 ///
 /// This type alias uses `wrt_error::Error` as the error type.
 /// It is suitable for `no_std` environments as `wrt_error::Error`
-/// Binary std/no_std choice
+/// Binary `std/no_std` choice
 pub type Result<T> = core::result::Result<T, Error>;
 
 // Re-export error kinds for convenience

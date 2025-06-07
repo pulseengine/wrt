@@ -1,3 +1,11 @@
+// WRT - wrt-foundation
+// Module: Unified Memory Provider Hierarchy
+// SW-REQ-ID: REQ_MEM_UNIFIED_001, REQ_MEM_HIERARCHY_001, REQ_MEM_PLATFORM_002
+//
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Unified Memory Provider Hierarchy for WRT Foundation
 //!
 //! This module provides a consistent memory provider architecture that can be
@@ -34,8 +42,6 @@
 //! // Use memory...
 //! provider.deallocate(memory)?;
 //! ```
-
-#![cfg_attr(not(feature = "std"), no_std)]
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 

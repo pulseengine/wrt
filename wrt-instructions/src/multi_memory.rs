@@ -544,7 +544,7 @@ mod tests {
             Ok(self.data[start..end].to_vec())
         }
         
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>> {
             let start = offset as usize;
             let end = start + len as usize;

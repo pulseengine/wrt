@@ -1,9 +1,17 @@
+// WRT - wrt-host
+// Module: Enhanced Host Integration with Memory Constraints
+// SW-REQ-ID: REQ_HOST_BOUNDED_001, REQ_HOST_LIMITS_001, REQ_HOST_SAFETY_001
+//
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 // Enhanced Host Integration with Memory Constraints for Agent C
 // This is Agent C's bounded host integration implementation according to the parallel development plan
 
 extern crate alloc;
 use wrt_error::{Error, Result};
-use alloc::{boxed::Box, string::String, vec::Vec, string::ToString, format};
+use alloc::{boxed::Box, string::String, vec::Vec, string::ToString};
 
 /// Host integration limits configuration
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -223,6 +231,7 @@ impl BoundedHostFunction for SimpleBoundedHostFunction {
 struct ActiveCall {
     function_id: HostFunctionId,
     component_instance: ComponentInstanceId,
+    #[allow(dead_code)]
     start_time: u64,
     memory_used: usize,
 }

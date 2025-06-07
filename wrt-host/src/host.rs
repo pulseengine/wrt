@@ -31,6 +31,7 @@ type HandlerFn = Box<dyn Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send +
 // Handler data wrapper for no_std
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+/// Handler data wrapper for no_std environments
 pub struct HandlerData {
     _phantom: core::marker::PhantomData<()>,
 }
@@ -383,7 +384,7 @@ impl BuiltinHost {
         }
         
         // Binary std/no_std choice
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         {
             self.execute_builtin_internal(engine, builtin_type, args)
         }

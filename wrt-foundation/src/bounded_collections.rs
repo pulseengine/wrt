@@ -3041,7 +3041,7 @@ mod tests {
     // Test BoundedQueue
     #[test]
     fn test_bounded_queue() {
-        let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
+        let provider = NoStdProvider::new();
         let mut queue = BoundedQueue::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test enqueue
@@ -3084,7 +3084,7 @@ mod tests {
     // Test BoundedMap
     #[test]
     fn test_bounded_map() {
-        let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
+        let provider = NoStdProvider::new();
         let mut map = BoundedMap::<u32, u32, 3, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test insert
@@ -3122,7 +3122,7 @@ mod tests {
     // Test BoundedSet
     #[test]
     fn test_bounded_set() {
-        let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
+        let provider = NoStdProvider::new();
         let mut set = BoundedSet::<u32, 3, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test insert
@@ -3155,7 +3155,7 @@ mod tests {
     // Test BoundedDeque
     #[test]
     fn test_bounded_deque() {
-        let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
+        let provider = NoStdProvider::new();
         let mut deque = BoundedDeque::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test push_back

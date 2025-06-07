@@ -652,10 +652,10 @@ mod tests {
     #[test]
     fn test_bounded_builder() {
         let builder = BoundedBuilder::<u32, 10, NoStdProvider<1024>>::new()
-            .with_verification_level(VerificationLevel::Critical);
+            .with_verification_level(VerificationLevel::Full);
 
         let stack = builder.build_stack().unwrap();
-        assert_eq!(stack.verification_level(), VerificationLevel::Critical);
+        assert_eq!(stack.verification_level(), VerificationLevel::Full);
         assert_eq!(stack.capacity(), 10);
     }
 
@@ -743,11 +743,11 @@ mod tests {
 
         // Test with medium provider using type alias
         let builder =
-            MediumNoStdProviderBuilder::new().with_verification_level(VerificationLevel::Critical);
+            MediumNoStdProviderBuilder::new().with_verification_level(VerificationLevel::Full);
 
         let provider = builder.build().unwrap();
         assert_eq!(provider.capacity(), 4096);
-        assert_eq!(provider.verification_level(), VerificationLevel::Critical);
+        assert_eq!(provider.verification_level(), VerificationLevel::Full);
 
         // Test that init_size is capped at capacity
         let builder = SmallNoStdProviderBuilder::new().with_init_size(1000); // Larger than 512 capacity
