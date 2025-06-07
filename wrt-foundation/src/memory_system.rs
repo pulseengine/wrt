@@ -16,9 +16,10 @@
 //!
 //! - **Unified Interface**: All memory providers implement the same trait
 //! - **Platform Configurability**: Different provider sizes for different platforms
-//! - **Safety**: Memory allocation failures are handled gracefully
+//! - **Safety Integration**: Memory allocation respects ASIL safety requirements
 //! - **Predictability**: Fixed-size providers with known memory bounds
 //! - **Performance**: Zero-allocation providers for no_std environments
+//! - **Bounds Enforcement**: All allocations have explicit limits and validation
 //!
 //! # Memory Provider Hierarchy
 //!
@@ -42,6 +43,30 @@
 //! // Use memory...
 //! provider.deallocate(memory)?;
 //! ```
+//!
+//! # Safety Considerations
+//!
+//! Memory allocation in safety-critical systems requires careful consideration:
+//! - All allocations must have bounded sizes to prevent memory exhaustion
+//! - Memory providers must fail gracefully without compromising system stability
+//! - Deallocation must be deterministic and cannot fail in safety-critical contexts
+//! - Memory fragmentation must be prevented through careful provider selection
+//!
+//! For safety-critical applications, use fixed-size providers (SmallProvider, MediumProvider)
+//! rather than dynamic allocation strategies.
+//!
+//! # Cross-References
+//!
+//! - [`crate::safety_system`]: ASIL safety level integration for memory allocation
+//! - [`crate::safe_memory`]: Safe memory access primitives and bounds checking
+//! - [`crate::bounded_collections`]: Bounded collections using these memory providers
+//!
+//! # REQ Traceability
+//!
+//! - REQ_MEM_UNIFIED_001: Unified memory provider interface
+//! - REQ_MEM_HIERARCHY_001: Hierarchical memory provider architecture  
+//! - REQ_MEM_PLATFORM_002: Platform-specific memory provider selection
+//! - REQ_MEM_SAFETY_001: Safety-critical memory allocation requirements
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 

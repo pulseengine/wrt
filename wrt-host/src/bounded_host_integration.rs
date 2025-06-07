@@ -6,6 +6,73 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
+//! Enhanced Host Integration with Memory Constraints
+//!
+//! This module provides a comprehensive host function integration system with strict
+//! memory and resource constraints for safety-critical WebAssembly runtime environments.
+//!
+//! # Architecture
+//!
+//! The bounded host integration system provides:
+//! - **Memory-Constrained Execution**: All host functions operate within fixed memory budgets
+//! - **Safety Level Verification**: Host functions verify caller safety requirements
+//! - **Resource Monitoring**: Real-time tracking of memory usage and call depth
+//! - **Concurrent Call Management**: Bounded concurrent execution with safety guarantees
+//!
+//! # Design Principles
+//!
+//! - **Bounded Resources**: All operations have explicit memory and execution limits
+//! - **Safety Verification**: Host functions validate caller safety levels
+//! - **Fail-Safe Operation**: Resource exhaustion results in safe failure modes
+//! - **Predictable Performance**: Deterministic resource usage patterns
+//! - **Isolation**: Component failures cannot affect host system stability
+//!
+//! # Safety Considerations
+//!
+//! Host function integration is safety-critical because:
+//! - Unbounded host calls can exhaust system resources
+//! - Invalid parameter validation can compromise host system integrity
+//! - Concurrent access without proper bounds can cause race conditions
+//! - Safety level mismatches can violate system safety requirements
+//!
+//! All host functions implement comprehensive parameter validation and resource monitoring.
+//!
+//! # Usage
+//!
+//! ```rust
+//! use wrt_host::bounded_host_integration::*;
+//!
+//! // Create manager with embedded system limits
+//! let limits = HostIntegrationLimits::embedded();
+//! let mut manager = BoundedHostIntegrationManager::new(limits)?;
+//!
+//! // Register safety-critical host function
+//! let safety_function = create_safety_check_function();
+//! let function_id = manager.register_function(safety_function)?;
+//!
+//! // Call function with safety verification
+//! let context = BoundedCallContext::new(
+//!     function_id,
+//!     ComponentInstanceId(1),
+//!     parameters,
+//!     AsilLevel::AsilC as u8
+//! );
+//! let result = manager.call_function(function_id, context)?;
+//! ```
+//!
+//! # Cross-References
+//!
+//! - [`wrt_foundation::safety_system`]: Safety level definitions and verification
+//! - [`wrt_component::bounded_resource_management`]: Component resource management
+//! - [`wrt_foundation::memory_system`]: Memory provider integration
+//!
+//! # REQ Traceability
+//!
+//! - REQ_HOST_BOUNDED_001: Bounded host function execution environment
+//! - REQ_HOST_LIMITS_001: Configurable resource limits for host integration
+//! - REQ_HOST_SAFETY_001: Safety-level-aware host function verification
+//! - REQ_HOST_CONCURRENT_001: Bounded concurrent call management
+
 // Enhanced Host Integration with Memory Constraints for Agent C
 // This is Agent C's bounded host integration implementation according to the parallel development plan
 

@@ -6,6 +6,64 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
+//! Enhanced Resource Management with Bounded Collections
+//!
+//! This module provides comprehensive resource management capabilities with strict
+//! bounds enforcement for safety-critical component execution environments.
+//!
+//! # Architecture
+//!
+//! The bounded resource management system implements a three-tier resource hierarchy:
+//! - **Resource Limits**: Configure maximum resource consumption per component
+//! - **Bounded Collections**: Use fixed-capacity collections to prevent memory exhaustion  
+//! - **Safety Integration**: ASIL-aware resource allocation and monitoring
+//!
+//! # Design Principles
+//!
+//! - **Bounded Operation**: All resources have explicit, compile-time limits
+//! - **Safety Integration**: Resource usage is tied to ASIL safety levels
+//! - **Predictable Allocation**: Deterministic resource allocation patterns
+//! - **Failure Isolation**: Component failures cannot affect system resources
+//!
+//! # Safety Considerations
+//!
+//! Resource management is safety-critical as unbounded resource consumption can lead to:
+//! - System resource exhaustion affecting other safety functions
+//! - Unpredictable system behavior due to memory fragmentation
+//! - Denial of service for critical system components
+//!
+//! All resource operations include safety level verification and bounded allocation.
+//!
+//! # Usage
+//!
+//! ```rust
+//! use wrt_component::bounded_resource_management::*;
+//! 
+//! // Configure resource limits for embedded system
+//! let limits = BoundedResourceLimits::embedded();
+//! let mut manager = BoundedResourceManager::new(limits)?;
+//! 
+//! // Allocate resources for ASIL-C component
+//! let component_id = ComponentId(1);
+//! let resources = manager.allocate_component_resources(
+//!     component_id, 
+//!     AsilLevel::AsilC
+//! )?;
+//! ```
+//!
+//! # Cross-References
+//! 
+//! - [`wrt_foundation::safety_system`]: ASIL safety level definitions
+//! - [`wrt_foundation::memory_system`]: Underlying memory provider hierarchy
+//! - [`wrt_host::bounded_host_integration`]: Host function resource limits
+//!
+//! # REQ Traceability
+//! 
+//! - REQ_RESOURCE_BOUNDED_001: Bounded collection usage for all resource types
+//! - REQ_RESOURCE_LIMITS_001: Configurable resource limits per component
+//! - REQ_COMPONENT_RESOURCE_001: Component-specific resource allocation
+//! - REQ_SAFETY_RESOURCE_001: Safety-level-aware resource management
+
 // Enhanced Resource Management with Bounded Collections for Agent C
 // This is Agent C's bounded resource management implementation according to the parallel development plan
 

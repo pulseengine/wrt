@@ -55,7 +55,7 @@ disable-panic-handler = []
 [dependencies]
 wrt-error = { workspace = true, default-features = false }
 wrt-sync = { workspace = true, default-features = false } # Make alloc conditional via features
-wrt-platform = { workspace = true, default-features = false, optional = true }
+wrt-platform = { workspace = true, default-features = false, optional = true, features = ["disable-panic-handler"] }
 
 # Only include hashbrown when explicitly requested with alloc feature
 hashbrown = { version = "0.15", optional = true } # For no_std with alloc
