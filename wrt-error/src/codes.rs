@@ -237,8 +237,7 @@ pub const BOUNDED_COLLECTION_VERIFICATION_ERROR: u16 = 10006;
 pub const INVALID_VALUE: u16 = 1019;
 /// Unimplemented feature error
 pub const UNIMPLEMENTED: u16 = 1020;
-/// Conversion error (general) - moved to system error codes section as CONVERSION_ERROR: u16 = 8002
-
+/// Conversion error (general) - moved to system error codes section as `CONVERSION_ERROR`: u16 = 8002
 // WIT parsing error codes (11000-11999) - Agent C stubs
 /// WIT input too large error
 pub const WIT_INPUT_TOO_LARGE: u16 = 11000;
@@ -351,6 +350,12 @@ pub const BUFFER_TOO_SMALL: u16 = 8012;
 pub const UNEXPECTED_STATE: u16 = 8013;
 
 // Unknown error code
+// Global memory system error codes (9500-9599)
+/// Duplicate operation attempted
+pub const DUPLICATE_OPERATION: u16 = 9500;
+/// System or component not initialized
+pub const UNINITIALIZED: u16 = 9501;
+
 /// Unknown error
 pub const UNKNOWN: u16 = 9999;
 

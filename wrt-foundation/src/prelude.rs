@@ -74,7 +74,7 @@ pub use crate::component_builder::{
 #[cfg(feature = "platform-memory")]
 pub use crate::memory_builder::{LinearMemoryBuilder, PalMemoryProviderBuilder};
 // Binary std/no_std choice
-#[cfg(not(any(feature = "std", )))]
+#[cfg(not(feature = "std"))]
 pub use crate::no_std_hashmap::SimpleHashMap;
 // Re-export from this crate
 pub use crate::{
@@ -143,6 +143,11 @@ pub use crate::{
         UnifiedMemoryProvider, ConfigurableProvider, SmallProvider, MediumProvider, LargeProvider,
         NoStdProviderWrapper, MemoryProviderFactory,
     },
+    // Global memory configuration
+    global_memory_config::{
+        GlobalMemoryConfig, GlobalMemoryStats, ProviderType, PlatformAwareMemoryFactory,
+        GlobalMemoryAwareProvider, global_memory_config, initialize_global_memory_system,
+    },
     // Safety system types
     safety_system::{
         AsilLevel, SafetyContext, SafetyGuard, SafeMemoryAllocation,
@@ -153,6 +158,13 @@ pub use crate::{
         register_asil_test, get_asil_tests, get_tests_by_asil, get_tests_by_category, get_test_statistics,
     },
 };
+
+// Conditional re-exports for memory provider functions
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use crate::global_memory_config::create_memory_provider;
+
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub use crate::global_memory_config::{create_small_provider, create_medium_provider, create_large_provider};
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]

@@ -700,7 +700,7 @@ mod tests {
             _ty: &crate::func::FuncType,
         ) -> Result<Box<dyn HostFunction>> {
             // Create a simple echo function
-            let func_type = match FuncType::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default(), Vec::new(), Vec::new()) {
+            let func_type = match FuncType::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default(), Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?, Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?) {
                 Ok(ty) => ty,
                 Err(e) => return Err(e.into()),
             };
@@ -736,7 +736,7 @@ mod tests {
             _ty: &crate::func::FuncType,
         ) -> Result<Box<dyn HostFunction>> {
             // Create a simple legacy echo function
-            let func_type = FuncType::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default(), Vec::new(), Vec::new())?;
+            let func_type = FuncType::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default(), Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?, Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?)?;
 
             Ok(Box::new(LegacyHostFunctionImpl {
                 func_type,
@@ -788,7 +788,11 @@ mod tests {
     fn test_component_instance_memory() -> Result<()> {
         // Create a component type for testing
         let component_type =
-            ComponentType { imports: Vec::new(), exports: Vec::new(), instances: Vec::new() };
+            ComponentType { 
+                imports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?, 
+                exports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?, 
+                instances: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())? 
+            };
 
         // Create a component instance with enough memory
         let mut data = vec![0; 100]; // Initialize with 100 bytes
@@ -796,7 +800,7 @@ mod tests {
             component_type,
             verification_level: VerificationLevel::Standard,
             memory_store: wrt_foundation::safe_memory::SafeMemoryHandler::<wrt_foundation::safe_memory::NoStdProvider<1024>>::new(data),
-            host_function_names: Vec::new(),
+            host_function_names: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
             #[cfg(feature = "std")]
             host_functions: HashMap::new(),
             #[cfg(not(feature = "std"))]

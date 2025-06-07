@@ -126,13 +126,7 @@ pub mod ipc;
 #[cfg(feature = "std")]
 pub mod high_availability;
 
-// Panic handler disabled to avoid conflicts with other crates
-// Applications must provide their own panic handler when using no_std
-// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
-// #[panic_handler]
-// fn panic(_info: &core::panic::PanicInfo) -> ! {
-//     loop {}
-// }
+// Note: Panic handler is provided by the main wrt crate to avoid conflicts
 
 // Platform-specific modules
 // macOS modules - using direct syscalls (no libc)
@@ -545,12 +539,7 @@ unsafe impl core::alloc::GlobalAlloc for PanicAllocator {
 }
 
 // Panic handler for no_std builds
-// This provides a default panic handler to avoid compilation issues
-// Applications can override this by providing their own panic handler
-// Note: Disabled by default to avoid conflicts with std builds
-// Commented out to prevent duplicate panic handler errors in workspace builds
-// #[cfg(all(not(feature = "std"), not(test)))]
-// #[panic_handler]
-// fn panic(_info: &core::panic::PanicInfo) -> ! {
-//     loop {}
-// }
+// Note: wrt-platform does NOT provide a panic handler to avoid conflicts.
+// The main wrt crate provides the panic handler when needed.
+// Applications can provide their own panic handler by enabling the
+// "disable-panic-handler" feature on the main wrt crate.

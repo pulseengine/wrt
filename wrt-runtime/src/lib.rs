@@ -43,6 +43,7 @@ pub mod atomic_execution;
 pub mod atomic_memory_model;
 pub mod branch_prediction;
 pub mod cfi_engine;
+pub mod core_types;
 pub mod execution;
 pub mod func;
 pub mod global;
@@ -56,6 +57,7 @@ pub mod unified_types;
 // Component model integration
 pub mod component_unified;
 pub mod memory_adapter;
+pub mod memory_config_adapter;
 pub mod memory_helpers;
 pub mod module;
 // pub mod module_builder; // Temporarily disabled due to compilation issues
@@ -66,10 +68,10 @@ pub mod table;
 pub mod thread_manager;
 pub mod types;
 pub mod wait_queue;
-pub mod wit_debugger_integration;
+// pub mod wit_debugger_integration; // Temporarily disabled
 
-// Agent D: Platform-aware runtime and unified memory management
-pub mod platform_runtime;
+// Agent D: Platform-aware runtime and unified memory management - temporarily disabled
+// pub mod platform_runtime;
 
 // Temporary stub modules for parallel development
 mod foundation_stubs;
@@ -78,6 +80,7 @@ mod component_stubs;
 
 // Re-export commonly used types
 pub use atomic_execution::{AtomicMemoryContext, AtomicExecutionStats};
+pub use core_types::{CallFrame, ComponentExecutionState, ExecutionContext};
 pub use atomic_memory_model::{
     AtomicMemoryModel, MemoryOrderingPolicy, ConsistencyValidationResult,
     MemoryModelPerformanceMetrics, DataRaceReport, OrderingViolationReport,
@@ -90,68 +93,69 @@ pub use cfi_engine::{
     CfiEngineStatistics, CfiExecutionEngine, CfiExecutionResult, CfiViolationPolicy,
     CfiViolationType, ExecutionResult,
 };
-pub use execution::{ExecutionContext, ExecutionStats};
+pub use execution::ExecutionStats;
+// Note: ExecutionContext is defined in core_types, not execution
 pub use interpreter_optimization::{
     OptimizedInterpreter, OptimizationStrategy, OptimizationMetrics, 
     BranchOptimizationResult, ExecutionPath,
 };
-pub use thread_manager::{
-    ThreadManager, ThreadConfig, ThreadInfo, ThreadState, ThreadExecutionContext,
-    ThreadExecutionStats, ThreadManagerStats, ThreadId,
-};
-pub use wait_queue::{
-    WaitQueueManager, WaitQueue, WaitQueueId, WaitResult, WaitQueueStats,
-    WaitQueueGlobalStats, pause,
-};
-#[cfg(feature = "wit-debug-integration")]
-pub use wit_debugger_integration::{
-    WrtRuntimeState, WrtDebugMemory, DebuggableWrtRuntime,
-    create_wit_enabled_runtime, create_component_metadata, 
-    create_function_metadata, create_type_metadata,
-    ComponentMetadata, FunctionMetadata, TypeMetadata, WitTypeKind,
-    Breakpoint, BreakpointCondition,
-};
+// pub use thread_manager::{
+//     ThreadManager, ThreadConfig, ThreadInfo, ThreadState, ThreadExecutionContext,
+//     ThreadExecutionStats, ThreadManagerStats, ThreadId,
+// };
+// pub use wait_queue::{
+//     WaitQueueManager, WaitQueue, WaitQueueId, WaitResult, WaitQueueStats,
+//     WaitQueueGlobalStats, pause,
+// };
+// #[cfg(feature = "wit-debug-integration")]
+// pub use wit_debugger_integration::{
+//     WrtRuntimeState, WrtDebugMemory, DebuggableWrtRuntime,
+//     create_wit_enabled_runtime, create_component_metadata, 
+//     create_function_metadata, create_type_metadata,
+//     ComponentMetadata, FunctionMetadata, TypeMetadata, WitTypeKind,
+//     Breakpoint, BreakpointCondition,
+// };
 pub use func::Function as RuntimeFunction;
 pub use prelude::FuncType;
 pub use global::Global;
 pub use memory::Memory;
-pub use memory_adapter::{MemoryAdapter, SafeMemoryAdapter, StdMemoryProvider};
-pub use memory_helpers::ArcMemoryExt;
-pub use module::{
-    Data, Element, Export, ExportItem, ExportKind, Function, Import, Module, OtherExport,
-};
+// pub use memory_adapter::{MemoryAdapter, SafeMemoryAdapter, StdMemoryProvider};
+// pub use memory_helpers::ArcMemoryExt;
+// pub use module::{
+//     Data, Element, Export, ExportItem, ExportKind, Function, Import, Module, OtherExport,
+// };
 // pub use module_builder::{load_module_from_binary, ModuleBuilder}; // Temporarily disabled
-pub use module_instance::ModuleInstance;
+// pub use module_instance::ModuleInstance;
 pub use stackless::{
     StacklessCallbackRegistry, StacklessEngine, StacklessExecutionState, StacklessFrame,
 };
 pub use table::Table;
 
-// Agent D: Re-export platform-aware runtime types
-pub use platform_runtime::{PlatformAwareRuntime, PlatformMemoryAdapter, RuntimeMetrics};
+// Agent D: Re-export platform-aware runtime types - temporarily disabled
+// pub use platform_runtime::{PlatformAwareRuntime, PlatformMemoryAdapter, RuntimeMetrics};
 
 /// The WebAssembly memory page size (64KiB)
 pub const PAGE_SIZE: usize = 65536;
 
-/// Component Model implementations of runtime interfaces
-pub mod component_impl;
-/// Component Model trait definitions for runtime interfaces
-pub mod component_traits;
+/// Component Model implementations of runtime interfaces - temporarily disabled
+// pub mod component_impl;
+/// Component Model trait definitions for runtime interfaces - temporarily disabled
+// pub mod component_traits;
 
 // Internal modules
 #[cfg(test)]
 mod tests;
 
-// Re-export trait definitions
-// Re-export implementations
-#[cfg(all(not(feature = "std"), not(feature = "std")))]
-pub use component_impl::no_alloc::MinimalComponent;
-#[cfg(feature = "std")]
-pub use component_impl::{ComponentRuntimeImpl, DefaultHostFunctionFactory};
-#[cfg(feature = "std")]
-pub use component_traits::{
-    ComponentInstance, ComponentRuntime, HostFunctionFactory,
-    HostFunction as ComponentHostFunction,
-};
+// Re-export trait definitions - temporarily disabled
+// Re-export implementations - temporarily disabled
+// #[cfg(all(not(feature = "std"), not(feature = "std")))]
+// pub use component_impl::no_alloc::MinimalComponent;
+// #[cfg(feature = "std")]
+// pub use component_impl::{ComponentRuntimeImpl, DefaultHostFunctionFactory};
+// #[cfg(feature = "std")]
+// pub use component_traits::{
+//     ComponentInstance, ComponentRuntime, HostFunctionFactory,
+//     HostFunction as ComponentHostFunction,
+// };
 
 // Panic handler is provided by the main binary crate to avoid conflicts

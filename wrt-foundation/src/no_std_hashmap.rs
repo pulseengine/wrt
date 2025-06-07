@@ -49,6 +49,9 @@ pub struct SimpleHashMap<
     _phantom: PhantomData<(K, V, P)>,
 }
 
+/// Type alias for backward compatibility
+pub type BoundedHashMap<K, V, const N: usize, P> = SimpleHashMap<K, V, N, P>;
+
 /// A key-value pair entry in the hash map.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Entry<K, V>

@@ -1,3 +1,11 @@
+// WRT - wrt-component
+// Module: Enhanced Resource Management with Bounded Collections
+// SW-REQ-ID: REQ_RESOURCE_BOUNDED_001, REQ_RESOURCE_LIMITS_001, REQ_COMPONENT_RESOURCE_001
+//
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 // Enhanced Resource Management with Bounded Collections for Agent C
 // This is Agent C's bounded resource management implementation according to the parallel development plan
 

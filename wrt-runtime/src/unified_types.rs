@@ -215,6 +215,7 @@ pub trait UnifiedMemoryAdapter: Send + Sync {
 /// This adapter provides memory management with platform-specific limits
 /// and safety constraints. It integrates with the unified type system
 /// to provide consistent memory allocation across the runtime.
+#[derive(Debug)]
 pub struct PlatformMemoryAdapter<Provider = DefaultRuntimeProvider> 
 where
     Provider: MemoryProvider + Default,

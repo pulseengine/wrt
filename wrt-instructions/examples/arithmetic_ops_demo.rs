@@ -306,7 +306,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-#[cfg(not(any(feature = "std", )))]
+#[cfg(not(feature = "std"))]
 fn main() {
     // Binary std/no_std choice
     panic!("This example requires std or alloc features");

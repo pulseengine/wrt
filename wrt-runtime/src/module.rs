@@ -433,7 +433,7 @@ pub struct Module {
     #[cfg(feature = "std")]
     pub imports: HashMap<String, HashMap<String, Import>>,
     #[cfg(not(feature = "std"))]
-    pub imports: wrt_foundation::no_std_hashmap::BoundedHashMap<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>, wrt_foundation::no_std_hashmap::BoundedHashMap<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>, Import, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+    pub imports: HashMap<String, HashMap<String, Import>>,
     /// Function definitions
     pub functions: wrt_foundation::bounded::BoundedVec<Function, 1024, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Table instances
@@ -452,12 +452,12 @@ pub struct Module {
     #[cfg(feature = "std")]
     pub custom_sections: HashMap<String, wrt_foundation::bounded::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<1024>>>,
     #[cfg(not(feature = "std"))]
-    pub custom_sections: wrt_foundation::no_std_hashmap::BoundedHashMap<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>, wrt_foundation::bounded::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<1024>>, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+    pub custom_sections: HashMap<String, Vec<u8>>,
     /// Exports (functions, tables, memories, and globals)
     #[cfg(feature = "std")]
     pub exports: HashMap<String, Export>,
     #[cfg(not(feature = "std"))]
-    pub exports: wrt_foundation::no_std_hashmap::BoundedHashMap<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>, Export, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+    pub exports: HashMap<String, Export>,
     /// Optional name for the module
     pub name: Option<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>>,
     /// Original binary (if available)
@@ -475,7 +475,7 @@ impl Module {
             #[cfg(feature = "std")]
             imports: HashMap::new(),
             #[cfg(not(feature = "std"))]
-            imports: wrt_foundation::no_std_hashmap::BoundedHashMap::new(provider.clone())?,
+            imports: HashMap::new(),
             functions: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             memories: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
@@ -486,11 +486,11 @@ impl Module {
             #[cfg(feature = "std")]
             custom_sections: HashMap::new(),
             #[cfg(not(feature = "std"))]
-            custom_sections: wrt_foundation::no_std_hashmap::BoundedHashMap::new(provider.clone())?,
+            custom_sections: HashMap::new(),
             #[cfg(feature = "std")]
             exports: HashMap::new(),
             #[cfg(not(feature = "std"))]
-            exports: wrt_foundation::no_std_hashmap::BoundedHashMap::new(provider.clone())?,
+            exports: HashMap::new(),
             name: None,
             binary: None,
             validated: false,
@@ -567,7 +567,7 @@ impl Module {
                     wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
                 )?;
                 if !runtime_module.imports.contains_key(&module_key) {
-                    runtime_module.imports.insert(module_key.clone(), wrt_foundation::no_std_hashmap::BoundedHashMap::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?)?;
+                    runtime_module.imports.insert(module_key.clone(), HashMap::new());
                 }
                 if let Some(module_map) = runtime_module.imports.get_mut(&module_key) {
                     module_map.insert(name_key, import)?;
@@ -906,7 +906,7 @@ impl Module {
                 wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
             )?;
             if !self.imports.contains_key(&bounded_module) {
-                self.imports.insert(bounded_module.clone(), wrt_foundation::no_std_hashmap::BoundedHashMap::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?)?;
+                self.imports.insert(bounded_module.clone(), HashMap::new());
             }
             if let Some(module_map) = self.imports.get_mut(&bounded_module) {
                 module_map.insert(bounded_item, import_struct)?;
@@ -945,7 +945,7 @@ impl Module {
                 wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
             )?;
             if !self.imports.contains_key(&bounded_module) {
-                self.imports.insert(bounded_module.clone(), wrt_foundation::no_std_hashmap::BoundedHashMap::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?)?;
+                self.imports.insert(bounded_module.clone(), HashMap::new());
             }
             if let Some(module_map) = self.imports.get_mut(&bounded_module) {
                 module_map.insert(bounded_item, import_struct)?;
@@ -984,7 +984,7 @@ impl Module {
                 wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
             )?;
             if !self.imports.contains_key(&bounded_module) {
-                self.imports.insert(bounded_module.clone(), wrt_foundation::no_std_hashmap::BoundedHashMap::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?)?;
+                self.imports.insert(bounded_module.clone(), HashMap::new());
             }
             if let Some(module_map) = self.imports.get_mut(&bounded_module) {
                 module_map.insert(bounded_item, import_struct)?;
@@ -1298,7 +1298,7 @@ impl Module {
                 wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
             )?;
             if !self.imports.contains_key(&bounded_module) {
-                self.imports.insert(bounded_module.clone(), wrt_foundation::no_std_hashmap::BoundedHashMap::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?)?;
+                self.imports.insert(bounded_module.clone(), HashMap::new());
             }
             if let Some(module_map) = self.imports.get_mut(&bounded_module) {
                 module_map.insert(bounded_item, import_struct)?;
@@ -1429,7 +1429,7 @@ pub enum ImportedItem {
 #[cfg(feature = "std")]
 use std::{collections::HashMap, sync::Arc}; // For std types
 #[cfg(not(feature = "std"))]
-use wrt_foundation::no_std_hashmap::BoundedHashMap as HashMap; // For no_std types
+use crate::prelude::HashMap; // Use HashMap from prelude which handles no_std
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::component::ExternType; // For error handling

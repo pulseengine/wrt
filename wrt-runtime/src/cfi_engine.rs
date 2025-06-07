@@ -29,14 +29,7 @@ use wrt_instructions::{
 mod cfi_types {
     #[derive(Debug, Clone, PartialEq)]
     pub enum CfiHardwareInstruction {
-        ArmBti { mode: ArmBtiMode },
-    }
-    
-    #[derive(Debug, Clone, Copy, PartialEq)]
-    pub enum ArmBtiMode {
-        Call,
-        Jump,
-        CallOrJump,
+        ArmBti { mode: wrt_instructions::cfi_control_ops::ArmBtiMode },
     }
     
     #[derive(Debug, Clone)]
@@ -62,7 +55,7 @@ mod cfi_types {
 #[cfg(not(feature = "std"))]
 use wrt_instructions::cfi_control_ops::{CfiHardwareInstruction, CfiSoftwareValidation};
 #[cfg(not(feature = "std"))]
-use self::cfi_types::{ArmBtiMode, ShadowStackRequirement, ShadowStackEntry};
+use self::cfi_types::{ShadowStackRequirement, ShadowStackEntry};
 
 #[cfg(feature = "std")]
 use wrt_instructions::cfi_control_ops::{
@@ -446,7 +439,7 @@ impl CfiExecutionEngine {
     }
 
     #[cfg(target_arch = "aarch64")]
-    fn validate_arm_bti_instruction(&self, _mode: ArmBtiMode) -> Result<()> {
+    fn validate_arm_bti_instruction(&self, _mode: wrt_instructions::cfi_control_ops::ArmBtiMode) -> Result<()> {
         // Insert ARM BTI instruction and validate it executed correctly
         // This would involve architecture-specific validation
         Ok(())

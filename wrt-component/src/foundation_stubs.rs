@@ -1,3 +1,11 @@
+// WRT - wrt-component
+// Module: Foundation Integration Stubs
+// SW-REQ-ID: REQ_INTEGRATION_STUBS_001, REQ_COMPONENT_FOUNDATION_001
+//
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 // Foundation stubs for Agent C independent development
 // These will be replaced with real implementations during integration
 
@@ -16,6 +24,11 @@ pub enum AsilLevel {
     ASIL_B = 2,
     ASIL_C = 3,
     ASIL_D = 4,
+    // Aliases for compatibility
+    AsilA = 1,
+    AsilB = 2,
+    AsilC = 3,
+    AsilD = 4,
 }
 
 #[derive(Debug, Clone)]
@@ -91,3 +104,71 @@ impl<const SIZE: usize> UnifiedMemoryProvider for NoStdProvider<SIZE> {
 
 // Error types from Agent A
 pub use wrt_error::Error;
+
+// Threading stubs for component model
+/// Thread identifier type for component threading
+pub type ThreadId = u32;
+
+/// Thread execution statistics
+#[derive(Debug, Clone, Default)]
+pub struct ThreadExecutionStats {
+    pub execution_time: u64,
+    pub cycles_used: u64,
+    pub memory_used: usize,
+}
+
+/// Thread state enumeration
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ThreadState {
+    Ready,
+    Running,
+    Blocked,
+    Terminated,
+}
+
+/// Thread manager for component model threading
+#[derive(Debug)]
+pub struct ThreadManager {
+    thread_count: u32,
+    max_threads: u32,
+}
+
+impl ThreadManager {
+    pub fn new(max_threads: u32) -> Self {
+        Self {
+            thread_count: 0,
+            max_threads,
+        }
+    }
+
+    pub fn spawn_thread(&mut self) -> Result<ThreadId, Error> {
+        if self.thread_count >= self.max_threads {
+            return Err(Error::OUT_OF_MEMORY);
+        }
+        
+        let thread_id = self.thread_count;
+        self.thread_count += 1;
+        Ok(thread_id)
+    }
+
+    pub fn get_thread_stats(&self, _thread_id: ThreadId) -> Result<ThreadExecutionStats, Error> {
+        Ok(ThreadExecutionStats::default())
+    }
+
+    pub fn get_thread_state(&self, _thread_id: ThreadId) -> Result<ThreadState, Error> {
+        Ok(ThreadState::Ready)
+    }
+
+    pub fn terminate_thread(&mut self, _thread_id: ThreadId) -> Result<(), Error> {
+        if self.thread_count > 0 {
+            self.thread_count -= 1;
+        }
+        Ok(())
+    }
+}
+
+impl Default for ThreadManager {
+    fn default() -> Self {
+        Self::new(64) // Default maximum of 64 threads
+    }
+}

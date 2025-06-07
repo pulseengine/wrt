@@ -102,7 +102,7 @@ impl HostBuilder {
     /// During validation, the builder will ensure that all required built-ins
     /// are properly implemented.
     pub fn require_builtin(mut self, builtin_type: BuiltinType) -> Self {
-        self.required_builtins.insert(builtin_type);
+        let _ = self.required_builtins.insert(builtin_type);
         self
     }
 
@@ -188,7 +188,7 @@ impl HostBuilder {
     /// built-ins are registered through other mechanisms.
     pub fn builtin_implemented(mut self, builtin_type: BuiltinType) -> Self {
         // Remove from required if it's there
-        self.required_builtins.remove(&builtin_type);
+        let _ = self.required_builtins.remove(&builtin_type);
         self
     }
 

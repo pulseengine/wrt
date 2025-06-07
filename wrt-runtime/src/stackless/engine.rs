@@ -20,9 +20,9 @@ use wrt_instructions::control_ops::Block;
 // Imports for no_std compatibility
 extern crate alloc;
 #[cfg(feature = "std")] 
-use std::{sync::Mutex, vec, collections::BTreeMap as HashMap};
+use std::{sync::Mutex, vec, collections::BTreeMap as HashMap, boxed::Box};
 #[cfg(not(feature = "std"))]
-use alloc::{vec, collections::BTreeMap as HashMap};
+use alloc::{vec, collections::BTreeMap as HashMap, boxed::Box};
 
 // Import memory provider
 use wrt_foundation::traits::DefaultMemoryProvider;

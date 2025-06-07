@@ -259,7 +259,7 @@ pub struct BrTable {
     #[cfg(feature = "std")]
     pub table: Vec<u32>,
     
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(feature = "std"))]
     pub table: wrt_foundation::BoundedVec<u32, 256, wrt_foundation::NoStdProvider<8192>>,
     
     /// Default label to branch to if the index is out of bounds
@@ -274,7 +274,7 @@ impl BrTable {
     }
     
     /// Create a new br_table operation with BoundedVec (no_std)
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(feature = "std"))]
     pub fn new_bounded(
         table: wrt_foundation::BoundedVec<u32, 256, wrt_foundation::NoStdProvider<8192>>, 
         default: u32
@@ -291,7 +291,7 @@ impl BrTable {
                 default,
             })
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         {
             let provider = wrt_foundation::NoStdProvider::<8192>::new();
             let mut table = wrt_foundation::BoundedVec::new(provider).map_err(|_| {
@@ -326,7 +326,7 @@ impl BrTable {
         {
             context.execute_br_table(self.table.as_slice(), self.default, index)
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         {
             // For no_std, we create a temporary slice on the stack
             let mut slice_vec = [0u32; 256]; // Static array for no_std

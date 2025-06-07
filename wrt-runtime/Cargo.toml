@@ -19,7 +19,7 @@ wrt-sync = { workspace = true, default-features = false }
 wrt-instructions = { workspace = true, default-features = false }
 wrt-host = { workspace = true, default-features = false }
 wrt-intercept = { workspace = true, default-features = false }
-wrt-platform = { workspace = true, default-features = false }
+wrt-platform = { workspace = true, default-features = false, features = ["disable-panic-handler"] }
 wrt-debug = { workspace = true, default-features = false, optional = true }
 
 # No-std support (removed invalid alloc dependency)

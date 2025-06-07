@@ -58,6 +58,7 @@ pub mod host;
 pub mod prelude;
 
 // Agent C deliverables - Enhanced Host Integration
+/// Bounded host integration with memory constraints
 pub mod bounded_host_integration;
 
 // Include verification module conditionally, but exclude during coverage builds

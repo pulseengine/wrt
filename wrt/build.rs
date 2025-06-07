@@ -14,7 +14,7 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
     // Get the output directory
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR environment variable not set"));
     let testsuite_path = out_dir.join(TESTSUITE_DIR);
     let commit_hash_path = out_dir.join(COMMIT_HASH_FILE);
 
@@ -72,7 +72,7 @@ fn main() {
     let workspace_testsuite = PathBuf::from("./testsuite");
     if !workspace_testsuite.exists() {
         // Remove any existing symlink if present
-        let _ = std::fs::remove_file(&workspace_testsuite);
+        drop(std::fs::remove_file(&workspace_testsuite));
 
         #[cfg(unix)]
         {
@@ -107,7 +107,7 @@ fn check_internet_connection() -> bool {
 
 fn clone_testsuite(path: &Path) -> io::Result<()> {
     let status =
-        Command::new("git").args(["clone", TESTSUITE_REPO_URL, path.to_str().unwrap()]).status()?;
+        Command::new("git").args(["clone", TESTSUITE_REPO_URL, path.to_str().expect("Path conversion failed")]).status()?;
 
     if !status.success() {
         return Err(io::Error::other(format!(

@@ -1,5 +1,3 @@
-#![cfg_attr(not(feature = "std"), no_std)]
-
 //! Unified Synchronization Primitives for WRT Foundation
 //!
 //! This module provides enhanced synchronization primitives that integrate with
@@ -59,7 +57,9 @@ mod foundation_stubs {
         pub fn should_verify(&self) -> bool { false }
     }
     
+    #[allow(dead_code)]
     pub type SmallVec<T> = [Option<T>; 64];
+    #[allow(dead_code)]
     pub type MediumVec<T> = [Option<T>; 1024];
     
     #[derive(Debug)]

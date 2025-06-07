@@ -231,12 +231,7 @@ impl StdMemoryProvider {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                &format!(
-                    "Memory access out of bounds: offset={}, len={}, buffer_len={}",
-                    offset,
-                    len,
-                    buffer.len()
-                ),
+                "Memory access out of bounds",
             ));
         }
 
@@ -361,10 +356,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
             Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                &format!(
-                    "Memory access out of bounds: offset={}, size={}, memory_size={}",
-                    offset, size, mem_size
-                ),
+                "Memory access out of bounds",
             ))
         } else {
             Ok(())

@@ -102,10 +102,10 @@ pub type LargeVec<T> = wrt_foundation::bounded::BoundedVec<T, 65536, wrt_foundat
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AsilLevel {
     QM = 0,
-    ASIL_A = 1,
-    ASIL_B = 2,
-    ASIL_C = 3,
-    ASIL_D = 4,
+    AsilA = 1,
+    AsilB = 2,
+    AsilC = 3,
+    AsilD = 4,
 }
 
 impl Default for AsilLevel {

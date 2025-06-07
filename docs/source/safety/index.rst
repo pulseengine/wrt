@@ -228,10 +228,12 @@ Verification Levels
 
 The runtime supports different verification levels for balancing safety and performance. Select the appropriate verification level based on safety criticality:
 
-* ``VerificationLevel::Full`` - For safety-critical operations
-* ``VerificationLevel::Standard`` - For normal operations
-* ``VerificationLevel::Sampling`` - For performance-critical paths
-* ``VerificationLevel::None`` - For non-safety-critical, performance-sensitive paths
+* ``VerificationLevel::Off`` - No verification checks (performance-sensitive paths)
+* ``VerificationLevel::Basic`` - Basic verification checks (minimal overhead)
+* ``VerificationLevel::Standard`` - Standard verification level (recommended default)
+* ``VerificationLevel::Full`` - Full verification including checksums (safety-critical)
+* ``VerificationLevel::Sampling`` - Probabilistic verification based on operation importance
+* ``VerificationLevel::Redundant`` - Redundant checks in addition to full verification
 
 Detailed Safety Documentation
 -----------------------------
@@ -248,3 +250,4 @@ Detailed Safety Documentation
    test_cases
    traceability_matrix
    performance_tuning
+   certification_validation

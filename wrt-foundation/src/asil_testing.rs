@@ -1,3 +1,11 @@
+// WRT - wrt-foundation
+// Module: ASIL-Tagged Testing Framework
+// SW-REQ-ID: REQ_TEST_ASIL_001, REQ_SAFETY_VERIFY_001, REQ_SCORE_001
+//
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! ASIL-Tagged Testing Framework
 //!
 //! This module provides macros and utilities for categorizing tests by
@@ -14,10 +22,11 @@ use std::{sync::Mutex, vec::Vec};
 #[cfg(not(feature = "std"))]
 use core::sync::atomic::{AtomicBool, Ordering};
 
-#[cfg(feature = "alloc")]
-extern crate alloc;
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+// For no_std mode, use bounded collections
+#[cfg(not(feature = "std"))]
+use crate::bounded::BoundedVec;
+#[cfg(not(feature = "std"))]
+use crate::safe_memory::NoStdProvider;
 
 // For no_std without alloc, use simple arrays
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
@@ -63,17 +72,13 @@ pub enum TestCategory {
 #[cfg(feature = "std")]
 static TEST_REGISTRY: Mutex<Option<Vec<AsilTestMetadata>>> = Mutex::new(None);
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-static mut TEST_REGISTRY: Option<Vec<AsilTestMetadata>> = None;
+// No alloc feature in wrt-foundation, so this path is not used
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 static mut TEST_REGISTRY: Option<TestRegistry> = None;
 
 // Initialization synchronization (only needed for non-std environments)
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-static REGISTRY_INIT: AtomicBool = AtomicBool::new(false);
-
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 static REGISTRY_INIT: AtomicBool = AtomicBool::new(false);
 
 /// Initialize the test registry (only needed for non-std environments)
@@ -81,15 +86,7 @@ static REGISTRY_INIT: AtomicBool = AtomicBool::new(false);
 fn init_test_registry() {
     if !REGISTRY_INIT.swap(true, Ordering::AcqRel) {
         unsafe {
-            #[cfg(feature = "alloc")]
-            {
-                TEST_REGISTRY = Some(Vec::new());
-            }
-            
-            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-            {
-                TEST_REGISTRY = Some([None; MAX_TESTS_NO_STD]);
-            }
+            TEST_REGISTRY = Some([None; MAX_TESTS_NO_STD]);
         }
     }
 }
@@ -422,8 +419,14 @@ mod tests {
     #[test]
     fn test_asil_test_registration() {
         // Clear any existing registrations for this test
+        #[cfg(feature = "std")]
         unsafe {
-            TEST_REGISTRY = Some(Vec::new());
+            TEST_REGISTRY = Mutex::new(Some(Vec::new()));
+        }
+        
+        #[cfg(not(feature = "std"))]
+        unsafe {
+            TEST_REGISTRY = Some([None; MAX_TESTS_NO_STD]);
         }
         
         let metadata = AsilTestMetadata {
@@ -443,8 +446,14 @@ mod tests {
     #[test]
     fn test_asil_filtering() {
         // Clear registry
+        #[cfg(feature = "std")]
         unsafe {
-            TEST_REGISTRY = Some(Vec::new());
+            TEST_REGISTRY = Mutex::new(Some(Vec::new()));
+        }
+        
+        #[cfg(not(feature = "std"))]
+        unsafe {
+            TEST_REGISTRY = Some([None; MAX_TESTS_NO_STD]);
         }
         
         // Register tests at different ASIL levels
