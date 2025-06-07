@@ -81,14 +81,24 @@ use wrt_error::{Error, Result};
 use alloc::{boxed::Box, string::String, vec::Vec, string::ToString};
 
 /// Host integration limits configuration
+///
+/// This structure defines the resource limits for host function integration,
+/// ensuring bounded operation and preventing resource exhaustion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HostIntegrationLimits {
+    /// Maximum number of host functions that can be registered
     pub max_host_functions: usize,
+    /// Maximum number of callback registrations allowed
     pub max_callbacks: usize,
+    /// Maximum call stack depth to prevent stack overflow
     pub max_call_stack_depth: usize,
+    /// Maximum size of parameters in bytes for host function calls
     pub max_parameter_size: usize,
+    /// Maximum size of return data in bytes from host functions
     pub max_return_size: usize,
+    /// Maximum number of concurrent host function calls allowed
     pub max_concurrent_calls: usize,
+    /// Total memory budget in bytes for host integration operations
     pub memory_budget: usize,
 }
 
@@ -160,17 +170,34 @@ pub struct HostFunctionId(pub u32);
 pub struct ComponentInstanceId(pub u32);
 
 /// Call context for host function invocations
+///
+/// This structure contains all the information needed to safely execute
+/// a host function call with proper bounds checking and safety validation.
 #[derive(Debug, Clone)]
 pub struct BoundedCallContext {
+    /// Unique identifier for the host function to be called
     pub function_id: HostFunctionId,
+    /// Identifier of the component instance making the call
     pub component_instance: ComponentInstanceId,
+    /// Parameter data for the function call (bounded by max_parameter_size)
     pub parameters: Vec<u8>,
+    /// Current call stack depth for recursion prevention
     pub call_depth: usize,
+    /// Amount of memory used by this call context
     pub memory_used: usize,
+    /// ASIL safety level required by the calling component (0-4)
     pub safety_level: u8, // ASIL level
 }
 
 impl BoundedCallContext {
+    /// Create a new bounded call context
+    ///
+    /// # Arguments
+    ///
+    /// * `function_id` - Unique identifier for the host function
+    /// * `component_instance` - Identifier of the calling component instance
+    /// * `parameters` - Parameter data for the function call
+    /// * `safety_level` - ASIL safety level (0=QM, 1=ASIL-A, 2=ASIL-B, 3=ASIL-C, 4=ASIL-D)
     pub fn new(
         function_id: HostFunctionId,
         component_instance: ComponentInstanceId,
@@ -188,6 +215,15 @@ impl BoundedCallContext {
         }
     }
     
+    /// Validate that parameters are within configured limits
+    ///
+    /// # Arguments
+    ///
+    /// * `limits` - Host integration limits to validate against
+    ///
+    /// # Errors
+    ///
+    /// Returns `Error::invalid_input` if parameter size exceeds limits
     pub fn validate_parameters(&self, limits: &HostIntegrationLimits) -> Result<()> {
         if self.parameters.len() > limits.max_parameter_size {
             return Err(Error::invalid_input("Parameter size exceeds limit"));
@@ -195,6 +231,15 @@ impl BoundedCallContext {
         Ok(())
     }
     
+    /// Validate that memory usage is within configured limits
+    ///
+    /// # Arguments
+    ///
+    /// * `limits` - Host integration limits to validate against
+    ///
+    /// # Errors
+    ///
+    /// Returns `Error::OUT_OF_MEMORY` if memory usage exceeds budget
     pub fn validate_memory(&self, limits: &HostIntegrationLimits) -> Result<()> {
         if self.memory_used > limits.memory_budget {
             return Err(Error::OUT_OF_MEMORY);
@@ -204,15 +249,27 @@ impl BoundedCallContext {
 }
 
 /// Host function result
+///
+/// Contains the result of a host function call with resource usage tracking
+/// and execution status information.
 #[derive(Debug, Clone)]
 pub struct BoundedCallResult {
+    /// Return data from the host function (bounded by max_return_size)
     pub return_data: Vec<u8>,
+    /// Amount of memory used during function execution
     pub memory_used: usize,
+    /// Execution time in microseconds for performance monitoring
     pub execution_time_us: u64,
+    /// Whether the function call completed successfully
     pub success: bool,
 }
 
 impl BoundedCallResult {
+    /// Create a successful result with return data
+    ///
+    /// # Arguments
+    ///
+    /// * `return_data` - Data returned from the host function
     pub fn success(return_data: Vec<u8>) -> Self {
         let memory_used = return_data.len();
         Self {
@@ -223,6 +280,7 @@ impl BoundedCallResult {
         }
     }
     
+    /// Create an error result indicating function call failure
     pub fn error() -> Self {
         Self {
             return_data: Vec::new(),
@@ -232,6 +290,15 @@ impl BoundedCallResult {
         }
     }
     
+    /// Validate that return data size is within configured limits
+    ///
+    /// # Arguments
+    ///
+    /// * `limits` - Host integration limits to validate against
+    ///
+    /// # Errors
+    ///
+    /// Returns `Error::invalid_input` if return data exceeds size limits
     pub fn validate_return_size(&self, limits: &HostIntegrationLimits) -> Result<()> {
         if self.return_data.len() > limits.max_return_size {
             return Err(Error::invalid_input("Return size exceeds limit"));
@@ -241,10 +308,28 @@ impl BoundedCallResult {
 }
 
 /// Host function trait with bounded constraints
+///
+/// This trait defines the interface for host functions that can be safely
+/// called from WebAssembly components with proper resource and safety validation.
 pub trait BoundedHostFunction: Send + Sync {
+    /// Execute the host function with the given call context
+    ///
+    /// # Arguments
+    ///
+    /// * `context` - Call context containing parameters and safety information
+    ///
+    /// # Returns
+    ///
+    /// Result containing the function result or error information
     fn call(&self, context: &BoundedCallContext) -> Result<BoundedCallResult>;
+    
+    /// Get the human-readable name of this host function
     fn name(&self) -> &str;
+    
+    /// Get the memory requirement for this host function in bytes
     fn memory_requirement(&self) -> usize;
+    
+    /// Get the safety level supported by this host function (0-4)
     fn safety_level(&self) -> u8;
 }
 
@@ -257,6 +342,14 @@ pub struct SimpleBoundedHostFunction {
 }
 
 impl SimpleBoundedHostFunction {
+    /// Create a new simple bounded host function
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - Human-readable name for the function
+    /// * `handler` - Function implementation closure
+    /// * `memory_requirement` - Memory requirement in bytes
+    /// * `safety_level` - Safety level supported (0=QM, 1=ASIL-A, 2=ASIL-B, 3=ASIL-C, 4=ASIL-D)
     pub fn new<F>(
         name: String,
         handler: F,
@@ -488,13 +581,22 @@ impl BoundedHostIntegrationManager {
 }
 
 /// Host integration statistics
+///
+/// Provides runtime statistics about host function integration resource usage
+/// and performance characteristics for monitoring and debugging.
 #[derive(Debug, Clone)]
 pub struct HostIntegrationStatistics {
+    /// Number of host functions currently registered
     pub registered_functions: usize,
+    /// Number of host function calls currently active
     pub active_calls: usize,
+    /// Total amount of memory currently used by host integration (bytes)
     pub total_memory_used: usize,
+    /// Amount of memory still available for host integration (bytes)
     pub available_memory: usize,
+    /// Maximum call stack depth currently reached
     pub max_call_depth: usize,
+    /// Memory utilization as a percentage (0.0 to 100.0)
     pub memory_utilization: f64, // Percentage
 }
 

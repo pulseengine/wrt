@@ -80,10 +80,13 @@ pub use bounded_host_integration::{
     SimpleBoundedHostFunction, create_echo_function, create_memory_info_function, create_safety_check_function,
 };
 
-// Panic handler disabled to avoid conflicts with other crates
-// The main wrt crate should provide the panic handler
+// Panic handler disabled in library crates to avoid conflicts during workspace builds
+// The main wrt crate or final binary should provide the panic handler
 // #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
 // #[panic_handler]
 // fn panic(_info: &core::panic::PanicInfo) -> ! {
-//     loop {}
+//     // For safety-critical systems, enter infinite loop to maintain known safe state
+//     loop {
+//         core::hint::spin_loop();
+//     }
 // }

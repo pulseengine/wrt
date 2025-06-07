@@ -17,22 +17,45 @@ extern crate std;
 
 // Stub imports for Agent B's platform limits - will be replaced during integration
 mod platform_stubs {
+    /// Comprehensive platform limits configuration
+    ///
+    /// This structure defines platform-specific resource limits that constrain
+    /// WebAssembly execution and validation. These limits ensure that WASM modules
+    /// do not exceed platform capabilities.
     pub struct ComprehensivePlatformLimits {
+        /// Maximum total memory available on the platform (bytes)
         pub max_total_memory: usize,
+        /// Maximum WebAssembly linear memory allowed (bytes)
         pub max_wasm_linear_memory: usize,
+        /// Maximum stack size in bytes for function calls
         pub max_stack_bytes: usize,
+        /// Maximum number of components that can be loaded simultaneously
         pub max_components: usize,
+        /// Platform identifier for platform-specific optimizations
         pub platform_id: PlatformId,
     }
     
+    /// Platform identifier enumeration
+    ///
+    /// Identifies the target platform to enable platform-specific optimizations
+    /// and resource management strategies for WebAssembly execution.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum PlatformId {
+        /// Linux-based platforms with standard resources
         Linux,
+        /// QNX real-time operating system
         QNX,
+        /// macOS platforms with Darwin kernel
         MacOS,
+        /// VxWorks real-time operating system
         VxWorks,
+        /// Zephyr RTOS for embedded systems
         Zephyr,
+        /// Tock secure embedded operating system
         Tock,
+        /// Generic embedded platforms with limited resources
         Embedded,
+        /// Unknown or unspecified platform
         Unknown,
     }
     
@@ -51,13 +74,23 @@ mod platform_stubs {
 
 // Stub imports for Agent D's runtime work - will be replaced during integration
 mod runtime_stubs {
+    /// WebAssembly module configuration
+    ///
+    /// Contains resource usage information extracted from a WASM module
+    /// during validation, used for runtime resource planning.
     #[derive(Debug, Clone)]
     pub struct WasmConfiguration {
+        /// Initial memory size in WASM pages (64KB each)
         pub initial_memory: u32,
+        /// Maximum memory size in WASM pages, if specified
         pub maximum_memory: Option<u32>,
+        /// Estimated stack usage in bytes for function calls
         pub estimated_stack_usage: u32,
+        /// Total number of functions defined in the module
         pub function_count: u32,
+        /// Total number of imports required by the module
         pub import_count: u32,
+        /// Total number of exports provided by the module
         pub export_count: u32,
     }
 }

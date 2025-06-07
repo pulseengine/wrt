@@ -126,7 +126,7 @@ pub mod ipc;
 #[cfg(feature = "std")]
 pub mod high_availability;
 
-// Conditional panic handler - only when not disabled and not in std mode
+// Panic handler for no_std builds - always enabled unless explicitly disabled
 #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {

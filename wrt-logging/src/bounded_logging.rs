@@ -9,13 +9,22 @@ use wrt_error::{Error, Result};
 use crate::level::LogLevel;
 
 /// Bounded logging limits configuration
+///
+/// This structure defines the resource limits for the bounded logging system
+/// to ensure that logging operations do not exceed platform resource constraints.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BoundedLoggingLimits {
+    /// Maximum total size of the log buffer in bytes
     pub max_log_buffer_size: usize,
+    /// Maximum size of a single log message in bytes
     pub max_log_message_size: usize,
+    /// Maximum number of concurrent loggers allowed
     pub max_concurrent_loggers: usize,
+    /// Maximum number of log entries that can be stored
     pub max_log_entries: usize,
+    /// Log entry retention time in milliseconds before automatic cleanup
     pub retention_time_ms: u64,
+    /// Number of entries that trigger automatic buffer flush
     pub flush_threshold: usize,
 }
 
