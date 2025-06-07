@@ -232,7 +232,7 @@ impl ComponentLinker {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::COMPONENT_NOT_FOUND,
-                format!("Component '{}' not found", id),
+                ComponentValue::String("Component operation result".into()),
             ));
         }
 
@@ -270,7 +270,7 @@ impl ComponentLinker {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::COMPONENT_NOT_FOUND,
-                format!("Component '{}' not found", component_id),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -416,7 +416,7 @@ impl ComponentLinker {
         Err(Error::new(
             ErrorCategory::Runtime,
             codes::IMPORT_NOT_SATISFIED,
-            format!("Import '{}' from module '{}' not satisfied", import.name, import.module),
+            ComponentValue::String("Component operation result".into()),
         ))
     }
 

@@ -180,7 +180,7 @@ impl RuntimeInstance {
             Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                format!("Expected function value, got {:?}", function),
+                ComponentValue::String("Component operation result".into()),
             ))
         }
     }
@@ -211,7 +211,7 @@ impl RuntimeInstance {
             Error::new(
                 ErrorCategory::Function,
                 codes::FUNCTION_NOT_FOUND,
-                format!("Function {} not found in runtime", name),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -273,13 +273,13 @@ impl RuntimeInstance {
             Err(Error::new(
                 ErrorCategory::System,
                 codes::NOT_IMPLEMENTED,
-                format!("Function execution using registered handlers not implemented yet"),
+                ComponentValue::String("Component operation result".into()),
             ))
         } else {
             Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                format!("Expected function, got {:?}", function),
+                ComponentValue::String("Component operation result".into()),
             ))
         }
     }
@@ -422,7 +422,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                format!("Failed to acquire memory read lock: {}", e),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -431,7 +431,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                format!("Memory read error: {}", e),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -457,7 +457,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                format!("Failed to acquire memory write lock: {}", e),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -465,7 +465,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                format!("Memory write error: {}", e),
+                ComponentValue::String("Component operation result".into()),
             )
         })
     }
@@ -488,7 +488,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                format!("Failed to acquire memory write lock: {}", e),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -496,7 +496,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                format!("Memory grow error: {}", e),
+                ComponentValue::String("Component operation result".into()),
             )
         })
     }
@@ -511,7 +511,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                format!("Failed to acquire memory read lock: {}", e),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -528,7 +528,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                format!("Failed to acquire memory read lock: {}", e),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -545,7 +545,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                format!("Failed to acquire memory read lock: {}", e),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -562,7 +562,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                format!("Failed to acquire memory read lock: {}", e),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -579,7 +579,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                format!("Failed to acquire memory read lock: {}", e),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -596,7 +596,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                format!("Failed to acquire memory write lock: {}", e),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -618,7 +618,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                format!("Failed to acquire memory read lock: {}", e),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -672,7 +672,7 @@ impl Host {
             Error::new(
                 ErrorCategory::Component,
                 codes::COMPONENT_LINKING_ERROR,
-                format!("Host function {name} not found"),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -681,7 +681,7 @@ impl Host {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                format!("Expected {} arguments, got {}", function.ty.params.len(), args.len()),
+                ComponentValue::String("Component operation result".into()), args.len()),
             ));
         }
 
@@ -788,7 +788,7 @@ pub fn scan_builtins(bytes: &[u8]) -> Result<BuiltinRequirements> {
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::DECODING_ERROR,
-                format!("Failed to decode component during built-in scan: {}", err),
+                ComponentValue::String("Component operation result".into()),
             ));
         }
     }
@@ -803,7 +803,7 @@ fn scan_module_for_builtins(module: &[u8], requirements: &mut BuiltinRequirement
         Err(err) => Err(Error::new(
             ErrorCategory::Parse,
             codes::DECODING_ERROR,
-            format!("Failed to scan module for builtins: {}", err),
+            ComponentValue::String("Component operation result".into()),
         )),
     }
 }
@@ -870,7 +870,7 @@ fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::DECODING_ERROR,
-                format!("Failed to decode component while extracting modules: {}", err),
+                ComponentValue::String("Component operation result".into()),
             ));
         }
     }

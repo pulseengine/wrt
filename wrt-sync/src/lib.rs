@@ -14,6 +14,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 // Binary std/no_std choice
+#[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
 // Binary std/no_std choice
@@ -102,6 +103,24 @@ pub mod prelude {
 /// # Features
 pub mod rwlock;
 
+/// Unified synchronization primitives that integrate with WRT foundation types.
+///
+/// This module provides enhanced synchronization primitives that work with:
+/// - ASIL-aware safety contexts
+/// - Bounded collections and memory providers
+/// - Platform-configurable behavior
+/// - Built-in verification for safety-critical applications
+///
+/// # Features
+///
+/// - `SafeMutex`: Mutex with integrated safety verification
+/// - `BoundedChannel`: Bounded MPSC communication channel
+/// - `SafeAtomicCounter`: Atomic counter with bounds checking
+///
+/// These primitives are designed for safety-critical applications where
+/// predictable behavior and verification are required.
+pub mod unified_sync;
+
 // Include verification module conditionally, but exclude during coverage builds
 #[cfg(all(not(coverage), doc))]
 #[cfg_attr(docsrs, doc(cfg(feature = "kani")))]
@@ -120,6 +139,11 @@ pub use rwlock::parking_impl::{
 // Re-export the basic (spin-lock) RwLock and its guards.
 // These are always available as they don't depend on std for parking.
 pub use rwlock::{WrtRwLock, WrtRwLockReadGuard, WrtRwLockWriteGuard};
+
+// Re-export unified synchronization primitives
+pub use unified_sync::{
+    SafeMutex, SafeMutexGuard, BoundedChannel, BoundedSender, BoundedReceiver, SafeAtomicCounter,
+};
 
 // Convenience aliases for easier importing
 /// Type alias for WrtMutex to provide a familiar interface

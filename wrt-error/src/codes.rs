@@ -177,10 +177,113 @@ pub const PARSE_INVALID_FUNCTION_INDEX_TYPE: u16 = 6004;
 pub const PARSE_INVALID_TABLE_INDEX_TYPE: u16 = 6005;
 /// Parse invalid memory index type error
 pub const PARSE_INVALID_MEMORY_INDEX_TYPE: u16 = 6006;
+
+// Safety error codes (7000-7999)
+/// Safety violation error
+pub const SAFETY_VIOLATION: u16 = 7000;
+/// Safety ASIL violation error
+pub const SAFETY_ASIL_VIOLATION: u16 = 7001;
+/// Memory corruption detected error
+pub const MEMORY_CORRUPTION_DETECTED: u16 = 7002;
+/// Safety verification failed error
+pub const VERIFICATION_FAILED: u16 = 7003;
+/// Safety context invalid error
+pub const SAFETY_CONTEXT_INVALID: u16 = 7004;
+/// Safety guard failure error
+pub const SAFETY_GUARD_FAILURE: u16 = 7005;
+
+// Unified types error codes (8000-8999)
+/// Unified type configuration error
+pub const UNIFIED_TYPE_CONFIG_ERROR: u16 = 8000;
+/// Platform capacity mismatch error
+pub const PLATFORM_CAPACITY_MISMATCH: u16 = 8001;
+/// Type system initialization error
+pub const TYPE_SYSTEM_INIT_ERROR: u16 = 8002;
+/// Memory provider creation error
+pub const MEMORY_PROVIDER_CREATION_ERROR: u16 = 8003;
+
+// Memory system error codes (9000-9999) 
+/// Memory allocation failed error
+pub const MEMORY_ALLOCATION_FAILED: u16 = 9000;
+/// Memory deallocation failed error  
+pub const MEMORY_DEALLOCATION_FAILED: u16 = 9001;
+/// Memory provider capacity exceeded error
+pub const MEMORY_PROVIDER_CAPACITY_EXCEEDED: u16 = 9002;
+/// Memory provider invalid error
+pub const MEMORY_PROVIDER_INVALID: u16 = 9003;
+/// Memory provider not found error
+pub const MEMORY_PROVIDER_NOT_FOUND: u16 = 9004;
+/// Memory alignment error
+pub const MEMORY_ALIGNMENT_ERROR: u16 = 9005;
+
+// Foundation types error codes (10000-10999)
+/// Bounded collection capacity exceeded error
+pub const BOUNDED_COLLECTION_CAPACITY_EXCEEDED: u16 = 10000;
+/// Bounded collection invalid capacity error
+pub const BOUNDED_COLLECTION_INVALID_CAPACITY: u16 = 10001;
+/// Bounded collection conversion error
+pub const BOUNDED_COLLECTION_CONVERSION_ERROR: u16 = 10002;
+/// Bounded collection slice error
+pub const BOUNDED_COLLECTION_SLICE_ERROR: u16 = 10003;
+/// Bounded collection UTF-8 error
+pub const BOUNDED_COLLECTION_UTF8_ERROR: u16 = 10004;
+/// Bounded collection item too large error
+pub const BOUNDED_COLLECTION_ITEM_TOO_LARGE: u16 = 10005;
+/// Bounded collection verification error
+pub const BOUNDED_COLLECTION_VERIFICATION_ERROR: u16 = 10006;
+
+// Additional error codes for existing categories
+/// Invalid value error (general)
+pub const INVALID_VALUE: u16 = 1019;
+/// Unimplemented feature error
+pub const UNIMPLEMENTED: u16 = 1020;
+/// Conversion error (general) - moved to system error codes section as CONVERSION_ERROR: u16 = 8002
+
+// WIT parsing error codes (11000-11999) - Agent C stubs
+/// WIT input too large error
+pub const WIT_INPUT_TOO_LARGE: u16 = 11000;
+/// WIT world limit exceeded error  
+pub const WIT_WORLD_LIMIT_EXCEEDED: u16 = 11001;
+/// WIT interface limit exceeded error
+pub const WIT_INTERFACE_LIMIT_EXCEEDED: u16 = 11002;
+/// WIT identifier too long error
+pub const WIT_IDENTIFIER_TOO_LONG: u16 = 11003;
+/// WIT parsing buffer overflow error
+pub const WIT_PARSING_BUFFER_OVERFLOW: u16 = 11004;
+
+// Component error codes (12000-12999) - Agent C stubs
+/// Insufficient memory for component error
+pub const INSUFFICIENT_MEMORY: u16 = 12000;
+/// Component limit exceeded error
+pub const COMPONENT_LIMIT_EXCEEDED: u16 = 12001;
+/// Resource type limit exceeded error
+pub const RESOURCE_TYPE_LIMIT_EXCEEDED: u16 = 12002;
+/// Component memory budget exceeded error
+pub const COMPONENT_MEMORY_BUDGET_EXCEEDED: u16 = 12003;
+
+// Platform error codes (13000-13999) - Agent B stubs  
+/// Platform detection failed error
+pub const PLATFORM_DETECTION_FAILED: u16 = 13000;
+/// Platform limits discovery failed error
+pub const PLATFORM_LIMITS_DISCOVERY_FAILED: u16 = 13001;
+/// Memory limit exceeded error
+pub const MEMORY_LIMIT_EXCEEDED: u16 = 13002;
+/// Stack limit exceeded error
+pub const STACK_LIMIT_EXCEEDED: u16 = 13003;
+/// Debug infrastructure error
+pub const DEBUG_INFRASTRUCTURE_ERROR: u16 = 13004;
+
+// Runtime error codes (14000-14999) - Agent D stubs
+/// CFI validation failed error  
+pub const CFI_VALIDATION_FAILED: u16 = 14000;
+/// CFI unsupported error
+pub const CFI_UNSUPPORTED: u16 = 14001;
+/// Execution engine error
+pub const EXECUTION_ENGINE_ERROR: u16 = 14002;
+/// Memory adapter error
+pub const MEMORY_ADAPTER_ERROR: u16 = 14003;
 /// Parse invalid global index type error
 pub const PARSE_INVALID_GLOBAL_INDEX_TYPE: u16 = 6007;
-/// Invalid value error
-pub const INVALID_VALUE: u16 = 6010;
 /// Value out of range for target type
 pub const VALUE_OUT_OF_RANGE: u16 = 6015;
 /// Type invalid conversion

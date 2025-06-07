@@ -28,21 +28,10 @@ This safety documentation is organized into the following major components:
 8. **Performance Tuning**: Guidelines for balancing safety and performance
 9. **Traceability Matrix**: Mapping from safety standards to implementations
 
-Safety Implementation Status
-----------------------------
+Live Safety Verification Status
+---------------------------------
 
-.. list-table:: Implementation Status
-   :widths: 30 70
-   :header-rows: 1
-
-   * - Status
-     - Count
-   * - Implemented
-     - Most safety features are implemented
-   * - Partial
-     - Some features are in progress
-   * - Not Started
-     - Future planned features
+.. include:: ../_generated_safety_summary.rst
 
 Safety Requirements
 -------------------

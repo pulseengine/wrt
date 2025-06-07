@@ -210,7 +210,7 @@ impl CrossComponentCallManager {
         let target = self
             .targets
             .get(target_id as usize)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Call target not found".into()))?
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?
             .clone();
 
         // Check permissions

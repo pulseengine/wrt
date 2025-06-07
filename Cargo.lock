@@ -4233,13 +4233,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wrt-safety"
-version = "0.2.0"
-dependencies = [
- "static_assertions",
-]
-
-[[package]]
 name = "wrt-sync"
 version = "0.2.0"
 dependencies = [
@@ -4277,7 +4270,10 @@ name = "wrt-verification-tool"
 version = "0.2.0"
 dependencies = [
  "log",
+ "serde",
+ "toml",
  "wrt-decoder",
+ "wrt-foundation",
  "wrt-test-registry",
 ]
 
@@ -4331,6 +4327,7 @@ dependencies = [
  "pathdiff",
  "regex",
  "rustc-demangle",
+ "scopeguard",
  "semver",
  "serde",
  "serde_json",
@@ -4347,6 +4344,7 @@ dependencies = [
  "wasm-tools",
  "wat",
  "wrt",
+ "wrt-verification-tool",
  "xshell",
 ]
 

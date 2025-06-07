@@ -85,7 +85,7 @@ impl BuiltinHandler for SafeThreadingSpawnHandler {
         // Spawn thread with safety checks
         match self.thread_manager.spawn_thread(request) {
             Ok(thread_id) => Ok(vec![ComponentValue::U64(thread_id)]),
-            Err(e) => Err(Error::new(ThreadingError(format!("Failed to spawn thread: {}", e)))),
+            Err(e) => Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))),
         }
     }
 
@@ -147,7 +147,7 @@ impl BuiltinHandler for SafeThreadingJoinHandler {
                     Err(Error::new(ThreadingError("Thread timed out".to_string())))
                 }
             },
-            Err(e) => Err(Error::new(ThreadingError(format!("Failed to join thread: {}", e)))),
+            Err(e) => Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))),
         }
     }
 
@@ -237,7 +237,7 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
                 match self.thread_manager.cancel_thread(thread_id) {
                     Ok(()) => Ok(vec![ComponentValue::U32(1)]), // Success
                     Err(e) => {
-                        Err(Error::new(ThreadingError(format!("Failed to cancel thread: {}", e))))
+                        Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into()))))
                     }
                 }
             }

@@ -53,6 +53,35 @@ impl Default for CfiControlFlowProtection {
     }
 }
 
+impl CfiControlFlowProtection {
+    /// Create CFI protection with specific level
+    pub fn new_with_level(level: CfiProtectionLevel) -> Self {
+        let mut config = Self::default();
+        config.protection_level = level;
+        
+        // Adjust software config based on protection level
+        match level {
+            CfiProtectionLevel::None => {
+                config.enabled = false;
+            }
+            CfiProtectionLevel::Basic => {
+                config.software_config.shadow_stack_enabled = false;
+                config.software_config.temporal_validation = false;
+            }
+            CfiProtectionLevel::Enhanced => {
+                config.software_config.shadow_stack_enabled = true;
+                config.software_config.temporal_validation = false;
+            }
+            CfiProtectionLevel::Maximum => {
+                config.software_config.shadow_stack_enabled = true;
+                config.software_config.temporal_validation = true;
+            }
+        }
+        
+        config
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CfiProtectionLevel {
     /// No CFI protection

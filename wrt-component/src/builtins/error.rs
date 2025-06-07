@@ -198,7 +198,7 @@ impl BuiltinHandler for ErrorTraceHandler {
         // Add trace to the error context
         let mut store = self.store.lock().unwrap();
         let error_context = store.get_error_mut(error_id).ok_or_else(|| {
-            WrtError::resource_error(format!("Invalid error context ID: {}", error_id))
+            WrtError::resource_error(ComponentValue::String("Component operation result".into()))
         })?;
         error_context.add_trace(trace_message);
 

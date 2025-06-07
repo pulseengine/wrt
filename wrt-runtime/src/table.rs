@@ -186,7 +186,7 @@ impl Table {
                 return Err(Error::new(
                     ErrorCategory::Validation,
                     codes::INVALID_TYPE,
-                    &format!("Invalid element type for table: {:?}", ty.element_type),
+                    "Runtime operation error",
                 ))
             }
         };
@@ -452,7 +452,7 @@ impl Table {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::RUNTIME_ERROR,
-                &format!("table element copy out of bounds: src={}, dst={}, len={}", src, dst, len),
+                "Runtime operation error",
             ));
         }
 
@@ -503,7 +503,7 @@ impl Table {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::RUNTIME_ERROR,
-                &format!("table fill out of bounds: offset={}, len={}", offset, len),
+                "Runtime operation error",
             ));
         }
 
@@ -561,7 +561,7 @@ impl Table {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_FUNCTION_INDEX,
-                &format!("table element index out of bounds: {}", idx),
+                "Runtime operation error",
             ));
         }
 
@@ -719,7 +719,7 @@ impl TableManager {
             .map_err(|_| Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_FUNCTION_INDEX,
-                &format!("Invalid table index: {}", index),
+                "Runtime operation error",
             ))
     }
     
@@ -729,7 +729,7 @@ impl TableManager {
             .ok_or_else(|| Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_FUNCTION_INDEX,
-                &format!("Invalid table index: {}", index),
+                "Runtime operation error",
             ))
     }
     
@@ -794,7 +794,7 @@ impl TableOperations for TableManager {
                     _ => Err(Error::new(
                         ErrorCategory::Type,
                         codes::INVALID_TYPE,
-                        &format!("Unsupported table element type: {:?}", table.ty.element_type),
+                        "Runtime operation error",
                     )),
                 }
             }
@@ -970,7 +970,7 @@ impl TableOperations for Table {
                     _ => Err(Error::new(
                         ErrorCategory::Type,
                         codes::INVALID_TYPE,
-                        &format!("Unsupported table element type: {:?}", self.ty.element_type),
+                        "Runtime operation error",
                     )),
                 }
             }

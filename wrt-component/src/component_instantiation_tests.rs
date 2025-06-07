@@ -357,7 +357,7 @@ mod tests {
 
         // Try to add too many components
         for i in 0..MAX_LINKED_COMPONENTS {
-            let result = linker.add_component(format!("component_{}", i), &binary);
+            let result = linker.add_component(ComponentValue::String("Component operation result".into()), &binary);
             assert!(result.is_ok());
         }
 
@@ -529,9 +529,9 @@ mod tests {
         // Create more exports than allowed
         for i in 0..MAX_EXPORTS_PER_COMPONENT + 1 {
             exports.push(create_component_export(
-                format!("export_{}", i),
+                ComponentValue::String("Component operation result".into()),
                 ExportType::Function(create_function_signature(
-                    format!("export_{}", i),
+                    ComponentValue::String("Component operation result".into()),
                     vec![],
                     vec![ComponentType::S32],
                 )),
@@ -552,10 +552,10 @@ mod tests {
         // Create more imports than allowed
         for i in 0..MAX_IMPORTS_PER_COMPONENT + 1 {
             imports.push(create_component_import(
-                format!("import_{}", i),
+                ComponentValue::String("Component operation result".into()),
                 "env".to_string(),
                 ImportType::Function(create_function_signature(
-                    format!("import_{}", i),
+                    ComponentValue::String("Component operation result".into()),
                     vec![],
                     vec![ComponentType::S32],
                 )),
@@ -609,9 +609,9 @@ mod tests {
         // Create many exports (but within limits)
         for i in 0..100 {
             exports.push(create_component_export(
-                format!("func_{}", i),
+                ComponentValue::String("Component operation result".into()),
                 ExportType::Function(create_function_signature(
-                    format!("func_{}", i),
+                    ComponentValue::String("Component operation result".into()),
                     vec![ComponentType::S32],
                     vec![ComponentType::S32],
                 )),

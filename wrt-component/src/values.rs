@@ -782,7 +782,7 @@ pub fn deserialize_component_value(
                     Error::new(
                         ErrorCategory::Parse,
                         codes::PARSE_ERROR,
-                        format!("Invalid UTF-8 in string: {}", e).to_string(),
+                        ComponentValue::String("Component operation result".into()).to_string(),
                     )
                 })?;
             Ok(ComponentValue::String(value))
@@ -887,7 +887,7 @@ pub fn deserialize_component_value(
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    format!("Invalid variant case index: {}", case_idx).to_string(),
+                    ComponentValue::String("Component operation result".into()).to_string(),
                 ));
             }
 
@@ -1166,7 +1166,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    format!("Invalid u32 value for char: {}", value_u32),
+                    ComponentValue::String("Component operation result".into()),
                 )
             })?;
             Ok(ComponentValue::Char(value))
@@ -1184,7 +1184,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    format!("Invalid UTF-8 in string: {}", e),
+                    ComponentValue::String("Component operation result".into()),
                 )
             })?;
 
@@ -1211,7 +1211,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    format!("Expected {} record fields but found {}", fields.len(), count),
+                    ComponentValue::String("Component operation result".into()), count),
                 ));
             }
 
@@ -1228,7 +1228,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                     Error::new(
                         ErrorCategory::Parse,
                         codes::PARSE_ERROR,
-                        format!("Invalid UTF-8 in field name: {}", e),
+                        ComponentValue::String("Component operation result".into()),
                     )
                 })?;
 
@@ -1247,7 +1247,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    format!("Expected {} tuple items but found {}", types.len(), count),
+                    ComponentValue::String("Component operation result".into()), count),
                 ));
             }
 
@@ -1271,7 +1271,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    format!("Invalid UTF-8 in variant case name: {}", e),
+                    ComponentValue::String("Component operation result".into()),
                 )
             })?;
 
@@ -1281,7 +1281,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                     Error::new(
                         ErrorCategory::Parse,
                         codes::PARSE_ERROR,
-                        format!("Unknown variant case name: {}", case_name),
+                        ComponentValue::String("Component operation result".into()),
                     )
                 })?;
 
@@ -1299,7 +1299,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                     Err(Error::new(
                         ErrorCategory::Parse,
                         codes::PARSE_ERROR,
-                        format!("Variant case {} has a value but shouldn't", case_name),
+                        ComponentValue::String("Component operation result".into()),
                     ))
                 }
             } else {
@@ -1317,7 +1317,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    format!("Invalid UTF-8 in enum variant name: {}", e),
+                    ComponentValue::String("Component operation result".into()),
                 )
             })?;
 
@@ -1326,7 +1326,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    format!("Unknown enum variant: {}", variant_name),
+                    ComponentValue::String("Component operation result".into()),
                 ));
             }
 
@@ -1395,7 +1395,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    format!("Expected {} flags but found {}", names.len(), count),
+                    ComponentValue::String("Component operation result".into()), count),
                 ));
             }
 
@@ -1437,7 +1437,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    format!("Expected fixed list of size {} but found {}", size, fixed_size),
+                    ComponentValue::String("Component operation result".into()),
                 ));
             }
 
@@ -1465,7 +1465,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                     Error::new(
                         ErrorCategory::Parse,
                         codes::PARSE_ERROR,
-                        format!("Invalid UTF-8 in error context: {}", e),
+                        ComponentValue::String("Component operation result".into()),
                     )
                 })?;
                 items.push(ComponentValue::String(item_str));
@@ -1482,7 +1482,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
         _ => Err(Error::new(
             ErrorCategory::System,
             codes::UNSUPPORTED_OPERATION,
-            format!("Type {:?} not supported for deserialization", format_type),
+            ComponentValue::String("Component operation result".into()),
         )),
     }
 }
@@ -1551,7 +1551,7 @@ pub fn deserialize_component_values(
         return Err(Error::new(
             ErrorCategory::Validation,
             codes::VALIDATION_ERROR,
-            format!("Expected {} types but only got {}", count, types.len()),
+            ComponentValue::String("Component operation result".into())),
         ));
     }
 
@@ -1611,7 +1611,7 @@ pub fn deserialize_component_values_with_stream<'a, P: wrt_foundation::MemoryPro
         return Err(Error::new(
             ErrorCategory::Validation,
             codes::VALIDATION_ERROR,
-            format!("Expected {} types but only got {}", count, types.len()),
+            ComponentValue::String("Component operation result".into())),
         ));
     }
 

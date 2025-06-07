@@ -263,7 +263,7 @@ impl AsyncCanonicalAbi {
             if let Some(stream) = self.streams.get_mut(&stream_handle) {
                 stream.read()
             } else {
-                Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
             }
         }
         #[cfg(not(any(feature = "std", )))]
@@ -287,7 +287,7 @@ impl AsyncCanonicalAbi {
                     };
                 }
             }
-            Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
+            Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
         }
     }
 
@@ -298,7 +298,7 @@ impl AsyncCanonicalAbi {
             if let Some(stream) = self.streams.get_mut(&stream_handle) {
                 stream.write(values)
             } else {
-                Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
             }
         }
         #[cfg(not(any(feature = "std", )))]
@@ -325,7 +325,7 @@ impl AsyncCanonicalAbi {
                     };
                 }
             }
-            Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
+            Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
         }
     }
 
@@ -336,7 +336,7 @@ impl AsyncCanonicalAbi {
             if let Some(stream) = self.streams.get_mut(&stream_handle) {
                 stream.cancel_read()
             } else {
-                Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
             }
         }
         #[cfg(not(any(feature = "std", )))]
@@ -351,7 +351,7 @@ impl AsyncCanonicalAbi {
                     };
                 }
             }
-            Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
+            Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
         }
     }
 
@@ -362,7 +362,7 @@ impl AsyncCanonicalAbi {
             if let Some(stream) = self.streams.get_mut(&stream_handle) {
                 stream.cancel_write()
             } else {
-                Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
             }
         }
         #[cfg(not(any(feature = "std", )))]
@@ -377,7 +377,7 @@ impl AsyncCanonicalAbi {
                     };
                 }
             }
-            Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
+            Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
         }
     }
 
@@ -388,7 +388,7 @@ impl AsyncCanonicalAbi {
             if let Some(stream) = self.streams.get_mut(&stream_handle) {
                 stream.close_readable()
             } else {
-                Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
             }
         }
         #[cfg(not(any(feature = "std", )))]
@@ -403,7 +403,7 @@ impl AsyncCanonicalAbi {
                     };
                 }
             }
-            Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
+            Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
         }
     }
 
@@ -414,7 +414,7 @@ impl AsyncCanonicalAbi {
             if let Some(stream) = self.streams.get_mut(&stream_handle) {
                 stream.close_writable()
             } else {
-                Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
             }
         }
         #[cfg(not(any(feature = "std", )))]
@@ -429,7 +429,7 @@ impl AsyncCanonicalAbi {
                     };
                 }
             }
-            Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
+            Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
         }
     }
 
@@ -463,7 +463,7 @@ impl AsyncCanonicalAbi {
             if let Some(future) = self.futures.get_mut(&future_handle) {
                 future.read()
             } else {
-                Err(wrt_foundation::WrtError::InvalidInput("Future not found".into()))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
             }
         }
         #[cfg(not(any(feature = "std", )))]
@@ -486,7 +486,7 @@ impl AsyncCanonicalAbi {
                     };
                 }
             }
-            Err(wrt_foundation::WrtError::InvalidInput("Future not found".into()))
+            Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
         }
     }
 
@@ -497,7 +497,7 @@ impl AsyncCanonicalAbi {
             if let Some(future) = self.futures.get_mut(&future_handle) {
                 future.write(value)
             } else {
-                Err(wrt_foundation::WrtError::InvalidInput("Future not found".into()))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
             }
         }
         #[cfg(not(any(feature = "std", )))]
@@ -509,7 +509,7 @@ impl AsyncCanonicalAbi {
                     };
                 }
             }
-            Err(wrt_foundation::WrtError::InvalidInput("Future not found".into()))
+            Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
         }
     }
 
@@ -548,7 +548,7 @@ impl AsyncCanonicalAbi {
             if let Some(error_context) = self.error_contexts.get(&handle) {
                 Ok(error_context.debug_string())
             } else {
-                Err(wrt_foundation::WrtError::InvalidInput("Error context not found".into()))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
             }
         }
         #[cfg(not(any(feature = "std", )))]
@@ -558,7 +558,7 @@ impl AsyncCanonicalAbi {
                     return Ok(error_context.debug_string());
                 }
             }
-            Err(wrt_foundation::WrtError::InvalidInput("Error context not found".into()))
+            Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
         }
     }
 

@@ -60,7 +60,9 @@ mod cfi_types {
 }
 
 #[cfg(not(feature = "std"))]
-use cfi_types::{CfiHardwareInstruction, ArmBtiMode, CfiSoftwareValidation, ShadowStackRequirement, ShadowStackEntry};
+use wrt_instructions::cfi_control_ops::{CfiHardwareInstruction, CfiSoftwareValidation};
+#[cfg(not(feature = "std"))]
+use self::cfi_types::{ArmBtiMode, ShadowStackRequirement, ShadowStackEntry};
 
 #[cfg(feature = "std")]
 use wrt_instructions::cfi_control_ops::{
@@ -433,11 +435,11 @@ impl CfiExecutionEngine {
     /// Validate hardware CFI instruction
     fn validate_hardware_instruction(
         &self,
-        hw_instruction: &cfi_types::CfiHardwareInstruction,
+        hw_instruction: &CfiHardwareInstruction,
     ) -> Result<()> {
         match hw_instruction {
             #[cfg(target_arch = "aarch64")]
-            cfi_types::CfiHardwareInstruction::ArmBti { mode } => {
+            CfiHardwareInstruction::ArmBti { mode } => {
                 self.validate_arm_bti_instruction(*mode)
             }
         }
@@ -467,7 +469,7 @@ impl CfiExecutionEngine {
     /// Validate software CFI validation
     fn validate_software_validation(
         &self,
-        _sw_validation: &cfi_types::CfiSoftwareValidation,
+        _sw_validation: &CfiSoftwareValidation,
     ) -> Result<()> {
         // TODO: Implement software validation logic
         Ok(())

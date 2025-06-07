@@ -291,7 +291,7 @@ impl ErrorContext {
             if let Some(trace) = &self.stack_trace {
                 result.push_str("\nStack trace:\n");
                 for frame in trace {
-                    result.push_str(&format!("  at {}\n", frame.function));
+                    result.push_str(&ComponentValue::String("Component operation result".into()));
                 }
             }
             BoundedString::from_str(&result).unwrap_or_default()

@@ -119,7 +119,7 @@ impl BuiltinRegistry {
         // Define a default function executor for threading that just returns an error
         #[cfg(feature = "component-model-threading")]
         let function_executor: FunctionExecutor = Arc::new(|function_id, _args| {
-            Err(Error::new(format!("No executor registered for function ID: {}", function_id)))
+            Err(Error::new(ComponentValue::String("Component operation result".into())))
         });
 
         let mut registry = Self {
@@ -232,7 +232,7 @@ impl BuiltinRegistry {
             .handlers
             .iter()
             .find(|h| h.builtin_type() == builtin_type)
-            .ok_or_else(|| Error::new(format!("Unsupported built-in: {}", builtin_type)))?;
+            .ok_or_else(|| Error::new(ComponentValue::String("Component operation result".into())))?;
 
         // Create interception context
         let context = InterceptContext::new(&self.component_name, builtin_type, &self.host_id);

@@ -271,7 +271,7 @@ impl ComponentCommunicationStrategy {
                 return Err(Error::new(
                     ErrorCategory::Security,
                     codes::ACCESS_DENIED,
-                    format!("Target component '{}' not allowed", routing_info.target_component),
+                    ComponentValue::String("Component operation result".into()),
                 ));
             }
 
@@ -283,7 +283,7 @@ impl ComponentCommunicationStrategy {
                 return Err(Error::new(
                     ErrorCategory::Security,
                     codes::ACCESS_DENIED,
-                    format!("Function '{}' not allowed", routing_info.function_name),
+                    ComponentValue::String("Component operation result".into()),
                 ));
             }
         }
@@ -893,7 +893,7 @@ mod tests {
             ..Default::default()
         };
         
-        let display = format!("{}", stats);
+        let display = ComponentValue::String("Component operation result".into());
         assert!(display.contains("100"));
         assert!(display.contains("95"));
         assert!(display.contains("5"));

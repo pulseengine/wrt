@@ -62,7 +62,7 @@ impl BufferSizeClass {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Failed to add buffer to size class"),
+                ComponentValue::String("Component operation result".into()),
             )
         })
     }
@@ -118,7 +118,7 @@ impl BoundedBufferPool {
                 Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    format!("Failed to allocate buffer of size {}", size),
+                    ComponentValue::String("Component operation result".into()),
                 )
             })?;
         }

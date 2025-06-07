@@ -30,6 +30,7 @@
 extern crate std;
 
 // Binary std/no_std choice
+#[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
 // Panic handler is provided by wrt-platform when needed
@@ -47,6 +48,13 @@ pub mod func;
 pub mod global;
 pub mod interpreter_optimization;
 pub mod memory;
+
+// Simplified type system - CRITICAL COMPILATION FIX
+pub mod simple_types;
+pub mod unified_types;
+
+// Component model integration
+pub mod component_unified;
 pub mod memory_adapter;
 pub mod memory_helpers;
 pub mod module;
@@ -59,6 +67,14 @@ pub mod thread_manager;
 pub mod types;
 pub mod wait_queue;
 pub mod wit_debugger_integration;
+
+// Agent D: Platform-aware runtime and unified memory management
+pub mod platform_runtime;
+
+// Temporary stub modules for parallel development
+mod foundation_stubs;
+mod platform_stubs;
+mod component_stubs;
 
 // Re-export commonly used types
 pub use atomic_execution::{AtomicMemoryContext, AtomicExecutionStats};
@@ -110,6 +126,9 @@ pub use stackless::{
     StacklessCallbackRegistry, StacklessEngine, StacklessExecutionState, StacklessFrame,
 };
 pub use table::Table;
+
+// Agent D: Re-export platform-aware runtime types
+pub use platform_runtime::{PlatformAwareRuntime, PlatformMemoryAdapter, RuntimeMetrics};
 
 /// The WebAssembly memory page size (64KiB)
 pub const PAGE_SIZE: usize = 65536;

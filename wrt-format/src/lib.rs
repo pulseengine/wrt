@@ -77,15 +77,13 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-// Binary std/no_std choice
-#[cfg(all(not(feature = "std")))]
-extern crate alloc;
-
-#[cfg(all(not(feature = "std")))]
-// Import types for internal use from alloc (excluding format macro to avoid conflict)
-use alloc::{string::String, vec::Vec};
+// Binary std/no_std choice - use our own memory management
 #[cfg(feature = "std")]
 use std::{format, string::String, vec::Vec};
+
+// In no_std mode, use our own bounded collections from wrt-foundation
+#[cfg(not(feature = "std"))]
+use wrt_foundation::bounded::{BoundedString, BoundedVec};
 
 // Re-export error types directly from wrt-error
 pub use wrt_error::{Error, ErrorCategory};
@@ -101,7 +99,7 @@ pub use wrt_foundation::Result;
 
 // Binary std/no_std choice
 #[cfg(not(any(feature = "std")))]
-pub use wrt_foundation::{BoundedMap, BoundedSet, BoundedString, BoundedVec};
+pub use wrt_foundation::{BoundedMap, BoundedSet};
 
 // Type aliases for pure no_std mode
 #[cfg(not(any(feature = "std")))]
@@ -261,6 +259,8 @@ pub mod wit_parser;
 // Bounded WIT parser for no_std environments
 #[cfg(feature = "wit-parsing")]
 pub mod wit_parser_bounded;
+// Enhanced bounded WIT parser with configurable limits (Agent C)
+pub mod bounded_wit_parser;
 // Temporarily disable enhanced parser until compilation issues fixed
 // #[cfg(feature = "std")]
 // pub mod wit_parser_enhanced;
@@ -358,6 +358,13 @@ pub use wit_parser_bounded::{
     BoundedWitParser, BoundedWitWorld, BoundedWitInterface, BoundedWitFunction, 
     BoundedWitType, BoundedWitImport, BoundedWitExport, parse_wit_bounded,
     HAS_BOUNDED_WIT_PARSING_NO_STD,
+};
+
+// Re-export enhanced bounded WIT parser (Agent C)
+pub use bounded_wit_parser::{
+    BoundedWitParser as EnhancedBoundedWitParser, WitParsingLimits, WitParseResult,
+    WitParseMetadata, WitParseWarning, WarningSeverity, parse_wit_with_limits,
+    parse_wit_embedded, parse_wit_qnx, parse_wit_linux,
 };
 
 // Public functions for feature detection

@@ -372,7 +372,7 @@ impl ValueConverter {
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::TYPE_MISMATCH,
-                        format!("Cannot convert core value {:?} to component type {:?}", value, target_type),
+                        ComponentValue::String("Component operation result".into()),
                     ))
                 } else {
                     // Fallback conversion
@@ -587,7 +587,7 @@ impl HostFunctionRegistry {
             signature,
             implementation: Box::new(func),
             metadata: HostFunctionMetadata {
-                description: format!("Host function: {}", name),
+                description: ComponentValue::String("Component operation result".into()),
                 parameter_count: 0, // Would be determined from signature
                 return_count: 1,
                 is_pure: false,
@@ -710,7 +710,7 @@ impl ComponentRuntimeBridge {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_STATE,
-                format!("Instance not ready for execution: {:?}", instance_info.state),
+                ComponentValue::String("Component operation result".into()),
             ));
         }
 

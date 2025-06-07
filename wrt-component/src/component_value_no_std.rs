@@ -514,7 +514,7 @@ pub fn serialize_component_value_no_std(
             return Err(Error::new(
                 ErrorCategory::Serialization,
                 codes::SERIALIZATION_ERROR,
-                format!("Unsupported ComponentValue type for serialization: {:?}", value),
+                ComponentValue::String("Component operation result".into()),
             ));
         }
     }
@@ -548,7 +548,7 @@ pub fn convert_valtype_to_format<P: MemoryProvider + Default + Clone + PartialEq
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::TYPE_CONVERSION_ERROR,
-            format!("Unsupported ValType for conversion in no_std environment"),
+            ComponentValue::String("Component operation result".into()),
         )),
     }
 }
@@ -578,7 +578,7 @@ pub fn convert_format_to_valtype<P: MemoryProvider + Default + Clone + PartialEq
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::TYPE_CONVERSION_ERROR,
-            format!("Unsupported FormatValType for conversion in no_std environment"),
+            ComponentValue::String("Component operation result".into()),
         )),
     }
 }

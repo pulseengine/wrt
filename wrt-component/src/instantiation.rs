@@ -243,8 +243,7 @@ impl Component {
                         self.validate_import_type(import, value)?;
                     }
                     None => {
-                        return Err(wrt_foundation::WrtError::InvalidInput(
-                            format!("Missing required import: {}", import.name).into(),
+                        return Err(wrt_foundation::WrtError::invalid_input("Invalid input")).into(),
                         ));
                     }
                 }
@@ -255,8 +254,7 @@ impl Component {
             // In no_std, we have limited validation
             // Just check that we have some imports if required
             if self.imports.len() > 0 && imports.imports.len() == 0 {
-                return Err(wrt_foundation::WrtError::InvalidInput(
-                    "Missing required imports".into(),
+                return Err(wrt_foundation::WrtError::invalid_input("Invalid input"),
                 ));
             }
         }

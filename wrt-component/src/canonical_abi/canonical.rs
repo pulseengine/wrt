@@ -228,7 +228,7 @@ impl CanonicalABI {
             _ => Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::NOT_IMPLEMENTED,
-                NotImplementedError(format!("Lifting type {:?} is not implemented", ty)),
+                NotImplementedError(ComponentValue::String("Component operation result".into())),
             )),
         }
     }
@@ -345,7 +345,7 @@ impl CanonicalABI {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::OUT_OF_BOUNDS_ERROR,
-                format!("Address {} out of bounds for memory of size {}", addr, memory_bytes.len()),
+                ComponentValue::String("Component operation result".into())),
             ))
         }
     }
@@ -358,7 +358,7 @@ impl CanonicalABI {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::OUT_OF_BOUNDS_ERROR,
-                format!("Address {} out of bounds for memory of size {}", addr, memory_bytes.len()),
+                ComponentValue::String("Component operation result".into())),
             ))
         }
     }
@@ -371,7 +371,7 @@ impl CanonicalABI {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::OUT_OF_BOUNDS_ERROR,
-                format!("Address {} out of bounds for memory of size {}", addr, memory_bytes.len()),
+                ComponentValue::String("Component operation result".into())),
             ))
         }
     }
@@ -493,7 +493,7 @@ impl CanonicalABI {
             None => Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_TYPE,
-                format!("Invalid UTF-8 code point: {}", code_point),
+                ComponentValue::String("Component operation result".into()),
             )),
         }
     }
@@ -536,7 +536,7 @@ impl CanonicalABI {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::OUT_OF_BOUNDS_ERROR,
-                format!("List length {} exceeds maximum allowed size", length),
+                ComponentValue::String("Component operation result".into()),
             ));
         }
 
@@ -616,7 +616,7 @@ impl CanonicalABI {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_TYPE,
-                format!("Invalid variant discriminant: {}", discriminant),
+                ComponentValue::String("Component operation result".into()),
             ));
         }
 
@@ -664,7 +664,7 @@ impl CanonicalABI {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_TYPE,
-                format!("Invalid enum discriminant: {} (max: {})", discriminant, cases.len() - 1),
+                ComponentValue::String("Component operation result".into())", discriminant, cases.len() - 1),
             ));
         }
 
@@ -696,7 +696,7 @@ impl CanonicalABI {
             _ => Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_TYPE,
-                format!("Invalid option discriminant: {}", discriminant),
+                ComponentValue::String("Component operation result".into()),
             )),
         }
     }
@@ -741,7 +741,7 @@ impl CanonicalABI {
             _ => Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_TYPE,
-                format!("Invalid result discriminant: {}", discriminant),
+                ComponentValue::String("Component operation result".into()),
             )),
         }
     }
@@ -755,7 +755,7 @@ impl CanonicalABI {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::OUT_OF_BOUNDS_ERROR,
-                format!("Address {} out of bounds for memory of size {}", addr, memory_bytes.len()),
+                ComponentValue::String("Component operation result".into())),
             ))
         }
     }
@@ -768,7 +768,7 @@ impl CanonicalABI {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::OUT_OF_BOUNDS_ERROR,
-                format!("Address {} out of bounds for memory of size {}", addr, memory_bytes.len()),
+                ComponentValue::String("Component operation result".into())),
             ))
         }
     }
@@ -781,7 +781,7 @@ impl CanonicalABI {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::OUT_OF_BOUNDS_ERROR,
-                format!("Address {} out of bounds for memory of size {}", addr, memory_bytes.len()),
+                ComponentValue::String("Component operation result".into())),
             ))
         }
     }
@@ -1082,7 +1082,7 @@ impl CanonicalABI {
             _ => Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::NOT_IMPLEMENTED,
-                NotImplementedError(format!("Lowering type {:?} not implemented", ty)),
+                NotImplementedError(ComponentValue::String("Component operation result".into())),
             )),
         }
     }
@@ -1114,7 +1114,7 @@ impl CanonicalABI {
                 return Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    format!("Missing required field '{}' in record", field_name),
+                    ComponentValue::String("Component operation result".into()),
                 ));
             }
         }
@@ -1413,7 +1413,7 @@ pub fn convert_value_for_canonical_abi(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(format!("Value {} is out of range for i8", i)),
+                        ValueOutOfRangeError(ComponentValue::String("Component operation result".into())),
                     ))
                 }
             } else {
@@ -1434,7 +1434,7 @@ pub fn convert_value_for_canonical_abi(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(format!("Value {} is out of range for u8", i)),
+                        ValueOutOfRangeError(ComponentValue::String("Component operation result".into())),
                     ))
                 }
             } else {
@@ -1455,7 +1455,7 @@ pub fn convert_value_for_canonical_abi(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(format!("Value {} is out of range for i16", i)),
+                        ValueOutOfRangeError(ComponentValue::String("Component operation result".into())),
                     ))
                 }
             } else {
@@ -1476,7 +1476,7 @@ pub fn convert_value_for_canonical_abi(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(format!("Value {} is out of range for u16", i)),
+                        ValueOutOfRangeError(ComponentValue::String("Component operation result".into())),
                     ))
                 }
             } else {
@@ -1497,7 +1497,7 @@ pub fn convert_value_for_canonical_abi(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(format!("Value {} is out of range for i32", v)),
+                        ValueOutOfRangeError(ComponentValue::String("Component operation result".into())),
                     ))
                 }
             } else {
@@ -1518,7 +1518,7 @@ pub fn convert_value_for_canonical_abi(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(format!("Value {} is out of range for u32", i)),
+                        ValueOutOfRangeError(ComponentValue::String("Component operation result".into())),
                     ))
                 }
             } else {
@@ -1552,7 +1552,7 @@ pub fn convert_value_for_canonical_abi(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(format!("Value {} is out of range for u64", i)),
+                        ValueOutOfRangeError(ComponentValue::String("Component operation result".into())),
                     ))
                 }
             } else {
@@ -1660,7 +1660,7 @@ pub fn convert_value_for_canonical_abi(
                         return Err(Error::new(
                             ErrorCategory::Runtime,
                             codes::TYPE_MISMATCH,
-                            NotImplementedError(format!("Missing required field '{}'", field_name)),
+                            NotImplementedError(ComponentValue::String("Component operation result".into())),
                         ));
                     }
                 }
@@ -1708,7 +1708,7 @@ pub fn convert_value_for_canonical_abi(
                         return Err(Error::new(
                             ErrorCategory::Runtime,
                             codes::TYPE_MISMATCH,
-                            NotImplementedError(format!("Missing required flag '{}'", name)),
+                            NotImplementedError(ComponentValue::String("Component operation result".into())),
                         ));
                     }
                 }
@@ -1718,7 +1718,7 @@ pub fn convert_value_for_canonical_abi(
                         return Err(Error::new(
                             ErrorCategory::Runtime,
                             codes::TYPE_MISMATCH,
-                            NotImplementedError(format!("Unexpected flag '{}'", name)),
+                            NotImplementedError(ComponentValue::String("Component operation result".into())),
                         ));
                     }
                 }
@@ -1838,7 +1838,7 @@ pub fn convert_value_for_type(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::OUT_OF_BOUNDS_ERROR,
-                        OutOfBoundsAccess(format!("Value out of range for i32")),
+                        OutOfBoundsAccess(ComponentValue::String("Component operation result".into())),
                     ))
                 }
             } else if let Some(v) = value.as_f32() {
@@ -1848,7 +1848,7 @@ pub fn convert_value_for_type(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::OUT_OF_BOUNDS_ERROR,
-                        OutOfBoundsAccess(format!("Value out of range for i32")),
+                        OutOfBoundsAccess(ComponentValue::String("Component operation result".into())),
                     ))
                 }
             } else if let Some(v) = value.as_f64() {
@@ -1858,7 +1858,7 @@ pub fn convert_value_for_type(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::OUT_OF_BOUNDS_ERROR,
-                        OutOfBoundsAccess(format!("Value out of range for i32")),
+                        OutOfBoundsAccess(ComponentValue::String("Component operation result".into())),
                     ))
                 }
             } else {
@@ -1881,7 +1881,7 @@ pub fn convert_value_for_type(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::OUT_OF_BOUNDS_ERROR,
-                        OutOfBoundsAccess(format!("Value out of range for i64")),
+                        OutOfBoundsAccess(ComponentValue::String("Component operation result".into())),
                     ))
                 }
             } else if let Some(v) = value.as_f64() {
@@ -1891,7 +1891,7 @@ pub fn convert_value_for_type(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::OUT_OF_BOUNDS_ERROR,
-                        OutOfBoundsAccess(format!("Value out of range for i64")),
+                        OutOfBoundsAccess(ComponentValue::String("Component operation result".into())),
                     ))
                 }
             } else {

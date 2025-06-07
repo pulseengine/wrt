@@ -47,7 +47,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
 
@@ -67,7 +67,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
 
@@ -101,7 +101,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
 
@@ -114,7 +114,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
 
@@ -150,7 +150,7 @@ impl ResourceArena {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Resource handle {} not found in arena", handle),
+                ComponentValue::String("Component operation result".into()),
             ));
         }
 
@@ -159,7 +159,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
 
@@ -176,7 +176,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
 

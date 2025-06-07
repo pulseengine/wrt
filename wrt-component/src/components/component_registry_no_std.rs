@@ -114,7 +114,7 @@ impl ComponentRegistry {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Component '{}' not found", name),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -225,7 +225,7 @@ mod tests {
         // Fill the registry to capacity
         for i in 0..MAX_COMPONENTS {
             let component = create_test_component();
-            registry.register(&format!("test{}", i), component).unwrap();
+            registry.register(&ComponentValue::String("Component operation result".into()), component).unwrap();
         }
 
         // Try to add one more - should fail

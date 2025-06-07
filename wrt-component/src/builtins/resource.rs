@@ -113,7 +113,7 @@ impl BuiltinHandler for ResourceDropHandler {
         // Drop the resource
         let mut manager = self.resource_manager.lock().unwrap();
         if !manager.has_resource(id) {
-            return Err(Error::new(format!("resource.drop: Resource not found with ID: {:?}", id)));
+            return Err(Error::new(ComponentValue::String("Component operation result".into())));
         }
 
         manager.delete_resource(id);
@@ -167,7 +167,7 @@ impl BuiltinHandler for ResourceRepHandler {
         // Get the resource representation
         let manager = self.resource_manager.lock().unwrap();
         if !manager.has_resource(id) {
-            return Err(Error::new(format!("resource.rep: Resource not found with ID: {:?}", id)));
+            return Err(Error::new(ComponentValue::String("Component operation result".into())));
         }
 
         // Get the resource as u32

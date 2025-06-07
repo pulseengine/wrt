@@ -197,7 +197,7 @@ impl ResourceTable {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Maximum number of interceptors ({}) reached", MAX_INTERCEPTORS),
+                ComponentValue::String("Component operation result".into()) reached", MAX_INTERCEPTORS),
             ));
         }
 
@@ -205,7 +205,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Failed to add interceptor to resource table"),
+                ComponentValue::String("Component operation result".into()),
             )
         })
     }
@@ -221,7 +221,7 @@ impl ResourceTable {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Maximum number of resources ({}) reached", MAX_RESOURCES),
+                ComponentValue::String("Component operation result".into()) reached", MAX_RESOURCES),
             ));
         }
 
@@ -251,7 +251,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Failed to add resource handle to table"),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -263,7 +263,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Failed to add resource entry to table"),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -277,7 +277,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Resource handle {} not found", handle),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -300,7 +300,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Resource handle {} not found", handle),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -341,7 +341,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Resource handle {} not found", handle),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -392,7 +392,7 @@ impl ResourceTable {
             _ => Err(Error::new(
                 ErrorCategory::Operation,
                 codes::UNSUPPORTED_OPERATION,
-                format!("Unsupported resource operation"),
+                ComponentValue::String("Component operation result".into()),
             )),
         }
     }
@@ -404,7 +404,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Resource handle {} not found", handle),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -421,7 +421,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Resource handle {} not found", handle),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -497,17 +497,17 @@ mod tests {
 
     impl ResourceInterceptor for TestInterceptor {
         fn on_resource_create(&mut self, type_idx: u32, _resource: &Resource) -> Result<()> {
-            self.executed_operations.push(format!("create:{}", type_idx)).unwrap();
+            self.executed_operations.push(ComponentValue::String("Component operation result".into())).unwrap();
             Ok(())
         }
 
         fn on_resource_drop(&mut self, handle: u32) -> Result<()> {
-            self.executed_operations.push(format!("drop:{}", handle)).unwrap();
+            self.executed_operations.push(ComponentValue::String("Component operation result".into())).unwrap();
             Ok(())
         }
 
         fn on_resource_access(&mut self, handle: u32) -> Result<()> {
-            self.executed_operations.push(format!("access:{}", handle)).unwrap();
+            self.executed_operations.push(ComponentValue::String("Component operation result".into())).unwrap();
             Ok(())
         }
 
@@ -516,7 +516,7 @@ mod tests {
             handle: u32,
             _operation: &FormatResourceOperation,
         ) -> Result<()> {
-            self.executed_operations.push(format!("operation:{}", handle)).unwrap();
+            self.executed_operations.push(ComponentValue::String("Component operation result".into())).unwrap();
             Ok(())
         }
 
@@ -525,7 +525,7 @@ mod tests {
             handle: u32,
             _operation: &FormatResourceOperation,
         ) -> Result<Option<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>>> {
-            self.executed_operations.push(format!("intercept:{}", handle)).unwrap();
+            self.executed_operations.push(ComponentValue::String("Component operation result".into())).unwrap();
 
             // Special case for testing
             if handle == 42 {

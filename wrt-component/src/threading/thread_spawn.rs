@@ -186,7 +186,7 @@ impl ComponentThreadManager {
     pub fn join_thread(&mut self, thread_id: ThreadId) -> ThreadSpawnResult<ThreadResult> {
         let handle = self.threads.get(&thread_id).ok_or_else(|| ThreadSpawnError {
             kind: ThreadSpawnErrorKind::ThreadNotFound,
-            message: format!("Thread {} not found", thread_id.as_u32()),
+            message: ComponentValue::String("Component operation result".into())),
         })?;
 
         if handle.detached {
@@ -225,7 +225,7 @@ impl ComponentThreadManager {
         } else {
             Err(ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::ThreadNotFound,
-                message: format!("Thread {} not found", thread_id.as_u32()),
+                message: ComponentValue::String("Component operation result".into())),
             })
         }
     }
@@ -252,7 +252,7 @@ impl ComponentThreadManager {
         self.task_manager.cleanup_instance_resources(component_id).map_err(|e| {
             ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::SpawnFailed,
-                message: format!("Failed to cleanup component resources: {}", e),
+                message: ComponentValue::String("Component operation result".into()),
             }
         })?;
 
@@ -375,7 +375,7 @@ impl ComponentThreadManager {
             })
             .map_err(|e| ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::SpawnFailed,
-                message: format!("Failed to spawn thread: {}", e),
+                message: ComponentValue::String("Component operation result".into()),
             })?;
 
         self.active_thread_count.fetch_add(1, Ordering::SeqCst);
@@ -390,15 +390,15 @@ impl ComponentThreadManager {
     ) -> ThreadSpawnResult<()> {
         let task_id = self
             .task_manager
-            .create_task(request.component_id, &format!("thread-{}", thread_id.as_u32()))
+            .create_task(request.component_id, &ComponentValue::String("Component operation result".into())))
             .map_err(|e| ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::SpawnFailed,
-                message: format!("Failed to create task: {}", e),
+                message: ComponentValue::String("Component operation result".into()),
             })?;
 
         self.task_manager.start_task(task_id).map_err(|e| ThreadSpawnError {
             kind: ThreadSpawnErrorKind::SpawnFailed,
-            message: format!("Failed to start task: {}", e),
+            message: ComponentValue::String("Component operation result".into()),
         })?;
 
         self.active_thread_count.fetch_add(1, Ordering::SeqCst);
@@ -409,7 +409,7 @@ impl ComponentThreadManager {
     fn join_std_thread(&mut self, thread_id: ThreadId) -> ThreadSpawnResult<ThreadResult> {
         let handle = self.threads.get(&thread_id).ok_or_else(|| ThreadSpawnError {
             kind: ThreadSpawnErrorKind::ThreadNotFound,
-            message: format!("Thread {} not found", thread_id.as_u32()),
+            message: ComponentValue::String("Component operation result".into())),
         })?;
 
         // Wait for completion using futex
@@ -473,7 +473,7 @@ impl ComponentThreadManager {
             // Add cleanup task for thread resources
             let cleanup_task = CleanupTask {
                 task_type: CleanupTaskType::Custom {
-                    name: format!("thread-cleanup-{}", thread_id.as_u32()),
+                    name: ComponentValue::String("Component operation result".into())),
                     data: Vec::new(),
                 },
                 priority: 5,
@@ -493,7 +493,7 @@ impl ComponentThreadManager {
     ) -> ThreadResult {
         match Self::call_component_function(component_id, function_name, arguments) {
             Ok(result) => ThreadResult::Success(result),
-            Err(e) => ThreadResult::Error(format!("Function call failed: {}", e)),
+            Err(e) => ThreadResult::Error(ComponentValue::String("Component operation result".into())),
         }
     }
 
@@ -553,7 +553,7 @@ impl ThreadSpawnBuiltins {
             }
             ThreadResult::Panic(msg) => Err(ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::JoinFailed,
-                message: format!("Thread panicked: {}", msg),
+                message: ComponentValue::String("Component operation result".into()),
             }),
         }
     }

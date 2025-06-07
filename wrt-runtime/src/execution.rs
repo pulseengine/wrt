@@ -132,6 +132,17 @@ impl ExecutionContext {
             max_function_depth,
         }
     }
+    
+    /// Create execution context with platform-aware limits
+    pub fn new_with_limits(max_function_depth: usize) -> Self {
+        Self::new(max_function_depth)
+    }
+    
+    /// Create execution context from platform limits
+    pub fn from_platform_limits(platform_limits: &crate::platform_stubs::ComprehensivePlatformLimits) -> Self {
+        let max_depth = platform_limits.max_stack_bytes / (8 * 64); // Estimate stack depth
+        Self::new(max_depth.max(16)) // Minimum depth of 16
+    }
 
     /// Enter a function
     pub fn enter_function(&mut self) -> Result<()> {

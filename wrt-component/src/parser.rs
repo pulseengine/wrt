@@ -67,7 +67,7 @@ pub fn scan_for_builtins(binary: &[u8]) -> Result<Vec<String>> {
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::DECODING_ERROR,
-                    DecodingError(format!("Failed to parse module during built-in scan: {}", err)),
+                    "Component parsing error",
                 ));
             }
             _ => {} // Skip other payload types

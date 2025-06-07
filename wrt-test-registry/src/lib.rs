@@ -58,6 +58,9 @@ pub mod test_runner;
 pub mod test_discovery;
 pub mod test_reporting;
 
+// Foundation integration tests using new unified types
+pub mod foundation_integration_tests;
+
 // Use prelude for all standard imports
 use prelude::*;
 

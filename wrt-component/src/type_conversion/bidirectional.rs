@@ -55,7 +55,7 @@ fn convert_format_valtype_to_valuetype(format_val_type: &FormatValType) -> Resul
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::NOT_IMPLEMENTED,
-            format!("Cannot convert {:?} to core ValueType", format_val_type),
+            ComponentValue::String("Component operation result".into()),
         )),
     }
 }
@@ -70,7 +70,7 @@ fn convert_types_valtype_to_valuetype(val_type: &TypesValType) -> Result<ValueTy
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::NOT_IMPLEMENTED,
-            format!("Cannot convert {:?} to core ValueType", val_type),
+            ComponentValue::String("Component operation result".into()),
         )),
     }
 }
@@ -528,7 +528,7 @@ pub fn runtime_to_format_extern_type(
         ExternType::Function(func_type) => {
             // Convert parameter types
             let param_names: Vec<String> =
-                (0..func_type.params.len()).map(|i| format!("param{}", i)).collect();
+                (0..func_type.params.len()).map(|i| ComponentValue::String("Component operation result".into())).collect();
 
             // Create param_types manually to handle errors gracefully
             let mut param_types = Vec::new();
@@ -633,7 +633,7 @@ pub fn format_to_common_val_type(val_type: &FormatValType) -> Result<ValueType> 
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::NOT_IMPLEMENTED,
-            NotImplementedError(format!("Cannot convert {:?} to core ValueType", val_type)),
+            NotImplementedError(ComponentValue::String("Component operation result".into())),
         )),
     }
 }
@@ -680,7 +680,7 @@ pub fn extern_type_to_func_type(extern_type: &ExternType) -> Result<TypesFuncTyp
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::INVALID_TYPE,
-            InvalidArgumentError(format!("ExternType is not a function: {:?}", extern_type)),
+            InvalidArgumentError(ComponentValue::String("Component operation result".into())),
         )),
     }
 }
@@ -936,7 +936,7 @@ pub fn complete_types_to_format_extern_type(
         wrt_foundation::ExternType::Function(func_type) => {
             // Convert parameter types
             let param_names: Vec<String> =
-                (0..func_type.params.len()).map(|i| format!("param{}", i)).collect();
+                (0..func_type.params.len()).map(|i| ComponentValue::String("Component operation result".into())).collect();
 
             // Create param_types manually to handle errors gracefully
             let mut param_types = Vec::new();
@@ -1111,7 +1111,7 @@ pub fn complete_format_to_types_extern_type(
             // Type references typically map to resources for now
             // In the future, this could be expanded to include more complex type mappings
             Ok(wrt_foundation::ExternType::Resource(wrt_foundation::ResourceType {
-                name: format!("resource_{}", type_idx),
+                name: ComponentValue::String("Component operation result".into()),
                 rep_type: wrt_foundation::ValueType::I32, // Default representation
             }))
         }

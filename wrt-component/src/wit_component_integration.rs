@@ -399,7 +399,7 @@ impl WitComponentContext {
                 if let Some(mapping) = self.type_mappings.get(type_name) {
                     Ok(mapping.component_type.clone())
                 } else {
-                    Err(Error::parse_error(&format!("Unknown type: {}", type_name)))
+                    Err(Error::parse_error(&ComponentValue::String("Component operation result".into())))
                 }
             }
             TypeExpr::List(inner) => {

@@ -52,7 +52,7 @@ impl<'a> ResourceArena<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
 
@@ -62,14 +62,14 @@ impl<'a> ResourceArena<'a> {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Maximum number of resources in arena ({}) reached", MAX_ARENA_RESOURCES),
+                ComponentValue::String("Component operation result".into()) reached", MAX_ARENA_RESOURCES),
             ));
         }
         self.resources.push(handle).map_err(|_| {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Failed to add resource to arena"),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -87,7 +87,7 @@ impl<'a> ResourceArena<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
 
@@ -108,7 +108,7 @@ impl<'a> ResourceArena<'a> {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Maximum number of resources in arena ({}) reached", MAX_ARENA_RESOURCES),
+                ComponentValue::String("Component operation result".into()) reached", MAX_ARENA_RESOURCES),
             ));
         }
         self.resources.push(handle).map_err(|_| {
@@ -117,7 +117,7 @@ impl<'a> ResourceArena<'a> {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Failed to add resource to arena"),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -130,7 +130,7 @@ impl<'a> ResourceArena<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
 
@@ -150,7 +150,7 @@ impl<'a> ResourceArena<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
 
@@ -180,7 +180,7 @@ impl<'a> ResourceArena<'a> {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Resource handle {} not found in arena", handle),
+                ComponentValue::String("Component operation result".into()),
             ));
         }
 
@@ -189,7 +189,7 @@ impl<'a> ResourceArena<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
 
@@ -206,7 +206,7 @@ impl<'a> ResourceArena<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
 

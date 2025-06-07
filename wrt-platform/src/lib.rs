@@ -73,6 +73,7 @@ extern crate std;
 // Note: Panic handler should be defined by the final binary, not library crates
 // Removed panic handler to avoid conflicts - applications must provide their own
 // Module declarations
+pub mod comprehensive_limits;
 pub mod memory;
 pub mod memory_optimizations;
 pub mod performance_validation;
@@ -124,6 +125,14 @@ pub mod ipc;
 
 #[cfg(feature = "std")]
 pub mod high_availability;
+
+// Panic handler disabled to avoid conflicts with other crates
+// Applications must provide their own panic handler when using no_std
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }
 
 // Platform-specific modules
 // macOS modules - using direct syscalls (no libc)
@@ -193,6 +202,12 @@ pub use advanced_sync::{LockFreeMpscQueue, WaitFreeSpscQueue};
 pub use formal_verification::{
     annotations, concurrency_verification, integration_verification, memory_verification,
     realtime_verification, security_verification,
+};
+// Export comprehensive limits
+pub use comprehensive_limits::{
+    ComprehensivePlatformLimits, ComprehensiveLimitProvider, PlatformLimitDiscoverer,
+    LinuxLimitProvider, QnxLimitProvider, MacOsLimitProvider, EmbeddedLimitProvider,
+    PlatformId, AsilLevel,
 };
 // Export specific CFI/BTI types for easy access
 pub use hardware_optimizations::arm::{BranchTargetIdentification, BtiExceptionLevel, BtiMode};

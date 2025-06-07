@@ -4,12 +4,14 @@
 // format.
 
 // Core modules
-#[cfg(all(not(feature = "std")))]
-use alloc::{format, string::String, vec, vec::Vec};
 use core::str;
+
 // Conditional imports for different environments
 #[cfg(feature = "std")]
-use std::vec::Vec;
+use std::{format, string::String, vec::Vec};
+
+#[cfg(not(feature = "std"))]
+use wrt_foundation::bounded::{BoundedString, BoundedVec};
 
 #[cfg(feature = "std")]
 use wrt_error::{codes, Error, ErrorCategory, Result};

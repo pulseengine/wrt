@@ -44,6 +44,7 @@ extern crate std;
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
+#[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
 // Binary std/no_std choice
@@ -56,6 +57,9 @@ pub mod function;
 pub mod host;
 pub mod prelude;
 
+// Agent C deliverables - Enhanced Host Integration
+pub mod bounded_host_integration;
+
 // Include verification module conditionally, but exclude during coverage builds
 #[cfg(all(not(coverage), any(doc, kani)))]
 pub mod verify;
@@ -67,6 +71,13 @@ pub use function::{CloneableFn, HostFunctionHandler};
 pub use host::BuiltinHost;
 // Re-export prelude for convenience
 pub use prelude::*;
+
+// Re-export Agent C deliverables
+pub use bounded_host_integration::{
+    BoundedCallContext, BoundedCallResult, BoundedHostFunction, BoundedHostIntegrationManager,
+    ComponentInstanceId, HostFunctionId, HostIntegrationLimits, HostIntegrationStatistics,
+    SimpleBoundedHostFunction, create_echo_function, create_memory_info_function, create_safety_check_function,
+};
 
 // Panic handler disabled to avoid conflicts with other crates
 // The main wrt crate should provide the panic handler
