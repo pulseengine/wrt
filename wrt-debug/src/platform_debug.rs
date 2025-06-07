@@ -8,20 +8,41 @@ use wrt_error::Error;
 
 // Stub imports for Agent B's platform limits - will be replaced during integration
 mod platform_stubs {
+    /// Comprehensive platform limits configuration
+    ///
+    /// This structure defines platform-specific resource limits that constrain
+    /// system operation and debug capabilities. These limits are used to ensure
+    /// that debug operations do not exceed platform resource constraints.
     pub struct ComprehensivePlatformLimits {
+        /// Maximum total memory available on the platform (bytes)
         pub max_total_memory: usize,
+        /// Maximum memory overhead allowed for debug features (bytes)
         pub max_debug_overhead: usize,
+        /// Platform identifier for platform-specific optimizations
         pub platform_id: PlatformId,
     }
     
+    /// Platform identifier enumeration
+    ///
+    /// Identifies the target platform to enable platform-specific optimizations
+    /// and resource management strategies.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum PlatformId {
+        /// Linux-based platforms with standard resources
         Linux,
+        /// QNX real-time operating system
         QNX,
+        /// macOS platforms with Darwin kernel
         MacOS,
+        /// VxWorks real-time operating system
         VxWorks,
+        /// Zephyr RTOS for embedded systems
         Zephyr,
+        /// Tock secure embedded operating system
         Tock,
+        /// Generic embedded platforms with limited resources
         Embedded,
+        /// Unknown or unspecified platform
         Unknown,
     }
     

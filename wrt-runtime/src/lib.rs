@@ -29,6 +29,16 @@
 #[cfg(feature = "std")]
 extern crate std;
 
+// Panic handler for no_std builds when building standalone
+#[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    // For safety-critical systems, enter infinite loop to maintain known safe state
+    loop {
+        core::hint::spin_loop();
+    }
+}
+
 // Binary std/no_std choice
 #[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;

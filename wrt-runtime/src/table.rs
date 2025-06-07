@@ -125,7 +125,7 @@ impl Default for Table {
 
 impl wrt_foundation::traits::Checksummable for Table {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&(self.ty.element_type as u8).to_le_bytes());
+        checksum.update_slice(&self.ty.element_type.to_binary().to_le_bytes());
         checksum.update_slice(&self.ty.limits.min.to_le_bytes());
         if let Some(max) = self.ty.limits.max {
             checksum.update_slice(&max.to_le_bytes());
@@ -143,7 +143,7 @@ impl wrt_foundation::traits::ToBytes for Table {
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
-        writer.write_all(&(self.ty.element_type as u8).to_le_bytes())?;
+        writer.write_all(&self.ty.element_type.to_binary().to_le_bytes())?;
         writer.write_all(&self.ty.limits.min.to_le_bytes())
     }
 }
@@ -514,7 +514,6 @@ impl Table {
 
         // Create a new stack with the filled elements
         let mut result_vec = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
-        result_vec.set_verification_level(self.verification_level);
 
         // Copy elements with fill applied
         for i in 0..self.elements.len() {
@@ -540,8 +539,8 @@ impl Table {
     /// * `level` - The verification level to set
     pub fn set_verification_level(&mut self, level: VerificationLevel) {
         self.verification_level = level;
-        // Pass the verification level to the SafeStack
-        self.elements.set_verification_level(level);
+        // Note: BoundedVec doesn't have set_verification_level method
+        // The verification level is tracked at the Table level
     }
 
     /// Gets the current verification level for this table
@@ -594,14 +593,15 @@ impl Table {
     /// # Returns
     ///
     /// A string containing the statistics
-    pub fn safety_stats(&self) -> String {
-        &format!(
+    pub fn safety_stats(&self) -> BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<1024>> {
+        let stats_text = format!(
             "Table Safety Stats:\n- Size: {} elements\n- Element type: {:?}\n- Verification \
              level: {:?}",
             self.elements.len(),
             self.ty.element_type,
             self.verification_level
-        )
+        );
+        BoundedString::from_str(&stats_text).unwrap_or_default()
     }
 }
 
@@ -695,31 +695,31 @@ impl ArcTableExt for Arc<Table> {
 /// Table manager to handle multiple tables for TableOperations trait
 #[derive(Debug)]
 pub struct TableManager {
-    tables: Vec<Table>,
+    tables: wrt_foundation::bounded::BoundedVec<Table, 1024, wrt_foundation::safe_memory::NoStdProvider<1024>>,
 }
 
 impl TableManager {
     /// Create a new table manager
     pub fn new() -> Result<Self> {
         Ok(Self {
-            tables: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
+            tables: wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::default())?,
         })
     }
     
     /// Add a table to the manager
     pub fn add_table(&mut self, table: Table) -> u32 {
         let index = self.tables.len() as u32;
-        self.tables.push(table);
+        self.tables.push(table).expect("Failed to add table to manager");
         index
     }
     
     /// Get a table by index
     pub fn get_table(&self, index: u32) -> Result<&Table> {
         self.tables.get(index as usize)
-            .map_err(|_| Error::new(
+            .ok_or_else(|| Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_FUNCTION_INDEX,
-                "Runtime operation error",
+                "Table index out of bounds",
             ))
     }
     
@@ -729,7 +729,7 @@ impl TableManager {
             .ok_or_else(|| Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_FUNCTION_INDEX,
-                "Runtime operation error",
+                "Table index out of bounds",
             ))
     }
     
@@ -741,7 +741,7 @@ impl TableManager {
 
 impl Default for TableManager {
     fn default() -> Self {
-        Self::new()
+        Self::new().expect("Failed to create default TableManager")
     }
 }
 
@@ -901,7 +901,7 @@ impl TableOperations for TableManager {
             // First, read the source elements
             let src_elements = {
                 let src_table = self.get_table(src_table)?;
-                let mut elements = Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?;
+                let mut elements = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::default())?;
                 for i in 0..len {
                     let elem = src_table.get(src_index + i)?;
                     elements.push(elem).map_err(|_| Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Failed to push table element"))?;
