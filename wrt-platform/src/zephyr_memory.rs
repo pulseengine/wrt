@@ -82,7 +82,7 @@ extern "C" {
         timeout: i32,
     ) -> *mut u8;
 
-    /// Free memory allocated from a heap
+    /// Binary std/no_std choice
     fn k_heap_free(heap: *mut ZephyrHeap, mem: *mut u8);
 
     /// Initialize a memory domain
@@ -111,7 +111,7 @@ extern "C" {
     fn k_heap_size_get(heap: *mut ZephyrHeap) -> usize;
 }
 
-/// Configuration for Zephyr memory allocator
+/// Binary std/no_std choice
 #[derive(Debug, Clone)]
 pub struct ZephyrAllocatorConfig {
     /// Whether to use memory domains for isolation
@@ -198,8 +198,8 @@ impl ZephyrAllocator {
             return Ok(());
         }
 
-        // In a real Zephyr implementation, memory domains would be statically allocated
-        // using K_MEM_DOMAIN_DEFINE() macro or stack-allocated. For demonstration,
+        // Binary std/no_std choice
+        // Binary std/no_std choice
         // we'll use a placeholder approach that would work in the actual embedded
         // context.
 
@@ -251,14 +251,14 @@ impl ZephyrAllocator {
         Ok(())
     }
 
-    /// Set up guard regions around allocated memory
+    /// Binary std/no_std choice
     unsafe fn setup_guard_regions(&self, _base_ptr: *mut u8, _total_size: usize) -> Result<()> {
         if !self.config.use_guard_regions {
             return Ok(());
         }
 
         // In a real implementation, this would set up MPU/MMU regions
-        // with no-access permissions around the allocated memory
+        // Binary std/no_std choice
         // For now, this is a placeholder
         Ok(())
     }
@@ -283,7 +283,7 @@ impl ZephyrAllocatorBuilder {
         Self::default()
     }
 
-    /// Sets the maximum number of WebAssembly pages that can be allocated.
+    /// Binary std/no_std choice
     pub fn with_maximum_pages(mut self, pages: u32) -> Self {
         self.maximum_pages = Some(pages);
         self
@@ -361,7 +361,7 @@ impl PageAllocator for ZephyrAllocator {
         }
 
         // Allocate aligned memory from Zephyr heap
-        // SAFETY: We're calling Zephyr's k_heap_aligned_alloc with valid parameters
+        // Binary std/no_std choice
         let ptr = unsafe {
             k_heap_aligned_alloc(
                 self.heap,
@@ -391,7 +391,7 @@ impl PageAllocator for ZephyrAllocator {
         // Set up memory domain isolation if enabled
         unsafe {
             if let Err(e) = self.setup_memory_domain(ptr, reserve_bytes) {
-                // Clean up allocation on failure
+                // Binary std/no_std choice
                 k_heap_free(self.heap, ptr);
                 return Err(e);
             }
@@ -400,7 +400,7 @@ impl PageAllocator for ZephyrAllocator {
         // Set up guard regions if enabled
         unsafe {
             if let Err(e) = self.setup_guard_regions(ptr, reserve_bytes) {
-                // Clean up allocation and domain on failure
+                // Binary std/no_std choice
                 let _ = self.cleanup_memory_domain();
                 k_heap_free(self.heap, ptr);
                 return Err(e);
@@ -483,13 +483,13 @@ impl PageAllocator for ZephyrAllocator {
 
         // Clean up memory domain first
         if let Err(e) = self.cleanup_memory_domain() {
-            // Log error but continue with deallocation
+            // Binary std/no_std choice
             self.base_ptr = Some(base_ptr);
             return Err(e);
         }
 
         // Free the memory using Zephyr's heap API
-        // SAFETY: ptr was obtained from k_heap_aligned_alloc and is valid
+        // Binary std/no_std choice
         k_heap_free(self.heap, ptr.as_ptr());
 
         // Reset internal state
@@ -501,7 +501,7 @@ impl PageAllocator for ZephyrAllocator {
 
 impl Drop for ZephyrAllocator {
     fn drop(&mut self) {
-        // Clean up any remaining allocations
+        // Binary std/no_std choice
         if let Some(base_ptr) = self.base_ptr.take() {
             unsafe {
                 let _ = self.cleanup_memory_domain();

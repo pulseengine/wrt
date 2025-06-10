@@ -5,8 +5,8 @@
 
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, vec::Vec, boxed::Box};
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{collections::BTreeMap, vec::Vec, boxed::Box};
+#[cfg(all(not(feature = "std")))]
+use std::{collections::BTreeMap, vec::Vec, boxed::Box};
 
 use wrt_foundation::{
     BoundedVec, BoundedString, NoStdProvider,

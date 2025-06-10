@@ -20,12 +20,15 @@ log = { version = "0.4", optional = true }
 
 [features]
 default = []
+# Binary choice: std OR no_std (no alloc middle ground)
 std = ["wrt-host/std", "wrt-foundation/std", "log"]
-alloc = ["wrt-host/alloc", "wrt-foundation/alloc"]
 # For compatibility with verification script
 # This is a no-op since the crate is no_std by default
 no_std = []
 kani = ["wrt-host/kani"]
+
+# Disable panic handler for library builds to avoid conflicts
+disable-panic-handler = []
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }

@@ -28,7 +28,7 @@ pub fn run_tests() -> TestResult {
 }
 
 fn test_memory_allocation() -> RegistryTestResult {
-    // Test basic memory allocation across platforms
+    // Binary std/no_std choice
     Ok(())
 }
 

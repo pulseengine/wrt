@@ -10,7 +10,7 @@
 //! The extended constant expressions proposal adds support for more
 //! instructions in constant contexts.
 
-use crate::prelude::*;
+use crate::prelude::{BoundedCapacity, BoundedVec, Debug, PartialEq};
 use wrt_error::{Error, Result};
 use wrt_foundation::{
     types::{RefType, ValueType},
@@ -83,7 +83,7 @@ pub struct ConstExprSequence {
 
 impl ConstExprSequence {
     /// Create a new constant expression sequence
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self {
             instructions: Default::default(),
             len: 0,
@@ -101,15 +101,15 @@ impl ConstExprSequence {
     }
     
     /// Helper to pop from stack in both std and no_std environments
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn stack_pop(stack: &mut Vec<Value>) -> Result<Value> {
         stack.pop().ok_or_else(|| {
             Error::runtime_error("Constant expression stack underflow")
         })
     }
     
-    /// Helper to pop from stack in both std and no_std environments
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    /// Helper to pop from stack in both std and `no_std` environments
+    #[cfg(not(feature = "std"))]
     fn stack_pop(stack: &mut BoundedVec<Value, 8, wrt_foundation::NoStdProvider<128>>) -> Result<Value> {
         match stack.pop() {
             Ok(Some(val)) => Ok(val),
@@ -120,10 +120,10 @@ impl ConstExprSequence {
     
     /// Evaluate the constant expression sequence
     pub fn evaluate(&self, context: &dyn ConstExprContext) -> Result<Value> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let mut stack = Vec::new();
         
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(feature = "std"))]
         let mut stack = BoundedVec::<Value, 8, wrt_foundation::NoStdProvider<128>>::new(
             wrt_foundation::NoStdProvider::<128>::default()
         ).unwrap();
@@ -134,39 +134,39 @@ impl ConstExprSequence {
             })?;
             match instr {
                 ConstExpr::I32Const(v) => {
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     stack.push(Value::I32(*v));
                     
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::I32(*v)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
                 }
                 ConstExpr::I64Const(v) => {
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     stack.push(Value::I64(*v));
                     
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::I64(*v)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
                 }
                 ConstExpr::F32Const(v) => {
                     let float_bits = wrt_foundation::values::FloatBits32::from_float(*v);
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     stack.push(Value::F32(float_bits));
                     
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::F32(float_bits)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
                 }
                 ConstExpr::F64Const(v) => {
                     let float_bits = wrt_foundation::values::FloatBits64::from_float(*v);
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     stack.push(Value::F64(float_bits));
                     
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::F64(float_bits)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -177,10 +177,10 @@ impl ConstExprSequence {
                         RefType::Externref => Value::ExternRef(None),
                     };
                     
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     stack.push(value);
                     
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(value).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -192,10 +192,10 @@ impl ConstExprSequence {
                     
                     let func_ref = wrt_foundation::values::FuncRef { index: *idx };
                     
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     stack.push(Value::FuncRef(Some(func_ref)));
                     
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::FuncRef(Some(func_ref))).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -203,10 +203,10 @@ impl ConstExprSequence {
                 ConstExpr::GlobalGet(idx) => {
                     let value = context.get_global(*idx)?;
                     
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     stack.push(value);
                     
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(value).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -222,10 +222,10 @@ impl ConstExprSequence {
                     
                     let result = wrt_math::i32_add(a_val, b_val)?;
                     
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     stack.push(Value::I32(result));
                     
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::I32(result)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -241,10 +241,10 @@ impl ConstExprSequence {
                     
                     let result = wrt_math::i32_sub(a_val, b_val)?;
                     
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     stack.push(Value::I32(result));
                     
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::I32(result)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -260,10 +260,10 @@ impl ConstExprSequence {
                     
                     let result = wrt_math::i32_mul(a_val, b_val)?;
                     
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     stack.push(Value::I32(result));
                     
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::I32(result)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -279,10 +279,10 @@ impl ConstExprSequence {
                     
                     let result = wrt_math::i64_add(a_val, b_val)?;
                     
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     stack.push(Value::I64(result));
                     
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::I64(result)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -298,10 +298,10 @@ impl ConstExprSequence {
                     
                     let result = wrt_math::i64_sub(a_val, b_val)?;
                     
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     stack.push(Value::I64(result));
                     
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::I64(result)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -317,10 +317,10 @@ impl ConstExprSequence {
                     
                     let result = wrt_math::i64_mul(a_val, b_val)?;
                     
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     stack.push(Value::I64(result));
                     
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
+                    #[cfg(not(feature = "std"))]
                     stack.push(Value::I64(result)).map_err(|_| {
                         Error::runtime_error("Constant expression stack overflow")
                     })?;
@@ -402,11 +402,10 @@ impl Default for ConstExprSequence {
     }
 }
 
-#[cfg(all(test, any(feature = "std", feature = "alloc")))]
+#[cfg(all(test, any(feature = "std", )))]
 mod tests {
     // Import Vec and vec! based on feature flags
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::{vec, vec::Vec};
+        use std::{vec, vec::Vec};
     #[cfg(feature = "std")]
     use std::{vec, vec::Vec};
     

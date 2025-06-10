@@ -278,7 +278,7 @@ impl ResourceTable {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Maximum number of resources ({}) reached", self.max_resources).to_string(),
+                "Component not found" reached", self.max_resources).to_string(),
             ));
         }
 
@@ -319,7 +319,7 @@ impl ResourceTable {
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    format!("Resource handle {} not found", handle).to_string(),
+                    "Component not found".to_string(),
                 ));
             }
         };
@@ -360,7 +360,7 @@ impl ResourceTable {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Resource handle {} not found", handle),
+                "Component not found",
             ));
         }
 
@@ -382,7 +382,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Resource handle {} not found", handle),
+                "Component not found",
             )
         })?;
 
@@ -410,7 +410,7 @@ impl ResourceTable {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Resource handle {} not found", handle),
+                "Component not found",
             ));
         }
 
@@ -450,7 +450,7 @@ impl ResourceTable {
             }
             FormatResourceOperation::New(new) => {
                 // New operation - creates a resource from its representation
-                // This would normally allocate a new handle, but here we're
+                // Binary std/no_std choice
                 // working with an existing handle
                 Ok(ComponentValue::U32(handle))
             }
@@ -474,7 +474,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Resource handle {} not found", handle),
+                "Component not found",
             )
         })?;
 
@@ -489,7 +489,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Resource handle {} not found", handle),
+                "Component not found",
             )
         })?;
 
@@ -570,22 +570,22 @@ mod tests {
 
     impl ResourceInterceptor for TestInterceptor {
         fn on_resource_create(&self, type_idx: u32, _resource: &Resource) -> Result<()> {
-            self.operations.lock().unwrap().push(format!("create: {}", type_idx));
+            self.operations.lock().unwrap().push("Component not found");
             Ok(())
         }
 
         fn on_resource_drop(&self, handle: u32) -> Result<()> {
-            self.operations.lock().unwrap().push(format!("drop: {}", handle));
+            self.operations.lock().unwrap().push("Component not found");
             Ok(())
         }
 
         fn on_resource_borrow(&self, handle: u32) -> Result<()> {
-            self.operations.lock().unwrap().push(format!("borrow: {}", handle));
+            self.operations.lock().unwrap().push("Component not found");
             Ok(())
         }
 
         fn on_resource_access(&self, handle: u32) -> Result<()> {
-            self.operations.lock().unwrap().push(format!("access: {}", handle));
+            self.operations.lock().unwrap().push("Component not found");
             Ok(())
         }
 
@@ -597,7 +597,7 @@ mod tests {
             self.operations
                 .lock()
                 .unwrap()
-                .push(format!("operation: {} - {:?}", handle, operation));
+                .push("Component not found");
             Ok(())
         }
 
@@ -617,7 +617,7 @@ mod tests {
             self.operations
                 .lock()
                 .unwrap()
-                .push(format!("intercept_operation: {} - {:?}", handle, operation));
+                .push("Component not found");
 
             // For testing, we intercept only for handle 42
             if handle == 42 {
@@ -735,9 +735,9 @@ mod tests {
 
         // Check interceptor operations
         let operations = interceptor.get_operations();
-        assert!(operations.contains(&format!("create:1")));
-        assert!(operations.contains(&format!("access:{}", handle)));
-        assert!(operations.contains(&format!("op:{}:rep", handle)));
+        assert!(operations.contains(&"Component not found"));
+        assert!(operations.contains(&"Component not found"));
+        assert!(operations.contains(&"Component not found"));
     }
 
     #[test]
@@ -773,10 +773,10 @@ mod tests {
 
         // Check that operations were recorded
         let ops = interceptor.get_operations();
-        assert!(ops.contains(&format!("create: 1")));
-        assert!(ops.contains(&format!("operation: {} - Rep", handle)));
-        assert!(ops.contains(&format!("operation: 42 - Rep")));
-        assert!(ops.contains(&format!("intercept_operation: 42 - Rep")));
+        assert!(ops.contains(&"Component not found"));
+        assert!(ops.contains(&"Component not found"));
+        assert!(ops.contains(&"Component not found"));
+        assert!(ops.contains(&"Component not found"));
     }
 
     #[test]

@@ -1,5 +1,5 @@
 // WRT - wrt-foundation
-// Module: Builder pattern for no_std/no_alloc types
+// Binary std/no_std choice
 //
 // Copyright (c) 2025 Ralf Anton Beier
 // Licensed under the MIT license.
@@ -14,10 +14,10 @@
 #![cfg_attr(not(feature = "std"), allow(unused_imports))]
 
 // Standard imports
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(all(not(feature = "std")))]
 extern crate alloc;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(all(not(feature = "std")))]
 use alloc::vec::Vec;
 #[cfg(not(feature = "std"))]
 use core::fmt;
@@ -31,7 +31,7 @@ use wrt_error::Result;
 
 // Import error codes
 use crate::codes;
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 use crate::prelude::{String, ToString};
 // Crate-level imports
 use crate::{
@@ -48,8 +48,8 @@ use crate::{
 /// Generic builder for bounded collections.
 ///
 /// This builder simplifies the creation and configuration of bounded
-/// collections like BoundedVec, BoundedStack, etc. with proper resource
-/// management for no_std/no_alloc environments.
+/// collections like `BoundedVec`, `BoundedStack`, etc. with proper resource
+/// Binary std/no_std choice
 pub struct BoundedBuilder<T, const N: usize, P: MemoryProvider + Default + Clone> {
     provider: P,
     verification_level: VerificationLevel,
@@ -98,7 +98,7 @@ where
         self
     }
 
-    /// Builds a BoundedVec with the configured settings.
+    /// Builds a `BoundedVec` with the configured settings.
     pub fn build_vec(self) -> WrtResult<BoundedVec<T, N, P>>
     where
         T: Clone + PartialEq + Eq,
@@ -115,7 +115,7 @@ where
     }
 }
 
-/// Builder for BoundedString and WasmName types.
+/// Builder for `BoundedString` and `WasmName` types.
 pub struct StringBuilder<const N: usize, P: MemoryProvider + Default + Clone> {
     provider: P,
     initial_content: Option<&'static str>,
@@ -152,7 +152,7 @@ impl<const N: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> Strin
         self
     }
 
-    /// Builds a BoundedString with the configured settings.
+    /// Builds a `BoundedString` with the configured settings.
     pub fn build_string(self) -> WrtResult<BoundedString<N, P>> {
         match (self.initial_content, self.truncate_if_needed) {
             (Some(content), true) => {
@@ -266,7 +266,7 @@ pub struct ResourceTypeBuilder<P: MemoryProvider + Default + Clone + Eq + fmt::D
     provider: P,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 /// Enum to represent the possible variants of ResourceType
 enum ResourceTypeVariant<P: MemoryProvider + Default + Clone + Eq> {
     /// Record type with field names
@@ -275,7 +275,7 @@ enum ResourceTypeVariant<P: MemoryProvider + Default + Clone + Eq> {
     Aggregate(Vec<u32>),
 }
 
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 /// Enum to represent the possible variants of ResourceType
 enum ResourceTypeVariant<P: MemoryProvider + Default + Clone + Eq> {
     /// Record type with field names
@@ -302,7 +302,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
         self
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     /// Configures this as a Record resource type with the given field names.
     pub fn as_record<S: AsRef<str>>(mut self, field_names: Vec<S>) -> Result<Self> {
         let fields = field_names
@@ -314,7 +314,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
         Ok(self)
     }
 
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     /// Configures this as a Record resource type with the given field name.
     pub fn as_record<S: AsRef<str>>(mut self, field_name: S) -> Result<Self> {
         let field = BoundedString::from_str(field_name.as_ref(), self.provider.clone())?;
@@ -322,7 +322,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
         Ok(self)
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     /// Configures this as an Aggregate resource type with the given resource
     /// IDs.
     pub fn as_aggregate(mut self, resource_ids: Vec<u32>) -> Self {
@@ -330,7 +330,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
         self
     }
 
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     /// Configures this as an Aggregate resource type with the given resource
     /// ID.
     pub fn as_aggregate(mut self, resource_id: u32) -> Self {
@@ -338,7 +338,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
         self
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     /// Builds a ResourceType with the configured settings.
     pub fn build(self) -> Result<ResourceType<P>> {
         let variant = self.variant.ok_or_else(|| {
@@ -368,7 +368,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
         }
     }
 
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     /// Builds a ResourceType with the configured settings.
     pub fn build(self) -> Result<ResourceType<P>> {
         let variant = self.variant.ok_or_else(|| {
@@ -643,7 +643,7 @@ impl NoStdProviderBuilder1 {
 /// Convenience type aliases for common NoStdProvider sizes
 pub type SmallNoStdProviderBuilder = NoStdProviderBuilder<512>;
 pub type MediumNoStdProviderBuilder = NoStdProviderBuilder<4096>;
-pub type LargeNoStdProviderBuilder = NoStdProviderBuilder<16384>;
+pub type LargeNoStdProviderBuilder = NoStdProviderBuilder<16_384>;
 
 #[cfg(test)]
 mod tests {
@@ -652,10 +652,10 @@ mod tests {
     #[test]
     fn test_bounded_builder() {
         let builder = BoundedBuilder::<u32, 10, NoStdProvider<1024>>::new()
-            .with_verification_level(VerificationLevel::Critical);
+            .with_verification_level(VerificationLevel::Full);
 
         let stack = builder.build_stack().unwrap();
-        assert_eq!(stack.verification_level(), VerificationLevel::Critical);
+        assert_eq!(stack.verification_level(), VerificationLevel::Full);
         assert_eq!(stack.capacity(), 10);
     }
 
@@ -669,7 +669,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     fn test_resource_type_builder() {
         // Test Record type
         let builder = ResourceTypeBuilder::<NoStdProvider<1024>>::new();
@@ -700,7 +700,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     fn test_resource_item_builder() {
         // First create a resource type
         let resource_type = ResourceTypeBuilder::<NoStdProvider<1024>>::new()
@@ -743,11 +743,11 @@ mod tests {
 
         // Test with medium provider using type alias
         let builder =
-            MediumNoStdProviderBuilder::new().with_verification_level(VerificationLevel::Critical);
+            MediumNoStdProviderBuilder::new().with_verification_level(VerificationLevel::Full);
 
         let provider = builder.build().unwrap();
         assert_eq!(provider.capacity(), 4096);
-        assert_eq!(provider.verification_level(), VerificationLevel::Critical);
+        assert_eq!(provider.verification_level(), VerificationLevel::Full);
 
         // Test that init_size is capped at capacity
         let builder = SmallNoStdProviderBuilder::new().with_init_size(1000); // Larger than 512 capacity

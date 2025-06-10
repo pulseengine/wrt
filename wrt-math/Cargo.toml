@@ -13,20 +13,23 @@ categories = ["wasm", "no-std"]
 
 [features]
 default = []
+# Binary choice: std OR no_std (no alloc middle ground)
 # Standard library support - enables use of std::f32/f64 math functions
-std = ["alloc", "wrt-platform/std"]
+std = ["wrt-platform/std"]
 # Allocator support (implicitly enabled by std)
-alloc = ["wrt-platform/alloc"]
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
 # Platform feature enables SIMD operations
-platform = ["wrt-platform", "alloc"]
+platform = ["wrt-platform", "std"]
+
+# Disable panic handler for library builds to avoid conflicts
+disable-panic-handler = []
 
 [dependencies]
 wrt-error = { workspace = true, default-features = false }
-wrt-platform = { workspace = true, default-features = false, optional = true }
+wrt-platform = { workspace = true, default-features = false, optional = true, features = ["disable-panic-handler"] }
 
-# Note: alloc support is provided through cfg(feature = "alloc") in source code
+# Note: alloc support is provided through cfg(feature = "std") in source code
 
 [dev-dependencies]
 # Add development dependencies here

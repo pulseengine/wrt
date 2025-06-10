@@ -15,6 +15,18 @@ use wrt_foundation::{
     safe_memory::SafeMemory,
 };
 
+// Enable vec! and format! macros for no_std
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{vec, format};
+
+#[cfg(feature = "std")]
+use std::{string::String, vec::Vec};
+
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedString as String, BoundedVec as Vec, safe_memory::NoStdProvider};
+
 const MAX_HANDLE_REPRESENTATIONS: usize = 1024;
 const MAX_HANDLE_OPERATIONS: usize = 512;
 const MAX_HANDLE_METADATA: usize = 256;
@@ -101,15 +113,15 @@ pub struct HandleMetadata {
     pub last_accessed: u64,
     pub access_count: u32,
     pub creator_component: ComponentInstanceId,
-    pub tags: BoundedVec<String, 16>,
+    pub tags: BoundedVec<String, 16, NoStdProvider<65536>>,
     pub custom_data: BoundedHashMap<String, ComponentValue, 32>,
 }
 
 #[derive(Debug, Clone)]
 pub enum HandleOperation {
-    Read { fields: BoundedVec<String, 16> },
+    Read { fields: BoundedVec<String, 16, NoStdProvider<65536>> },
     Write { fields: BoundedVec<(String, ComponentValue), 16> },
-    Call { method: String, args: BoundedVec<ComponentValue, 16> },
+    Call { method: String, args: BoundedVec<ComponentValue, 16, NoStdProvider<65536>> },
     Drop,
     Share { target_component: ComponentInstanceId },
     Borrow { mutable: bool },
@@ -120,7 +132,7 @@ pub enum HandleOperation {
 pub struct HandleAccessPolicy {
     pub component_id: ComponentInstanceId,
     pub resource_type: TypeId,
-    pub allowed_operations: BoundedVec<HandleOperation, 32>,
+    pub allowed_operations: BoundedVec<HandleOperation, 32, NoStdProvider<65536>>,
     pub required_capability: Option<Capability>,
     pub expiry: Option<u64>,
 }
@@ -129,7 +141,7 @@ pub struct HandleRepresentationManager {
     representations:
         BoundedHashMap<ResourceHandle, HandleRepresentation, MAX_HANDLE_REPRESENTATIONS>,
     metadata: BoundedHashMap<ResourceHandle, HandleMetadata, MAX_HANDLE_METADATA>,
-    access_policies: BoundedVec<HandleAccessPolicy, MAX_ACCESS_POLICIES>,
+    access_policies: BoundedVec<HandleAccessPolicy, MAX_ACCESS_POLICIES, NoStdProvider<65536>>,
     type_registry: GenerativeTypeRegistry,
     bounds_checker: TypeBoundsChecker,
     virt_manager: Option<VirtualizationManager>,
@@ -142,7 +154,7 @@ impl HandleRepresentationManager {
         Self {
             representations: BoundedHashMap::new(),
             metadata: BoundedHashMap::new(),
-            access_policies: BoundedVec::new(),
+            access_policies: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             type_registry: GenerativeTypeRegistry::new(),
             bounds_checker: TypeBoundsChecker::new(),
             virt_manager: None,
@@ -192,7 +204,7 @@ impl HandleRepresentationManager {
             last_accessed: self.get_current_time(),
             access_count: 0,
             creator_component: component_id,
-            tags: BoundedVec::new(),
+            tags: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             custom_data: BoundedHashMap::new(),
         };
 
@@ -206,7 +218,7 @@ impl HandleRepresentationManager {
         self.type_registry.map_resource_handle(handle, resource_type).map_err(|e| {
             HandleRepresentationError {
                 kind: HandleRepresentationErrorKind::ValidationFailed,
-                message: format!("Failed to map handle to type: {}", e),
+                message: "Handle operation failed".to_string(),
                 handle: Some(handle),
             }
         })?;
@@ -220,7 +232,7 @@ impl HandleRepresentationManager {
     ) -> HandleRepresentationResult<&HandleRepresentation> {
         self.representations.get(&handle).ok_or_else(|| HandleRepresentationError {
             kind: HandleRepresentationErrorKind::HandleNotFound,
-            message: format!("Handle {} not found", handle.id()),
+            message: "Component operation error".to_string(),
             handle: Some(handle),
         })
     }
@@ -313,7 +325,7 @@ impl HandleRepresentationManager {
         // Copy metadata with updated info
         if let Some(original_metadata) = self.metadata.get(&handle) {
             let mut shared_metadata = original_metadata.clone();
-            shared_metadata.tags.push(format!("shared_from:{}", source_component.id())).ok();
+            shared_metadata.tags.push("Component operation error".to_string()).ok();
 
             self.metadata.insert(new_handle, shared_metadata).map_err(|_| {
                 HandleRepresentationError {
@@ -345,7 +357,7 @@ impl HandleRepresentationManager {
         let representation =
             self.representations.get_mut(&handle).ok_or_else(|| HandleRepresentationError {
                 kind: HandleRepresentationErrorKind::HandleNotFound,
-                message: format!("Handle {} not found", handle.id()),
+                message: "Component operation error".to_string(),
                 handle: Some(handle),
             })?;
 
@@ -360,7 +372,13 @@ impl HandleRepresentationManager {
             // Unmap from type registry
             if let Err(e) = self.type_registry.unmap_resource_handle(handle) {
                 // Log error but don't fail the drop
+                #[cfg(feature = "std")]
                 eprintln!("Warning: Failed to unmap handle from type registry: {}", e);
+                #[cfg(not(feature = "std"))]
+                {
+                    // In no_std, we can't print to stderr, so we silently ignore the error
+                    let _ = e;
+                }
             }
         }
 
@@ -381,7 +399,7 @@ impl HandleRepresentationManager {
     {
         let metadata = self.metadata.get_mut(&handle).ok_or_else(|| HandleRepresentationError {
             kind: HandleRepresentationErrorKind::HandleNotFound,
-            message: format!("Metadata for handle {} not found", handle.id()),
+            message: "Component operation error".to_string(),
             handle: Some(handle),
         })?;
 
@@ -430,7 +448,7 @@ impl HandleRepresentationManager {
         {
             return Err(HandleRepresentationError {
                 kind: HandleRepresentationErrorKind::AccessDenied,
-                message: format!("Component {} does not have access to handle", component_id.id()),
+                message: "Component operation error".to_string(),
                 handle: Some(handle),
             });
         }
@@ -591,7 +609,7 @@ impl HandleRepresentationManager {
         args: &[ComponentValue],
     ) -> HandleRepresentationResult<Option<ComponentValue>> {
         // This is a placeholder - actual implementation would call the method
-        Ok(Some(ComponentValue::String(format!("Called {} on handle {}", method, handle.id()))))
+        Ok(Some(ComponentValue::String("Component operation error".to_string())))
     }
 
     fn handle_drop_operation(

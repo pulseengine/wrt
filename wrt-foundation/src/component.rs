@@ -6,7 +6,7 @@
 // ToString comes from prelude
 use wrt_error::ErrorCategory;
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 use crate::component_type_store::TypeRef;
 // --- Traits needed for BoundedVec items ---
 use crate::traits::{FromBytes, ReadStream, SerializationError, ToBytes, WriteStream};
@@ -19,26 +19,26 @@ use crate::{
     Error, MemoryProvider, WrtResult,
 };
 
-// Simple TypeRef for no-alloc environments
-#[cfg(not(feature = "alloc"))]
+// Binary std/no_std choice
+#[cfg(not(feature = "std"))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Hash)]
 pub struct TypeRef(pub u32);
 
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 impl TypeRef {
     pub const fn new(index: u32) -> Self {
         Self(index)
     }
 }
 
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 impl Checksummable for TypeRef {
     fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
         self.0.update_checksum(checksum);
     }
 }
 
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 impl ToBytes for TypeRef {
     fn to_bytes_with_provider<P: MemoryProvider>(
         &self,
@@ -49,7 +49,7 @@ impl ToBytes for TypeRef {
     }
 }
 
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 impl FromBytes for TypeRef {
     fn from_bytes_with_provider<P: MemoryProvider>(
         reader: &mut ReadStream,

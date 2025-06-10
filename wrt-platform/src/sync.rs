@@ -8,26 +8,21 @@
 
 //! Provides traits and implementations for platform-specific synchronization.
 
-use core::{fmt::Debug, time::Duration};
+use core::fmt::Debug;
+
+// Re-export Duration for platform use
+pub use core::time::Duration;
 
 use crate::prelude::Result;
 
 // Re-export atomic types for platform use
 pub use core::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 
-// For std builds, re-export standard synchronization primitives
+// Binary std/no_std choice
 #[cfg(feature = "std")]
-pub use std::sync::{Mutex, Condvar, RwLock, Arc};
+pub use std::sync::{Arc, Mutex, RwLock, MutexGuard, Condvar};
 
-// For alloc builds without std, provide alternatives
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-pub use alloc::sync::Arc;
-
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-pub use wrt_sync::{WrtMutex as Mutex, WrtRwLock as RwLock, WrtMutexGuard as MutexGuard};
-
-// For no_std builds, use wrt-sync primitives
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 pub use wrt_sync::{WrtMutex as Mutex, WrtRwLock as RwLock, WrtMutexGuard as MutexGuard};
 
 /// Provide a simple Condvar alternative for non-std builds
@@ -103,7 +98,7 @@ pub trait FutexLike: Send + Sync + Debug {
     fn wake(&self, count: u32) -> Result<()>;
 }
 
-/// Result type for timeout-based operations.
+/// `Result` type for timeout-based operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeoutResult {
     /// The operation completed before the timeout expired.

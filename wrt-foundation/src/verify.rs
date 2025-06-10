@@ -11,8 +11,8 @@
 pub mod kani_verification {
     use kani;
     
-    #[cfg(feature = "alloc")]
-    use alloc::vec::Vec;
+    #[cfg(feature = "std")]
+    use std::vec::Vec;
     
     use crate::{
         bounded::{BoundedVec, BoundedError},
@@ -21,7 +21,7 @@ pub mod kani_verification {
         types::ValueType,
     };
     
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     use crate::component_value::ComponentValue;
 
     // Mock types for verification when not available
@@ -130,7 +130,7 @@ pub mod kani_verification {
 
     // --- Memory Safety Verification ---
 
-    /// Verify that BoundedVec operations never cause memory safety violations
+    /// Verify that `BoundedVec` operations never cause memory safety violations
     #[cfg_attr(kani, kani::proof)]
     #[cfg_attr(kani, kani::unwind(10))]
     pub fn verify_bounded_collections_memory_safety() {
@@ -254,7 +254,7 @@ pub mod kani_verification {
     // --- Type Safety Verification ---
 
     /// Verify component value operations maintain type consistency
-    #[cfg(all(kani, feature = "alloc"))]
+    #[cfg(all(kani, ))]
     #[cfg_attr(kani, kani::proof)]
     #[cfg_attr(kani, kani::unwind(5))]
     pub fn verify_component_value_type_safety() {

@@ -8,6 +8,7 @@
 // or when explicitly running cargo kani. This prevents interference with
 // coverage testing.
 #[cfg(any(doc, kani))]
+/// Formal verification module for Kani proofs
 pub mod kani_verification {
     use crate::{prelude::*, *};
 

@@ -8,7 +8,7 @@
 //! instructions, including add, subtract, multiply, divide, and remainder
 //! operations for various numeric types.
 
-use crate::prelude::*;
+use crate::prelude::{Debug, Error, ErrorCategory, FloatBits32, FloatBits64, PureInstruction, Result, Value, ValueType, codes};
 use crate::validation::{Validate, ValidationContext, validate_arithmetic_op};
 use wrt_math as math;
 
@@ -708,7 +708,7 @@ impl Validate for ArithmeticOp {
     }
 }
 
-#[cfg(all(test, any(feature = "std", feature = "alloc")))]
+#[cfg(all(test, any(feature = "std", )))]
 mod tests {
     use super::*;
     

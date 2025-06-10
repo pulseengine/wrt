@@ -49,6 +49,9 @@ pub struct SimpleHashMap<
     _phantom: PhantomData<(K, V, P)>,
 }
 
+/// Type alias for backward compatibility
+pub type BoundedHashMap<K, V, const N: usize, P> = SimpleHashMap<K, V, N, P>;
+
 /// A key-value pair entry in the hash map.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Entry<K, V>
@@ -122,7 +125,7 @@ where
     K: Hash + Eq + Clone + Default + Checksummable + ToBytes + FromBytes,
     V: Clone + Default + PartialEq + Eq + Checksummable + ToBytes + FromBytes,
 {
-    /// Creates a new empty SimpleHashMap with the given memory provider.
+    /// Creates a new empty `SimpleHashMap` with the given memory provider.
     pub fn new(provider: P) -> crate::WrtResult<Self> {
         let mut entries = BoundedVec::new(provider)?;
 
@@ -160,7 +163,7 @@ where
         // This is not cryptographically secure but sufficient for HashMap functionality
         let hash: u64 = 5381; // DJB2 hash algorithm starting value
 
-        // Since we can't directly hash with core::hash::Hasher in no_std without alloc,
+        // Binary std/no_std choice
         // we'll use a simplified approach. In a real implementation, you'd want
         // to use a proper no_std hasher like `ahash` or implement Hasher for a simple
         // algorithm.

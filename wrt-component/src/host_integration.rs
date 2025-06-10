@@ -9,8 +9,8 @@ use core::{fmt, mem};
 #[cfg(feature = "std")]
 use std::{fmt, mem};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, string::String, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, string::String, vec::Vec};
 
 use wrt_foundation::{
     bounded::BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
@@ -33,16 +33,16 @@ const MAX_EVENT_HANDLERS: usize = 64;
 /// Host integration manager
 pub struct HostIntegrationManager {
     /// Registered host functions
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     host_functions: Vec<HostFunctionRegistry>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    host_functions: BoundedVec<HostFunctionRegistry, MAX_HOST_FUNCTIONS>,
+    #[cfg(not(any(feature = "std", )))]
+    host_functions: BoundedVec<HostFunctionRegistry, MAX_HOST_FUNCTIONS, NoStdProvider<65536>>,
 
     /// Event handlers
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     event_handlers: Vec<EventHandler>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    event_handlers: BoundedVec<EventHandler, MAX_EVENT_HANDLERS>,
+    #[cfg(not(any(feature = "std", )))]
+    event_handlers: BoundedVec<EventHandler, MAX_EVENT_HANDLERS, NoStdProvider<65536>>,
 
     /// Host resource manager
     host_resources: HostResourceManager,
@@ -58,16 +58,16 @@ pub struct HostIntegrationManager {
 #[derive(Debug, Clone)]
 pub struct HostFunctionRegistry {
     /// Function name
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub name: String,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub name: BoundedString<64>,
+    #[cfg(not(any(feature = "std", )))]
+    pub name: BoundedString<64, NoStdProvider<65536>>,
     /// Function signature
     pub signature: ComponentType,
     /// Function implementation
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub implementation: Box<dyn HostFunction>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub implementation: fn(&[Value]) -> WrtResult<Value>,
     /// Access permissions
     pub permissions: HostFunctionPermissions,
@@ -92,9 +92,9 @@ pub struct EventHandler {
     /// Event type
     pub event_type: EventType,
     /// Handler function
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub handler: Box<dyn Fn(&ComponentEvent) -> WrtResult<()>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub handler: fn(&ComponentEvent) -> WrtResult<()>,
     /// Handler priority (higher values execute first)
     pub priority: u32,
@@ -115,9 +115,9 @@ pub enum EventType {
     ResourceCreated,
     /// Resource destroyed
     ResourceDestroyed,
-    /// Memory allocated
+    /// Binary std/no_std choice
     MemoryAllocated,
-    /// Memory deallocated
+    /// Binary std/no_std choice
     MemoryDeallocated,
     /// Error occurred
     Error,
@@ -149,10 +149,10 @@ pub enum EventData {
     Memory { memory_id: u32, size_bytes: u64 },
     /// Error data
     Error {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         message: String,
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        message: BoundedString<256>,
+        #[cfg(not(any(feature = "std", )))]
+        message: BoundedString<256, NoStdProvider<65536>>,
         error_code: u32,
     },
 }
@@ -161,16 +161,16 @@ pub enum EventData {
 #[derive(Debug, Clone)]
 pub struct HostResourceManager {
     /// Host-owned resources
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     resources: Vec<HostResource>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    resources: BoundedVec<HostResource, 256>,
+    #[cfg(not(any(feature = "std", )))]
+    resources: BoundedVec<HostResource, 256, NoStdProvider<65536>>,
 
     /// Resource sharing policies
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     sharing_policies: Vec<HostResourceSharingPolicy>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    sharing_policies: BoundedVec<HostResourceSharingPolicy, 64>,
+    #[cfg(not(any(feature = "std", )))]
+    sharing_policies: BoundedVec<HostResourceSharingPolicy, 64, NoStdProvider<65536>>,
 }
 
 /// Host-owned resource
@@ -220,10 +220,10 @@ pub struct HostResourceSharingPolicy {
     /// Resource ID
     pub resource_id: u32,
     /// Allowed component instances
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub allowed_instances: Vec<u32>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub allowed_instances: BoundedVec<u32, 32>,
+    #[cfg(not(any(feature = "std", )))]
+    pub allowed_instances: BoundedVec<u32, 32, NoStdProvider<65536>>,
     /// Sharing mode
     pub sharing_mode: ResourceSharingMode,
 }
@@ -251,24 +251,24 @@ pub struct SecurityPolicy {
     /// Whether to enable resource isolation
     pub enable_resource_isolation: bool,
     /// Allowed host resource types
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub allowed_resource_types: Vec<HostResourceType>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub allowed_resource_types: BoundedVec<HostResourceType, 16>,
+    #[cfg(not(any(feature = "std", )))]
+    pub allowed_resource_types: BoundedVec<HostResourceType, 16, NoStdProvider<65536>>,
 }
 
 impl HostIntegrationManager {
     /// Create a new host integration manager
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             host_functions: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            host_functions: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(not(any(feature = "std", )))]
+            host_functions: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            #[cfg(feature = "std")]
             event_handlers: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            event_handlers: BoundedVec::new(),
+            #[cfg(not(any(feature = "std", )))]
+            event_handlers: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             host_resources: HostResourceManager::new(),
             canonical_abi: CanonicalAbi::new(),
             security_policy: SecurityPolicy::default(),
@@ -276,7 +276,7 @@ impl HostIntegrationManager {
     }
 
     /// Register a host function
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn register_host_function(
         &mut self,
         name: String,
@@ -293,10 +293,10 @@ impl HostIntegrationManager {
     }
 
     /// Register a host function (no_std version)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn register_host_function(
         &mut self,
-        name: BoundedString<64>,
+        name: BoundedString<64, NoStdProvider<65536>>,
         signature: ComponentType,
         implementation: fn(&[Value]) -> WrtResult<Value>,
         permissions: HostFunctionPermissions,
@@ -321,7 +321,7 @@ impl HostIntegrationManager {
         engine: &mut ComponentExecutionEngine,
     ) -> WrtResult<Value> {
         let function = self.host_functions.get(function_id as usize).ok_or_else(|| {
-            wrt_foundation::WrtError::InvalidInput("Host function not found".into())
+            wrt_foundation::WrtError::invalid_input("Invalid input")
         })?;
 
         // Check security policy
@@ -350,9 +350,9 @@ impl HostIntegrationManager {
         })?;
 
         // Call the function
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let result = function.implementation.call(args);
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let result = (function.implementation)(args);
 
         // Emit function return event
@@ -370,7 +370,7 @@ impl HostIntegrationManager {
     }
 
     /// Register an event handler
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn register_event_handler(
         &mut self,
         event_type: EventType,
@@ -388,7 +388,7 @@ impl HostIntegrationManager {
     }
 
     /// Register an event handler (no_std version)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn register_event_handler(
         &mut self,
         event_type: EventType,
@@ -408,9 +408,9 @@ impl HostIntegrationManager {
     fn emit_event(&mut self, event: ComponentEvent) -> WrtResult<()> {
         for handler in &self.event_handlers {
             if handler.event_type == event.event_type {
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 let result = (handler.handler)(&event);
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 let result = (handler.handler)(&event);
 
                 if let Err(e) = result {
@@ -441,11 +441,11 @@ impl HostIntegrationManager {
 
         let resource = HostResource { id: resource_id, resource_type, data, permissions };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.host_resources.resources.push(resource);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.host_resources.resources.push(resource).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many host resources".into())
@@ -464,7 +464,7 @@ impl HostIntegrationManager {
     ) -> WrtResult<()> {
         let resource =
             self.host_resources.resources.get(resource_id as usize).ok_or_else(|| {
-                wrt_foundation::WrtError::InvalidInput("Host resource not found".into())
+                wrt_foundation::WrtError::invalid_input("Invalid input")
             })?;
 
         if !resource.permissions.shareable {
@@ -473,16 +473,16 @@ impl HostIntegrationManager {
             ));
         }
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let mut allowed_instances = Vec::new();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        let mut allowed_instances = BoundedVec::new();
+        #[cfg(not(any(feature = "std", )))]
+        let mut allowed_instances = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             allowed_instances.push(instance_id);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             allowed_instances.push(instance_id).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many allowed instances".into())
@@ -491,11 +491,11 @@ impl HostIntegrationManager {
 
         let policy = HostResourceSharingPolicy { resource_id, allowed_instances, sharing_mode };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.host_resources.sharing_policies.push(policy);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.host_resources.sharing_policies.push(policy).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many sharing policies".into())
@@ -546,14 +546,14 @@ impl HostResourceManager {
     /// Create a new host resource manager
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             resources: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            resources: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(not(any(feature = "std", )))]
+            resources: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            #[cfg(feature = "std")]
             sharing_policies: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            sharing_policies: BoundedVec::new(),
+            #[cfg(not(any(feature = "std", )))]
+            sharing_policies: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 
@@ -609,11 +609,11 @@ impl Default for SecurityPolicy {
             max_memory_per_component: 64 * 1024 * 1024, // 64MB
             max_execution_time_ms: 5000,                // 5 seconds
             enable_resource_isolation: true,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             allowed_resource_types: vec![HostResourceType::Buffer],
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             allowed_resource_types: {
-                let mut types = BoundedVec::new();
+                let mut types = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
                 let _ = types.push(HostResourceType::Buffer);
                 types
             },

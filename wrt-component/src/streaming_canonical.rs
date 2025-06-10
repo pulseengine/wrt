@@ -8,8 +8,17 @@ use core::{fmt, mem};
 #[cfg(feature = "std")]
 use std::{fmt, mem};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, vec::Vec};
+
+// Enable vec! macro for no_std
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{vec, boxed::Box};
+
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedVec as Vec, safe_memory::NoStdProvider};
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
@@ -35,16 +44,16 @@ const MAX_CONCURRENT_STREAMS: usize = 64;
 #[derive(Debug)]
 pub struct StreamingCanonicalAbi {
     /// Active streams
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     streams: Vec<StreamingContext>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    streams: BoundedVec<StreamingContext, MAX_CONCURRENT_STREAMS>,
+    #[cfg(not(any(feature = "std", )))]
+    streams: BoundedVec<StreamingContext, MAX_CONCURRENT_STREAMS, NoStdProvider<65536>>,
     
     /// Buffer pool for reusing memory
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     buffer_pool: Vec<Vec<u8>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    buffer_pool: BoundedVec<BoundedVec<u8, MAX_STREAM_BUFFER_SIZE>, 16>,
+    #[cfg(not(any(feature = "std", )))]
+    buffer_pool: BoundedVec<BoundedVec<u8, MAX_STREAM_BUFFER_SIZE, NoStdProvider<65536>>, 16>,
     
     /// Next stream ID
     next_stream_id: u32,
@@ -61,10 +70,10 @@ pub struct StreamingContext {
     /// Element type being streamed
     pub element_type: ValType,
     /// Current buffer
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub buffer: Vec<u8>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub buffer: BoundedVec<u8, MAX_STREAM_BUFFER_SIZE>,
+    #[cfg(not(any(feature = "std", )))]
+    pub buffer: BoundedVec<u8, MAX_STREAM_BUFFER_SIZE, NoStdProvider<65536>>,
     /// Bytes read/written so far
     pub bytes_processed: u64,
     /// Stream direction
@@ -166,15 +175,15 @@ impl StreamingCanonicalAbi {
     /// Create new streaming canonical ABI
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             streams: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            streams: BoundedVec::new(),
+            #[cfg(not(any(feature = "std", )))]
+            streams: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             buffer_pool: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            buffer_pool: BoundedVec::new(),
+            #[cfg(not(any(feature = "std", )))]
+            buffer_pool: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             
             next_stream_id: 1,
             backpressure_config: BackpressureConfig::default(),
@@ -194,10 +203,10 @@ impl StreamingCanonicalAbi {
         let context = StreamingContext {
             handle,
             element_type,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             buffer: self.get_buffer_from_pool(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            buffer: BoundedVec::new(),
+            #[cfg(not(any(feature = "std", )))]
+            buffer: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             bytes_processed: 0,
             direction,
             backpressure: BackpressureState::new(&self.backpressure_config),
@@ -238,11 +247,11 @@ impl StreamingCanonicalAbi {
         let available_capacity = context.backpressure.available_capacity;
         let bytes_to_consume = input_bytes.len().min(available_capacity);
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             context.buffer.extend_from_slice(&input_bytes[..bytes_to_consume]);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for &byte in &input_bytes[..bytes_to_consume] {
                 if context.buffer.push(byte).is_err() {
@@ -305,7 +314,7 @@ impl StreamingCanonicalAbi {
         let context = self.streams.remove(stream_index);
 
         // Return buffer to pool if possible
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.return_buffer_to_pool(context.buffer);
         }
@@ -352,12 +361,12 @@ impl StreamingCanonicalAbi {
             })
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn get_buffer_from_pool(&mut self) -> Vec<u8> {
         self.buffer_pool.pop().unwrap_or_else(|| Vec::with_capacity(MAX_STREAM_BUFFER_SIZE))
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn return_buffer_to_pool(&mut self, mut buffer: Vec<u8>) {
         buffer.clear();
         if buffer.capacity() <= MAX_STREAM_BUFFER_SIZE * 2 {

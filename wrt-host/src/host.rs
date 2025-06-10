@@ -8,59 +8,60 @@
 //! as defined in the WebAssembly Component Model.
 
 // Use the prelude for consistent imports
-use crate::prelude::*;
+use crate::prelude::{Any, BuiltinType, Debug, Eq, Error, ErrorCategory, HashMap, PartialEq, Result, Value, codes, str};
 
 // Type aliases for no_std compatibility
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 type HostString = wrt_foundation::bounded::BoundedString<256, wrt_foundation::NoStdProvider<256>>;
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 type HostString = String;
 
 // Value vectors for function parameters/returns
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 type ValueVec = Vec<Value>;
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 type ValueVec = wrt_foundation::BoundedVec<Value, 16, wrt_foundation::NoStdProvider<512>>;
 
 // Handler function type alias
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 type HandlerFn = Box<dyn Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync>;
 
 // Handler data wrapper for no_std
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+/// Handler data wrapper for `no_std` environments
 pub struct HandlerData {
     _phantom: core::marker::PhantomData<()>,
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 impl wrt_foundation::traits::Checksummable for HandlerData {
     fn update_checksum(&self, _checksum: &mut wrt_foundation::verification::Checksum) {
         // HandlerData has no content to checksum
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 impl wrt_foundation::traits::ToBytes for HandlerData {
     fn serialized_size(&self) -> usize {
         0
     }
 
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
-        _writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
         Ok(())
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 impl wrt_foundation::traits::FromBytes for HandlerData {
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
-        _reader: &mut wrt_foundation::traits::ReadStream<'a>,
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        _reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         Ok(HandlerData::default())
@@ -68,17 +69,17 @@ impl wrt_foundation::traits::FromBytes for HandlerData {
 }
 
 // Handler map type for different configurations
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 type HandlerMap = HashMap<String, HandlerFn>;
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 type HandlerMap = HashMap<HostString, HandlerData, 32, wrt_foundation::NoStdProvider<1024>>;
 
 // Critical builtins map type for different configurations
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 type CriticalBuiltinsMap = HashMap<BuiltinType, HandlerFn>;
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 type CriticalBuiltinsMap = HashMap<BuiltinType, HandlerData, 32, wrt_foundation::NoStdProvider<1024>>;
 
 /// Converts wrt_foundation::values::Value to
@@ -86,7 +87,7 @@ type CriticalBuiltinsMap = HashMap<BuiltinType, HandlerData, 32, wrt_foundation:
 ///
 /// This function converts WebAssembly core values to Component Model values
 /// with support for both std and no_std environments.
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 fn convert_to_component_values(
     values: &[Value],
 ) -> Vec<ComponentValue<wrt_foundation::NoStdProvider<64>>> {
@@ -108,7 +109,7 @@ fn convert_to_component_values(
 ///
 /// This function converts Component Model values to WebAssembly core values
 /// with support for both std and no_std environments.
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 fn convert_from_component_values(
     values: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
 ) -> ValueVec {
@@ -138,9 +139,9 @@ pub struct BuiltinHost {
     /// Host ID
     host_id: HostString,
     /// Interceptor for built-in calls
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     interceptor: Option<Arc<dyn BuiltinInterceptor>>,
-    /// Built-in handlers (builtin_type_name -> handler)
+    /// Built-in handlers (`builtin_type_name` -> handler)
     handlers: HandlerMap,
     /// Critical built-ins that should have fallbacks
     critical_builtins: CriticalBuiltinsMap,
@@ -148,7 +149,7 @@ pub struct BuiltinHost {
 
 impl Default for BuiltinHost {
     fn default() -> Self {
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
             Self {
                 component_name: HostString::from_str("", wrt_foundation::NoStdProvider::<256>::default())
@@ -162,7 +163,7 @@ impl Default for BuiltinHost {
             }
         }
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             Self {
                 component_name: HostString::default(),
@@ -186,7 +187,7 @@ impl BuiltinHost {
     /// # Returns
     ///
     /// A new `BuiltinHost` instance
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn new(component_name: &str, host_id: &str) -> Self {
         Self {
             component_name: component_name.to_string(),
@@ -197,9 +198,9 @@ impl BuiltinHost {
         }
     }
 
-    /// Create a new built-in host (no_std version)
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-    pub fn new(component_name: &str, host_id: &str) -> Self {
+    /// Create a new built-in host (`no_std` version)
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
+    #[must_use] pub fn new(component_name: &str, host_id: &str) -> Self {
         let string_provider = wrt_foundation::NoStdProvider::<256>::default();
         let map_provider = wrt_foundation::NoStdProvider::<1024>::default();
         let comp_name = HostString::from_str(component_name, string_provider.clone())
@@ -220,7 +221,7 @@ impl BuiltinHost {
     /// # Arguments
     ///
     /// * `interceptor` - The interceptor to use
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn set_interceptor(&mut self, interceptor: Arc<dyn BuiltinInterceptor>) {
         self.interceptor = Some(interceptor);
     }
@@ -231,7 +232,7 @@ impl BuiltinHost {
     ///
     /// * `builtin_type` - The built-in type
     /// * `handler` - The handler function
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn register_handler<F>(&mut self, builtin_type: BuiltinType, handler: F)
     where
         F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + 'static,
@@ -239,8 +240,8 @@ impl BuiltinHost {
         self.handlers.insert(builtin_type.name().to_string(), Box::new(handler));
     }
 
-    /// Register a handler for a built-in function (no_std version)
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    /// Register a handler for a built-in function (`no_std` version)
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
     pub fn register_handler<F>(&mut self, builtin_type: BuiltinType, _handler: F)
     where
         F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + 'static,
@@ -257,7 +258,7 @@ impl BuiltinHost {
     ///
     /// * `builtin_type` - The built-in type
     /// * `handler` - The fallback handler function
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn register_fallback<F>(&mut self, builtin_type: BuiltinType, handler: F)
     where
         F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + 'static,
@@ -265,8 +266,8 @@ impl BuiltinHost {
         self.critical_builtins.insert(builtin_type, Box::new(handler));
     }
 
-    /// Register a fallback for a critical built-in function (no_std version)
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    /// Register a fallback for a critical built-in function (`no_std` version)
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
     pub fn register_fallback<F>(&mut self, builtin_type: BuiltinType, _handler: F)
     where
         F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + 'static,
@@ -285,12 +286,12 @@ impl BuiltinHost {
     ///
     /// `true` if the built-in is implemented, `false` otherwise
     pub fn is_implemented(&self, builtin_type: BuiltinType) -> bool {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.handlers.contains_key(builtin_type.name())
         }
         
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
             // In no_std mode, check if we have any handlers registered
             let name = HostString::from_str(builtin_type.name(), wrt_foundation::NoStdProvider::<256>::default())
@@ -309,12 +310,12 @@ impl BuiltinHost {
     ///
     /// `true` if the built-in has a fallback, `false` otherwise
     pub fn has_fallback(&self, builtin_type: BuiltinType) -> bool {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.critical_builtins.contains_key(&builtin_type)
         }
         
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
             self.critical_builtins.contains_key(&builtin_type).unwrap_or(false)
         }
@@ -342,8 +343,8 @@ impl BuiltinHost {
         builtin_type: BuiltinType,
         args: ValueVec,
     ) -> Result<ValueVec> {
-        // Apply interception if available and alloc is enabled
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        // Binary std/no_std choice
+        #[cfg(feature = "std")]
         if let Some(interceptor) = &self.interceptor {
             let context = InterceptContext::new(&self.component_name, builtin_type, &self.host_id);
             let component_args = convert_to_component_values(&args);
@@ -382,15 +383,15 @@ impl BuiltinHost {
             self.execute_builtin_internal(engine, builtin_type, args)
         }
         
-        // For no_std without alloc, interception is not available
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        // Binary std/no_std choice
+        #[cfg(not(feature = "std"))]
         {
             self.execute_builtin_internal(engine, builtin_type, args)
         }
     }
 
     /// Internal implementation of execute_builtin without interception
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn execute_builtin_internal(
         &self,
         engine: &mut dyn Any,
@@ -417,8 +418,8 @@ impl BuiltinHost {
         ))
     }
 
-    /// Internal implementation of execute_builtin without interception (no_std version)
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    /// Internal implementation of `execute_builtin` without interception (`no_std` version)
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
     fn execute_builtin_internal(
         &self,
         _engine: &mut dyn Any,
@@ -438,7 +439,7 @@ impl Clone for BuiltinHost {
     fn clone(&self) -> Self {
         // This is a simplified clone that doesn't actually clone the handlers
         // In a real implementation, you would need to properly clone all handlers
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             Self {
                 component_name: self.component_name.clone(),
@@ -449,7 +450,7 @@ impl Clone for BuiltinHost {
             }
         }
         
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
             let provider = wrt_foundation::NoStdProvider::default();
             Self {

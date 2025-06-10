@@ -95,7 +95,7 @@ The safety architecture implements cross-cutting safety features that span all W
    
    The verification level system provides:
    
-   1. Multiple verification levels (None, Basic, Full)
+   1. Multiple verification levels (Off, Basic, Standard, Full, Sampling, Redundant)
    2. Configuration options for different deployment scenarios
    3. Balance between safety and performance
    4. Component-specific verification settings
@@ -117,3 +117,15 @@ The safety architecture implements cross-cutting safety features that span all W
    5. Clean build environment requirements
    6. No-std compatibility options
    7. Thread safety configuration 
+
+Safety Verification Tools
+==========================
+
+WRT includes comprehensive SCORE-inspired safety verification tools for tracking requirements compliance:
+
+* **Requirements Traceability**: Automated tracking of requirement-to-implementation links
+* **ASIL Compliance Monitoring**: Real-time monitoring of safety level compliance  
+* **Test Coverage Analysis**: Safety-categorized test coverage reporting
+* **Certification Readiness**: Progress tracking toward safety certification
+
+For detailed usage, see :doc:`../developer/tooling/safety_verification`.

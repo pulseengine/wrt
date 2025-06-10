@@ -8,7 +8,7 @@ use crate::bounded::{BoundedVec, BoundedString};
 use crate::traits::Checksummable;
 use crate::NoStdProvider;
 
-/// Creates a BoundedVec in no_std environments, similar to vec! macro
+/// Creates a `BoundedVec` in no_std environments, similar to `vec!` macro
 /// 
 /// # Examples
 /// ```
@@ -46,7 +46,7 @@ macro_rules! bounded_vec {
     }};
 }
 
-/// Creates a formatted BoundedString in no_std environments
+/// Creates a formatted `BoundedString` in no_std environments
 /// 
 /// Note: This is a simplified version that only supports basic formatting
 #[macro_export]
@@ -59,7 +59,7 @@ macro_rules! bounded_format {
     
     // For now, more complex formatting returns a static error message
     ($provider:expr, $fmt:literal, $($arg:expr),*) => {{
-        // In no_std mode without alloc, we can't do dynamic formatting
+        // Binary std/no_std choice
         // Return a placeholder message
         $crate::bounded::BoundedString::from_str(
             "[formatting not available in no_std]", 
@@ -70,7 +70,7 @@ macro_rules! bounded_format {
 
 // Remove problematic type aliases, provide concrete helpers instead
 
-/// Helper to create a BoundedVec with standard capacity and default provider
+/// Helper to create a `BoundedVec` with standard capacity and default provider
 pub fn create_bounded_vec<T>() -> crate::WrtResult<BoundedVec<T, 1024, NoStdProvider<{1024 * 8}>>>
 where
     T: Sized + Checksummable + crate::traits::ToBytes + crate::traits::FromBytes + Default + Clone + PartialEq + Eq,
@@ -84,7 +84,7 @@ where
     })
 }
 
-/// Helper to create an empty BoundedString with default provider  
+/// Helper to create an empty `BoundedString` with default provider  
 pub fn create_bounded_string() -> crate::WrtResult<BoundedString<256, NoStdProvider<256>>> {
     BoundedString::from_str_truncate("", NoStdProvider::default()).map_err(|e| {
         crate::Error::new(
@@ -95,7 +95,7 @@ pub fn create_bounded_string() -> crate::WrtResult<BoundedString<256, NoStdProvi
     })
 }
 
-/// Helper to create BoundedString from &str
+/// Helper to create `BoundedString` from `&str`
 pub fn create_bounded_string_from(s: &str) -> crate::WrtResult<BoundedString<256, NoStdProvider<256>>> {
     BoundedString::from_str(s, NoStdProvider::default()).map_err(|e| {
         crate::Error::new(

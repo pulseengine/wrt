@@ -9,8 +9,8 @@ use core::{fmt, mem};
 #[cfg(feature = "std")]
 use std::{fmt, mem};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{
+#[cfg(feature = "std")]
+use std::{
     boxed::Box,
     vec::Vec,
     collections::BTreeMap,
@@ -51,16 +51,16 @@ const MAX_CLEANUP_HANDLERS: usize = 64;
 #[derive(Debug)]
 pub struct PostReturnRegistry {
     /// Registered post-return functions per instance
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     functions: BTreeMap<ComponentInstanceId, PostReturnFunction>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     functions: BoundedVec<(ComponentInstanceId, PostReturnFunction), MAX_CLEANUP_TASKS_NO_STD>,
     
     /// Cleanup tasks waiting to be executed
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pending_cleanups: BTreeMap<ComponentInstanceId, Vec<CleanupTask>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pending_cleanups: BoundedVec<(ComponentInstanceId, BoundedVec<CleanupTask, MAX_CLEANUP_TASKS_NO_STD>), MAX_CLEANUP_TASKS_NO_STD>,
+    #[cfg(not(any(feature = "std", )))]
+    pending_cleanups: BoundedVec<(ComponentInstanceId, BoundedVec<CleanupTask, MAX_CLEANUP_TASKS_NO_STD, NoStdProvider<65536>>), MAX_CLEANUP_TASKS_NO_STD>,
     
     /// Async execution engine for async cleanup
     async_engine: Option<Arc<AsyncExecutionEngine>>,
@@ -89,7 +89,7 @@ struct PostReturnFunction {
     /// Function index in the component
     func_index: u32,
     /// Cached function reference for performance
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     func_ref: Option<Arc<dyn Fn() -> Result<()> + Send + Sync>>,
     /// Whether the function is currently being executed
     executing: bool,
@@ -111,7 +111,7 @@ pub struct CleanupTask {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CleanupTaskType {
-    /// Deallocate memory
+    /// Binary std/no_std choice
     DeallocateMemory,
     /// Close resource handle
     CloseResource,
@@ -135,17 +135,17 @@ pub enum CleanupTaskType {
 
 #[derive(Debug, Clone)]
 pub enum CleanupData {
-    /// Memory deallocation data
+    /// Binary std/no_std choice
     Memory { ptr: i32, size: i32, align: i32 },
     /// Resource cleanup data
     Resource { handle: u32, resource_type: TypeId },
     /// Reference cleanup data
     Reference { ref_id: u32, ref_count: u32 },
     /// Custom cleanup data
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     Custom { cleanup_id: String, parameters: Vec<ComponentValue> },
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    Custom { cleanup_id: BoundedString<64>, parameters: BoundedVec<ComponentValue, 16> },
+    #[cfg(not(any(feature = "std", )))]
+    Custom { cleanup_id: BoundedString<64, NoStdProvider<65536>>, parameters: BoundedVec<ComponentValue, 16, NoStdProvider<65536>> },
     /// Async cleanup data
     Async { 
         stream_handle: Option<StreamHandle>, 
@@ -214,17 +214,17 @@ pub struct PostReturnContext {
     /// Instance being cleaned up
     pub instance_id: ComponentInstanceId,
     /// Cleanup tasks to execute
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub tasks: Vec<CleanupTask>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub tasks: BoundedVec<CleanupTask, MAX_CLEANUP_TASKS_NO_STD>,
-    /// Realloc manager for memory cleanup
+    #[cfg(not(any(feature = "std", )))]
+    pub tasks: BoundedVec<CleanupTask, MAX_CLEANUP_TASKS_NO_STD, NoStdProvider<65536>>,
+    /// Binary std/no_std choice
     pub realloc_manager: Option<Arc<ReallocManager>>,
     /// Custom cleanup handlers
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub custom_handlers: BTreeMap<String, Box<dyn Fn(&CleanupData) -> Result<()> + Send + Sync>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub custom_handlers: BoundedVec<(BoundedString<64>, fn(&CleanupData) -> Result<()>), MAX_CLEANUP_HANDLERS>,
+    #[cfg(not(any(feature = "std", )))]
+    pub custom_handlers: BoundedVec<(BoundedString<64, NoStdProvider<65536>>, fn(&CleanupData) -> Result<(), NoStdProvider<65536>>), MAX_CLEANUP_HANDLERS>,
     /// Async canonical ABI for async cleanup
     pub async_abi: Option<Arc<AsyncCanonicalAbi>>,
     /// Component ID for this context
@@ -236,14 +236,14 @@ pub struct PostReturnContext {
 impl PostReturnRegistry {
     pub fn new(max_cleanup_tasks: usize) -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             functions: BTreeMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            functions: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(not(any(feature = "std", )))]
+            functions: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            #[cfg(feature = "std")]
             pending_cleanups: BTreeMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            pending_cleanups: BoundedVec::new(),
+            #[cfg(not(any(feature = "std", )))]
+            pending_cleanups: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             async_engine: None,
             cancellation_manager: None,
             handle_tracker: None,
@@ -264,14 +264,14 @@ impl PostReturnRegistry {
         representation_manager: Option<Arc<ResourceRepresentationManager>>,
     ) -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             functions: BTreeMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            functions: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(not(any(feature = "std", )))]
+            functions: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            #[cfg(feature = "std")]
             pending_cleanups: BTreeMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            pending_cleanups: BoundedVec::new(),
+            #[cfg(not(any(feature = "std", )))]
+            pending_cleanups: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             async_engine,
             cancellation_manager,
             handle_tracker,
@@ -291,18 +291,18 @@ impl PostReturnRegistry {
     ) -> Result<()> {
         let post_return_fn = PostReturnFunction { 
             func_index, 
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             func_ref: None, 
             executing: false,
             cancellation_token,
         };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.functions.insert(instance_id, post_return_fn);
             self.pending_cleanups.insert(instance_id, Vec::new());
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.functions.push((instance_id, post_return_fn)).map_err(|_| {
                 Error::new(
@@ -311,7 +311,7 @@ impl PostReturnRegistry {
                     "Too many post-return functions"
                 )
             })?;
-            self.pending_cleanups.push((instance_id, BoundedVec::new())).map_err(|_| {
+            self.pending_cleanups.push((instance_id, BoundedVec::new(DefaultMemoryProvider::default()).unwrap())).map_err(|_| {
                 Error::new(
                     ErrorCategory::Resource,
                     wrt_error::codes::RESOURCE_EXHAUSTED,
@@ -329,7 +329,7 @@ impl PostReturnRegistry {
         instance_id: ComponentInstanceId,
         task: CleanupTask,
     ) -> Result<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let cleanup_tasks = self
                 .pending_cleanups
@@ -358,7 +358,7 @@ impl PostReturnRegistry {
                 self.metrics.peak_pending_tasks = total_pending;
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for (id, cleanup_tasks) in &mut self.pending_cleanups {
                 if *id == instance_id {
@@ -397,7 +397,7 @@ impl PostReturnRegistry {
         context: PostReturnContext,
     ) -> Result<()> {
         // Check if post-return function exists and isn't already executing
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let post_return_fn = self
             .functions
             .get_mut(&instance_id)
@@ -409,7 +409,7 @@ impl PostReturnRegistry {
                 )
             })?;
         
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let post_return_fn = {
             let mut found = None;
             for (id, func) in &mut self.functions {
@@ -449,13 +449,13 @@ impl PostReturnRegistry {
         post_return_fn.executing = false;
 
         // Clear pending cleanups
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(cleanup_tasks) = self.pending_cleanups.get_mut(&instance_id) {
                 cleanup_tasks.clear();
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for (id, cleanup_tasks) in &mut self.pending_cleanups {
                 if *id == instance_id {
@@ -475,19 +475,19 @@ impl PostReturnRegistry {
         mut context: PostReturnContext,
     ) -> Result<()> {
         // Get all pending cleanup tasks
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let mut all_tasks = context.tasks;
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let mut all_tasks = context.tasks;
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(pending) = self.pending_cleanups.get(&instance_id) {
                 all_tasks.extend(pending.iter().cloned());
             }
             all_tasks.sort_by(|a, b| b.priority.cmp(&a.priority));
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for (id, pending) in &self.pending_cleanups {
                 if *id == instance_id {
@@ -540,7 +540,7 @@ impl PostReturnRegistry {
         }
     }
 
-    /// Clean up memory allocation
+    /// Binary std/no_std choice
     fn cleanup_memory(
         &self,
         task: &CleanupTask,
@@ -548,7 +548,7 @@ impl PostReturnRegistry {
     ) -> Result<()> {
         if let CleanupData::Memory { ptr, size, align } = &task.data {
             if let Some(realloc_manager) = &context.realloc_manager {
-                // In a real implementation, this would use the realloc manager
+                // Binary std/no_std choice
                 // For now, we just acknowledge the cleanup
             }
         }
@@ -579,7 +579,7 @@ impl PostReturnRegistry {
         _context: &mut PostReturnContext,
     ) -> Result<()> {
         if let CleanupData::Reference { ref_id: _, ref_count: _ } = &task.data {
-            // Decrement reference count and potentially deallocate
+            // Binary std/no_std choice
             // Implementation would depend on reference counting system
         }
         Ok(())
@@ -592,13 +592,13 @@ impl PostReturnRegistry {
         context: &mut PostReturnContext,
     ) -> Result<()> {
         match &task.data {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             CleanupData::Custom { cleanup_id, parameters: _ } => {
                 if let Some(handler) = context.custom_handlers.get(cleanup_id) {
                     handler(&task.data)?;
                 }
             }
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             CleanupData::Custom { cleanup_id, parameters: _ } => {
                 for (id, handler) in &context.custom_handlers {
                     if id.as_str() == cleanup_id.as_str() {
@@ -758,12 +758,12 @@ impl PostReturnRegistry {
         &mut self,
         instance_id: ComponentInstanceId,
     ) -> Result<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.functions.remove(&instance_id);
             self.pending_cleanups.remove(&instance_id);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             // Remove from functions
             let mut i = 0;
@@ -947,7 +947,7 @@ pub mod helpers {
     }
 
     /// Create a custom cleanup task
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn custom_cleanup_task(
         instance_id: ComponentInstanceId,
         cleanup_id: &str,
@@ -966,11 +966,11 @@ pub mod helpers {
     }
     
     /// Create a custom cleanup task (no_std version)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn custom_cleanup_task(
         instance_id: ComponentInstanceId,
         cleanup_id: &str,
-        parameters: BoundedVec<ComponentValue, 16>,
+        parameters: BoundedVec<ComponentValue, 16, NoStdProvider<65536>>,
         priority: u8,
     ) -> Result<CleanupTask> {
         let cleanup_id = BoundedString::from_str(cleanup_id).map_err(|_| {

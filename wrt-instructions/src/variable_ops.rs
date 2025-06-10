@@ -7,7 +7,7 @@
 //! This module provides pure implementations for WebAssembly variable access
 //! instructions, including local and global variable operations.
 
-use crate::prelude::*;
+use crate::prelude::{ConstExprContext, Debug, Error, PureInstruction, Result, Value};
 
 // ToString is brought in through the prelude for both std and no_std
 // configurations so we don't need explicit imports
@@ -76,11 +76,10 @@ impl<T: VariableContext> PureInstruction<T, Error> for VariableOp {
     }
 }
 
-#[cfg(all(test, any(feature = "std", feature = "alloc")))]
+#[cfg(all(test, any(feature = "std", )))]
 mod tests {
     // Import Vec and vec! based on feature flags
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::{vec, vec::Vec};
+        use std::{vec, vec::Vec};
     #[cfg(feature = "std")]
     use std::vec::Vec;
 

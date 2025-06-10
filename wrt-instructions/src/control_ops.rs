@@ -49,7 +49,7 @@
 
 // Remove unused imports
 
-use crate::prelude::*;
+use crate::prelude::{BlockType, BoundedCapacity, BoundedVec, Debug, Error, ErrorCategory, PartialEq, PureInstruction, Result, Value, codes, str};
 // use crate::validation::{Validate, ValidationContext}; // Currently unused
 
 
@@ -98,10 +98,10 @@ pub enum ControlOp {
     /// Branch to a label in a table
     BrTable {
         /// Table of branch target labels
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         table: Vec<u32>,
-        /// Table of branch target labels (no_std)
-        #[cfg(not(feature = "alloc"))]
+        /// Table of branch target labels (`no_std`)
+        #[cfg(not(feature = "std"))]
         table: BoundedVec<u32, 256, wrt_foundation::NoStdProvider<8192>>,
         /// Default label to branch to if the index is out of bounds
         default: u32,
@@ -117,9 +117,9 @@ pub enum ControlOp {
         /// Type index for the function signature
         type_idx: u32,
     },
-    /// Tail call a function by index (return_call)
+    /// Tail call a function by index (`return_call`)
     ReturnCall(u32),
-    /// Tail call a function through table indirection (return_call_indirect)
+    /// Tail call a function through table indirection (`return_call_indirect`)
     ReturnCallIndirect {
         /// Index of the table to use for the call
         table_idx: u32,
@@ -130,9 +130,9 @@ pub enum ControlOp {
     Nop,
     /// Execute an unreachable instruction (causes trap)
     Unreachable,
-    /// Branch if reference is null (br_on_null)
+    /// Branch if reference is null (`br_on_null`)
     BrOnNull(u32),
-    /// Branch if reference is not null (br_on_non_null)
+    /// Branch if reference is not null (`br_on_non_null`)
     BrOnNonNull(u32),
 }
 
@@ -142,7 +142,7 @@ pub struct Return;
 
 impl Return {
     /// Create a new return operation
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self
     }
     
@@ -166,7 +166,7 @@ impl Default for Return {
     }
 }
 
-/// Call indirect operation (call_indirect)
+/// Call indirect operation (`call_indirect`)
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallIndirect {
     /// Table index to use for the indirect call
@@ -176,12 +176,12 @@ pub struct CallIndirect {
 }
 
 impl CallIndirect {
-    /// Create a new call_indirect operation
-    pub fn new(table_idx: u32, type_idx: u32) -> Self {
+    /// Create a new `call_indirect` operation
+    #[must_use] pub fn new(table_idx: u32, type_idx: u32) -> Self {
         Self { table_idx, type_idx }
     }
     
-    /// Execute call_indirect operation
+    /// Execute `call_indirect` operation
     ///
     /// # Arguments
     ///
@@ -206,7 +206,7 @@ impl CallIndirect {
     }
 }
 
-/// Return call indirect operation (return_call_indirect)
+/// Return call indirect operation (`return_call_indirect`)
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReturnCallIndirect {
     /// Table index to use for the indirect call
@@ -216,15 +216,15 @@ pub struct ReturnCallIndirect {
 }
 
 impl ReturnCallIndirect {
-    /// Create a new return_call_indirect operation
-    pub fn new(table_idx: u32, type_idx: u32) -> Self {
+    /// Create a new `return_call_indirect` operation
+    #[must_use] pub fn new(table_idx: u32, type_idx: u32) -> Self {
         Self { table_idx, type_idx }
     }
     
-    /// Execute return_call_indirect operation
+    /// Execute `return_call_indirect` operation
     ///
     /// This performs a tail call through a table. It's equivalent to:
-    /// 1. Performing call_indirect
+    /// 1. Performing `call_indirect`
     /// 2. Immediately returning the result
     /// 
     /// But optimized to reuse the current call frame.
@@ -252,14 +252,14 @@ impl ReturnCallIndirect {
     }
 }
 
-/// Branch table operation (br_table)
+/// Branch table operation (`br_table`)
 #[derive(Debug, Clone, PartialEq)]
 pub struct BrTable {
     /// Table of branch target labels
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub table: Vec<u32>,
     
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(feature = "std"))]
     pub table: wrt_foundation::BoundedVec<u32, 256, wrt_foundation::NoStdProvider<8192>>,
     
     /// Default label to branch to if the index is out of bounds
@@ -267,14 +267,14 @@ pub struct BrTable {
 }
 
 impl BrTable {
-    /// Create a new br_table operation with Vec (requires alloc)
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    /// Binary std/no_std choice
+    #[cfg(feature = "std")]
     pub fn new(table: Vec<u32>, default: u32) -> Self {
         Self { table, default }
     }
     
-    /// Create a new br_table operation with BoundedVec (no_std)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    /// Create a new `br_table` operation with `BoundedVec` (`no_std`)
+    #[cfg(not(feature = "std"))]
     pub fn new_bounded(
         table: wrt_foundation::BoundedVec<u32, 256, wrt_foundation::NoStdProvider<8192>>, 
         default: u32
@@ -282,16 +282,16 @@ impl BrTable {
         Self { table, default }
     }
     
-    /// Create a br_table from a slice (works in all environments)
+    /// Create a `br_table` from a slice (works in all environments)
     pub fn from_slice(table_slice: &[u32], default: u32) -> Result<Self> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             Ok(Self {
                 table: table_slice.to_vec(),
                 default,
             })
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(feature = "std"))]
         {
             let provider = wrt_foundation::NoStdProvider::<8192>::new();
             let mut table = wrt_foundation::BoundedVec::new(provider).map_err(|_| {
@@ -306,7 +306,7 @@ impl BrTable {
         }
     }
     
-    /// Execute br_table operation
+    /// Execute `br_table` operation
     ///
     /// # Arguments
     ///
@@ -322,11 +322,11 @@ impl BrTable {
         })?;
         
         // Execute the branch table operation with different approaches per feature
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             context.execute_br_table(self.table.as_slice(), self.default, index)
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(feature = "std"))]
         {
             // For no_std, we create a temporary slice on the stack
             let mut slice_vec = [0u32; 256]; // Static array for no_std
@@ -385,10 +385,10 @@ pub trait ControlContext {
     /// Call a function indirectly through a table
     fn call_indirect(&mut self, table_idx: u32, type_idx: u32) -> Result<()>;
     
-    /// Tail call a function by index (return_call)
+    /// Tail call a function by index (`return_call`)
     fn return_call(&mut self, func_idx: u32) -> Result<()>;
     
-    /// Tail call a function indirectly through a table (return_call_indirect)
+    /// Tail call a function indirectly through a table (`return_call_indirect`)
     fn return_call_indirect(&mut self, table_idx: u32, type_idx: u32) -> Result<()>;
 
     /// Trap the execution (unreachable)
@@ -403,7 +403,7 @@ pub trait ControlContext {
     /// Execute function return with value handling
     fn execute_return(&mut self) -> Result<()>;
     
-    /// Execute call_indirect with full validation
+    /// Execute `call_indirect` with full validation
     fn execute_call_indirect(&mut self, table_idx: u32, type_idx: u32, func_idx: i32) -> Result<()>;
     
     /// Execute branch table operation
@@ -419,8 +419,8 @@ pub trait ControlContext {
 impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
     fn execute(&self, context: &mut T) -> Result<()> {
         match self {
-            Self::Block(block_type) => context.enter_block(Block::Block(block_type.clone())),
-            Self::Loop(block_type) => context.enter_block(Block::Loop(block_type.clone())),
+            Self::Block(block_type) => context.enter_block(Block::Block(*block_type)),
+            Self::Loop(block_type) => context.enter_block(Block::Loop(*block_type)),
             Self::If(block_type) => {
                 let condition = context.pop_control_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for if condition")
@@ -428,12 +428,12 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
 
                 if condition != 0 {
                     // Condition is true, enter the if block
-                    context.enter_block(Block::If(block_type.clone()))
+                    context.enter_block(Block::If(*block_type))
                 } else {
                     // Condition is false, skip to the else or end
                     // The runtime will handle this by setting a flag to skip instructions
                     // until the corresponding else or end is found
-                    context.enter_block(Block::If(block_type.clone()))
+                    context.enter_block(Block::If(*block_type))
                 }
             }
             Self::Else => {
@@ -546,12 +546,10 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
     }
 }
 
-#[cfg(all(test, any(feature = "std", feature = "alloc")))]
+#[cfg(all(test, any(feature = "std", )))]
 mod tests {
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::vec;
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::vec::Vec;
+        use std::vec;
+        use std::vec::Vec;
     // Import Vec and vec! based on feature flags
     #[cfg(feature = "std")]
     use std::vec::Vec;

@@ -90,7 +90,7 @@ pub mod parsers {
     pub fn parse_type_section(bytes: &[u8]) -> Result<Vec<WrtFuncType>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
         
-        // Bounds check to prevent excessive allocation
+        // Binary std/no_std choice
         check_bounds_u32(count, 10000, "type count")?;
         let count_usize = safe_usize_conversion(count, "type count")?;
         
@@ -211,7 +211,7 @@ pub mod parsers {
     pub fn parse_import_section(bytes: &[u8]) -> Result<Vec<WrtImport>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
         
-        // Bounds check to prevent excessive allocation
+        // Binary std/no_std choice
         check_bounds_u32(count, 10000, "import count")?;
         let count_usize = safe_usize_conversion(count, "import count")?;
         
@@ -497,7 +497,7 @@ pub mod parsers {
     pub fn parse_export_section(bytes: &[u8]) -> Result<Vec<WrtExport>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
         
-        // Bounds check to prevent excessive allocation
+        // Binary std/no_std choice
         check_bounds_u32(count, 10000, "export count")?;
         let count_usize = safe_usize_conversion(count, "export count")?;
         
@@ -577,7 +577,7 @@ pub mod parsers {
     pub fn parse_code_section(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
         
-        // Bounds check to prevent excessive allocation
+        // Binary std/no_std choice
         check_bounds_u32(count, 100000, "function count")?;
         let count_usize = safe_usize_conversion(count, "function count")?;
         
@@ -601,7 +601,7 @@ pub mod parsers {
                 ));
             }
 
-            // Extract body bytes - only allocate what we need
+            // Binary std/no_std choice
             let mut body = Vec::new();
             body.reserve_exact(body_size_usize);
             body.extend_from_slice(&bytes[offset..offset + body_size_usize]);

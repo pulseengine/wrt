@@ -13,8 +13,7 @@
 // REMOVE: #[cfg(feature = "std")]
 // REMOVE: extern crate std;
 
-// REMOVE: #[cfg(all(not(feature = "std"), feature = "alloc"))]
-// REMOVE: extern crate alloc;
+// Binary std/no_std choice
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 use core::fmt;
@@ -24,7 +23,7 @@ use crate::verification::{Checksum, VerificationLevel};
 use crate::{codes, Error, ErrorCategory};
 // Result is imported through the prelude
 
-/// Default capacity for NoStdProvider memory allocations
+/// Binary std/no_std choice
 pub const DEFAULT_MEMORY_PROVIDER_CAPACITY: usize = 4096;
 
 /// Default NoStdProvider type with the DEFAULT_MEMORY_PROVIDER_CAPACITY size
@@ -49,7 +48,7 @@ use std::sync::Mutex; /* Note: std::sync::Mutex might be an issue if a no_std mu
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use crate::prelude::ToString;
 pub use crate::prelude::*;
 // Checksum and VerificationLevel are already imported through prelude
@@ -94,7 +93,7 @@ impl<'a> Slice<'a> {
     /// # Panics
     ///
     /// This function previously panicked if initial verification failed.
-    /// It now returns a Result to indicate failure.
+    /// It now returns a `Result` to indicate failure.
     /// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety
     /// implication] Tracking: WRTQ-XXX (qualification requirement tracking
     /// ID).
@@ -295,7 +294,7 @@ impl<'a> SliceMut<'a> {
     ///
     /// # Panics
     /// This function previously panicked if initial verification failed.
-    /// It now returns a Result to indicate failure.
+    /// It now returns a `Result` to indicate failure.
     pub fn with_verification_level(data: &'a mut [u8], level: VerificationLevel) -> Result<Self> {
         record_global_operation(OperationType::ChecksumCalculation, level);
         let checksum = Checksum::compute(data);
@@ -452,7 +451,7 @@ impl<'a> SliceMut<'a> {
     /// The caller must ensure that the pointer is used safely:
     /// - The pointer must not be used after the `SliceMut` it originated from
     ///   is dropped or modified in a way that invalidates the pointer (e.g., if
-    ///   the underlying provider reallocates).
+    /// Binary std/no_std choice
     /// - Accesses through the pointer must be within the bounds of the original
     ///   slice.
     /// - Data races must be prevented if the same memory region can be accessed
@@ -506,13 +505,13 @@ impl fmt::Debug for SliceMut<'_> {
     }
 }
 
-/// Memory provider interface for different allocation strategies.
+/// Binary std/no_std choice
 ///
-/// This trait abstracts over different memory allocation strategies,
+/// Binary std/no_std choice
 /// allowing both std and `no_std` environments to share the same interface.
 /// It combines raw access, safety features, and informational methods.
 pub trait Provider: Send + Sync + fmt::Debug {
-    /// The type of allocator this provider uses or can expose.
+    /// Binary std/no_std choice
     type Allocator: Allocator + Clone + Send + Sync + 'static; // Added Clone, Send, Sync, 'static
 
     /// Borrows a slice of memory with safety guarantees.
@@ -534,7 +533,7 @@ pub trait Provider: Send + Sync + fmt::Debug {
     /// managed by `verify_access`. Implementers must ensure that this
     /// operation is memory safe given valid inputs, respecting bounds and
     /// aliasing rules. The `offset` and `data.len()` must not cause an
-    /// overflow and must fall within the provider's allocated capacity.
+    /// Binary std/no_std choice
     fn write_data(&mut self, offset: usize, data: &[u8]) -> Result<()>;
 
     /// Verifies that an access to memory (read or write) of `len` at `offset`
@@ -608,19 +607,19 @@ pub trait Provider: Send + Sync + fmt::Debug {
     /// capacity or if the operation fails internally.
     fn ensure_used_up_to(&mut self, byte_offset: usize) -> Result<()>;
 
-    /// Acquires a block of memory from the provider's allocator.
+    /// Binary std/no_std choice
     fn acquire_memory(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8>;
 
     /// Releases a previously acquired block of memory to the provider's
-    /// allocator.
+    /// Binary std/no_std choice
     ///
     /// # Safety
     /// This method encapsulates unsafe operations internally.
-    /// The pointer `ptr` must have been previously allocated via
+    /// Binary std/no_std choice
     /// `acquire_memory` with the same `layout`, and not yet released.
     fn release_memory(&self, ptr: *mut u8, layout: core::alloc::Layout) -> WrtResult<()>;
 
-    /// Returns a reference to the allocator used by this provider.
+    /// Binary std/no_std choice
     fn get_allocator(&self) -> &Self::Allocator;
 
     /// Creates a new `SafeMemoryHandler` for this provider.
@@ -781,7 +780,7 @@ impl StdProvider {
     ///
     /// # Errors
     ///
-    /// Returns `Error::MemoryError` if allocation fails or `new_size` is too
+    /// Binary std/no_std choice
     /// large.
     pub fn resize(&mut self, new_size: usize, value: u8) -> Result<()> {
         if new_size > self.data.capacity() {
@@ -849,7 +848,7 @@ impl StdProvider {
 
 #[cfg(feature = "std")]
 impl Provider for StdProvider {
-    type Allocator = Self; // NoStdProvider itself is the allocator
+    type Allocator = Self; // Binary std/no_std choice
 
     /// # Safety
     /// The caller guarantees that `offset` and `len` define a valid, readable
@@ -920,7 +919,7 @@ impl Provider for StdProvider {
             .ok_or_else(|| Error::memory_error("Write offset + length calculation overflow"))?;
 
         if required_len > self.data.len() {
-            // Vec::resize might panic on allocation failure.
+            // Binary std/no_std choice
             self.data.resize(required_len, 0u8); // Or some other default byte
         }
 
@@ -1023,7 +1022,7 @@ impl Provider for StdProvider {
     fn ensure_used_up_to(&mut self, byte_offset: usize) -> Result<()> {
         if byte_offset > self.data.capacity() {
             // This attempts to reserve additional capacity if byte_offset is beyond current
-            // capacity. Vec::reserve might panic on allocation failure.
+            // Binary std/no_std choice
             let additional = byte_offset - self.data.len(); // Only reserve if truly needed beyond current length.
             if additional > 0 && byte_offset > self.data.capacity() {
                 // Calculate needed additional capacity beyond current capacity.
@@ -1036,7 +1035,7 @@ impl Provider for StdProvider {
         // but rely on the provider to have the underlying storage initialized or
         // accessible.
         if byte_offset > self.data.len() {
-            // Vec::resize might panic on allocation failure.
+            // Binary std/no_std choice
             self.data.resize(byte_offset, 0u8); // Initialize new bytes to 0
         }
         Ok(())
@@ -1072,13 +1071,13 @@ impl Provider for StdProvider {
 #[cfg(feature = "std")]
 impl Allocator for StdProvider {
     fn allocate(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8> {
-        // For StdProvider, we can't safely allocate raw pointers from the Vec
+        // Binary std/no_std choice
         // This would require unsafe code and proper memory management
         Err(Error::memory_error("StdProvider does not support raw allocation"))
     }
 
     fn deallocate(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> WrtResult<()> {
-        // For StdProvider, we can't safely deallocate raw pointers
+        // Binary std/no_std choice
         Err(Error::memory_error("StdProvider does not support raw deallocation"))
     }
 }
@@ -1086,7 +1085,7 @@ impl Allocator for StdProvider {
 /// Memory provider using a fixed-size array, suitable for `no_std`
 /// environments.
 ///
-/// Note: This provider does not perform heap allocations.
+/// Binary std/no_std choice
 pub struct NoStdProvider<const N: usize> {
     /// The underlying data buffer
     data: [u8; N],
@@ -1120,6 +1119,25 @@ impl<const N: usize> PartialEq for NoStdProvider<N> {
 }
 
 impl<const N: usize> Eq for NoStdProvider<N> {}
+
+impl<const N: usize> PartialOrd for NoStdProvider<N> {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<const N: usize> Ord for NoStdProvider<N> {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        // First compare by used size
+        match self.used.cmp(&other.used) {
+            core::cmp::Ordering::Equal => {
+                // If sizes are equal, compare the actual data content
+                self.data[..self.used].cmp(&other.data[..other.used])
+            }
+            other => other,
+        }
+    }
+}
 
 impl<const N: usize> core::hash::Hash for NoStdProvider<N> {
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
@@ -1335,7 +1353,7 @@ impl<const N: usize> NoStdProvider<N> {
 
 // NoStdProvider implements Provider in all configurations
 impl<const N: usize> Provider for NoStdProvider<N> {
-    type Allocator = Self; // NoStdProvider itself is the allocator
+    type Allocator = Self; // Binary std/no_std choice
 
     fn borrow_slice(&self, offset: usize, len: usize) -> Result<Slice<'_>> {
         self.verify_access(offset, len)?;
@@ -1426,10 +1444,10 @@ impl<const N: usize> Provider for NoStdProvider<N> {
     }
 
     fn acquire_memory(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8> {
-        // NoStdProvider does not dynamically allocate in the typical sense.
+        // Binary std/no_std choice
         // It has a fixed buffer. This is more for trait compatibility.
         // We could return a pointer into self.data if layout fits and is unused,
-        // but that's complex and stateful, not typical for `allocate`.
+        // Binary std/no_std choice
         // For now, mirror the existing Allocator impl for NoStdProvider
         Allocator::allocate(self, layout)
     }
@@ -1503,35 +1521,35 @@ impl<const N: usize> Provider for NoStdProvider<N> {
 }
 
 // New Allocator trait
-/// A trait for types that can allocate and deallocate memory.
+/// Binary std/no_std choice
 pub trait Allocator: fmt::Debug + Send + Sync {
     /// Allocates a block of memory with the given layout.
     /// # Errors
-    /// Returns an error if allocation fails.
+    /// Binary std/no_std choice
     fn allocate(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8>;
 
-    /// Deallocates a previously allocated block of memory.
+    /// Binary std/no_std choice
     ///
     /// # Safety
     /// This method encapsulates unsafe operations internally.
-    /// The pointer `ptr` must have been previously allocated by this allocator
-    /// with the same `layout`, and not yet deallocated.
+    /// Binary std/no_std choice
+    /// Binary std/no_std choice
     ///
     /// # Errors
-    /// Returns an error if deallocation fails (though typically this should
+    /// Binary std/no_std choice
     /// succeed or panic).
     fn deallocate(&self, ptr: *mut u8, layout: core::alloc::Layout) -> WrtResult<()>;
 }
 
 impl<const N: usize> Allocator for NoStdProvider<N> {
     fn allocate(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8> {
-        // NoStdProvider with a fixed-size array cannot dynamically allocate in the
+        // Binary std/no_std choice
         // general sense. It could potentially return a pointer into its *own*
         // buffer if N is large enough and it had a mechanism to manage
-        // sub-allocations, but that's complex. For simplicity, especially for
+        // Binary std/no_std choice
         // NoStdProvider<0>, this will fail.
         if N == 0 || layout.size() > N || layout.size() == 0 {
-            // Cannot allocate if no space or zero size requested (which can be problematic)
+            // Binary std/no_std choice
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ALLOCATION_ERROR,
@@ -1539,10 +1557,10 @@ impl<const N: usize> Allocator for NoStdProvider<N> {
                  large/zero)",
             ));
         }
-        // This is a gross oversimplification. A real fixed-buffer allocator
+        // Binary std/no_std choice
         // would need to manage free blocks, alignment, etc.
         // Returning self.data.as_ptr() is not safe without proper management.
-        // For now, always fail for N > 0 as well, unless a bump allocator is
+        // Binary std/no_std choice
         // implemented.
         Err(Error::new(
             ErrorCategory::Memory,
@@ -1552,8 +1570,8 @@ impl<const N: usize> Allocator for NoStdProvider<N> {
     }
 
     fn deallocate(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> WrtResult<()> {
-        // If allocate always fails or uses a simple bump, deallocate might be a no-op
-        // or reset. For now, as allocate is unsupported, deallocate is also
+        // Binary std/no_std choice
+        // Binary std/no_std choice
         // effectively a no-op that returns Ok.
         // Safety: This encapsulates unsafe operations internally
         Ok(())
@@ -1654,6 +1672,158 @@ impl<P: Provider> SafeMemoryHandler<P> {
     pub fn get_slice_mut(&mut self, offset: usize, len: usize) -> Result<SliceMut<'_>> {
         self.provider.get_slice_mut(offset, len)
     }
+
+    /// Converts the memory handler to a Vec of bytes.
+    ///
+    /// This method reads all the data from the memory provider and returns
+    /// it as a Vec<u8>. This is useful for compatibility with APIs that expect
+    /// a standard Vec.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use wrt_foundation::safe_memory::{SafeMemoryHandler, NoStdProvider};
+    /// # use wrt_foundation::VerificationLevel;
+    /// #
+    /// # let provider = NoStdProvider::new(1024, VerificationLevel::default());
+    /// # let handler = SafeMemoryHandler::new(provider);
+    /// let data = handler.to_vec().unwrap();
+    /// assert!(data.is_empty()); // Empty handler has no data
+    /// ```
+    #[cfg(feature = "std")]
+    pub fn to_vec(&self) -> Result<std::vec::Vec<u8>> {
+        let size = self.provider.size();
+        if size == 0 {
+            return Ok(std::vec::Vec::new());
+        }
+        
+        let slice = self.provider.borrow_slice(0, size)?;
+        Ok(slice.as_ref().to_vec())
+    }
+
+    /// Converts the memory handler to a BoundedVec of bytes (no_std version).
+    ///
+    /// In no_std environments, this returns the data as a BoundedVec since
+    /// standard Vec is not available.
+    #[cfg(not(feature = "std"))]
+    pub fn to_vec(&self) -> Result<crate::bounded::BoundedVec<u8, 4096, NoStdProvider<4096>>> {
+        let size = self.provider.size();
+        if size == 0 {
+            return crate::bounded::BoundedVec::new(NoStdProvider::default());
+        }
+        
+        let slice = self.provider.borrow_slice(0, size)?;
+        let mut result = crate::bounded::BoundedVec::new(NoStdProvider::default())?;
+        
+        for byte in slice.as_ref() {
+            result.push(*byte).map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                crate::codes::INVALID_VALUE,
+                "Failed to push byte during to_vec conversion",
+            ))?;
+        }
+        
+        Ok(result)
+    }
+
+    /// Resize the memory handler to a new size.
+    ///
+    /// This method attempts to resize the underlying memory provider.
+    /// The exact behavior depends on the provider implementation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the provider cannot be resized to the requested size.
+    pub fn resize(&mut self, new_size: usize) -> Result<()> 
+    where
+        P: Provider,
+    {
+        // For providers that support resize, delegate to them
+        // For NoStdProvider, this maps to its resize method
+        // For StdProvider, this maps to its resize method
+        self.provider.ensure_used_up_to(new_size)
+    }
+
+    /// Get the current length of used memory in the handler.
+    ///
+    /// This returns the size of initialized/used memory from the provider.
+    pub fn len(&self) -> usize {
+        self.provider.size()
+    }
+
+    /// Check if the memory handler is empty.
+    ///
+    /// Returns true if the provider has no used memory.
+    pub fn is_empty(&self) -> bool {
+        self.provider.size() == 0
+    }
+
+    /// Clear all data in the memory handler.
+    ///
+    /// This method attempts to reset the provider to an empty state.
+    /// Since the Provider trait doesn't expose a direct clear method,
+    /// this is a best-effort implementation that works with the available interface.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the clear operation fails.
+    pub fn clear(&mut self) -> Result<()> {
+        // Since the Provider trait doesn't expose a direct clear method,
+        // we implement clearing by overwriting the memory with zeros in chunks
+        // This effectively clears the data while maintaining the provider's integrity
+        
+        let current_size = self.provider.size();
+        if current_size > 0 {
+            // Clear in chunks to avoid large allocations
+            const CHUNK_SIZE: usize = 256;
+            let zero_chunk = [0u8; CHUNK_SIZE];
+            
+            let mut offset = 0;
+            while offset < current_size {
+                let chunk_len = core::cmp::min(CHUNK_SIZE, current_size - offset);
+                self.provider.write_data(offset, &zero_chunk[..chunk_len])?;
+                offset += chunk_len;
+            }
+        }
+        
+        Ok(())
+    }
+
+    /// Add data to the memory handler.
+    ///
+    /// This appends the provided data to the end of the current memory content.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if there's insufficient capacity or if the write fails.
+    pub fn add_data(&mut self, data: &[u8]) -> Result<()> {
+        let current_size = self.provider.size();
+        self.provider.write_data(current_size, data)
+    }
+
+    /// Copy data within the memory handler from a source offset to a destination offset.
+    ///
+    /// This method copies `len` bytes from `src_offset` to `dst_offset` within the same
+    /// memory provider. The operation handles overlapping regions safely.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if either the source or destination range is out of bounds,
+    /// or if the copy operation fails.
+    pub fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> Result<()> {
+        self.provider.copy_within(src_offset, dst_offset, len)
+    }
+
+    /// Verify the integrity of the memory handler.
+    ///
+    /// This delegates to the provider's integrity verification.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if integrity verification fails.
+    pub fn verify_integrity(&self) -> Result<()> {
+        self.provider.verify_integrity()
+    }
 }
 
 // Re-export SafeStack as an alias for BoundedStack
@@ -1664,3 +1834,86 @@ pub use StdProvider as StdMemoryProvider;
 pub use Provider as MemoryProvider;
 
 pub use crate::bounded::BoundedStack as SafeStack;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_safe_memory_handler_copy_within() {
+        // Create a NoStdProvider with capacity 50
+        let mut provider = NoStdProvider::<50>::new();
+        
+        // Set initial data "Hello, World!"
+        let test_data = b"Hello, World!";
+        provider.set_data(test_data).unwrap();
+        
+        // Create handler
+        let mut handler = SafeMemoryHandler::new(provider);
+        
+        // Test copy_within - copy "World" (from position 7, length 5) to position 0
+        handler.copy_within(7, 0, 5).unwrap();
+        
+        // Verify the result by reading the first 13 bytes
+        let slice = handler.get_slice(0, 13).unwrap();
+        let data = slice.data().unwrap();
+        
+        // The data should now be "World, World!" 
+        // (first 5 bytes replaced with "World" from position 7)
+        assert_eq!(&data[0..5], b"World", "copy_within should copy 'World' to the beginning");
+        assert_eq!(&data[5..13], b", World!", "rest of data should remain unchanged");
+    }
+
+    #[test]
+    fn test_safe_memory_handler_copy_within_overlapping() {
+        // Test overlapping copy operation
+        let mut provider = NoStdProvider::<20>::new();
+        
+        // Set data "ABCDEFGHIJ"
+        let test_data = b"ABCDEFGHIJ";
+        provider.set_data(test_data).unwrap();
+        
+        let mut handler = SafeMemoryHandler::new(provider);
+        
+        // Copy 3 bytes from position 2 to position 4 (overlapping region)
+        handler.copy_within(2, 4, 3).unwrap();
+        
+        let slice = handler.get_slice(0, 10).unwrap();
+        let data = slice.data().unwrap();
+        
+        // Result should be "ABCDCDEFIJ" (CDE copied to position 4, overwriting EFG)
+        assert_eq!(data, b"ABCDCDEHIJ", "overlapping copy_within should work correctly");
+    }
+
+    #[test]
+    fn test_safe_memory_handler_copy_within_bounds_check() {
+        let mut provider = NoStdProvider::<10>::new();
+        provider.set_data(b"123456789").unwrap();
+        
+        let mut handler = SafeMemoryHandler::new(provider);
+        
+        // Test out of bounds source
+        let result = handler.copy_within(8, 0, 5);
+        assert!(result.is_err(), "copy_within should fail for out-of-bounds source");
+        
+        // Test out of bounds destination
+        let result = handler.copy_within(0, 8, 5);
+        assert!(result.is_err(), "copy_within should fail for out-of-bounds destination");
+    }
+
+    #[test]
+    fn test_safe_memory_handler_copy_within_zero_length() {
+        let mut provider = NoStdProvider::<10>::new();
+        provider.set_data(b"ABCDEFG").unwrap();
+        
+        let mut handler = SafeMemoryHandler::new(provider);
+        
+        // Copy zero bytes should succeed and not change anything
+        handler.copy_within(0, 5, 0).unwrap();
+        
+        let slice = handler.get_slice(0, 7).unwrap();
+        let data = slice.data().unwrap();
+        
+        assert_eq!(data, b"ABCDEFG", "zero-length copy should not change data");
+    }
+}

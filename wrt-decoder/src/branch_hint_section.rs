@@ -19,17 +19,37 @@
 //! - 0x00: likely_false (branch is unlikely to be taken)
 //! - 0x01: likely_true (branch is likely to be taken)
 
-use crate::prelude::*;
+// Core/std library imports
+
+#[cfg(feature = "std")]
+use std::{vec::Vec, collections::{BTreeMap, HashMap}};
+
+// External crates
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_format::binary::{read_leb128_u32, read_u8};
 use wrt_foundation::NoStdProvider;
 use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, ReadStream, WriteStream, SerializationError};
 use wrt_foundation::{WrtResult, verification::Checksum};
 
-#[cfg(feature = "alloc")]
-use alloc::{vec::Vec, collections::BTreeMap};
-#[cfg(feature = "std")]
-use std::{vec::Vec, collections::HashMap};
+// Internal modules
+use crate::prelude::*;
+
+/// Safe conversion from Rust usize to WebAssembly u32 for LEB128 encoding
+/// 
+/// # Arguments
+/// 
+/// * `size` - Rust size as usize
+/// 
+/// # Returns
+/// 
+/// Ok(u32) if conversion is safe, error otherwise  
+fn usize_to_wasm_u32(size: usize) -> Result<u32> {
+    u32::try_from(size).map_err(|_| Error::new(
+        ErrorCategory::Parse, 
+        codes::PARSE_ERROR, 
+        "Size exceeds u32 limit for LEB128 encoding"
+    ))
+}
 
 /// Branch hint value indicating the likelihood of a branch being taken
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -135,7 +155,7 @@ pub struct FunctionBranchHints {
     /// Map from instruction offset to branch hint
     #[cfg(feature = "std")]
     pub hints: HashMap<u32, BranchHintValue>,
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(all(not(feature = "std")))]
     pub hints: BTreeMap<u32, BranchHintValue>,
 }
 
@@ -146,7 +166,7 @@ impl FunctionBranchHints {
             function_index,
             #[cfg(feature = "std")]
             hints: HashMap::new(),
-            #[cfg(all(feature = "alloc", not(feature = "std")))]
+            #[cfg(all(not(feature = "std")))]
             hints: BTreeMap::new(),
         }
     }
@@ -184,7 +204,7 @@ pub struct BranchHintSection {
     /// Map from function index to branch hints
     #[cfg(feature = "std")]
     pub function_hints: HashMap<u32, FunctionBranchHints>,
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(all(not(feature = "std")))]
     pub function_hints: BTreeMap<u32, FunctionBranchHints>,
 }
 
@@ -194,7 +214,7 @@ impl BranchHintSection {
         Self {
             #[cfg(feature = "std")]
             function_hints: HashMap::new(),
-            #[cfg(all(feature = "alloc", not(feature = "std")))]
+            #[cfg(all(not(feature = "std")))]
             function_hints: BTreeMap::new(),
         }
     }
@@ -280,56 +300,28 @@ pub fn parse_branch_hint_section(data: &[u8]) -> Result<BranchHintSection> {
 }
 
 /// Encode branch hint section to binary data
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub fn encode_branch_hint_section(section: &BranchHintSection) -> Result<Vec<u8>> {
+    use crate::prelude::write_leb128_u32 as format_write_leb128_u32;
     let mut data = Vec::new();
 
     // Write function count
-    write_leb128_u32(&mut data, section.function_count() as u32);
+    data.extend_from_slice(&format_write_leb128_u32(usize_to_wasm_u32(section.function_count())?));
 
     // Write each function's hints
-    #[cfg(feature = "std")]
-    {
-        for (func_idx, hints) in &section.function_hints {
-            write_leb128_u32(&mut data, *func_idx);
-            write_leb128_u32(&mut data, hints.len() as u32);
+    for (func_idx, hints) in &section.function_hints {
+        data.extend_from_slice(&format_write_leb128_u32(*func_idx));
+        data.extend_from_slice(&format_write_leb128_u32(usize_to_wasm_u32(hints.len())?));
 
-            for (offset, hint) in hints.iter() {
-                write_leb128_u32(&mut data, *offset);
-                data.push(hint.to_byte());
-            }
-        }
-    }
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
-    {
-        for (func_idx, hints) in &section.function_hints {
-            write_leb128_u32(&mut data, *func_idx);
-            write_leb128_u32(&mut data, hints.len() as u32);
-
-            for (offset, hint) in hints.iter() {
-                write_leb128_u32(&mut data, *offset);
-                data.push(hint.to_byte());
-            }
+        for (offset, hint) in hints.iter() {
+            data.extend_from_slice(&format_write_leb128_u32(*offset));
+            data.push(hint.to_byte());
         }
     }
 
     Ok(data)
 }
 
-/// Helper function to write LEB128 u32
-#[cfg(feature = "alloc")]
-fn write_leb128_u32(data: &mut Vec<u8>, mut value: u32) {
-    loop {
-        let byte = (value & 0x7F) as u8;
-        value >>= 7;
-        if value == 0 {
-            data.push(byte);
-            break;
-        } else {
-            data.push(byte | 0x80);
-        }
-    }
-}
 
 /// Branch hint section name constant
 pub const BRANCH_HINT_SECTION_NAME: &str = "metadata.code.branch_hint";
@@ -362,7 +354,7 @@ mod tests {
         assert!(!hint.optimize_for_taken());
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn test_function_branch_hints() {
         let mut hints = FunctionBranchHints::new(5);
@@ -380,7 +372,7 @@ mod tests {
         assert_eq!(hints.get_hint(30), None);
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn test_branch_hint_section() {
         let mut section = BranchHintSection::new();
@@ -405,7 +397,7 @@ mod tests {
         assert_eq!(section.get_hint(0, 30), None);
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn test_parse_encode_round_trip() {
         // Create a test section
@@ -445,7 +437,7 @@ mod tests {
         assert_eq!(section.total_hint_count(), 0);
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn test_parse_malformed_data() {
         // Truncated data

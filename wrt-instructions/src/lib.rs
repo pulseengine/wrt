@@ -33,11 +33,10 @@
 //#![warn(missing_docs)] // Temporarily disabled - docs will be added systematically
 #![warn(clippy::missing_panics_doc)]
 
-// Required for alloc types in no_std
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+// Binary std/no_std choice
 extern crate alloc;
 
-// Note: This crate supports no_std without alloc, using bounded collections
+// Binary std/no_std choice
 // from wrt-foundation
 
 // Import prelude for common type access
@@ -61,7 +60,7 @@ pub mod validation;
 pub mod variable_ops;
 
 // CFI-enhanced control flow operations
-pub mod cfi_control_ops;
+// pub mod cfi_control_ops; // Temporarily disabled due to ConfigurableProvider trait issues
 
 // SIMD operations
 pub mod simd_ops;
@@ -90,12 +89,12 @@ pub use wrt_foundation::{
     types::ValueType, values::Value, BlockType, RefType, Result as TypesResult,
 };
 
-// Re-export CFI control flow operations
-pub use crate::cfi_control_ops::{
-    CfiControlFlowOps, CfiControlFlowProtection, CfiExecutionContext, CfiLandingPad,
-    CfiProtectedBranchTarget, CfiProtectionLevel, CfiTargetProtection, CfiTargetType,
-    DefaultCfiControlFlowOps,
-};
+// Re-export CFI control flow operations - temporarily disabled
+// pub use crate::cfi_control_ops::{
+//     CfiControlFlowOps, CfiControlFlowProtection, CfiExecutionContext, CfiLandingPad,
+//     CfiProtectedBranchTarget, CfiProtectionLevel, CfiTargetProtection, CfiTargetType,
+//     DefaultCfiControlFlowOps,
+// };
 pub use crate::control_ops::{
     Block, ControlBlockType, ControlOp, Return, CallIndirect, BrTable,
     FunctionOperations, ControlContext,
@@ -141,3 +140,11 @@ pub use crate::branch_hinting::{
 // If there's a combined Instruction enum, export it here. Otherwise, runtime
 // will use the Ops. pub enum Instruction { Arithmetic(ArithmeticOp),
 // Control(ControlOp), ... }
+
+// Panic handler disabled to avoid conflicts with other crates
+// // Provide a panic handler only when wrt-instructions is being tested in isolation
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }

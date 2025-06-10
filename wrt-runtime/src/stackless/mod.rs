@@ -11,7 +11,7 @@ mod engine;
 pub mod extensions;
 mod frame;
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub mod tail_call;
 
 pub use engine::{

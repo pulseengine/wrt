@@ -172,7 +172,7 @@ Build and Environment Requirements
 
 .. req:: Optional Arm Hardening Features
    :id: REQ_SECURITY_001
-   :status: new
+   :status: implemented
 
    The build system shall provide an optional compile-time feature (`arm-hardening`) 
    to enable Arm security hardening mechanisms. When enabled, this feature shall 

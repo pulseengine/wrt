@@ -9,7 +9,7 @@
 
 use wrt_error::{codes, Error, Result as WrtResult};
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 use crate::prelude::format;
 use crate::{
     bounded::BoundedVec,
@@ -72,7 +72,7 @@ impl FromBytes for TypeRef {
 ///
 /// This store holds various types like `ComponentType`, `InstanceType`, etc.,
 /// allowing them to be referenced by `TypeRef` to break direct recursion
-/// and manage memory in `no_alloc` environments.
+/// Binary std/no_std choice
 #[derive(Debug)]
 pub struct ComponentTypeStore<P: MemoryProvider + Clone + Default + Eq> {
     provider: P,

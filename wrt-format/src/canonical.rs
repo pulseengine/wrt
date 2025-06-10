@@ -5,16 +5,14 @@
 //! Note: This module is only available with std or alloc features due to
 //! extensive use of dynamic collections.
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, string::String, string::ToString, vec, vec::Vec};
 #[cfg(feature = "std")]
 use std::{boxed::Box, string::String, vec, vec::Vec};
 
 use wrt_foundation::{component_value::ValType, traits::BoundedCapacity};
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 use wrt_foundation::{BoundedString, BoundedVec, MemoryProvider, NoStdProvider};
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 use crate::{WasmString, WasmVec};
 
 /// Canonical ABI memory layout for component types
@@ -54,9 +52,9 @@ pub enum CanonicalLayoutDetails {
         /// Whether it's a fixed-length list
         fixed_length: Option<u32>,
     },
-    /// String type layout
+    /// `String` type layout
     String {
-        /// String encoding
+        /// `String` encoding
         encoding: StringEncoding,
     },
     /// Resource handle layout
@@ -66,7 +64,7 @@ pub enum CanonicalLayoutDetails {
     },
 }
 
-/// String encoding options for canonical ABI
+/// `String` encoding options for canonical ABI
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StringEncoding {
     /// UTF-8 encoding
@@ -427,12 +425,12 @@ pub enum TransformOperation {
     ConvertPrimitive,
     /// Unpack string data
     UnpackString {
-        /// String encoding to use
+        /// `String` encoding to use
         encoding: StringEncoding,
     },
     /// Pack string data
     PackString {
-        /// String encoding to use
+        /// `String` encoding to use
         encoding: StringEncoding,
         /// Allocator to use
         allocator: Option<u32>,
@@ -479,9 +477,9 @@ mod tests {
     fn test_primitive_layouts() {
         #[cfg(feature = "std")]
         type TestProvider = wrt_foundation::StdMemoryProvider;
-        #[cfg(all(feature = "alloc", not(feature = "std")))]
+        #[cfg(all(not(feature = "std")))]
         type TestProvider = wrt_foundation::NoStdProvider<1024>;
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         type TestProvider = wrt_foundation::NoStdProvider<1024>;
 
         let bool_layout = calculate_layout::<TestProvider>(&ValType::Bool);
@@ -500,16 +498,16 @@ mod tests {
     // TODO: Fix ValType record construction with BoundedVec
     // #[test]
     // #[ignore]
-    // #[cfg(any(feature = "alloc", feature = "std"))]
+    // #[cfg(feature = "std")]
     fn _test_record_layout() {
         // TODO: Implement BoundedVec construction for ValType::Record
         // Currently commented out due to compilation issues with vec! macro
         /*
         #[cfg(feature = "std")]
         type TestProvider = wrt_foundation::StdMemoryProvider;
-        #[cfg(all(feature = "alloc", not(feature = "std")))]
+        #[cfg(all(not(feature = "std")))]
         type TestProvider = wrt_foundation::NoStdProvider<1024>;
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         type TestProvider = wrt_foundation::NoStdProvider<1024>;
 
         let record_type = ValType::Record(vec![
@@ -542,15 +540,15 @@ mod tests {
     // TODO: Fix ValType variant construction with BoundedVec
     // #[test]
     // #[ignore]
-    // #[cfg(any(feature = "alloc", feature = "std"))]
+    // #[cfg(feature = "std")]
     fn _test_variant_layout() {
         // TODO: Implement BoundedVec construction for ValType::Variant
         /*
         #[cfg(feature = "std")]
         type TestProvider = wrt_foundation::StdMemoryProvider;
-        #[cfg(all(feature = "alloc", not(feature = "std")))]
+        #[cfg(all(not(feature = "std")))]
         type TestProvider = wrt_foundation::NoStdProvider<1024>;
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         type TestProvider = wrt_foundation::NoStdProvider<1024>;
 
         let variant_type = ValType::Variant(vec![
@@ -575,15 +573,15 @@ mod tests {
     // TODO: Fix ValType FixedList construction with ValTypeRef
     // #[test]
     // #[ignore]
-    // #[cfg(any(feature = "alloc", feature = "std"))]
+    // #[cfg(feature = "std")]
     fn _test_fixed_list_layout() {
         // TODO: Fix ValType::FixedList construction - uses Box instead of ValTypeRef
         /*
         #[cfg(feature = "std")]
         type TestProvider = wrt_foundation::StdMemoryProvider;
-        #[cfg(all(feature = "alloc", not(feature = "std")))]
+        #[cfg(all(not(feature = "std")))]
         type TestProvider = wrt_foundation::NoStdProvider<1024>;
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         type TestProvider = wrt_foundation::NoStdProvider<1024>;
 
         // Test fixed-length list layout
@@ -611,9 +609,9 @@ mod tests {
     fn test_error_context_layout() {
         #[cfg(feature = "std")]
         type TestProvider = wrt_foundation::StdMemoryProvider;
-        #[cfg(all(feature = "alloc", not(feature = "std")))]
+        #[cfg(all(not(feature = "std")))]
         type TestProvider = wrt_foundation::NoStdProvider<1024>;
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         type TestProvider = wrt_foundation::NoStdProvider<1024>;
 
         // Test error context layout
@@ -634,9 +632,9 @@ mod tests {
     fn test_resource_layout() {
         #[cfg(feature = "std")]
         type TestProvider = wrt_foundation::StdMemoryProvider;
-        #[cfg(all(feature = "alloc", not(feature = "std")))]
+        #[cfg(all(not(feature = "std")))]
         type TestProvider = wrt_foundation::NoStdProvider<1024>;
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         type TestProvider = wrt_foundation::NoStdProvider<1024>;
 
         // Test resource handle layouts

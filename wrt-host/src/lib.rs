@@ -42,11 +42,12 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-// Import alloc when available
-#[cfg(feature = "alloc")]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
+#[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
-// Note: This crate supports no_std without alloc, using bounded collections
+// Binary std/no_std choice
 // from wrt-foundation
 
 // Export modules
@@ -55,6 +56,10 @@ pub mod callback;
 pub mod function;
 pub mod host;
 pub mod prelude;
+
+// Agent C deliverables - Enhanced Host Integration
+/// Bounded host integration with memory constraints
+pub mod bounded_host_integration;
 
 // Include verification module conditionally, but exclude during coverage builds
 #[cfg(all(not(coverage), any(doc, kani)))]
@@ -67,3 +72,21 @@ pub use function::{CloneableFn, HostFunctionHandler};
 pub use host::BuiltinHost;
 // Re-export prelude for convenience
 pub use prelude::*;
+
+// Re-export Agent C deliverables
+pub use bounded_host_integration::{
+    BoundedCallContext, BoundedCallResult, BoundedHostFunction, BoundedHostIntegrationManager,
+    ComponentInstanceId, HostFunctionId, HostIntegrationLimits, HostIntegrationStatistics,
+    SimpleBoundedHostFunction, create_echo_function, create_memory_info_function, create_safety_check_function,
+};
+
+// Panic handler disabled in library crates to avoid conflicts during workspace builds
+// The main wrt crate or final binary should provide the panic handler
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     // For safety-critical systems, enter infinite loop to maintain known safe state
+//     loop {
+//         core::hint::spin_loop();
+//     }
+// }

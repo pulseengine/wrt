@@ -1,13 +1,13 @@
 //! WebAssembly branch hinting operations implementation.
 //!
 //! This module implements WebAssembly branch hinting instructions including:
-//! - br_on_null: Branch if reference is null
-//! - br_on_non_null: Branch if reference is not null
+//! - `br_on_null`: Branch if reference is null
+//! - `br_on_non_null`: Branch if reference is not null
 //!
 //! These operations support the WebAssembly branch hinting proposal
-//! and work across std, no_std+alloc, and pure no_std environments.
+//! and work across std, `no_std+alloc`, and pure `no_std` environments.
 
-use crate::prelude::*;
+use crate::prelude::{Debug, Eq, PartialEq, PureInstruction};
 use wrt_error::{Error, Result};
 use wrt_foundation::{
     types::{LabelIdx, ValueType},
@@ -24,12 +24,12 @@ pub struct BrOnNull {
 }
 
 impl BrOnNull {
-    /// Create a new br_on_null instruction
-    pub fn new(label: LabelIdx) -> Self {
+    /// Create a new `br_on_null` instruction
+    #[must_use] pub fn new(label: LabelIdx) -> Self {
         Self { label }
     }
 
-    /// Execute the br_on_null instruction
+    /// Execute the `br_on_null` instruction
     /// Returns Ok(true) if branch taken, Ok(false) if not taken
     pub fn execute(&self, reference: &Value) -> Result<bool> {
         match reference {
@@ -48,7 +48,7 @@ impl BrOnNull {
     }
 
     /// Get the target label for branching
-    pub fn target_label(&self) -> LabelIdx {
+    #[must_use] pub fn target_label(&self) -> LabelIdx {
         self.label
     }
 }
@@ -61,12 +61,12 @@ pub struct BrOnNonNull {
 }
 
 impl BrOnNonNull {
-    /// Create a new br_on_non_null instruction
-    pub fn new(label: LabelIdx) -> Self {
+    /// Create a new `br_on_non_null` instruction
+    #[must_use] pub fn new(label: LabelIdx) -> Self {
         Self { label }
     }
 
-    /// Execute the br_on_non_null instruction
+    /// Execute the `br_on_non_null` instruction
     /// Returns Ok(true) if branch taken, Ok(false) if not taken
     /// Also returns the reference value for stack manipulation
     pub fn execute(&self, reference: &Value) -> Result<(bool, Option<Value>)> {
@@ -87,7 +87,7 @@ impl BrOnNonNull {
     }
 
     /// Get the target label for branching
-    pub fn target_label(&self) -> LabelIdx {
+    #[must_use] pub fn target_label(&self) -> LabelIdx {
         self.label
     }
 }
@@ -95,15 +95,15 @@ impl BrOnNonNull {
 /// Branch hinting operation enum for unified handling
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BranchHintOp {
-    /// br_on_null operation
+    /// `br_on_null` operation
     BrOnNull(BrOnNull),
-    /// br_on_non_null operation  
+    /// `br_on_non_null` operation  
     BrOnNonNull(BrOnNonNull),
 }
 
 impl BranchHintOp {
     /// Execute the branch hinting operation
-    /// Returns (branch_taken, label_to_branch_to, value_to_keep_on_stack)
+    /// Returns (`branch_taken`, `label_to_branch_to`, `value_to_keep_on_stack`)
     pub fn execute(&self, operand: &Value) -> Result<(bool, Option<LabelIdx>, Option<Value>)> {
         match self {
             BranchHintOp::BrOnNull(op) => {
@@ -192,7 +192,7 @@ impl Validate for BranchHintOp {
     }
 }
 
-#[cfg(all(test, any(feature = "std", feature = "alloc")))]
+#[cfg(all(test, any(feature = "std", )))]
 mod tests {
     use super::*;
     use wrt_foundation::values::{FuncRef, ExternRef};

@@ -8,8 +8,8 @@ use core::{fmt, mem};
 #[cfg(feature = "std")]
 use std::{fmt, mem};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
 
 use wrt_foundation::{
     bounded::BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
@@ -52,9 +52,9 @@ pub struct FunctionImport {
     /// Function signature
     pub signature: ComponentType,
     /// Function implementation
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub implementation: Box<dyn Fn(&[Value]) -> WrtResult<Value>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub implementation: fn(&[Value]) -> WrtResult<Value>,
 }
 
@@ -62,10 +62,10 @@ pub struct FunctionImport {
 #[derive(Debug, Clone)]
 pub struct InstanceImport {
     /// Instance exports
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub exports: BTreeMap<String, ExportValue>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub exports: BoundedVec<(BoundedString<64>, ExportValue), MAX_EXPORTS>,
+    #[cfg(not(any(feature = "std", )))]
+    pub exports: BoundedVec<(BoundedString<64, NoStdProvider<65536>>, ExportValue), MAX_EXPORTS>,
 }
 
 /// Export value from an instance
@@ -93,46 +93,46 @@ pub struct FunctionExport {
 /// Import values provided during instantiation
 pub struct ImportValues {
     /// Map of import names to values
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     imports: BTreeMap<String, ImportValue>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    imports: BoundedVec<(BoundedString<64>, ImportValue), MAX_IMPORTS>,
+    #[cfg(not(any(feature = "std", )))]
+    imports: BoundedVec<(BoundedString<64, NoStdProvider<65536>>, ImportValue), MAX_IMPORTS>,
 }
 
 impl ImportValues {
     /// Create new import values
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             imports: BTreeMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            imports: BoundedVec::new(),
+            #[cfg(not(any(feature = "std", )))]
+            imports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 
     /// Add an import value
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn add(&mut self, name: String, value: ImportValue) -> WrtResult<()> {
         self.imports.insert(name, value);
         Ok(())
     }
 
     /// Add an import value (no_std version)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub fn add(&mut self, name: BoundedString<64>, value: ImportValue) -> WrtResult<()> {
+    #[cfg(not(any(feature = "std", )))]
+    pub fn add(&mut self, name: BoundedString<64, NoStdProvider<65536>>, value: ImportValue) -> WrtResult<()> {
         self.imports
             .push((name, value))
             .map_err(|_| wrt_foundation::WrtError::ResourceExhausted("Too many imports".into()))
     }
 
     /// Get an import value by name
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn get(&self, name: &str) -> Option<&ImportValue> {
         self.imports.get(name)
     }
 
     /// Get an import value by name (no_std version)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn get(&self, name: &str) -> Option<&ImportValue> {
         self.imports.iter().find(|(n, _)| n.as_str() == name).map(|(_, v)| v)
     }
@@ -211,22 +211,22 @@ impl Component {
         let instance = ComponentInstance {
             id: instance_id,
             component: self.clone(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             imports: resolved_imports,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             exports,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             resource_tables,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             module_instances,
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            imports: BoundedVec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            exports: BoundedVec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            resource_tables: BoundedVec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            module_instances: BoundedVec::new(),
+            #[cfg(not(any(feature = "std", )))]
+            imports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            #[cfg(not(any(feature = "std", )))]
+            exports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            #[cfg(not(any(feature = "std", )))]
+            resource_tables: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            #[cfg(not(any(feature = "std", )))]
+            module_instances: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         };
 
         Ok(instance)
@@ -234,7 +234,7 @@ impl Component {
 
     /// Validate that provided imports match component requirements
     fn validate_imports(&self, imports: &ImportValues) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             for import in &self.imports {
                 match imports.get(&import.name) {
@@ -243,21 +243,17 @@ impl Component {
                         self.validate_import_type(import, value)?;
                     }
                     None => {
-                        return Err(wrt_foundation::WrtError::InvalidInput(
-                            format!("Missing required import: {}", import.name).into(),
-                        ));
+                        return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
                     }
                 }
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             // In no_std, we have limited validation
             // Just check that we have some imports if required
             if self.imports.len() > 0 && imports.imports.len() == 0 {
-                return Err(wrt_foundation::WrtError::InvalidInput(
-                    "Missing required imports".into(),
-                ));
+                return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
             }
         }
 
@@ -320,7 +316,7 @@ impl Component {
     }
 
     /// Create resource tables for the instance
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn create_resource_tables(&self) -> WrtResult<Vec<ResourceTable>> {
         let mut tables = Vec::new();
 
@@ -335,9 +331,9 @@ impl Component {
         Ok(tables)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    fn create_resource_tables(&self) -> WrtResult<BoundedVec<ResourceTable, 16>> {
-        let mut tables = BoundedVec::new();
+    #[cfg(not(any(feature = "std", )))]
+    fn create_resource_tables(&self) -> WrtResult<BoundedVec<ResourceTable, 16>, NoStdProvider<65536>> {
+        let mut tables = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
 
         // Create resource tables based on component types
         for (type_id, _) in self.types.iter().enumerate() {
@@ -351,7 +347,7 @@ impl Component {
     }
 
     /// Resolve imports into concrete values
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn resolve_imports(
         &self,
         imports: &ImportValues,
@@ -369,13 +365,13 @@ impl Component {
         Ok(resolved)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     fn resolve_imports(
         &self,
         imports: &ImportValues,
         context: &mut InstantiationContext,
-    ) -> WrtResult<BoundedVec<ResolvedImport, MAX_IMPORTS>> {
-        let mut resolved = BoundedVec::new();
+    ) -> WrtResult<BoundedVec<ResolvedImport, MAX_IMPORTS>, NoStdProvider<65536>> {
+        let mut resolved = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
 
         for import in &self.imports {
             // Find matching import by name
@@ -405,7 +401,7 @@ impl Component {
         match value {
             ImportValue::Function(func) => {
                 // Register the function with the execution engine
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 let func_index = {
                     // Create a host function wrapper
                     let implementation = func.implementation.clone();
@@ -413,7 +409,7 @@ impl Component {
                         HostFunctionWrapper { signature: func.signature.clone(), implementation },
                     ))?
                 };
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 let func_index =
                     context.execution_engine.register_host_function(func.implementation)?;
 
@@ -426,7 +422,7 @@ impl Component {
     }
 
     /// Initialize embedded modules
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn initialize_modules(
         &self,
         resolved_imports: &[ResolvedImport],
@@ -444,13 +440,13 @@ impl Component {
         Ok(instances)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     fn initialize_modules(
         &self,
-        resolved_imports: &BoundedVec<ResolvedImport, MAX_IMPORTS>,
+        resolved_imports: &BoundedVec<ResolvedImport, MAX_IMPORTS, NoStdProvider<65536>>,
         context: &mut InstantiationContext,
-    ) -> WrtResult<BoundedVec<ModuleInstance, MAX_INSTANCES>> {
-        let mut instances = BoundedVec::new();
+    ) -> WrtResult<BoundedVec<ModuleInstance, MAX_INSTANCES>, NoStdProvider<65536>> {
+        let mut instances = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
 
         // Initialize each embedded module
         for (module_index, _module) in self.modules.iter().enumerate() {
@@ -464,7 +460,7 @@ impl Component {
     }
 
     /// Extract exports from the instance
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn extract_exports(
         &self,
         module_instances: &[ModuleInstance],
@@ -514,13 +510,13 @@ impl Component {
         Ok(exports)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     fn extract_exports(
         &self,
-        module_instances: &BoundedVec<ModuleInstance, MAX_INSTANCES>,
+        module_instances: &BoundedVec<ModuleInstance, MAX_INSTANCES, NoStdProvider<65536>>,
         context: &mut InstantiationContext,
-    ) -> WrtResult<BoundedVec<ResolvedExport, MAX_EXPORTS>> {
-        let mut exports = BoundedVec::new();
+    ) -> WrtResult<BoundedVec<ResolvedExport, MAX_EXPORTS>, NoStdProvider<65536>> {
+        let mut exports = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
 
         for export in &self.exports {
             let resolved = match &export.kind {
@@ -566,10 +562,10 @@ pub enum ResolvedImport {
 /// Resolved export with actual values
 #[derive(Debug, Clone)]
 pub struct ResolvedExport {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub name: String,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub name: BoundedString<64>,
+    #[cfg(not(any(feature = "std", )))]
+    pub name: BoundedString<64, NoStdProvider<65536>>,
     pub value: ExportValue,
 }
 
@@ -588,13 +584,13 @@ pub struct ModuleInstance {
 }
 
 /// Host function wrapper for the execution engine
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 struct HostFunctionWrapper {
     signature: ComponentType,
     implementation: Box<dyn Fn(&[Value]) -> WrtResult<Value>>,
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl crate::execution_engine::HostFunction for HostFunctionWrapper {
     fn call(&mut self, args: &[Value]) -> WrtResult<Value> {
         (self.implementation)(args)
@@ -613,7 +609,7 @@ mod tests {
     fn test_import_values() {
         let mut imports = ImportValues::new();
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let func = FunctionImport {
                 signature: ComponentType::Unit,
@@ -624,7 +620,7 @@ mod tests {
             assert!(imports.get("unknown").is_none());
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let func = FunctionImport {
                 signature: ComponentType::Unit,

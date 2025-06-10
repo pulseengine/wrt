@@ -1,12 +1,12 @@
 #[cfg(feature = "std")]
 use std::collections::BTreeMap;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{boxed::Box, collections::BTreeMap, vec::Vec, string::String};
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(all(not(feature = "std")))]
+use std::{boxed::Box, collections::BTreeMap, vec::Vec, string::String};
+#[cfg(not(any(feature = "std")))]
 use wrt_foundation::{BoundedVec as Vec, no_std_hashmap::SimpleHashMap as BTreeMap};
 
 // Box alternative for no_std environments - use a simple wrapper
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 type Box<T> = T;
 
 use core::fmt;

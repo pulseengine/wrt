@@ -223,7 +223,7 @@ mod foundation_memory_tests {
     fn test_nostd_memory_provider() {
         let provider = NoStdMemoryProvider::<64>::new();
 
-        // Test allocation
+        // Binary std/no_std choice
         let memory_id = provider.allocate(32).unwrap();
         
         // Test write/read
@@ -635,7 +635,7 @@ mod memory_error_tests {
     fn test_safe_memory_handler_error_handling() -> Result<()> {
         let mut handler = SafeMemoryHandler::new(VerificationLevel::Full)?;
         
-        // Try to allocate too much memory
+        // Binary std/no_std choice
         let large_alloc_result = handler.allocate(usize::MAX);
         assert!(large_alloc_result.is_err());
         

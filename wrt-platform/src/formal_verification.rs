@@ -1,6 +1,7 @@
 // WRT - wrt-platform
 // Module: Formal Verification Support
 // SW-REQ-ID: REQ_PLATFORM_VERIFICATION_001
+// SW-REQ-ID: REQ_VERIFY_010
 //
 // Copyright (c) 2025 The WRT Project Developers
 // Licensed under the MIT license.
@@ -95,39 +96,39 @@ pub mod annotations {
     pub fn assert_no_data_races() {}
 }
 
-/// Memory safety verification for page allocators
+/// Binary std/no_std choice
 pub mod memory_verification {
     use core::ptr::NonNull;
 
     use super::annotations::*;
     use crate::memory::PageAllocator;
 
-    /// Verify memory allocator safety properties
+    /// Binary std/no_std choice
     pub fn verify_allocator_safety<A: PageAllocator>(_allocator: &A) -> Result<(), crate::Error> {
         // Property 1: Allocation returns valid aligned pointers or fails
-        // Note: For now, commenting out allocator verification until proper trait
-        // methods are defined TODO: Implement proper allocator verification
+        // Binary std/no_std choice
+        // Binary std/no_std choice
         // once trait interface is stable if let Ok((ptr, _size)) =
-        // allocator.allocate(1, None) {     assert_valid_ptr(ptr.as_ptr());
+        // Binary std/no_std choice
         //
         //     // Verify alignment
         //     #[cfg(kani)]
         //     kani::assert(ptr.as_ptr() as usize % WASM_PAGE_SIZE == 0, "Page
         // alignment");
         //
-        //     // Clean up would require deallocate method
+        // Binary std/no_std choice
         // }
 
-        // Property 2: Deallocation of valid pointers succeeds
-        // TODO: Implement once proper allocator trait methods are available
-        // if let Ok((ptr, _size)) = allocator.allocate(1, None) {
-        //     let result = unsafe { allocator.deallocate(ptr, 1) };
+        // Binary std/no_std choice
+        // Binary std/no_std choice
+        // Binary std/no_std choice
+        // Binary std/no_std choice
         //     #[cfg(kani)]
-        //     kani::assert(result.is_ok(), "Valid deallocation succeeds");
+        // Binary std/no_std choice
         // }
 
-        // Property 3: Double deallocation is detected (if allocator supports it)
-        // This would be tested with specific allocator implementations
+        // Binary std/no_std choice
+        // Binary std/no_std choice
 
         Ok(())
     }
@@ -152,7 +153,7 @@ pub mod memory_verification {
         let num_pages: usize = kani::any();
         kani::assume(num_pages > 0 && num_pages <= 1024);
 
-        // This would test with actual allocator implementations
+        // Binary std/no_std choice
         // For now, we verify the mathematical properties
         let total_size = num_pages * WASM_PAGE_SIZE;
         kani::assert(total_size >= WASM_PAGE_SIZE, "Size calculation correct");
@@ -499,7 +500,7 @@ pub mod verification_harnesses {
         let size: usize = kani::any();
         kani::assume(size > 0 && size <= 16 * WASM_PAGE_SIZE);
 
-        // This would test actual allocator implementations
+        // Binary std/no_std choice
         annotations::assert_valid_memory(0x1000 as *const u8, size);
         annotations::assert_bounded_execution(100);
     }

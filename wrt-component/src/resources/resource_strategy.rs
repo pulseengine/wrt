@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: MIT
 
 use wrt_error::Result;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 use wrt_foundation::bounded::{BoundedVec, MAX_BUFFER_SIZE};
 
 use crate::resources::{MemoryStrategy, ResourceOperation};
@@ -19,12 +18,11 @@ pub trait ResourceStrategy: Send + Sync {
     fn process_memory(&self, data: &[u8], operation: ResourceOperation) -> Result<Vec<u8>>;
 
     /// Process memory with this strategy (no_std version)
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    fn process_memory(
+        fn process_memory(
         &self,
         data: &[u8],
         operation: ResourceOperation,
-    ) -> Result<BoundedVec<u8, MAX_BUFFER_SIZE>>;
+    ) -> Result<BoundedVec<u8, MAX_BUFFER_SIZE>, NoStdProvider<65536>>;
 
     /// Check if the strategy allows a certain operation
     fn allows_operation(&self, operation: ResourceOperation) -> bool {

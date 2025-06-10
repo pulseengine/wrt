@@ -10,21 +10,9 @@
 //! consistency across all crates in the WRT project and simplify imports in
 //! individual modules.
 
-// Core imports for both std and no_std environments
-// Re-export from alloc when no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
-    boxed::Box,
-    collections::{BTreeMap, BTreeSet},
-    format,
-    string::{String, ToString},
-    sync::Arc,
-    vec,
-    vec::Vec,
-};
-// Consumers must explicitly use core::* or bounded types.
+// Binary std/no_std choice - conditional imports only
 
-// Explicitly re-export common core traits and types
+// Core traits and types available in both std and no_std
 pub use core::any::Any;
 pub use core::{
     clone::Clone,
@@ -38,8 +26,8 @@ pub use core::{
     ops::{Deref, DerefMut},
     slice, str,
 };
-// Re-export from std when the std feature is enabled
-// Only include these imports when std feature is enabled
+
+// std-only imports
 #[cfg(feature = "std")]
 pub use std::{
     boxed::Box,
@@ -51,9 +39,22 @@ pub use std::{
     vec::Vec,
 };
 
+// alloc-only imports (when std is not available)
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+pub use alloc::{
+    boxed::Box,
+    collections::{BTreeMap, BTreeSet},
+    format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
+
+// no_std alternatives using bounded collections - handled in main re-exports below
+
 #[cfg(feature = "use-hashbrown")]
 pub use hashbrown::HashMap as BHashMap;
-// If only no_std (and not alloc) is active, common collections like Vec, String, Box, HashMap,
+// Binary std/no_std choice
 // HashSet, Arc are NOT exported by this prelude. Users should use bounded types or core types
 // directly.
 
@@ -62,7 +63,7 @@ pub use wrt_error::prelude::*;
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 
 // Feature-gated re-exports that can't be included in the main use block
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use crate::component_builder::{
     ComponentTypeBuilder, ExportBuilder, ImportBuilder, NamespaceBuilder,
 };
@@ -72,8 +73,8 @@ pub use crate::component_builder::{
 // Re-export platform-specific memory builders if the feature is enabled
 #[cfg(feature = "platform-memory")]
 pub use crate::memory_builder::{LinearMemoryBuilder, PalMemoryProviderBuilder};
-// When neither std nor alloc is available, we provide a pure no_std SimpleHashMap
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+// Binary std/no_std choice
+#[cfg(not(feature = "std"))]
 pub use crate::no_std_hashmap::SimpleHashMap;
 // Re-export from this crate
 pub use crate::{
@@ -101,7 +102,7 @@ pub use crate::{
     resource::ResourceOperation,
     // Safe memory types (SafeMemoryHandler, SafeSlice, SafeStack are already here from direct
     // re-exports) Sections (SectionId, SectionType, Section are usually handled by decoder)
-    // Import NoStdProvider for no_alloc type aliases
+    // Binary std/no_std choice
     safe_memory::NoStdProvider,
     // Validation traits (moved to traits module to break circular dependency)
     traits::{
@@ -132,14 +133,49 @@ pub use crate::{
     // ResourceType, // Already covered by component::* above
     SafeMemoryHandler,
     SafeSlice,
+    // New unified types from Agent A deliverables (simplified)
+    unified_types_simple::{
+        DefaultTypes, EmbeddedTypes, DesktopTypes, SafetyCriticalTypes,
+        PlatformCapacities, UnifiedTypes,
+    },
+    // Memory system types
+    memory_system::{
+        UnifiedMemoryProvider, ConfigurableProvider, SmallProvider, MediumProvider, LargeProvider,
+        NoStdProviderWrapper, MemoryProviderFactory,
+    },
+    // Global memory configuration
+    global_memory_config::{
+        GlobalMemoryConfig, GlobalMemoryStats, ProviderType, PlatformAwareMemoryFactory,
+        GlobalMemoryAwareProvider, global_memory_config, initialize_global_memory_system,
+    },
+    // Safety system types
+    safety_system::{
+        AsilLevel, SafetyContext, SafetyGuard, SafeMemoryAllocation,
+    },
+    // ASIL testing framework
+    asil_testing::{
+        AsilTestMetadata, TestCategory, TestStatistics,
+        register_asil_test, get_asil_tests, get_tests_by_asil, get_tests_by_category, get_test_statistics,
+    },
 };
 
-// Conversion utilities (only available with alloc/std)
-#[cfg(any(feature = "alloc", feature = "std"))]
+// Conditional re-exports for memory provider functions
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use crate::global_memory_config::create_memory_provider;
+
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub use crate::global_memory_config::{create_small_provider, create_medium_provider, create_large_provider};
+
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub use crate::conversion::{ref_type_to_val_type, val_type_to_ref_type};
 
+// std-only memory provider
+#[cfg(feature = "std")]
+pub use crate::memory_system::UnifiedStdProvider;
+
 // Alloc-dependent re-exports
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use crate::{
     // Component builders
     component_value::{ComponentValue, ValType},
@@ -147,15 +183,15 @@ pub use crate::{
     component_value_store_builder::ComponentValueStoreBuilder,
 };
 
-// Type aliases for no_std/no_alloc compatibility
+// Binary std/no_std choice
 /// Maximum number of arguments/results for WebAssembly functions
 pub const MAX_WASM_FUNCTION_PARAMS: usize = 128;
 
-/// Type alias for function argument vectors in no_alloc environments
-#[cfg(not(feature = "alloc"))]
+/// Binary std/no_std choice
+#[cfg(not(feature = "std"))]
 pub type ArgVec<T> =
     BoundedVec<T, MAX_WASM_FUNCTION_PARAMS, NoStdProvider<{ MAX_WASM_FUNCTION_PARAMS * 16 }>>;
 
-/// Type alias for function argument vectors in alloc environments
-#[cfg(feature = "alloc")]
+/// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub type ArgVec<T> = Vec<T>;

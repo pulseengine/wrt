@@ -21,13 +21,19 @@ log = { version = "0.4", optional = true }
 # Feature gates
 [features]
 default = []
+# Binary choice: std OR no_std (no alloc middle ground)
 std = ["log", "wrt-foundation/std", "wrt-intercept/std", "wrt-sync/std"]
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
-alloc = ["wrt-foundation/alloc", "wrt-intercept/alloc", "wrt-sync/alloc"]
 optimize = ["wrt-foundation/optimize", "wrt-intercept/optimize"]
-safety = ["wrt-foundation/safety", "wrt-intercept/safety", "alloc"]
+safety = ["wrt-foundation/safety", "wrt-intercept/safety", "std"]
 kani = ["wrt-intercept/kani"]
+disable-panic-handler = [
+    "wrt-error/disable-panic-handler",
+    "wrt-foundation/disable-panic-handler",
+    "wrt-intercept/disable-panic-handler", 
+    "wrt-sync/disable-panic-handler"
+]
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }

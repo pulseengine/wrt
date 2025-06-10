@@ -14,7 +14,7 @@
 
 // Conditionally import from std or core
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 extern crate alloc;
 
 // Added BoundedVec for tests
@@ -25,10 +25,10 @@ use crate::bounded::BoundedVec;
 use crate::prelude::{Debug /* Removed format, ToString as _ToString */};
 #[cfg(test)]
 use crate::safe_memory::NoStdProvider;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-// use alloc::format; // Removed
-#[cfg(feature = "alloc")]
-// use alloc::string::String; // Removed
+#[cfg(all(not(feature = "std")))]
+// use std::format; // Removed
+#[cfg(feature = "std")]
+// use std::string::String; // Removed
 // Don't import, use fully qualified paths instead
 // Import traits from the traits module
 use crate::traits::{importance, BoundedCapacity, Checksummed, Validatable};
@@ -122,12 +122,12 @@ where
 }
 
 /// Validation result type to centralize error handling
-// #[cfg(feature = "alloc")] // Removed cfg_attr
+// #[cfg(feature = "std")] // Removed cfg_attr
 // pub type ValidationResult = Result<(), String>; // Old
 pub type ValidationResult = core::result::Result<(), ValidationError>; // New: Always use ValidationError
 
 /// Helper to validate a checksum against an expected value
-// #[cfg(feature = "alloc")] // Removed cfg_attr
+// #[cfg(feature = "std")] // Removed cfg_attr
 pub fn validate_checksum(
     actual: crate::verification::Checksum,
     expected: crate::verification::Checksum,
@@ -208,7 +208,7 @@ mod tests {
         assert_eq!(checksum, expected);
     }
 
-    // #[cfg(feature = "alloc")] // Test should run always now
+    // #[cfg(feature = "std")] // Test should run always now
     #[test]
     fn test_validate_checksum() {
         let checksum1 = Checksum::new();

@@ -7,7 +7,7 @@
 //! This module provides pure implementations for WebAssembly conversion
 //! instructions, including type conversions between numeric types.
 
-use crate::prelude::*;
+use crate::prelude::{Debug, Error, ErrorCategory, FloatBits32, FloatBits64, PureInstruction, Result, Value, codes};
 use wrt_math as math;
 
 /// Represents a pure conversion operation for WebAssembly.
@@ -459,53 +459,53 @@ impl<T: ConversionContext> PureInstruction<T, Error> for ConversionOp {
     }
 }
 
-/// I32WrapI64 conversion operation
+/// `I32WrapI64` conversion operation
 pub struct I32WrapI64(pub Value);
 
-/// I64ExtendI32S conversion operation
+/// `I64ExtendI32S` conversion operation
 pub struct I64ExtendI32S(pub Value);
 
-/// I64ExtendI32U conversion operation
+/// `I64ExtendI32U` conversion operation
 pub struct I64ExtendI32U(pub Value);
 
-/// I64TruncF32S conversion operation
+/// `I64TruncF32S` conversion operation
 pub struct I64TruncF32S(pub Value);
 
-/// I64TruncF32U conversion operation
+/// `I64TruncF32U` conversion operation
 pub struct I64TruncF32U(pub Value);
 
-/// I64TruncF64S conversion operation
+/// `I64TruncF64S` conversion operation
 pub struct I64TruncF64S(pub Value);
 
-/// I64TruncF64U conversion operation
+/// `I64TruncF64U` conversion operation
 pub struct I64TruncF64U(pub Value);
 
-/// F32ConvertI32S conversion operation
+/// `F32ConvertI32S` conversion operation
 pub struct F32ConvertI32S(pub Value);
 
-/// F32ConvertI32U conversion operation
+/// `F32ConvertI32U` conversion operation
 pub struct F32ConvertI32U(pub Value);
 
-/// F32ConvertI64S conversion operation
+/// `F32ConvertI64S` conversion operation
 pub struct F32ConvertI64S(pub Value);
 
-/// F32ConvertI64U conversion operation
+/// `F32ConvertI64U` conversion operation
 pub struct F32ConvertI64U(pub Value);
 
-/// F32DemoteF64 conversion operation
+/// `F32DemoteF64` conversion operation
 pub struct F32DemoteF64(pub Value);
 
-/// F64ConvertI32S conversion operation
+/// `F64ConvertI32S` conversion operation
 pub struct F64ConvertI32S(pub Value);
 
-/// F64ConvertI32U conversion operation
+/// `F64ConvertI32U` conversion operation
 pub struct F64ConvertI32U(pub Value);
 
-/// F64ConvertI64S conversion operation
+/// `F64ConvertI64S` conversion operation
 pub struct F64ConvertI64S(pub Value);
 
-/// F64ConvertI64U conversion operation
+/// `F64ConvertI64U` conversion operation
 pub struct F64ConvertI64U(pub Value);
 
-/// F64PromoteF32 conversion operation
+/// `F64PromoteF32` conversion operation
 pub struct F64PromoteF32(pub Value);

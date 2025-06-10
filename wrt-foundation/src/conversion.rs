@@ -12,23 +12,23 @@
 //! WebAssembly type representations, such as between ValType and BinaryType.
 
 // Remove Vec-related imports as they are no longer needed at the top level or
-// directly in func_type module #[cfg(all(feature = "alloc", not(feature =
-// "std")))] extern crate alloc;
+// directly in func_type module #[cfg(all(not(feature =
+// Binary std/no_std choice
 
-// #[cfg(feature = "alloc")]
-// use alloc::vec::Vec; // This was for the module scope, func_type::create used
+// #[cfg(feature = "std")]
+// use std::vec::Vec; // This was for the module scope, func_type::create used
 // its own.
 
 use wrt_error::{codes, Error, Result};
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 use crate::{BlockType, FuncType, RefType, ValueType as CoreValueType};
 
 /// Convert `RefType` to `ValueType`
 ///
 /// Provides a standard way to convert between reference types
 /// and value types across all crates.
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 #[must_use]
 pub fn ref_type_to_val_type(ref_type: RefType) -> CoreValueType {
     match ref_type {
@@ -41,7 +41,7 @@ pub fn ref_type_to_val_type(ref_type: RefType) -> CoreValueType {
 ///
 /// Provides a standard way to convert between value types
 /// and reference types across all crates.
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub fn val_type_to_ref_type(val_type: CoreValueType) -> Result<RefType> {
     match val_type {
         CoreValueType::FuncRef => Ok(RefType::Funcref),
@@ -55,7 +55,7 @@ pub fn val_type_to_ref_type(val_type: CoreValueType) -> Result<RefType> {
 }
 
 /// Block type utilities for converting between different representations
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub mod block_type {
     use super::BlockType;
 
@@ -70,7 +70,7 @@ pub mod block_type {
     /// Trait for types that can be converted to `BlockType`
     ///
     /// This trait allows for standardized conversion from different
-    /// representations of block types to the core `BlockType` enum.
+    /// representations of block types to the core `BlockType` `enum`.
     pub trait ConvertToBlockType {
         /// Convert to `BlockType`
         fn to_block_type(&self) -> BlockType;
@@ -78,11 +78,11 @@ pub mod block_type {
 }
 
 /// `FuncType` utilities for working with function types consistently
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub mod func_type {
     // Remove Vec import, as params and results will be slices
     // #[cfg(not(feature = "std"))]
-    // use alloc::vec::Vec;
+    // use std::vec::Vec;
 
     // Result is imported through crate prelude
 
@@ -116,16 +116,16 @@ pub mod func_type {
 
 #[cfg(test)]
 mod tests {
-    // Remove alloc::vec import for tests
+    // Binary std/no_std choice
     // #[cfg(not(feature = "std"))]
-    // use alloc::vec;
+    // use std::vec;
 
     // Result is imported through super::*
 
     use super::*;
     use crate::{
         safe_memory::{NoStdProvider, DEFAULT_MEMORY_PROVIDER_CAPACITY},
-        types::DEFAULT_FUNC_TYPE_PROVIDER_CAPACITY,
+        types::{DEFAULT_FUNC_TYPE_PROVIDER_CAPACITY, RefType, ValueType as CoreValueType},
         values::Value,
     };
 

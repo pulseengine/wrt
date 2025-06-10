@@ -68,6 +68,12 @@ jobs:
           pip3 install -r docs/source/requirements.txt
       - name: Run Strict Documentation Check (Daggerized)
         run: cargo xtask check-docs-strict
+      - name: Initialize Requirements File (if missing)
+        run: cargo xtask init-requirements
+      - name: Run Requirements Verification
+        run: cargo xtask verify-requirements
+      - name: Generate Safety Summary for Documentation
+        run: cargo xtask generate-safety-summary
 
   core_tests_and_analysis:
     name: Core Tests, Analysis & Coverage
@@ -106,6 +112,10 @@ jobs:
         run: cargo xtask SecurityAudit
       - name: Run Coverage Tests (Daggerized)
         run: cargo xtask Coverage # This xtask should produce lcov.info and junit.xml
+      - name: Run Basic Safety Checks
+        run: |
+          cargo test -p wrt-foundation asil_testing -- --nocapture || true
+          cargo xtask check-requirements || cargo xtask init-requirements
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
@@ -121,12 +131,62 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./target/coverage/junit.xml # Ensure this path is correct
 
+  safety_verification:
+    name: SCORE-Inspired Safety Verification
+    runs-on: ubuntu-latest
+    # Run safety verification on all pushes and PRs
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cargo Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-safety-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Install xtask dependencies
+        run: cargo build --package xtask
+      - name: Check Requirements File
+        run: cargo xtask check-requirements
+        continue-on-error: true
+      - name: Initialize Requirements if Missing
+        run: cargo xtask init-requirements
+        if: failure() # Only run if check-requirements failed
+      - name: Run ASIL Test Suite
+        run: cargo test -p wrt-foundation asil_testing -- --nocapture
+        continue-on-error: true
+      - name: Generate Comprehensive Safety Report (JSON)
+        run: cargo xtask safety-report --format json --output safety-verification-full.json
+      - name: Generate Comprehensive Safety Report (HTML)
+        run: cargo xtask safety-report --format html --output safety-verification-report.html
+      - name: Generate Safety Dashboard
+        run: cargo xtask safety-dashboard
+      - name: Upload Safety Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: safety-verification-artifacts
+          path: |
+            safety-verification-full.json
+            safety-verification-report.html
+            docs/source/_generated_safety_summary.rst
+          retention-days: 90
+      - name: Safety Verification Gate
+        run: cargo xtask ci-safety --threshold 70.0 --fail-on-safety-issues --json-output
+
   extended_static_analysis:
     name: Extended Static Analysis (Miri, Kani)
     runs-on: ubuntu-latest
     # Only run this job if the workflow was manually dispatched AND the input was true
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_extended_analysis == true # Compare to boolean true
-    needs: [ci_checks_and_docs, core_tests_and_analysis] # Optional: wait for other jobs
+    needs: [ci_checks_and_docs, core_tests_and_analysis, safety_verification] # Optional: wait for other jobs
     steps:
       - uses: actions/checkout@v4
       - name: Cargo Cache

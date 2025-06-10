@@ -60,7 +60,7 @@ impl Host {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::EXECUTION_ERROR,
-                kinds::ExecutionError(format!("Host function not found: {}", name)),
+                kinds::ExecutionError("Component not found"),
             )
         })?;
 
@@ -74,7 +74,7 @@ impl Host {
             HostFunctionImpl::Trap(message) => Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::EXECUTION_ERROR,
-                kinds::ExecutionError(format!("Function {} trapped: {}", name, message)),
+                kinds::ExecutionError("Component not found"),
             )),
         }
     }

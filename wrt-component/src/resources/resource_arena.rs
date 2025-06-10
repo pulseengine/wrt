@@ -11,7 +11,7 @@ use crate::prelude::*;
 /// A resource arena for managing resource lifecycles as a group
 ///
 /// ResourceArena provides efficient group management of resources, allowing
-/// multiple resources to be allocated and then freed together. This is
+/// Binary std/no_std choice
 /// particularly useful for component instances and other scenarios where
 /// resources have a shared lifetime.
 pub struct ResourceArena {
@@ -47,7 +47,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -67,7 +67,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -101,7 +101,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -114,7 +114,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -150,7 +150,7 @@ impl ResourceArena {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Resource handle {} not found in arena", handle),
+                "Component not found",
             ));
         }
 
@@ -159,7 +159,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -176,7 +176,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 

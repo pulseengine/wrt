@@ -8,76 +8,81 @@
 //! WebAssembly components, including host functions and interceptors.
 
 // Use the prelude for consistent imports
-use crate::prelude::*;
+use crate::prelude::{Any, BuiltinType, Debug, Eq, Error, ErrorCategory, FmtWrite, HashMap, HostFunctionHandler, Ord, PartialEq, PartialOrd, Result, Value, codes, str};
 
 // Type aliases for no_std compatibility
 // In no_std mode, we can't use Box<dyn Any>, so we'll use a wrapper type
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+/// Callback data for `no_std` environments
 pub struct CallbackData {
     _phantom: core::marker::PhantomData<()>,
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 type CallbackMap = HashMap<CallbackType, CallbackData, 32, wrt_foundation::NoStdProvider<1024>>;
 
 // Value vectors for function parameters/returns
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 type ValueVec = Vec<Value>;
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 type ValueVec = wrt_foundation::BoundedVec<Value, 16, wrt_foundation::NoStdProvider<512>>;
 
 // String vectors for registry queries
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
+#[allow(dead_code)]
 type StringVec = Vec<String>;
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 type StringVec = wrt_foundation::BoundedVec<wrt_foundation::bounded::BoundedString<64, wrt_foundation::NoStdProvider<64>>, 32, wrt_foundation::NoStdProvider<2048>>;
 
 // For returning references, we'll use a simplified approach in no_std
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
+#[allow(dead_code)]
 type StringRefVec<'a> = Vec<&'a String>;
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
+#[allow(dead_code)]
 type StringRefVec<'a> = StringVec; // In no_std, we return owned strings instead of references
 
 
 // For no_std mode, we'll use a simpler approach without nested maps
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+/// Host functions registry for `no_std` environments
 pub struct HostFunctionsNoStd {
     // In no_std mode, we'll just store a flag indicating functions are registered
     // This is a placeholder - a real implementation would need a different approach
     _has_functions: bool,
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 impl wrt_foundation::traits::Checksummable for HostFunctionsNoStd {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&[self._has_functions as u8]);
+        checksum.update_slice(&[u8::from(self._has_functions)]);
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 impl wrt_foundation::traits::ToBytes for HostFunctionsNoStd {
     fn serialized_size(&self) -> usize {
         1
     }
 
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
-        writer.write_u8(self._has_functions as u8)
+        writer.write_u8(u8::from(self._has_functions))
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 impl wrt_foundation::traits::FromBytes for HostFunctionsNoStd {
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
-        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         let has_functions = reader.read_u8()? != 0;
@@ -95,9 +100,9 @@ pub enum CallbackType {
     Setup,
     /// Callback for cleanup after execution
     Cleanup,
-    /// Callback for memory allocation
+    /// Binary `std/no_std` choice
     Allocate,
-    /// Callback for memory deallocation
+    /// Binary `std/no_std` choice
     Deallocate,
     /// Callback for custom interceptors
     Intercept,
@@ -117,9 +122,9 @@ impl wrt_foundation::traits::ToBytes for CallbackType {
         1
     }
 
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
         writer.write_u8(*self as u8)
@@ -127,8 +132,8 @@ impl wrt_foundation::traits::ToBytes for CallbackType {
 }
 
 impl wrt_foundation::traits::FromBytes for CallbackType {
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
-        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         match reader.read_u8()? {
@@ -148,32 +153,32 @@ impl wrt_foundation::traits::FromBytes for CallbackType {
 }
 
 // Implement required traits for CallbackData to work with BoundedMap in no_std mode
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 impl wrt_foundation::traits::Checksummable for CallbackData {
     fn update_checksum(&self, _checksum: &mut wrt_foundation::verification::Checksum) {
         // CallbackData has no content to checksum
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 impl wrt_foundation::traits::ToBytes for CallbackData {
     fn serialized_size(&self) -> usize {
         0
     }
 
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
-        _writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
         Ok(())
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 impl wrt_foundation::traits::FromBytes for CallbackData {
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
-        _reader: &mut wrt_foundation::traits::ReadStream<'a>,
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        _reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         Ok(CallbackData::default())
@@ -183,23 +188,23 @@ impl wrt_foundation::traits::FromBytes for CallbackData {
 /// A callback registry for handling WebAssembly component operations
 pub struct CallbackRegistry {
     /// Generic callback storage for different types of callbacks
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     callbacks: HashMap<CallbackType, Box<dyn Any + Send + Sync>>,
     
-    /// Generic callback storage for different types of callbacks (no_std version)
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    /// Generic callback storage for different types of callbacks (`no_std` version)
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
     callbacks: CallbackMap,
 
     /// Host functions registry (module name -> function name -> handler)
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     host_functions: HashMap<String, HashMap<String, HostFunctionHandler>>,
     
-    /// Host functions registry (no_std version)
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    /// Host functions registry (`no_std` version)
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
     host_functions: HostFunctionsNoStd,
 
     /// Optional interceptor for monitoring and modifying function calls
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     interceptor: Option<Arc<LinkInterceptor>>,
 }
 
@@ -223,10 +228,16 @@ impl core::fmt::Debug for CallbackRegistry {
     }
 }
 
+impl Default for CallbackRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CallbackRegistry {
     /// Create a new callback registry
     #[must_use]
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn new() -> Self {
         Self { 
             callbacks: HashMap::new(), 
@@ -235,9 +246,9 @@ impl CallbackRegistry {
         }
     }
 
-    /// Create a new callback registry (no_std version)
+    /// Create a new callback registry (`no_std` version)
     #[must_use]
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
     pub fn new() -> Self {
         // In no_std mode, we need to provide memory providers for the bounded collections
         let provider = wrt_foundation::NoStdProvider::default();
@@ -252,20 +263,20 @@ impl CallbackRegistry {
     }
 
     /// Sets an interceptor for this registry
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn with_interceptor(mut self, interceptor: Arc<LinkInterceptor>) -> Self {
         self.interceptor = Some(interceptor);
         self
     }
 
     /// Get the interceptor if one is set
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn get_interceptor(&self) -> Option<&LinkInterceptor> {
         self.interceptor.as_ref().map(|arc| arc.as_ref())
     }
 
     /// Register a callback
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn register_callback<T: 'static + Send + Sync>(
         &mut self,
         callback_type: CallbackType,
@@ -274,20 +285,20 @@ impl CallbackRegistry {
         self.callbacks.insert(callback_type, Box::new(callback));
     }
 
-    /// Register a callback (no_std version - placeholder)
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    /// Register a callback (`no_std` version - placeholder)
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
     pub fn register_callback<T>(
         &mut self,
         callback_type: CallbackType,
         _callback: T,
     ) {
-        // In no_std mode without alloc, we can't store arbitrary callbacks
+        // Binary std/no_std choice
         // This is a placeholder implementation
         let _ = self.callbacks.insert(callback_type, CallbackData::default());
     }
 
     /// Get a callback
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn get_callback<T: 'static + Send + Sync>(
         &self,
         callback_type: &CallbackType,
@@ -295,18 +306,18 @@ impl CallbackRegistry {
         self.callbacks.get(callback_type).and_then(|cb| cb.downcast_ref())
     }
 
-    /// Get a callback (no_std version - placeholder)
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    /// Get a callback (`no_std` version - placeholder)
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
     pub fn get_callback<T>(
         &self,
         _callback_type: &CallbackType,
     ) -> Option<&T> {
-        // In no_std mode without alloc, we can't retrieve arbitrary callbacks
+        // Binary std/no_std choice
         None
     }
 
     /// Get a mutable callback
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn get_callback_mut<T: 'static + Send + Sync>(
         &mut self,
         callback_type: &CallbackType,
@@ -314,18 +325,18 @@ impl CallbackRegistry {
         self.callbacks.get_mut(callback_type).and_then(|cb| cb.downcast_mut())
     }
 
-    /// Get a mutable callback (no_std version - placeholder)
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    /// Get a mutable callback (`no_std` version - placeholder)
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
     pub fn get_callback_mut<T>(
         &mut self,
         _callback_type: &CallbackType,
     ) -> Option<&mut T> {
-        // In no_std mode without alloc, we can't retrieve arbitrary callbacks
+        // Binary std/no_std choice
         None
     }
 
     /// Register a host function
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn register_host_function(
         &mut self,
         module_name: &str,
@@ -339,29 +350,29 @@ impl CallbackRegistry {
         module_functions.insert(function_name, handler);
     }
 
-    /// Register a host function (no_std version)
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    /// Register a host function (`no_std` version)
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
     pub fn register_host_function(
         &mut self,
         _module_name: &str,
         _function_name: &str,
         _handler: HostFunctionHandler,
     ) {
-        // In no_std mode without alloc, we can't store host functions dynamically
+        // Binary std/no_std choice
         // This is a placeholder implementation
         self.host_functions._has_functions = true;
     }
 
     /// Check if a host function is registered
     #[must_use]
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn has_host_function(&self, module_name: &str, function_name: &str) -> bool {
         self.host_functions.get(module_name).and_then(|funcs| funcs.get(function_name)).is_some()
     }
 
-    /// Check if a host function is registered (no_std version)
+    /// Check if a host function is registered (`no_std` version)
     #[must_use]
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
     pub fn has_host_function(&self, _module_name: &str, _function_name: &str) -> bool {
         // In no_std mode, we can't check specific functions
         self.host_functions._has_functions
@@ -381,7 +392,7 @@ impl CallbackRegistry {
         args: ValueVec,
     ) -> Result<ValueVec> {
         // If we have an interceptor, use it to intercept the call
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(interceptor) = self.get_interceptor() {
                 return interceptor.intercept_call(
@@ -404,7 +415,7 @@ impl CallbackRegistry {
     }
 
     /// Internal implementation of call_host_function without interception
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn call_host_function_internal(
         &self,
         engine: &mut dyn Any,
@@ -422,8 +433,8 @@ impl CallbackRegistry {
         Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Host function not found"))
     }
 
-    /// Internal implementation of call_host_function without interception (no_std version)
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    /// Internal implementation of `call_host_function` without interception (`no_std` version)
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
     fn call_host_function_internal(
         &self,
         _engine: &mut dyn Any,
@@ -437,14 +448,14 @@ impl CallbackRegistry {
 
     /// Get all registered module names
     #[must_use]
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn get_registered_modules(&self) -> Vec<&String> {
         self.host_functions.keys().collect()
     }
 
-    /// Get all registered module names (no_std version)
+    /// Get all registered module names (`no_std` version)
     #[must_use]
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
     pub fn get_registered_modules(&self) -> StringVec {
         // In no_std mode, we can't return dynamic module names
         let provider = wrt_foundation::NoStdProvider::default();
@@ -453,7 +464,7 @@ impl CallbackRegistry {
 
     /// Get all registered function names for a module
     #[must_use]
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn get_registered_functions(&self, module_name: &str) -> Vec<&String> {
         if let Some(module_functions) = self.host_functions.get(module_name) {
             module_functions.keys().collect()
@@ -462,9 +473,9 @@ impl CallbackRegistry {
         }
     }
 
-    /// Get all registered function names for a module (no_std version)
+    /// Get all registered function names for a module (`no_std` version)
     #[must_use]
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
     pub fn get_registered_functions(&self, _module_name: &str) -> StringVec {
         // In no_std mode, we can't return dynamic function names
         let provider = wrt_foundation::NoStdProvider::default();
@@ -476,7 +487,7 @@ impl CallbackRegistry {
     /// This method returns a set of all built-in types that are available
     /// through this registry's host functions.
     #[must_use]
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn get_available_builtins(&self) -> crate::prelude::HashSet<BuiltinType> {
         use crate::prelude::HashSet;
 
@@ -494,12 +505,12 @@ impl CallbackRegistry {
         builtins
     }
 
-    /// Get all available built-in types provided by this registry (no_std version)
+    /// Get all available built-in types provided by this registry (`no_std` version)
     ///
     /// This method returns a set of all built-in types that are available
     /// through this registry's host functions.
     #[must_use]
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
     pub fn get_available_builtins(&self) -> wrt_foundation::BoundedSet<BuiltinType, 32, wrt_foundation::NoStdProvider<1024>> {
         // In no_std mode, we can't dynamically track built-ins
         let provider = wrt_foundation::NoStdProvider::default();
@@ -523,7 +534,7 @@ impl CallbackRegistry {
     ///
     /// Returns an error if the built-in is not implemented or fails during
     /// execution
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn call_builtin_function(
         &self,
         engine: &mut dyn Any,
@@ -548,7 +559,7 @@ impl Clone for CallbackRegistry {
         let mut new_registry = Self::new();
 
         // Clone the interceptor if present
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(interceptor) = &self.interceptor {
                 new_registry.interceptor = Some(interceptor.clone());
@@ -556,7 +567,7 @@ impl Clone for CallbackRegistry {
         }
 
         // Clone host functions by creating new mappings with cloned handlers
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             for (module_name, function_map) in &self.host_functions {
                 for (function_name, handler) in function_map {
@@ -565,7 +576,7 @@ impl Clone for CallbackRegistry {
             }
         }
         
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
             new_registry.host_functions = self.host_functions.clone();
         }
@@ -637,7 +648,7 @@ mod tests {
         assert_eq!(*callback.unwrap(), 24);
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_call_builtin_function() {
         // Create a registry with a host function for resource.create
@@ -702,22 +713,22 @@ mod tests {
 /// # Returns
 ///
 /// A string in the format `module_name::function_name`
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub fn function_key(module_name: &str, function_name: &str) -> String {
     #[cfg(feature = "std")]
     return format!("{}::{}", module_name, function_name);
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(all(not(feature = "std")))]
     return alloc::format!("{}::{}", module_name, function_name);
 }
 
-/// Generate a unique function key from module and function names (no_std version)
+/// Generate a unique function key from module and function names (`no_std` version)
 ///
-/// In no_std mode, we return a static string since we can't allocate dynamic strings.
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-pub fn function_key(_module_name: &str, _function_name: &str) -> &'static str {
+/// Binary `std/no_std` choice
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
+#[must_use] pub fn function_key(_module_name: &str, _function_name: &str) -> &'static str {
     // In pure no_std environments, we can't create dynamic strings
     // This is a placeholder - in practice, we'd need a different approach
-    // or require allocation for string operations
+    // Binary std/no_std choice
     "function_key"
 }

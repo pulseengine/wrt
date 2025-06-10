@@ -8,7 +8,7 @@ use core::{
     time::Duration,
 };
 
-use alloc::{boxed::Box, collections::BTreeMap, string::String, sync::Arc, vec::Vec};
+use std::{boxed::Box, collections::BTreeMap, string::String, sync::Arc, vec::Vec};
 
 use wrt_sync::{WrtMutex, WrtRwLock};
 
@@ -62,7 +62,7 @@ struct ThreadInfo {
     spawn_time: std::time::Instant,
     /// Deadline if any
     deadline: Option<std::time::Instant>,
-    /// Stack size allocated
+    /// Binary std/no_std choice
     stack_size: usize,
 }
 
@@ -236,7 +236,7 @@ impl WasmThreadManager {
             })?
         };
 
-        // Check if we can allocate the thread
+        // Binary std/no_std choice
         if !self.resource_tracker.can_allocate_thread(&request)? {
             return Err(Error::new(
                 ErrorCategory::Resource, 1,

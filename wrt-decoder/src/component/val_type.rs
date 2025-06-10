@@ -6,10 +6,13 @@
 //!
 //! This module provides helpers for encoding component value types.
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_format::{binary, component::FormatValType};
-
-use crate::prelude::*;
+// Component value type encoding is only available with std feature
+#[cfg(feature = "std")]
+mod component_val_type {
+    use wrt_error::{codes, Error, ErrorCategory, Result};
+    use wrt_format::{binary, component::FormatValType};
+    
+    use crate::prelude::*;
 
 /// Helper function to encode a value type to binary format
 pub fn encode_val_type(result: &mut Vec<u8>, val_type: &FormatValType) -> Result<()> {
@@ -32,17 +35,17 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &FormatValType) -> Result
         FormatValType::F64 => result.push(0x06),
         FormatValType::Record(fields) => {
             result.push(0x0E);
-            result.extend_from_slice(&binary::write_leb128_u32(fields.len() as u32));
+            result.extend_from_slice(&write_leb128_u32(fields.len() as u32));
             for (name, field_type) in fields {
-                result.extend_from_slice(&binary::write_string(name));
+                result.extend_from_slice(&write_string(name));
                 encode_val_type(result, field_type)?;
             }
         }
         FormatValType::Variant(cases) => {
             result.push(0x0F);
-            result.extend_from_slice(&binary::write_leb128_u32(cases.len() as u32));
+            result.extend_from_slice(&write_leb128_u32(cases.len() as u32));
             for (case_name, case_type) in cases {
-                result.extend_from_slice(&binary::write_string(case_name));
+                result.extend_from_slice(&write_string(case_name));
                 if let Some(ty) = case_type {
                     result.push(0x01); // has type
                     encode_val_type(result, ty)?;
@@ -53,7 +56,7 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &FormatValType) -> Result
         }
         FormatValType::Tuple(types) => {
             result.push(0x10);
-            result.extend_from_slice(&binary::write_leb128_u32(types.len() as u32));
+            result.extend_from_slice(&write_leb128_u32(types.len() as u32));
             for ty in types {
                 encode_val_type(result, ty)?;
             }
@@ -71,27 +74,27 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &FormatValType) -> Result
         }
         FormatValType::Enum(cases) => {
             result.push(0x13);
-            result.extend_from_slice(&binary::write_leb128_u32(cases.len() as u32));
+            result.extend_from_slice(&write_leb128_u32(cases.len() as u32));
             for case_name in cases {
-                result.extend_from_slice(&binary::write_string(case_name));
+                result.extend_from_slice(&write_string(case_name));
             }
         }
         FormatValType::Flags(names) => {
             result.push(0x14);
-            result.extend_from_slice(&binary::write_leb128_u32(names.len() as u32));
+            result.extend_from_slice(&write_leb128_u32(names.len() as u32));
             for name in names {
-                result.extend_from_slice(&binary::write_string(name));
+                result.extend_from_slice(&write_string(name));
             }
         }
         FormatValType::Ref(idx) => {
             result.push(0x15);
-            result.extend_from_slice(&binary::write_leb128_u32(*idx));
+            result.extend_from_slice(&write_leb128_u32(*idx));
         }
         FormatValType::Own(_) | FormatValType::Borrow(_) => {
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::PARSE_ERROR,
-                "Resource types are not supported for encoding yet".to_string(),
+                "Resource types are not supported for encoding yet",
             ));
         }
         FormatValType::Char => result.push(0x16),
@@ -102,7 +105,7 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &FormatValType) -> Result
             encode_val_type(result, inner)?;
 
             // Encode size
-            result.extend_from_slice(&binary::write_leb128_u32(*size));
+            result.extend_from_slice(&write_leb128_u32(*size));
         }
         FormatValType::ErrorContext => {
             // Error context is a simple type
@@ -117,9 +120,37 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &FormatValType) -> Result
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::PARSE_ERROR,
-                "Unsupported value type for encoding".to_string(),
+                "Unsupported value type for encoding",
             ));
         }
     }
     Ok(())
 }
+
+} // end of component_val_type module
+
+// Re-export public APIs when std feature is enabled
+#[cfg(feature = "std")]
+pub use component_val_type::encode_val_type;
+
+// No-std stub implementations
+#[cfg(not(feature = "std"))]
+pub mod no_std_stubs {
+    use wrt_error::{codes, Error, ErrorCategory, Result};
+    
+    /// Stub value type for no_std encoding
+    #[derive(Debug, Clone)]
+    pub struct FormatValType;
+    
+    /// Encode value type (no_std stub)  
+    pub fn encode_val_type(_result: &mut wrt_foundation::BoundedVec<u8, 1024, wrt_foundation::NoStdProvider<2048>>, _val_type: &FormatValType) -> Result<()> {
+        Err(Error::new(
+            ErrorCategory::Validation,
+            codes::UNSUPPORTED_OPERATION,
+            "Value type encoding requires std feature"
+        ))
+    }
+}
+
+#[cfg(not(feature = "std"))]
+pub use no_std_stubs::*;

@@ -8,8 +8,8 @@ use core::{fmt, mem};
 #[cfg(feature = "std")]
 use std::{fmt, mem};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, vec::Vec};
 
 use wrt_foundation::{
     bounded::BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
@@ -32,16 +32,16 @@ const MAX_CROSS_CALL_DEPTH: usize = 64;
 /// Cross-component call manager
 pub struct CrossComponentCallManager {
     /// Call targets registry
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     targets: Vec<CallTarget>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    targets: BoundedVec<CallTarget, MAX_CALL_TARGETS>,
+    #[cfg(not(any(feature = "std", )))]
+    targets: BoundedVec<CallTarget, MAX_CALL_TARGETS, NoStdProvider<65536>>,
 
     /// Call stack for tracking cross-component calls
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     call_stack: Vec<CrossCallFrame>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    call_stack: BoundedVec<CrossCallFrame, MAX_CROSS_CALL_DEPTH>,
+    #[cfg(not(any(feature = "std", )))]
+    call_stack: BoundedVec<CrossCallFrame, MAX_CROSS_CALL_DEPTH, NoStdProvider<65536>>,
 
     /// Canonical ABI processor
     canonical_abi: CanonicalAbi,
@@ -106,10 +106,10 @@ pub struct CrossCallFrame {
     /// Call start time (simplified - would use proper time type)
     pub start_time: u64,
     /// Resources transferred in this call
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub transferred_resources: Vec<TransferredResource>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub transferred_resources: BoundedVec<TransferredResource, 32>,
+    #[cfg(not(any(feature = "std", )))]
+    pub transferred_resources: BoundedVec<TransferredResource, 32, NoStdProvider<65536>>,
 }
 
 /// Record of a transferred resource
@@ -129,10 +129,10 @@ pub struct CrossCallResult {
     /// Function call result
     pub result: WrtResult<Value>,
     /// Resources that were transferred
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub transferred_resources: Vec<TransferredResource>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub transferred_resources: BoundedVec<TransferredResource, 32>,
+    #[cfg(not(any(feature = "std", )))]
+    pub transferred_resources: BoundedVec<TransferredResource, 32, NoStdProvider<65536>>,
     /// Call statistics
     pub stats: CallStatistics,
 }
@@ -154,14 +154,14 @@ impl CrossComponentCallManager {
     /// Create a new cross-component call manager
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             targets: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            targets: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(not(any(feature = "std", )))]
+            targets: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            #[cfg(feature = "std")]
             call_stack: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            call_stack: BoundedVec::new(),
+            #[cfg(not(any(feature = "std", )))]
+            call_stack: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             canonical_abi: CanonicalAbi::new(),
             resource_manager: ResourceLifecycleManager::new(),
             max_call_depth: MAX_CROSS_CALL_DEPTH,
@@ -177,11 +177,11 @@ impl CrossComponentCallManager {
     pub fn register_target(&mut self, target: CallTarget) -> WrtResult<u32> {
         let target_id = self.targets.len() as u32;
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.targets.push(target);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.targets.push(target).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many call targets".into())
@@ -210,7 +210,7 @@ impl CrossComponentCallManager {
         let target = self
             .targets
             .get(target_id as usize)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Call target not found".into()))?
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?
             .clone();
 
         // Check permissions
@@ -227,18 +227,18 @@ impl CrossComponentCallManager {
             target_instance: target.target_instance,
             function_index: target.function_index,
             start_time,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             transferred_resources: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            transferred_resources: BoundedVec::new(),
+            #[cfg(not(any(feature = "std", )))]
+            transferred_resources: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         };
 
         // Push call frame
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.call_stack.push(call_frame);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.call_stack.push(call_frame).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Call stack overflow".into())
@@ -279,21 +279,21 @@ impl CrossComponentCallManager {
                 self.restore_resources(&transferred_resources)?;
                 CrossCallResult {
                     result: Err(error),
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     transferred_resources: Vec::new(),
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
-                    transferred_resources: BoundedVec::new(),
+                    #[cfg(not(any(feature = "std", )))]
+                    transferred_resources: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
                     stats,
                 }
             }
         };
 
         // Pop call frame
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.call_stack.pop();
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let _ = self.call_stack.pop();
         }
@@ -308,14 +308,14 @@ impl CrossComponentCallManager {
         target: &CallTarget,
         caller_instance: u32,
     ) -> WrtResult<(Vec<Value>, Vec<TransferredResource>)> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let mut prepared_args = Vec::new();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let mut prepared_args = Vec::new();
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let mut transferred_resources = Vec::new();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let mut transferred_resources = Vec::new();
 
         for arg in args {

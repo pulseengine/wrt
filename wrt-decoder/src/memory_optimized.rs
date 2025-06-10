@@ -17,10 +17,10 @@ use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice};
 /// Memory pool for reusing vectors during parsing
 pub struct MemoryPool<P: MemoryProvider> {
     /// Pool of instruction vectors for reuse
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     instruction_pools: crate::prelude::Vec<crate::prelude::Vec<u8>>,
     /// Pool of string buffers for reuse
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     string_pools: crate::prelude::Vec<crate::prelude::Vec<u8>>,
     /// Memory provider for no_std environments
     #[allow(dead_code)]
@@ -37,22 +37,22 @@ impl<P: MemoryProvider> MemoryPool<P> {
     /// Create a new memory pool
     pub fn new(provider: P) -> Self {
         Self {
-            #[cfg(any(feature = "alloc", feature = "std"))]
+            #[cfg(feature = "std")]
             instruction_pools: crate::prelude::Vec::new(),
-            #[cfg(any(feature = "alloc", feature = "std"))]
+            #[cfg(feature = "std")]
             string_pools: crate::prelude::Vec::new(),
             provider,
         }
     }
 
     /// Get a reusable vector for instructions
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn get_instruction_vector(&mut self) -> crate::prelude::Vec<u8> {
         self.instruction_pools.pop().unwrap_or_else(crate::prelude::Vec::new)
     }
 
     /// Return a vector to the instruction pool
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn return_instruction_vector(&mut self, mut vec: crate::prelude::Vec<u8>) {
         vec.clear();
         if vec.capacity() <= 1024 {
@@ -62,13 +62,13 @@ impl<P: MemoryProvider> MemoryPool<P> {
     }
 
     /// Get a reusable vector for string operations
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn get_string_buffer(&mut self) -> crate::prelude::Vec<u8> {
         self.string_pools.pop().unwrap_or_else(crate::prelude::Vec::new)
     }
 
     /// Return a vector to the string pool
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn return_string_buffer(&mut self, mut vec: crate::prelude::Vec<u8>) {
         vec.clear();
         if vec.capacity() <= 256 {
@@ -78,7 +78,7 @@ impl<P: MemoryProvider> MemoryPool<P> {
     }
 }
 
-/// Zero-allocation UTF-8 validation and string extraction
+/// Binary std/no_std choice
 pub fn validate_utf8_slice(slice: &SafeSlice) -> Result<()> {
     let data = slice.data().map_err(|_| {
         Error::new(
@@ -98,7 +98,7 @@ pub fn validate_utf8_slice(slice: &SafeSlice) -> Result<()> {
     Ok(())
 }
 
-/// Memory-efficient string parsing without allocation
+/// Binary std/no_std choice
 pub fn parse_string_inplace<'a>(
     slice: &'a SafeSlice<'a>,
     offset: usize,
@@ -152,7 +152,7 @@ pub fn copy_string_to_buffer(source: &str, buffer: &mut [u8]) -> Result<usize> {
     Ok(bytes.len())
 }
 
-/// Streaming parser for collections without pre-allocation
+/// Binary std/no_std choice
 pub struct StreamingCollectionParser<'a> {
     #[allow(dead_code)]
     slice: &'a SafeSlice<'a>,
@@ -200,14 +200,14 @@ impl<'a> StreamingCollectionParser<'a> {
     }
 }
 
-/// Arena allocator for module data
-#[cfg(any(feature = "alloc", feature = "std"))]
+/// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub struct ModuleArena {
     buffer: crate::prelude::Vec<u8>,
     offset: usize,
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 impl ModuleArena {
     /// Create a new arena with the given capacity
     pub fn new(capacity: usize) -> Self {

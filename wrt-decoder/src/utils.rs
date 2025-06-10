@@ -13,7 +13,7 @@ use wrt_format::binary::{WASM_MAGIC, WASM_VERSION};
 use crate::prelude::{is_valid_wasm_header, read_name, String};
 
 /// Read a WebAssembly name string from binary data
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub fn read_name_as_string(data: &[u8], offset: usize) -> Result<(String, usize)> {
     // There's no decode_string in wrt-format, so we use read_name and convert to a
     // String We could use read_string directly, but keeping this function for
@@ -24,8 +24,15 @@ pub fn read_name_as_string(data: &[u8], offset: usize) -> Result<(String, usize)
     let name = match core::str::from_utf8(name_bytes) {
         #[cfg(feature = "std")]
         Ok(s) => std::string::ToString::to_string(s),
-        #[cfg(all(not(feature = "std"), feature = "alloc"))]
-        Ok(s) => alloc::string::ToString::to_string(s),
+        #[cfg(not(feature = "std"))]
+        Ok(s) => {
+            use wrt_foundation::BoundedString;
+            BoundedString::from_str(s).map_err(|_| Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "String too long for bounded storage",
+            ))?
+        },
         Err(_) => {
             return Err(Error::new(
                 ErrorCategory::Parse,

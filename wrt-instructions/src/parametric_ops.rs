@@ -7,7 +7,7 @@
 //! This module provides implementations for WebAssembly parametric instructions
 //! including drop, select, and typed select operations.
 
-use crate::prelude::*;
+use crate::prelude::{Debug, Error, ErrorCategory, PartialEq, PureInstruction, Result, Value, ValueType, codes};
 
 /// Represents a parametric operation for WebAssembly.
 #[derive(Debug, Clone, PartialEq)]
@@ -105,13 +105,12 @@ impl<T: ParametricContext> PureInstruction<T, Error> for ParametricOp {
     }
 }
 
-#[cfg(all(test, any(feature = "std", feature = "alloc")))]
+#[cfg(all(test, any(feature = "std", )))]
 mod tests {
     use super::*;
     
     // Import Vec based on feature flags
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::vec::Vec;
+        use std::vec::Vec;
     #[cfg(feature = "std")]
     use std::vec::Vec;
     

@@ -25,11 +25,11 @@
 #[cfg(feature = "std")]
 use std::{vec::Vec, string::String, collections::HashMap, boxed::Box, format};
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{vec::Vec, string::String, collections::BTreeMap as HashMap, boxed::Box, format};
+#[cfg(all(not(feature = "std")))]
+use std::{vec::Vec, string::String, collections::BTreeMap as HashMap, boxed::Box, format};
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use wrt_foundation::{BoundedVec as Vec, BoundedString as String, NoStdHashMap as HashMap};
+#[cfg(not(any(feature = "std", )))]
+use wrt_foundation::{BoundedVec as Vec, BoundedString as String, BoundedMap as HashMap};
 
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::{values::Value as CoreValue, types::ValueType};
@@ -77,7 +77,7 @@ pub trait RuntimeBridge {
 #[derive(Debug)]
 pub struct ValueConverter {
     /// Conversion cache for performance
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     conversion_cache: HashMap<String, ConversionRule>,
     
     /// Configuration
@@ -127,10 +127,10 @@ pub enum ConversionComplexity {
 #[derive(Debug)]
 pub struct InstanceResolver {
     /// Instance mappings
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     instances: HashMap<InstanceId, RuntimeInstanceInfo>,
     
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     instances: Vec<(InstanceId, RuntimeInstanceInfo)>,
     
     /// Next instance ID
@@ -171,14 +171,14 @@ pub enum RuntimeInstanceState {
 #[derive(Debug)]
 pub struct HostFunctionRegistry {
     /// Registered host functions
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     functions: Vec<HostFunctionEntry>,
     
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     functions: Vec<HostFunctionEntry>,
     
     /// Function name lookup
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     name_lookup: HashMap<String, usize>,
 }
 
@@ -190,10 +190,10 @@ pub struct HostFunctionEntry {
     /// Function signature
     pub signature: FunctionSignature,
     /// Function implementation
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub implementation: Box<dyn Fn(&[ComponentValue]) -> Result<ComponentValue> + Send + Sync>,
     
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub implementation: fn(&[ComponentValue]) -> Result<ComponentValue>,
     
     /// Function metadata
@@ -290,7 +290,7 @@ impl ValueConverter {
     /// Create a value converter with custom configuration
     pub fn with_config(config: ValueConversionConfig) -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             conversion_cache: HashMap::new(),
             config,
         }
@@ -320,7 +320,7 @@ impl ValueConverter {
                     ));
                 }
                 // For now, return string length as i32
-                // In a full implementation, this would involve memory allocation
+                // Binary std/no_std choice
                 Ok(CoreValue::I32(s.len() as i32))
             }
             ComponentValue::List(items) => {
@@ -372,7 +372,7 @@ impl ValueConverter {
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::TYPE_MISMATCH,
-                        format!("Cannot convert core value {:?} to component type {:?}", value, target_type),
+                        "Component not found",
                     ))
                 } else {
                     // Fallback conversion
@@ -429,10 +429,10 @@ impl InstanceResolver {
     /// Create a new instance resolver
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             instances: HashMap::new(),
             
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             instances: Vec::new(),
             
             next_instance_id: 1,
@@ -455,12 +455,12 @@ impl InstanceResolver {
             state: RuntimeInstanceState::Initializing,
         };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.instances.insert(self.next_instance_id, runtime_info);
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             if self.instances.len() >= MAX_INSTANCES_NO_STD {
                 return Err(Error::new(
@@ -479,12 +479,12 @@ impl InstanceResolver {
 
     /// Get instance information
     pub fn get_instance(&self, instance_id: InstanceId) -> Option<&RuntimeInstanceInfo> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.instances.get(&instance_id)
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.instances.iter().find(|(id, _)| *id == instance_id).map(|(_, info)| info)
         }
@@ -492,7 +492,7 @@ impl InstanceResolver {
 
     /// Update instance state
     pub fn update_instance_state(&mut self, instance_id: InstanceId, state: RuntimeInstanceState) -> Result<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(info) = self.instances.get_mut(&instance_id) {
                 info.state = state;
@@ -506,7 +506,7 @@ impl InstanceResolver {
             }
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             if let Some((_, info)) = self.instances.iter_mut().find(|(id, _)| *id == instance_id) {
                 info.state = state;
@@ -523,7 +523,7 @@ impl InstanceResolver {
 
     /// Remove an instance
     pub fn remove_instance(&mut self, instance_id: InstanceId) -> Result<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if self.instances.remove(&instance_id).is_some() {
                 Ok(())
@@ -536,7 +536,7 @@ impl InstanceResolver {
             }
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             if let Some(pos) = self.instances.iter().position(|(id, _)| *id == instance_id) {
                 self.instances.remove(pos);
@@ -553,12 +553,12 @@ impl InstanceResolver {
 
     /// Get instance count
     pub fn instance_count(&self) -> usize {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.instances.len()
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.instances.len()
         }
@@ -570,13 +570,13 @@ impl HostFunctionRegistry {
     pub fn new() -> Self {
         Self {
             functions: Vec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             name_lookup: HashMap::new(),
         }
     }
 
-    /// Register a host function (std/alloc version)
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    /// Binary std/no_std choice
+    #[cfg(feature = "std")]
     pub fn register_function<F>(&mut self, name: String, signature: FunctionSignature, func: F) -> Result<usize>
     where
         F: Fn(&[ComponentValue]) -> Result<ComponentValue> + Send + Sync + 'static,
@@ -587,7 +587,7 @@ impl HostFunctionRegistry {
             signature,
             implementation: Box::new(func),
             metadata: HostFunctionMetadata {
-                description: format!("Host function: {}", name),
+                description: "Component not found",
                 parameter_count: 0, // Would be determined from signature
                 return_count: 1,
                 is_pure: false,
@@ -601,7 +601,7 @@ impl HostFunctionRegistry {
     }
 
     /// Register a host function (no_std version)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn register_function(
         &mut self,
         name: String,
@@ -637,12 +637,12 @@ impl HostFunctionRegistry {
     /// Call a host function by index
     pub fn call_function(&self, index: usize, args: &[ComponentValue]) -> Result<ComponentValue> {
         if let Some(entry) = self.functions.get(index) {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             {
                 (entry.implementation)(args)
             }
 
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             {
                 (entry.implementation)(args)
             }
@@ -656,13 +656,13 @@ impl HostFunctionRegistry {
     }
 
     /// Find function by name
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn find_function(&self, name: &str) -> Option<usize> {
         self.name_lookup.get(name).copied()
     }
 
     /// Find function by name (no_std version)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn find_function(&self, name: &str) -> Option<usize> {
         self.functions.iter().position(|entry| entry.name == name)
     }
@@ -710,7 +710,7 @@ impl ComponentRuntimeBridge {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_STATE,
-                format!("Instance not ready for execution: {:?}", instance_info.state),
+                "Component not found",
             ));
         }
 
@@ -750,7 +750,7 @@ impl ComponentRuntimeBridge {
     }
 
     /// Register a host function
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn register_host_function<F>(
         &mut self,
         name: String,
@@ -764,7 +764,7 @@ impl ComponentRuntimeBridge {
     }
 
     /// Register a host function (no_std version)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn register_host_function(
         &mut self,
         name: String,

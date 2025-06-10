@@ -119,6 +119,21 @@ Running Tests
         *   `ci-coverage`: Generates code coverage reports.
         *   (Other checks like `udeps`, `audit`, `spell-check` might be added here or to `ci-main` as per project decision - currently added to `ci.yml` jobs directly or via `ci-main` if they are part of it)
 
+.. _dev-safety-verification:
+
+Safety Verification (SCORE Framework)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+*   **Tool**: Custom `xtask` commands implementing SCORE-inspired safety verification
+*   **Configuration**: `requirements.toml` 
+*   **Usage**:
+    *   Quick safety dashboard: ``just safety-dashboard``
+    *   Check requirements traceability: ``just check-requirements``
+    *   Full safety verification: ``just verify-safety``
+    *   Generate safety reports: ``just safety-report``
+*   **Features**: ASIL compliance monitoring, requirements traceability, test coverage analysis
+*   **Documentation**: :doc:`safety_verification` - Complete guide to safety verification tools
+
 CI Pipeline Overview
 --------------------
 

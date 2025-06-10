@@ -15,10 +15,10 @@ use wrt_error::Error;
 
 /// Platform paradigm marker types for compile-time dispatch
 pub mod paradigm {
-    /// Traditional POSIX-like systems with dynamic memory allocation
+    /// Binary std/no_std choice
     pub struct Posix;
 
-    /// Security-focused systems with static allocation and isolation
+    /// Binary std/no_std choice
     pub struct SecurityFirst;
 
     /// Real-time systems with deterministic behavior
@@ -30,14 +30,14 @@ pub mod paradigm {
 
 /// Zero-cost platform abstraction that compiles to platform-specific code
 pub trait PlatformAbstraction<P> {
-    /// Platform-specific memory allocator type
+    /// Binary std/no_std choice
     type Allocator: super::memory::PageAllocator;
     /// Platform-specific synchronization type
     type Synchronizer: super::sync::FutexLike;
     /// Platform-specific configuration type
     type Config;
 
-    /// Create platform-specific allocator (compiles to direct constructor)
+    /// Binary std/no_std choice
     fn create_allocator(config: &Self::Config) -> Result<Self::Allocator, Error>;
 
     /// Create platform-specific synchronizer (compiles to direct constructor)  
@@ -47,13 +47,13 @@ pub trait PlatformAbstraction<P> {
 /// Unified platform configuration that adapts to platform paradigm
 #[derive(Debug, Clone)]
 pub struct PlatformConfig<P> {
-    /// Maximum pages for allocation (used by all platforms)
+    /// Binary std/no_std choice
     pub max_pages: u32,
 
     /// Enable guard pages (POSIX platforms)
     pub guard_pages: bool,
 
-    /// Pre-allocation size for static platforms (SecurityFirst/RealTime)
+    /// Binary std/no_std choice
     pub static_allocation_size: Option<usize>,
 
     /// Real-time priority settings (RealTime platforms)
@@ -112,7 +112,7 @@ impl<P> PlatformConfig<P> {
 }
 
 impl PlatformConfig<paradigm::SecurityFirst> {
-    /// Set static allocation size (SecurityFirst platforms)
+    /// Binary std/no_std choice
     pub fn with_static_allocation(mut self, size: usize) -> Self {
         self.static_allocation_size = Some(size);
         self
@@ -272,7 +272,7 @@ mod realtime_impl {
 
             // Apply real-time specific configuration
             if let Some(_priority) = config.rt_priority {
-                // Configure memory allocation priority
+                // Binary std/no_std choice
                 builder = builder.with_memory_domains(true);
             }
 
@@ -298,7 +298,7 @@ mod realtime_impl {
                 .context(crate::vxworks_memory::VxWorksContext::Lkm) // LKM for real-time usage
                 .max_pages(config.max_pages as usize)
                 .enable_guard_pages(config.guard_pages)
-                .use_dedicated_partition(true); // Use dedicated partition for deterministic allocation
+                .use_dedicated_partition(true); // Binary std/no_std choice
 
             // Apply real-time specific configuration
             if config.rt_priority.is_some() {
@@ -340,10 +340,10 @@ mod security_impl {
                     None => crate::VerificationLevel::Full,
                 });
 
-            // Use static allocation if specified (security-first paradigm)
+            // Binary std/no_std choice
             if let Some(size) = config.static_allocation_size {
                 // In a real implementation, this would use a static buffer
-                // For now, we indicate the preference for static allocation
+                // Binary std/no_std choice
                 builder = builder.with_maximum_pages((size / crate::WASM_PAGE_SIZE) as u32);
             }
 
@@ -452,7 +452,7 @@ mod tests {
     fn test_posix_platform_creation() {
         let platform = PosixPlatform::new(PlatformConfig::new());
 
-        // Test that we can create allocator and synchronizer
+        // Binary std/no_std choice
         let _allocator = platform.allocator();
         let _synchronizer = platform.synchronizer();
     }
@@ -462,7 +462,7 @@ mod tests {
     fn test_realtime_platform_creation() {
         let platform = RealtimePlatform::new(PlatformConfig::new().with_rt_priority(5));
 
-        // Test that we can create allocator and synchronizer
+        // Binary std/no_std choice
         let _allocator = platform.allocator();
         let _synchronizer = platform.synchronizer();
     }

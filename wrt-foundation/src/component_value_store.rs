@@ -10,15 +10,15 @@
 
 #![allow(dead_code, unused_variables)] // Allow unused for stub
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 extern crate alloc;
-#[cfg(feature = "alloc")]
-use alloc::format;
+#[cfg(feature = "std")]
+use std::format;
 
 // External crate imports
 use wrt_error::{ErrorCategory, Result};
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 use crate::prelude::BTreeMap;
 // Internal imports organized by module
 use crate::{
@@ -101,11 +101,11 @@ pub const MAX_STORE_TYPES: usize = 256; // Example capacity for types
 
 // Capacity for the type_to_ref_map, should be related to MAX_STORE_TYPES
 /// Maximum number of entries in the type-to-reference map
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub const MAX_TYPE_TO_REF_MAP_ENTRIES: usize = MAX_STORE_TYPES;
-/// Maximum number of entries in the type-to-reference map for no_alloc
-#[cfg(not(feature = "alloc"))]
-pub const MAX_TYPE_TO_REF_MAP_ENTRIES: usize = MAX_STORE_TYPES; // Provide a default for no_alloc
+/// Binary std/no_std choice
+#[cfg(not(feature = "std"))]
+pub const MAX_TYPE_TO_REF_MAP_ENTRIES: usize = MAX_STORE_TYPES; // Binary std/no_std choice
 
 /// Stores component values and their types, managing references between them.
 #[derive(Debug, Clone, PartialEq)]
@@ -154,7 +154,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
     /// Adds a component value to the store and returns a reference to it.
     ///
     /// # Errors
-    /// Returns an error if the store is full or if memory allocation fails.
+    /// Binary std/no_std choice
     pub fn add_value(&mut self, value: ComponentValue<P>) -> Result<ValueRef> {
         let index = self.values.len() as u32;
         self.values.push(value).map_err(|_e| {
@@ -203,12 +203,12 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
             }
             Some(_other_val) => Err(Error::type_error(
                 // format!("Expected ComponentValue::String, found {:?}", other_val) // format!
-                // requires alloc
+                // Binary std/no_std choice
                 "Type mismatch: Expected ComponentValue::String",
             )),
             None => Err(Error::new(
                 // format!("ValueRef {:?} not found in ComponentValueStore for get_string",
-                // val_ref) // format! requires alloc
+                // Binary std/no_std choice
                 ErrorCategory::Resource,   // Or Validation
                 codes::RESOURCE_NOT_FOUND, // Generic code for not found
                 "ValueRef not found in ComponentValueStore for get_string",
@@ -218,18 +218,18 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
 
     // Methods expected by to_core_value conversions
     /// Adds a string to the store and returns its handle.
-    /// Takes &str for no_alloc compatibility.
+    /// Binary std/no_std choice
     ///
     /// # Errors
-    /// May return an error if allocation fails or string is too long.
+    /// Binary std/no_std choice
     pub fn add_string(&mut self, s: &str) -> Result<u32>
     where
         P: Clone, // Needed for WasmName::from_str which takes P by value
     {
-        #[cfg(any(feature = "alloc", feature = "std"))]
+        #[cfg(feature = "std")]
         let comp_val = ComponentValue::String(s.to_string());
 
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         let comp_val = {
             let bounded_s =
                 BoundedString::<{ crate::bounded::MAX_WASM_STRING_LENGTH }, P>::from_str(
@@ -277,14 +277,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
         P: Clone, // Needed for WasmName::from_str
     {
         // TODO: Convert case_name_str to WasmName
-        // let wasm_case_name = WasmName::<MAX_WASM_NAME_LENGTH,
-        // P>::from_str(case_name_str.as_ref(),
-        // self.provider.clone()).map_err(Error::from)?;
-        // let component_value_payload = value.cloned(); // This would require
-        // ComponentValue to be Clone let variant_cv =
-        // ComponentValue::Variant(wasm_case_name, component_value_payload.map(|cv| /*
-        // add cv to store, get ValueRef */ todo!() ));
-        // self.add_value(variant_cv).map(|vr| vr.0)
+        // Implementation pending - requires ComponentValue to be Clone
         Ok(2) // Dummy handle
     }
 
@@ -344,9 +337,9 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
             Error::new(
                 wrt_error::ErrorCategory::Memory,
                 codes::MEMORY_ALLOCATION_ERROR,
-                // #[cfg(any(feature = "std", feature = "alloc"))]
+                // #[cfg(feature = "std")]
                 // format!("Failed to create BoundedVec for flags: {:?}", e), // format! requires
-                // alloc #[cfg(not(any(feature = "std", feature = "alloc")))]
+                // Binary std/no_std choice
                 "Failed to create BoundedVec for flags",
             )
         })?;
@@ -373,8 +366,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
         Ok(new_ref.0 as u32)
     }
 
-    /// Adds an enum case to the store and returns its handle.
-    /// Changed to take AsRef<str> for no_alloc compatibility.
+    /// Adds an `enum` case to the store and returns its handle.
+    /// Binary std/no_std choice
     pub fn add_enum<S: AsRef<str> + Debug>(&mut self, case: S) -> Result<u32>
     where
         P: Clone,
@@ -409,9 +402,9 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
     /// `ValTypeRef`.
     ///
     /// # Errors
-    /// Returns an error if the type store is full or memory allocation fails.
+    /// Binary std/no_std choice
     pub fn intern_type(&mut self, ty: ValType<P>) -> Result<ValTypeRef> {
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             // Search through the type_to_ref_map to find existing type
             for i in 0..self.type_to_ref_map.len() {
@@ -435,7 +428,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
         })?;
         let type_ref = ValTypeRef(type_idx);
 
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             // Add the type-to-ref mapping to our "map" (which is actually a BoundedVec of
             // tuples)
@@ -460,7 +453,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
 
     /// Returns a clone of the provider used by this store.
     /// Useful if external code needs to create P-dependent types like WasmName
-    /// or BoundedVec that are compatible with this store's memory
+    /// or `BoundedVec` that are compatible with this store's memory
     /// management.
     pub fn provider_clone(&self) -> P {
         self.provider.clone() // P: Clone is required by the struct bound

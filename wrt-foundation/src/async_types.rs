@@ -199,7 +199,7 @@ impl ErrorContext {
     }
 }
 
-/// Extension trait to add future/stream handles to Value enum
+/// Extension trait to add future/stream handles to `Value` `enum`
 impl Value {
     /// Create a future value
     pub fn future(handle: u32) -> Self {

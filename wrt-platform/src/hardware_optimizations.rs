@@ -1,6 +1,7 @@
 // WRT - wrt-platform
 // Module: Hardware-Specific Optimizations
 // SW-REQ-ID: REQ_PLATFORM_HW_OPT_001
+// SW-REQ-ID: REQ_PERF_010
 //
 // Copyright (c) 2025 The WRT Project Developers
 // Licensed under the MIT license.
@@ -162,7 +163,7 @@ pub mod arm {
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    /// Memory tag allocation strategy  
+    /// Binary std/no_std choice
     pub enum TagStrategy {
         /// Random tag generation
         Random,

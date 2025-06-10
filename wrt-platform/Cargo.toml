@@ -24,7 +24,8 @@ categories = ["wasm", "os"]
 [dependencies]
 wrt-error = { workspace = true } # Assuming wrt-error is in workspace.dependencies
 wrt-sync = { workspace = true } # Add wrt-sync for synchronization primitives
-# wrt-foundation = { workspace = true, optional = true } # Temporarily disabled to fix cyclic dependency
+# wrt-format = { workspace = true, optional = true } # For AST allocator - temporarily disabled to fix cyclic dependency
+# wrt-foundation = { workspace = true, optional = true } # For bounded collections - temporarily disabled to fix cyclic dependency
 # libc dependency removed - using direct syscalls instead
 
 [dev-dependencies]
@@ -32,11 +33,13 @@ criterion = { version = "0.6", features = ["html_reports"] }
 
 [features]
 default = [] # No std/alloc by default
+# Binary choice: std OR no_std (no alloc middle ground)
 
-# Standard features for cross-crate compatibility
-std = ["wrt-error/std", "wrt-sync/std"] # , "wrt-foundation?/std"]
-alloc = ["wrt-error/alloc", "wrt-sync/alloc"] # , "wrt-foundation?/alloc"]
+# Binary choice: std OR no_std (no alloc middle ground)
+std = ["wrt-error/std", "wrt-sync/std"]
 no_std = []
+
+# All memory allocation uses NoStdProvider pattern
 
 # Feature for threading support (requires std)
 threading = ["std"] # , "wrt-foundation"]
@@ -54,6 +57,8 @@ platform-vxworks = [] # VxWorks RTOS support (LKM and RTP)
 # platform-baremetal = []
 # arm-hardening = [] # If any platform code depends on this
 helper-mode = [] # Added for C-ABI runtime
+disable-panic-handler = ["wrt-error/disable-panic-handler", "wrt-sync/disable-panic-handler"] # Disable panic handler for library builds
+enable-panic-handler = [] # Enable panic handler for standalone no_std builds
 
 [lib]
 crate-type = ["rlib", "staticlib"] # staticlib for C ABI helper if needed later

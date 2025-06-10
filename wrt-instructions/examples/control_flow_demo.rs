@@ -14,11 +14,10 @@ use wrt_error::Result;
 
 #[cfg(feature = "std")]
 use std::vec::Vec;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::vec::Vec;
+use std::vec::Vec;
 
 // Mock execution context for demonstration
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 struct DemoContext {
     stack: Vec<Value>,
     returned: bool,
@@ -27,7 +26,7 @@ struct DemoContext {
     branch_target: Option<u32>,
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl DemoContext {
     fn new() -> Self {
         Self {
@@ -40,7 +39,7 @@ impl DemoContext {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl ControlContext for DemoContext {
     fn push_control_value(&mut self, value: Value) -> Result<()> {
         self.stack.push(value);
@@ -123,7 +122,7 @@ impl ControlContext for DemoContext {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl FunctionOperations for DemoContext {
     fn get_function_type(&self, func_idx: u32) -> Result<u32> {
         // Mock: return type index based on function index
@@ -150,7 +149,7 @@ impl FunctionOperations for DemoContext {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 fn main() -> Result<()> {
     println!("=== WebAssembly Control Flow Operations Demo ===\n");
     
@@ -213,8 +212,8 @@ fn main() -> Result<()> {
     control_call_indirect.execute(&mut context)?;
     println!("   ControlOp::CallIndirect executed: {:?}", context.indirect_call);
     
-    // Test BrTable through ControlOp (only with alloc for simplicity)
-    #[cfg(feature = "alloc")]
+    // Binary std/no_std choice
+    #[cfg(feature = "std")]
     {
         context.push_control_value(Value::I32(0))?;
         let control_br_table = ControlOp::BrTable { 
@@ -227,7 +226,7 @@ fn main() -> Result<()> {
         println!("   ControlOp::BrTable executed: {:?}", context.branch_target);
     }
     
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     println!("   ControlOp::BrTable test skipped (requires alloc)");
     
     // 5. Demonstrate error handling
@@ -253,8 +252,8 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 fn main() {
-    // Example requires allocation for Vec and complex operations
+    // Binary std/no_std choice
     panic!("This example requires std or alloc features");
 }

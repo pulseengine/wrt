@@ -37,7 +37,7 @@ pub enum QnxProtFlags {
     ReadWriteExecute = 7,
 }
 
-/// QNX malloc arena configuration options
+/// Binary std/no_std choice
 /// These map to mallopt() parameters
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -56,7 +56,7 @@ pub enum QnxMallocOption {
     TrimThreshold = 6,
 }
 
-/// FFI declarations for QNX arena allocation and system calls
+/// Binary std/no_std choice
 #[allow(non_camel_case_types)]
 #[cfg(all(feature = "platform-qnx", target_os = "nto"))]
 mod ffi {
@@ -69,13 +69,13 @@ mod ffi {
     pub type qnx_off_t = i64;
 
     extern "C" {
-        // Standard memory allocation functions
+        // Binary std/no_std choice
         pub fn malloc(size: qnx_size_t) -> *mut c_void;
         pub fn calloc(nmemb: qnx_size_t, size: qnx_size_t) -> *mut c_void;
         pub fn realloc(ptr: *mut c_void, size: qnx_size_t) -> *mut c_void;
         pub fn free(ptr: *mut c_void);
 
-        // Arena allocator configuration
+        // Binary std/no_std choice
         pub fn mallopt(cmd: i32, value: i32) -> i32;
         pub fn mallinfo() -> MallocInfo;
 
@@ -108,14 +108,14 @@ mod ffi {
     #[repr(C)]
     #[derive(Debug, Clone, Copy)]
     pub struct MallocInfo {
-        pub arena: i32,    // Total space allocated from system
+        pub arena: i32,    // Binary std/no_std choice
         pub ordblks: i32,  // Number of free chunks
         pub smblks: i32,   // Number of fast bins
         pub hblks: i32,    // Number of mmapped regions
-        pub hblkhd: i32,   // Space allocated in mmapped regions
-        pub usmblks: i32,  // Maximum total allocated space
+        pub hblkhd: i32,   // Binary std/no_std choice
+        pub usmblks: i32,  // Binary std/no_std choice
         pub fsmblks: i32,  // Space in freed fastbin blocks
-        pub uordblks: i32, // Total allocated space
+        pub uordblks: i32, // Binary std/no_std choice
         pub fordblks: i32, // Total free space
         pub keepcost: i32, // Top-most, releasable space
     }
@@ -238,7 +238,7 @@ pub struct QnxArenaAllocatorConfig {
     pub use_lifo_free: bool,
     /// Whether to hold memory (never release to OS)
     pub memory_hold: bool,
-    /// Whether to use guard pages around allocations
+    /// Binary std/no_std choice
     pub use_guard_pages: bool,
     /// Memory protection flags for guard pages
     pub guard_page_prot: QnxProtFlags,
@@ -341,27 +341,27 @@ impl QnxArenaAllocatorBuilder {
     }
 }
 
-/// Memory allocation and management for QNX Neutrino using the arena allocator
+/// Binary std/no_std choice
 #[derive(Debug)]
 pub struct QnxArenaAllocator {
-    /// Configuration settings for the allocator
+    /// Binary std/no_std choice
     config: QnxArenaAllocatorConfig,
-    /// Currently allocated memory pointer (if any)
+    /// Binary std/no_std choice
     current_allocation: Option<NonNull<u8>>,
-    /// Size of current allocation in bytes
+    /// Binary std/no_std choice
     current_size: AtomicUsize,
-    /// Number of WASM pages currently allocated
+    /// Binary std/no_std choice
     current_pages: AtomicUsize,
-    /// Maximum number of pages this allocator can handle
+    /// Binary std/no_std choice
     maximum_pages: Option<u32>,
-    /// Whether the allocator has been initialized
+    /// Binary std/no_std choice
     initialized: bool,
 }
 
 impl QnxArenaAllocator {
     /// Create a new QnxArenaAllocator with the specified configuration
     pub fn new(config: QnxArenaAllocatorConfig) -> Result<Self> {
-        // Configure the QNX arena allocator
+        // Binary std/no_std choice
         Self::configure_arena_allocator(&config)?;
 
         Ok(Self {
@@ -374,7 +374,7 @@ impl QnxArenaAllocator {
         })
     }
 
-    /// Configure the QNX arena allocator based on the provided config
+    /// Binary std/no_std choice
     fn configure_arena_allocator(config: &QnxArenaAllocatorConfig) -> Result<()> {
         // Set arena size
         let result =
@@ -454,7 +454,7 @@ impl QnxArenaAllocator {
         Ok(())
     }
 
-    /// Calculate the total size needed for allocation, including guard pages
+    /// Binary std/no_std choice
     fn calculate_total_size(&self, pages: u32) -> Result<usize> {
         let data_size = (pages as usize).checked_mul(WASM_PAGE_SIZE).ok_or_else(|| {
             Error::new(
@@ -482,11 +482,11 @@ impl QnxArenaAllocator {
         })
     }
 
-    /// Free the current allocation if it exists
+    /// Binary std/no_std choice
     fn free_current_allocation(&mut self) -> Result<()> {
         if let Some(ptr) = self.current_allocation.take() {
             unsafe {
-                // For arena allocator, use free instead of munmap
+                // Binary std/no_std choice
                 ffi::free(ptr.as_ptr() as *mut _);
             }
 
@@ -497,7 +497,7 @@ impl QnxArenaAllocator {
         Ok(())
     }
 
-    /// Get current memory allocation statistics
+    /// Binary std/no_std choice
     pub fn memory_info(&self) -> Result<ffi::MallocInfo> {
         Ok(unsafe { ffi::mallinfo() })
     }
@@ -505,7 +505,7 @@ impl QnxArenaAllocator {
 
 impl Drop for QnxArenaAllocator {
     fn drop(&mut self) {
-        // Free current allocation if any
+        // Binary std/no_std choice
         let _ = self.free_current_allocation();
     }
 }
@@ -516,7 +516,7 @@ impl PageAllocator for QnxArenaAllocator {
         initial_pages: u32,
         maximum_pages: Option<u32>,
     ) -> Result<(NonNull<u8>, usize)> {
-        // Free any existing allocation first
+        // Binary std/no_std choice
         self.free_current_allocation()?;
 
         // Store maximum pages for future reference
@@ -525,20 +525,20 @@ impl PageAllocator for QnxArenaAllocator {
         // Calculate total size including guard pages
         let total_size = self.calculate_total_size(initial_pages)?;
 
-        // Pre-calculate the number of arenas needed to satisfy this allocation
-        // This helps QNX's arena allocator optimize its behavior
+        // Binary std/no_std choice
+        // Binary std/no_std choice
         let arenas_needed = (total_size + self.config.arena_size - 1) / self.config.arena_size;
         let aligned_size = arenas_needed * self.config.arena_size;
 
-        // For large allocations, try to pre-allocate the arena cache
+        // Binary std/no_std choice
         // This helps reduce fragmentation for WebAssembly modules
         if aligned_size > 256 * 1024 {
-            // For very large allocations, temporarily increase the arena cache size
-            // to improve allocation performance
+            // Binary std/no_std choice
+            // Binary std/no_std choice
             unsafe {
                 ffi::mallopt(
                     QnxMallocOption::ArenaCacheMaxSize as i32,
-                    (aligned_size / 2) as i32, // Use half the allocation size as cache
+                    (aligned_size / 2) as i32, // Binary std/no_std choice
                 );
             }
         }
@@ -551,10 +551,10 @@ impl PageAllocator for QnxArenaAllocator {
             16 // Default alignment
         };
 
-        // Try to allocate with posix_memalign for best alignment
+        // Binary std/no_std choice
         let result = unsafe { ffi::posix_memalign(&mut ptr, alignment, total_size) };
 
-        // If that fails, fall back to regular malloc which might still succeed
+        // Binary std/no_std choice
         if (result != 0 || ptr.is_null()) && total_size > 0 {
             ptr = unsafe { ffi::malloc(total_size) };
         }
@@ -578,7 +578,7 @@ impl PageAllocator for QnxArenaAllocator {
         }
 
         // Lock memory in physical RAM if this is a large, performance-critical
-        // allocation This prevents paging and improves real-time performance
+        // Binary std/no_std choice
         if initial_pages > 16 {
             unsafe {
                 ffi::mlock(ptr, total_size);
@@ -606,7 +606,7 @@ impl PageAllocator for QnxArenaAllocator {
 
             // Check if protection succeeded
             if lower_result != 0 || upper_result != 0 {
-                // Free the allocation since guard page setup failed
+                // Binary std/no_std choice
                 unsafe {
                     ffi::free(ptr);
                 }
@@ -626,7 +626,7 @@ impl PageAllocator for QnxArenaAllocator {
             ptr as *mut u8
         };
 
-        // Store allocation information
+        // Binary std/no_std choice
         let data_ptr_nonnull = NonNull::new(data_ptr).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Memory,
@@ -652,7 +652,7 @@ impl PageAllocator for QnxArenaAllocator {
     }
 
     fn grow(&mut self, current_pages: u32, additional_pages: u32) -> Result<(NonNull<u8>, usize)> {
-        // Check if we have an existing allocation
+        // Binary std/no_std choice
         if self.current_allocation.is_none() {
             return Err(Error::new(
                 ErrorCategory::Memory,
@@ -685,13 +685,13 @@ impl PageAllocator for QnxArenaAllocator {
         let new_total_size = self.calculate_total_size(new_pages)?;
 
         // Pre-calculate the number of arenas needed for the additional memory
-        // This helps QNX's arena allocator optimize its behavior
+        // Binary std/no_std choice
         let current_total_size = self.current_size.load(Ordering::SeqCst);
         let additional_size = new_total_size.checked_sub(current_total_size).unwrap_or(0);
         let additional_arenas_needed =
             (additional_size + self.config.arena_size - 1) / self.config.arena_size;
 
-        // For arena-based allocation, we need to use realloc
+        // Binary std/no_std choice
         // Get the current base pointer (before guard page if any)
         let current_ptr = self.current_allocation.unwrap().as_ptr();
         let base_ptr = if self.config.use_guard_pages {
@@ -716,21 +716,21 @@ impl PageAllocator for QnxArenaAllocator {
             }
         }
 
-        // Use realloc to resize the allocation
+        // Binary std/no_std choice
         // First try with the exact size we need
         let mut new_ptr = unsafe { ffi::realloc(base_ptr as *mut _, new_total_size) };
 
         // If that fails, try with a larger size that's aligned to arena boundaries
-        // This can help the arena allocator find a better memory region
+        // Binary std/no_std choice
         if new_ptr.is_null() && additional_arenas_needed > 0 {
             let aligned_size =
                 current_total_size + additional_arenas_needed * self.config.arena_size;
             new_ptr = unsafe { ffi::realloc(base_ptr as *mut _, aligned_size) };
         }
 
-        // If realloc failed, we need to allocate a new buffer and copy the data
+        // Binary std/no_std choice
         if new_ptr.is_null() {
-            // Try to allocate a new buffer
+            // Binary std/no_std choice
             new_ptr = unsafe { ffi::malloc(new_total_size) };
 
             if !new_ptr.is_null() {
@@ -772,7 +772,7 @@ impl PageAllocator for QnxArenaAllocator {
             ));
         }
 
-        // Lock additional memory for large, performance-critical allocations
+        // Binary std/no_std choice
         if additional_pages > 8 {
             let current_size = self.current_size.load(Ordering::SeqCst);
             if new_total_size > current_size {
@@ -790,7 +790,7 @@ impl PageAllocator for QnxArenaAllocator {
             new_ptr as *mut u8
         };
 
-        // Update guard pages if enabled (realloc may have moved memory)
+        // Binary std/no_std choice
         if self.config.use_guard_pages {
             // Protect the lower guard page
             let lower_guard = new_ptr;
@@ -824,7 +824,7 @@ impl PageAllocator for QnxArenaAllocator {
             }
         }
 
-        // Update allocation information
+        // Binary std/no_std choice
         let new_data_ptr_nonnull = NonNull::new(new_data_ptr).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Memory,
@@ -873,7 +873,7 @@ impl PageAllocator for QnxArenaAllocator {
         is_writable: bool,
         is_executable: bool,
     ) -> Result<()> {
-        // Verify that addr is within our allocation
+        // Binary std/no_std choice
         if let Some(current) = self.current_allocation {
             let current_addr = current.as_ptr() as usize;
             let addr_val = addr.as_ptr() as usize;
@@ -940,7 +940,7 @@ mod tests {
     #[test]
     #[ignore = "Requires QNX system to run"]
     fn test_qnx_arena_allocator_basic() {
-        // Create a basic allocator
+        // Binary std/no_std choice
         let mut allocator = QnxArenaAllocatorBuilder::new()
             .with_arena_size(64 * 1024) // 64KB arenas
             .with_guard_pages(true)
@@ -951,7 +951,7 @@ mod tests {
         let result = allocator.allocate(2, Some(4));
         assert!(result.is_ok());
 
-        // Verify allocation
+        // Binary std/no_std choice
         let (ptr, size) = result.unwrap();
         assert!(!ptr.as_ptr().is_null());
         assert_eq!(size, 2 * WASM_PAGE_SIZE);
@@ -969,7 +969,7 @@ mod tests {
     #[test]
     #[ignore = "Requires QNX system to run"]
     fn test_qnx_arena_allocator_grow() {
-        // Create a basic allocator
+        // Binary std/no_std choice
         let mut allocator = QnxArenaAllocatorBuilder::new()
             .with_arena_size(32 * 1024) // 32KB arenas
             .with_guard_pages(false) // No guard pages for simpler testing
@@ -1010,7 +1010,7 @@ mod tests {
     #[test]
     #[ignore = "Requires QNX system to run"]
     fn test_qnx_arena_allocator_protection() {
-        // Create an allocator with guard pages
+        // Binary std/no_std choice
         let mut allocator = QnxArenaAllocatorBuilder::new()
             .with_guard_pages(true)
             .with_data_protection(QnxProtFlags::ReadWrite)
@@ -1036,7 +1036,7 @@ mod tests {
     #[test]
     #[ignore = "Requires QNX system to run"]
     fn test_qnx_arena_allocator_config() {
-        // Create allocator with custom configuration
+        // Binary std/no_std choice
         let mut allocator = QnxArenaAllocatorBuilder::new()
             .with_arena_size(16 * 1024) // 16KB arenas
             .with_arena_cache_max_blocks(4)
@@ -1046,7 +1046,7 @@ mod tests {
             .build()
             .expect("Failed to create arena allocator");
 
-        // Make multiple allocations to test arena behavior
+        // Binary std/no_std choice
         let result1 = allocator.allocate(1, None);
         assert!(result1.is_ok());
         allocator.free().unwrap();

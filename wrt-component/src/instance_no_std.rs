@@ -25,7 +25,7 @@ pub struct InstanceValue {
     /// Instance type
     pub ty: ComponentTypeDefinition,
     /// Instance exports
-    pub exports: BoundedVec<Export, MAX_INSTANCE_EXPORTS>,
+    pub exports: BoundedVec<Export, MAX_INSTANCE_EXPORTS, NoStdProvider<65536>>,
 }
 
 impl InstanceValue {
@@ -35,7 +35,7 @@ impl InstanceValue {
             Error::new(ErrorCategory::Parameter, codes::VALIDATION_ERROR, "Instance name too long")
         })?;
 
-        let mut bounded_exports = BoundedVec::new();
+        let mut bounded_exports = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
         for export in exports {
             bounded_exports.push(export.clone()).map_err(|_| {
                 Error::new(
@@ -135,13 +135,13 @@ impl Default for InstanceValueBuilder {
 
 /// A collection of instances with bounded capacity
 pub struct InstanceCollection {
-    instances: BoundedVec<InstanceValue, MAX_INSTANCE_EXPORTS>,
+    instances: BoundedVec<InstanceValue, MAX_INSTANCE_EXPORTS, NoStdProvider<65536>>,
 }
 
 impl InstanceCollection {
     /// Creates a new empty instance collection
     pub fn new() -> Self {
-        Self { instances: BoundedVec::new() }
+        Self { instances: BoundedVec::new(DefaultMemoryProvider::default()).unwrap() }
     }
 
     /// Adds an instance to the collection

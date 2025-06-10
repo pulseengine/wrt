@@ -80,14 +80,13 @@ pub mod integration_analysis {
     pub struct MemorySubsystemIntegration;
 
     impl MemorySubsystemIntegration {
-        /// Analysis: Cache-aware allocation prevents timing attacks
+        /// Binary std/no_std choice
         ///
-        /// Standard allocation reveals information through:
+        /// Potential side channel vulnerabilities:
         /// 1. Time to find free block varies by fragmentation
         /// 2. Cache state changes based on traversed free list
-        /// 3. Page allocation timing reveals system memory pressure
         ///
-        /// Mitigation: Fixed-time allocation with cache-aligned pools
+        /// Binary std/no_std choice
         pub fn analyze_allocation_timing() -> &'static str {
             "Cache-aware allocation with constant-time guarantees integrates with existing \
              PageAllocator trait via timing-resistant implementations. Uses pre-allocated pools \
@@ -318,7 +317,7 @@ pub mod constant_time {
     }
 }
 
-/// Cache-aware memory allocation for side-channel resistance
+/// Binary std/no_std choice
 pub mod cache_aware_allocation {
     use core::ptr::NonNull;
 
@@ -326,10 +325,10 @@ pub mod cache_aware_allocation {
 
     /// Cache-aligned memory pool that resists timing attacks
     ///
-    /// Provides constant-time allocation by using pre-allocated,
-    /// cache-aligned blocks that eliminate allocation timing variations.
+    /// Binary std/no_std choice
+    /// Binary std/no_std choice
     pub struct CacheAwareAllocator {
-        /// Pre-allocated cache-aligned blocks
+        /// Binary std/no_std choice
         blocks: &'static mut [CacheBlock],
         /// Allocation bitmap (constant-time operations)
         allocation_bitmap: AtomicUsize,
@@ -339,7 +338,7 @@ pub mod cache_aware_allocation {
         total_blocks: usize,
     }
 
-    /// Cache-aligned memory block for cache-aware allocation
+    /// Binary std/no_std choice
     #[repr(align(64))] // Cache line alignment
     pub struct CacheBlock {
         data: [u8; 64], // One cache line
@@ -347,12 +346,12 @@ pub mod cache_aware_allocation {
     }
 
     impl CacheAwareAllocator {
-        /// Create cache-aware allocator with fixed pool
+        /// Binary std/no_std choice
         ///
         /// # Security Properties
-        /// - All allocations complete in constant time
-        /// - Cache access patterns independent of allocation state
-        /// - No information leakage through allocation timing
+        /// Binary std/no_std choice
+        /// Binary std/no_std choice
+        /// Binary std/no_std choice
         pub unsafe fn new(pool: &'static mut [CacheBlock]) -> Self {
             let total_blocks = pool.len();
 
@@ -388,7 +387,7 @@ pub mod cache_aware_allocation {
                 let free_bit = self.find_free_bit_constant_time(bitmap);
 
                 if free_bit >= self.total_blocks {
-                    // Simulate allocation timing even when full
+                    // Binary std/no_std choice
                     self.dummy_allocation_work();
                     return None;
                 }
@@ -403,7 +402,7 @@ pub mod cache_aware_allocation {
                     Ordering::Relaxed,
                 ) {
                     Ok(_) => {
-                        // Successfully allocated
+                        // Binary std/no_std choice
                         let block_ptr = &self.blocks[free_bit] as *const CacheBlock as *mut u8;
                         return NonNull::new(block_ptr);
                     }
@@ -417,10 +416,10 @@ pub mod cache_aware_allocation {
             None
         }
 
-        /// Deallocate block with constant-time guarantee
+        /// Binary std/no_std choice
         ///
         /// # Safety
-        /// `ptr` must have been allocated by this allocator.
+        /// Binary std/no_std choice
         pub unsafe fn deallocate_constant_time(&self, ptr: NonNull<u8>) {
             let block_addr = ptr.as_ptr() as usize;
             let base_addr = self.blocks.as_ptr() as usize;
@@ -462,20 +461,20 @@ pub mod cache_aware_allocation {
             inverted.trailing_zeros() as usize
         }
 
-        /// Dummy work to normalize allocation timing
+        /// Binary std/no_std choice
         fn dummy_allocation_work(&self) {
-            // Perform equivalent work to successful allocation
+            // Binary std/no_std choice
             let _ = self.allocation_bitmap.load(Ordering::Acquire);
             let _ = self.find_free_bit_constant_time(0);
         }
 
-        /// Dummy work to normalize deallocation timing  
+        /// Binary std/no_std choice
         fn dummy_deallocation_work(&self) {
-            // Perform equivalent work to successful deallocation
+            // Binary std/no_std choice
             let _ = self.allocation_bitmap.load(Ordering::Acquire);
         }
 
-        /// Get allocator statistics (for monitoring, not security-critical)
+        /// Binary std/no_std choice
         pub fn stats(&self) -> AllocatorStats {
             let bitmap = self.allocation_bitmap.load(Ordering::Acquire);
             let used_blocks = bitmap.count_ones() as usize;

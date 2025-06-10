@@ -3,24 +3,26 @@
 //! This module provides the implementation for WebAssembly globals.
 
 // Use WrtGlobalType directly from wrt_foundation, and WrtValueType, WrtValue
+extern crate alloc;
+
 use wrt_foundation::{
     types::{GlobalType as WrtGlobalType, ValueType as WrtValueType},
     values::Value as WrtValue,
 };
 
-use crate::prelude::*;
+use crate::prelude::{Debug, Eq, Error, ErrorCategory, PartialEq, Result, codes};
 
 // Import format! macro for string formatting
 #[cfg(feature = "std")]
 use std::format;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 use alloc::format;
 
 /// Represents a WebAssembly global variable in the runtime
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Global {
-    /// The global type (value_type and mutability).
-    /// The initial_value from WrtGlobalType is used to set the runtime `value`
+    /// The global type (`value_type` and mutability).
+    /// The `initial_value` from `WrtGlobalType` is used to set the runtime `value`
     /// field upon creation.
     ty: WrtGlobalType,
     /// The current runtime value of the global variable.
@@ -38,8 +40,6 @@ impl Global {
         let global_ty_descriptor = WrtGlobalType {
             value_type,
             mutable,
-            initial_value: initial_value.clone(), /* Store the original initial value as part of
-                                                   * the type descriptor. */
         };
 
         // The runtime `value` starts as the provided `initial_value`.
@@ -67,11 +67,7 @@ impl Global {
             return Err(Error::new(
                 ErrorCategory::Type,
                 codes::TYPE_MISMATCH,
-                format!(
-                    "Value type {:?} doesn't match global type {:?}",
-                    new_value.value_type(),
-                    self.ty.value_type
-                ),
+                "Value type doesn't match global type",
             ));
         }
 
@@ -79,10 +75,86 @@ impl Global {
         Ok(())
     }
 
-    /// Get the WrtGlobalType descriptor (value_type, mutability, and original
-    /// initial_value).
+    /// Get the `WrtGlobalType` descriptor (`value_type`, mutability, and original
+    /// `initial_value`).
     pub fn global_type_descriptor(&self) -> &WrtGlobalType {
         &self.ty
+    }
+}
+
+impl Default for Global {
+    fn default() -> Self {
+        use wrt_foundation::types::{GlobalType, ValueType};
+        use wrt_foundation::values::Value;
+        Self::new(ValueType::I32, false, Value::I32(0)).unwrap()
+    }
+}
+
+fn value_type_to_u8(value_type: &WrtValueType) -> u8 {
+    match value_type {
+        WrtValueType::I32 => 0,
+        WrtValueType::I64 => 1,
+        WrtValueType::F32 => 2,
+        WrtValueType::F64 => 3,
+        WrtValueType::V128 => 4,
+        WrtValueType::FuncRef => 5,
+        WrtValueType::ExternRef => 6,
+        WrtValueType::I16x8 => 7,
+        WrtValueType::StructRef(_) => 8,
+        WrtValueType::ArrayRef(_) => 9,
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for Global {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&value_type_to_u8(&self.ty.value_type).to_le_bytes());
+        checksum.update_slice(&[u8::from(self.ty.mutable)]);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for Global {
+    fn serialized_size(&self) -> usize {
+        16 // simplified
+    }
+
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_all(&value_type_to_u8(&self.ty.value_type).to_le_bytes())?;
+        writer.write_all(&[u8::from(self.ty.mutable)])
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for Global {
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let mut bytes = [0u8; 1];
+        reader.read_exact(&mut bytes)?;
+        let value_type = match bytes[0] {
+            0 => wrt_foundation::types::ValueType::I32,
+            1 => wrt_foundation::types::ValueType::I64,
+            2 => wrt_foundation::types::ValueType::F32,
+            3 => wrt_foundation::types::ValueType::F64,
+            _ => wrt_foundation::types::ValueType::I32,
+        };
+        
+        reader.read_exact(&mut bytes)?;
+        let mutable = bytes[0] != 0;
+        
+        use wrt_foundation::values::Value;
+        let initial_value = match value_type {
+            wrt_foundation::types::ValueType::I32 => Value::I32(0),
+            wrt_foundation::types::ValueType::I64 => Value::I64(0),
+            wrt_foundation::types::ValueType::F32 => Value::F32(wrt_foundation::float_repr::FloatBits32::from_float(0.0)),
+            wrt_foundation::types::ValueType::F64 => Value::F64(wrt_foundation::float_repr::FloatBits64::from_float(0.0)),
+            _ => Value::I32(0),
+        };
+        
+        Self::new(value_type, mutable, initial_value)
     }
 }
 

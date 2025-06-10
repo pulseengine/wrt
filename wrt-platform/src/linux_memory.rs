@@ -1,5 +1,5 @@
 #![allow(unsafe_code)]
-// Allow unsafe syscalls for memory allocation
+// Binary std/no_std choice
 // WRT - wrt-platform
 // Module: Linux Memory Management
 // SW-REQ-ID: REQ_PLATFORM_001, REQ_MEMORY_001
@@ -188,13 +188,13 @@ impl LinuxAllocator {
         result as i32
     }
 
-    /// Create guard pages around the allocated memory region
+    /// Binary std/no_std choice
     unsafe fn setup_guard_pages(&self, base_ptr: *mut u8, total_size: usize) -> Result<()> {
         if !self.use_guard_pages {
             return Ok(());
         }
 
-        // Create guard page at the end of the allocated region
+        // Binary std/no_std choice
         let guard_page_addr = base_ptr.add(total_size - WASM_PAGE_SIZE);
         let result = Self::mprotect(guard_page_addr, WASM_PAGE_SIZE, PROT_NONE);
 
@@ -230,7 +230,7 @@ impl LinuxAllocatorBuilder {
     }
 
     /// Sets the maximum number of WebAssembly pages (64 KiB) that can be
-    /// allocated.
+    /// Binary std/no_std choice
     pub fn with_maximum_pages(mut self, pages: u32) -> Self {
         self.maximum_pages = Some(pages);
         self

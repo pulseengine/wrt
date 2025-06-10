@@ -23,9 +23,9 @@ pub mod kani_verification {
         let export_count: usize = kani::any();
         kani::assume(import_count <= 8 && export_count <= 8); // Reasonable bounds
 
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
-            use alloc::vec::Vec;
+            use std::vec::Vec;
 
             let mut imports = Vec::new();
             let mut exports = Vec::new();
@@ -68,7 +68,7 @@ pub mod kani_verification {
         match namespace_type % 4 {
             0 => {
                 // Simple namespace
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 {
                     let ns = Namespace::from_string("wasi");
                     assert_eq!(ns.elements.len(), 1);
@@ -78,7 +78,7 @@ pub mod kani_verification {
             }
             1 => {
                 // Nested namespace
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 {
                     let ns = Namespace::from_string("wasi.http.client");
                     assert_eq!(ns.elements.len(), 3);
@@ -89,7 +89,7 @@ pub mod kani_verification {
             }
             2 => {
                 // Empty namespace
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 {
                     let ns = Namespace::from_string("");
                     assert!(ns.is_empty());
@@ -98,7 +98,7 @@ pub mod kani_verification {
             }
             _ => {
                 // Namespace matching
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 {
                     let ns1 = Namespace::from_string("wasi.fs");
                     let ns2 = Namespace::from_string("wasi.fs");
@@ -121,9 +121,9 @@ pub mod kani_verification {
         match operation % 3 {
             0 => {
                 // Function import/export consistency
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 {
-                    use alloc::vec::Vec;
+                    use std::vec::Vec;
 
                     // Create function type
                     let param_count: usize = kani::any();
@@ -237,9 +237,9 @@ pub mod kani_verification {
         let has_imports: bool = kani::any();
         let has_exports: bool = kani::any();
 
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
-            use alloc::vec::Vec;
+            use std::vec::Vec;
 
             // Create a minimal component
             let imports = if has_imports {

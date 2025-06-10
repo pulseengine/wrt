@@ -8,9 +8,10 @@ use core::{fmt, mem, slice};
 #[cfg(feature = "std")]
 use std::{fmt, mem, slice};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, vec::Vec};
 
+#[cfg(feature = "std")]
 use wrt_foundation::{bounded::BoundedVec, component_value::ComponentValue, prelude::*};
 
 use crate::{
@@ -34,18 +35,18 @@ const WASM_PAGE_SIZE: usize = 65536;
 /// Component memory manager
 pub struct ComponentMemoryManager {
     /// Managed memories
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     memories: Vec<ComponentMemory>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    memories: BoundedVec<ComponentMemory, MAX_MEMORIES>,
+    #[cfg(not(any(feature = "std", )))]
+    memories: BoundedVec<ComponentMemory, MAX_MEMORIES, NoStdProvider<65536>>,
 
     /// Memory sharing policies
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     sharing_policies: Vec<MemorySharingPolicy>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    sharing_policies: BoundedVec<MemorySharingPolicy, MAX_MEMORIES>,
+    #[cfg(not(any(feature = "std", )))]
+    sharing_policies: BoundedVec<MemorySharingPolicy, MAX_MEMORIES, NoStdProvider<65536>>,
 
-    /// Total allocated memory in bytes
+    /// Binary std/no_std choice
     total_allocated: usize,
     /// Maximum allowed memory
     max_memory: usize,
@@ -54,16 +55,16 @@ pub struct ComponentMemoryManager {
 /// Component table manager
 pub struct ComponentTableManager {
     /// Managed tables
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     tables: Vec<ComponentTable>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    tables: BoundedVec<ComponentTable, MAX_TABLES>,
+    #[cfg(not(any(feature = "std", )))]
+    tables: BoundedVec<ComponentTable, MAX_TABLES, NoStdProvider<65536>>,
 
     /// Table sharing policies
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     sharing_policies: Vec<TableSharingPolicy>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    sharing_policies: BoundedVec<TableSharingPolicy, MAX_TABLES>,
+    #[cfg(not(any(feature = "std", )))]
+    sharing_policies: BoundedVec<TableSharingPolicy, MAX_TABLES, NoStdProvider<65536>>,
 }
 
 /// Component memory instance
@@ -72,10 +73,10 @@ pub struct ComponentMemory {
     /// Memory ID
     pub id: u32,
     /// Memory data
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub data: Vec<u8>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub data: BoundedVec<u8, { MAX_MEMORY_PAGES * WASM_PAGE_SIZE }>,
+    #[cfg(not(any(feature = "std", )))]
+    pub data: BoundedVec<u8, { MAX_MEMORY_PAGES * WASM_PAGE_SIZE }, NoStdProvider<65536>>,
     /// Memory limits
     pub limits: MemoryLimits,
     /// Shared flag
@@ -114,10 +115,10 @@ pub struct MemorySharingPolicy {
     /// Sharing mode
     pub mode: SharingMode,
     /// Allowed component instances
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub allowed_instances: Vec<u32>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub allowed_instances: BoundedVec<u32, 32>,
+    #[cfg(not(any(feature = "std", )))]
+    pub allowed_instances: BoundedVec<u32, 32, NoStdProvider<65536>>,
 }
 
 /// Table sharing policy
@@ -128,10 +129,10 @@ pub struct TableSharingPolicy {
     /// Sharing mode
     pub mode: SharingMode,
     /// Allowed component instances
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub allowed_instances: Vec<u32>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub allowed_instances: BoundedVec<u32, 32>,
+    #[cfg(not(any(feature = "std", )))]
+    pub allowed_instances: BoundedVec<u32, 32, NoStdProvider<65536>>,
 }
 
 /// Resource sharing mode
@@ -153,10 +154,10 @@ pub struct ComponentTable {
     /// Table ID
     pub id: u32,
     /// Table elements
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub elements: Vec<TableElement>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub elements: BoundedVec<TableElement, 65536>, // 64K elements max
+    #[cfg(not(any(feature = "std", )))]
+    pub elements: BoundedVec<TableElement, 65536, NoStdProvider<65536>>, // 64K elements max
     /// Element type
     pub element_type: CoreValType,
     /// Table limits
@@ -193,21 +194,21 @@ pub struct MemoryAccess {
     /// Bytes read/written
     pub bytes_accessed: usize,
     /// Error message if failed
-    pub error: Option<BoundedString<256>>,
+    pub error: Option<BoundedString<256, NoStdProvider<65536>>>,
 }
 
 impl ComponentMemoryManager {
     /// Create a new memory manager
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             memories: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            memories: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(not(any(feature = "std", )))]
+            memories: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            #[cfg(feature = "std")]
             sharing_policies: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            sharing_policies: BoundedVec::new(),
+            #[cfg(not(any(feature = "std", )))]
+            sharing_policies: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             total_allocated: 0,
             max_memory: 256 * 1024 * 1024, // 256MB default
         }
@@ -236,11 +237,11 @@ impl ComponentMemoryManager {
         }
 
         // Create memory data
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let data = vec![0u8; initial_size];
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        let mut data = BoundedVec::new();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
+        let mut data = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+        #[cfg(not(any(feature = "std", )))]
         {
             for _ in 0..initial_size {
                 data.push(0u8).map_err(|_| {
@@ -258,11 +259,11 @@ impl ComponentMemoryManager {
             permissions: MemoryPermissions::default(),
         };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.memories.push(memory);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.memories.push(memory).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many memories".into())
@@ -293,7 +294,7 @@ impl ComponentMemoryManager {
     ) -> WrtResult<Vec<u8>> {
         let memory = self
             .get_memory(memory_id)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Memory not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         // Check permissions
         if !self.check_read_permission(memory_id, instance_id)? {
@@ -305,17 +306,15 @@ impl ComponentMemoryManager {
         // Check bounds
         let end_offset = offset as usize + size as usize;
         if end_offset > memory.data.len() {
-            return Err(wrt_foundation::WrtError::InvalidInput(
-                "Memory access out of bounds".into(),
-            ));
+            return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
         }
 
         // Read data
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             Ok(memory.data[offset as usize..end_offset].to_vec())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let mut result = Vec::new();
             for i in offset as usize..end_offset {
@@ -344,7 +343,7 @@ impl ComponentMemoryManager {
 
         let memory = self
             .get_memory_mut(memory_id)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Memory not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         // Check bounds
         let end_offset = offset as usize + data.len();
@@ -375,7 +374,7 @@ impl ComponentMemoryManager {
     ) -> WrtResult<u32> {
         let memory = self
             .get_memory_mut(memory_id)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Memory not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         // Check permissions
         if !self.check_write_permission(memory_id, instance_id)? {
@@ -390,9 +389,7 @@ impl ComponentMemoryManager {
         // Check limits
         if let Some(max) = memory.limits.max {
             if new_pages > max as usize {
-                return Err(wrt_foundation::WrtError::InvalidInput(
-                    "Memory growth exceeds maximum".into(),
-                ));
+                return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
             }
         }
 
@@ -406,11 +403,11 @@ impl ComponentMemoryManager {
 
         // Grow memory
         let old_size = memory.data.len();
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             memory.data.resize(old_size + additional_size, 0);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for _ in 0..additional_size {
                 memory.data.push(0u8).map_err(|_| {
@@ -427,7 +424,7 @@ impl ComponentMemoryManager {
     fn check_read_permission(&self, memory_id: u32, instance_id: Option<u32>) -> WrtResult<bool> {
         let memory = self
             .get_memory(memory_id)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Memory not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         if !memory.permissions.read {
             return Ok(false);
@@ -452,7 +449,7 @@ impl ComponentMemoryManager {
     fn check_write_permission(&self, memory_id: u32, instance_id: Option<u32>) -> WrtResult<bool> {
         let memory = self
             .get_memory(memory_id)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Memory not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         if !memory.permissions.write {
             return Ok(false);
@@ -497,12 +494,12 @@ impl ComponentMemoryManager {
 
     /// Set memory sharing policy
     pub fn set_sharing_policy(&mut self, policy: MemorySharingPolicy) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.sharing_policies.push(policy);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.sharing_policies.push(policy).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many sharing policies".into())
@@ -510,7 +507,7 @@ impl ComponentMemoryManager {
         }
     }
 
-    /// Get total allocated memory
+    /// Binary std/no_std choice
     pub fn total_allocated(&self) -> usize {
         self.total_allocated
     }
@@ -525,14 +522,14 @@ impl ComponentTableManager {
     /// Create a new table manager
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             tables: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            tables: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(not(any(feature = "std", )))]
+            tables: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            #[cfg(feature = "std")]
             sharing_policies: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            sharing_policies: BoundedVec::new(),
+            #[cfg(not(any(feature = "std", )))]
+            sharing_policies: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 
@@ -546,11 +543,11 @@ impl ComponentTableManager {
         let table_id = self.tables.len() as u32;
 
         // Create table elements
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let elements = vec![TableElement::Null; limits.min as usize];
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        let mut elements = BoundedVec::new();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
+        let mut elements = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+        #[cfg(not(any(feature = "std", )))]
         {
             for _ in 0..limits.min {
                 elements.push(TableElement::Null).map_err(|_| {
@@ -561,11 +558,11 @@ impl ComponentTableManager {
 
         let table = ComponentTable { id: table_id, elements, element_type, limits, owner };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.tables.push(table);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.tables.push(table).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many tables".into())
@@ -589,10 +586,10 @@ impl ComponentTableManager {
     pub fn get_element(&self, table_id: u32, index: u32) -> WrtResult<&TableElement> {
         let table = self
             .get_table(table_id)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Table not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         table.elements.get(index as usize).ok_or_else(|| {
-            wrt_foundation::WrtError::InvalidInput("Table index out of bounds".into())
+            wrt_foundation::WrtError::invalid_input("Invalid input")
         })
     }
 
@@ -605,10 +602,10 @@ impl ComponentTableManager {
     ) -> WrtResult<()> {
         let table = self
             .get_table_mut(table_id)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Table not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         if index as usize >= table.elements.len() {
-            return Err(wrt_foundation::WrtError::InvalidInput("Table index out of bounds".into()));
+            return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
         }
 
         table.elements[index as usize] = element;
@@ -619,7 +616,7 @@ impl ComponentTableManager {
     pub fn grow_table(&mut self, table_id: u32, size: u32, init: TableElement) -> WrtResult<u32> {
         let table = self
             .get_table_mut(table_id)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Table not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         let current_size = table.elements.len();
         let new_size = current_size + size as usize;
@@ -627,18 +624,16 @@ impl ComponentTableManager {
         // Check limits
         if let Some(max) = table.limits.max {
             if new_size > max as usize {
-                return Err(wrt_foundation::WrtError::InvalidInput(
-                    "Table growth exceeds maximum".into(),
-                ));
+                return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
             }
         }
 
         // Grow table
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             table.elements.resize(new_size, init);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for _ in 0..size {
                 table.elements.push(init.clone()).map_err(|_| {
@@ -652,12 +647,12 @@ impl ComponentTableManager {
 
     /// Set table sharing policy
     pub fn set_sharing_policy(&mut self, policy: TableSharingPolicy) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.sharing_policies.push(policy);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.sharing_policies.push(policy).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many sharing policies".into())

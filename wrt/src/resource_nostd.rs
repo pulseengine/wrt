@@ -33,7 +33,7 @@ pub struct BoundedResource<P: MemoryProvider + Default + Clone + PartialEq + Eq>
     pub is_dropped: bool,
 }
 
-/// A no_std/no_alloc compatible resource table implementation
+/// Binary std/no_std choice
 #[derive(Debug)]
 pub struct BoundedResourceTable<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     /// Resources stored in this table
@@ -97,7 +97,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
         };
 
         // Create resource
-        let resource_id = ResourceId(self.resources.len() as u64);
+        let resource_id = ResourceId(self.resources.len() as u32);
         let resource = BoundedResource { id: resource_id, resource_type, name, is_dropped: false };
 
         // Add to table

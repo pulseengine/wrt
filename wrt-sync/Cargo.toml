@@ -21,8 +21,7 @@ wrt-error = { workspace = true, default-features = false } # Ensure wrt-error is
 # Optional: parking_lot for std-based advanced mutexes/rwlocks
 parking_lot = { version = "0.12", optional = true }
 
-# The alloc crate, made optional
-alloc = { package = "rustc-std-workspace-alloc", version = "1.0.0", optional = true }
+# Removed alloc dependency - binary std/no_std choice
 
 # No external dependencies needed
 # Only used for formal verification when 'kani' feature is enabled
@@ -30,15 +29,13 @@ kani-verifier = { version = "0.62.0", optional = true }
 
 [features]
 default = [] # No features enabled by default, ensuring no_std without alloc
+# Binary choice: std OR no_std (no alloc middle ground)
 
-# Feature to enable types and functionalities requiring the `alloc` crate
-# This is explicitly opted into when `std` is not available but allocation is.
-alloc = ["dep:alloc"]
-
-# Feature to enable standard library support, which implies `alloc`
-std = ["alloc", "dep:parking_lot"] # "std" implies "alloc"
-# This crate is no_std by default, this feature is a no-op for compatibility
+# Binary choice: std OR no_std (no alloc middle ground)
+std = ["dep:parking_lot"]
 no_std = []
+# Disable panic handler for library builds to avoid conflicts
+disable-panic-handler = []
 
 # Feature for Kani verification (optional)
 kani = ["dep:kani-verifier"]

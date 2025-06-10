@@ -63,15 +63,6 @@ impl SectionId {
             10 => Ok(Self::Code),
             11 => Ok(Self::Data),
             12 => Ok(Self::DataCount),
-            #[cfg(feature = "std")]
-            _ => {
-                Err(Error::new(ErrorCategory::Validation, codes::PARSE_ERROR, "Invalid section id"))
-            }
-            #[cfg(all(not(feature = "std"), feature = "alloc"))]
-            _ => {
-                Err(Error::new(ErrorCategory::Validation, codes::PARSE_ERROR, "Invalid section id"))
-            }
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
             _ => {
                 Err(Error::new(ErrorCategory::Validation, codes::PARSE_ERROR, "Invalid section id"))
             }
@@ -177,14 +168,6 @@ impl<'a> Section<'a> {
 
         // Verify size matches data length
         if self.size as usize != self.data.len() {
-            #[cfg(feature = "std")]
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Section size mismatch",
-            ));
-
-            #[cfg(all(not(feature = "std"), feature = "alloc"))]
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,

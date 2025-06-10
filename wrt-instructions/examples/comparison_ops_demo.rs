@@ -14,16 +14,15 @@ use wrt_error::Result;
 
 #[cfg(feature = "std")]
 use std::vec::Vec;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::vec::Vec;
+use std::vec::Vec;
 
 // Mock execution context for demonstration
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 struct DemoContext {
     stack: Vec<Value>,
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl DemoContext {
     fn new() -> Self {
         Self {
@@ -36,7 +35,7 @@ impl DemoContext {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl ComparisonContext for DemoContext {
     fn pop_comparison_value(&mut self) -> Result<Value> {
         self.stack.pop()
@@ -49,7 +48,7 @@ impl ComparisonContext for DemoContext {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 fn main() -> Result<()> {
     println!("=== WebAssembly Comparison Operations Demo ===\n");
     
@@ -371,8 +370,8 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 fn main() {
-    // Example requires allocation for Vec
+    // Binary std/no_std choice
     panic!("This example requires std or alloc features");
 }

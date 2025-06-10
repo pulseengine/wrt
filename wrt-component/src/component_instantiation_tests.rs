@@ -357,7 +357,7 @@ mod tests {
 
         // Try to add too many components
         for i in 0..MAX_LINKED_COMPONENTS {
-            let result = linker.add_component(format!("component_{}", i), &binary);
+            let result = linker.add_component("Component not found", &binary);
             assert!(result.is_ok());
         }
 
@@ -480,19 +480,19 @@ mod tests {
         assert!(linker.get_instance(instance_id).is_some());
     }
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(all(not(feature = "std")))]
     #[test]
     fn test_alloc_environment_compatibility() {
         let mut linker = ComponentLinker::new();
         let binary = create_test_component_binary();
 
-        // Should work in alloc environment
+        // Binary std/no_std choice
         linker.add_component("alloc_test".to_string(), &binary).unwrap();
         let instance_id = linker.instantiate(&"alloc_test".to_string(), None).unwrap();
         assert!(linker.get_instance(instance_id).is_some());
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     #[test]
     fn test_no_std_environment_compatibility() {
         // In pure no_std, we can at least create configurations and validate types
@@ -529,9 +529,9 @@ mod tests {
         // Create more exports than allowed
         for i in 0..MAX_EXPORTS_PER_COMPONENT + 1 {
             exports.push(create_component_export(
-                format!("export_{}", i),
+                "Component not found",
                 ExportType::Function(create_function_signature(
-                    format!("export_{}", i),
+                    "Component not found",
                     vec![],
                     vec![ComponentType::S32],
                 )),
@@ -552,10 +552,10 @@ mod tests {
         // Create more imports than allowed
         for i in 0..MAX_IMPORTS_PER_COMPONENT + 1 {
             imports.push(create_component_import(
-                format!("import_{}", i),
+                "Component not found",
                 "env".to_string(),
                 ImportType::Function(create_function_signature(
-                    format!("import_{}", i),
+                    "Component not found",
                     vec![],
                     vec![ComponentType::S32],
                 )),
@@ -609,9 +609,9 @@ mod tests {
         // Create many exports (but within limits)
         for i in 0..100 {
             exports.push(create_component_export(
-                format!("func_{}", i),
+                "Component not found",
                 ExportType::Function(create_function_signature(
-                    format!("func_{}", i),
+                    "Component not found",
                     vec![ComponentType::S32],
                     vec![ComponentType::S32],
                 )),

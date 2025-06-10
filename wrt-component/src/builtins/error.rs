@@ -4,8 +4,7 @@
 // - error.new: Create a new error context
 // - error.trace: Get the trace from an error context
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, collections::HashMap, string::String, sync::Arc, vec::Vec};
+use std::{boxed::Box, collections::HashMap, string::String, sync::Arc, vec::Vec};
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
@@ -16,6 +15,7 @@ use std::{
 };
 
 use wrt_error::{codes, kinds::ValidationError, Error, ErrorCategory, Result, WrtError};
+#[cfg(feature = "std")]
 use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
 
 use super::BuiltinHandler;
@@ -199,7 +199,7 @@ impl BuiltinHandler for ErrorTraceHandler {
         // Add trace to the error context
         let mut store = self.store.lock().unwrap();
         let error_context = store.get_error_mut(error_id).ok_or_else(|| {
-            WrtError::resource_error(format!("Invalid error context ID: {}", error_id))
+            WrtError::resource_error("Component not found")
         })?;
         error_context.add_trace(trace_message);
 

@@ -7,7 +7,7 @@
 //! - Wait and notify operations
 //! - Memory fences
 
-use crate::prelude::*;
+use crate::prelude::{Debug, Eq, PartialEq, Result};
 use wrt_foundation::MemArg;
 
 /// Memory ordering for atomic operations
@@ -57,15 +57,15 @@ pub enum AtomicLoadOp {
     I32AtomicLoad { memarg: MemArg },
     /// i64.atomic.load
     I64AtomicLoad { memarg: MemArg },
-    /// i32.atomic.load8_u
+    /// `i32.atomic.load8_u`
     I32AtomicLoad8U { memarg: MemArg },
-    /// i32.atomic.load16_u
+    /// `i32.atomic.load16_u`
     I32AtomicLoad16U { memarg: MemArg },
-    /// i64.atomic.load8_u
+    /// `i64.atomic.load8_u`
     I64AtomicLoad8U { memarg: MemArg },
-    /// i64.atomic.load16_u
+    /// `i64.atomic.load16_u`
     I64AtomicLoad16U { memarg: MemArg },
-    /// i64.atomic.load32_u
+    /// `i64.atomic.load32_u`
     I64AtomicLoad32U { memarg: MemArg },
 }
 
@@ -95,90 +95,90 @@ pub enum AtomicRMWInstr {
     I32AtomicRmwAdd { memarg: MemArg },
     /// i64.atomic.rmw.add
     I64AtomicRmwAdd { memarg: MemArg },
-    /// i32.atomic.rmw8.add_u
+    /// `i32.atomic.rmw8.add_u`
     I32AtomicRmw8AddU { memarg: MemArg },
-    /// i32.atomic.rmw16.add_u
+    /// `i32.atomic.rmw16.add_u`
     I32AtomicRmw16AddU { memarg: MemArg },
-    /// i64.atomic.rmw8.add_u
+    /// `i64.atomic.rmw8.add_u`
     I64AtomicRmw8AddU { memarg: MemArg },
-    /// i64.atomic.rmw16.add_u
+    /// `i64.atomic.rmw16.add_u`
     I64AtomicRmw16AddU { memarg: MemArg },
-    /// i64.atomic.rmw32.add_u
+    /// `i64.atomic.rmw32.add_u`
     I64AtomicRmw32AddU { memarg: MemArg },
     
     /// i32.atomic.rmw.sub
     I32AtomicRmwSub { memarg: MemArg },
     /// i64.atomic.rmw.sub
     I64AtomicRmwSub { memarg: MemArg },
-    /// i32.atomic.rmw8.sub_u
+    /// `i32.atomic.rmw8.sub_u`
     I32AtomicRmw8SubU { memarg: MemArg },
-    /// i32.atomic.rmw16.sub_u
+    /// `i32.atomic.rmw16.sub_u`
     I32AtomicRmw16SubU { memarg: MemArg },
-    /// i64.atomic.rmw8.sub_u
+    /// `i64.atomic.rmw8.sub_u`
     I64AtomicRmw8SubU { memarg: MemArg },
-    /// i64.atomic.rmw16.sub_u
+    /// `i64.atomic.rmw16.sub_u`
     I64AtomicRmw16SubU { memarg: MemArg },
-    /// i64.atomic.rmw32.sub_u
+    /// `i64.atomic.rmw32.sub_u`
     I64AtomicRmw32SubU { memarg: MemArg },
     
     /// i32.atomic.rmw.and
     I32AtomicRmwAnd { memarg: MemArg },
     /// i64.atomic.rmw.and
     I64AtomicRmwAnd { memarg: MemArg },
-    /// i32.atomic.rmw8.and_u
+    /// `i32.atomic.rmw8.and_u`
     I32AtomicRmw8AndU { memarg: MemArg },
-    /// i32.atomic.rmw16.and_u
+    /// `i32.atomic.rmw16.and_u`
     I32AtomicRmw16AndU { memarg: MemArg },
-    /// i64.atomic.rmw8.and_u
+    /// `i64.atomic.rmw8.and_u`
     I64AtomicRmw8AndU { memarg: MemArg },
-    /// i64.atomic.rmw16.and_u
+    /// `i64.atomic.rmw16.and_u`
     I64AtomicRmw16AndU { memarg: MemArg },
-    /// i64.atomic.rmw32.and_u
+    /// `i64.atomic.rmw32.and_u`
     I64AtomicRmw32AndU { memarg: MemArg },
     
     /// i32.atomic.rmw.or
     I32AtomicRmwOr { memarg: MemArg },
     /// i64.atomic.rmw.or
     I64AtomicRmwOr { memarg: MemArg },
-    /// i32.atomic.rmw8.or_u
+    /// `i32.atomic.rmw8.or_u`
     I32AtomicRmw8OrU { memarg: MemArg },
-    /// i32.atomic.rmw16.or_u
+    /// `i32.atomic.rmw16.or_u`
     I32AtomicRmw16OrU { memarg: MemArg },
-    /// i64.atomic.rmw8.or_u
+    /// `i64.atomic.rmw8.or_u`
     I64AtomicRmw8OrU { memarg: MemArg },
-    /// i64.atomic.rmw16.or_u
+    /// `i64.atomic.rmw16.or_u`
     I64AtomicRmw16OrU { memarg: MemArg },
-    /// i64.atomic.rmw32.or_u
+    /// `i64.atomic.rmw32.or_u`
     I64AtomicRmw32OrU { memarg: MemArg },
     
     /// i32.atomic.rmw.xor
     I32AtomicRmwXor { memarg: MemArg },
     /// i64.atomic.rmw.xor
     I64AtomicRmwXor { memarg: MemArg },
-    /// i32.atomic.rmw8.xor_u
+    /// `i32.atomic.rmw8.xor_u`
     I32AtomicRmw8XorU { memarg: MemArg },
-    /// i32.atomic.rmw16.xor_u
+    /// `i32.atomic.rmw16.xor_u`
     I32AtomicRmw16XorU { memarg: MemArg },
-    /// i64.atomic.rmw8.xor_u
+    /// `i64.atomic.rmw8.xor_u`
     I64AtomicRmw8XorU { memarg: MemArg },
-    /// i64.atomic.rmw16.xor_u
+    /// `i64.atomic.rmw16.xor_u`
     I64AtomicRmw16XorU { memarg: MemArg },
-    /// i64.atomic.rmw32.xor_u
+    /// `i64.atomic.rmw32.xor_u`
     I64AtomicRmw32XorU { memarg: MemArg },
     
     /// i32.atomic.rmw.xchg
     I32AtomicRmwXchg { memarg: MemArg },
     /// i64.atomic.rmw.xchg
     I64AtomicRmwXchg { memarg: MemArg },
-    /// i32.atomic.rmw8.xchg_u
+    /// `i32.atomic.rmw8.xchg_u`
     I32AtomicRmw8XchgU { memarg: MemArg },
-    /// i32.atomic.rmw16.xchg_u
+    /// `i32.atomic.rmw16.xchg_u`
     I32AtomicRmw16XchgU { memarg: MemArg },
-    /// i64.atomic.rmw8.xchg_u
+    /// `i64.atomic.rmw8.xchg_u`
     I64AtomicRmw8XchgU { memarg: MemArg },
-    /// i64.atomic.rmw16.xchg_u
+    /// `i64.atomic.rmw16.xchg_u`
     I64AtomicRmw16XchgU { memarg: MemArg },
-    /// i64.atomic.rmw32.xchg_u
+    /// `i64.atomic.rmw32.xchg_u`
     I64AtomicRmw32XchgU { memarg: MemArg },
 }
 
@@ -189,15 +189,15 @@ pub enum AtomicCmpxchgInstr {
     I32AtomicRmwCmpxchg { memarg: MemArg },
     /// i64.atomic.rmw.cmpxchg
     I64AtomicRmwCmpxchg { memarg: MemArg },
-    /// i32.atomic.rmw8.cmpxchg_u
+    /// `i32.atomic.rmw8.cmpxchg_u`
     I32AtomicRmw8CmpxchgU { memarg: MemArg },
-    /// i32.atomic.rmw16.cmpxchg_u
+    /// `i32.atomic.rmw16.cmpxchg_u`
     I32AtomicRmw16CmpxchgU { memarg: MemArg },
-    /// i64.atomic.rmw8.cmpxchg_u
+    /// `i64.atomic.rmw8.cmpxchg_u`
     I64AtomicRmw8CmpxchgU { memarg: MemArg },
-    /// i64.atomic.rmw16.cmpxchg_u
+    /// `i64.atomic.rmw16.cmpxchg_u`
     I64AtomicRmw16CmpxchgU { memarg: MemArg },
-    /// i64.atomic.rmw32.cmpxchg_u
+    /// `i64.atomic.rmw32.cmpxchg_u`
     I64AtomicRmw32CmpxchgU { memarg: MemArg },
 }
 
@@ -370,8 +370,8 @@ pub mod opcodes {
 
 impl AtomicOp {
     /// Get the opcode for this atomic operation
-    pub fn opcode(&self) -> u8 {
-        use opcodes::*;
+    #[must_use] pub fn opcode(&self) -> u8 {
+        use opcodes::{ATOMIC_FENCE, I32_ATOMIC_LOAD, I32_ATOMIC_LOAD16_U, I32_ATOMIC_LOAD8_U, I32_ATOMIC_RMW16_ADD_U, I32_ATOMIC_RMW16_AND_U, I32_ATOMIC_RMW16_CMPXCHG_U, I32_ATOMIC_RMW16_OR_U, I32_ATOMIC_RMW16_SUB_U, I32_ATOMIC_RMW16_XCHG_U, I32_ATOMIC_RMW16_XOR_U, I32_ATOMIC_RMW8_ADD_U, I32_ATOMIC_RMW8_AND_U, I32_ATOMIC_RMW8_CMPXCHG_U, I32_ATOMIC_RMW8_OR_U, I32_ATOMIC_RMW8_SUB_U, I32_ATOMIC_RMW8_XCHG_U, I32_ATOMIC_RMW8_XOR_U, I32_ATOMIC_RMW_ADD, I32_ATOMIC_RMW_AND, I32_ATOMIC_RMW_CMPXCHG, I32_ATOMIC_RMW_OR, I32_ATOMIC_RMW_SUB, I32_ATOMIC_RMW_XCHG, I32_ATOMIC_RMW_XOR, I32_ATOMIC_STORE, I32_ATOMIC_STORE16, I32_ATOMIC_STORE8, I64_ATOMIC_LOAD, I64_ATOMIC_LOAD16_U, I64_ATOMIC_LOAD32_U, I64_ATOMIC_LOAD8_U, I64_ATOMIC_RMW16_ADD_U, I64_ATOMIC_RMW16_AND_U, I64_ATOMIC_RMW16_CMPXCHG_U, I64_ATOMIC_RMW16_OR_U, I64_ATOMIC_RMW16_SUB_U, I64_ATOMIC_RMW16_XCHG_U, I64_ATOMIC_RMW16_XOR_U, I64_ATOMIC_RMW32_ADD_U, I64_ATOMIC_RMW32_AND_U, I64_ATOMIC_RMW32_CMPXCHG_U, I64_ATOMIC_RMW32_OR_U, I64_ATOMIC_RMW32_SUB_U, I64_ATOMIC_RMW32_XCHG_U, I64_ATOMIC_RMW32_XOR_U, I64_ATOMIC_RMW8_ADD_U, I64_ATOMIC_RMW8_AND_U, I64_ATOMIC_RMW8_CMPXCHG_U, I64_ATOMIC_RMW8_OR_U, I64_ATOMIC_RMW8_SUB_U, I64_ATOMIC_RMW8_XCHG_U, I64_ATOMIC_RMW8_XOR_U, I64_ATOMIC_RMW_ADD, I64_ATOMIC_RMW_AND, I64_ATOMIC_RMW_CMPXCHG, I64_ATOMIC_RMW_OR, I64_ATOMIC_RMW_SUB, I64_ATOMIC_RMW_XCHG, I64_ATOMIC_RMW_XOR, I64_ATOMIC_STORE, I64_ATOMIC_STORE16, I64_ATOMIC_STORE32, I64_ATOMIC_STORE8, MEMORY_ATOMIC_NOTIFY, MEMORY_ATOMIC_WAIT32, MEMORY_ATOMIC_WAIT64};
         
         match self {
             AtomicOp::Load(load) => match load {

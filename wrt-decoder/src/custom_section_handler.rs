@@ -8,10 +8,8 @@ use crate::prelude::*;
 use crate::branch_hint_section::{BranchHintSection, parse_branch_hint_section, BRANCH_HINT_SECTION_NAME};
 use wrt_error::{Error, ErrorCategory, Result, codes};
 
-#[cfg(feature = "alloc")]
-use alloc::{vec::Vec, string::String, collections::BTreeMap};
 #[cfg(feature = "std")]
-use std::{vec::Vec, string::String, collections::HashMap};
+use std::{vec::Vec, string::String, collections::{BTreeMap, HashMap}};
 
 /// Represents a parsed custom section
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,7 +23,7 @@ pub enum CustomSection {
         /// Function names
         #[cfg(feature = "std")]
         function_names: HashMap<u32, String>,
-        #[cfg(all(feature = "alloc", not(feature = "std")))]
+        #[cfg(all(not(feature = "std")))]
         function_names: BTreeMap<u32, String>,
     },
     /// Unknown custom section (raw data preserved)
@@ -43,7 +41,7 @@ pub struct CustomSectionHandler {
     /// Parsed custom sections by name
     #[cfg(feature = "std")]
     sections: HashMap<String, CustomSection>,
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(all(not(feature = "std")))]
     sections: BTreeMap<String, CustomSection>,
 }
 
@@ -53,7 +51,7 @@ impl CustomSectionHandler {
         Self {
             #[cfg(feature = "std")]
             sections: HashMap::new(),
-            #[cfg(all(feature = "alloc", not(feature = "std")))]
+            #[cfg(all(not(feature = "std")))]
             sections: BTreeMap::new(),
         }
     }
@@ -146,7 +144,7 @@ fn parse_name_section(data: &[u8]) -> Result<CustomSection> {
         module_name: None,
         #[cfg(feature = "std")]
         function_names: HashMap::new(),
-        #[cfg(all(feature = "alloc", not(feature = "std")))]
+        #[cfg(all(not(feature = "std")))]
         function_names: BTreeMap::new(),
     })
 }
@@ -195,7 +193,7 @@ mod tests {
     use super::*;
     use crate::branch_hint_section::{BranchHintValue, FunctionBranchHints};
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn test_custom_section_handler() {
         let mut handler = CustomSectionHandler::new();

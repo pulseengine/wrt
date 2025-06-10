@@ -5,8 +5,8 @@
 
 #[cfg(feature = "std")]
 use std::{vec::Vec, fmt, boxed::Box};
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{vec::Vec, boxed::Box};
+#[cfg(all(not(feature = "std")))]
+use std::{vec::Vec, boxed::Box};
 #[cfg(not(feature = "std"))]
 use core::fmt;
 
@@ -77,10 +77,10 @@ pub struct WitDocument {
     /// Optional package declaration
     pub package: Option<PackageDecl>,
     /// Use declarations at the top level
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub use_items: Vec<UseDecl>,
     /// Top-level items (interfaces, worlds, types)
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub items: Vec<TopLevelItem>,
     /// Source span of the entire document
     pub span: SourceSpan,
@@ -155,7 +155,7 @@ pub enum UseNames {
     /// Import all items (use foo/bar)
     All,
     /// Import specific items (use foo/bar.{a, b as c})
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     Items(Vec<UseItem>),
 }
 
@@ -245,20 +245,20 @@ pub enum TypeExpr {
     /// Named type reference
     Named(NamedType),
     /// List type
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     List(Box<TypeExpr>, SourceSpan),
     /// Option type
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     Option(Box<TypeExpr>, SourceSpan),
     /// Result type
     Result(ResultType),
     /// Tuple type
     Tuple(TupleType),
     /// Stream type (for async)
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     Stream(Box<TypeExpr>, SourceSpan),
     /// Future type (for async)
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     Future(Box<TypeExpr>, SourceSpan),
     /// Owned handle
     Own(Identifier, SourceSpan),
@@ -272,7 +272,7 @@ impl TypeExpr {
         match self {
             Self::Primitive(p) => p.span,
             Self::Named(n) => n.span,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             Self::List(_, span) 
             | Self::Option(_, span) 
             | Self::Stream(_, span) 
@@ -342,10 +342,10 @@ pub struct NamedType {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ResultType {
     /// Success type
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub ok: Option<Box<TypeExpr>>,
     /// Error type
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub err: Option<Box<TypeExpr>>,
     /// Source span
     pub span: SourceSpan,
@@ -355,7 +355,7 @@ pub struct ResultType {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TupleType {
     /// Tuple elements
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub types: Vec<TypeExpr>,
     /// Source span
     pub span: SourceSpan,
@@ -365,7 +365,7 @@ pub struct TupleType {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct RecordType {
     /// Record fields
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fields: Vec<RecordField>,
     /// Source span
     pub span: SourceSpan,
@@ -388,7 +388,7 @@ pub struct RecordField {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct VariantType {
     /// Variant cases
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub cases: Vec<VariantCase>,
     /// Source span
     pub span: SourceSpan,
@@ -411,7 +411,7 @@ pub struct VariantCase {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct EnumType {
     /// Enum cases
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub cases: Vec<EnumCase>,
     /// Source span
     pub span: SourceSpan,
@@ -432,7 +432,7 @@ pub struct EnumCase {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct FlagsType {
     /// Flag values
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub flags: Vec<FlagValue>,
     /// Source span
     pub span: SourceSpan,
@@ -453,7 +453,7 @@ pub struct FlagValue {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ResourceType {
     /// Resource methods
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub methods: Vec<ResourceMethod>,
     /// Source span
     pub span: SourceSpan,
@@ -497,7 +497,7 @@ pub struct InterfaceDecl {
     /// Interface name
     pub name: Identifier,
     /// Interface items
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub items: Vec<InterfaceItem>,
     /// Documentation
     pub docs: Option<Documentation>,
@@ -544,7 +544,7 @@ pub struct FunctionDecl {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Function {
     /// Parameters
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub params: Vec<Param>,
     /// Results
     pub results: FunctionResults,
@@ -573,7 +573,7 @@ pub enum FunctionResults {
     /// Single unnamed result
     Single(TypeExpr),
     /// Named results
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     Named(Vec<NamedResult>),
 }
 
@@ -600,7 +600,7 @@ pub struct WorldDecl {
     /// World name
     pub name: Identifier,
     /// World items
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub items: Vec<WorldItem>,
     /// Documentation
     pub docs: Option<Documentation>,
@@ -673,7 +673,7 @@ pub struct IncludeItem {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct IncludeWith {
     /// Renamings
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub items: Vec<IncludeRename>,
     /// Source span
     pub span: SourceSpan,
@@ -711,7 +711,7 @@ impl Default for ImportExportKind {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Documentation {
     /// Documentation lines
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub lines: Vec<WitBoundedString>,
     /// Source span
     pub span: SourceSpan,

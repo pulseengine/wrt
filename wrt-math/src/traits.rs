@@ -16,7 +16,7 @@ pub trait LittleEndian: Sized {
     fn from_le_bytes(bytes: &[u8]) -> Result<Self>; // Use Result from prelude
 
     /// Converts the instance to little-endian bytes.
-    /// Requires the `alloc` feature.
-    #[cfg(feature = "alloc")]
-    fn to_le_bytes(&self) -> Result<alloc::vec::Vec<u8>>; // Use alloc::vec::Vec from prelude
+    /// Binary std/no_std choice
+    #[cfg(feature = "std")]
+    fn to_le_bytes(&self) -> Result<alloc::vec::Vec<u8>>; // Binary std/no_std choice
 }

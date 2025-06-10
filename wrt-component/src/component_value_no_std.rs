@@ -11,10 +11,15 @@
 use wrt_format::component::ValType as FormatValType;
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_COMPONENT_TYPES},
-    component_value::{ComponentValue, ValType as TypesValType, ValTypeRef},
+    // component_value::{ComponentValue, ValType as TypesValType, ValTypeRef}, // Commented out - std only
     traits::{ReadStream, WriteStream},
     values::Value,
 };
+
+// Temporary no_std compatible types until component_value is available in no_std
+pub type ComponentValue = Value; // Use Value instead of ComponentValue for no_std
+pub type ValTypeRef = u32;
+type TypesValType = crate::types::ValType;
 
 use crate::prelude::*;
 
@@ -27,8 +32,8 @@ type CanonicalValType = TypesValType;
 /// Serialize a ComponentValue to a bounded buffer in a no_std environment
 pub fn serialize_component_value_no_std(
     value: &ComponentValue,
-) -> Result<BoundedVec<u8, MAX_SERIALIZED_VALUE_SIZE>> {
-    let mut buffer = BoundedVec::new();
+) -> Result<BoundedVec<u8, MAX_SERIALIZED_VALUE_SIZE>, NoStdProvider<65536>> {
+    let mut buffer = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
 
     match value {
         ComponentValue::Bool(b) => {
@@ -514,7 +519,7 @@ pub fn serialize_component_value_no_std(
             return Err(Error::new(
                 ErrorCategory::Serialization,
                 codes::SERIALIZATION_ERROR,
-                format!("Unsupported ComponentValue type for serialization: {:?}", value),
+                "Component not found",
             ));
         }
     }
@@ -548,7 +553,7 @@ pub fn convert_valtype_to_format<P: MemoryProvider + Default + Clone + PartialEq
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::TYPE_CONVERSION_ERROR,
-            format!("Unsupported ValType for conversion in no_std environment"),
+            "Component not found",
         )),
     }
 }
@@ -578,7 +583,7 @@ pub fn convert_format_to_valtype<P: MemoryProvider + Default + Clone + PartialEq
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::TYPE_CONVERSION_ERROR,
-            format!("Unsupported FormatValType for conversion in no_std environment"),
+            "Component not found",
         )),
     }
 }

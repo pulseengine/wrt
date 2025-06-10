@@ -1,20 +1,34 @@
-use std::collections::HashMap;
+// Use BTreeMap for all cases to ensure deterministic ordering and no_std compatibility
+#[cfg(feature = "std")]
+use std::{collections::BTreeMap, vec::Vec};
+#[cfg(all(not(feature = "std")))]
+use std::{collections::BTreeMap, vec::Vec};
 
-/// A buffer pool for reusing memory allocations
+/// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub struct BufferPool {
     /// Map of buffer sizes to pools of buffers
-    pools: HashMap<usize, Vec<Vec<u8>>>,
+    pools: BTreeMap<usize, Vec<Vec<u8>>>,
     /// Maximum buffer size to keep in the pool
     max_buffer_size: usize,
     /// Maximum number of buffers per size
     max_buffers_per_size: usize,
 }
 
+/// A simplified buffer pool for no_std environments
+#[cfg(not(any(feature = "std", )))]
+pub struct BufferPool {
+    /// Simplified buffer management for no_std
+    max_buffer_size: usize,
+    max_buffers_per_size: usize,
+}
+
+#[cfg(feature = "std")]
 impl BufferPool {
     /// Create a new buffer pool with default settings
     pub fn new() -> Self {
         Self {
-            pools: HashMap::new(),
+            pools: BTreeMap::new(),
             max_buffer_size: 1024 * 1024, // 1MB default max size
             max_buffers_per_size: 10,
         }
@@ -22,7 +36,7 @@ impl BufferPool {
 
     /// Create a new buffer pool with custom max buffer size
     pub fn new_with_config(max_buffer_size: usize, max_buffers_per_size: usize) -> Self {
-        Self { pools: HashMap::new(), max_buffer_size, max_buffers_per_size }
+        Self { pools: BTreeMap::new(), max_buffer_size, max_buffers_per_size }
     }
 
     /// Allocate a buffer of at least the specified size
@@ -71,6 +85,42 @@ impl BufferPool {
         }
 
         BufferPoolStats { total_buffers, total_capacity, size_count: self.pools.len() }
+    }
+}
+
+#[cfg(not(any(feature = "std", )))]
+impl BufferPool {
+    /// Create a new buffer pool with default settings
+    pub fn new() -> Self {
+        Self {
+            max_buffer_size: 1024, // 1KB default max size for no_std
+            max_buffers_per_size: 2, // Reduced for no_std
+        }
+    }
+
+    /// Create a new buffer pool with custom max buffer size
+    pub fn new_with_config(max_buffer_size: usize, max_buffers_per_size: usize) -> Self {
+        Self { max_buffer_size, max_buffers_per_size }
+    }
+
+    /// Allocate a buffer of at least the specified size (simplified for no_std)
+    pub fn allocate(&mut self, min_size: usize) -> [u8; 64] {
+        // In no_std mode, return a fixed-size buffer
+        [0u8; 64]
+    }
+
+    /// Return a buffer to the pool (no-op in no_std mode)
+    pub fn deallocate(&mut self, _buffer: [u8; 64]) {
+        // No-op in no_std mode
+    }
+
+    /// Get statistics about the buffer pool (simplified for no_std)
+    pub fn stats(&self) -> BufferPoolStats {
+        BufferPoolStats {
+            total_buffers: 0,
+            total_capacity: 0,
+            size_count: 0,
+        }
     }
 }
 

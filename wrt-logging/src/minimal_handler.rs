@@ -5,10 +5,10 @@
 
 use crate::level::LogLevel;
 
-/// Minimal log message for pure no_std environments.
+/// Minimal log message for pure `no_std` environments.
 ///
-/// This struct is used as a simplified version of LogOperation when
-/// the alloc feature is not available. It stores a log level and a
+/// This struct is used as a simplified version of `LogOperation` when
+/// Binary `std/no_std` choice
 /// static message.
 #[derive(Debug, Clone, Copy)]
 pub struct MinimalLogMessage {
@@ -26,10 +26,10 @@ impl MinimalLogMessage {
     }
 }
 
-/// Minimal log handler for pure no_std environments.
+/// Minimal log handler for pure `no_std` environments.
 ///
 /// This trait provides a simplified logging interface that doesn't
-/// require allocation and can be implemented in pure no_std environments.
+/// Binary `std/no_std` choice
 pub trait MinimalLogHandler {
     /// Handle a minimal log message
     ///

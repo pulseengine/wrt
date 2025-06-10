@@ -11,19 +11,13 @@ categories = ["wasm", "no-std", "embedded"]
 
 [features]
 default = ["std"]
+# Binary choice: std OR no_std (no alloc middle ground)
 
 # Standard library support (can be disabled for no_std environments)
-std = [
-    "alloc",
-    "wrt-foundation/std",
+std = ["wrt-foundation/std",
     # Add other std dependencies if needed, e.g., for PAL backends
 ]
 
-# Allocator support for no_std environments
-alloc = [
-    "wrt-foundation/alloc",
-    # Add other alloc dependencies if needed
-]
 
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
@@ -37,6 +31,9 @@ platform-baremetal = []
 
 # Optional Arm Hardening features (passed via PAL or compiler flags)
 arm-hardening = []
+
+# Disable panic handler for library builds to avoid conflicts
+disable-panic-handler = []
 
 [dependencies]
 wrt-foundation = { workspace = true, default-features = false }

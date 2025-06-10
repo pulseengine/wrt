@@ -5,7 +5,7 @@
 //! reference counting.
 
 #[cfg(not(feature = "std"))]
-use alloc::sync::Arc;
+use std::sync::Arc;
 #[cfg(feature = "std")]
 use std::sync::Arc;
 use std::{
@@ -22,7 +22,7 @@ use crate::{
 
 /// A unique identifier for a resource instance
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ResourceId(pub u64);
+pub struct ResourceId(pub u32);
 
 /// A resource type with metadata
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -104,7 +104,7 @@ pub struct ResourceTable {
     /// Resources indexed by ID
     resources: Vec<Option<Resource>>,
     /// Next available resource ID
-    next_id: u64,
+    next_id: u32,
 }
 
 impl ResourceTable {

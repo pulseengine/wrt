@@ -180,7 +180,7 @@ impl<'a> StackTraceBuilder<'a> {
     }
 }
 
-// Helper to format u16 without allocation
+// Binary std/no_std choice
 fn format_u16(mut n: u16, buf: &mut [u8]) -> &str {
     if n == 0 {
         return "0";

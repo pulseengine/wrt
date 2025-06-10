@@ -16,11 +16,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
+use std::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::HashMap, string::String, vec::Vec};
 
@@ -31,21 +29,19 @@ use wrt_foundation::{
     component_value::ComponentValue,
 };
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use wrt_foundation::{BoundedString, BoundedVec};
 
-use crate::async_types::{ErrorContext, ErrorContextHandle};
+use crate::async_::async_types::{ErrorContext, ErrorContextHandle};
 
 // Constants for no_std environments
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_ERROR_CONTEXTS: usize = 64;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_DEBUG_MESSAGE_SIZE: usize = 512;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_STACK_FRAMES: usize = 32;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_METADATA_ENTRIES: usize = 16;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_METADATA_KEY_SIZE: usize = 64;
 
 /// Error context identifier
@@ -112,14 +108,14 @@ impl ErrorSeverity {
 /// Stack frame information for error contexts
 #[derive(Debug, Clone)]
 pub struct StackFrame {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub function_name: String,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub function_name: BoundedString<MAX_DEBUG_MESSAGE_SIZE>,
     
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub file_name: Option<String>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub file_name: Option<BoundedString<MAX_DEBUG_MESSAGE_SIZE>>,
     
     pub line_number: Option<u32>,
@@ -127,7 +123,7 @@ pub struct StackFrame {
 }
 
 impl StackFrame {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn new(function_name: String) -> Self {
         Self {
             function_name,
@@ -137,7 +133,7 @@ impl StackFrame {
         }
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn new(function_name: &str) -> Result<Self> {
         let bounded_name = BoundedString::new_from_str(function_name)
             .map_err(|_| Error::new(
@@ -153,7 +149,7 @@ impl StackFrame {
         })
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn with_location(mut self, file_name: String, line: u32, column: u32) -> Self {
         self.file_name = Some(file_name);
         self.line_number = Some(line);
@@ -161,7 +157,7 @@ impl StackFrame {
         self
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn with_location(mut self, file_name: &str, line: u32, column: u32) -> Result<Self> {
         let bounded_file = BoundedString::new_from_str(file_name)
             .map_err(|_| Error::new(
@@ -176,17 +172,17 @@ impl StackFrame {
     }
 
     pub fn function_name(&self) -> &str {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         return &self.function_name;
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         return self.function_name.as_str();
     }
 
     pub fn file_name(&self) -> Option<&str> {
         match &self.file_name {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             Some(name) => Some(name),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             Some(name) => Some(name.as_str()),
             None => None,
         }
@@ -200,19 +196,19 @@ pub struct ErrorContextImpl {
     pub handle: ErrorContextHandle,
     pub severity: ErrorSeverity,
     
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub debug_message: String,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub debug_message: BoundedString<MAX_DEBUG_MESSAGE_SIZE>,
     
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub stack_trace: Vec<StackFrame>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub stack_trace: BoundedVec<StackFrame, MAX_STACK_FRAMES>,
+    #[cfg(not(any(feature = "std", )))]
+    pub stack_trace: BoundedVec<StackFrame, MAX_STACK_FRAMES, NoStdProvider<65536>>,
     
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub metadata: HashMap<String, ComponentValue>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub metadata: BoundedMap<BoundedString<MAX_METADATA_KEY_SIZE>, ComponentValue, MAX_METADATA_ENTRIES>,
     
     pub error_code: Option<u32>,
@@ -220,7 +216,7 @@ pub struct ErrorContextImpl {
 }
 
 impl ErrorContextImpl {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn new(message: String, severity: ErrorSeverity) -> Self {
         Self {
             id: ErrorContextId::new(),
@@ -234,7 +230,7 @@ impl ErrorContextImpl {
         }
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn new(message: &str, severity: ErrorSeverity) -> Result<Self> {
         let bounded_message = BoundedString::new_from_str(message)
             .map_err(|_| Error::new(
@@ -247,7 +243,7 @@ impl ErrorContextImpl {
             handle: ErrorContextHandle::new(),
             severity,
             debug_message: bounded_message,
-            stack_trace: BoundedVec::new(),
+            stack_trace: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             metadata: BoundedMap::new(),
             error_code: None,
             source_error: None,
@@ -264,12 +260,12 @@ impl ErrorContextImpl {
         self
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn add_stack_frame(&mut self, frame: StackFrame) {
         self.stack_trace.push(frame);
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn add_stack_frame(&mut self, frame: StackFrame) -> Result<()> {
         self.stack_trace.push(frame)
             .map_err(|_| Error::new(
@@ -280,12 +276,12 @@ impl ErrorContextImpl {
         Ok(())
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn set_metadata(&mut self, key: String, value: ComponentValue) {
         self.metadata.insert(key, value);
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn set_metadata(&mut self, key: &str, value: ComponentValue) -> Result<()> {
         let bounded_key = BoundedString::new_from_str(key)
             .map_err(|_| Error::new(
@@ -302,12 +298,12 @@ impl ErrorContextImpl {
         Ok(())
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn get_metadata(&self, key: &str) -> Option<&ComponentValue> {
         self.metadata.get(key)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn get_metadata(&self, key: &str) -> Option<&ComponentValue> {
         if let Ok(bounded_key) = BoundedString::new_from_str(key) {
             self.metadata.get(&bounded_key)
@@ -317,9 +313,9 @@ impl ErrorContextImpl {
     }
 
     pub fn debug_message(&self) -> &str {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         return &self.debug_message;
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         return self.debug_message.as_str();
     }
 
@@ -331,7 +327,7 @@ impl ErrorContextImpl {
         self.stack_trace.get(index)
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn format_stack_trace(&self) -> String {
         let mut output = String::new();
         for (i, frame) in self.stack_trace.iter().enumerate() {
@@ -344,11 +340,11 @@ impl ErrorContextImpl {
         output
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub fn format_stack_trace(&self) -> Result<BoundedString<1024>> {
+    #[cfg(not(any(feature = "std", )))]
+    pub fn format_stack_trace(&self) -> Result<BoundedString<1024, NoStdProvider<65536>>> {
         let mut output = BoundedString::new();
         for (i, frame) in self.stack_trace.iter().enumerate() {
-            // Simple formatting without dynamic allocation
+            // Binary std/no_std choice
             output.push_str("  #").map_err(|_| Error::new(
                 ErrorCategory::Memory,
                 wrt_error::codes::MEMORY_ALLOCATION_FAILED,
@@ -381,30 +377,30 @@ static ERROR_CONTEXT_REGISTRY: AtomicRefCell<Option<ErrorContextRegistry>> =
 /// Registry that manages all error contexts
 #[derive(Debug)]
 pub struct ErrorContextRegistry {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     contexts: HashMap<ErrorContextId, ErrorContextImpl>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     contexts: BoundedMap<ErrorContextId, ErrorContextImpl, MAX_ERROR_CONTEXTS>,
 }
 
 impl ErrorContextRegistry {
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             contexts: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             contexts: BoundedMap::new(),
         }
     }
 
     pub fn register_context(&mut self, context: ErrorContextImpl) -> Result<ErrorContextId> {
         let id = context.id;
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.contexts.insert(id, context);
             Ok(id)
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.contexts.insert(id, context)
                 .map_err(|_| Error::new(
@@ -497,7 +493,7 @@ impl ErrorContextBuiltins {
 
     /// `error-context.new` canonical built-in
     /// Creates a new error context
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn error_context_new(message: String, severity: ErrorSeverity) -> Result<ErrorContextId> {
         let context = ErrorContextImpl::new(message, severity);
         Self::with_registry_mut(|registry| {
@@ -505,7 +501,7 @@ impl ErrorContextBuiltins {
         })?
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn error_context_new(message: &str, severity: ErrorSeverity) -> Result<ErrorContextId> {
         let context = ErrorContextImpl::new(message, severity)?;
         Self::with_registry_mut(|registry| {
@@ -515,7 +511,7 @@ impl ErrorContextBuiltins {
 
     /// `error-context.debug-message` canonical built-in
     /// Gets the debug message from an error context
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn error_context_debug_message(context_id: ErrorContextId) -> Result<String> {
         Self::with_registry(|registry| {
             if let Some(context) = registry.get_context(context_id) {
@@ -526,7 +522,7 @@ impl ErrorContextBuiltins {
         })
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn error_context_debug_message(context_id: ErrorContextId) -> Result<BoundedString<MAX_DEBUG_MESSAGE_SIZE>> {
         Self::with_registry(|registry| {
             if let Some(context) = registry.get_context(context_id) {
@@ -569,7 +565,7 @@ impl ErrorContextBuiltins {
     }
 
     /// Get stack trace from error context
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn error_context_stack_trace(context_id: ErrorContextId) -> Result<String> {
         Self::with_registry(|registry| {
             if let Some(context) = registry.get_context(context_id) {
@@ -580,8 +576,8 @@ impl ErrorContextBuiltins {
         })
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub fn error_context_stack_trace(context_id: ErrorContextId) -> Result<BoundedString<1024>> {
+    #[cfg(not(any(feature = "std", )))]
+    pub fn error_context_stack_trace(context_id: ErrorContextId) -> Result<BoundedString<1024, NoStdProvider<65536>>> {
         Self::with_registry(|registry| {
             if let Some(context) = registry.get_context(context_id) {
                 context.format_stack_trace()
@@ -592,7 +588,7 @@ impl ErrorContextBuiltins {
     }
 
     /// Add a stack frame to an error context
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn error_context_add_stack_frame(
         context_id: ErrorContextId, 
         function_name: String,
@@ -611,14 +607,14 @@ impl ErrorContextBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Error context not found"
                 ))
             }
         })?
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn error_context_add_stack_frame(
         context_id: ErrorContextId, 
         function_name: &str,
@@ -637,7 +633,7 @@ impl ErrorContextBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Error context not found"
                 ))
             }
@@ -645,7 +641,7 @@ impl ErrorContextBuiltins {
     }
 
     /// Set metadata on an error context
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn error_context_set_metadata(
         context_id: ErrorContextId,
         key: String,
@@ -658,14 +654,14 @@ impl ErrorContextBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Error context not found"
                 ))
             }
         })?
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn error_context_set_metadata(
         context_id: ErrorContextId,
         key: &str,
@@ -678,7 +674,7 @@ impl ErrorContextBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Error context not found"
                 ))
             }
@@ -705,9 +701,9 @@ pub mod error_context_helpers {
     use super::*;
 
     /// Create an error context from a standard error
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn from_error(error: &Error) -> Result<ErrorContextId> {
-        let message = format!("{}: {}", error.category().as_str(), error.message());
+        let message = error.message().to_string();
         let severity = match error.category() {
             ErrorCategory::InvalidInput | ErrorCategory::Type => ErrorSeverity::Warning,
             ErrorCategory::Runtime | ErrorCategory::Memory => ErrorSeverity::Error,
@@ -723,7 +719,7 @@ pub mod error_context_helpers {
         Ok(context_id)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn from_error(error: &Error) -> Result<ErrorContextId> {
         let severity = match error.category() {
             ErrorCategory::InvalidInput | ErrorCategory::Type => ErrorSeverity::Warning,
@@ -741,18 +737,18 @@ pub mod error_context_helpers {
     }
 
     /// Create a simple error context with just a message
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn create_simple(message: String) -> Result<ErrorContextId> {
         ErrorContextBuiltins::error_context_new(message, ErrorSeverity::Error)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn create_simple(message: &str) -> Result<ErrorContextId> {
         ErrorContextBuiltins::error_context_new(message, ErrorSeverity::Error)
     }
 
     /// Create an error context with stack trace
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn create_with_stack_trace(
         message: String, 
         function_name: String,
@@ -770,7 +766,7 @@ pub mod error_context_helpers {
         Ok(context_id)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn create_with_stack_trace(
         message: &str, 
         function_name: &str,
@@ -821,7 +817,7 @@ mod tests {
 
     #[test]
     fn test_stack_frame_creation() {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let frame = StackFrame::new("test_function".to_string())
                 .with_location("test.rs".to_string(), 42, 10);
@@ -831,7 +827,7 @@ mod tests {
             assert_eq!(frame.column_number, Some(10));
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let frame = StackFrame::new("test_function").unwrap()
                 .with_location("test.rs", 42, 10).unwrap();
@@ -844,7 +840,7 @@ mod tests {
 
     #[test]
     fn test_error_context_creation() {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let context = ErrorContextImpl::new("Test error".to_string(), ErrorSeverity::Error);
             assert_eq!(context.debug_message(), "Test error");
@@ -852,7 +848,7 @@ mod tests {
             assert_eq!(context.stack_frame_count(), 0);
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let context = ErrorContextImpl::new("Test error", ErrorSeverity::Error).unwrap();
             assert_eq!(context.debug_message(), "Test error");
@@ -863,7 +859,7 @@ mod tests {
 
     #[test]
     fn test_error_context_with_metadata() {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let mut context = ErrorContextImpl::new("Test error".to_string(), ErrorSeverity::Error);
             context.set_metadata("key1".to_string(), ComponentValue::I32(42));
@@ -874,7 +870,7 @@ mod tests {
             assert_eq!(context.get_metadata("missing"), None);
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let mut context = ErrorContextImpl::new("Test error", ErrorSeverity::Error).unwrap();
             context.set_metadata("key1", ComponentValue::I32(42)).unwrap();
@@ -888,7 +884,7 @@ mod tests {
 
     #[test]
     fn test_error_context_stack_trace() {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let mut context = ErrorContextImpl::new("Test error".to_string(), ErrorSeverity::Error);
             let frame1 = StackFrame::new("function1".to_string())
@@ -907,7 +903,7 @@ mod tests {
             assert!(trace.contains("file2.rs"));
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let mut context = ErrorContextImpl::new("Test error", ErrorSeverity::Error).unwrap();
             let frame1 = StackFrame::new("function1").unwrap()
@@ -930,9 +926,9 @@ mod tests {
         let mut registry = ErrorContextRegistry::new();
         assert_eq!(registry.context_count(), 0);
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let context = ErrorContextImpl::new("Test error".to_string(), ErrorSeverity::Error);
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let context = ErrorContextImpl::new("Test error", ErrorSeverity::Error).unwrap();
 
         let context_id = context.id;
@@ -954,12 +950,12 @@ mod tests {
         ErrorContextBuiltins::initialize().unwrap();
 
         // Create a new error context
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let context_id = ErrorContextBuiltins::error_context_new(
             "Test error message".to_string(), 
             ErrorSeverity::Error
         ).unwrap();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let context_id = ErrorContextBuiltins::error_context_new(
             "Test error message", 
             ErrorSeverity::Error
@@ -967,9 +963,9 @@ mod tests {
 
         // Test getting debug message
         let debug_msg = ErrorContextBuiltins::error_context_debug_message(context_id).unwrap();
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         assert_eq!(debug_msg, "Test error message");
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         assert_eq!(debug_msg.as_str(), "Test error message");
 
         // Test getting severity
@@ -977,13 +973,13 @@ mod tests {
         assert_eq!(severity, ErrorSeverity::Error);
 
         // Test setting metadata
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         ErrorContextBuiltins::error_context_set_metadata(
             context_id,
             "test_key".to_string(),
             ComponentValue::I32(123)
         ).unwrap();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         ErrorContextBuiltins::error_context_set_metadata(
             context_id,
             "test_key",
@@ -995,7 +991,7 @@ mod tests {
         assert_eq!(metadata, Some(ComponentValue::I32(123)));
 
         // Test adding stack frame
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         ErrorContextBuiltins::error_context_add_stack_frame(
             context_id,
             "test_function".to_string(),
@@ -1003,7 +999,7 @@ mod tests {
             Some(42),
             Some(10)
         ).unwrap();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         ErrorContextBuiltins::error_context_add_stack_frame(
             context_id,
             "test_function",
@@ -1014,9 +1010,9 @@ mod tests {
 
         // Test getting stack trace
         let stack_trace = ErrorContextBuiltins::error_context_stack_trace(context_id).unwrap();
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         assert!(stack_trace.contains("test_function"));
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         assert!(stack_trace.as_str().contains("test_function"));
 
         // Test dropping context
@@ -1028,23 +1024,23 @@ mod tests {
         ErrorContextBuiltins::initialize().unwrap();
 
         // Test creating simple error context
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let simple_id = error_context_helpers::create_simple("Simple error".to_string()).unwrap();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let simple_id = error_context_helpers::create_simple("Simple error").unwrap();
 
         let severity = ErrorContextBuiltins::error_context_severity(simple_id).unwrap();
         assert_eq!(severity, ErrorSeverity::Error);
 
         // Test creating error context with stack trace
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let trace_id = error_context_helpers::create_with_stack_trace(
             "Error with trace".to_string(),
             "main".to_string(),
             Some("main.rs".to_string()),
             Some(10)
         ).unwrap();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let trace_id = error_context_helpers::create_with_stack_trace(
             "Error with trace",
             "main",
@@ -1053,9 +1049,9 @@ mod tests {
         ).unwrap();
 
         let stack_trace = ErrorContextBuiltins::error_context_stack_trace(trace_id).unwrap();
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         assert!(stack_trace.contains("main"));
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         assert!(stack_trace.as_str().contains("main"));
     }
 }

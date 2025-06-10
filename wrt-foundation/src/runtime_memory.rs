@@ -22,7 +22,7 @@ use crate::{
 /// This struct encapsulates a `PalMemoryProvider` to manage the memory's
 /// lifecycle and provide safe access to its contents. It is generic over
 /// a `PageAllocator` allowing different backing strategies for memory
-/// allocation.
+/// Binary std/no_std choice
 #[derive(Debug)]
 pub struct LinearMemory<A: PageAllocator + Send + Sync + Clone + 'static> {
     provider: PalMemoryProvider<A>,
@@ -33,16 +33,16 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> LinearMemory<A> {
     ///
     /// # Arguments
     ///
-    /// * `allocator`: The `PageAllocator` instance to use for memory
+    /// Binary std/no_std choice
     ///   operations.
-    /// * `initial_pages`: The initial number of Wasm pages to allocate.
+    /// Binary std/no_std choice
     /// * `maximum_pages`: An optional maximum number of Wasm pages the memory
     ///   can grow to.
     /// * `verification_level`: The verification level for memory operations.
     ///
     /// # Errors
     ///
-    /// Returns an `Error` if the initial allocation via the provider fails.
+    /// Binary std/no_std choice
     pub fn new(
         allocator: A,
         initial_pages: u32,
@@ -61,7 +61,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> LinearMemory<A> {
     ///
     /// # Errors
     ///
-    /// Returns an `Error` if growing fails (e.g., exceeds maximum, allocator
+    /// Binary std/no_std choice
     /// error).
     pub fn grow(&mut self, additional_pages: u32) -> Result<u32> {
         self.provider.grow(additional_pages)

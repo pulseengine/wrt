@@ -5,8 +5,8 @@
 
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, vec::Vec, boxed::Box, format};
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{collections::BTreeMap, vec::Vec, boxed::Box, format};
+#[cfg(all(not(feature = "std")))]
+use std::{collections::BTreeMap, vec::Vec, boxed::Box, format};
 
 use wrt_foundation::{
     BoundedString, NoStdProvider,
@@ -23,7 +23,7 @@ use crate::{
 };
 
 // Import WIT source mapping
-#[cfg(any(feature = "wit-integration", feature = "alloc", feature = "std"))]
+#[cfg(any(feature = "wit-integration", feature = "std"))]
 use crate::wit_source_map::{
     WitSourceMap, WitTypeInfo, ComponentBoundary, WitDiagnostic,
     TypeId, FunctionId, ComponentId, SourceSpan,
@@ -440,15 +440,15 @@ impl WitAwareDebugger for WitDebugger {
     }
     
     fn map_to_wit_diagnostic(&self, error: &ComponentError) -> Option<WitDiagnostic> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let error_str = error.message.as_str().unwrap_or("Unknown error");
             let runtime_error = Error::runtime_error(&format!("{}", error_str));
             self.source_map.map_error_to_diagnostic(&runtime_error, error.binary_offset)
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(feature = "std"))]
         {
-            // For no_std without alloc, we can't format strings
+            // Binary std/no_std choice
             None
         }
     }

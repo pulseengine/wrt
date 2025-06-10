@@ -16,8 +16,8 @@ mod tests {
     use wrt_foundation::MemArg;
     use wrt_error::Result;
     
-    #[cfg(feature = "alloc")]
-    use alloc::vec::Vec;
+    #[cfg(feature = "std")]
+    use std::vec::Vec;
     #[cfg(feature = "std")]
     use std::{thread, time::Duration, sync::Arc};
     

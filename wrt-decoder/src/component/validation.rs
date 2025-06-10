@@ -7,25 +7,28 @@
 //! This module provides validation for WebAssembly Component Model components.
 //! It verifies that components conform to the Component Model specification.
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{collections::BTreeMap as HashMap, vec::Vec};
 #[cfg(feature = "std")]
-use std::collections::HashMap;
+use std::{collections::HashMap, vec::Vec};
+
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedMap as HashMap, BoundedVec as Vec};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
+
+#[cfg(feature = "std")]
 use wrt_format::component::{
     Alias, AliasTarget, Canon, CanonOperation, Component, ComponentType, ComponentTypeDefinition, 
     Export, ExternType, Import, Instance, Sort, ValType
-};
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use wrt_foundation::{
-    bounded::{BoundedVec, WasmName},
-    no_std_hashmap::SimpleHashMap as HashMap,
 };
 
 // Import component model types from crate
 // Import prelude for String and other types
 use crate::prelude::*;
+
+// Component validation is only available with std feature due to complex recursive types
+#[cfg(feature = "std")]
+mod component_validation {
+    use super::*;
 
 /// Maximum reasonable number of types in a component for validation
 const MAX_TYPES: u32 = 100_000;
@@ -75,24 +78,24 @@ struct ValidationContext<'a> {
     /// Configuration for validation
     config: &'a ValidationConfig,
     /// Track defined type indices
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     defined_types: BoundedVec<u32, 1000>,
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     defined_types: Vec<u32>,
     /// Track defined import names to detect duplicates
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     import_names: HashMap<WasmName, u32, 100>,
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     import_names: HashMap<String, u32>,
     /// Track defined export names to detect duplicates
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     export_names: HashMap<WasmName, u32, 100>,
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     export_names: HashMap<String, u32>,
     /// Track defined instance indices
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     defined_instances: BoundedVec<u32, 1000>,
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     defined_instances: Vec<u32>,
 }
 
@@ -102,34 +105,34 @@ impl<'a> ValidationContext<'a> {
         Self {
             component,
             config,
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             defined_types: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             defined_types: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             import_names: HashMap::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             import_names: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             export_names: HashMap::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             export_names: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             defined_instances: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             defined_instances: Vec::new(),
         }
     }
 
     /// Add a defined type index
     fn add_type(&mut self, idx: u32) -> Result<()> {
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.defined_types.push(idx).map_err(|_| {
                 Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "too many types in component")
             })?;
         }
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if self.defined_types.len() >= MAX_TYPES as usize {
                 return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "too many types in component"));
@@ -146,7 +149,7 @@ impl<'a> ValidationContext<'a> {
 
     /// Add an import name and check for duplicates
     fn add_import_name(&mut self, name: &str) -> Result<()> {
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let wasm_name = WasmName::try_from(name).map_err(|_| {
                 Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "import name too long")
@@ -158,7 +161,7 @@ impl<'a> ValidationContext<'a> {
                 Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "too many imports")
             })?;
         }
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if self.import_names.contains_key(name) {
                 return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "duplicate import name"));
@@ -173,7 +176,7 @@ impl<'a> ValidationContext<'a> {
 
     /// Add an export name and check for duplicates
     fn add_export_name(&mut self, name: &str) -> Result<()> {
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let wasm_name = WasmName::try_from(name).map_err(|_| {
                 Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "export name too long")
@@ -185,7 +188,7 @@ impl<'a> ValidationContext<'a> {
                 Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "too many exports")
             })?;
         }
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if self.export_names.contains_key(name) {
                 return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "duplicate export name"));
@@ -200,13 +203,13 @@ impl<'a> ValidationContext<'a> {
 
     /// Add a defined instance index
     fn add_instance(&mut self, idx: u32) -> Result<()> {
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.defined_instances.push(idx).map_err(|_| {
                 Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "too many instances in component")
             })?;
         }
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if self.defined_instances.len() >= MAX_TYPES as usize {
                 return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "too many instances in component"));
@@ -232,35 +235,36 @@ fn validate_types(ctx: &mut ValidationContext) -> Result<()> {
 }
 
 /// Validate a single component type
-fn validate_component_type(ctx: &ValidationContext, component_type: &ComponentType) -> Result<()> {
+fn validate_component_type(_ctx: &ValidationContext, component_type: &ComponentType) -> Result<()> {
     match &component_type.definition {
-        ComponentTypeDefinition::Module(_module_type) => {
-            // Module types are validated during parsing
-            Ok(())
-        }
-        ComponentTypeDefinition::Component(_comp_type) => {
+        // TODO: ComponentTypeDefinition no longer has Module variant
+        // ComponentTypeDefinition::Module(_module_type) => {
+        //     // Module types are validated during parsing
+        //     Ok(())
+        // }
+        ComponentTypeDefinition::Component { imports, exports } => {
             // Nested component types are validated recursively
+            _ = (imports, exports); // Suppress unused warnings
             Ok(())
         }
-        ComponentTypeDefinition::Instance(_instance_type) => {
+        ComponentTypeDefinition::Instance { exports } => {
             // Instance types are validated during parsing
+            _ = exports; // Suppress unused warning
             Ok(())
         }
-        ComponentTypeDefinition::Func(_func_type) => {
+        ComponentTypeDefinition::Function { params, results } => {
             // Function types are validated during parsing
+            _ = (params, results); // Suppress unused warnings
             Ok(())
         }
-        ComponentTypeDefinition::Value(_val_type) => {
+        ComponentTypeDefinition::Value(val_type) => {
             // Value types are validated during parsing
+            _ = val_type; // Suppress unused warning
             Ok(())
         }
-        ComponentTypeDefinition::Type(_type_def) => {
-            // Type definitions are validated during parsing
-            Ok(())
-        }
-        ComponentTypeDefinition::Alias(alias) => validate_alias(ctx, alias),
-        ComponentTypeDefinition::Export { .. } | ComponentTypeDefinition::Import { .. } => {
-            // These are validated during parsing
+        ComponentTypeDefinition::Resource { representation, nullable } => {
+            // Resource types are validated during parsing
+            _ = (representation, nullable); // Suppress unused warnings
             Ok(())
         }
     }
@@ -283,10 +287,10 @@ fn validate_alias(ctx: &ValidationContext, alias: &Alias) -> Result<()> {
             // Further validation would check if the export exists in the instance
             _ = (name, kind); // Suppress unused warnings
         }
-        AliasTarget::Outer { count, kind } => {
+        AliasTarget::Outer { count, kind, idx } => {
             // Outer aliases reference parent components
             // Validation would check if we're nested deep enough
-            _ = (count, kind); // Suppress unused warnings
+            _ = (count, kind, idx); // Suppress unused warnings
         }
     }
     Ok(())
@@ -381,7 +385,7 @@ fn validate_instances(ctx: &mut ValidationContext) -> Result<()> {
 }
 
 /// Validate a single instance
-fn validate_instance(ctx: &ValidationContext, instance: &Instance) -> Result<()> {
+fn validate_instance(_ctx: &ValidationContext, instance: &Instance) -> Result<()> {
     match instance {
         _ => {
             // TODO: Implement proper instance validation once Instance enum structure is clarified
@@ -421,6 +425,22 @@ fn validate_canonical(ctx: &ValidationContext, canon: &Canon) -> Result<()> {
             // Validate resource operation if needed
             _ = resource_op; // Suppress unused warning for now
         }
+        CanonOperation::Realloc { alloc_func_idx, memory_idx } => {
+            // Validate allocation function and memory indices
+            _ = (alloc_func_idx, memory_idx); // Suppress unused warnings for now
+        }
+        CanonOperation::PostReturn { func_idx } => {
+            // Validate post-return function index
+            _ = func_idx; // Suppress unused warning for now
+        }
+        CanonOperation::MemoryCopy { src_memory_idx, dst_memory_idx, func_idx } => {
+            // Validate memory copy operation
+            _ = (src_memory_idx, dst_memory_idx, func_idx); // Suppress unused warnings for now
+        }
+        CanonOperation::Async { func_idx, type_idx, options } => {
+            // Validate async operation
+            _ = (func_idx, type_idx, options); // Suppress unused warnings for now
+        }
     }
     Ok(())
 }
@@ -451,3 +471,56 @@ pub fn validate_component_with_config(
 pub fn validate_component(component: &Component) -> Result<()> {
     validate_component_with_config(component, &ValidationConfig::default())
 }
+
+} // end of component_validation module
+
+// Re-export public APIs when std feature is enabled
+#[cfg(feature = "std")]
+pub use component_validation::{
+    ValidationConfig, validate_component, validate_component_with_config
+};
+
+// No-std stub implementations
+#[cfg(not(feature = "std"))]
+pub mod no_std_stubs {
+    use wrt_error::{codes, Error, ErrorCategory, Result};
+    
+    /// Validation configuration stub for no_std environments
+    #[derive(Debug, Clone)]
+    pub struct ValidationConfig;
+    
+    impl ValidationConfig {
+        pub fn new() -> Self { Self }
+        pub fn default() -> Self { Self }
+        pub fn all_enabled() -> Self { Self }
+        pub fn mvp_only() -> Self { Self }
+    }
+    
+    /// Stub component type for no_std validation
+    #[derive(Debug, Clone)]
+    pub struct Component;
+    
+    /// Validate a component (no_std stub)
+    pub fn validate_component(_component: &Component) -> Result<()> {
+        Err(Error::new(
+            ErrorCategory::Validation,
+            codes::UNSUPPORTED_OPERATION,
+            "Component validation requires std feature"
+        ))
+    }
+    
+    /// Validate a component with config (no_std stub)
+    pub fn validate_component_with_config(
+        _component: &Component,
+        _config: &ValidationConfig,
+    ) -> Result<()> {
+        Err(Error::new(
+            ErrorCategory::Validation,
+            codes::UNSUPPORTED_OPERATION,
+            "Component validation requires std feature"
+        ))
+    }
+}
+
+#[cfg(not(feature = "std"))]
+pub use no_std_stubs::*;

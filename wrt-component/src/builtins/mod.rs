@@ -4,8 +4,7 @@
 // Component Model built-ins, including resource handling, async operations,
 // error contexts, and threading.
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, sync::Arc, vec::Vec};
+use std::{boxed::Box, sync::Arc, vec::Vec};
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
@@ -14,8 +13,10 @@ use std::{
 };
 
 use wrt_error::{Error, Result};
+#[cfg(feature = "std")]
 use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
-use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor, InterceptContext};
+// Commented out until wrt_intercept is properly available
+// use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor, InterceptContext};
 
 use crate::resources::ResourceManager;
 
@@ -78,7 +79,7 @@ pub struct BuiltinRegistry {
     /// Registered handlers for built-in functions
     handlers: Vec<Box<dyn BuiltinHandler>>,
     /// Optional interceptor for built-in calls
-    interceptor: Option<Arc<dyn BuiltinInterceptor>>,
+    // interceptor: Option<Arc<dyn BuiltinInterceptor>>,
     /// Component name for context
     component_name: String,
     /// Host ID for context
@@ -120,12 +121,16 @@ impl BuiltinRegistry {
         // Define a default function executor for threading that just returns an error
         #[cfg(feature = "component-model-threading")]
         let function_executor: FunctionExecutor = Arc::new(|function_id, _args| {
-            Err(Error::new(format!("No executor registered for function ID: {}", function_id)))
+            Err(Error::new(
+                wrt_error::ErrorCategory::Runtime,
+                wrt_error::codes::NOT_IMPLEMENTED,
+                "Function not implemented"
+            ))
         });
 
         let mut registry = Self {
             handlers: Vec::new(),
-            interceptor: None,
+            // interceptor: None,
             component_name: component_name.to_string(),
             host_id: host_id.to_string(),
             #[cfg(feature = "component-model-async")]
@@ -196,9 +201,9 @@ impl BuiltinRegistry {
     /// # Arguments
     ///
     /// * `interceptor` - The interceptor to use
-    pub fn set_interceptor(&mut self, interceptor: Arc<dyn BuiltinInterceptor>) {
-        self.interceptor = Some(interceptor);
-    }
+    // pub fn set_interceptor(&mut self, interceptor: Arc<dyn BuiltinInterceptor>) {
+    //     self.interceptor = Some(interceptor);
+    // }
 
     /// Check if a built-in type is supported
     ///
@@ -233,7 +238,7 @@ impl BuiltinRegistry {
             .handlers
             .iter()
             .find(|h| h.builtin_type() == builtin_type)
-            .ok_or_else(|| Error::new(format!("Unsupported built-in: {}", builtin_type)))?;
+            .ok_or_else(|| Error::new("Component not found"))?;
 
         // Create interception context
         let context = InterceptContext::new(&self.component_name, builtin_type, &self.host_id);
@@ -242,6 +247,7 @@ impl BuiltinRegistry {
         if let Some(interceptor) = &self.interceptor {
             // Before interceptor
             match interceptor.before_builtin(&context, args)? {
+                #[cfg(feature = "std")]
                 BeforeBuiltinResult::Continue(modified_args) => {
                     // Execute with potentially modified args
                     let result = handler.execute(&modified_args);
@@ -249,9 +255,23 @@ impl BuiltinRegistry {
                     // After interceptor
                     interceptor.after_builtin(&context, args, result)
                 }
+                #[cfg(feature = "std")]
                 BeforeBuiltinResult::Bypass(result) => {
                     // Skip execution and use provided result
                     Ok(result)
+                }
+                #[cfg(not(feature = "std"))]
+                BeforeBuiltinResult::Continue => {
+                    // Execute with original args
+                    let result = handler.execute(args);
+
+                    // After interceptor (simplified for no_std)
+                    result
+                }
+                #[cfg(not(feature = "std"))]
+                BeforeBuiltinResult::Bypass => {
+                    // Skip execution and return empty result
+                    Ok(Vec::new())
                 }
             }
         } else {

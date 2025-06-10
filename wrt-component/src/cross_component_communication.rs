@@ -42,15 +42,22 @@
 #[cfg(feature = "std")]
 use std::{vec::Vec, string::String, collections::HashMap, boxed::Box, format, sync::Arc};
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{vec::Vec, string::String, collections::BTreeMap as HashMap, boxed::Box, format, sync::Arc};
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedVec as Vec, BoundedString as String, no_std_hashmap::NoStdHashMap as HashMap, safe_memory::NoStdProvider};
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use wrt_foundation::{BoundedVec as Vec, BoundedString as String, NoStdHashMap as HashMap};
+// Enable vec! and format! macros for no_std
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{vec, format, boxed::Box};
+
+// Type aliases for no_std
+#[cfg(not(feature = "std"))]
+type Arc<T> = wrt_foundation::SafeArc<T, NoStdProvider<65536>>;
 
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_intercept::{LinkInterceptorStrategy, ResourceCanonicalOperation};
-use wrt_foundation::{ComponentValue, ValType, NoStdProvider};
+use wrt_foundation::{ComponentValue, ValType};
 
 // Import our communication system components
 use crate::component_communication::{
@@ -271,7 +278,7 @@ impl ComponentCommunicationStrategy {
                 return Err(Error::new(
                     ErrorCategory::Security,
                     codes::ACCESS_DENIED,
-                    format!("Target component '{}' not allowed", routing_info.target_component),
+                    "Component not found",
                 ));
             }
 
@@ -283,7 +290,7 @@ impl ComponentCommunicationStrategy {
                 return Err(Error::new(
                     ErrorCategory::Security,
                     codes::ACCESS_DENIED,
-                    format!("Function '{}' not allowed", routing_info.function_name),
+                    "Component not found",
                 ));
             }
         }
@@ -429,7 +436,7 @@ impl ComponentCommunicationStrategy {
 }
 
 // Implementation of LinkInterceptorStrategy for the communication strategy
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     /// Called before a function call is made
     fn before_call(
@@ -644,7 +651,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
 }
 
 // Simplified no_std implementation
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     fn before_call(
         &self,

@@ -40,7 +40,6 @@
 #![warn(clippy::missing_panics_doc)]
 #![warn(missing_docs)]
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 // Create the prelude module for consistent imports
@@ -58,6 +57,9 @@ pub mod test_suite;
 pub mod test_runner;
 pub mod test_discovery;
 pub mod test_reporting;
+
+// Foundation integration tests using new unified types
+pub mod foundation_integration_tests;
 
 // Use prelude for all standard imports
 use prelude::*;
@@ -587,3 +589,11 @@ macro_rules! register_test {
         }
     };
 }
+
+// Panic handler disabled to avoid conflicts with other crates
+// // Provide a panic handler only when wrt-test-registry is being tested in isolation
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }

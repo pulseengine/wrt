@@ -66,7 +66,7 @@ fn show_external_platform_strategy() {
     println!("   impl PageAllocator for MyOsAllocator {{");
     println!("       fn allocate(&mut self, initial_pages: u32, max_pages: Option<u32>)");
     println!("           -> Result<(NonNull<u8>, usize)> {{");
-    println!("           // Call your platform's allocation API");
+    println!("           // Binary std/no_std choice
     println!("       }}");
     println!("   }}");
     println!("   ```");
@@ -143,7 +143,7 @@ fn show_vxworks_integration_example() {
     println!("   ");
     println!("   #[cfg(not(target_os = \"vxworks\"))]");
     println!("   fn allocate_platform_memory(size: usize) -> *mut u8 {{");
-    println!("       // Development fallback using std allocator");
+    println!("       // Binary std/no_std choice
     println!("       unsafe {{ alloc(Layout::from_size_align_unchecked(size, 64*1024)) }}");
     println!("   }}");
     println!("   ```");

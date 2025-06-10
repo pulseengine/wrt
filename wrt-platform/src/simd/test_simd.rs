@@ -45,7 +45,7 @@ mod simd_tests {
     }
     
     #[test]
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn test_simd_runtime() {
         let runtime = SimdRuntime::new();
         

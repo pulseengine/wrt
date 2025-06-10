@@ -1,173 +1,248 @@
-//! Type aliases for no_std compatibility in wrt-runtime
+//! Type aliases for `no_std` compatibility in wrt-runtime
 
 use crate::prelude::*;
-use wrt_foundation::{BoundedVec, BoundedMap, NoStdProvider};
+use wrt_foundation::{BoundedVec, BoundedMap};
+
+/// Platform-aware memory provider for runtime types
+type RuntimeProvider = wrt_foundation::safe_memory::NoStdProvider<8192>;  // 8KB for runtime operations
 
 // Runtime execution limits
+/// Maximum recursion depth for function calls
 pub const MAX_STACK_DEPTH: usize = 1024;
+/// Maximum number of frames in the call stack
 pub const MAX_CALL_STACK: usize = 512;
+/// Maximum number of values on the value stack
 pub const MAX_VALUE_STACK: usize = 65536;
-pub const MAX_LOCALS: usize = 50000; // WebAssembly spec limit
+/// Maximum number of local variables per function (WebAssembly spec limit)
+pub const MAX_LOCALS: usize = 50000;
+/// Maximum number of global variables
 pub const MAX_GLOBALS: usize = 1024;
+/// Maximum number of functions in a module
 pub const MAX_FUNCTIONS: usize = 1024;
+/// Maximum number of imports in a module
 pub const MAX_IMPORTS: usize = 512;
+/// Maximum number of exports in a module
 pub const MAX_EXPORTS: usize = 512;
+/// Maximum number of tables in a module
 pub const MAX_TABLES: usize = 64;
+/// Maximum number of memories in a module
 pub const MAX_MEMORIES: usize = 64;
+/// Maximum number of element segments
 pub const MAX_ELEMENTS: usize = 512;
+/// Maximum number of data segments
 pub const MAX_DATA: usize = 512;
 
 // Memory management
-pub const MAX_MEMORY_PAGES: usize = 65536; // 4GB limit
-pub const MAX_TABLE_ENTRIES: usize = 1048576; // 1M entries
+/// Maximum number of 64KB memory pages (4GB total)
+pub const MAX_MEMORY_PAGES: usize = 65536;
+/// Maximum number of entries in a table (1M entries)
+pub const MAX_TABLE_ENTRIES: usize = 1048576;
+/// Maximum length for string values
 pub const MAX_STRING_LENGTH: usize = 256;
 
 // Module instance limits
+/// Maximum number of module instances
 pub const MAX_MODULE_INSTANCES: usize = 256;
+/// Maximum number of function bodies
 pub const MAX_FUNCTION_BODIES: usize = 1024;
+/// Maximum number of branch table targets
 pub const MAX_BRANCH_TABLE_TARGETS: usize = 1024;
 
 // CFI and instrumentation
+/// Maximum number of CFI checks per function
 pub const MAX_CFI_CHECKS: usize = 1024;
+/// Maximum number of instrumentation points
 pub const MAX_INSTRUMENTATION_POINTS: usize = 2048;
 
 // Runtime state vectors
-#[cfg(feature = "alloc")]
+/// Value stack type for std environments
+#[cfg(feature = "std")]
 pub type ValueStackVec = Vec<wrt_foundation::Value>;
-#[cfg(not(feature = "alloc"))]
-pub type ValueStackVec = BoundedVec<wrt_foundation::Value, MAX_VALUE_STACK, NoStdProvider<{ MAX_VALUE_STACK * 16 }>>;
+/// Value stack type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type ValueStackVec = BoundedVec<wrt_foundation::Value, MAX_VALUE_STACK, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
-pub type CallStackVec = Vec<crate::execution::CallFrame>;
-#[cfg(not(feature = "alloc"))]
-pub type CallStackVec = BoundedVec<crate::execution::CallFrame, MAX_CALL_STACK, NoStdProvider<{ MAX_CALL_STACK * 128 }>>;
+/// Call stack type for std environments
+#[cfg(feature = "std")]
+pub type CallStackVec = Vec<crate::core_types::CallFrame>;
+/// Call stack type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type CallStackVec = BoundedVec<crate::core_types::CallFrame, MAX_CALL_STACK, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
+/// Local variables vector type for std environments
+#[cfg(feature = "std")]
 pub type LocalsVec = Vec<wrt_foundation::Value>;
-#[cfg(not(feature = "alloc"))]
-pub type LocalsVec = BoundedVec<wrt_foundation::Value, MAX_LOCALS, NoStdProvider<{ MAX_LOCALS * 16 }>>;
+/// Local variables vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type LocalsVec = BoundedVec<wrt_foundation::Value, MAX_LOCALS, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
+/// Global variables vector type for std environments
+#[cfg(feature = "std")]
 pub type GlobalsVec = Vec<crate::global::Global>;
-#[cfg(not(feature = "alloc"))]
-pub type GlobalsVec = BoundedVec<crate::global::Global, MAX_GLOBALS, NoStdProvider<{ MAX_GLOBALS * 64 }>>;
+/// Global variables vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type GlobalsVec = BoundedVec<crate::global::Global, MAX_GLOBALS, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
+/// Functions vector type for std environments
+#[cfg(feature = "std")]
 pub type FunctionsVec = Vec<crate::func::Function>;
-#[cfg(not(feature = "alloc"))]
-pub type FunctionsVec = BoundedVec<crate::func::Function, MAX_FUNCTIONS, NoStdProvider<{ MAX_FUNCTIONS * 256 }>>;
+/// Functions vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type FunctionsVec = BoundedVec<crate::func::Function, MAX_FUNCTIONS, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
+/// Imports vector type for std environments
+#[cfg(feature = "std")]
 pub type ImportsVec<T> = Vec<T>;
-#[cfg(not(feature = "alloc"))]
-pub type ImportsVec<T> = BoundedVec<T, MAX_IMPORTS, NoStdProvider<{ MAX_IMPORTS * 128 }>>;
+/// Imports vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type ImportsVec<T> = BoundedVec<T, MAX_IMPORTS, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
+/// Exports vector type for std environments
+#[cfg(feature = "std")]
 pub type ExportsVec<T> = Vec<T>;
-#[cfg(not(feature = "alloc"))]
-pub type ExportsVec<T> = BoundedVec<T, MAX_EXPORTS, NoStdProvider<{ MAX_EXPORTS * 64 }>>;
+/// Exports vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type ExportsVec<T> = BoundedVec<T, MAX_EXPORTS, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
+/// Tables vector type for std environments
+#[cfg(feature = "std")]
 pub type TablesVec = Vec<crate::table::Table>;
-#[cfg(not(feature = "alloc"))]
-pub type TablesVec = BoundedVec<crate::table::Table, MAX_TABLES, NoStdProvider<{ MAX_TABLES * 1024 }>>;
+/// Tables vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type TablesVec = BoundedVec<crate::table::Table, MAX_TABLES, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
+/// Memories vector type for std environments
+#[cfg(feature = "std")]
 pub type MemoriesVec = Vec<crate::memory::Memory>;
-#[cfg(not(feature = "alloc"))]
-pub type MemoriesVec = BoundedVec<crate::memory::Memory, MAX_MEMORIES, NoStdProvider<{ MAX_MEMORIES * 1024 }>>;
+/// Memories vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type MemoriesVec = BoundedVec<crate::memory::Memory, MAX_MEMORIES, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
+/// Element segments vector type for std environments
+#[cfg(feature = "std")]
 pub type ElementsVec = Vec<wrt_foundation::types::ElementSegment>;
-#[cfg(not(feature = "alloc"))]
-pub type ElementsVec = BoundedVec<wrt_foundation::types::ElementSegment, MAX_ELEMENTS, NoStdProvider<{ MAX_ELEMENTS * 256 }>>;
+/// Element segments vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type ElementsVec = BoundedVec<wrt_foundation::types::ElementSegment, MAX_ELEMENTS, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
+/// Data segments vector type for std environments
+#[cfg(feature = "std")]
 pub type DataVec = Vec<wrt_foundation::types::DataSegment>;
-#[cfg(not(feature = "alloc"))]
-pub type DataVec = BoundedVec<wrt_foundation::types::DataSegment, MAX_DATA, NoStdProvider<{ MAX_DATA * 256 }>>;
+/// Data segments vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type DataVec = BoundedVec<wrt_foundation::types::DataSegment, MAX_DATA, RuntimeProvider>;
 
 // Instruction vectors
-#[cfg(feature = "alloc")]
+/// Instructions vector type for std environments
+#[cfg(feature = "std")]
 // Instructions module is temporarily disabled in wrt-decoder
 // pub type InstructionVec = Vec<wrt_decoder::instructions::Instruction>;
-pub type InstructionVec = Vec<wrt_instructions::Instruction>;
-#[cfg(not(feature = "alloc"))]
-pub type InstructionVec = BoundedVec<wrt_instructions::Instruction, 65536, NoStdProvider<{ 65536 * 8 }>>;
+pub type InstructionVec = Vec<crate::prelude::Instruction>;
+/// Instructions vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type InstructionVec = BoundedVec<crate::prelude::Instruction, 65536, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
+/// Branch targets vector type for std environments
+#[cfg(feature = "std")]
 pub type BranchTargetsVec = Vec<u32>;
-#[cfg(not(feature = "alloc"))]
-pub type BranchTargetsVec = BoundedVec<u32, MAX_BRANCH_TABLE_TARGETS, NoStdProvider<{ MAX_BRANCH_TABLE_TARGETS * 4 }>>;
+/// Branch targets vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type BranchTargetsVec = BoundedVec<u32, MAX_BRANCH_TABLE_TARGETS, RuntimeProvider>;
 
 // Module instance vectors
-#[cfg(feature = "alloc")]
+/// Module instances vector type for std environments
+#[cfg(feature = "std")]
 pub type ModuleInstanceVec = Vec<crate::module_instance::ModuleInstance>;
-#[cfg(not(feature = "alloc"))]
-pub type ModuleInstanceVec = BoundedVec<crate::module_instance::ModuleInstance, MAX_MODULE_INSTANCES, NoStdProvider<{ MAX_MODULE_INSTANCES * 1024 }>>;
+/// Module instances vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type ModuleInstanceVec = BoundedVec<crate::module_instance::ModuleInstance, MAX_MODULE_INSTANCES, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
+/// Function bodies vector type for std environments
+#[cfg(feature = "std")]
 pub type FunctionBodiesVec = Vec<Vec<u8>>;
-#[cfg(not(feature = "alloc"))]
-pub type FunctionBodiesVec = BoundedVec<BoundedVec<u8, 65536, NoStdProvider<65536>>, MAX_FUNCTION_BODIES, NoStdProvider<{ MAX_FUNCTION_BODIES * 65536 }>>;
+/// Function bodies vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type FunctionBodiesVec = BoundedVec<BoundedVec<u8, 65536, RuntimeProvider>, MAX_FUNCTION_BODIES, RuntimeProvider>;
 
 // Memory and table data
-#[cfg(feature = "alloc")]
+/// Memory data vector type for std environments
+#[cfg(feature = "std")]
 pub type MemoryDataVec = Vec<u8>;
-#[cfg(not(feature = "alloc"))]
-pub type MemoryDataVec = BoundedVec<u8, { 64 * 1024 * 1024 }, NoStdProvider<{ 64 * 1024 * 1024 }>>; // 64MB max
+/// Memory data vector type for `no_std` environments (64MB max)
+#[cfg(not(feature = "std"))]
+pub type MemoryDataVec = BoundedVec<u8, { 64 * 1024 * 1024 }, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
-pub type TableDataVec = Vec<Option<wrt_foundation::RefValue>>;
-#[cfg(not(feature = "alloc"))]
-pub type TableDataVec = BoundedVec<Option<wrt_foundation::RefValue>, MAX_TABLE_ENTRIES, NoStdProvider<{ MAX_TABLE_ENTRIES * 32 }>>;
+/// Table data vector type for std environments
+#[cfg(feature = "std")]
+pub type TableDataVec = Vec<Option<crate::prelude::RefValue>>;
+/// Table data vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type TableDataVec = BoundedVec<Option<crate::prelude::RefValue>, MAX_TABLE_ENTRIES, RuntimeProvider>;
 
 // String type for runtime
-#[cfg(feature = "alloc")]
+/// Runtime string type for std environments
+#[cfg(feature = "std")]
 pub type RuntimeString = String;
-#[cfg(not(feature = "alloc"))]
-pub type RuntimeString = wrt_foundation::BoundedString<MAX_STRING_LENGTH, NoStdProvider<MAX_STRING_LENGTH>>;
+/// Runtime string type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type RuntimeString = wrt_foundation::BoundedString<MAX_STRING_LENGTH, RuntimeProvider>;
 
 // Maps for runtime state
-#[cfg(feature = "alloc")]
+/// Function map type for std environments
+#[cfg(feature = "std")]
 pub type FunctionMap = HashMap<u32, crate::func::Function>;
-#[cfg(not(feature = "alloc"))]
-pub type FunctionMap = BoundedMap<u32, crate::func::Function, MAX_FUNCTIONS, NoStdProvider<{ MAX_FUNCTIONS * 256 }>>;
+/// Function map type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type FunctionMap = BoundedMap<u32, crate::func::Function, MAX_FUNCTIONS, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
+/// Global map type for std environments
+#[cfg(feature = "std")]
 pub type GlobalMap = HashMap<u32, crate::global::Global>;
-#[cfg(not(feature = "alloc"))]
-pub type GlobalMap = BoundedMap<u32, crate::global::Global, MAX_GLOBALS, NoStdProvider<{ MAX_GLOBALS * 64 }>>;
+/// Global map type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type GlobalMap = BoundedMap<u32, crate::global::Global, MAX_GLOBALS, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
+/// Memory map type for std environments
+#[cfg(feature = "std")]
 pub type MemoryMap = HashMap<u32, crate::memory::Memory>;
-#[cfg(not(feature = "alloc"))]
-pub type MemoryMap = BoundedMap<u32, crate::memory::Memory, MAX_MEMORIES, NoStdProvider<{ MAX_MEMORIES * 1024 }>>;
+/// Memory map type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type MemoryMap = BoundedMap<u32, crate::memory::Memory, MAX_MEMORIES, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
+/// Table map type for std environments
+#[cfg(feature = "std")]
 pub type TableMap = HashMap<u32, crate::table::Table>;
-#[cfg(not(feature = "alloc"))]
-pub type TableMap = BoundedMap<u32, crate::table::Table, MAX_TABLES, NoStdProvider<{ MAX_TABLES * 1024 }>>;
+/// Table map type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type TableMap = BoundedMap<u32, crate::table::Table, MAX_TABLES, RuntimeProvider>;
 
 // CFI and instrumentation types
-#[cfg(feature = "alloc")]
+/// CFI checks vector type for std environments
+#[cfg(feature = "std")]
 pub type CfiCheckVec = Vec<crate::cfi_engine::CfiCheck>;
-#[cfg(not(feature = "alloc"))]
-pub type CfiCheckVec = BoundedVec<crate::cfi_engine::CfiCheck, MAX_CFI_CHECKS, NoStdProvider<{ MAX_CFI_CHECKS * 64 }>>;
+/// CFI checks vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type CfiCheckVec = BoundedVec<crate::cfi_engine::CfiCheck, MAX_CFI_CHECKS, RuntimeProvider>;
 
-#[cfg(feature = "alloc")]
+/// Instrumentation points vector type for std environments
+#[cfg(feature = "std")]
 pub type InstrumentationVec = Vec<crate::execution::InstrumentationPoint>;
-#[cfg(not(feature = "alloc"))]
-pub type InstrumentationVec = BoundedVec<crate::execution::InstrumentationPoint, MAX_INSTRUMENTATION_POINTS, NoStdProvider<{ MAX_INSTRUMENTATION_POINTS * 32 }>>;
+/// Instrumentation points vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type InstrumentationVec = BoundedVec<crate::execution::InstrumentationPoint, MAX_INSTRUMENTATION_POINTS, RuntimeProvider>;
 
 // Generic byte vector for raw data
-#[cfg(feature = "alloc")]
+/// Byte vector type for std environments
+#[cfg(feature = "std")]
 pub type ByteVec = Vec<u8>;
-#[cfg(not(feature = "alloc"))]
-pub type ByteVec = BoundedVec<u8, 65536, NoStdProvider<65536>>;
+/// Byte vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type ByteVec = BoundedVec<u8, 65536, RuntimeProvider>;
 
 // Error collection for batch operations
-#[cfg(feature = "alloc")]
+/// Error vector type for std environments
+#[cfg(feature = "std")]
 pub type ErrorVec = Vec<wrt_error::Error>;
-#[cfg(not(feature = "alloc"))]
-pub type ErrorVec = BoundedVec<wrt_error::Error, 256, NoStdProvider<{ 256 * 256 }>>;
+/// Error vector type for `no_std` environments
+#[cfg(not(feature = "std"))]
+pub type ErrorVec = BoundedVec<wrt_error::Error, 256, RuntimeProvider>;

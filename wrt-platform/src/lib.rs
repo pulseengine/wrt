@@ -19,6 +19,7 @@
 //! - `no_std` support.
 
 #![cfg_attr(not(feature = "std"), no_std)] // Rule: Enforce no_std when std feature is not enabled
+#![cfg_attr(all(not(feature = "std"), not(feature = "disable-panic-handler")), no_main)]
 #![deny(missing_docs)] // Rule 9: Require documentation.
 #![deny(clippy::panic)] // Rule 3: No panic!.
 #![deny(clippy::unwrap_used)] // Rule 3: No unwrap.
@@ -61,45 +62,19 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-#[cfg(feature = "alloc")]
-extern crate alloc;
+// Binary std/no_std choice
 
-// Add extern crate for modules that need it
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-mod lib_prelude {
-    // Alloc types are re-exported by individual modules as needed
-}
+// Note: Panic handler should be provided by the final binary/application,
+// not by library crates to avoid conflicts
 
-// For no_std + alloc builds, we need a global allocator
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::alloc::{GlobalAlloc, Layout};
+// Binary std/no_std choice
+// Binary std/no_std choice
+// not by library crates to avoid conflicts
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-struct DummyAllocator;
-
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-unsafe impl GlobalAlloc for DummyAllocator {
-    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
-        core::ptr::null_mut()
-    }
-
-    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-        // Do nothing - this is just to satisfy the linker
-    }
-}
-
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-#[global_allocator]
-static GLOBAL: DummyAllocator = DummyAllocator;
-
-// Panic handler for no_std builds (but not during tests)
-#[cfg(all(not(feature = "std"), not(test)))]
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
-
+// Note: Panic handler should be defined by the final binary, not library crates
+// Removed panic handler to avoid conflicts - applications must provide their own
 // Module declarations
+pub mod comprehensive_limits;
 pub mod memory;
 pub mod memory_optimizations;
 pub mod performance_validation;
@@ -116,8 +91,8 @@ pub mod formal_verification;
 pub mod hardware_optimizations;
 pub mod side_channel_resistance;
 
-// Platform-agnostic threading (requires alloc at minimum)
-#[cfg(feature = "alloc")]
+// Platform-agnostic threading (requires std)
+#[cfg(feature = "std")]
 pub mod threading;
 
 // Threading with wasm support (requires both std and wrt-foundation)
@@ -138,7 +113,18 @@ pub mod linux_threading;
 #[cfg(all(feature = "threading", not(target_os = "nto"), not(target_os = "linux")))]
 pub mod generic_threading;
 
+// Memory management uses NoStdProvider pattern from wrt-foundation
+
+
 // Watchdog (requires std)
+
+// Panic handler for testing individual crates - only when not disabled
+// Disabled to avoid conflicts with wrt-panic's panic handler
+// #[cfg(all(not(feature = "std"), not(feature = "disable-panic-handler")))]
+// #[panic_handler] 
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }
 #[cfg(feature = "std")]
 pub mod watchdog;
 
@@ -148,6 +134,22 @@ pub mod ipc;
 
 #[cfg(feature = "std")]
 pub mod high_availability;
+
+// Panic handler for no_std builds
+// Only define panic handler if we're the final crate and no other panic handler exists
+#[cfg(all(
+    not(feature = "std"), 
+    not(test), 
+    not(feature = "disable-panic-handler"),
+    feature = "enable-panic-handler"
+))]
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    // For safety-critical systems, enter infinite loop to maintain known safe state
+    loop {
+        core::hint::spin_loop();
+    }
+}
 
 // Platform-specific modules
 // macOS modules - using direct syscalls (no libc)
@@ -212,11 +214,17 @@ pub use advanced_sync::{
     AdvancedRwLock, LockFreeAllocator, Priority, PriorityInheritanceMutex, MAX_PRIORITY,
     MIN_PRIORITY,
 };
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use advanced_sync::{LockFreeMpscQueue, WaitFreeSpscQueue};
 pub use formal_verification::{
     annotations, concurrency_verification, integration_verification, memory_verification,
     realtime_verification, security_verification,
+};
+// Export comprehensive limits
+pub use comprehensive_limits::{
+    ComprehensivePlatformLimits, ComprehensiveLimitProvider, PlatformLimitDiscoverer,
+    LinuxLimitProvider, QnxLimitProvider, MacOsLimitProvider, EmbeddedLimitProvider,
+    PlatformId, AsilLevel,
 };
 // Export specific CFI/BTI types for easy access
 pub use hardware_optimizations::arm::{BranchTargetIdentification, BtiExceptionLevel, BtiMode};
@@ -278,7 +286,7 @@ pub use runtime_detection::{
 pub use simd::{
     ScalarSimdProvider, SimdCapabilities, SimdLevel, SimdProvider,
 };
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub use simd::SimdRuntime;
 #[cfg(target_arch = "x86_64")]
 pub use simd::{x86_64::X86SimdProvider};
@@ -341,7 +349,7 @@ mod tests {
             .with_memory_tagging(true)
             .build();
 
-        // Just making sure the builder returns an allocator
+        // Binary std/no_std choice
         // We can't test its settings without accessing private fields
         assert_eq!(core::mem::size_of_val(&allocator) > 0, true);
     }
@@ -352,7 +360,7 @@ mod tests {
         let allocator =
             LinuxAllocatorBuilder::new().with_maximum_pages(100).with_guard_pages(true).build();
 
-        // Just making sure the builder returns an allocator
+        // Binary std/no_std choice
         // We can't test its settings without accessing private fields
         assert_eq!(core::mem::size_of_val(&allocator) > 0, true);
     }
@@ -371,7 +379,7 @@ mod tests {
             .with_mte_mode(MteMode::Synchronous)
             .build();
 
-        // Just making sure the builder returns an allocator
+        // Binary std/no_std choice
         // We can't test its settings without accessing private fields
         assert_eq!(core::mem::size_of_val(&allocator) > 0, true);
     }
@@ -394,7 +402,7 @@ mod tests {
             .with_guard_regions(true)
             .build();
 
-        // Test that the allocator was created successfully
+        // Binary std/no_std choice
         assert_eq!(core::mem::size_of_val(&allocator) > 0, true);
     }
 
@@ -534,5 +542,29 @@ mod tests {
     }
 }
 
-// Note: Panic handler removed to avoid conflicts with examples and tests
-// In no_std environments, applications should provide their own panic handler
+// Global allocator for no_std builds - panic on allocation attempts
+// This catches inadvertent allocation attempts in no_std mode
+#[cfg(all(not(feature = "std"), not(test)))]
+#[global_allocator]
+static GLOBAL: PanicAllocator = PanicAllocator;
+
+#[cfg(all(not(feature = "std"), not(test)))]
+struct PanicAllocator;
+
+#[cfg(all(not(feature = "std"), not(test)))]
+unsafe impl core::alloc::GlobalAlloc for PanicAllocator {
+    #[allow(clippy::panic)] // Intentional panic to prevent allocation in no_std
+    unsafe fn alloc(&self, _layout: core::alloc::Layout) -> *mut u8 {
+        panic!("Attempted allocation in no_std mode")
+    }
+    #[allow(clippy::panic)] // Intentional panic to prevent deallocation in no_std
+    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: core::alloc::Layout) {
+        panic!("Attempted deallocation in no_std mode")
+    }
+}
+
+// Panic handler for no_std builds
+// Note: wrt-platform does NOT provide a panic handler to avoid conflicts.
+// The main wrt crate provides the panic handler when needed.
+// Applications can provide their own panic handler by enabling the
+// "disable-panic-handler" feature on the main wrt crate.

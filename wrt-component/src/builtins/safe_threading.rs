@@ -3,9 +3,10 @@
 //! This module provides WebAssembly threading built-ins that leverage the
 //! platform-specific thread pools and safety mechanisms from wrt-platform.
 
-use alloc::{boxed::Box, string::ToString, sync::Arc, vec::Vec};
+use std::{boxed::Box, string::ToString, sync::Arc, vec::Vec};
 
 use wrt_error::{kinds::ThreadingError, Error, Result};
+#[cfg(feature = "std")]
 use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
 use wrt_platform::{
     threading::{ThreadPoolConfig, ThreadPriority, ThreadingLimits},
@@ -85,7 +86,7 @@ impl BuiltinHandler for SafeThreadingSpawnHandler {
         // Spawn thread with safety checks
         match self.thread_manager.spawn_thread(request) {
             Ok(thread_id) => Ok(vec![ComponentValue::U64(thread_id)]),
-            Err(e) => Err(Error::new(ThreadingError(format!("Failed to spawn thread: {}", e)))),
+            Err(e) => Err(Error::new(ThreadingError("Component not found"))),
         }
     }
 
@@ -147,7 +148,7 @@ impl BuiltinHandler for SafeThreadingJoinHandler {
                     Err(Error::new(ThreadingError("Thread timed out".to_string())))
                 }
             },
-            Err(e) => Err(Error::new(ThreadingError(format!("Failed to join thread: {}", e)))),
+            Err(e) => Err(Error::new(ThreadingError("Component not found"))),
         }
     }
 
@@ -237,7 +238,7 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
                 match self.thread_manager.cancel_thread(thread_id) {
                     Ok(()) => Ok(vec![ComponentValue::U32(1)]), // Success
                     Err(e) => {
-                        Err(Error::new(ThreadingError(format!("Failed to cancel thread: {}", e))))
+                        Err(Error::new(ThreadingError("Component not found")))
                     }
                 }
             }

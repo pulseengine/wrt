@@ -21,7 +21,7 @@ use crate::{
 }; // Keep WrtResult, Added RootMemoryProvider etc. // Added WrtError,
    // ErrorCategory, codes
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 extern crate alloc;
 
 // Removed: use core::mem::size_of; // No longer directly needed here for
@@ -114,7 +114,7 @@ impl Checksummable for &[u8] {
 }
 
 /// A trait for sequentially writing bytes.
-/// This is used for serializing data structures in an allocation-free manner.
+/// Binary std/no_std choice
 pub trait BytesWriter {
     /// Writes a single byte.
     ///
@@ -133,7 +133,7 @@ pub trait BytesWriter {
     fn write_all(&mut self, bytes: &[u8]) -> WrtResult<()>;
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl Checksummable for alloc::string::String {
     fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
         checksum.update_slice(self.as_bytes());
@@ -193,7 +193,7 @@ pub enum SerializationError {
     /// The data format is invalid or corrupted.
     InvalidFormat,
     /// A custom error message.
-    Custom(&'static str), // Using prelude String for alloc/std compatibility
+    Custom(&'static str), // Binary std/no_std choice
     /// The provided buffer or byte slice has an incorrect length.
     InvalidSliceLength,
     /// Not enough data to deserialize the object.
@@ -202,7 +202,7 @@ pub enum SerializationError {
     IoError,
     /// An unexpected end of file/buffer was reached during deserialization.
     UnexpectedEof,
-    /// An invalid enum value was encountered during deserialization.
+    /// An invalid `enum` value was encountered during deserialization.
     InvalidEnumValue,
 }
 
@@ -352,7 +352,7 @@ impl FromBytes for () {
 /// fixed size. This trait is intended for types where
 /// `core::mem::size_of::<Self>()` is a valid compile-time constant.
 trait LeBytesArray: Sized {
-    /// The byte array type, e.g., [u8; 4] for u32.
+    /// The byte array type, e.g., `[u8; 4]` for `u32`.
     type ByteArray: AsRef<[u8]> + AsMut<[u8]> + Default + Copy + IntoIterator<Item = u8>;
 
     /// Converts the value to a little-endian byte array.
@@ -678,7 +678,7 @@ impl FromBytes for char {
 
 // NEW: DefaultMemoryProvider
 /// A default memory provider for contexts where no specific provider is given.
-/// Uses NoStdProvider internally, which is a basic allocatorless provider.
+/// Binary std/no_std choice
 // const DEFAULT_NO_STD_PROVIDER_CAPACITY: usize = 0; // Capacity defined by NoStdProvider itself
 
 /// Default memory provider for no_std environments when no specific provider is
@@ -693,10 +693,10 @@ impl Default for DefaultMemoryProvider {
 }
 
 impl RootMemoryProvider for DefaultMemoryProvider {
-    type Allocator = NoStdProvider<0>; // NoStdProvider is its own allocator
+    type Allocator = NoStdProvider<0>; // Binary std/no_std choice
 
     fn acquire_memory(&self, _layout: core::alloc::Layout) -> WrtResult<*mut u8> {
-        // NoStdProvider<0> cannot allocate.
+        // Binary std/no_std choice
         Err(WrtError::new(
             ErrorCategory::Memory,
             codes::UNSUPPORTED_OPERATION,
@@ -705,7 +705,7 @@ impl RootMemoryProvider for DefaultMemoryProvider {
     }
 
     fn release_memory(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> WrtResult<()> {
-        // NoStdProvider<0> does not manage external allocations this way.
+        // Binary std/no_std choice
         // Safety: This encapsulates unsafe operations internally
         Ok(())
     }
@@ -774,7 +774,7 @@ impl RootMemoryProvider for DefaultMemoryProvider {
 // NEW: ReadStream and WriteStream Definitions
 
 /// A stream for reading bytes sequentially from a memory region.
-/// It borrows the data, ensuring no unintended allocations or copies during
+/// Binary std/no_std choice
 /// reading.
 #[derive(Debug)]
 pub struct ReadStream<'a> {
@@ -1062,12 +1062,12 @@ impl<'a> WriteStream<'a> {
 // Default impl is problematic for no_std if P cannot provide a default buffer
 // or Vec is used.     fn default() -> Self {
 //         // This default implementation requires P to somehow provide a
-// default buffer,         // or it needs to be feature-gated for `alloc` and
+// Binary std/no_std choice
 // use Vec.         // For a SliceMut based WriteStream, Default doesn't make
 // much sense without a source slice.         // Consider removing this Default
 // impl or making it highly conditional / specialized.         // If P itself
-// can provide a default SliceMut, that could work.         // Example for alloc
-// feature:         // #[cfg(feature = "alloc")]
+// Binary std/no_std choice
+// feature:         // #[cfg(feature = "std")]
 //         // {
 //         //     let cap = 256; // Default capacity
 //         //     let mut vec_buffer = Vec::with_capacity(cap);
@@ -1077,7 +1077,7 @@ impl<'a> WriteStream<'a> {
 // different WriteStream design might be needed for that (e.g.
 // WriteStream<Vec<u8>>).         // }
 //         // panic!("Default for WriteStream<P> is not generally constructible
-// without a slice or alloc");         // For now, if we MUST have a default, it
+// Binary std/no_std choice
 // implies an empty, unusable stream.         Self {
 //             buffer: SliceMut::empty(), // Creates an empty, unusable slice.
 //             position: 0,
@@ -1102,7 +1102,7 @@ impl<T: Checksummable> Checksummable for Option<T> {
 
 // DefaultMemoryProvider definition and impls might follow here or be elsewhere
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl ToBytes for alloc::string::String {
     fn serialized_size(&self) -> usize {
         4 + self.len() // 4 bytes for length + string bytes
@@ -1140,7 +1140,7 @@ pub trait Validatable {
 
     /// Performs validation on this object
     ///
-    /// Returns Ok(()) if validation passes, or an error describing
+    /// Returns `Ok(())` if validation passes, or an error describing
     /// what validation check failed.
     ///
     /// # Errors
@@ -1162,7 +1162,7 @@ pub trait Checksummed {
 
     /// Force recalculation of the object's checksum
     ///
-    /// This is useful when verification level changes from None
+    /// This is useful when verification level changes from `None`
     /// or after operations that bypass normal checksum updates.
     fn recalculate_checksum(&mut self);
 

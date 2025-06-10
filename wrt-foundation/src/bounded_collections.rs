@@ -1,11 +1,13 @@
 // WRT - wrt-foundation
 // Module: Additional Bounded Collections
+// SW-REQ-ID: REQ_RESOURCE_002
 //
 // Copyright (c) 2025 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
 //! Provides additional bounded collections for no_std/no_alloc environments.
+//! SW-REQ-ID: REQ_RESOURCE_002
 //!
 //! These collections ensure that they never exceed a predefined capacity,
 //! contributing to memory safety and predictability, especially in `no_std`
@@ -18,12 +20,12 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 extern crate alloc;
-#[cfg(feature = "alloc")]
-use alloc::string::String;
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use std::string::String;
+#[cfg(feature = "std")]
+use std::vec::Vec;
 
 // Crate-level imports
 use crate::traits::DefaultMemoryProvider;
@@ -1174,10 +1176,10 @@ where
 /// absence (0) of an element with the corresponding index. It ensures it never
 /// exceeds the specified capacity N_BITS.
 #[derive(Debug, Clone)]
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub struct BoundedBitSet<const N_BITS: usize> {
-    /// The underlying storage, using u32 for efficient bit operations
-    /// Each u32 holds 32 bits, so we need N_BITS/32 (rounded up) elements
+    /// The underlying storage, using `u32` for efficient bit operations
+    /// Each `u32` holds 32 bits, so we need N_BITS/32 (rounded up) elements
     storage: Vec<(u32, Checksum)>,
     /// Count of set bits (1s) for efficient size queries
     count: usize,
@@ -1185,7 +1187,7 @@ pub struct BoundedBitSet<const N_BITS: usize> {
     verification_level: VerificationLevel,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> Default for BoundedBitSet<N_BITS> {
     fn default() -> Self {
         // Calculate storage size (N_BITS/32 rounded up)
@@ -1201,7 +1203,7 @@ impl<const N_BITS: usize> Default for BoundedBitSet<N_BITS> {
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// Creates a new empty `BoundedBitSet`.
     pub fn new() -> Self {
@@ -1656,7 +1658,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// bitset.set(1).unwrap();
     /// bitset.set(3).unwrap();
     ///
-    /// bitset.bitnot();
+    /// bitset.bitnot(feature = "std");
     ///
     /// assert!(bitset.contains(0).unwrap());
     /// assert!(!bitset.contains(1).unwrap());
@@ -1698,7 +1700,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
         self.count = self.storage.iter().map(|(bits, _)| bits.count_ones() as usize).sum();
     }
 
-    /// Returns the index of the first set bit, or None if no bits are set.
+    /// Returns the index of the first set bit, or `None` if no bits are set.
     ///
     /// # Examples
     ///
@@ -1734,7 +1736,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     }
 
     /// Returns the index of the next set bit at or after the given position,
-    /// or None if no more bits are set.
+    /// or `None` if no more bits are set.
     ///
     /// # Examples
     ///
@@ -1790,7 +1792,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
         None
     }
 
-    /// Returns the index of the first clear bit (0), or None if all bits are
+    /// Returns the index of the first clear bit (0), or `None` if all bits are
     /// set.
     ///
     /// # Examples
@@ -1829,7 +1831,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     }
 
     /// Returns the index of the next clear bit at or after the given position,
-    /// or None if no more bits are clear.
+    /// or `None` if no more bits are clear.
     ///
     /// # Examples
     ///
@@ -2360,7 +2362,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
     /// Finds a contiguous sequence of clear bits of the specified length.
     ///
-    /// Returns the starting index of the first such sequence found, or None if
+    /// Returns the starting index of the first such sequence found, or `None` if
     /// no such sequence exists. This is useful for finding available space
     /// in a bitmap.
     ///
@@ -2446,7 +2448,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// // Bits 1, 3, and 5 are set (indexed from 0)
     /// assert_eq!(bitset.to_binary_string(), "00101010");
     /// ```
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn to_binary_string(&self) -> String {
         let mut result = String::with_capacity(N_BITS);
 
@@ -2686,7 +2688,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
 // Implement standard traits for the new collections
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> BoundedCapacity for BoundedBitSet<N_BITS> {
     fn capacity(&self) -> usize {
         N_BITS
@@ -2796,13 +2798,13 @@ where
 }
 
 /// Iterator over the set bits (1s) in a `BoundedBitSet`.
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub struct BitSetOnesIterator<'a, const N_BITS: usize> {
     bitset: &'a BoundedBitSet<N_BITS>,
     next_index: usize,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<'a, const N_BITS: usize> Iterator for BitSetOnesIterator<'a, N_BITS> {
     type Item = usize;
 
@@ -2825,13 +2827,13 @@ impl<'a, const N_BITS: usize> Iterator for BitSetOnesIterator<'a, N_BITS> {
 }
 
 /// Iterator over the clear bits (0s) in a `BoundedBitSet`.
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub struct BitSetZerosIterator<'a, const N_BITS: usize> {
     bitset: &'a BoundedBitSet<N_BITS>,
     next_index: usize,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<'a, const N_BITS: usize> Iterator for BitSetZerosIterator<'a, N_BITS> {
     type Item = usize;
 
@@ -2856,7 +2858,7 @@ impl<'a, const N_BITS: usize> Iterator for BitSetZerosIterator<'a, N_BITS> {
 }
 
 /// Implement PartialEq for BoundedBitSet
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> PartialEq for BoundedBitSet<N_BITS> {
     fn eq(&self, other: &Self) -> bool {
         // Quick check for count
@@ -2888,11 +2890,11 @@ impl<const N_BITS: usize> PartialEq for BoundedBitSet<N_BITS> {
 }
 
 /// Implement Eq for BoundedBitSet
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> Eq for BoundedBitSet<N_BITS> {}
 
 /// Implement Hash for BoundedBitSet
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> core::hash::Hash for BoundedBitSet<N_BITS> {
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         N_BITS.hash(state);
@@ -2906,7 +2908,7 @@ impl<const N_BITS: usize> core::hash::Hash for BoundedBitSet<N_BITS> {
 }
 
 /// Implement Checksummable for BoundedBitSet
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> Checksummable for BoundedBitSet<N_BITS> {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Update with capacity and count
@@ -2921,7 +2923,7 @@ impl<const N_BITS: usize> Checksummable for BoundedBitSet<N_BITS> {
 }
 
 /// Implement ToBytes for BoundedBitSet
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> ToBytes for BoundedBitSet<N_BITS> {
     fn to_bytes_with_provider<'a, P: crate::MemoryProvider>(
         &self,
@@ -2953,7 +2955,7 @@ impl<const N_BITS: usize> ToBytes for BoundedBitSet<N_BITS> {
 }
 
 /// Implement FromBytes for BoundedBitSet
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> FromBytes for BoundedBitSet<N_BITS> {
     fn from_bytes_with_provider<'a, P: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
@@ -3039,7 +3041,7 @@ mod tests {
     // Test BoundedQueue
     #[test]
     fn test_bounded_queue() {
-        let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
+        let provider = NoStdProvider::new();
         let mut queue = BoundedQueue::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test enqueue
@@ -3082,7 +3084,7 @@ mod tests {
     // Test BoundedMap
     #[test]
     fn test_bounded_map() {
-        let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
+        let provider = NoStdProvider::new();
         let mut map = BoundedMap::<u32, u32, 3, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test insert
@@ -3120,7 +3122,7 @@ mod tests {
     // Test BoundedSet
     #[test]
     fn test_bounded_set() {
-        let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
+        let provider = NoStdProvider::new();
         let mut set = BoundedSet::<u32, 3, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test insert
@@ -3153,7 +3155,7 @@ mod tests {
     // Test BoundedDeque
     #[test]
     fn test_bounded_deque() {
-        let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
+        let provider = NoStdProvider::new();
         let mut deque = BoundedDeque::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test push_back
@@ -3195,7 +3197,7 @@ mod tests {
 
     // Test BoundedBitSet
     #[test]
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     fn test_bounded_bit_set() {
         let mut bit_set = BoundedBitSet::<100>::new();
 
@@ -3241,5 +3243,138 @@ mod tests {
         assert!(bit_set.clear(100).is_err());
         assert!(bit_set.contains(100).is_err());
         assert!(bit_set.toggle(100).is_err());
+    }
+}
+
+// Trait implementations for BoundedMap
+impl<K, V, const N_ELEMENTS: usize, P: MemoryProvider> Default for BoundedMap<K, V, N_ELEMENTS, P>
+where
+    K: Sized + Checksummable + ToBytes + FromBytes + Default + Eq + Clone + PartialEq,
+    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+    P: Default + Clone + PartialEq + Eq,
+{
+    fn default() -> Self {
+        Self::new(P::default()).unwrap()
+    }
+}
+
+impl<K, V, const N_ELEMENTS: usize, P: MemoryProvider> Clone for BoundedMap<K, V, N_ELEMENTS, P>
+where
+    K: Sized + Checksummable + ToBytes + FromBytes + Default + Eq + Clone + PartialEq,
+    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+    P: Default + Clone + PartialEq + Eq,
+{
+    fn clone(&self) -> Self {
+        let mut new_map = Self::new(P::default()).unwrap();
+        new_map.verification_level = self.verification_level;
+        
+        // Clone all entries
+        for i in 0..self.entries.len() {
+            if let Ok((k, v)) = self.entries.get(i) {
+                drop(new_map.insert(k, v));
+            }
+        }
+        
+        new_map
+    }
+}
+
+impl<K, V, const N_ELEMENTS: usize, P: MemoryProvider> PartialEq for BoundedMap<K, V, N_ELEMENTS, P>
+where
+    K: Sized + Checksummable + ToBytes + FromBytes + Default + Eq + Clone + PartialEq,
+    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+    P: Default + Clone + PartialEq + Eq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        
+        for i in 0..self.entries.len() {
+            if let (Ok((k1, v1)), Ok((k2, v2))) = (self.entries.get(i), other.entries.get(i)) {
+                if k1 != k2 || v1 != v2 {
+                    return false;
+                }
+            }
+        }
+        
+        true
+    }
+}
+
+impl<K, V, const N_ELEMENTS: usize, P: MemoryProvider> Eq for BoundedMap<K, V, N_ELEMENTS, P>
+where
+    K: Sized + Checksummable + ToBytes + FromBytes + Default + Eq + Clone + PartialEq,
+    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+    P: Default + Clone + PartialEq + Eq,
+{
+}
+
+impl<K, V, const N_ELEMENTS: usize, P: MemoryProvider> Checksummable for BoundedMap<K, V, N_ELEMENTS, P>
+where
+    K: Sized + Checksummable + ToBytes + FromBytes + Default + Eq + Clone + PartialEq,
+    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+    P: Default + Clone + PartialEq + Eq,
+{
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        checksum.update_slice(&(self.len() as u32).to_le_bytes());
+        for i in 0..self.entries.len() {
+            if let Ok((k, v)) = self.entries.get(i) {
+                k.update_checksum(checksum);
+                v.update_checksum(checksum);
+            }
+        }
+    }
+}
+
+impl<K, V, const N_ELEMENTS: usize, P: MemoryProvider> ToBytes for BoundedMap<K, V, N_ELEMENTS, P>
+where
+    K: Sized + Checksummable + ToBytes + FromBytes + Default + Eq + Clone + PartialEq,
+    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+    P: Default + Clone + PartialEq + Eq,
+{
+    fn serialized_size(&self) -> usize {
+        4 + self.entries.iter().map(|(k, v)| k.serialized_size() + v.serialized_size()).sum::<usize>()
+    }
+
+    fn to_bytes_with_provider<'a, PROV: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PROV,
+    ) -> WrtResult<()> {
+        writer.write_all(&(self.len() as u32).to_le_bytes())?;
+        for i in 0..self.entries.len() {
+            if let Ok((k, v)) = self.entries.get(i) {
+                k.to_bytes_with_provider(writer, provider)?;
+                v.to_bytes_with_provider(writer, provider)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<K, V, const N_ELEMENTS: usize, P: MemoryProvider> FromBytes for BoundedMap<K, V, N_ELEMENTS, P>
+where
+    K: Sized + Checksummable + ToBytes + FromBytes + Default + Eq + Clone + PartialEq,
+    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+    P: Default + Clone + PartialEq + Eq,
+{
+    fn from_bytes_with_provider<'a, PROV: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PROV,
+    ) -> WrtResult<Self> {
+        let mut len_bytes = [0u8; 4];
+        reader.read_exact(&mut len_bytes)?;
+        let len = u32::from_le_bytes(len_bytes) as usize;
+        
+        let mut map = Self::new(P::default())?;
+        
+        for _ in 0..len.min(N_ELEMENTS) {
+            let k = K::from_bytes_with_provider(reader, provider)?;
+            let v = V::from_bytes_with_provider(reader, provider)?;
+            drop(map.insert(k, v));
+        }
+        
+        Ok(map)
     }
 }

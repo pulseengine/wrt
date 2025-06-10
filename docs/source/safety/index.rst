@@ -19,29 +19,19 @@ Safety Documentation Overview
 This safety documentation is organized into the following major components:
 
 1. **Safety Guidelines**: General guidelines for using the runtime safely
-2. **Safety Constraints**: Specific constraints that must be followed
-3. **Verification Strategies**: Approaches for verifying safety properties
-4. **Safety Mechanisms**: Specific mechanisms implemented to ensure safety
-5. **Safety Implementations**: How safety requirements are implemented
-6. **Safety Test Cases**: Test cases that verify safety properties
-7. **Performance Tuning**: Guidelines for balancing safety and performance
-8. **Traceability Matrix**: Mapping from safety standards to implementations
+2. **Safety Classification**: Unified cross-standard safety integrity levels
+3. **Safety Constraints**: Specific constraints that must be followed
+4. **Verification Strategies**: Approaches for verifying safety properties
+5. **Safety Mechanisms**: Specific mechanisms implemented to ensure safety
+6. **Safety Implementations**: How safety requirements are implemented
+7. **Safety Test Cases**: Test cases that verify safety properties
+8. **Performance Tuning**: Guidelines for balancing safety and performance
+9. **Traceability Matrix**: Mapping from safety standards to implementations
 
-Safety Implementation Status
-----------------------------
+Live Safety Verification Status
+---------------------------------
 
-.. list-table:: Implementation Status
-   :widths: 30 70
-   :header-rows: 1
-
-   * - Status
-     - Count
-   * - Implemented
-     - Most safety features are implemented
-   * - Partial
-     - Some features are in progress
-   * - Not Started
-     - Future planned features
+.. include:: ../_generated_safety_summary.rst
 
 Safety Requirements
 -------------------
@@ -238,10 +228,12 @@ Verification Levels
 
 The runtime supports different verification levels for balancing safety and performance. Select the appropriate verification level based on safety criticality:
 
-* ``VerificationLevel::Full`` - For safety-critical operations
-* ``VerificationLevel::Standard`` - For normal operations
-* ``VerificationLevel::Sampling`` - For performance-critical paths
-* ``VerificationLevel::None`` - For non-safety-critical, performance-sensitive paths
+* ``VerificationLevel::Off`` - No verification checks (performance-sensitive paths)
+* ``VerificationLevel::Basic`` - Basic verification checks (minimal overhead)
+* ``VerificationLevel::Standard`` - Standard verification level (recommended default)
+* ``VerificationLevel::Full`` - Full verification including checksums (safety-critical)
+* ``VerificationLevel::Sampling`` - Probabilistic verification based on operation importance
+* ``VerificationLevel::Redundant`` - Redundant checks in addition to full verification
 
 Detailed Safety Documentation
 -----------------------------
@@ -250,6 +242,7 @@ Detailed Safety Documentation
    :maxdepth: 2
 
    safety_guidelines
+   safety_classification
    constraints
    mechanisms
    implementations
@@ -257,3 +250,4 @@ Detailed Safety Documentation
    test_cases
    traceability_matrix
    performance_tuning
+   certification_validation

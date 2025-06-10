@@ -62,7 +62,7 @@ impl Import {
         if ns_str.is_empty() {
             self.name.clone()
         } else {
-            format!("{}.{}", ns_str, self.name)
+            "Component not found"
         }
     }
 

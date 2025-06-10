@@ -2,10 +2,12 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-use wrt_error::Result;
-use wrt_format::{binary, component::Component};
-
-use crate::prelude::*;
+// Component encoding requires std for Box and Vec - entire module is std-only
+#[cfg(feature = "std")]
+mod std_encoding {
+    use wrt_error::Result;
+    use wrt_format::{binary, component::Component};
+    use crate::prelude::*;
 
 /// Encode a WebAssembly Component Model component into binary format
 pub fn encode_component(component: &Component) -> Result<Vec<u8>> {
@@ -39,7 +41,7 @@ fn encode_sections(component: &Component, binary: &mut Vec<u8>) -> Result<()> {
 
         // Create the custom section content
         let mut custom_section_content = Vec::new();
-        custom_section_content.extend_from_slice(&binary::write_string("name"));
+        custom_section_content.extend_from_slice(&write_string("name"));
         custom_section_content.extend_from_slice(&name_section_bytes);
 
         // Add the custom section
@@ -97,7 +99,7 @@ fn encode_core_module_section(modules: &[wrt_format::module::Module]) -> Result<
     let mut data = Vec::new();
 
     // Write count of modules
-    data.extend_from_slice(&binary::write_leb128_u32(modules.len() as u32));
+    data.extend_from_slice(&write_leb128_u32(modules.len() as u32));
 
     // Encode each module
     for module in modules {
@@ -111,7 +113,7 @@ fn encode_core_module_section(modules: &[wrt_format::module::Module]) -> Result<
         })?;
 
         // Write module size
-        data.extend_from_slice(&binary::write_leb128_u32(module_binary.len() as u32));
+        data.extend_from_slice(&write_leb128_u32(module_binary.len() as u32));
         // Write module binary
         data.extend_from_slice(module_binary);
     }
@@ -119,14 +121,14 @@ fn encode_core_module_section(modules: &[wrt_format::module::Module]) -> Result<
     Ok(data)
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 fn encode_core_instance_section(
     instances: &[wrt_format::component::CoreInstance],
 ) -> Result<Vec<u8>> {
     let mut data = Vec::new();
 
     // Write count of instances
-    data.extend_from_slice(&binary::write_leb128_u32(instances.len() as u32));
+    data.extend_from_slice(&write_leb128_u32(instances.len() as u32));
 
     // Encode each instance
     for instance in instances {
@@ -136,17 +138,17 @@ fn encode_core_instance_section(
                 data.push(binary::CORE_INSTANCE_INSTANTIATE_TAG);
 
                 // Write module index
-                data.extend_from_slice(&binary::write_leb128_u32(*module_idx));
+                data.extend_from_slice(&write_leb128_u32(*module_idx));
 
                 // Write count of arguments
-                data.extend_from_slice(&binary::write_leb128_u32(args.len() as u32));
+                data.extend_from_slice(&write_leb128_u32(args.len() as u32));
 
                 // Write each argument
                 for arg in args {
                     // Write argument name
-                    data.extend_from_slice(&binary::write_string(&arg.name));
+                    data.extend_from_slice(&write_string(&arg.name));
                     // Write instance index
-                    data.extend_from_slice(&binary::write_leb128_u32(arg.instance_idx));
+                    data.extend_from_slice(&write_leb128_u32(arg.instance_idx));
                 }
             }
             wrt_format::component::CoreInstanceExpr::InlineExports(exports) => {
@@ -154,16 +156,16 @@ fn encode_core_instance_section(
                 data.push(binary::CORE_INSTANCE_INLINE_EXPORTS_TAG);
 
                 // Write count of exports
-                data.extend_from_slice(&binary::write_leb128_u32(exports.len() as u32));
+                data.extend_from_slice(&write_leb128_u32(exports.len() as u32));
 
                 // Write each export
                 for export in exports {
                     // Write export name
-                    data.extend_from_slice(&binary::write_string(&export.name));
+                    data.extend_from_slice(&write_string(&export.name));
                     // Write sort
                     data.push(export.sort as u8);
                     // Write index
-                    data.extend_from_slice(&binary::write_leb128_u32(export.idx));
+                    data.extend_from_slice(&write_leb128_u32(export.idx));
                 }
             }
         }
@@ -176,15 +178,15 @@ fn encode_import_section(imports: &[wrt_format::component::Import]) -> Result<Ve
     let mut data = Vec::new();
 
     // Write count of imports
-    data.extend_from_slice(&binary::write_leb128_u32(imports.len() as u32));
+    data.extend_from_slice(&write_leb128_u32(imports.len() as u32));
 
     // Encode each import
     for import in imports {
         // Write namespace
-        data.extend_from_slice(&binary::write_string(&import.name.namespace));
+        data.extend_from_slice(&write_string(&import.name.namespace));
 
         // Write name
-        data.extend_from_slice(&binary::write_string(&import.name.name));
+        data.extend_from_slice(&write_string(&import.name.name));
 
         // Write nested namespaces flag and contents (if any)
         if import.name.nested.is_empty() {
@@ -193,11 +195,11 @@ fn encode_import_section(imports: &[wrt_format::component::Import]) -> Result<Ve
             data.push(1); // Has nested namespaces
 
             // Write count of nested namespaces
-            data.extend_from_slice(&binary::write_leb128_u32(import.name.nested.len() as u32));
+            data.extend_from_slice(&write_leb128_u32(import.name.nested.len() as u32));
 
             // Write each nested namespace
             for nested in &import.name.nested {
-                data.extend_from_slice(&binary::write_string(nested));
+                data.extend_from_slice(&write_string(nested));
             }
         }
 
@@ -206,12 +208,12 @@ fn encode_import_section(imports: &[wrt_format::component::Import]) -> Result<Ve
             data.push(1); // Has package
 
             // Write package name
-            data.extend_from_slice(&binary::write_string(&package.name));
+            data.extend_from_slice(&write_string(&package.name));
 
             // Write version flag and value (if any)
             if let Some(version) = &package.version {
                 data.push(1); // Has version
-                data.extend_from_slice(&binary::write_string(version));
+                data.extend_from_slice(&write_string(version));
             } else {
                 data.push(0); // No version
             }
@@ -219,7 +221,7 @@ fn encode_import_section(imports: &[wrt_format::component::Import]) -> Result<Ve
             // Write hash flag and value (if any)
             if let Some(hash) = &package.hash {
                 data.push(1); // Has hash
-                data.extend_from_slice(&binary::write_string(hash));
+                data.extend_from_slice(&write_string(hash));
             } else {
                 data.push(0); // No hash
             }
@@ -241,18 +243,18 @@ fn encode_extern_type(ty: &wrt_format::component::ExternType, data: &mut Vec<u8>
             data.push(binary::EXTERN_TYPE_FUNCTION_TAG);
 
             // Write parameter count
-            data.extend_from_slice(&binary::write_leb128_u32(params.len() as u32));
+            data.extend_from_slice(&write_leb128_u32(params.len() as u32));
 
             // Write each parameter
             for (name, param_ty) in params {
                 // Write parameter name
-                data.extend_from_slice(&binary::write_string(name));
+                data.extend_from_slice(&write_string(name));
                 // Write parameter type
                 encode_val_type(&format_val_type_to_val_type(param_ty), data)?;
             }
 
             // Write result count
-            data.extend_from_slice(&binary::write_leb128_u32(results.len() as u32));
+            data.extend_from_slice(&write_leb128_u32(results.len() as u32));
 
             // Write each result type
             for result_ty in results {
@@ -269,19 +271,19 @@ fn encode_extern_type(ty: &wrt_format::component::ExternType, data: &mut Vec<u8>
             // Write type tag
             data.push(binary::EXTERN_TYPE_TYPE_TAG);
             // Write type index
-            data.extend_from_slice(&binary::write_leb128_u32(*type_idx));
+            data.extend_from_slice(&write_leb128_u32(*type_idx));
         }
         wrt_format::component::ExternType::Instance { exports } => {
             // Write instance tag
             data.push(binary::EXTERN_TYPE_INSTANCE_TAG);
 
             // Write export count
-            data.extend_from_slice(&binary::write_leb128_u32(exports.len() as u32));
+            data.extend_from_slice(&write_leb128_u32(exports.len() as u32));
 
             // Write each export
             for (name, export_ty) in exports {
                 // Write export name
-                data.extend_from_slice(&binary::write_string(name));
+                data.extend_from_slice(&write_string(name));
                 // Write export type
                 encode_extern_type(export_ty, data)?;
             }
@@ -291,25 +293,25 @@ fn encode_extern_type(ty: &wrt_format::component::ExternType, data: &mut Vec<u8>
             data.push(binary::EXTERN_TYPE_COMPONENT_TAG);
 
             // Write import count
-            data.extend_from_slice(&binary::write_leb128_u32(imports.len() as u32));
+            data.extend_from_slice(&write_leb128_u32(imports.len() as u32));
 
             // Write each import
             for (namespace, name, import_ty) in imports {
                 // Write namespace
-                data.extend_from_slice(&binary::write_string(namespace));
+                data.extend_from_slice(&write_string(namespace));
                 // Write name
-                data.extend_from_slice(&binary::write_string(name));
+                data.extend_from_slice(&write_string(name));
                 // Write import type
                 encode_extern_type(import_ty, data)?;
             }
 
             // Write export count
-            data.extend_from_slice(&binary::write_leb128_u32(exports.len() as u32));
+            data.extend_from_slice(&write_leb128_u32(exports.len() as u32));
 
             // Write each export
             for (name, export_ty) in exports {
                 // Write export name
-                data.extend_from_slice(&binary::write_string(name));
+                data.extend_from_slice(&write_string(name));
                 // Write export type
                 encode_extern_type(export_ty, data)?;
             }
@@ -362,21 +364,21 @@ fn encode_val_type(ty: &wrt_format::component::FormatValType, data: &mut Vec<u8>
         }
         wrt_format::component::FormatValType::Ref(type_idx) => {
             data.push(binary::VAL_TYPE_REF_TAG);
-            data.extend_from_slice(&binary::write_leb128_u32(*type_idx));
+            data.extend_from_slice(&write_leb128_u32(*type_idx));
         }
         wrt_format::component::FormatValType::Record(fields) => {
             data.push(binary::VAL_TYPE_RECORD_TAG);
-            data.extend_from_slice(&binary::write_leb128_u32(fields.len() as u32));
+            data.extend_from_slice(&write_leb128_u32(fields.len() as u32));
             for (name, field_ty) in fields {
-                data.extend_from_slice(&binary::write_string(name));
+                data.extend_from_slice(&write_string(name));
                 encode_val_type(field_ty, data)?;
             }
         }
         wrt_format::component::FormatValType::Variant(cases) => {
             data.push(binary::VAL_TYPE_VARIANT_TAG);
-            data.extend_from_slice(&binary::write_leb128_u32(cases.len() as u32));
+            data.extend_from_slice(&write_leb128_u32(cases.len() as u32));
             for (name, case_ty) in cases {
-                data.extend_from_slice(&binary::write_string(name));
+                data.extend_from_slice(&write_string(name));
                 match case_ty {
                     Some(ty) => {
                         data.push(1);
@@ -395,27 +397,27 @@ fn encode_val_type(ty: &wrt_format::component::FormatValType, data: &mut Vec<u8>
         wrt_format::component::FormatValType::FixedList(element_ty, length) => {
             data.push(binary::VAL_TYPE_FIXED_LIST_TAG);
             encode_val_type(element_ty, data)?;
-            data.extend_from_slice(&binary::write_leb128_u32(*length));
+            data.extend_from_slice(&write_leb128_u32(*length));
         }
         wrt_format::component::FormatValType::Tuple(types) => {
             data.push(binary::VAL_TYPE_TUPLE_TAG);
-            data.extend_from_slice(&binary::write_leb128_u32(types.len() as u32));
+            data.extend_from_slice(&write_leb128_u32(types.len() as u32));
             for ty in types {
                 encode_val_type(ty, data)?;
             }
         }
         wrt_format::component::FormatValType::Flags(names) => {
             data.push(binary::VAL_TYPE_FLAGS_TAG);
-            data.extend_from_slice(&binary::write_leb128_u32(names.len() as u32));
+            data.extend_from_slice(&write_leb128_u32(names.len() as u32));
             for name in names {
-                data.extend_from_slice(&binary::write_string(name));
+                data.extend_from_slice(&write_string(name));
             }
         }
         wrt_format::component::FormatValType::Enum(names) => {
             data.push(binary::VAL_TYPE_ENUM_TAG);
-            data.extend_from_slice(&binary::write_leb128_u32(names.len() as u32));
+            data.extend_from_slice(&write_leb128_u32(names.len() as u32));
             for name in names {
-                data.extend_from_slice(&binary::write_string(name));
+                data.extend_from_slice(&write_string(name));
             }
         }
         wrt_format::component::FormatValType::Option(element_ty) => {
@@ -426,22 +428,23 @@ fn encode_val_type(ty: &wrt_format::component::FormatValType, data: &mut Vec<u8>
             data.push(binary::VAL_TYPE_RESULT_TAG);
             encode_val_type(ok_ty, data)?;
         }
-        wrt_format::component::FormatValType::ResultErr(err_ty) => {
-            data.push(binary::VAL_TYPE_RESULT_ERR_TAG);
-            encode_val_type(err_ty, data)?;
-        }
-        wrt_format::component::FormatValType::ResultBoth(ok_ty, err_ty) => {
-            data.push(binary::VAL_TYPE_RESULT_BOTH_TAG);
-            encode_val_type(ok_ty, data)?;
-            encode_val_type(err_ty, data)?;
-        }
+        // TODO: Fix FormatValType enum to support ResultErr and ResultBoth variants
+        // wrt_format::component::FormatValType::ResultErr(err_ty) => {
+        //     data.push(binary::VAL_TYPE_RESULT_ERR_TAG);
+        //     encode_val_type(err_ty, data)?;
+        // }
+        // wrt_format::component::FormatValType::ResultBoth(ok_ty, err_ty) => {
+        //     data.push(binary::VAL_TYPE_RESULT_BOTH_TAG);
+        //     encode_val_type(ok_ty, data)?;
+        //     encode_val_type(err_ty, data)?;
+        // }
         wrt_format::component::FormatValType::Own(type_idx) => {
             data.push(binary::VAL_TYPE_OWN_TAG);
-            data.extend_from_slice(&binary::write_leb128_u32(*type_idx));
+            data.extend_from_slice(&write_leb128_u32(*type_idx));
         }
         wrt_format::component::FormatValType::Borrow(type_idx) => {
             data.push(binary::VAL_TYPE_BORROW_TAG);
-            data.extend_from_slice(&binary::write_leb128_u32(*type_idx));
+            data.extend_from_slice(&write_leb128_u32(*type_idx));
         }
         wrt_format::component::FormatValType::Void => {
             // There doesn't seem to be a Void tag in the binary constants
@@ -479,12 +482,12 @@ fn encode_export_section(exports: &[wrt_format::component::Export]) -> Result<Ve
     let mut data = Vec::new();
 
     // Write count of exports
-    data.extend_from_slice(&binary::write_leb128_u32(exports.len() as u32));
+    data.extend_from_slice(&write_leb128_u32(exports.len() as u32));
 
     // Encode each export
     for export in exports {
         // Write export basic name
-        data.extend_from_slice(&binary::write_string(&export.name.name));
+        data.extend_from_slice(&write_string(&export.name.name));
 
         // Prepare flags
         let mut flags: u8 = 0;
@@ -506,22 +509,22 @@ fn encode_export_section(exports: &[wrt_format::component::Export]) -> Result<Ve
 
         // Write semver if present
         if let Some(semver) = &export.name.semver {
-            data.extend_from_slice(&binary::write_string(semver));
+            data.extend_from_slice(&write_string(semver));
         }
 
         // Write integrity if present
         if let Some(integrity) = &export.name.integrity {
-            data.extend_from_slice(&binary::write_string(integrity));
+            data.extend_from_slice(&write_string(integrity));
         }
 
         // Write nested namespaces if present
         if !export.name.nested.is_empty() {
             // Write count of nested namespaces
-            data.extend_from_slice(&binary::write_leb128_u32(export.name.nested.len() as u32));
+            data.extend_from_slice(&write_leb128_u32(export.name.nested.len() as u32));
 
             // Write each nested namespace
             for nested in &export.name.nested {
-                data.extend_from_slice(&binary::write_string(nested));
+                data.extend_from_slice(&write_string(nested));
             }
         }
 
@@ -529,7 +532,7 @@ fn encode_export_section(exports: &[wrt_format::component::Export]) -> Result<Ve
         data.push(sort_to_u8(&export.sort));
 
         // Write index
-        data.extend_from_slice(&binary::write_leb128_u32(export.idx));
+        data.extend_from_slice(&write_leb128_u32(export.idx));
 
         // Write type flag and type (if present)
         if let Some(ty) = &export.ty {
@@ -751,3 +754,61 @@ mod tests {
         assert!(binary.len() > 8);
     }
 }
+
+} // end std_encoding module
+
+// Re-export std functions when std is available
+#[cfg(feature = "std")]
+pub use std_encoding::*;
+
+// No_std implementation following functional safety guidelines
+#[cfg(not(feature = "std"))]
+mod no_std_encoding {
+    use wrt_error::{Error, ErrorCategory, Result, codes};
+    use wrt_foundation::{BoundedVec, safe_memory::NoStdProvider};
+    
+    // No_std stub types for components that can't be fully encoded without heap allocation
+    #[derive(Debug, Clone)]
+    pub struct Component {
+        // Simplified component representation for no_std
+        pub magic: [u8; 4],
+        pub version: [u8; 4],
+    }
+    
+    /// No_std encode function with bounded output and safety constraints
+    /// 
+    /// # Safety Requirements
+    /// - Uses bounded allocation with compile-time limits
+    /// - Fails gracefully when limits are exceeded
+    /// - No heap allocation or dynamic memory
+    pub fn encode_component(component: &Component) -> Result<BoundedVec<u8, 1024, NoStdProvider<2048>>> {
+        let provider = NoStdProvider::<2048>::new();
+        let mut binary = BoundedVec::new(provider).map_err(|_| Error::new(
+            ErrorCategory::Memory,
+            codes::MEMORY_ALLOCATION_FAILED,
+            "Failed to create encoding buffer"
+        ))?;
+        
+        // Write magic and version - these are fixed size and safe
+        for &byte in &component.magic {
+            binary.push(byte).map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ALLOCATION_FAILED,
+                "Component encoding buffer overflow"
+            ))?;
+        }
+        
+        for &byte in &component.version {
+            binary.push(byte).map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ALLOCATION_FAILED,
+                "Component encoding buffer overflow"
+            ))?;
+        }
+        
+        Ok(binary)
+    }
+}
+
+#[cfg(not(feature = "std"))]
+pub use no_std_encoding::*;

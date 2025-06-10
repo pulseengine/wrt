@@ -1,4 +1,4 @@
-//! Error formatting utilities for no_std compatibility
+//! Error formatting utilities for `no_std` compatibility
 
 use wrt_error::{Error, ErrorCategory};
 
@@ -58,10 +58,10 @@ pub enum InstructionErrorContext {
     },
 }
 
-/// Format an error with context (with alloc)
-#[cfg(feature = "alloc")]
+/// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub fn format_error(category: ErrorCategory, code: u32, context: InstructionErrorContext) -> Error {
-    use alloc::format;
+    use std::format;
     
     let _message = match context {
         InstructionErrorContext::TypeMismatch { expected, actual } => {
@@ -112,9 +112,9 @@ pub fn format_error(category: ErrorCategory, code: u32, context: InstructionErro
     Error::new(category, code as u16, static_message)
 }
 
-/// Format an error with context (no alloc)
-#[cfg(not(feature = "alloc"))]
-pub fn format_error(category: ErrorCategory, code: u32, context: InstructionErrorContext) -> Error {
+/// Binary `std/no_std` choice
+#[cfg(not(feature = "std"))]
+#[must_use] pub fn format_error(category: ErrorCategory, code: u32, context: InstructionErrorContext) -> Error {
     let _message = match context {
         InstructionErrorContext::TypeMismatch { expected, .. } => expected,
         InstructionErrorContext::StackUnderflow { .. } => "Stack underflow",

@@ -71,11 +71,10 @@
 
 // Use the prelude for consistent imports
 
-// When no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+// Binary std/no_std choice
 extern crate alloc;
 
-// Note: This crate supports no_std without alloc, using bounded collections
+// Binary std/no_std choice
 // from wrt-foundation
 
 // Include prelude for unified imports
@@ -95,7 +94,7 @@ pub mod verify;
 pub use prelude::*;
 
 /// Strategy pattern for intercepting component linking
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub trait LinkInterceptorStrategy: Send + Sync {
     /// Called before a function call is made
     ///
@@ -173,7 +172,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<Option<Vec<u8>>>` - Serialized value if lifting was handled,
     ///   None if it should proceed normally
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     fn intercept_lift(
         &self,
         _ty: &ValType<wrt_foundation::NoStdProvider<64>>,
@@ -196,7 +195,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<bool>` - True if the lowering was handled, false if it should
     ///   proceed normally
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     fn intercept_lower(
         &self,
         _value_type: &ValType<wrt_foundation::NoStdProvider<64>>,
@@ -228,7 +227,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<Option<Vec<u8>>>` - Serialized result values if call was
     ///   handled, None if it should proceed normally
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     fn intercept_function_call(
         &self,
         _function_name: &str,
@@ -250,7 +249,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<Option<Vec<u8>>>` - Modified serialized results if modified,
     ///   None if they should be returned as is
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     fn intercept_function_result(
         &self,
         _function_name: &str,
@@ -321,7 +320,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<Option<Vec<u8>>>` - Modified serialized values to use as the
     ///   final result, None to use the original result
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     fn after_start(
         &self,
         _component_name: &str,
@@ -350,7 +349,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     /// # Returns
     ///
     /// * `Result<Option<Vec<Modification>>>` - Optional modifications to apply
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     fn process_results(
         &self,
         _component_name: &str,
@@ -363,8 +362,8 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     }
 }
 
-/// Simplified strategy pattern for intercepting component linking in no_std environments
-#[cfg(not(feature = "alloc"))]
+/// Simplified strategy pattern for intercepting component linking in `no_std` environments
+#[cfg(not(feature = "std"))]
 pub trait LinkInterceptorStrategy: Send + Sync {
     /// Called before a function call is made
     fn before_call(
@@ -433,12 +432,12 @@ pub trait LinkInterceptorStrategy: Send + Sync {
 #[derive(Clone)]
 pub struct LinkInterceptor {
     /// Name of this interceptor for identification
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     name: String,
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     name: &'static str,
     /// Collection of strategies to apply
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub strategies: Vec<Arc<dyn LinkInterceptorStrategy>>,
 }
 
@@ -451,15 +450,15 @@ impl LinkInterceptor {
     ///
     /// # Returns
     ///
-    /// * `Self` - A new LinkInterceptor instance
-    #[cfg_attr(not(feature = "alloc"), allow(unused_variables))]
-    pub fn new(name: &str) -> Self {
+    /// * `Self` - A new `LinkInterceptor` instance
+    #[cfg_attr(not(feature = "std"), allow(unused_variables))]
+    #[must_use] pub fn new(name: &str) -> Self {
         Self { 
-            #[cfg(feature = "alloc")]
+            #[cfg(feature = "std")]
             name: name.to_string(), 
-            #[cfg(not(feature = "alloc"))]
+            #[cfg(not(feature = "std"))]
             name: "default",
-            #[cfg(feature = "alloc")]
+            #[cfg(feature = "std")]
             strategies: Vec::new() 
         }
     }
@@ -471,7 +470,7 @@ impl LinkInterceptor {
     /// # Arguments
     ///
     /// * `strategy` - The strategy to add
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub fn add_strategy(&mut self, strategy: Arc<dyn LinkInterceptorStrategy>) {
         self.strategies.push(strategy);
     }
@@ -492,7 +491,7 @@ impl LinkInterceptor {
     ///
     /// * `Result<Vec<Value>>` - The result of the function call after
     ///   interception
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub fn intercept_call<F>(
         &self,
         target: &str,
@@ -532,8 +531,8 @@ impl LinkInterceptor {
     /// # Returns
     ///
     /// * `&str` - The interceptor name
-    pub fn name(&self) -> &str {
-        &self.name
+    #[must_use] pub fn name(&self) -> &str {
+        self.name
     }
 
     /// Gets the first strategy in this interceptor
@@ -545,7 +544,7 @@ impl LinkInterceptor {
     ///
     /// * `Option<&dyn LinkInterceptorStrategy>` - The first strategy, or None
     ///   if none exists
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub fn get_strategy(&self) -> Option<&dyn LinkInterceptorStrategy> {
         self.strategies.first().map(|s| s.as_ref())
     }
@@ -562,7 +561,7 @@ impl LinkInterceptor {
     /// # Returns
     ///
     /// * `Result<InterceptionResult>` - The processed interception result
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub fn post_intercept(
         &self,
         component_name: String,
@@ -597,7 +596,7 @@ impl LinkInterceptor {
     /// # Returns
     ///
     /// * `Result<Vec<u8>>` - The modified serialized data
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub fn apply_modifications(
         &self,
         serialized_data: &[u8],
@@ -655,7 +654,7 @@ impl LinkInterceptor {
 }
 
 /// Result of an interception operation
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub struct InterceptionResult {
     /// Whether the data has been modified
@@ -664,8 +663,8 @@ pub struct InterceptionResult {
     pub modifications: Vec<Modification>,
 }
 
-/// Result of an interception operation (no_std version)
-#[cfg(not(feature = "alloc"))]
+/// Result of an interception operation (`no_std` version)
+#[cfg(not(feature = "std"))]
 #[derive(Debug, Clone)]
 pub struct InterceptionResult {
     /// Whether the data has been modified
@@ -673,7 +672,7 @@ pub struct InterceptionResult {
 }
 
 /// Modification to apply to serialized data
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub enum Modification {
     /// Replace data at an offset
@@ -699,11 +698,11 @@ pub enum Modification {
     },
 }
 
-/// Modification to apply to serialized data (no_std version)
-#[cfg(not(feature = "alloc"))]
+/// Modification to apply to serialized data (`no_std` version)
+#[cfg(not(feature = "std"))]
 #[derive(Debug, Clone)]
 pub enum Modification {
-    /// No modifications in no_std
+    /// No modifications in `no_std`
     None,
 }
 
@@ -717,17 +716,7 @@ impl std::fmt::Debug for LinkInterceptor {
     }
 }
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-impl core::fmt::Debug for LinkInterceptor {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("LinkInterceptor")
-            .field("name", &self.name)
-            .field("strategies_count", &self.strategies.len())
-            .finish()
-    }
-}
-
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 impl core::fmt::Debug for LinkInterceptor {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("LinkInterceptor")
@@ -736,7 +725,9 @@ impl core::fmt::Debug for LinkInterceptor {
     }
 }
 
-#[cfg(all(test, feature = "alloc"))]
+// Duplicate Debug implementation removed
+
+#[cfg(all(test, ))]
 mod tests {
     use super::*;
 
@@ -959,3 +950,11 @@ mod tests {
         assert_eq!(result.unwrap(), vec![Value::I32(99)]);
     }
 }
+
+// Panic handler disabled to avoid conflicts with other crates
+// The main wrt crate should provide the panic handler
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }

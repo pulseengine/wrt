@@ -15,13 +15,13 @@ pub const MAX_ARENA_RESOURCES: usize = 64;
 /// A resource arena for managing resource lifecycles as a group
 ///
 /// ResourceArena provides efficient group management of resources, allowing
-/// multiple resources to be allocated and then freed together. This is
+/// Binary std/no_std choice
 /// particularly useful for component instances and other scenarios where
 /// resources have a shared lifetime.
 #[derive(Clone)]
 pub struct ResourceArena<'a> {
     /// Handles to resources managed by this arena - using BoundedVec for no_std
-    resources: BoundedVec<u32, MAX_ARENA_RESOURCES>,
+    resources: BoundedVec<u32, MAX_ARENA_RESOURCES, NoStdProvider<65536>>,
     /// The resource table used for actual resource management
     table: &'a Mutex<ResourceTable>,
     /// Name of this arena, for debugging
@@ -31,12 +31,12 @@ pub struct ResourceArena<'a> {
 impl<'a> ResourceArena<'a> {
     /// Create a new resource arena with the given resource table
     pub fn new(table: &'a Mutex<ResourceTable>) -> Result<Self> {
-        Ok(Self { resources: BoundedVec::new(), table, name: None })
+        Ok(Self { resources: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(), table, name: None })
     }
 
     /// Create a new resource arena with the given name
     pub fn new_with_name(table: &'a Mutex<ResourceTable>, name: &'a str) -> Result<Self> {
-        Ok(Self { resources: BoundedVec::new(), table, name: Some(name) })
+        Ok(Self { resources: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(), table, name: Some(name) })
     }
 
     /// Create a resource in this arena
@@ -52,7 +52,7 @@ impl<'a> ResourceArena<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -62,14 +62,14 @@ impl<'a> ResourceArena<'a> {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Maximum number of resources in arena ({}) reached", MAX_ARENA_RESOURCES),
+                &format!("Maximum arena resources reached: {}", MAX_ARENA_RESOURCES)
             ));
         }
         self.resources.push(handle).map_err(|_| {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Failed to add resource to arena"),
+                "Failed to add resource to arena"
             )
         })?;
 
@@ -87,7 +87,7 @@ impl<'a> ResourceArena<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                "Resource table lock poisoned"
             )
         })?;
 
@@ -108,7 +108,7 @@ impl<'a> ResourceArena<'a> {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Maximum number of resources in arena ({}) reached", MAX_ARENA_RESOURCES),
+                &format!("Maximum arena resources reached: {}", MAX_ARENA_RESOURCES)
             ));
         }
         self.resources.push(handle).map_err(|_| {
@@ -117,7 +117,7 @@ impl<'a> ResourceArena<'a> {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Failed to add resource to arena"),
+                "Component not found",
             )
         })?;
 
@@ -130,7 +130,7 @@ impl<'a> ResourceArena<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -150,7 +150,7 @@ impl<'a> ResourceArena<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -180,7 +180,7 @@ impl<'a> ResourceArena<'a> {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Resource handle {} not found in arena", handle),
+                "Component not found",
             ));
         }
 
@@ -189,7 +189,7 @@ impl<'a> ResourceArena<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -206,7 +206,7 @@ impl<'a> ResourceArena<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire resource table lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 

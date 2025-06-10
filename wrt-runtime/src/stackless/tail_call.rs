@@ -4,16 +4,18 @@
 //! make tail calls without growing the call stack. This is essential for
 //! functional programming patterns and recursive algorithms.
 
+extern crate alloc;
+
 use crate::prelude::*;
 use crate::stackless::frame::StacklessFrame;
 use crate::stackless::engine::StacklessEngine;
 use crate::module_instance::ModuleInstance;
 use wrt_instructions::control_ops::ControlContext;
-use wrt_foundation::{Value, FuncType};
+use wrt_foundation::Value;
 use wrt_error::{Error, Result};
 
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use std::vec::Vec;
 
 /// Tail call implementation for the stackless engine
 impl StacklessEngine {

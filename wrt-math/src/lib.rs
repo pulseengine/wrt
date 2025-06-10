@@ -27,8 +27,8 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-// Import alloc for no_std with allocation
-#[cfg(feature = "alloc")]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 extern crate alloc;
 
 // Modules
@@ -52,3 +52,11 @@ pub use wrt_error::Result as WrtMathResult; // Alias specific to this crate cont
 // Re-export SIMD operations when platform feature is enabled
 #[cfg(feature = "platform")]
 pub use simd::SimdOperations;
+
+// Panic handler disabled to avoid conflicts with other crates
+// // Provide a panic handler only when wrt-math is being tested in isolation
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }

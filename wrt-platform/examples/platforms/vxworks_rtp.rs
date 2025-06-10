@@ -42,7 +42,7 @@ fn run_rtp_examples() {
 fn example_rtp_memory() {
     println!("=== RTP Memory Management ===");
     
-    // Create RTP allocator using standard malloc/POSIX APIs
+    // Binary std/no_std choice
     let mut allocator = VxWorksAllocatorBuilder::new()
         .context(VxWorksContext::Rtp)
         .max_pages(100)

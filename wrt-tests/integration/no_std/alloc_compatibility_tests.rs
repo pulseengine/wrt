@@ -2,7 +2,7 @@
 
 use wrt_test_registry::prelude::*;
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub fn run_tests() -> TestResult {
     let mut suite = TestSuite::new("Alloc Compatibility");
     
@@ -14,31 +14,31 @@ pub fn run_tests() -> TestResult {
     suite.run().into()
 }
 
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 pub fn run_tests() -> TestResult {
     TestResult::success()
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 fn test_alloc_vec() -> RegistryTestResult {
-    // Test Vec operations in no_std+alloc
+    // Binary std/no_std choice
     Ok(())
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 fn test_alloc_string() -> RegistryTestResult {
-    // Test String operations in no_std+alloc
+    // Binary std/no_std choice
     Ok(())
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 fn test_alloc_collections() -> RegistryTestResult {
-    // Test BTreeMap/BTreeSet in no_std+alloc
+    // Binary std/no_std choice
     Ok(())
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 fn test_dynamic_allocation() -> RegistryTestResult {
-    // Test dynamic memory allocation
+    // Binary std/no_std choice
     Ok(())
 }

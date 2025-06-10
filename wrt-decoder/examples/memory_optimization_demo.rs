@@ -3,7 +3,7 @@
 //! This example shows how the memory optimizations reduce allocation overhead
 //! and provide bounds checking to prevent malicious over-allocation.
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 fn main() {
     use wrt_decoder::memory_optimized::{check_bounds_u32, safe_usize_conversion, MemoryPool};
     use wrt_foundation::NoStdProvider;
@@ -61,7 +61,7 @@ fn main() {
 
     println!("✓ All vectors returned to pool for reuse");
 
-    // 4. Demonstrate conservative allocation strategy
+    // Binary std/no_std choice
     println!("\n4. Conservative Allocation Strategy:");
 
     let declared_count = 1000000u32; // 1M items claimed
@@ -86,7 +86,7 @@ fn main() {
     println!("\nDemo completed successfully! 🎉");
 }
 
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 fn main() {
     println!("This demo requires the 'alloc' feature to be enabled.");
     println!("Run with: cargo run --example memory_optimization_demo --features alloc");

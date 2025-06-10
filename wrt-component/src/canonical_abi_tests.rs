@@ -497,19 +497,19 @@ mod tests {
         assert_eq!(value, ComponentValue::S32(42));
     }
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(all(not(feature = "std")))]
     #[test]
     fn test_alloc_environment() {
         let abi = CanonicalABI::new();
         let mut memory = SimpleMemory::new(1024);
 
-        // Test basic operations work in alloc environment
+        // Binary std/no_std choice
         abi.lower_s32(&mut memory, 42, 0).unwrap();
         let value = abi.lift_s32(&memory, 0).unwrap();
         assert_eq!(value, ComponentValue::S32(42));
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     #[test]
     fn test_no_std_environment() {
         let abi = CanonicalABI::new();

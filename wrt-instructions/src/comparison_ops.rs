@@ -8,7 +8,7 @@
 //! instructions, including equality, inequality, and relational operations for
 //! various numeric types.
 
-use crate::prelude::*;
+use crate::prelude::{Debug, Error, ErrorCategory, PureInstruction, Result, Value, ValueType, codes};
 use crate::validation::{Validate, ValidationContext};
 use wrt_math as math;
 
@@ -439,7 +439,7 @@ impl Validate for ComparisonOp {
     }
 }
 
-#[cfg(all(test, any(feature = "std", feature = "alloc")))]
+#[cfg(all(test, any(feature = "std", )))]
 mod tests {
     use super::*;
     

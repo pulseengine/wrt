@@ -30,8 +30,7 @@ std = [
     "wrt-foundation/std",
     "wrt-runtime/std",
     "wrt-error/std",
-    "wrt-test-registry/std",
-]
+    "wrt-test-registry/std"]
 
 # Fuzz targets
 [[bin]]

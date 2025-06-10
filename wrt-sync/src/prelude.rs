@@ -35,9 +35,8 @@ pub use std::{
     vec::Vec,
 };
 
-// Re-export from alloc when no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
+// Binary std/no_std choice
+pub use std::{
     boxed::Box,
     collections::{BTreeMap as HashMap, BTreeSet as HashSet},
     format,
@@ -47,11 +46,11 @@ pub use alloc::{
     vec::Vec,
 };
 
-// For pure no_std (no alloc), provide minimal types or placeholders
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+// Binary std/no_std choice
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 pub type Arc<T> = core::marker::PhantomData<T>;
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 pub type Box<T> = core::marker::PhantomData<T>;
 
 // Re-export from wrt-error if enabled

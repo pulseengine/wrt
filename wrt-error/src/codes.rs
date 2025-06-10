@@ -81,6 +81,16 @@ pub const GLOBAL_NOT_FOUND: u16 = 3005;
 pub const MEMORY_NOT_FOUND: u16 = 3006;
 /// Table not found
 pub const TABLE_NOT_FOUND: u16 = 3007;
+/// Resource exhausted error
+pub const RESOURCE_EXHAUSTED: u16 = 3008;
+/// Allocation failed error
+pub const ALLOCATION_FAILED: u16 = 3009;
+/// Memory access denied through wrapper
+pub const MEMORY_ACCESS_DENIED: u16 = 3010;
+/// Table access denied through wrapper
+pub const TABLE_ACCESS_DENIED: u16 = 3011;
+/// Global access denied through wrapper
+pub const GLOBAL_ACCESS_DENIED: u16 = 3012;
 
 // Memory error codes (4000-4999)
 /// Memory out of bounds error
@@ -97,14 +107,18 @@ pub const MEMORY_ACCESS_UNALIGNED: u16 = 4003;
 pub const VALIDATION_ERROR: u16 = 5000;
 /// Validation failure
 pub const VALIDATION_FAILURE: u16 = 5001;
+/// Invalid argument error
+pub const INVALID_ARGUMENT: u16 = 5002;
+/// Invalid state error
+pub const INVALID_STATE: u16 = 5003;
 /// Checksum mismatch error
-pub const CHECKSUM_MISMATCH: u16 = 5002;
+pub const CHECKSUM_MISMATCH: u16 = 5004;
 /// Integrity violation error
-pub const INTEGRITY_VIOLATION: u16 = 5003;
+pub const INTEGRITY_VIOLATION: u16 = 5005;
 /// Verification level violation error
-pub const VERIFICATION_LEVEL_VIOLATION: u16 = 5004;
+pub const VERIFICATION_LEVEL_VIOLATION: u16 = 5006;
 /// Validation global type mismatch error
-pub const VALIDATION_GLOBAL_TYPE_MISMATCH: u16 = 5005;
+pub const VALIDATION_GLOBAL_TYPE_MISMATCH: u16 = 5007;
 /// Validation invalid memory index error
 pub const VALIDATION_INVALID_MEMORY_INDEX: u16 = 5006;
 /// Validation invalid global index error
@@ -163,10 +177,112 @@ pub const PARSE_INVALID_FUNCTION_INDEX_TYPE: u16 = 6004;
 pub const PARSE_INVALID_TABLE_INDEX_TYPE: u16 = 6005;
 /// Parse invalid memory index type error
 pub const PARSE_INVALID_MEMORY_INDEX_TYPE: u16 = 6006;
+
+// Safety error codes (7000-7999)
+/// Safety violation error
+pub const SAFETY_VIOLATION: u16 = 7000;
+/// Safety ASIL violation error
+pub const SAFETY_ASIL_VIOLATION: u16 = 7001;
+/// Memory corruption detected error
+pub const MEMORY_CORRUPTION_DETECTED: u16 = 7002;
+/// Safety verification failed error
+pub const VERIFICATION_FAILED: u16 = 7003;
+/// Safety context invalid error
+pub const SAFETY_CONTEXT_INVALID: u16 = 7004;
+/// Safety guard failure error
+pub const SAFETY_GUARD_FAILURE: u16 = 7005;
+
+// Unified types error codes (8000-8999)
+/// Unified type configuration error
+pub const UNIFIED_TYPE_CONFIG_ERROR: u16 = 8000;
+/// Platform capacity mismatch error
+pub const PLATFORM_CAPACITY_MISMATCH: u16 = 8001;
+/// Type system initialization error
+pub const TYPE_SYSTEM_INIT_ERROR: u16 = 8002;
+/// Memory provider creation error
+pub const MEMORY_PROVIDER_CREATION_ERROR: u16 = 8003;
+
+// Memory system error codes (9000-9999) 
+/// Memory allocation failed error
+pub const MEMORY_ALLOCATION_FAILED: u16 = 9000;
+/// Memory deallocation failed error  
+pub const MEMORY_DEALLOCATION_FAILED: u16 = 9001;
+/// Memory provider capacity exceeded error
+pub const MEMORY_PROVIDER_CAPACITY_EXCEEDED: u16 = 9002;
+/// Memory provider invalid error
+pub const MEMORY_PROVIDER_INVALID: u16 = 9003;
+/// Memory provider not found error
+pub const MEMORY_PROVIDER_NOT_FOUND: u16 = 9004;
+/// Memory alignment error
+pub const MEMORY_ALIGNMENT_ERROR: u16 = 9005;
+
+// Foundation types error codes (10000-10999)
+/// Bounded collection capacity exceeded error
+pub const BOUNDED_COLLECTION_CAPACITY_EXCEEDED: u16 = 10000;
+/// Bounded collection invalid capacity error
+pub const BOUNDED_COLLECTION_INVALID_CAPACITY: u16 = 10001;
+/// Bounded collection conversion error
+pub const BOUNDED_COLLECTION_CONVERSION_ERROR: u16 = 10002;
+/// Bounded collection slice error
+pub const BOUNDED_COLLECTION_SLICE_ERROR: u16 = 10003;
+/// Bounded collection UTF-8 error
+pub const BOUNDED_COLLECTION_UTF8_ERROR: u16 = 10004;
+/// Bounded collection item too large error
+pub const BOUNDED_COLLECTION_ITEM_TOO_LARGE: u16 = 10005;
+/// Bounded collection verification error
+pub const BOUNDED_COLLECTION_VERIFICATION_ERROR: u16 = 10006;
+
+// Additional error codes for existing categories
+/// Invalid value error (general)
+pub const INVALID_VALUE: u16 = 1019;
+/// Unimplemented feature error
+pub const UNIMPLEMENTED: u16 = 1020;
+/// Conversion error (general) - moved to system error codes section as `CONVERSION_ERROR`: u16 = 8002
+// WIT parsing error codes (11000-11999) - Agent C stubs
+/// WIT input too large error
+pub const WIT_INPUT_TOO_LARGE: u16 = 11000;
+/// WIT world limit exceeded error  
+pub const WIT_WORLD_LIMIT_EXCEEDED: u16 = 11001;
+/// WIT interface limit exceeded error
+pub const WIT_INTERFACE_LIMIT_EXCEEDED: u16 = 11002;
+/// WIT identifier too long error
+pub const WIT_IDENTIFIER_TOO_LONG: u16 = 11003;
+/// WIT parsing buffer overflow error
+pub const WIT_PARSING_BUFFER_OVERFLOW: u16 = 11004;
+
+// Component error codes (12000-12999) - Agent C stubs
+/// Insufficient memory for component error
+pub const INSUFFICIENT_MEMORY: u16 = 12000;
+/// Component limit exceeded error
+pub const COMPONENT_LIMIT_EXCEEDED: u16 = 12001;
+/// Resource type limit exceeded error
+pub const RESOURCE_TYPE_LIMIT_EXCEEDED: u16 = 12002;
+/// Component memory budget exceeded error
+pub const COMPONENT_MEMORY_BUDGET_EXCEEDED: u16 = 12003;
+
+// Platform error codes (13000-13999) - Agent B stubs  
+/// Platform detection failed error
+pub const PLATFORM_DETECTION_FAILED: u16 = 13000;
+/// Platform limits discovery failed error
+pub const PLATFORM_LIMITS_DISCOVERY_FAILED: u16 = 13001;
+/// Memory limit exceeded error
+pub const MEMORY_LIMIT_EXCEEDED: u16 = 13002;
+/// Stack limit exceeded error
+pub const STACK_LIMIT_EXCEEDED: u16 = 13003;
+/// Debug infrastructure error
+pub const DEBUG_INFRASTRUCTURE_ERROR: u16 = 13004;
+
+// Runtime error codes (14000-14999) - Agent D stubs
+/// CFI validation failed error  
+pub const CFI_VALIDATION_FAILED: u16 = 14000;
+/// CFI unsupported error
+pub const CFI_UNSUPPORTED: u16 = 14001;
+/// Execution engine error
+pub const EXECUTION_ENGINE_ERROR: u16 = 14002;
+/// Memory adapter error
+pub const MEMORY_ADAPTER_ERROR: u16 = 14003;
 /// Parse invalid global index type error
 pub const PARSE_INVALID_GLOBAL_INDEX_TYPE: u16 = 6007;
-/// Invalid value error
-pub const INVALID_VALUE: u16 = 6010;
 /// Value out of range for target type
 pub const VALUE_OUT_OF_RANGE: u16 = 6015;
 /// Type invalid conversion
@@ -234,6 +350,12 @@ pub const BUFFER_TOO_SMALL: u16 = 8012;
 pub const UNEXPECTED_STATE: u16 = 8013;
 
 // Unknown error code
+// Global memory system error codes (9500-9599)
+/// Duplicate operation attempted
+pub const DUPLICATE_OPERATION: u16 = 9500;
+/// System or component not initialized
+pub const UNINITIALIZED: u16 = 9501;
+
 /// Unknown error
 pub const UNKNOWN: u16 = 9999;
 
@@ -316,8 +438,16 @@ pub const RUNTIME_UNIMPLEMENTED_INSTRUCTION_ERROR: u16 = 8603;
 pub const RUNTIME_INVALID_CONVERSION_ERROR: u16 = 8604;
 /// Runtime division by zero error
 pub const RUNTIME_DIVISION_BY_ZERO_ERROR: u16 = 8605;
+/// Division by zero error alias
+pub const DIVISION_BY_ZERO: u16 = RUNTIME_DIVISION_BY_ZERO_ERROR;
+/// Invalid memory index alias
+pub const INVALID_MEMORY_INDEX: u16 = VALIDATION_INVALID_MEMORY_INDEX;
+/// Invalid data segment index alias
+pub const INVALID_DATA_SEGMENT_INDEX: u16 = VALIDATION_INVALID_DATA_SEGMENT_INDEX;
 /// Runtime integer overflow error
 pub const RUNTIME_INTEGER_OVERFLOW_ERROR: u16 = 8606;
+/// Integer overflow error alias
+pub const INTEGER_OVERFLOW: u16 = RUNTIME_INTEGER_OVERFLOW_ERROR;
 /// Runtime function not found error
 pub const RUNTIME_FUNCTION_NOT_FOUND_ERROR: u16 = 8607;
 /// Runtime import not found error
@@ -363,8 +493,15 @@ pub const MUTEX_ERROR: u16 = 7010;
 /// Function not found error
 pub const FUNCTION_NOT_FOUND: u16 = 2010;
 
-/// Invalid state error
-pub const INVALID_STATE: u16 = 7020;
+// INVALID_STATE already defined above as 5003
+
+// Additional missing error codes
+/// Invalid binary format error
+pub const INVALID_BINARY: u16 = 8200;
+
+// RESOURCE_EXHAUSTED already defined above as 3008
+
+// INVALID_ARGUMENT already defined above as 5002
 
 /// Codes representing WebAssembly runtime trap conditions.
 /// These are used when an operation cannot complete normally due to a runtime

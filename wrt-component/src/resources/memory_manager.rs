@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use wrt_error::{Error, Result};
 
@@ -11,13 +11,13 @@ pub struct MemoryManager {
     /// Default memory strategy for new resources
     default_strategy: MemoryStrategy,
     /// Resource-specific strategies
-    resource_strategies: HashMap<ResourceId, MemoryStrategy>,
+    resource_strategies: BTreeMap<ResourceId, MemoryStrategy>,
 }
 
 impl MemoryManager {
     /// Create a new memory manager with the specified default strategy
     pub fn new(default_strategy: MemoryStrategy) -> Self {
-        Self { default_strategy, resource_strategies: HashMap::new() }
+        Self { default_strategy, resource_strategies: BTreeMap::new() }
     }
 
     /// Register a resource with a specific memory strategy
@@ -28,7 +28,11 @@ impl MemoryManager {
     ) -> Result<()> {
         // Verify the resource exists
         if !resource_manager.has_resource(id) {
-            return Err(Error::new(format!("Cannot register non-existent resource: {:?}", id)));
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Resource,
+                wrt_error::codes::RESOURCE_NOT_FOUND,
+                "Component not found"
+            ));
         }
 
         // Register with the default strategy
@@ -46,7 +50,11 @@ impl MemoryManager {
     ) -> Result<()> {
         // Verify the resource exists
         if !resource_manager.has_resource(id) {
-            return Err(Error::new(format!("Cannot register non-existent resource: {:?}", id)));
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Resource,
+                wrt_error::codes::RESOURCE_NOT_FOUND,
+                "Component not found"
+            ));
         }
 
         // Register with the specified strategy

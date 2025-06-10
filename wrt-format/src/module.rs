@@ -4,7 +4,10 @@
 //! modules.
 
 // Import collection types
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[cfg(not(feature = "std"))]
 use alloc::{
     string::String,
     vec,
@@ -17,7 +20,7 @@ use wrt_error::{codes, Error, ErrorCategory, Result};
 
 use wrt_foundation::{RefType, ValueType};
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 use wrt_foundation::traits::BoundedCapacity;
 
 use crate::{
@@ -27,7 +30,7 @@ use crate::{
 };
 
 /// WebAssembly function definition - Pure No_std Version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Function<
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
@@ -40,7 +43,7 @@ pub struct Function<
     pub code: crate::WasmVec<u8, P>,
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Function<P> {
     fn new() -> wrt_foundation::Result<Self> {
         Ok(Function { 
@@ -51,7 +54,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Function<P> {
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for Function<P> {
     fn default() -> Self {
         Function { 
@@ -63,7 +66,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for Funct
 }
 
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::Checksummable
     for Function<P>
 {
@@ -74,7 +77,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::ToBytes
     for Function<P>
 {
@@ -93,7 +96,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::FromBytes
     for Function<P>
 {
@@ -115,7 +118,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
 }
 
 /// WebAssembly function definition - With Allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone, Default)]
 pub struct Function {
     /// Type index referring to function signature
@@ -154,7 +157,7 @@ pub struct Table {
 }
 
 /// WebAssembly global definition - Pure No_std Version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Global<
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
@@ -165,7 +168,7 @@ pub struct Global<
     pub init: crate::WasmVec<u8, P>,
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Global<P> {
     fn new() -> wrt_foundation::Result<Self> {
         Ok(Global { 
@@ -175,7 +178,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Global<P> {
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for Global<P> {
     fn default() -> Self {
         Global { 
@@ -185,7 +188,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for Globa
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::Checksummable
     for Global<P>
 {
@@ -195,7 +198,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::ToBytes
     for Global<P>
 {
@@ -213,7 +216,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::FromBytes
     for Global<P>
 {
@@ -232,7 +235,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
 }
 
 /// WebAssembly global definition - With Allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone, Default)]
 pub struct Global {
     /// Global type
@@ -251,7 +254,7 @@ pub enum DataMode {
 }
 
 /// WebAssembly data segment - Pure No_std Version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Data<
     P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq = wrt_foundation::NoStdProvider<1024>,
@@ -266,7 +269,7 @@ pub struct Data<
     pub init: crate::WasmVec<u8, P>,
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Default for Data<P> {
     fn default() -> Self {
         Self {
@@ -278,7 +281,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
     }
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 impl Default for Data {
     fn default() -> Self {
         Self {
@@ -291,7 +294,7 @@ impl Default for Data {
 }
 
 // Implement Checksummable for Data - no_std version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::Checksummable for Data<P> {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.mode.update_checksum(checksum);
@@ -301,8 +304,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
     }
 }
 
-// Implement Checksummable for Data - std/alloc version
-#[cfg(any(feature = "alloc", feature = "std"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 impl wrt_foundation::traits::Checksummable for Data {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.mode.update_checksum(checksum);
@@ -313,7 +316,7 @@ impl wrt_foundation::traits::Checksummable for Data {
 }
 
 // Implement ToBytes for Data - no_std version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::ToBytes for Data<P> {
     fn serialized_size(&self) -> usize {
         1 + // mode discriminant
@@ -335,8 +338,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
     }
 }
 
-// Implement ToBytes for Data - std/alloc version
-#[cfg(any(feature = "alloc", feature = "std"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 impl wrt_foundation::traits::ToBytes for Data {
     fn serialized_size(&self) -> usize {
         1 + // mode discriminant
@@ -362,7 +365,7 @@ impl wrt_foundation::traits::ToBytes for Data {
 }
 
 // Implement FromBytes for Data - no_std version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::FromBytes for Data<P> {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
@@ -395,8 +398,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
     }
 }
 
-// Implement FromBytes for Data - std/alloc version
-#[cfg(any(feature = "alloc", feature = "std"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 impl wrt_foundation::traits::FromBytes for Data {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
@@ -482,7 +485,7 @@ impl wrt_foundation::traits::FromBytes for DataMode {
 }
 
 /// WebAssembly data segment - With Allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub struct Data {
     /// Data mode (active or passive)
@@ -497,7 +500,7 @@ pub struct Data {
 
 /// Represents the initialization items for an element segment - Pure No_std
 /// Version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ElementInit<
     P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq = wrt_foundation::NoStdProvider<1024>,
@@ -511,14 +514,14 @@ pub enum ElementInit<
     Expressions(crate::WasmVec<crate::WasmVec<u8, P>, P>),
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> ElementInit<P> {
     fn new() -> wrt_foundation::Result<Self> {
         Ok(Self::FuncIndices(crate::WasmVec::new(P::default())?))
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Default for ElementInit<P> {
     fn default() -> Self {
         Self::FuncIndices(Default::default())
@@ -527,7 +530,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
 
 
 // Implement Checksummable for ElementInit - no_std version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::Checksummable for ElementInit<P> {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         match self {
@@ -543,8 +546,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
     }
 }
 
-// Implement Checksummable for ElementInit - std/alloc version
-#[cfg(any(feature = "alloc", feature = "std"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 impl wrt_foundation::traits::Checksummable for ElementInit {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         match self {
@@ -565,7 +568,7 @@ impl wrt_foundation::traits::Checksummable for ElementInit {
 }
 
 // Implement ToBytes for ElementInit - no_std version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::ToBytes for ElementInit<P> {
     fn serialized_size(&self) -> usize {
         1 + match self { // 1 byte for discriminant
@@ -593,8 +596,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
     }
 }
 
-// Implement ToBytes for ElementInit - std/alloc version
-#[cfg(any(feature = "alloc", feature = "std"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 impl wrt_foundation::traits::ToBytes for ElementInit {
     fn serialized_size(&self) -> usize {
         1 + match self { // 1 byte for discriminant
@@ -630,7 +633,7 @@ impl wrt_foundation::traits::ToBytes for ElementInit {
 }
 
 // Implement FromBytes for ElementInit - no_std version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::FromBytes for ElementInit<P> {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
@@ -655,8 +658,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
     }
 }
 
-// Implement FromBytes for ElementInit - std/alloc version
-#[cfg(any(feature = "alloc", feature = "std"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 impl wrt_foundation::traits::FromBytes for ElementInit {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
@@ -701,7 +704,7 @@ impl wrt_foundation::traits::FromBytes for ElementInit {
 }
 
 /// Represents the initialization items for an element segment - With Allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub enum ElementInit {
     /// A vector of function indices (for funcref element type when expressions
@@ -713,7 +716,7 @@ pub enum ElementInit {
     Expressions(Vec<Vec<u8>>),
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 impl Default for ElementInit {
     fn default() -> Self {
         Self::FuncIndices(Vec::new())
@@ -722,7 +725,7 @@ impl Default for ElementInit {
 
 /// Mode for an element segment, determining how it's initialized - Pure No_std
 /// Version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ElementMode<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq = wrt_foundation::NoStdProvider<1024>> {
     /// Active segment: associated with a table and an offset.
@@ -740,14 +743,14 @@ pub enum ElementMode<P: wrt_foundation::MemoryProvider + Clone + Default + Parti
     Declared,
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Default for ElementMode<P> {
     fn default() -> Self {
         Self::Passive
     }
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 impl Default for ElementMode {
     fn default() -> Self {
         Self::Passive
@@ -755,7 +758,7 @@ impl Default for ElementMode {
 }
 
 // Implement Checksummable for ElementMode - no_std version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::Checksummable for ElementMode<P> {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         match self {
@@ -774,8 +777,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
     }
 }
 
-// Implement Checksummable for ElementMode - std/alloc version
-#[cfg(any(feature = "alloc", feature = "std"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 impl wrt_foundation::traits::Checksummable for ElementMode {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         match self {
@@ -795,7 +798,7 @@ impl wrt_foundation::traits::Checksummable for ElementMode {
 }
 
 // Implement ToBytes for ElementMode - no_std version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::ToBytes for ElementMode<P> {
     fn serialized_size(&self) -> usize {
         1 + match self { // 1 byte for discriminant
@@ -828,7 +831,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
 }
 
 // Implement FromBytes for ElementMode - no_std version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl wrt_foundation::traits::FromBytes for ElementMode {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
@@ -856,7 +859,7 @@ impl wrt_foundation::traits::FromBytes for ElementMode {
 
 /// Mode for an element segment, determining how it's initialized - With
 /// Allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub enum ElementMode {
     /// Active segment: associated with a table and an offset.
@@ -875,7 +878,7 @@ pub enum ElementMode {
 }
 
 /// WebAssembly element segment (Wasm 2.0 compatible) - Pure No_std Version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Element<
     P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq = wrt_foundation::NoStdProvider<1024>,
@@ -888,7 +891,7 @@ pub struct Element<
     pub mode: ElementMode<P>,
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Default for Element<P> {
     fn default() -> Self {
         Self {
@@ -900,7 +903,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
 }
 
 // Implement ToBytes for Element - no_std version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::ToBytes for Element<P> {
     fn serialized_size(&self) -> usize {
         1 + self.element_type.serialized_size() + self.init.serialized_size() + self.mode.serialized_size()
@@ -919,7 +922,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
 }
 
 // Implement FromBytes for Element - no_std version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::FromBytes for Element<P> {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
@@ -947,7 +950,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
 }
 
 // Implement Checksummable for Element - no_std version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::Checksummable for Element<P> {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.element_type.update_checksum(checksum);
@@ -959,7 +962,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
 
 
 /// WebAssembly element segment (Wasm 2.0 compatible) - With Allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub struct Element {
     /// The type of elements in this segment (funcref or externref).
@@ -970,7 +973,7 @@ pub struct Element {
     pub mode: ElementMode,
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 impl Default for Element {
     fn default() -> Self {
         Self {
@@ -982,7 +985,7 @@ impl Default for Element {
 }
 
 /// WebAssembly export - Pure No_std Version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Export<
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
@@ -995,14 +998,14 @@ pub struct Export<
     pub index: u32,
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for Export<P> {
     fn default() -> Self {
         Export { name: crate::WasmString::default(), kind: ExportKind::Function, index: 0 }
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::Checksummable
     for Export<P>
 {
@@ -1013,7 +1016,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::ToBytes
     for Export<P>
 {
@@ -1032,7 +1035,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::FromBytes
     for Export<P>
 {
@@ -1063,7 +1066,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
 }
 
 /// WebAssembly export - With Allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub struct Export {
     /// Export name (visible external name)
@@ -1090,7 +1093,7 @@ pub enum ExportKind {
 }
 
 /// WebAssembly import - Pure No_std Version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Import<
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
@@ -1104,7 +1107,7 @@ pub struct Import<
 }
 
 /// WebAssembly import - With Allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub struct Import {
     /// Module name (where to import from)
@@ -1116,7 +1119,7 @@ pub struct Import {
 }
 
 /// WebAssembly import description - Pure No_std Version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImportDesc<P: wrt_foundation::MemoryProvider = wrt_foundation::NoStdProvider<1024>> {
     /// Function import (type index)
@@ -1131,14 +1134,14 @@ pub enum ImportDesc<P: wrt_foundation::MemoryProvider = wrt_foundation::NoStdPro
     Tag(u32, core::marker::PhantomData<P>),
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for ImportDesc<P> {
     fn default() -> Self {
         ImportDesc::Function(0, core::marker::PhantomData)
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for Import<P> {
     fn default() -> Self {
         Import {
@@ -1149,7 +1152,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for Impor
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::Checksummable
     for ImportDesc<P>
 {
@@ -1174,7 +1177,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::Checksummable
     for Import<P>
 {
@@ -1185,7 +1188,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::ToBytes
     for ImportDesc<P>
 {
@@ -1220,7 +1223,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::ToBytes
     for Import<P>
 {
@@ -1239,7 +1242,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::FromBytes
     for ImportDesc<P>
 {
@@ -1289,7 +1292,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::FromBytes
     for Import<P>
 {
@@ -1309,7 +1312,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
 }
 
 /// WebAssembly import description - With Allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub enum ImportDesc {
     /// Function import (type index)
@@ -1326,7 +1329,7 @@ pub enum ImportDesc {
 
 /// Hypothetical Finding F5: Represents an entry in the TypeInformation section
 /// - Pure No_std Version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeInformationEntry<
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
@@ -1335,14 +1338,14 @@ pub struct TypeInformationEntry<
     pub name: crate::WasmString<P>,
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for TypeInformationEntry<P> {
     fn default() -> Self {
         TypeInformationEntry { type_index: 0, name: crate::WasmString::default() }
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::Checksummable
     for TypeInformationEntry<P>
 {
@@ -1352,7 +1355,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::ToBytes
     for TypeInformationEntry<P>
 {
@@ -1370,7 +1373,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::FromBytes
     for TypeInformationEntry<P>
 {
@@ -1392,7 +1395,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
 
 /// Hypothetical Finding F5: Represents an entry in the TypeInformation section
 /// - With Allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeInformationEntry {
     pub type_index: u32, // Assuming TypeIdx is u32
@@ -1401,7 +1404,7 @@ pub struct TypeInformationEntry {
 
 /// Hypothetical Finding F5: Represents the custom TypeInformation section -
 /// Pure No_std Version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeInformationSection<
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
@@ -1411,14 +1414,14 @@ pub struct TypeInformationSection<
 
 /// Hypothetical Finding F5: Represents the custom TypeInformation section -
 /// With Allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TypeInformationSection {
     pub entries: Vec<TypeInformationEntry>,
 }
 
 /// WebAssembly module - Pure No_std Version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone)]
 pub struct Module<
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
@@ -1453,14 +1456,14 @@ pub struct Module<
     pub type_info_section: Option<TypeInformationSection<P>>,
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for Module<P> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Module<P> {
     /// Create a new empty module for no_std environments
     pub fn new() -> Self {
@@ -1494,7 +1497,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Module<P> {
 }
 
 /// WebAssembly module - With Allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub struct Module {
     /// Function type signatures
@@ -1527,14 +1530,14 @@ pub struct Module {
     pub type_info_section: Option<TypeInformationSection>,
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 impl Default for Module {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 impl Module {
     /// Create a new empty module
     pub fn new() -> Self {
@@ -1569,7 +1572,7 @@ impl Module {
     }
 
     /// Convert a Module to a WebAssembly binary.
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         Err(Error::new(
             ErrorCategory::Validation,
@@ -1653,7 +1656,7 @@ impl Validatable for Module {
 // Serialization helpers for Table
 impl Table {
     /// Serialize to bytes
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn to_bytes(&self) -> wrt_foundation::Result<Vec<u8>> {
         let mut bytes = Vec::new();
         bytes.push(self.element_type.to_binary());
@@ -1722,7 +1725,7 @@ impl wrt_foundation::traits::FromBytes for Table {
 // Serialization helpers for Memory
 impl Memory {
     /// Serialize to bytes
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn to_bytes(&self) -> wrt_foundation::Result<Vec<u8>> {
         let mut bytes = Vec::new();
         bytes.extend(self.limits.to_bytes()?);

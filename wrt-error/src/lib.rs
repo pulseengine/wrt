@@ -49,7 +49,7 @@
 //! functions:
 //!
 //! ```
-//! // No alloc or std feature needed for this example as Error and kinds use &'static str
+//! // Binary std/no_std choice
 //! use wrt_error::{Error, kinds};
 //!
 //! // Using helper functions for common errors
@@ -103,7 +103,7 @@ pub use errors::{Error, ErrorCategory, ErrorSource};
 ///
 /// This type alias uses `wrt_error::Error` as the error type.
 /// It is suitable for `no_std` environments as `wrt_error::Error`
-/// does not rely on dynamic allocations.
+/// Binary `std/no_std` choice
 pub type Result<T> = core::result::Result<T, Error>;
 
 // Re-export error kinds for convenience
@@ -137,3 +137,11 @@ pub use helpers::*;
 
 /// A placeholder function.
 pub const fn placeholder() {}
+
+// Panic handler disabled to avoid conflicts with other crates
+// The main wrt crate should provide the panic handler
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }

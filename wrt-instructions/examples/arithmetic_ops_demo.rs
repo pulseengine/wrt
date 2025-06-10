@@ -14,16 +14,15 @@ use wrt_error::Result;
 
 #[cfg(feature = "std")]
 use std::vec::Vec;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::vec::Vec;
+use std::vec::Vec;
 
 // Mock execution context for demonstration
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 struct DemoContext {
     stack: Vec<Value>,
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl DemoContext {
     fn new() -> Self {
         Self {
@@ -36,7 +35,7 @@ impl DemoContext {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl ArithmeticContext for DemoContext {
     fn pop_arithmetic_value(&mut self) -> Result<Value> {
         self.stack.pop()
@@ -49,7 +48,7 @@ impl ArithmeticContext for DemoContext {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 fn main() -> Result<()> {
     println!("=== WebAssembly Arithmetic Operations Demo ===\n");
     
@@ -137,7 +136,7 @@ fn main() -> Result<()> {
     
     // Count trailing zeros
     context.push_arithmetic_value(Value::I32(0b00001000_00000000_00000000_00000000))?;  
-    println!("   Input: 134217728 (bit 27 set)");
+    println!("   Input: 134_217_728 (bit 27 set)");
     ArithmeticOp::I32Ctz.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!("   Count trailing zeros: {}", result);
@@ -307,8 +306,8 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 fn main() {
-    // Example requires allocation for Vec
+    // Binary std/no_std choice
     panic!("This example requires std or alloc features");
 }

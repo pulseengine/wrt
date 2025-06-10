@@ -200,26 +200,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
-name = "bincode"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36eaf5d7b090263e8150820482d5d93cd964a81e4019913c972f4edcc6edb740"
-dependencies = [
- "bincode_derive",
- "serde",
- "unty",
-]
-
-[[package]]
-name = "bincode_derive"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf95709a440f45e986983918d0e8a1f30a9b1df04918fc828670606804ac3c09"
-dependencies = [
- "virtue",
-]
-
-[[package]]
 name = "bit-set"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -292,12 +272,6 @@ name = "bumpalo"
 version = "3.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1628fb46dfa0b37568d12e5edd512553eccf6a22a78e8bde00bb4aed84d5bdbf"
-
-[[package]]
-name = "byteorder"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "bytes"
@@ -627,9 +601,9 @@ checksum = "4f211af61d8efdd104f96e57adf5e426ba1bc3ed7a4ead616e15e5881fd79c4d"
 
 [[package]]
 name = "dagger-sdk"
-version = "0.18.8"
+version = "0.18.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78f1abe1c90d5e0828a0dd42bb704ed3622d47d510a8e29a933ffda3296090c2"
+checksum = "950663d6af7bdda3083206018503ff6a711626fbd0ae4441cb45585c9ebe2a14"
 dependencies = [
  "async-trait",
  "base64 0.21.7",
@@ -1213,15 +1187,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hash32"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47d60b12902ba28e2730cd37e95b8c9223af2808df9e902d4df49588d1470606"
-dependencies = [
- "byteorder",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1236,16 +1201,6 @@ dependencies = [
  "allocator-api2",
  "equivalent",
  "foldhash",
-]
-
-[[package]]
-name = "heapless"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0bfb9eb618601c89945a70e254898da93b13be0388091d42117462b265bb3fad"
-dependencies = [
- "hash32",
- "stable_deref_trait",
 ]
 
 [[package]]
@@ -1732,6 +1687,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "linked_list_allocator"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9afa463f5405ee81cdb9cc2baf37e08ec7e4c8209442b5d72c04cfb2cd6e6286"
+dependencies = [
+ "spinning_top",
+]
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1745,9 +1709,9 @@ checksum = "241eaef5fd12c88705a01fc1066c48c4b36e0dd4377dcdc7ec3942cea7a69956"
 
 [[package]]
 name = "lock_api"
-version = "0.4.12"
+version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07af8b9cdd281b7915f413fa73f29ebd5d55d0d3f0155584dade1ff18cea1b17"
+checksum = "96936507f153605bddfcda068dd804796c84324ed2510809e5b2a624c81da765"
 dependencies = [
  "autocfg",
  "scopeguard",
@@ -1808,12 +1772,6 @@ dependencies = [
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.52.0",
 ]
-
-[[package]]
-name = "nb"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d5439c4ad607c3c23abf66de8c8bf57ba8adcd1f129e699851a6e43935d339d"
 
 [[package]]
 name = "nu-ansi-term"
@@ -1902,9 +1860,9 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
 name = "parking_lot"
-version = "0.12.3"
+version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1bf18183cf54e8d6059647fc3063646a1801cf30896933ec2311622cc4b9a27"
+checksum = "70d58bf43669b5795d1576d0641cfb6fbb2057bf629506267a92807158584a13"
 dependencies = [
  "lock_api",
  "parking_lot_core",
@@ -1912,9 +1870,9 @@ dependencies = [
 
 [[package]]
 name = "parking_lot_core"
-version = "0.9.10"
+version = "0.9.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e401f977ab385c9e4e3ab30627d6f26d00e2c73eef317493c4ec6d468726cf8"
+checksum = "bc838d2a56b5b1a6c25f55575dfc605fabb63bb2365f6c2353ef9159aa69e4a5"
 dependencies = [
  "cfg-if",
  "libc",
@@ -2403,12 +2361,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "719b953e2095829ee67db738b3bfa9fa368c94900df327b3f07fe6e794d2fe1f"
 
 [[package]]
-name = "rustc-std-workspace-alloc"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9d441c3b2ebf55cebf796bfdc265d67fa09db17b7bb6bd4be75c509e1e8fec3"
-
-[[package]]
 name = "rustix"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2691,6 +2643,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58b69356da67e2fc1f542c71ea7e654a361a79c938e4424392ecf4fa065d2193"
 dependencies = [
  "smallvec",
+]
+
+[[package]]
+name = "spinning_top"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b9eb1a2f4c41445a3a0ff9abc5221c5fcd28e1f13cd7c0397706f9ac938ddb0"
+dependencies = [
+ "lock_api",
 ]
 
 [[package]]
@@ -3092,16 +3053,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tracing-serde"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "704b1aeb7be0d0a84fc9828cae51dab5970fee5088f83d1dd7ee6f6246fc6ff1"
-dependencies = [
- "serde",
- "tracing-core",
-]
-
-[[package]]
 name = "tracing-subscriber"
 version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3111,15 +3062,12 @@ dependencies = [
  "nu-ansi-term",
  "once_cell",
  "regex",
- "serde",
- "serde_json",
  "sharded-slab",
  "smallvec",
  "thread_local",
  "tracing",
  "tracing-core",
  "tracing-log",
- "tracing-serde",
 ]
 
 [[package]]
@@ -3249,12 +3197,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
-name = "unty"
-version = "0.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d49784317cd0d1ee7ec5c716dd598ec5b4483ea832a2dced265471cc0f690ae"
-
-[[package]]
 name = "url"
 version = "2.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3294,12 +3236,6 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
-
-[[package]]
-name = "virtue"
-version = "0.0.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "051eb1abcf10076295e815102942cc58f9d5e3b4560e46e53c21e8ff6f3af7b1"
 
 [[package]]
 name = "wait-timeout"
@@ -3457,6 +3393,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm-encoder"
+version = "0.232.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a447e61e38d1226b57e4628edadff36d16760be24a343712ba236b5106c95156"
+dependencies = [
+ "leb128fmt",
+ "wasmparser 0.232.0",
+]
+
+[[package]]
 name = "wasm-metadata"
 version = "0.227.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3591,7 +3537,7 @@ dependencies = [
  "wasm-smith",
  "wasmparser 0.231.0",
  "wasmprinter",
- "wast",
+ "wast 231.0.0",
  "wat",
  "wit-component 0.231.0",
  "wit-encoder",
@@ -3624,6 +3570,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasmparser"
+version = "0.232.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "917739b33bb1eb0e9a49bcd2637a351931be4578d0cc4d37b908d7a797784fbb"
+dependencies = [
+ "bitflags 2.9.1",
+ "indexmap 2.9.0",
+ "semver",
+]
+
+[[package]]
 name = "wasmprinter"
 version = "0.231.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3649,12 +3606,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "wast"
+version = "232.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b5a22bfb0c309f5cf4b0cfa4fae77801e52570e88bff1344c1b7673a9977954"
+dependencies = [
+ "bumpalo",
+ "leb128fmt",
+ "memchr",
+ "unicode-width",
+ "wasm-encoder 0.232.0",
+]
+
+[[package]]
 name = "wat"
 version = "1.231.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97eec2bd34dcd2a2cea1c501fed0c25171cfd02900716d8357639797fa629c2e"
 dependencies = [
- "wast",
+ "wast 231.0.0",
 ]
 
 [[package]]
@@ -4037,7 +4007,7 @@ dependencies = [
  "wasm-encoder 0.231.0",
  "wasm-metadata 0.231.0",
  "wasmparser 0.231.0",
- "wast",
+ "wast 231.0.0",
  "wat",
  "wit-parser 0.231.0",
 ]
@@ -4118,20 +4088,15 @@ name = "wrt"
 version = "0.2.0"
 dependencies = [
  "anyhow",
- "bincode",
  "criterion",
  "hex",
  "lazy_static",
- "log",
  "rayon",
- "rustc-std-workspace-alloc",
- "serde",
- "serde_json",
  "tempfile",
  "tracing",
  "tracing-subscriber",
  "walkdir",
- "wast",
+ "wast 232.0.0",
  "wrt-component",
  "wrt-decoder",
  "wrt-error",
@@ -4239,7 +4204,6 @@ version = "0.2.0"
 dependencies = [
  "log",
  "proptest",
- "rustc-std-workspace-alloc",
  "wrt-error",
  "wrt-foundation",
  "wrt-math",
@@ -4296,6 +4260,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "wrt-panic"
+version = "0.2.0"
+dependencies = [
+ "wrt-foundation",
+]
+
+[[package]]
 name = "wrt-platform"
 version = "0.2.0"
 dependencies = [
@@ -4310,7 +4281,6 @@ version = "0.2.0"
 dependencies = [
  "proptest",
  "wrt-debug",
- "wrt-decoder",
  "wrt-error",
  "wrt-format",
  "wrt-foundation",
@@ -4327,7 +4297,6 @@ version = "0.2.0"
 dependencies = [
  "kani-verifier",
  "parking_lot",
- "rustc-std-workspace-alloc",
  "wrt-error",
 ]
 
@@ -4360,8 +4329,10 @@ name = "wrt-verification-tool"
 version = "0.2.0"
 dependencies = [
  "log",
- "rustc-std-workspace-alloc",
+ "serde",
+ "toml",
  "wrt-decoder",
+ "wrt-foundation",
  "wrt-test-registry",
 ]
 
@@ -4369,16 +4340,12 @@ dependencies = [
 name = "wrtd"
 version = "0.2.0"
 dependencies = [
- "anyhow",
- "clap",
- "heapless",
- "nb",
- "once_cell",
- "tracing",
- "tracing-subscriber",
+ "linked_list_allocator",
  "wrt",
- "wrt-component",
- "wrt-intercept",
+ "wrt-error",
+ "wrt-logging",
+ "wrt-panic",
+ "wrt-runtime",
 ]
 
 [[package]]
@@ -4421,6 +4388,7 @@ dependencies = [
  "pathdiff",
  "regex",
  "rustc-demangle",
+ "scopeguard",
  "semver",
  "serde",
  "serde_json",
@@ -4437,6 +4405,7 @@ dependencies = [
  "wasm-tools",
  "wat",
  "wrt",
+ "wrt-verification-tool",
  "xshell",
 ]
 

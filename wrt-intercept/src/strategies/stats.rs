@@ -11,7 +11,10 @@ use std::time::Instant;
 use std::time::Duration;
 
 #[cfg(feature = "std")]
-use crate::prelude::*;
+use crate::prelude::{Debug, str, Value, HashMap};
+#[cfg(feature = "std")]
+use wrt_error::{Error, ErrorCategory, Result, codes};
+use crate::LinkInterceptorStrategy;
 
 /// Statistics collected for a function
 #[cfg(feature = "std")]

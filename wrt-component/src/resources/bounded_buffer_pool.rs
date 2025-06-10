@@ -30,17 +30,17 @@ pub struct BufferSizeClass {
     /// Size of buffers in this class
     pub size: usize,
     /// Actual buffers
-    pub buffers: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>,
+    pub buffers: BoundedVec<u8, MAX_BUFFERS_PER_CLASS, NoStdProvider<65536>>,
 }
 
 impl BufferSizeClass {
     /// Create a new buffer size class
     pub fn new(size: usize) -> Self {
-        Self { size, buffers: BoundedVec::new() }
+        Self { size, buffers: BoundedVec::new(DefaultMemoryProvider::default()).unwrap() }
     }
 
     /// Get a buffer from this size class if one is available
-    pub fn get_buffer(&mut self) -> Option<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>> {
+    pub fn get_buffer(&mut self) -> Option<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>, NoStdProvider<65536>> {
         if self.buffers.is_empty() {
             None
         } else {
@@ -52,7 +52,7 @@ impl BufferSizeClass {
     }
 
     /// Return a buffer to this size class
-    pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<()> {
+    pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<(), NoStdProvider<65536>> {
         if self.buffers.len() >= MAX_BUFFERS_PER_CLASS {
             // Size class is full
             return Ok(());
@@ -62,7 +62,7 @@ impl BufferSizeClass {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                format!("Failed to add buffer to size class"),
+                "Component not found",
             )
         })
     }
@@ -81,7 +81,7 @@ impl BufferSizeClass {
 /// Bounded buffer pool for no_std environment
 ///
 /// Uses a fixed array of size classes with bounded capacity
-/// for each class. This implementation avoids dynamic allocation
+/// Binary std/no_std choice
 /// and is suitable for no_std environments.
 #[derive(Clone)]
 pub struct BoundedBufferPool {
@@ -98,7 +98,7 @@ impl BoundedBufferPool {
     }
 
     /// Allocate a buffer of at least the specified size
-    pub fn allocate(&mut self, size: usize) -> Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>> {
+    pub fn allocate(&mut self, size: usize) -> Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>, NoStdProvider<65536>> {
         // Find a size class that can fit this buffer
         let matching_class = self.find_size_class(size);
 
@@ -112,13 +112,13 @@ impl BoundedBufferPool {
         }
 
         // No suitable buffer found, create a new one
-        let mut buffer = BoundedVec::new();
+        let mut buffer = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
         for _ in 0..size {
             buffer.push(0).map_err(|_| {
                 Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    format!("Failed to allocate buffer of size {}", size),
+                    "Component not found",
                 )
             })?;
         }
@@ -127,7 +127,7 @@ impl BoundedBufferPool {
     }
 
     /// Return a buffer to the pool
-    pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<()> {
+    pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<(), NoStdProvider<65536>> {
         let size = buffer.capacity();
 
         // Find the appropriate size class

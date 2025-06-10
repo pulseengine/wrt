@@ -5,7 +5,7 @@
 //! implementation of memory.atomic.wait and memory.atomic.notify.
 
 use core::time::Duration;
-use alloc::{boxed::Box, collections::BTreeMap, sync::Arc, vec::Vec};
+use std::{boxed::Box, collections::BTreeMap, sync::Arc, vec::Vec};
 
 use wrt_sync::{WrtMutex, WrtRwLock};
 use wrt_error::{Result, Error, ErrorCategory, codes};

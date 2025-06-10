@@ -4,7 +4,7 @@
 
 //! Prelude module for wrt-instructions
 //!
-//! This module provides a unified set of imports for both std and no_std
+//! This module provides a unified set of imports for both std and `no_std`
 //! environments. It re-exports commonly used types and traits to ensure
 //! consistency across all crates in the WRT project and simplify imports in
 //! individual modules.
@@ -34,35 +34,27 @@ pub use std::{
     vec::Vec,
 };
 
-// Re-export from alloc when no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
-    boxed::Box,
-    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
-    format,
-    string::{String, ToString},
-    sync::Arc,
-    vec,
-    vec::Vec,
-};
+// BoundedVec available for both std and no_std modes
+pub use wrt_foundation::bounded::{BoundedVec, BoundedString};
 
-// For no_std without alloc, use bounded collections
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-pub use wrt_foundation::bounded::{BoundedVec as Vec};
+// Type alias for Vec in no_std mode to match wrt-runtime behavior
+#[cfg(not(feature = "std"))]
+pub type Vec<T> = wrt_foundation::bounded::BoundedVec<T, 256, wrt_foundation::NoStdProvider<1024>>;
 
-// Define format! macro for no_std without alloc
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+
+// Binary std/no_std choice
+#[cfg(not(feature = "std"))]
 #[macro_export]
 macro_rules! format {
     ($($arg:tt)*) => {{
-        // In no_std without alloc, we can't allocate strings
+        // Binary std/no_std choice
         // Return a static string or use write! to a fixed buffer
         "formatted string not available in no_std without alloc"
     }};
 }
 
-// Define vec! macro for no_std without alloc
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+// Binary std/no_std choice
+#[cfg(not(feature = "std"))]
 #[macro_export]
 macro_rules! vec {
     () => {
@@ -88,7 +80,7 @@ macro_rules! vec {
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 // Re-export from wrt-foundation
 pub use wrt_foundation::{
-    bounded::{BoundedStack, BoundedVec},
+    bounded::{BoundedStack},
     // SafeMemory types
     safe_memory::{NoStdMemoryProvider, SafeMemoryHandler, SafeSlice, SafeStack},
     // Common types

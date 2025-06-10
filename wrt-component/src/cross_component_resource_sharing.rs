@@ -17,6 +17,18 @@ use wrt_foundation::{
     safe_memory::SafeMemory,
 };
 
+// Enable vec! and format! macros for no_std
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{vec, format};
+
+#[cfg(feature = "std")]
+use std::{string::String, vec::Vec};
+
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedString as String, BoundedVec as Vec, safe_memory::NoStdProvider};
+
 const MAX_SHARING_AGREEMENTS: usize = 512;
 const MAX_SHARED_RESOURCES: usize = 1024;
 const MAX_SHARING_POLICIES: usize = 256;
@@ -62,7 +74,7 @@ pub struct SharingAgreement {
     pub id: u32,
     pub source_component: ComponentInstanceId,
     pub target_component: ComponentInstanceId,
-    pub resource_types: BoundedVec<TypeId, 32>,
+    pub resource_types: BoundedVec<TypeId, 32, NoStdProvider<65536>>,
     pub access_rights: AccessRights,
     pub transfer_policy: TransferPolicy,
     pub lifetime: SharingLifetime,
@@ -91,9 +103,9 @@ pub enum SharingLifetime {
 #[derive(Debug, Clone)]
 pub struct SharingMetadata {
     pub description: String,
-    pub tags: BoundedVec<String, 16>,
-    pub restrictions: BoundedVec<SharingRestriction, 16>,
-    pub audit_log: BoundedVec<AuditEntry, 32>,
+    pub tags: BoundedVec<String, 16, NoStdProvider<65536>>,
+    pub restrictions: BoundedVec<SharingRestriction, 16, NoStdProvider<65536>>,
+    pub audit_log: BoundedVec<AuditEntry, 32, NoStdProvider<65536>>,
 }
 
 #[derive(Debug, Clone)]
@@ -103,7 +115,7 @@ pub enum SharingRestriction {
     MustReturnBy { deadline: u64 },
     MaxConcurrentAccess { limit: u32 },
     RequiredCapability { capability: Capability },
-    GeographicRestriction { allowed_regions: BoundedVec<String, 8> },
+    GeographicRestriction { allowed_regions: BoundedVec<String, 8, NoStdProvider<65536>> },
 }
 
 #[derive(Debug, Clone)]
@@ -130,8 +142,8 @@ pub struct SharedResource {
     pub handle: ResourceHandle,
     pub resource_type: GenerativeResourceType,
     pub owner_component: ComponentInstanceId,
-    pub shared_with: BoundedVec<ComponentInstanceId, 16>,
-    pub sharing_agreements: BoundedVec<u32, 16>,
+    pub shared_with: BoundedVec<ComponentInstanceId, 16, NoStdProvider<65536>>,
+    pub sharing_agreements: BoundedVec<u32, 16, NoStdProvider<65536>>,
     pub access_count: AtomicU32,
     pub is_locked: AtomicBool,
 }
@@ -159,7 +171,7 @@ pub struct SharingPolicy {
     pub id: u32,
     pub name: String,
     pub applies_to: PolicyScope,
-    pub rules: BoundedVec<PolicyRule, 32>,
+    pub rules: BoundedVec<PolicyRule, 32, NoStdProvider<65536>>,
     pub priority: u32,
     pub enabled: bool,
 }
@@ -175,10 +187,10 @@ pub enum PolicyScope {
 #[derive(Debug, Clone)]
 pub enum PolicyRule {
     RequireExplicitConsent,
-    AllowedResourceTypes { types: BoundedVec<TypeId, 16> },
-    DeniedResourceTypes { types: BoundedVec<TypeId, 16> },
+    AllowedResourceTypes { types: BoundedVec<TypeId, 16, NoStdProvider<65536>> },
+    DeniedResourceTypes { types: BoundedVec<TypeId, 16, NoStdProvider<65536>> },
     MaxShareCount { limit: u32 },
-    RequiredCapabilities { capabilities: BoundedVec<Capability, 8> },
+    RequiredCapabilities { capabilities: BoundedVec<Capability, 8, NoStdProvider<65536>> },
     TimeRestriction { allowed_hours: (u8, u8) },
 }
 
@@ -194,8 +206,8 @@ pub struct CrossComponentResourceSharingManager {
 
     sharing_agreements: BoundedHashMap<u32, SharingAgreement, MAX_SHARING_AGREEMENTS>,
     shared_resources: BoundedHashMap<ResourceHandle, SharedResource, MAX_SHARED_RESOURCES>,
-    sharing_policies: BoundedVec<SharingPolicy, MAX_SHARING_POLICIES>,
-    transfer_queue: BoundedVec<ResourceTransferRequest, MAX_TRANSFER_QUEUE>,
+    sharing_policies: BoundedVec<SharingPolicy, MAX_SHARING_POLICIES, NoStdProvider<65536>>,
+    transfer_queue: BoundedVec<ResourceTransferRequest, MAX_TRANSFER_QUEUE, NoStdProvider<65536>>,
 
     callbacks: BoundedHashMap<String, SharingCallback, MAX_SHARING_CALLBACKS>,
 
@@ -215,8 +227,8 @@ impl CrossComponentResourceSharingManager {
 
             sharing_agreements: BoundedHashMap::new(),
             shared_resources: BoundedHashMap::new(),
-            sharing_policies: BoundedVec::new(),
-            transfer_queue: BoundedVec::new(),
+            sharing_policies: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            transfer_queue: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
 
             callbacks: BoundedHashMap::new(),
 
@@ -240,7 +252,7 @@ impl CrossComponentResourceSharingManager {
         &mut self,
         source_component: ComponentInstanceId,
         target_component: ComponentInstanceId,
-        resource_types: BoundedVec<TypeId, 32>,
+        resource_types: BoundedVec<TypeId, 32, NoStdProvider<65536>>,
         access_rights: AccessRights,
         transfer_policy: TransferPolicy,
         lifetime: SharingLifetime,
@@ -270,9 +282,9 @@ impl CrossComponentResourceSharingManager {
                     source_component.id(),
                     target_component.id()
                 ),
-                tags: BoundedVec::new(),
-                restrictions: BoundedVec::new(),
-                audit_log: BoundedVec::new(),
+                tags: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+                restrictions: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+                audit_log: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             },
         };
 
@@ -311,7 +323,7 @@ impl CrossComponentResourceSharingManager {
             .get_representation(resource_handle)
             .map_err(|e| ResourceSharingError {
                 kind: ResourceSharingErrorKind::ResourceNotFound,
-                message: format!("Handle not found: {}", e),
+                message: "Component not found",
                 source_component: Some(agreement.source_component),
                 target_component: Some(agreement.target_component),
                 resource: Some(resource_handle),
@@ -339,7 +351,7 @@ impl CrossComponentResourceSharingManager {
             )
             .map_err(|e| ResourceSharingError {
                 kind: ResourceSharingErrorKind::TransferFailed,
-                message: format!("Failed to share handle: {}", e),
+                message: "Component not found",
                 source_component: Some(agreement.source_component),
                 target_component: Some(agreement.target_component),
                 resource: Some(resource_handle),
@@ -362,7 +374,7 @@ impl CrossComponentResourceSharingManager {
             AuditAction::ResourceShared,
             agreement.source_component,
             true,
-            &format!("Resource {} shared", resource_handle.id()),
+            &"Component not found",
         )?;
 
         Ok(shared_handle)
@@ -397,7 +409,7 @@ impl CrossComponentResourceSharingManager {
         self.post_return_registry.add_cleanup_task(source_component, cleanup_task).map_err(
             |e| ResourceSharingError {
                 kind: ResourceSharingErrorKind::TransferFailed,
-                message: format!("Failed to add cleanup task: {}", e),
+                message: "Component not found",
                 source_component: Some(source_component),
                 target_component: Some(target_component),
                 resource: Some(resource_handle),
@@ -456,7 +468,7 @@ impl CrossComponentResourceSharingManager {
             .perform_operation(component_id, resource_handle, operation)
             .map_err(|e| ResourceSharingError {
                 kind: ResourceSharingErrorKind::TransferFailed,
-                message: format!("Operation failed: {}", e),
+                message: "Component not found",
                 source_component: Some(component_id),
                 target_component: None,
                 resource: Some(resource_handle),
@@ -469,7 +481,7 @@ impl CrossComponentResourceSharingManager {
                 AuditAction::ResourceAccessed,
                 component_id,
                 true,
-                &format!("Resource {} accessed", resource_handle.id()),
+                &"Component not found",
             )?;
         }
 
@@ -500,7 +512,7 @@ impl CrossComponentResourceSharingManager {
         self.handle_manager.drop_handle(component_id, resource_handle).map_err(|e| {
             ResourceSharingError {
                 kind: ResourceSharingErrorKind::TransferFailed,
-                message: format!("Failed to drop handle: {}", e),
+                message: "Component not found",
                 source_component: Some(component_id),
                 target_component: None,
                 resource: Some(resource_handle),
@@ -514,7 +526,7 @@ impl CrossComponentResourceSharingManager {
                 AuditAction::ResourceReturned,
                 component_id,
                 true,
-                &format!("Resource {} returned", resource_handle.id()),
+                &"Component not found",
             )?;
         }
 
@@ -745,13 +757,13 @@ impl CrossComponentResourceSharingManager {
             let resource_type =
                 self.type_registry.get_resource_type(handle).map_err(|e| ResourceSharingError {
                     kind: ResourceSharingErrorKind::ResourceNotFound,
-                    message: format!("Resource type not found: {}", e),
+                    message: "Component not found",
                     source_component: Some(owner),
                     target_component: Some(shared_with),
                     resource: Some(handle),
                 })?;
 
-            let mut shared_with_vec = BoundedVec::new();
+            let mut shared_with_vec = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
             shared_with_vec.push(shared_with).map_err(|_| ResourceSharingError {
                 kind: ResourceSharingErrorKind::ResourceLimitExceeded,
                 message: "Failed to create shared_with list".to_string(),
@@ -760,7 +772,7 @@ impl CrossComponentResourceSharingManager {
                 resource: Some(handle),
             })?;
 
-            let mut agreements_vec = BoundedVec::new();
+            let mut agreements_vec = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
             agreements_vec.push(agreement_id).map_err(|_| ResourceSharingError {
                 kind: ResourceSharingErrorKind::ResourceLimitExceeded,
                 message: "Failed to create agreements list".to_string(),
@@ -826,7 +838,7 @@ impl CrossComponentResourceSharingManager {
     fn get_agreement(&self, agreement_id: u32) -> ResourceSharingResult<&SharingAgreement> {
         self.sharing_agreements.get(&agreement_id).ok_or_else(|| ResourceSharingError {
             kind: ResourceSharingErrorKind::InvalidSharingAgreement,
-            message: format!("Agreement {} not found", agreement_id),
+            message: "Component not found",
             source_component: None,
             target_component: None,
             resource: None,
@@ -910,7 +922,7 @@ pub fn create_basic_sharing_policy(name: &str) -> SharingPolicy {
         id: 0, // Will be assigned by manager
         name: name.to_string(),
         applies_to: PolicyScope::Global,
-        rules: BoundedVec::new(),
+        rules: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         priority: 0,
         enabled: true,
     }
@@ -925,7 +937,7 @@ pub fn create_component_pair_policy(
         id: 0,
         name: name.to_string(),
         applies_to: PolicyScope::ComponentPair { source, target },
-        rules: BoundedVec::new(),
+        rules: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         priority: 0,
         enabled: true,
     }

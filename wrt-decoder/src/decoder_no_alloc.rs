@@ -39,7 +39,7 @@ use wrt_foundation::{safe_memory::NoStdProvider, verification::VerificationLevel
 
 use crate::prelude::*;
 
-/// Maximum size of a WebAssembly module that can be decoded in no_alloc mode
+/// Binary std/no_std choice
 pub const MAX_MODULE_SIZE: usize = 65536; // 64 KB
 
 /// Maximum number of sections in a WebAssembly module
@@ -75,14 +75,14 @@ pub const MAX_DATA_SEGMENTS: usize = 32;
 /// Maximum number of types in a WebAssembly module
 pub const MAX_TYPES: usize = 128;
 
-/// Error codes specific to no_alloc decoding
+/// Binary std/no_std choice
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NoAllocErrorCode {
-    /// Module is too large for no_alloc decoding
+    /// Binary std/no_std choice
     ModuleTooLarge,
     /// Invalid module header
     InvalidHeader,
-    /// Unsupported feature in no_alloc mode
+    /// Binary std/no_std choice
     UnsupportedFeature,
     /// Bounds check failed
     BoundsCheckFailed,
@@ -123,11 +123,11 @@ pub fn create_error(code: NoAllocErrorCode, message: &'static str) -> Error {
     Error::new(code.to_error_category(), code.to_error_code(), message)
 }
 
-/// Verifies a WebAssembly binary header in a no_alloc environment
+/// Binary std/no_std choice
 ///
 /// This function checks if the provided bytes start with a valid WebAssembly
 /// magic number and version. It's a lightweight validation that doesn't require
-/// allocation.
+/// Binary std/no_std choice
 ///
 /// # Arguments
 ///
@@ -267,13 +267,13 @@ pub struct SectionInfo {
     pub offset: usize,
 }
 
-/// A minimal WebAssembly module with basic information for no_alloc decoding
+/// Binary std/no_std choice
 ///
 /// This struct contains essential information from a WebAssembly module
-/// that can be represented without dynamic allocation.
+/// Binary std/no_std choice
 ///
 /// It provides access to module metadata and section headers without
-/// requiring heap allocation, making it suitable for embedded environments.
+/// Binary std/no_std choice
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WasmModuleHeader {
     /// WebAssembly binary format version
@@ -378,10 +378,10 @@ impl Default for WasmModuleHeader {
 }
 
 /// Decodes only the WebAssembly module header and scans for section information
-/// in a no_alloc environment
+/// Binary std/no_std choice
 ///
 /// This function decodes header information and scans for basic section
-/// metadata from a WebAssembly module without requiring heap allocation. It
+/// Binary std/no_std choice
 /// performs a lightweight scan of the binary to identify key sections and
 /// module characteristics.
 ///
@@ -519,7 +519,7 @@ fn is_name_section(section_data: &[u8]) -> bool {
     }
 }
 
-/// The types of validators available in no_alloc mode
+/// Binary std/no_std choice
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValidatorType {
     /// Basic validation only checks module structure
@@ -534,7 +534,7 @@ pub enum ValidatorType {
 /// Validates a WebAssembly module
 ///
 /// This function performs validation on a WebAssembly module without heap
-/// allocation. The level of validation depends on the validator type.
+/// Binary std/no_std choice
 ///
 /// # Arguments
 ///

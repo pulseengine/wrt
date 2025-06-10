@@ -3,6 +3,9 @@
 //! This module provides alternatives to the format! macro for error messages
 //! in no_std environments.
 
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
 use wrt_error::{Error, ErrorCategory};
 
 /// Error context for canonical ABI operations
@@ -20,30 +23,30 @@ pub enum CanonicalErrorContext {
 }
 
 /// Format an error message for the given context
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorContext) -> Error {
     use alloc::format;
 
     let message = match context {
         CanonicalErrorContext::OutOfBounds { addr, size } => {
-            format!("Address {} out of bounds for memory of size {}", addr, size)
+            format!("Memory access out of bounds at address {:#x}, size {}", addr, size)
         }
         CanonicalErrorContext::InvalidUtf8 => "Invalid UTF-8 string".to_string(),
         CanonicalErrorContext::InvalidCodePoint { code_point } => {
-            format!("Invalid UTF-8 code point: {}", code_point)
+            format!("Invalid Unicode code point: {:#x}", code_point)
         }
         CanonicalErrorContext::InvalidDiscriminant { discriminant } => {
-            format!("Invalid variant discriminant: {}", discriminant)
+            format!("Invalid discriminant value: {}", discriminant)
         }
         CanonicalErrorContext::NotImplemented(feature) => {
-            format!("{} not yet implemented", feature)
+            format!("Feature not implemented: {}", feature)
         }
         CanonicalErrorContext::TypeMismatch => "Type mismatch".to_string(),
         CanonicalErrorContext::ResourceNotFound { handle } => {
-            format!("Resource not found: {}", handle)
+            format!("Resource not found with handle: {}", handle)
         }
         CanonicalErrorContext::InvalidAlignment { addr, align } => {
-            format!("Address {} not aligned to {}", addr, align)
+            format!("Invalid alignment: address {:#x} not aligned to {}", addr, align)
         }
         CanonicalErrorContext::InvalidSize { expected, actual } => {
             format!("Invalid size: expected {}, got {}", expected, actual)
@@ -53,15 +56,15 @@ pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorC
     Error::new(category, code, message)
 }
 
-/// Format an error message for the given context (no_std version)
-#[cfg(not(feature = "alloc"))]
+/// Format an error message for the given context (no_std version with static messages)
+#[cfg(not(feature = "std"))]
 pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorContext) -> Error {
     let message = match context {
-        CanonicalErrorContext::OutOfBounds { .. } => "Address out of bounds",
+        CanonicalErrorContext::OutOfBounds { .. } => "Memory access out of bounds",
         CanonicalErrorContext::InvalidUtf8 => "Invalid UTF-8 string",
-        CanonicalErrorContext::InvalidCodePoint { .. } => "Invalid UTF-8 code point",
-        CanonicalErrorContext::InvalidDiscriminant { .. } => "Invalid variant discriminant",
-        CanonicalErrorContext::NotImplemented(feature) => feature,
+        CanonicalErrorContext::InvalidCodePoint { .. } => "Invalid Unicode code point",
+        CanonicalErrorContext::InvalidDiscriminant { .. } => "Invalid discriminant value",
+        CanonicalErrorContext::NotImplemented(_) => "Feature not implemented",
         CanonicalErrorContext::TypeMismatch => "Type mismatch",
         CanonicalErrorContext::ResourceNotFound { .. } => "Resource not found",
         CanonicalErrorContext::InvalidAlignment { .. } => "Invalid alignment",
@@ -70,6 +73,7 @@ pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorC
 
     Error::new(category, code, message)
 }
+
 
 /// Component error context
 #[derive(Debug, Clone, Copy)]
@@ -83,7 +87,7 @@ pub enum ComponentErrorContext {
 }
 
 /// Format a component error
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub fn format_component_error(
     category: ErrorCategory,
     code: u32,
@@ -108,7 +112,7 @@ pub fn format_component_error(
 }
 
 /// Format a component error (no_std version)
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 pub fn format_component_error(
     category: ErrorCategory,
     code: u32,

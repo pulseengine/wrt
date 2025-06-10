@@ -25,13 +25,20 @@ pretty_assertions = "1.4.0"
 
 [features]
 default = []
-std = ["alloc", "wrt-foundation/std", "wrt-sync/std", "log"]
+# Binary choice: std OR no_std (no alloc middle ground)
+std = ["wrt-foundation/std", "wrt-sync/std", "log"]
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
-alloc = ["wrt-foundation/alloc", "wrt-sync/alloc"]
 optimize = ["wrt-foundation/optimize"]
-safety = ["wrt-foundation/safety", "alloc"]
+safety = ["wrt-foundation/safety", "std"]
 kani = ["dep:kani-verifier"]
+
+# Disable panic handler for library builds to avoid conflicts
+disable-panic-handler = [
+    "wrt-error/disable-panic-handler",
+    "wrt-foundation/disable-panic-handler",
+    "wrt-sync/disable-panic-handler"
+]
 
 [lints]
 rust.unexpected_cfgs = { level = "allow", check-cfg = ['cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }

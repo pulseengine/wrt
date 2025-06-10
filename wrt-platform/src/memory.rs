@@ -45,9 +45,9 @@ impl Default for VerificationLevel {
 /// Represents a single WebAssembly page (64 `KiB`).
 pub const WASM_PAGE_SIZE: usize = 65536; // 64 * 1024
 
-/// Trait for platform-specific memory allocation.
+/// Binary std/no_std choice
 ///
-/// Implementors handle the allocation, growth, and protection of memory
+/// Binary std/no_std choice
 /// regions suitable for WebAssembly linear memory.
 ///
 /// # Safety
@@ -60,7 +60,7 @@ pub const WASM_PAGE_SIZE: usize = 65536; // 64 * 1024
 pub trait PageAllocator: Debug + Send + Sync {
     /// Allocate a region of memory capable of holding `initial_pages`.
     ///
-    /// The allocated memory should be suitable for read/write access.
+    /// Binary std/no_std choice
     /// Implementations may reserve address space beyond `initial_pages` up to
     /// `maximum_pages` if applicable.
     ///
@@ -73,13 +73,13 @@ pub trait PageAllocator: Debug + Send + Sync {
     ///
     /// # Returns
     ///
-    /// A `Result` containing a pointer to the start of the allocated memory
+    /// Binary std/no_std choice
     /// region and the total committed memory size in bytes, or an `Error`
     /// on failure.
     ///
     /// # Errors
     ///
-    /// Returns an `Error` if allocation fails (e.g., out of memory,
+    /// Binary std/no_std choice
     /// exceeds limits, or invalid arguments).
     fn allocate(
         &mut self,
@@ -87,9 +87,9 @@ pub trait PageAllocator: Debug + Send + Sync {
         maximum_pages: Option<u32>,
     ) -> Result<(NonNull<u8>, usize)>;
 
-    /// Grow the allocated memory region by `additional_pages`.
+    /// Binary std/no_std choice
     ///
-    /// Ensures that the memory region managed by this allocator is at least
+    /// Binary std/no_std choice
     /// `current_pages + additional_pages` in size.
     ///
     /// # Arguments
@@ -100,27 +100,27 @@ pub trait PageAllocator: Debug + Send + Sync {
     /// # Returns
     ///
     /// `Ok(())` on success, or an `Error` if the memory cannot be grown (e.g.,
-    /// exceeds maximum limits or allocation fails).
+    /// Binary std/no_std choice
     ///
     /// # Errors
     ///
     /// Returns an `Error` if the memory cannot be grown (e.g.,
-    /// exceeds maximum limits or allocation fails).
+    /// Binary std/no_std choice
     fn grow(&mut self, current_pages: u32, additional_pages: u32) -> Result<()>;
 
-    /// Deallocate the memory region previously allocated by `allocate`.
+    /// Binary std/no_std choice
     ///
     /// # Safety
     /// The caller must ensure that the `ptr` and `size` correspond exactly to a
-    /// previously successful allocation from *this* allocator instance, and
+    /// Binary std/no_std choice
     /// that no references to the memory region exist after this call. The
     /// caller also guarantees that `ptr` points to memory that was
-    /// allocated with a size of `size` bytes and that this memory region is
-    /// valid for deallocation by this allocator.
+    /// Binary std/no_std choice
+    /// Binary std/no_std choice
     ///
     /// # Errors
     ///
-    /// Returns an `Error` if deallocation fails or if preconditions are
+    /// Binary std/no_std choice
     /// violated (though safety violations should ideally panic or be caught
     /// by other means).
     unsafe fn deallocate(&mut self, ptr: NonNull<u8>, size: usize) -> Result<()>;
@@ -162,7 +162,7 @@ pub trait MemoryProvider: Send + Sync {
 /// optimizations.
 ///
 /// This implementation uses a static buffer to store data, making it suitable
-/// for `no_std` environments where dynamic allocation is not available.
+/// Binary std/no_std choice
 #[derive(Debug)]
 pub struct NoStdProvider {
     /// The underlying buffer for storing data
@@ -175,7 +175,7 @@ impl NoStdProvider {
     /// Creates a new `NoStdProvider` with the specified size and verification
     /// level.
     pub fn new(size: usize, verification_level: VerificationLevel) -> Self {
-        // In a real implementation, we would allocate memory here
+        // Binary std/no_std choice
         // For this stub, we just create a dummy static buffer
         static mut DUMMY_BUFFER: [u8; 4096] = [0; 4096];
 
@@ -289,7 +289,7 @@ mod tests {
     use super::*;
 
     // Example of a mock PageAllocator for tests if needed when std is not available
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     #[derive(Debug)]
     struct MockAllocator {
         allocated_ptr: Option<NonNull<u8>>,
@@ -297,7 +297,7 @@ mod tests {
         max_pages: Option<u32>,
     }
 
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     impl Default for MockAllocator {
         fn default() -> Self {
             Self { allocated_ptr: None, allocated_size: 0, max_pages: None }
@@ -305,13 +305,13 @@ mod tests {
     }
 
     // Implementing Send and Sync is safe because we manage the NonNull safely
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     unsafe impl Send for MockAllocator {}
 
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     unsafe impl Sync for MockAllocator {}
 
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     impl PageAllocator for MockAllocator {
         fn allocate(
             &mut self,
@@ -327,7 +327,7 @@ mod tests {
             }
             let size = initial_pages as usize * WASM_PAGE_SIZE;
 
-            // Simulate allocation by using a dangling pointer
+            // Binary std/no_std choice
             let ptr = if size == 0 {
                 NonNull::dangling()
             } else {
@@ -362,7 +362,7 @@ mod tests {
             }
             let new_size = new_total_pages as usize * WASM_PAGE_SIZE;
 
-            // Simulate a maximum capacity for the mock allocator
+            // Binary std/no_std choice
             if new_size > 5 * WASM_PAGE_SIZE {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::Memory,
@@ -371,8 +371,8 @@ mod tests {
                 ));
             }
 
-            // In a real allocator, this would make more memory available.
-            // For mock, just update allocated_size
+            // Binary std/no_std choice
+            // Binary std/no_std choice
             self.allocated_size = new_size;
             Ok(())
         }

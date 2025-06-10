@@ -1,5 +1,5 @@
 #[cfg(not(feature = "std"))]
-use alloc::{collections::BTreeMap, vec::Vec};
+use std::{collections::BTreeMap, vec::Vec};
 #[cfg(feature = "std")]
 use std::collections::BTreeMap;
 
@@ -22,51 +22,51 @@ use wrt_format::wit_parser::{
 pub struct WitComponentBuilder {
     parser: WitParser,
     type_registry: GenerativeTypeRegistry,
-    wit_type_mappings: BTreeMap<BoundedString<64>, TypeId>,
+    wit_type_mappings: BTreeMap<BoundedString<64, NoStdProvider<65536>>, TypeId>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComponentInterface {
-    pub name: BoundedString<64>,
-    pub imports: BoundedVec<InterfaceFunction, MAX_GENERATIVE_TYPES>,
-    pub exports: BoundedVec<InterfaceFunction, MAX_GENERATIVE_TYPES>,
-    pub async_imports: BoundedVec<AsyncInterfaceFunction, MAX_GENERATIVE_TYPES>,
-    pub async_exports: BoundedVec<AsyncInterfaceFunction, MAX_GENERATIVE_TYPES>,
+    pub name: BoundedString<64, NoStdProvider<65536>>,
+    pub imports: BoundedVec<InterfaceFunction, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>,
+    pub exports: BoundedVec<InterfaceFunction, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>,
+    pub async_imports: BoundedVec<AsyncInterfaceFunction, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>,
+    pub async_exports: BoundedVec<AsyncInterfaceFunction, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct InterfaceFunction {
-    pub name: BoundedString<64>,
-    pub params: BoundedVec<TypedParam, 32>,
-    pub results: BoundedVec<TypedResult, 16>,
+    pub name: BoundedString<64, NoStdProvider<65536>>,
+    pub params: BoundedVec<TypedParam, 32, NoStdProvider<65536>>,
+    pub results: BoundedVec<TypedResult, 16, NoStdProvider<65536>>,
     pub component_type_id: Option<TypeId>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AsyncInterfaceFunction {
-    pub name: BoundedString<64>,
-    pub params: BoundedVec<TypedParam, 32>,
-    pub results: BoundedVec<AsyncTypedResult, 16>,
+    pub name: BoundedString<64, NoStdProvider<65536>>,
+    pub params: BoundedVec<TypedParam, 32, NoStdProvider<65536>>,
+    pub results: BoundedVec<AsyncTypedResult, 16, NoStdProvider<65536>>,
     pub component_type_id: Option<TypeId>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedParam {
-    pub name: BoundedString<32>,
+    pub name: BoundedString<32, NoStdProvider<65536>>,
     pub val_type: ValType,
     pub wit_type: WitType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedResult {
-    pub name: Option<BoundedString<32>>,
+    pub name: Option<BoundedString<32, NoStdProvider<65536>>>,
     pub val_type: ValType,
     pub wit_type: WitType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AsyncTypedResult {
-    pub name: Option<BoundedString<32>>,
+    pub name: Option<BoundedString<32, NoStdProvider<65536>>>,
     pub val_type: ValType,
     pub wit_type: WitType,
     pub is_stream: bool,
@@ -147,10 +147,10 @@ impl WitComponentBuilder {
     ) -> Result<ComponentInterface, ComponentError> {
         let mut interface = ComponentInterface {
             name: world.name,
-            imports: BoundedVec::new(),
-            exports: BoundedVec::new(),
-            async_imports: BoundedVec::new(),
-            async_exports: BoundedVec::new(),
+            imports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            exports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            async_imports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            async_exports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         };
 
         for import in world.imports.iter() {
@@ -209,10 +209,10 @@ impl WitComponentBuilder {
     ) -> Result<ComponentInterface, ComponentError> {
         let mut interface = ComponentInterface {
             name: wit_interface.name,
-            imports: BoundedVec::new(),
-            exports: BoundedVec::new(),
-            async_imports: BoundedVec::new(),
-            async_exports: BoundedVec::new(),
+            imports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            exports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            async_imports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            async_exports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         };
 
         for func in wit_interface.functions.iter() {
@@ -241,8 +241,8 @@ impl WitComponentBuilder {
     ) -> Result<InterfaceFunction, ComponentError> {
         let mut interface_func = InterfaceFunction {
             name: wit_func.name.clone(),
-            params: BoundedVec::new(),
-            results: BoundedVec::new(),
+            params: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            results: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             component_type_id: None,
         };
 
@@ -276,8 +276,8 @@ impl WitComponentBuilder {
     ) -> Result<AsyncInterfaceFunction, ComponentError> {
         let mut async_func = AsyncInterfaceFunction {
             name: wit_func.name.clone(),
-            params: BoundedVec::new(),
-            results: BoundedVec::new(),
+            params: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            results: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             component_type_id: None,
         };
 

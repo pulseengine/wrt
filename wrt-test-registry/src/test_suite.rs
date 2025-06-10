@@ -10,9 +10,9 @@ pub struct TestSuite {
     /// Name of the test suite
     pub name: String,
     /// List of tests in this suite
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub tests: Vec<Box<dyn TestCase>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub tests: BoundedVec<Box<dyn TestCase>, 64>,
     /// Setup function to run before tests
     pub setup: Option<Box<dyn Fn() -> TestResult + Send + Sync>>,
@@ -25,9 +25,9 @@ impl TestSuite {
     pub fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             tests: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             tests: BoundedVec::new(),
             setup: None,
             teardown: None,
@@ -44,12 +44,12 @@ impl TestSuite {
             description: "",
         });
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.tests.push(test_case);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.tests.try_push(test_case).map_err(|e| {
                 Error::new(

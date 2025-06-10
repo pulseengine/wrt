@@ -154,7 +154,7 @@ Developer Documentation
       :link: developer/tooling/index
       :link-type: doc
 
-      xtask commands and development tools
+      xtask commands, development tools, and safety verification
 
 Reference Documentation
 -----------------------
@@ -200,6 +200,7 @@ Reference Documentation
    wrt-host/lib
    wrt-instructions/lib
    wrt-logging/lib
+   wrt-safety/lib
    api/index
 
 .. toctree::
@@ -235,6 +236,8 @@ Reference Documentation
 .. include:: _generated_symbols.rst
 
 .. include:: _generated_coverage_summary.rst
+
+.. include:: _generated_safety_summary.rst
 
 Indices and tables
 ==================

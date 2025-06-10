@@ -3,9 +3,11 @@
 //! This module provides integration between the WRT runtime and the WIT-aware
 //! debugger from wrt-debug, enabling source-level debugging of WIT components.
 
+extern crate alloc;
+
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, vec::Vec, boxed::Box};
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(not(feature = "std"))]
 use alloc::{collections::BTreeMap, vec::Vec, boxed::Box};
 
 use wrt_foundation::{
@@ -328,7 +330,7 @@ impl Default for WrtDebugMemory {
 
 #[cfg(feature = "wit-debug-integration")]
 impl DebugMemory for WrtDebugMemory {
-    fn read_bytes(&self, addr: u32, len: usize) -> Option<&[u8]> {
+    fn read_exact(&self, addr: u32, len: usize) -> Option<&[u8]> {
         let offset = addr.saturating_sub(self.base_address) as usize;
         if offset + len <= self.memory_data.len() {
             Some(&self.memory_data.as_slice()[offset..offset + len])
@@ -577,8 +579,8 @@ pub fn create_component_metadata(
         source_span,
         binary_start,
         binary_end,
-        exports: Vec::new(),
-        imports: Vec::new(),
+        exports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
+        imports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
     })
 }
 
@@ -597,8 +599,8 @@ pub fn create_function_metadata(
             .map_err(|_| Error::runtime_error("Function name too long"))?,
         source_span,
         binary_offset,
-        param_types: Vec::new(),
-        return_types: Vec::new(),
+        param_types: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
+        return_types: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
         is_async,
     })
 }
@@ -670,7 +672,7 @@ mod tests {
         assert!(memory.is_valid_address(1007));
         assert!(!memory.is_valid_address(1008));
         
-        let bytes = memory.read_bytes(1002, 4);
+        let bytes = memory.read_exact(1002, 4);
         assert_eq!(bytes, Some(&[3, 4, 5, 6][..]));
         
         assert_eq!(memory.read_u32(1000), Some(0x04030201));

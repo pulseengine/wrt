@@ -73,7 +73,7 @@ impl<'a> ResourceManager<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -91,7 +91,7 @@ impl<'a> ResourceManager<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -114,7 +114,7 @@ impl<'a> ResourceManager<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -127,7 +127,7 @@ impl<'a> ResourceManager<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -148,7 +148,7 @@ impl<'a> ResourceManager<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -161,7 +161,7 @@ impl<'a> ResourceManager<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -194,7 +194,7 @@ impl<'a> ResourceManager<'a> {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError("Component not found"),
             )
         })?;
 

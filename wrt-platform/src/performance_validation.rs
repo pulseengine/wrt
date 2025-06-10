@@ -45,7 +45,7 @@ impl PerformanceValidator {
     pub fn validate_all<P>() -> Result<u32, Error> {
         let mut count = 0;
 
-        // Benchmark memory allocation operations
+        // Binary std/no_std choice
         if Self::benchmark_memory_allocation::<P>().is_ok() {
             count += 1;
         }
@@ -63,11 +63,11 @@ impl PerformanceValidator {
         Ok(count)
     }
 
-    /// Benchmark memory allocation through abstraction vs direct API
+    /// Binary std/no_std choice
     fn benchmark_memory_allocation<P>() -> Result<BenchmarkResult, Error> {
         const ITERATIONS: u32 = 1000;
 
-        // Benchmark direct allocation (platform-specific)
+        // Binary std/no_std choice
         let direct_time = Self::time_operation(|| {
             for _ in 0..ITERATIONS {
                 let result = Self::direct_memory_allocation();
@@ -75,7 +75,7 @@ impl PerformanceValidator {
             }
         });
 
-        // Benchmark abstracted allocation
+        // Binary std/no_std choice
         let abstracted_time = Self::time_operation(|| {
             for _ in 0..ITERATIONS {
                 let result = Self::abstracted_memory_allocation::<P>();
@@ -201,7 +201,7 @@ impl PerformanceValidator {
         }
     }
 
-    /// Direct memory allocation (platform-specific implementation)
+    /// Binary std/no_std choice
     fn direct_memory_allocation() -> Result<(), Error> {
         // Simulate direct platform API call
         // In reality, this would call mmap(), VirtualAlloc(), etc. directly
@@ -224,15 +224,15 @@ impl PerformanceValidator {
             all(feature = "platform-qnx", target_os = "nto")
         )))]
         {
-            // Simulate embedded allocation
-            black_box(1024); // Smaller allocation
+            // Binary std/no_std choice
+            black_box(1024); // Binary std/no_std choice
             Ok(())
         }
     }
 
-    /// Abstracted memory allocation through platform abstraction
+    /// Binary std/no_std choice
     fn abstracted_memory_allocation<P>() -> Result<(), Error> {
-        // Simulate creating allocator through abstraction
+        // Binary std/no_std choice
         // This should compile down to the same direct calls
         black_box(1u32); // max_pages
         black_box(true); // guard_pages

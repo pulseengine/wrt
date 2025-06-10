@@ -4,7 +4,7 @@
 //! instructions. It focuses on basic type checking without requiring
 //! complex trait implementations.
 
-use crate::prelude::*;
+use crate::prelude::{Debug, Eq, PartialEq, str};
 use wrt_error::{Error, Result};
 use wrt_foundation::types::{ValueType, BlockType};
 
@@ -20,9 +20,15 @@ pub struct ValidationContext {
     pub tables: u32,
 }
 
+impl Default for ValidationContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ValidationContext {
     /// Create a new validation context
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self {
             stack_depth: 0,
             unreachable: false,
@@ -32,7 +38,7 @@ impl ValidationContext {
     }
 
     /// Check if the current code is unreachable
-    pub fn is_unreachable(&self) -> bool {
+    #[must_use] pub fn is_unreachable(&self) -> bool {
         self.unreachable
     }
 

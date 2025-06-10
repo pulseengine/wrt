@@ -18,7 +18,7 @@ pub use wrt_error::{Error, ErrorCategory, Result};
 pub use crate::macos_memory::{MacOsAllocator, MacOsAllocatorBuilder};
 #[cfg(all(feature = "platform-macos", target_os = "macos"))]
 pub use crate::macos_sync::{MacOsFutex, MacOsFutexBuilder};
-// Re-export memory allocator trait and Wasm page size constant
+// Binary std/no_std choice
 // Re-export sync trait
 pub use crate::{
     memory::{

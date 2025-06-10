@@ -5,15 +5,18 @@
 
 #[cfg(feature = "std")]
 use std::fmt;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::fmt;
-#[cfg(not(feature = "alloc"))]
+#[cfg(all(not(feature = "std")))]
+use std::fmt;
+#[cfg(not(feature = "std"))]
 use core::fmt;
 
 use wrt_foundation::{
-    BoundedVec, NoStdProvider,
+    BoundedVec,
     prelude::*,
 };
+
+// Platform-aware memory provider for AST collections
+type AstProvider = wrt_foundation::safe_memory::NoStdProvider<4096>;  // 4KB for AST data
 
 use crate::wit_parser::{WitBoundedString, WitBoundedStringSmall};
 
@@ -22,11 +25,11 @@ pub const MAX_AST_ITEMS: usize = 256;
 pub const MAX_AST_PARAMS: usize = 32;
 pub const MAX_AST_GENERICS: usize = 16;
 
-/// Type aliases for AST collections
-pub type AstItemVec<T> = BoundedVec<T, MAX_AST_ITEMS, NoStdProvider<1024>>;
-pub type AstParamVec<T> = BoundedVec<T, MAX_AST_PARAMS, NoStdProvider<1024>>;
-pub type AstGenericVec<T> = BoundedVec<T, MAX_AST_GENERICS, NoStdProvider<1024>>;
-pub type AstDocVec = BoundedVec<WitBoundedString, 32, NoStdProvider<1024>>;
+/// Type aliases for AST collections using platform-aware memory provider
+pub type AstItemVec<T> = BoundedVec<T, MAX_AST_ITEMS, AstProvider>;
+pub type AstParamVec<T> = BoundedVec<T, MAX_AST_PARAMS, AstProvider>;
+pub type AstGenericVec<T> = BoundedVec<T, MAX_AST_GENERICS, AstProvider>;
+pub type AstDocVec = BoundedVec<WitBoundedString, 32, AstProvider>;
 
 /// Source location span for AST nodes
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -245,7 +245,7 @@ impl<'a> ValueDisplay<'a> {
     }
 }
 
-// Formatting helpers (no allocation)
+// Binary std/no_std choice
 fn format_i32(mut n: i32, buf: &mut [u8]) -> &str {
     let mut i = buf.len();
     let negative = n < 0;

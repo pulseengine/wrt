@@ -3,8 +3,8 @@
 //! This module provides utilities to convert from parsed Vec-based structures
 //! to the proper BoundedVec-based ValType structures.
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{string::String, vec::Vec};
+#[cfg(all(not(feature = "std")))]
+use std::{string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::{string::String, vec::Vec};
 

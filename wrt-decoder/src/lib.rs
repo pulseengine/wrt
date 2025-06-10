@@ -38,7 +38,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(clippy::missing_panics_doc)]
-//#![deny(missing_docs)] // Temporarily disabled for build
+#![allow(missing_docs)] // Temporarily disabled for build
 
 // Import core
 extern crate core;
@@ -47,8 +47,8 @@ extern crate core;
 #[cfg(feature = "std")]
 extern crate std;
 
-// Import alloc for no_std
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+// Binary std/no_std choice
+#[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
 // Note: Panic handler removed to avoid conflicts with std library
@@ -58,55 +58,20 @@ extern crate alloc;
 pub mod memory_optimized;
 pub mod optimized_string;
 pub mod prelude;
+pub mod streaming_validator;
 
 // Conditionally include other modules
-#[cfg(any(feature = "alloc", feature = "std"))]
 pub mod component;
-// Temporarily disabled due to type issues
-// #[cfg(feature = "alloc")]
-// pub mod conversion;
-// Most modules temporarily disabled for demo
-// #[cfg(feature = "alloc")]
-// pub mod custom_section_utils;
-// #[cfg(feature = "alloc")]
-// pub mod decoder_core;
-// #[cfg(feature = "alloc")]
-// pub mod instructions;
-// #[cfg(feature = "alloc")]
-// pub mod module;
-// #[cfg(feature = "alloc")]
-// pub mod optimized_module;
-// #[cfg(feature = "alloc")]
-// pub mod name_section;
-// #[cfg(feature = "alloc")]
-// pub mod parser;
-// #[cfg(feature = "alloc")]
-// pub mod producers_section;
-// #[cfg(feature = "alloc")]
-// pub mod runtime_adapter;
-// #[cfg(feature = "alloc")]
-// pub mod section_error;
-// #[cfg(feature = "alloc")]
-// pub mod section_reader;
-// #[cfg(feature = "alloc")]
-// pub mod types;
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub mod utils;
-// #[cfg(feature = "alloc")]
-// pub mod validation;
-// #[cfg(feature = "alloc")]
-// pub mod wasm;
 
-// CFI metadata generation - temporarily disabled due to type issues
-// pub mod cfi_metadata;
-
-// Dedicated module for no_alloc decoding
+// Binary std/no_std choice
 pub mod decoder_no_alloc;
 
-// Branch hint custom section support (requires alloc)
-#[cfg(feature = "alloc")]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub mod branch_hint_section;
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub mod custom_section_handler;
 
 // Most re-exports temporarily disabled for demo - keep only essential ones
@@ -114,11 +79,20 @@ pub use decoder_no_alloc::{
     create_memory_provider, decode_module_header, extract_section_info, validate_module_no_alloc,
     verify_wasm_header, SectionId, SectionInfo, ValidatorType, WasmModuleHeader, MAX_MODULE_SIZE,
 };
+// Streaming validator exports
+pub use streaming_validator::{
+    StreamingWasmValidator, PlatformWasmValidatorFactory, WasmRequirements, WasmConfiguration,
+    Section, MemorySection, CodeSection, ComprehensivePlatformLimits, PlatformId,
+};
 pub use wrt_error::{codes, kinds, Error, Result};
 // Essential re-exports only
 #[cfg(feature = "std")]
 pub use wrt_foundation::safe_memory::StdProvider as StdMemoryProvider;
 pub use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice};
+
+// Component functionality (std only)
+#[cfg(feature = "std")]
+pub use component::decode_no_alloc;
 
 /// Validate WebAssembly header
 ///
@@ -132,3 +106,11 @@ pub use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice};
 pub fn validate_header(bytes: &[u8]) -> Result<()> {
     verify_wasm_header(bytes)
 }
+
+// Panic handler disabled to avoid conflicts with other crates
+// // Provide a panic handler only when wrt-decoder is being tested in isolation
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }

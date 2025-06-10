@@ -55,7 +55,7 @@ impl<'a> LocationDisplay<'a> {
 
         // Add line number
         writer(":")?;
-        // Format number without allocation
+        // Binary std/no_std choice
         let mut buf = [0u8; 10];
         let s = format_u32(self.line_info.line, &mut buf);
         writer(s)?;
@@ -71,7 +71,7 @@ impl<'a> LocationDisplay<'a> {
     }
 }
 
-// Helper to format u32 without allocation
+// Binary std/no_std choice
 fn format_u32(mut n: u32, buf: &mut [u8]) -> &str {
     if n == 0 {
         return "0";
@@ -310,7 +310,7 @@ impl LineNumberState {
         Ok(())
     }
 
-    /// Find line info for a given PC without allocation
+    /// Binary std/no_std choice
     pub fn find_line_for_pc(
         &mut self,
         debug_line_data: &[u8],

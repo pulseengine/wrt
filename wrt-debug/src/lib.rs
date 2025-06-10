@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 //! DWARF debug information support for WebAssembly Runtime (WRT)
+//! SW-REQ-ID: REQ_FUNC_032
 //!
 //! This crate provides zero-allocation DWARF debug information parsing
 //! for WebAssembly modules in no_std environments.
@@ -15,8 +16,9 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-// Import alloc when available
-#[cfg(feature = "alloc")]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
+#[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
 // Note: Panic handler removed to avoid conflicts with std library
@@ -26,6 +28,11 @@ extern crate alloc;
 pub use abbrev::{Abbreviation, AbbreviationTable, AttributeForm, AttributeSpec};
 pub use cursor::DwarfCursor;
 pub use file_table::{FileEntry, FilePath, FileTable};
+// Platform debug exports
+pub use platform_debug::{
+    PlatformDebugLimits, PlatformDebugManager, PlatformDebugConfigBuilder,
+    DebugLevel, PlatformId, ComprehensivePlatformLimits,
+};
 #[cfg(feature = "debug-info")]
 pub use info::{CompilationUnitHeader, DebugInfoParser, FunctionInfo};
 #[cfg(feature = "line-info")]
@@ -66,17 +73,14 @@ pub use wit_aware_debugger::{
     TypeMetadata, WitStepMode, WitTypeKind as DebugWitTypeKind,
 };
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_foundation::{
-    bounded::{BoundedVec, MAX_DWARF_ABBREV_CACHE},
-    prelude::*,
-    NoStdProvider,
-};
+use wrt_foundation::prelude::*;
 
 #[cfg(feature = "abbrev")]
 mod abbrev;
 mod cursor;
 mod error;
 mod file_table;
+pub mod platform_debug;
 #[cfg(feature = "debug-info")]
 mod info;
 #[cfg(feature = "line-info")]
@@ -108,7 +112,7 @@ pub mod wit_aware_debugger;
 #[cfg(test)]
 mod test;
 
-/// DWARF debug information without allocation
+/// Binary std/no_std choice
 pub struct DwarfDebugInfo<'a> {
     /// Reference to module bytes for zero-copy parsing
     module_bytes: &'a [u8],
@@ -292,3 +296,11 @@ pub mod prelude {
         TypeId, FunctionId, ComponentId, SourceSpan,
     };
 }
+
+// Panic handler disabled to avoid conflicts with other crates
+// // Provide a panic handler only when wrt-debug is being tested in isolation
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }

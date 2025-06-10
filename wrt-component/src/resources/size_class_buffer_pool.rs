@@ -3,7 +3,7 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Statistics about a buffer pool
 pub struct BufferPoolStats {
@@ -15,7 +15,7 @@ pub struct BufferPoolStats {
     pub size_count: usize,
 }
 
-/// Size-class based buffer pool for reusing memory allocations
+/// Binary std/no_std choice
 ///
 /// This implementation uses power-of-two size classes for better memory reuse
 /// and reduced fragmentation compared to the basic buffer pool.
@@ -23,7 +23,7 @@ pub struct SizeClassBufferPool {
     /// Power-of-two size classes from 16B to 16KB
     size_classes: [Vec<Vec<u8>>; 11], // 16, 32, 64, 128, 256, 512, 1K, 2K, 4K, 8K, 16K
     /// Pools for sizes larger than size classes
-    overflow_pools: HashMap<usize, Vec<Vec<u8>>>,
+    overflow_pools: BTreeMap<usize, Vec<Vec<u8>>>,
     /// Maximum buffers per size class
     max_buffers_per_class: usize,
     /// Maximum buffer size to keep in the pool
@@ -42,7 +42,7 @@ impl SizeClassBufferPool {
         Self {
             // Initialize 11 empty vectors for each size class
             size_classes: Default::default(),
-            overflow_pools: HashMap::new(),
+            overflow_pools: BTreeMap::new(),
             max_buffers_per_class,
             max_buffer_size,
         }

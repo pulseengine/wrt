@@ -53,7 +53,4 @@ pub extern "C" fn example_debug_info() {
     }
 }
 
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
+// Panic handler removed - provided by wrt-platform crate

@@ -5,7 +5,7 @@ use wrt_foundation::{
 
 /// File table support for resolving file indices to paths
 /// Provides the missing 2% for source file path resolution
-use crate::strings::{DebugString, StringTable};
+use crate::strings::DebugString;
 
 /// A file entry in the DWARF file table
 #[derive(Debug, Clone)]
@@ -181,7 +181,7 @@ impl<'a> FilePath<'a> {
     }
 
     /// Format as a path string (directory/filename)
-    /// Note: In no_alloc environment, we can't allocate a new string,
+    /// Binary std/no_std choice
     /// so this is primarily for display purposes
     pub fn display<F>(&self, mut writer: F) -> core::result::Result<(), core::fmt::Error>
     where

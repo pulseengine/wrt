@@ -28,6 +28,7 @@ log = { version = "0.4", optional = true }
 
 [features]
 # By default, no features for pure no_std compatibility
+# Binary choice: std OR no_std (no alloc middle ground)
 default = []
 
 # Standard library support
@@ -40,25 +41,12 @@ std = [
     "wrt-sync/std",
     "wrt-error/std",
     "wrt-foundation/std",
-    "dep:log",
-]
+    "dep:log"]
 
 # For compatibility with verification script
 # This is a no-op since the crate is no_std by default
-no_std = [
-]
+no_std = []
 
-# Alloc support (required for no_std)
-alloc = [
-    "wrt-format/alloc",
-    "wrt-host/alloc",
-    "wrt-intercept/alloc",
-    "wrt-decoder/alloc",
-    "wrt-runtime/alloc",
-    "wrt-sync/alloc",
-    "wrt-error/alloc",
-    "wrt-foundation/alloc"
-]
 
 # Verification with Kani
 kani = ["wrt-host/kani", "wrt-intercept/kani", "wrt-foundation/kani"]
@@ -81,18 +69,20 @@ safety = [
     "wrt-intercept/safety",
     "wrt-decoder/safety",
     "wrt-runtime/safety",
-    "alloc"
+    "std"
 ]
 
 # Debug logging
 debug-log = []
 
+# Disable panic handler for library builds to avoid conflicts
+disable-panic-handler = []
+
 # Safe memory implementations
 safe-memory = [
     "wrt-foundation/safe-memory",
     "wrt-format/safe-memory",
-    "wrt-runtime/safe-memory",
-]
+    "wrt-runtime/safe-memory"]
 
 # Component Model features
 component-model-core = ["wrt-format/component-model-core"]

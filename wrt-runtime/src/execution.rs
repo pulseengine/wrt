@@ -3,12 +3,14 @@
 //! This module provides types and utilities for tracking execution statistics
 //! and managing WebAssembly execution.
 
-use crate::prelude::*;
+extern crate alloc;
+
+use crate::prelude::{Debug, Error, ErrorCategory, Ord, Result, codes, str};
 
 // Import format! macro for string formatting
 #[cfg(feature = "std")]
 use std::format;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 use alloc::format;
 
 /// Structure to track execution statistics
@@ -82,7 +84,7 @@ impl ExecutionStats {
     }
 
     /// Check if gas limit is exceeded
-    pub fn is_gas_exceeded(&self) -> bool {
+    #[must_use] pub fn is_gas_exceeded(&self) -> bool {
         self.gas_limit > 0 && self.gas_used >= self.gas_limit
     }
 
@@ -94,7 +96,7 @@ impl ExecutionStats {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::GAS_LIMIT_EXCEEDED,
-                format!("Gas limit of {} exceeded (used {})", self.gas_limit, self.gas_used),
+"Gas limit exceeded",
             ));
         }
 
@@ -122,13 +124,24 @@ pub struct ExecutionContext {
 
 impl ExecutionContext {
     /// Create a new execution context
-    pub fn new(max_function_depth: usize) -> Self {
+    #[must_use] pub fn new(max_function_depth: usize) -> Self {
         Self {
             stats: ExecutionStats::default(),
             trapped: false,
             function_depth: 0,
             max_function_depth,
         }
+    }
+    
+    /// Create execution context with platform-aware limits
+    #[must_use] pub fn new_with_limits(max_function_depth: usize) -> Self {
+        Self::new(max_function_depth)
+    }
+    
+    /// Create execution context from platform limits
+    #[must_use] pub fn from_platform_limits(platform_limits: &crate::platform_stubs::ComprehensivePlatformLimits) -> Self {
+        let max_depth = platform_limits.max_stack_bytes / (8 * 64); // Estimate stack depth
+        Self::new(max_depth.max(16)) // Minimum depth of 16
     }
 
     /// Enter a function
@@ -140,10 +153,7 @@ impl ExecutionContext {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::CALL_STACK_EXHAUSTED,
-                format!(
-                    "Call stack exhausted: depth {} exceeds maximum {}",
-                    self.function_depth, self.max_function_depth
-                ),
+"Call stack exhausted",
             ));
         }
 
@@ -161,12 +171,57 @@ impl ExecutionContext {
     }
 
     /// Check if execution is trapped
-    pub fn is_trapped(&self) -> bool {
+    #[must_use] pub fn is_trapped(&self) -> bool {
         self.trapped
     }
 
     /// Set trapped state
     pub fn set_trapped(&mut self, trapped: bool) {
         self.trapped = trapped;
+    }
+}
+
+/// Placeholder for call frame information
+#[derive(Debug, Clone)]
+pub struct CallFrame {
+    /// Function index
+    pub function_index: u32,
+    /// Program counter
+    pub pc: usize,
+    /// Local variables count
+    pub locals_count: u32,
+}
+
+impl CallFrame {
+    /// Create a new call frame
+    #[must_use] pub fn new(function_index: u32, pc: usize, locals_count: u32) -> Self {
+        Self {
+            function_index,
+            pc,
+            locals_count,
+        }
+    }
+}
+
+/// Placeholder for instrumentation point
+#[derive(Debug, Clone)]
+pub struct InstrumentationPoint {
+    /// Location in code
+    pub location: usize,
+    /// Type of instrumentation
+    pub point_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+}
+
+impl InstrumentationPoint {
+    /// Create a new instrumentation point
+    #[must_use] pub fn new(location: usize, point_type: &str) -> Self {
+        let bounded_point_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<1024>> = wrt_foundation::bounded::BoundedString::from_str_truncate(
+            point_type,
+            wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+        ).unwrap_or_else(|_| wrt_foundation::bounded::BoundedString::from_str_truncate("", wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap());
+        Self {
+            location,
+            point_type: bounded_point_type,
+        }
     }
 }

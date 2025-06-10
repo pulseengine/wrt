@@ -106,7 +106,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStoreBu
         // Create the store with the configured provider
         let mut store = ComponentValueStore::new(provider)?;
 
-        // Note: In a real implementation, we would pre-allocate capacity based on hints
+        // Binary std/no_std choice
         // However, since BoundedVec doesn't have a with_capacity constructor,
         // we'll leave this as a placeholder for future enhancement
 

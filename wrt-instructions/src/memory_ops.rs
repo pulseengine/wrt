@@ -59,18 +59,18 @@
 //! assert_eq!(result, Value::I32(42));
 //! ```
 
-use crate::prelude::*;
+use crate::prelude::{BoundedCapacity, Debug, Error, PartialEq, PureInstruction, Result, Value, ValueType};
 use crate::validation::{Validate, ValidationContext, validate_memory_op};
 
 
 /// Memory trait defining the requirements for memory operations
 pub trait MemoryOperations {
     /// Read bytes from memory
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>>;
     
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>>;
+    #[cfg(not(any(feature = "std", )))]
+    fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::NoStdProvider<65_536>>>;
 
     /// Write bytes to memory
     fn write_bytes(&mut self, offset: u32, bytes: &[u8]) -> Result<()>;
@@ -131,8 +131,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for i32 values
-    pub fn i32(memory_index: u32, offset: u32, align: u32) -> Self {
+    /// A new `MemoryLoad` for i32 values
+    #[must_use] pub fn i32(memory_index: u32, offset: u32, align: u32) -> Self {
         Self { memory_index, offset, align, value_type: ValueType::I32, signed: false, width: 32 }
     }
 
@@ -145,8 +145,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for i32 values from memory 0
-    pub fn i32_legacy(offset: u32, align: u32) -> Self {
+    /// A new `MemoryLoad` for i32 values from memory 0
+    #[must_use] pub fn i32_legacy(offset: u32, align: u32) -> Self {
         Self::i32(0, offset, align)
     }
 
@@ -159,8 +159,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for i64 values
-    pub fn i64(offset: u32, align: u32) -> Self {
+    /// A new `MemoryLoad` for i64 values
+    #[must_use] pub fn i64(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I64, signed: false, width: 64 }
     }
 
@@ -173,8 +173,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for f32 values
-    pub fn f32(offset: u32, align: u32) -> Self {
+    /// A new `MemoryLoad` for f32 values
+    #[must_use] pub fn f32(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::F32, signed: false, width: 32 }
     }
 
@@ -187,8 +187,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for f64 values
-    pub fn f64(offset: u32, align: u32) -> Self {
+    /// A new `MemoryLoad` for f64 values
+    #[must_use] pub fn f64(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::F64, signed: false, width: 64 }
     }
 
@@ -202,8 +202,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for i32 values loading from 8-bit memory
-    pub fn i32_load8(offset: u32, align: u32, signed: bool) -> Self {
+    /// A new `MemoryLoad` for i32 values loading from 8-bit memory
+    #[must_use] pub fn i32_load8(offset: u32, align: u32, signed: bool) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I32, signed, width: 8 }
     }
 
@@ -217,8 +217,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for i32 values loading from 16-bit memory
-    pub fn i32_load16(offset: u32, align: u32, signed: bool) -> Self {
+    /// A new `MemoryLoad` for i32 values loading from 16-bit memory
+    #[must_use] pub fn i32_load16(offset: u32, align: u32, signed: bool) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I32, signed, width: 16 }
     }
 
@@ -232,8 +232,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for i64 values loading from 8-bit memory
-    pub fn i64_load8(offset: u32, align: u32, signed: bool) -> Self {
+    /// A new `MemoryLoad` for i64 values loading from 8-bit memory
+    #[must_use] pub fn i64_load8(offset: u32, align: u32, signed: bool) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I64, signed, width: 8 }
     }
 
@@ -247,8 +247,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for i64 values loading from 16-bit memory
-    pub fn i64_load16(offset: u32, align: u32, signed: bool) -> Self {
+    /// A new `MemoryLoad` for i64 values loading from 16-bit memory
+    #[must_use] pub fn i64_load16(offset: u32, align: u32, signed: bool) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I64, signed, width: 16 }
     }
 
@@ -262,8 +262,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for i64 values loading from 32-bit memory
-    pub fn i64_load32(offset: u32, align: u32, signed: bool) -> Self {
+    /// A new `MemoryLoad` for i64 values loading from 32-bit memory
+    #[must_use] pub fn i64_load32(offset: u32, align: u32, signed: bool) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I64, signed, width: 32 }
     }
 
@@ -311,9 +311,9 @@ impl MemoryLoad {
                 if bytes.len() < 4 {
                     return Err(Error::memory_error("Insufficient bytes read for i32 value"));
                 }
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 let value = i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 let value = {
                     let mut arr = [0u8; 4];
                     for i in 0..4 {
@@ -328,12 +328,12 @@ impl MemoryLoad {
                 if bytes.len() < 8 {
                     return Err(Error::memory_error("Insufficient bytes read for i64 value"));
                 }
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 let value = i64::from_le_bytes([
                     bytes[0], bytes[1], bytes[2], bytes[3],
                     bytes[4], bytes[5], bytes[6], bytes[7],
                 ]);
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 let value = {
                     let mut arr = [0u8; 8];
                     for i in 0..8 {
@@ -348,9 +348,9 @@ impl MemoryLoad {
                 if bytes.len() < 4 {
                     return Err(Error::memory_error("Insufficient bytes read for f32 value"));
                 }
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 let value = f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 let value = {
                     let mut arr = [0u8; 4];
                     for i in 0..4 {
@@ -365,12 +365,12 @@ impl MemoryLoad {
                 if bytes.len() < 8 {
                     return Err(Error::memory_error("Insufficient bytes read for f64 value"));
                 }
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 let value = f64::from_le_bytes([
                     bytes[0], bytes[1], bytes[2], bytes[3],
                     bytes[4], bytes[5], bytes[6], bytes[7],
                 ]);
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 let value = {
                     let mut arr = [0u8; 8];
                     for i in 0..8 {
@@ -385,11 +385,11 @@ impl MemoryLoad {
                 if bytes.is_empty() {
                     return Err(Error::memory_error("Insufficient bytes read for i8 value"));
                 }
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 let byte = bytes.get(0).copied().ok_or_else(|| Error::memory_error("Index out of bounds"))?;
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 let byte = bytes.get(0).map_err(|_| Error::memory_error("Index out of bounds"))?;
-                let value = if self.signed { (byte as i8) as i32 } else { byte as i32 };
+                let value = if self.signed { i32::from(byte as i8) } else { i32::from(byte) };
                 Ok(Value::I32(value))
             }
             (ValueType::I64, 8) => {
@@ -397,11 +397,11 @@ impl MemoryLoad {
                 if bytes.is_empty() {
                     return Err(Error::memory_error("Insufficient bytes read for i8 value"));
                 }
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 let byte = bytes.get(0).copied().ok_or_else(|| Error::memory_error("Index out of bounds"))?;
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 let byte = bytes.get(0).map_err(|_| Error::memory_error("Index out of bounds"))?;
-                let value = if self.signed { (byte as i8) as i64 } else { byte as i64 };
+                let value = if self.signed { i64::from(byte as i8) } else { i64::from(byte) };
                 Ok(Value::I64(value))
             }
             (ValueType::I32, 16) => {
@@ -409,25 +409,25 @@ impl MemoryLoad {
                 if bytes.len() < 2 {
                     return Err(Error::memory_error("Insufficient bytes read for i16 value"));
                 }
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 let value = if self.signed {
                     (i16::from_le_bytes([bytes[0], bytes[1]])) as i32
                 } else {
                     (u16::from_le_bytes([bytes[0], bytes[1]])) as i32
                 };
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 let value = if self.signed {
                     let mut arr = [0u8; 2];
                     for i in 0..2 {
                         arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
                     }
-                    (i16::from_le_bytes(arr)) as i32
+                    i32::from(i16::from_le_bytes(arr))
                 } else {
                     let mut arr = [0u8; 2];
                     for i in 0..2 {
                         arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
                     }
-                    (u16::from_le_bytes(arr)) as i32
+                    i32::from(u16::from_le_bytes(arr))
                 };
                 Ok(Value::I32(value))
             }
@@ -436,25 +436,25 @@ impl MemoryLoad {
                 if bytes.len() < 2 {
                     return Err(Error::memory_error("Insufficient bytes read for i16 value"));
                 }
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 let value = if self.signed {
                     (i16::from_le_bytes([bytes[0], bytes[1]])) as i64
                 } else {
                     (u16::from_le_bytes([bytes[0], bytes[1]])) as i64
                 };
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 let value = if self.signed {
                     let mut arr = [0u8; 2];
                     for i in 0..2 {
                         arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
                     }
-                    (i16::from_le_bytes(arr)) as i64
+                    i64::from(i16::from_le_bytes(arr))
                 } else {
                     let mut arr = [0u8; 2];
                     for i in 0..2 {
                         arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
                     }
-                    (u16::from_le_bytes(arr)) as i64
+                    i64::from(u16::from_le_bytes(arr))
                 };
                 Ok(Value::I64(value))
             }
@@ -463,25 +463,25 @@ impl MemoryLoad {
                 if bytes.len() < 4 {
                     return Err(Error::memory_error("Insufficient bytes read for i32 value"));
                 }
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 let value = if self.signed {
                     (i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])) as i64
                 } else {
                     (u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])) as i64
                 };
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 let value = if self.signed {
                     let mut arr = [0u8; 4];
                     for i in 0..4 {
                         arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
                     }
-                    (i32::from_le_bytes(arr)) as i64
+                    i64::from(i32::from_le_bytes(arr))
                 } else {
                     let mut arr = [0u8; 4];
                     for i in 0..4 {
                         arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
                     }
-                    (u32::from_le_bytes(arr)) as i64
+                    i64::from(u32::from_le_bytes(arr))
                 };
                 Ok(Value::I64(value))
             }
@@ -502,8 +502,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for i32 values
-    pub fn i32(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for i32 values
+    #[must_use] pub fn i32(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I32, width: 32 }
     }
 
@@ -516,8 +516,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for i64 values
-    pub fn i64(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for i64 values
+    #[must_use] pub fn i64(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I64, width: 64 }
     }
 
@@ -530,8 +530,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for f32 values
-    pub fn f32(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for f32 values
+    #[must_use] pub fn f32(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::F32, width: 32 }
     }
 
@@ -544,8 +544,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for f64 values
-    pub fn f64(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for f64 values
+    #[must_use] pub fn f64(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::F64, width: 64 }
     }
 
@@ -558,8 +558,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for storing an i32 value as 8 bits
-    pub fn i32_store8(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for storing an i32 value as 8 bits
+    #[must_use] pub fn i32_store8(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I32, width: 8 }
     }
 
@@ -572,8 +572,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for storing an i32 value as 16 bits
-    pub fn i32_store16(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for storing an i32 value as 16 bits
+    #[must_use] pub fn i32_store16(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I32, width: 16 }
     }
 
@@ -586,8 +586,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for storing an i64 value as 8 bits
-    pub fn i64_store8(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for storing an i64 value as 8 bits
+    #[must_use] pub fn i64_store8(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I64, width: 8 }
     }
 
@@ -600,8 +600,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for storing an i64 value as 16 bits
-    pub fn i64_store16(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for storing an i64 value as 16 bits
+    #[must_use] pub fn i64_store16(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I64, width: 16 }
     }
 
@@ -614,8 +614,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for storing an i64 value as 32 bits
-    pub fn i64_store32(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for storing an i64 value as 32 bits
+    #[must_use] pub fn i64_store32(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I64, width: 32 }
     }
 
@@ -743,11 +743,11 @@ pub struct DataDrop {
 /// Trait for data segment operations (needed for memory.init and data.drop)
 pub trait DataSegmentOperations {
     /// Get data segment bytes
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn get_data_segment(&self, data_index: u32) -> Result<Option<Vec<u8>>>;
     
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    fn get_data_segment(&self, data_index: u32) -> Result<Option<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>>>;
+    #[cfg(not(any(feature = "std", )))]
+    fn get_data_segment(&self, data_index: u32) -> Result<Option<wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::NoStdProvider<65_536>>>>;
     
     /// Drop (mark as unavailable) a data segment
     fn drop_data_segment(&mut self, data_index: u32) -> Result<()>;
@@ -755,7 +755,7 @@ pub trait DataSegmentOperations {
 
 impl MemoryFill {
     /// Create a new memory fill operation
-    pub fn new(memory_index: u32) -> Self {
+    #[must_use] pub fn new(memory_index: u32) -> Self {
         Self { memory_index }
     }
 
@@ -812,7 +812,7 @@ impl MemoryFill {
 
 impl MemoryCopy {
     /// Create a new memory copy operation
-    pub fn new(dest_memory_index: u32, src_memory_index: u32) -> Self {
+    #[must_use] pub fn new(dest_memory_index: u32, src_memory_index: u32) -> Self {
         Self { dest_memory_index, src_memory_index }
     }
 
@@ -873,7 +873,7 @@ impl MemoryCopy {
 
 impl MemoryInit {
     /// Create a new memory init operation
-    pub fn new(memory_index: u32, data_index: u32) -> Self {
+    #[must_use] pub fn new(memory_index: u32, data_index: u32) -> Self {
         Self { memory_index, data_index }
     }
 
@@ -939,14 +939,14 @@ impl MemoryInit {
         }
 
         // Copy data from segment to memory
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let src_slice = &data[src_offset as usize..src_end as usize];
             memory.write_bytes(dest_addr, src_slice)
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
-            // For no_std, copy bytes one by one to avoid slice allocation
+            // Binary std/no_std choice
             for (i, offset) in (src_offset..src_end).enumerate() {
                 let byte = data.get(offset as usize).map_err(|_| Error::memory_error("Data segment index out of bounds"))?;
                 memory.write_bytes(dest_addr + i as u32, &[byte])?;
@@ -958,7 +958,7 @@ impl MemoryInit {
 
 impl DataDrop {
     /// Create a new data drop operation
-    pub fn new(data_index: u32) -> Self {
+    #[must_use] pub fn new(data_index: u32) -> Self {
         Self { data_index }
     }
 
@@ -1009,7 +1009,7 @@ pub struct MemorySize {
 
 impl MemorySize {
     /// Create a new memory size operation
-    pub fn new(memory_index: u32) -> Self {
+    #[must_use] pub fn new(memory_index: u32) -> Self {
         Self { memory_index }
     }
 
@@ -1024,7 +1024,7 @@ impl MemorySize {
     /// The size of memory in pages (64KiB pages) as an i32 Value
     pub fn execute(&self, memory: &(impl MemoryOperations + ?Sized)) -> Result<Value> {
         let size_in_bytes = memory.size_in_bytes()?;
-        let size_in_pages = (size_in_bytes / 65536) as i32;
+        let size_in_pages = (size_in_bytes / 65_536) as i32;
         Ok(Value::I32(size_in_pages))
     }
 }
@@ -1038,7 +1038,7 @@ pub struct MemoryGrow {
 
 impl MemoryGrow {
     /// Create a new memory grow operation
-    pub fn new(memory_index: u32) -> Self {
+    #[must_use] pub fn new(memory_index: u32) -> Self {
         Self { memory_index }
     }
 
@@ -1066,10 +1066,10 @@ impl MemoryGrow {
 
         // Get current size in pages
         let current_size_bytes = memory.size_in_bytes()?;
-        let current_size_pages = (current_size_bytes / 65536) as i32;
+        let current_size_pages = (current_size_bytes / 65_536) as i32;
 
         // Try to grow the memory
-        let delta_bytes = (delta_pages as usize) * 65536;
+        let delta_bytes = (delta_pages as usize) * 65_536;
         
         // Check if growth would exceed limits
         let _new_size_bytes = current_size_bytes.saturating_add(delta_bytes);
@@ -1204,11 +1204,10 @@ impl Validate for MemoryOp {
     }
 }
 
-#[cfg(all(test, any(feature = "std", feature = "alloc")))]
+#[cfg(all(test, any(feature = "std", )))]
 mod tests {
     // Import Vec and vec! based on feature flags
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::{vec, vec::Vec};
+        use std::{vec, vec::Vec};
     #[cfg(feature = "std")]
     use std::vec::Vec;
 
@@ -1228,7 +1227,7 @@ mod tests {
     }
 
     impl MemoryOperations for MockMemory {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
             let start = offset as usize;
             let end = start + len as usize;
@@ -1240,8 +1239,8 @@ mod tests {
             Ok(self.data[start..end].to_vec())
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>> {
+        #[cfg(not(any(feature = "std", )))]
+        fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::NoStdProvider<65_536>>> {
             let start = offset as usize;
             let end = start + len as usize;
 
@@ -1313,7 +1312,7 @@ mod tests {
 
     #[test]
     fn test_memory_load() {
-        let mut memory = MockMemory::new(65536);
+        let mut memory = MockMemory::new(65_536);
 
         // Store some test values
         memory.write_bytes(0, &[42, 0, 0, 0]).unwrap(); // i32 = 42
@@ -1361,7 +1360,7 @@ mod tests {
         // Test i32.load16_u
         let load = MemoryLoad::i32_load16(25, 2, false);
         let result = load.execute(&memory, &Value::I32(0)).unwrap();
-        assert_eq!(result, Value::I32(65535));
+        assert_eq!(result, Value::I32(65_535));
 
         // Test effective address calculation with offset
         let load = MemoryLoad::i32(4, 4);
@@ -1371,7 +1370,7 @@ mod tests {
 
     #[test]
     fn test_memory_store() {
-        let mut memory = MockMemory::new(65536);
+        let mut memory = MockMemory::new(65_536);
 
         // Test i32.store
         let store = MemoryStore::i32(0, 4);
@@ -1452,15 +1451,15 @@ mod tests {
 
     /// Mock data segment operations for testing
     struct MockDataSegments {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         segments: Vec<Option<Vec<u8>>>,
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        segments: wrt_foundation::BoundedVec<Option<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>>, 16, wrt_foundation::NoStdProvider<1024>>,
+        #[cfg(not(any(feature = "std", )))]
+        segments: wrt_foundation::BoundedVec<Option<wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::NoStdProvider<65_536>>>, 16, wrt_foundation::NoStdProvider<1024>>,
     }
 
     impl MockDataSegments {
         fn new() -> Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             {
                 let mut segments = Vec::new();
                 let mut seg1 = Vec::new();
@@ -1472,7 +1471,7 @@ mod tests {
                 segments.push(None); // Dropped segment
                 Self { segments }
             }
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             {
                 let mut segments = wrt_foundation::BoundedVec::new();
                 
@@ -1496,7 +1495,7 @@ mod tests {
     }
 
     impl DataSegmentOperations for MockDataSegments {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         fn get_data_segment(&self, data_index: u32) -> Result<Option<Vec<u8>>> {
             if (data_index as usize) < self.segments.len() {
                 Ok(self.segments[data_index as usize].clone())
@@ -1505,8 +1504,8 @@ mod tests {
             }
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        fn get_data_segment(&self, data_index: u32) -> Result<Option<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>>> {
+        #[cfg(not(any(feature = "std", )))]
+        fn get_data_segment(&self, data_index: u32) -> Result<Option<wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::NoStdProvider<65_536>>>> {
             if (data_index as usize) < self.segments.len() {
                 Ok(self.segments.get(data_index as usize).unwrap().clone())
             } else {
@@ -1516,11 +1515,11 @@ mod tests {
 
         fn drop_data_segment(&mut self, data_index: u32) -> Result<()> {
             if (data_index as usize) < self.segments.len() {
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 {
                     self.segments[data_index as usize] = None;
                 }
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 {
                     *self.segments.get_mut(data_index as usize).unwrap() = None;
                 }
@@ -1544,9 +1543,9 @@ mod tests {
         // Verify the fill worked
         let data = memory.read_bytes(100, 10).unwrap();
         assert_eq!(data.len(), 10);
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         assert!(data.iter().all(|&b| b == 0x42));
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         for i in 0..10 {
             assert_eq!(data.get(i).unwrap(), 0x42);
         }
@@ -1568,12 +1567,12 @@ mod tests {
 
         // Verify the copy worked
         let data = memory.read_bytes(100, 5).unwrap();
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             let expected = [1, 2, 3, 4, 5];
             assert_eq!(data, expected);
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             assert_eq!(data.len(), 5);
             for i in 0..5 {
@@ -1598,12 +1597,12 @@ mod tests {
 
         // Verify overlapping copy worked correctly
         let data = memory.read_bytes(0, 8).unwrap();
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             let expected = [1, 2, 1, 2, 3, 4, 5, 8];
             assert_eq!(data, expected);
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             let expected = [1, 2, 1, 2, 3, 4, 5, 8];
             for i in 0..8 {
@@ -1631,12 +1630,12 @@ mod tests {
 
         // Verify the init worked (should copy bytes [2, 3, 4] from segment [1, 2, 3, 4, 5])
         let data = memory.read_bytes(100, 3).unwrap();
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             let expected = [2, 3, 4];
             assert_eq!(data, expected);
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             assert_eq!(data.len(), 3);
             for i in 0..3 {
@@ -1699,14 +1698,14 @@ mod tests {
     #[test]
     fn test_memory_size() {
         // Create memory with 2 pages (128 KiB)
-        let memory = MockMemory::new(2 * 65536);
+        let memory = MockMemory::new(2 * 65_536);
         let size_op = MemorySize::new(0);
         
         let result = size_op.execute(&memory).unwrap();
         assert_eq!(result, Value::I32(2));
         
         // Test with partial page
-        let memory = MockMemory::new(65536 + 100); // 1 page + 100 bytes
+        let memory = MockMemory::new(65_536 + 100); // 1 page + 100 bytes
         let result = size_op.execute(&memory).unwrap();
         assert_eq!(result, Value::I32(1)); // Should return 1 (partial pages are truncated)
     }
@@ -1714,7 +1713,7 @@ mod tests {
     #[test]
     fn test_memory_grow() {
         // Create memory with 1 page (64 KiB)
-        let mut memory = MockMemory::new(65536);
+        let mut memory = MockMemory::new(65_536);
         let grow_op = MemoryGrow::new(0);
         
         // Grow by 2 pages
@@ -1722,7 +1721,7 @@ mod tests {
         assert_eq!(result, Value::I32(1)); // Previous size was 1 page
         
         // Check new size
-        assert_eq!(memory.size_in_bytes().unwrap(), 3 * 65536);
+        assert_eq!(memory.size_in_bytes().unwrap(), 3 * 65_536);
         
         // Test grow with 0 pages (should succeed)
         let result = grow_op.execute(&mut memory, &Value::I32(0)).unwrap();
@@ -1791,7 +1790,7 @@ mod tests {
 
     #[test]
     fn test_unified_memory_size() {
-        let mut ctx = MockMemoryContext::new(2 * 65536); // 2 pages
+        let mut ctx = MockMemoryContext::new(2 * 65_536); // 2 pages
         
         // Execute memory.size
         let op = MemoryOp::Size(MemorySize::new(0));
@@ -1803,7 +1802,7 @@ mod tests {
 
     #[test]
     fn test_unified_memory_grow() {
-        let mut ctx = MockMemoryContext::new(65536); // 1 page
+        let mut ctx = MockMemoryContext::new(65_536); // 1 page
         
         // Push delta (2 pages)
         ctx.push_value(Value::I32(2)).unwrap();
@@ -1816,7 +1815,7 @@ mod tests {
         assert_eq!(ctx.pop_value().unwrap(), Value::I32(1));
         
         // Verify memory actually grew
-        assert_eq!(ctx.memory.size_in_bytes().unwrap(), 3 * 65536);
+        assert_eq!(ctx.memory.size_in_bytes().unwrap(), 3 * 65_536);
     }
 
     #[test]
@@ -1834,9 +1833,9 @@ mod tests {
         
         // Verify memory was filled
         let data = ctx.memory.read_bytes(100, 10).unwrap();
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         assert!(data.iter().all(|&b| b == 0x42));
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         for i in 0..10 {
             assert_eq!(*data.get(i).unwrap(), 0x42);
         }
@@ -1860,9 +1859,9 @@ mod tests {
         
         // Verify memory was copied
         let data = ctx.memory.read_bytes(100, 5).unwrap();
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         assert_eq!(data, vec![1, 2, 3, 4, 5]);
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         for i in 0..5 {
             assert_eq!(*data.get(i).unwrap(), (i + 1) as u8);
         }

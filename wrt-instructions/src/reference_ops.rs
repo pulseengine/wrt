@@ -2,14 +2,14 @@
 //!
 //! This module implements WebAssembly reference type instructions including:
 //! - ref.null: Create a null reference
-//! - ref.is_null: Test if a reference is null
+//! - `ref.is_null`: Test if a reference is null
 //! - ref.func: Create a function reference
-//! - ref.as_non_null: Assert reference is not null
+//! - `ref.as_non_null`: Assert reference is not null
 //!
 //! These operations support the WebAssembly reference types proposal
-//! and work across std, no_std+alloc, and pure no_std environments.
+//! and work across std, `no_std+alloc`, and pure `no_std` environments.
 
-use crate::prelude::*;
+use crate::prelude::{BoundedCapacity, Debug, Eq, PartialEq, PureInstruction};
 use wrt_error::{Error, Result};
 use wrt_foundation::{
     types::{RefType, ValueType},
@@ -26,7 +26,7 @@ pub struct RefNull {
 
 impl RefNull {
     /// Create a new ref.null instruction
-    pub fn new(ref_type: RefType) -> Self {
+    #[must_use] pub fn new(ref_type: RefType) -> Self {
         Self { ref_type }
     }
 
@@ -43,13 +43,19 @@ impl RefNull {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RefIsNull;
 
+impl Default for RefIsNull {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RefIsNull {
-    /// Create a new ref.is_null instruction
-    pub fn new() -> Self {
+    /// Create a new `ref.is_null` instruction
+    #[must_use] pub fn new() -> Self {
         Self
     }
 
-    /// Execute the ref.is_null instruction
+    /// Execute the `ref.is_null` instruction
     pub fn execute(&self, reference: Value) -> Result<Value> {
         let is_null = match reference {
             Value::FuncRef(None) => true,
@@ -75,7 +81,7 @@ pub struct RefFunc {
 
 impl RefFunc {
     /// Create a new ref.func instruction
-    pub fn new(function_index: u32) -> Self {
+    #[must_use] pub fn new(function_index: u32) -> Self {
         Self { function_index }
     }
 
@@ -95,13 +101,19 @@ impl RefFunc {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RefAsNonNull;
 
+impl Default for RefAsNonNull {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RefAsNonNull {
-    /// Create a new ref.as_non_null instruction
-    pub fn new() -> Self {
+    /// Create a new `ref.as_non_null` instruction
+    #[must_use] pub fn new() -> Self {
         Self
     }
 
-    /// Execute the ref.as_non_null instruction
+    /// Execute the `ref.as_non_null` instruction
     pub fn execute(&self, reference: Value) -> Result<Value> {
         match reference {
             Value::FuncRef(None) | Value::ExternRef(None) => {
@@ -130,7 +142,7 @@ pub struct RefEq;
 
 impl RefEq {
     /// Create a new ref.eq instruction
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self
     }
 
@@ -183,11 +195,11 @@ impl Default for RefEq {
 pub enum ReferenceOp {
     /// ref.null operation
     RefNull(RefNull),
-    /// ref.is_null operation  
+    /// `ref.is_null` operation  
     RefIsNull(RefIsNull),
     /// ref.func operation
     RefFunc(RefFunc),
-    /// ref.as_non_null operation
+    /// `ref.as_non_null` operation
     RefAsNonNull(RefAsNonNull),
     /// ref.eq operation
     RefEq(RefEq),
@@ -229,7 +241,7 @@ impl ReferenceOp {
     }
 }
 
-#[cfg(all(test, any(feature = "std", feature = "alloc")))]
+#[cfg(all(test, any(feature = "std", )))]
 mod tests {
     use super::*;
     use wrt_foundation::values::ExternRef;

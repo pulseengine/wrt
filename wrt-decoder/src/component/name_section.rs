@@ -11,6 +11,8 @@
 use wrt_format::binary;
 
 use crate::{prelude::*, Error, Result};
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{NoStdProvider, traits::BoundedCapacity};
 
 /// WebAssembly Component Model name section subsection types
 pub const COMPONENT_NAME_COMPONENT: u8 = 0;
@@ -45,8 +47,9 @@ pub enum CoreSortIdentifier {
 }
 
 /// Sort identifier for subsections
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum SortIdentifier {
+    #[default]
     Module = 0,
     Function = 1,
     CoreFunction = 2,
@@ -62,21 +65,142 @@ pub enum SortIdentifier {
 }
 
 /// Entry in a name map
-#[derive(Debug, Clone)]
+#[cfg(feature = "std")]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NameMapEntry {
     pub index: u32,
     pub name: String,
 }
 
+/// Entry in a name map (no_std version)
+#[cfg(not(feature = "std"))]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct NameMapEntry {
+    pub index: u32,
+    pub name: &'static str,
+}
+
+// Implement required traits for NameMapEntry
+impl wrt_foundation::traits::ToBytes for NameMapEntry {
+    fn serialized_size(&self) -> usize {
+        4 + self.name.len() + 1 // u32 + string + separator
+    }
+
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream,
+        _provider: &PStream,
+    ) -> wrt_foundation::WrtResult<()> {
+        writer.write_u32_le(self.index)?;
+        #[cfg(feature = "std")]
+        writer.write_all(self.name.as_bytes())?;
+        #[cfg(not(feature = "std"))]
+        writer.write_all(self.name.as_bytes())?;
+        Ok(())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for NameMapEntry {
+    fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream,
+        _provider: &PStream,
+    ) -> wrt_foundation::WrtResult<Self> {
+        let index = reader.read_u32_le()?;
+        #[cfg(feature = "std")]
+        let mut bytes = Vec::new();
+        #[cfg(not(feature = "std"))]
+        let mut bytes: wrt_foundation::BoundedVec<u8, 256, wrt_foundation::memory_system::SmallProvider> = {
+            use wrt_foundation::memory_system::SmallProvider;
+            let provider = SmallProvider::new();
+            wrt_foundation::BoundedVec::new(provider).unwrap_or_default()
+        };
+        loop {
+            match reader.read_u8() {
+                #[cfg(feature = "std")]
+                Ok(byte) => bytes.push(byte),
+                #[cfg(not(feature = "std"))]
+                Ok(byte) => { let _ = bytes.push(byte); },
+                Err(_) => break,
+            }
+        }
+        #[cfg(feature = "std")]
+        let name = String::from_utf8_lossy(&bytes).to_string();
+        #[cfg(not(feature = "std"))]
+        let name = ""; // Simplified for no_std
+        Ok(NameMapEntry { index, name })
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for NameMapEntry {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&self.index.to_le_bytes());
+        #[cfg(feature = "std")]
+        checksum.update_slice(self.name.as_bytes());
+        #[cfg(not(feature = "std"))]
+        checksum.update_slice(self.name.as_bytes());
+    }
+}
+
+// Implement required traits for SortIdentifier
+impl wrt_foundation::traits::ToBytes for SortIdentifier {
+    fn serialized_size(&self) -> usize {
+        1 // enum as u8
+    }
+
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream,
+        _provider: &PStream,
+    ) -> wrt_foundation::WrtResult<()> {
+        writer.write_u8(*self as u8)?;
+        Ok(())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for SortIdentifier {
+    fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream,
+        _provider: &PStream,
+    ) -> wrt_foundation::WrtResult<Self> {
+        let value = reader.read_u8()?;
+        match value {
+            0 => Ok(SortIdentifier::Module),
+            1 => Ok(SortIdentifier::Function),
+            2 => Ok(SortIdentifier::CoreFunction),
+            3 => Ok(SortIdentifier::CoreTable),
+            4 => Ok(SortIdentifier::CoreMemory),
+            5 => Ok(SortIdentifier::CoreGlobal),
+            6 => Ok(SortIdentifier::CoreType),
+            7 => Ok(SortIdentifier::Type),
+            8 => Ok(SortIdentifier::Component),
+            9 => Ok(SortIdentifier::Instance),
+            10 => Ok(SortIdentifier::CoreInstance),
+            11 => Ok(SortIdentifier::Value),
+            _ => Ok(SortIdentifier::Module), // Default fallback
+        }
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for SortIdentifier {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&[*self as u8]);
+    }
+}
+
 /// Name map - maps indices to names
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NameMap {
     pub entries: Vec<NameMapEntry>,
 }
 
 impl NameMap {
     pub fn new() -> Self {
-        Self { entries: Vec::new() }
+        #[cfg(feature = "std")]
+        let entries = Vec::new();
+        #[cfg(not(feature = "std"))]
+        let entries = Vec::new(NoStdProvider::<4096>::new()).unwrap_or_default();
+        
+        Self { entries }
     }
 
     pub fn parse(data: &[u8], offset: usize) -> Result<(Self, usize)> {
@@ -84,7 +208,10 @@ impl NameMap {
         let (count, count_len) = binary::read_leb128_u32(data, offset)?;
 
         let mut current_offset = offset + count_len;
-        let mut entries = Vec::with_capacity(count as usize);
+        #[cfg(feature = "std")]
+        let mut entries = Vec::new();
+        #[cfg(not(feature = "std"))]
+        let mut entries = Vec::new(NoStdProvider::<4096>::new()).map_err(|_| Error::parse_error("Failed to create entries vector"))?;
 
         for _ in 0..count {
             if current_offset >= data.len() {
@@ -97,17 +224,74 @@ impl NameMap {
 
             // Parse name
             if current_offset >= data.len() {
-                return Err(Error::parse_error("Truncated name in name map".to_string()));
+                return Err(Error::parse_error("Truncated name in name map"));
             }
 
             // Use wrt-format's read_string to parse the name
-            let (name, name_len) = binary::read_string(data, current_offset)?;
+            let (name_bytes, name_len) = binary::read_string(data, current_offset)?;
             current_offset += name_len;
+            
+            #[cfg(feature = "std")]
+            let name = String::from_utf8(name_bytes.to_vec()).unwrap_or_default();
+            #[cfg(not(feature = "std"))]
+            let name = ""; // Simplified for no_std
 
+            #[cfg(feature = "std")]
             entries.push(NameMapEntry { index, name });
+            #[cfg(not(feature = "std"))]
+            entries.push(NameMapEntry { index, name }).map_err(|_| Error::parse_error("Failed to push entry"))?;
         }
 
         Ok((Self { entries }, current_offset - offset))
+    }
+}
+
+// Implement required traits for NameMap
+impl wrt_foundation::traits::ToBytes for NameMap {
+    fn serialized_size(&self) -> usize {
+        4 + self.entries.iter().map(|entry| entry.serialized_size()).sum::<usize>() // u32 count + entries
+    }
+
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::WrtResult<()> {
+        writer.write_u32_le(self.entries.len() as u32)?;
+        for entry in &self.entries {
+            entry.to_bytes_with_provider(writer, provider)?;
+        }
+        Ok(())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for NameMap {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::WrtResult<Self> {
+        let count = reader.read_u32_le()?;
+        #[cfg(feature = "std")]
+        let mut entries = Vec::new();
+        #[cfg(not(feature = "std"))]
+        let mut entries = Vec::new(NoStdProvider::<4096>::new()).map_err(|_| wrt_foundation::traits::SerializationError::Custom("Failed to create entries vector"))?;
+        for _ in 0..count {
+            let entry = NameMapEntry::from_bytes_with_provider(reader, provider)?;
+            #[cfg(feature = "std")]
+            entries.push(entry);
+            #[cfg(not(feature = "std"))]
+            entries.push(entry).map_err(|_| wrt_foundation::traits::SerializationError::Custom("Failed to push entry"))?;
+        }
+        Ok(NameMap { entries })
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for NameMap {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&(self.entries.len() as u32).to_le_bytes());
+        for entry in &self.entries {
+            entry.update_checksum(checksum);
+        }
     }
 }
 
@@ -153,10 +337,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
         let subsection_end = subsection_start + subsection_size as usize;
 
         if subsection_end > data.len() {
-            return Err(Error::parse_error(format!(
-                "Component name subsection size {} exceeds data size",
-                subsection_size
-            )));
+            return Err(Error::parse_error("Component name subsection size exceeds data size"));
         }
 
         let subsection_data = &data[subsection_start..subsection_end];
@@ -165,8 +346,17 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
             COMPONENT_NAME_COMPONENT => {
                 // Component name
                 if !subsection_data.is_empty() {
-                    let (name, _) = binary::read_string(subsection_data, 0)?;
-                    name_section.component_name = Some(name);
+                    let (name_bytes, _) = binary::read_string(subsection_data, 0)?;
+                    #[cfg(feature = "std")]
+                    {
+                        let name = String::from_utf8(name_bytes.to_vec()).unwrap_or_default();
+                        name_section.component_name = Some(name);
+                    }
+                    #[cfg(not(feature = "std"))]
+                    {
+                        let name = String::from_str("", wrt_foundation::NoStdProvider::<4096>::new()).unwrap_or_default();
+                        name_section.component_name = Some(name); // Simplified for no_std
+                    }
                 }
             }
             COMPONENT_NAME_SORT => {
@@ -227,7 +417,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
 
 fn parse_sort(bytes: &[u8], pos: usize) -> Result<(SortIdentifier, usize)> {
     if pos >= bytes.len() {
-        return Err(Error::parse_error("Unexpected end of input".to_string()));
+        return Err(Error::parse_error("Unexpected end of input"));
     }
 
     let sort_byte = bytes[pos];
@@ -245,7 +435,7 @@ fn parse_sort(bytes: &[u8], pos: usize) -> Result<(SortIdentifier, usize)> {
         10 => SortIdentifier::CoreInstance,
         11 => SortIdentifier::Value,
         _ => {
-            return Err(Error::parse_error(format!("Invalid sort identifier: {}", sort_byte)));
+            return Err(Error::parse_error("Invalid sort identifier"));
         }
     };
 
@@ -257,7 +447,14 @@ fn parse_name_map(data: &[u8], pos: usize) -> Result<(NameMap, usize)> {
 }
 
 pub fn generate_component_name_section(name_section: &ComponentNameSection) -> Result<Vec<u8>> {
+    #[cfg(feature = "std")]
     let mut data = Vec::new();
+    #[cfg(not(feature = "std"))]
+    let mut data = {
+        use wrt_foundation::safe_memory::NoStdProvider;
+        let provider = NoStdProvider::<4096>::new();
+        wrt_foundation::BoundedVec::new(provider).unwrap_or_default()
+    };
 
     // Component name
     if let Some(name) = &name_section.component_name {
@@ -265,37 +462,124 @@ pub fn generate_component_name_section(name_section: &ComponentNameSection) -> R
         data.push(COMPONENT_NAME_COMPONENT);
 
         // Generate data for name
+        #[cfg(feature = "std")]
         let mut subsection_data = Vec::new();
-        let name_bytes = binary::write_string(name);
-        subsection_data.extend_from_slice(&name_bytes);
+        #[cfg(not(feature = "std"))]
+        let mut subsection_data: wrt_foundation::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<4096>> = {
+            use wrt_foundation::safe_memory::NoStdProvider;
+            let provider = NoStdProvider::<4096>::new();
+            wrt_foundation::BoundedVec::new(provider).unwrap_or_default()
+        };
+        
+        #[cfg(feature = "std")]
+        {
+            let name_bytes = write_string(name);
+            subsection_data.extend_from_slice(&name_bytes);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let name_str = name.as_str().unwrap_or("");
+            let name_bytes = write_string(name_str);
+            for i in 0..name_bytes.len() {
+                if let Ok(byte) = name_bytes.get(i) {
+                    let _ = subsection_data.push(byte);
+                }
+            }
+        }
 
         // Add subsection size and data
-        data.extend_from_slice(&binary::write_leb128_u32(subsection_data.len() as u32));
-        data.extend_from_slice(&subsection_data);
+        #[cfg(feature = "std")]
+        {
+            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32));
+            data.extend_from_slice(&subsection_data);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let len_bytes = write_leb128_u32(subsection_data.len() as u32);
+            for i in 0..len_bytes.len() {
+                if let Ok(byte) = len_bytes.get(i) {
+                    let _ = data.push(byte);
+                }
+            }
+            for i in 0..subsection_data.len() {
+                if let Ok(byte) = subsection_data.get(i) {
+                    let _ = data.push(byte);
+                }
+            }
+        }
     }
 
     // Sort names
-    if !name_section.sort_names.is_empty() {
+    #[cfg(feature = "std")]
+    let sort_names_empty = name_section.sort_names.is_empty();
+    #[cfg(not(feature = "std"))]
+    let sort_names_empty = wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.sort_names);
+    
+    if !sort_names_empty {
         // Name type
         data.push(COMPONENT_NAME_SORT);
 
         // Generate data for sorts
+        #[cfg(feature = "std")]
         let mut subsection_data = Vec::new();
+        #[cfg(not(feature = "std"))]
+        let mut subsection_data: wrt_foundation::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<4096>> = {
+            use wrt_foundation::safe_memory::NoStdProvider;
+            let provider = NoStdProvider::<4096>::new();
+            wrt_foundation::BoundedVec::new(provider).unwrap_or_default()
+        };
+        
         for (sort, name_map) in &name_section.sort_names {
-            let sort_bytes = generate_sort(sort)?;
+            let sort_bytes = generate_sort(&sort)?;
+            #[cfg(feature = "std")]
             subsection_data.extend_from_slice(&sort_bytes);
+            #[cfg(not(feature = "std"))]
+            for i in 0..sort_bytes.len() {
+                if let Ok(byte) = sort_bytes.get(i) {
+                    let _ = subsection_data.push(byte);
+                }
+            }
 
-            let name_map_bytes = generate_name_map(name_map)?;
+            let name_map_bytes = generate_name_map(&name_map)?;
+            #[cfg(feature = "std")]
             subsection_data.extend_from_slice(&name_map_bytes);
+            #[cfg(not(feature = "std"))]
+            for i in 0..name_map_bytes.len() {
+                if let Ok(byte) = name_map_bytes.get(i) {
+                    let _ = subsection_data.push(byte);
+                }
+            }
         }
 
         // Add subsection size and data
-        data.extend_from_slice(&binary::write_leb128_u32(subsection_data.len() as u32));
-        data.extend_from_slice(&subsection_data);
+        #[cfg(feature = "std")]
+        {
+            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32));
+            data.extend_from_slice(&subsection_data);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let len_bytes = write_leb128_u32(subsection_data.len() as u32);
+            for i in 0..len_bytes.len() {
+                if let Ok(byte) = len_bytes.get(i) {
+                    let _ = data.push(byte);
+                }
+            }
+            for i in 0..subsection_data.len() {
+                if let Ok(byte) = subsection_data.get(i) {
+                    let _ = data.push(byte);
+                }
+            }
+        }
     }
 
     // Import names
-    if !name_section.import_names.entries.is_empty() {
+    #[cfg(feature = "std")]
+    let import_names_empty = name_section.import_names.entries.is_empty();
+    #[cfg(not(feature = "std"))]
+    let import_names_empty = wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.import_names.entries);
+    
+    if !import_names_empty {
         // Name type
         data.push(COMPONENT_NAME_IMPORT);
 
@@ -303,12 +587,34 @@ pub fn generate_component_name_section(name_section: &ComponentNameSection) -> R
         let subsection_data = generate_name_map(&name_section.import_names)?;
 
         // Add subsection size and data
-        data.extend_from_slice(&binary::write_leb128_u32(subsection_data.len() as u32));
-        data.extend_from_slice(&subsection_data);
+        #[cfg(feature = "std")]
+        {
+            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32));
+            data.extend_from_slice(&subsection_data);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let len_bytes = write_leb128_u32(subsection_data.len() as u32);
+            for i in 0..len_bytes.len() {
+                if let Ok(byte) = len_bytes.get(i) {
+                    let _ = data.push(byte);
+                }
+            }
+            for i in 0..subsection_data.len() {
+                if let Ok(byte) = subsection_data.get(i) {
+                    let _ = data.push(byte);
+                }
+            }
+        }
     }
 
     // Export names
-    if !name_section.export_names.entries.is_empty() {
+    #[cfg(feature = "std")]
+    let export_names_empty = name_section.export_names.entries.is_empty();
+    #[cfg(not(feature = "std"))]
+    let export_names_empty = wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.export_names.entries);
+    
+    if !export_names_empty {
         // Name type
         data.push(COMPONENT_NAME_EXPORT);
 
@@ -316,12 +622,34 @@ pub fn generate_component_name_section(name_section: &ComponentNameSection) -> R
         let subsection_data = generate_name_map(&name_section.export_names)?;
 
         // Add subsection size and data
-        data.extend_from_slice(&binary::write_leb128_u32(subsection_data.len() as u32));
-        data.extend_from_slice(&subsection_data);
+        #[cfg(feature = "std")]
+        {
+            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32));
+            data.extend_from_slice(&subsection_data);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let len_bytes = write_leb128_u32(subsection_data.len() as u32);
+            for i in 0..len_bytes.len() {
+                if let Ok(byte) = len_bytes.get(i) {
+                    let _ = data.push(byte);
+                }
+            }
+            for i in 0..subsection_data.len() {
+                if let Ok(byte) = subsection_data.get(i) {
+                    let _ = data.push(byte);
+                }
+            }
+        }
     }
 
     // Canonical names
-    if !name_section.canonical_names.entries.is_empty() {
+    #[cfg(feature = "std")]
+    let canonical_names_empty = name_section.canonical_names.entries.is_empty();
+    #[cfg(not(feature = "std"))]
+    let canonical_names_empty = wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.canonical_names.entries);
+    
+    if !canonical_names_empty {
         // Name type
         data.push(COMPONENT_NAME_CANONICAL);
 
@@ -329,12 +657,34 @@ pub fn generate_component_name_section(name_section: &ComponentNameSection) -> R
         let subsection_data = generate_name_map(&name_section.canonical_names)?;
 
         // Add subsection size and data
-        data.extend_from_slice(&binary::write_leb128_u32(subsection_data.len() as u32));
-        data.extend_from_slice(&subsection_data);
+        #[cfg(feature = "std")]
+        {
+            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32));
+            data.extend_from_slice(&subsection_data);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let len_bytes = write_leb128_u32(subsection_data.len() as u32);
+            for i in 0..len_bytes.len() {
+                if let Ok(byte) = len_bytes.get(i) {
+                    let _ = data.push(byte);
+                }
+            }
+            for i in 0..subsection_data.len() {
+                if let Ok(byte) = subsection_data.get(i) {
+                    let _ = data.push(byte);
+                }
+            }
+        }
     }
 
     // Type names
-    if !name_section.type_names.entries.is_empty() {
+    #[cfg(feature = "std")]
+    let type_names_empty = name_section.type_names.entries.is_empty();
+    #[cfg(not(feature = "std"))]
+    let type_names_empty = wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.type_names.entries);
+    
+    if !type_names_empty {
         // Name type
         data.push(COMPONENT_NAME_TYPE);
 
@@ -342,13 +692,31 @@ pub fn generate_component_name_section(name_section: &ComponentNameSection) -> R
         let subsection_data = generate_name_map(&name_section.type_names)?;
 
         // Add subsection size and data
-        data.extend_from_slice(&binary::write_leb128_u32(subsection_data.len() as u32));
-        data.extend_from_slice(&subsection_data);
+        #[cfg(feature = "std")]
+        {
+            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32));
+            data.extend_from_slice(&subsection_data);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let len_bytes = write_leb128_u32(subsection_data.len() as u32);
+            for i in 0..len_bytes.len() {
+                if let Ok(byte) = len_bytes.get(i) {
+                    let _ = data.push(byte);
+                }
+            }
+            for i in 0..subsection_data.len() {
+                if let Ok(byte) = subsection_data.get(i) {
+                    let _ = data.push(byte);
+                }
+            }
+        }
     }
 
     Ok(data)
 }
 
+#[cfg(feature = "std")]
 fn generate_sort(sort: &SortIdentifier) -> Result<Vec<u8>> {
     let mut data = Vec::new();
     match sort {
@@ -368,34 +736,138 @@ fn generate_sort(sort: &SortIdentifier) -> Result<Vec<u8>> {
     Ok(data)
 }
 
+#[cfg(not(feature = "std"))]
+fn generate_sort(sort: &SortIdentifier) -> Result<wrt_foundation::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<4096>>> {
+    use wrt_foundation::safe_memory::NoStdProvider;
+    let provider = NoStdProvider::<4096>::new();
+    let mut data = wrt_foundation::BoundedVec::new(provider).map_err(|_| Error::new(
+        wrt_error::ErrorCategory::Memory,
+        wrt_error::codes::MEMORY_ALLOCATION_FAILED,
+        "Failed to create sort data buffer"
+    ))?;
+    
+    let byte = match sort {
+        SortIdentifier::Module => 0,
+        SortIdentifier::Function => 1,
+        SortIdentifier::CoreFunction => 2,
+        SortIdentifier::CoreTable => 3,
+        SortIdentifier::CoreMemory => 4,
+        SortIdentifier::CoreGlobal => 5,
+        SortIdentifier::CoreType => 6,
+        SortIdentifier::Type => 7,
+        SortIdentifier::Component => 8,
+        SortIdentifier::Instance => 9,
+        SortIdentifier::CoreInstance => 10,
+        SortIdentifier::Value => 11,
+    };
+    data.push(byte).map_err(|_| Error::new(
+        wrt_error::ErrorCategory::Memory,
+        wrt_error::codes::MEMORY_ALLOCATION_FAILED,
+        "Failed to push sort byte"
+    ))?;
+    Ok(data)
+}
+
+#[cfg(feature = "std")]
 fn generate_name_map(names: &NameMap) -> Result<Vec<u8>> {
     let mut data = Vec::new();
 
     // Number of entries
-    data.extend_from_slice(&binary::write_leb128_u32(names.entries.len() as u32));
+    data.extend_from_slice(&write_leb128_u32(names.entries.len() as u32));
 
     // Each entry
     for entry in &names.entries {
         // Index
-        data.extend_from_slice(&binary::write_leb128_u32(entry.index));
+        data.extend_from_slice(&write_leb128_u32(entry.index));
 
         // Name
-        data.extend_from_slice(&binary::write_string(&entry.name));
+        data.extend_from_slice(&write_string(&entry.name));
     }
 
     Ok(data)
 }
 
-pub fn parse_error(message: &str) -> Error {
-    Error::parse_error(message.to_string())
+#[cfg(not(feature = "std"))]
+fn generate_name_map(names: &NameMap) -> Result<wrt_foundation::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<4096>>> {
+    use wrt_foundation::safe_memory::NoStdProvider;
+    let provider = NoStdProvider::<4096>::new();
+    let mut data = wrt_foundation::BoundedVec::new(provider).map_err(|_| Error::new(
+        wrt_error::ErrorCategory::Memory,
+        wrt_error::codes::MEMORY_ALLOCATION_FAILED,
+        "Failed to create name map data buffer"
+    ))?;
+
+    // Number of entries
+    let len_bytes = write_leb128_u32(names.entries.len() as u32);
+    for i in 0..len_bytes.len() {
+        if let Ok(byte) = len_bytes.get(i) {
+            data.push(byte).map_err(|_| Error::new(
+                wrt_error::ErrorCategory::Memory,
+                wrt_error::codes::MEMORY_ALLOCATION_FAILED,
+                "Failed to push length byte"
+            ))?;
+        }
+    }
+
+    // Each entry
+    for entry in &names.entries {
+        // Index
+        let index_bytes = write_leb128_u32(entry.index);
+        for i in 0..index_bytes.len() {
+            if let Ok(byte) = index_bytes.get(i) {
+                data.push(byte).map_err(|_| Error::new(
+                    wrt_error::ErrorCategory::Memory,
+                    wrt_error::codes::MEMORY_ALLOCATION_FAILED,
+                    "Failed to push index byte"
+                ))?;
+            }
+        }
+
+        // Name
+        #[cfg(feature = "std")]
+        let name_str = &entry.name;
+        #[cfg(not(feature = "std"))]
+        let name_str = entry.name;
+        let name_bytes = write_string(name_str);
+        for i in 0..name_bytes.len() {
+            if let Ok(byte) = name_bytes.get(i) {
+                data.push(byte).map_err(|_| Error::new(
+                    wrt_error::ErrorCategory::Memory,
+                    wrt_error::codes::MEMORY_ALLOCATION_FAILED,
+                    "Failed to push name byte"
+                ))?;
+            }
+        }
+    }
+
+    Ok(data)
 }
 
-pub fn parse_error_with_context(message: &str, context: &str) -> Error {
-    Error::parse_error(format!("{}: {}", message, context))
+pub fn parse_error(_message: &str) -> Error {
+    use wrt_error::{codes, ErrorCategory};
+    Error::new(
+        ErrorCategory::Parse,
+        codes::PARSE_ERROR,
+        "Parse error"
+    )
 }
 
-pub fn parse_error_with_position(message: &str, position: usize) -> Error {
-    Error::parse_error(format!("{} at position {}", message, position))
+pub fn parse_error_with_context(_message: &str, _context: &str) -> Error {
+    use wrt_error::{codes, ErrorCategory};
+    Error::new(
+        ErrorCategory::Parse,
+        codes::PARSE_ERROR,
+        "Parse error with context"
+    )
+}
+
+pub fn parse_error_with_position(_message: &str, _position: usize) -> Error {
+    use wrt_error::{codes, ErrorCategory};
+    Error::new(
+        ErrorCategory::Parse,
+        codes::PARSE_ERROR,
+        "Parse error at position"
+    )
 }
 
 #[cfg(test)]

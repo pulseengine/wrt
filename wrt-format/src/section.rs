@@ -4,15 +4,18 @@
 //! sections.
 
 // Import collection types
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[cfg(not(feature = "std"))]
 use alloc::{string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::{string::String, vec::Vec};
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 use crate::WasmVec;
 // Import the prelude for conditional imports
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 use wrt_foundation::{MemoryProvider, NoStdProvider, traits::BoundedCapacity};
 
 /// WebAssembly section ID constants
@@ -84,7 +87,7 @@ impl SectionId {
 }
 
 /// WebAssembly section
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub enum Section {
     /// Custom section
@@ -116,7 +119,7 @@ pub enum Section {
 }
 
 /// WebAssembly section (no_std version)
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone)]
 pub enum Section<P: MemoryProvider + Clone + Default + Eq = NoStdProvider<1024>> {
     /// Custom section
@@ -148,7 +151,7 @@ pub enum Section<P: MemoryProvider + Clone + Default + Eq = NoStdProvider<1024>>
 }
 
 /// WebAssembly custom section - Pure No_std Version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CustomSection<
     P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq = wrt_foundation::NoStdProvider<1024>,
@@ -159,7 +162,7 @@ pub struct CustomSection<
     pub data: crate::WasmVec<u8, P>,
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Default for CustomSection<P> {
     fn default() -> Self {
         Self {
@@ -170,7 +173,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
 }
 
 // Implement Checksummable for CustomSection - no_std version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::Checksummable for CustomSection<P> {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.name.update_checksum(checksum);
@@ -179,7 +182,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
 }
 
 // Implement ToBytes for CustomSection - no_std version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::ToBytes for CustomSection<P> {
     fn serialized_size(&self) -> usize {
         self.name.serialized_size() + self.data.serialized_size()
@@ -197,7 +200,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
 }
 
 // Implement FromBytes for CustomSection - no_std version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::FromBytes for CustomSection<P> {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
@@ -210,7 +213,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
 }
 
 /// WebAssembly custom section - With Allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub struct CustomSection {
     /// Section name
@@ -219,7 +222,7 @@ pub struct CustomSection {
     pub data: Vec<u8>,
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 impl Default for CustomSection {
     fn default() -> Self {
         Self {
@@ -229,7 +232,7 @@ impl Default for CustomSection {
     }
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 impl CustomSection {
     /// Create a new custom section
     pub fn new(name: String, data: Vec<u8>) -> Self {
@@ -242,7 +245,7 @@ impl CustomSection {
     }
 
     /// Serialize the custom section to binary
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn to_binary(&self) -> core::result::Result<Vec<u8>, wrt_error::Error> {
         let mut section_data = Vec::new();
 
@@ -259,13 +262,13 @@ impl CustomSection {
     }
 
     /// Get access to the section data as a safe slice
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn get_data(&self) -> core::result::Result<&[u8], wrt_error::Error> {
         Ok(&self.data)
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> CustomSection<P> {
     /// Create a new custom section
     pub fn new(name: crate::WasmString<P>, data: crate::WasmVec<u8, P>) -> Self {
@@ -392,7 +395,7 @@ pub fn parse_component_section_header(
 }
 
 /// Write a component section header to binary
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub fn write_component_section_header(
     section_type: ComponentSectionType,
     content_size: u32,
@@ -404,7 +407,7 @@ pub fn write_component_section_header(
 }
 
 /// Format a component section with content
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub fn format_component_section<F>(section_type: ComponentSectionType, content_fn: F) -> Vec<u8>
 where
     F: FnOnce() -> Vec<u8>,
@@ -420,9 +423,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
-    use alloc::{string::ToString, vec};
+        #[cfg(all(not(feature = "std")))]
+    use std::{string::ToString, vec};
     #[cfg(feature = "std")]
     use std::string::ToString;
     #[cfg(feature = "std")]
@@ -469,7 +471,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn test_custom_section_serialization() {
         let test_data = vec![1, 2, 3, 4];
         let section = CustomSection::new("test-section".to_string(), test_data.clone());
@@ -503,7 +505,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn test_custom_section_data_access() {
         let test_data = vec![1, 2, 3, 4];
         let section = CustomSection::new("test-section".to_string(), test_data);
@@ -519,7 +521,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn test_component_section_header() {
         // Create a binary section header
         let header_bytes = write_component_section_header(ComponentSectionType::CoreModule, 42);
@@ -536,7 +538,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn test_format_component_section() {
         // Create a section with some content
         let section_content = vec![1, 2, 3, 4, 5];
@@ -561,7 +563,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn test_invalid_component_section_id() {
         // Create an invalid section ID
         let mut header_bytes = Vec::new();

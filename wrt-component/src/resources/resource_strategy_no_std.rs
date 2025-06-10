@@ -32,7 +32,7 @@ impl ResourceStrategy for ResourceStrategyNoStd {
         &self,
         data: &[u8],
         operation: ResourceOperation,
-    ) -> Result<BoundedVec<u8, MAX_BUFFER_SIZE>> {
+    ) -> Result<BoundedVec<u8, MAX_BUFFER_SIZE>, NoStdProvider<65536>> {
         match self.strategy {
             // Zero-copy strategy - returns a view without copying for reads, a copy for writes
             MemoryStrategy::ZeroCopy => match operation {
@@ -208,7 +208,7 @@ impl ResourceStrategy for ResourceStrategyNoStd {
 
 // Implementation-specific constants
 /// Maximum buffer size for bounded vectors in no_std environments
-pub const MAX_BUFFER_SIZE: usize = wrt_foundation::bounded::MAX_BUFFER_SIZE;
+pub const MAX_RESOURCE_BUFFER_SIZE: usize = wrt_foundation::bounded::MAX_BUFFER_SIZE;
 
 #[cfg(test)]
 mod tests {

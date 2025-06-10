@@ -6,9 +6,8 @@
 //! circular dependencies.
 
 // Core imports for both std and no_std environments
-// Re-export from alloc when no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
+// Binary std/no_std choice
+pub use std::{
     boxed::Box,
     collections::{BTreeMap as HashMap, BTreeSet as HashSet},
     format,
@@ -95,7 +94,25 @@ pub use wrt_foundation::{
     validation::{BoundedCapacity, Checksummed, Validatable as TypesValidatable},
     values::{v128, Value, V128},
     verification::{Checksum, VerificationLevel},
+    // New unified types from Agent A deliverables (simplified)
+    unified_types_simple::{
+        DefaultTypes, EmbeddedTypes, DesktopTypes, SafetyCriticalTypes,
+        PlatformCapacities, UnifiedTypes,
+    },
+    // Memory system types
+    memory_system::{
+        UnifiedMemoryProvider, ConfigurableProvider, SmallProvider, MediumProvider, LargeProvider,
+        NoStdProviderWrapper, MemoryProviderFactory,
+    },
+    // Safety system types
+    safety_system::{
+        AsilLevel, SafetyContext, SafetyGuard, SafeMemoryAllocation,
+    },
 };
+
+// std-only memory provider from wrt-foundation
+#[cfg(feature = "std")]
+pub use wrt_foundation::memory_system::UnifiedStdProvider;
 // 8. Re-export from wrt-host (host interface)
 pub use wrt_host::{
     environment::{Environment, HostEnvironment},
