@@ -9,7 +9,7 @@ use core::{
     time::Duration,
 };
 
-#[cfg(all(not(feature = "std")))]
+#[cfg(not(feature = "std"))]
 use std::{boxed::Box, string::String, vec::Vec, sync::Arc};
 #[cfg(feature = "std")]
 use std::{boxed::Box, string::String, vec::Vec, sync::Arc};

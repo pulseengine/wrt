@@ -64,7 +64,7 @@ impl FuelTrackedThreadContext {
             self.fuel_exhausted.store(true, Ordering::Release);
             return Err(ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
-                message: ComponentValue::String("Component operation result".into())),
+                message: "Component not found",
             });
         }
 
@@ -87,7 +87,7 @@ impl FuelTrackedThreadContext {
         if self.fuel_exhausted.load(Ordering::Acquire) {
             return Err(ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
-                message: ComponentValue::String("Component operation result".into())),
+                message: "Component not found",
             });
         }
 
@@ -96,7 +96,7 @@ impl FuelTrackedThreadContext {
             self.fuel_exhausted.store(true, Ordering::Release);
             return Err(ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
-                message: ComponentValue::String("Component operation result".into())),
+                message: "Component not found",
             });
         }
 
@@ -236,7 +236,7 @@ impl FuelTrackedThreadManager {
 
         let context = self.thread_contexts.get(&thread_id).ok_or_else(|| ThreadSpawnError {
             kind: ThreadSpawnErrorKind::ThreadNotFound,
-            message: ComponentValue::String("Component operation result".into())),
+            message: "Component not found",
         })?;
 
         context.consume_fuel(amount)?;
@@ -245,7 +245,7 @@ impl FuelTrackedThreadManager {
         if let Some(time_context) = self.time_bounds.get(&thread_id) {
             time_context.check_time_bounds().map_err(|e| ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
-                message: ComponentValue::String("Component operation result".into()),
+                message: "Component not found",
             })?;
         }
 
@@ -255,7 +255,7 @@ impl FuelTrackedThreadManager {
     pub fn add_thread_fuel(&mut self, thread_id: ThreadId, amount: u64) -> ThreadSpawnResult<u64> {
         let context = self.thread_contexts.get(&thread_id).ok_or_else(|| ThreadSpawnError {
             kind: ThreadSpawnErrorKind::ThreadNotFound,
-            message: ComponentValue::String("Component operation result".into())),
+            message: "Component not found",
         })?;
 
         let new_fuel = context.add_fuel(amount);
@@ -268,7 +268,7 @@ impl FuelTrackedThreadManager {
     ) -> ThreadSpawnResult<ThreadFuelStatus> {
         let context = self.thread_contexts.get(&thread_id).ok_or_else(|| ThreadSpawnError {
             kind: ThreadSpawnErrorKind::ThreadNotFound,
-            message: ComponentValue::String("Component operation result".into())),
+            message: "Component not found",
         })?;
 
         Ok(ThreadFuelStatus {

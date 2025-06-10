@@ -29,10 +29,8 @@ use wrt_foundation::{
     component_value::ComponentValue,
 };
 
-#[cfg(not(any(feature = "std", )))]
-use wrt_foundation::{BoundedString, BoundedVec};
 
-use crate::async_types::{ErrorContext, ErrorContextHandle};
+use crate::async_::async_types::{ErrorContext, ErrorContextHandle};
 
 // Constants for no_std environments
 #[cfg(not(any(feature = "std", )))]
@@ -206,7 +204,7 @@ pub struct ErrorContextImpl {
     #[cfg(feature = "std")]
     pub stack_trace: Vec<StackFrame>,
     #[cfg(not(any(feature = "std", )))]
-    pub stack_trace: BoundedVec<StackFrame, MAX_STACK_FRAMES>,
+    pub stack_trace: BoundedVec<StackFrame, MAX_STACK_FRAMES, NoStdProvider<65536>>,
     
     #[cfg(feature = "std")]
     pub metadata: HashMap<String, ComponentValue>,
@@ -245,7 +243,7 @@ impl ErrorContextImpl {
             handle: ErrorContextHandle::new(),
             severity,
             debug_message: bounded_message,
-            stack_trace: BoundedVec::new(),
+            stack_trace: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             metadata: BoundedMap::new(),
             error_code: None,
             source_error: None,
@@ -333,9 +331,9 @@ impl ErrorContextImpl {
     pub fn format_stack_trace(&self) -> String {
         let mut output = String::new();
         for (i, frame) in self.stack_trace.iter().enumerate() {
-            output.push_str(&ComponentValue::String("Component operation result".into())));
+            output.push_str(&format!("  #{}: {}", i, frame.function_name()));
             if let Some(file) = frame.file_name() {
-                output.push_str(&ComponentValue::String("Component operation result".into())));
+                output.push_str(&format!(" at {}:{}", file, frame.line_number.unwrap_or(0)));
             }
             output.push('\n');
         }
@@ -343,7 +341,7 @@ impl ErrorContextImpl {
     }
 
     #[cfg(not(any(feature = "std", )))]
-    pub fn format_stack_trace(&self) -> Result<BoundedString<1024>> {
+    pub fn format_stack_trace(&self) -> Result<BoundedString<1024, NoStdProvider<65536>>> {
         let mut output = BoundedString::new();
         for (i, frame) in self.stack_trace.iter().enumerate() {
             // Binary std/no_std choice
@@ -579,7 +577,7 @@ impl ErrorContextBuiltins {
     }
 
     #[cfg(not(any(feature = "std", )))]
-    pub fn error_context_stack_trace(context_id: ErrorContextId) -> Result<BoundedString<1024>> {
+    pub fn error_context_stack_trace(context_id: ErrorContextId) -> Result<BoundedString<1024, NoStdProvider<65536>>> {
         Self::with_registry(|registry| {
             if let Some(context) = registry.get_context(context_id) {
                 context.format_stack_trace()
@@ -609,7 +607,7 @@ impl ErrorContextBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Error context not found"
                 ))
             }
@@ -635,7 +633,7 @@ impl ErrorContextBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Error context not found"
                 ))
             }
@@ -656,7 +654,7 @@ impl ErrorContextBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Error context not found"
                 ))
             }
@@ -676,7 +674,7 @@ impl ErrorContextBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Error context not found"
                 ))
             }
@@ -705,7 +703,7 @@ pub mod error_context_helpers {
     /// Create an error context from a standard error
     #[cfg(feature = "std")]
     pub fn from_error(error: &Error) -> Result<ErrorContextId> {
-        let message = ComponentValue::String("Component operation result".into()).as_str(), error.message());
+        let message = error.message().to_string();
         let severity = match error.category() {
             ErrorCategory::InvalidInput | ErrorCategory::Type => ErrorSeverity::Warning,
             ErrorCategory::Runtime | ErrorCategory::Memory => ErrorSeverity::Error,

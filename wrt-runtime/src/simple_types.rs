@@ -7,7 +7,7 @@ use wrt_foundation::{
     safe_memory::NoStdProvider,
     bounded::{BoundedVec, BoundedString},
     traits::{Checksummable, ToBytes, FromBytes},
-    prelude::*,
+    prelude::{Clone, Copy, Debug},
 };
 use wrt_instructions::Value;
 
@@ -46,14 +46,19 @@ pub type ResultVec = BoundedVec<Value, 16, RuntimeProvider>;
 /// Platform capacity configuration
 #[derive(Debug, Clone, Copy)]
 pub struct PlatformCapacities {
+    /// Small collection capacity limit
     pub small_capacity: usize,
+    /// Medium collection capacity limit
     pub medium_capacity: usize, 
+    /// Large collection capacity limit
     pub large_capacity: usize,
+    /// Memory provider buffer size in bytes
     pub memory_provider_size: usize,
 }
 
 impl PlatformCapacities {
-    pub const fn default() -> Self {
+    /// Create default platform capacities for standard environments
+    #[must_use] pub const fn default() -> Self {
         Self {
             small_capacity: 64,
             medium_capacity: 1024,
@@ -62,7 +67,8 @@ impl PlatformCapacities {
         }
     }
     
-    pub const fn embedded() -> Self {
+    /// Create platform capacities optimized for embedded environments
+    #[must_use] pub const fn embedded() -> Self {
         Self {
             small_capacity: 16,
             medium_capacity: 256,
@@ -78,7 +84,7 @@ impl PlatformCapacities {
 
 /// Compatibility types for gradual migration
 pub mod compat {
-    use super::*;
+    use super::{BoundedString, BoundedVec, RuntimeProvider};
     
     /// Small vector for limited collections (T must implement all required traits)
     pub type SmallVec<T> = BoundedVec<T, 64, RuntimeProvider>;

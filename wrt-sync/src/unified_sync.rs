@@ -127,11 +127,9 @@ impl<T> SafeMutex<T> {
     /// Returns an error if safety verification fails.
     pub fn lock(&self) -> WrtResult<SafeMutexGuard<'_, T>> {
         // Perform safety verification if required
-        if self.safety_context.should_verify() {
-            if !self.verify_lock_safety() {
-                self.safety_context.record_violation();
-                return Err(Error::Safety);
-            }
+        if self.safety_context.should_verify() && !self.verify_lock_safety() {
+            self.safety_context.record_violation();
+            return Err(Error::Safety);
         }
 
         // Acquire the lock using compare-and-swap
@@ -172,11 +170,9 @@ impl<T> SafeMutex<T> {
     /// Some(guard) if the lock was acquired, None if it was already locked.
     pub fn try_lock(&self) -> WrtResult<Option<SafeMutexGuard<'_, T>>> {
         // Perform safety verification if required
-        if self.safety_context.should_verify() {
-            if !self.verify_lock_safety() {
-                self.safety_context.record_violation();
-                return Err(Error::Safety);
-            }
+        if self.safety_context.should_verify() && !self.verify_lock_safety() {
+            self.safety_context.record_violation();
+            return Err(Error::Safety);
         }
 
         match self.locked.compare_exchange(
@@ -228,6 +224,7 @@ unsafe impl<T: Send> Sync for SafeMutex<T> {}
 
 impl<'a, T> SafeMutexGuard<'a, T> {
     /// Get a reference to the protected data
+    #[must_use]
     pub fn get(&self) -> &T {
         // Safety: We hold the lock, so access is exclusive
         unsafe { &*self.mutex.data.get() }
@@ -290,7 +287,7 @@ impl<T, const CAPACITY: usize> BoundedChannel<T, CAPACITY> {
     /// # Returns
     ///
     /// A tuple of (sender, receiver) handles.
-    pub fn new(safety_context: SafetyContext) -> WrtResult<(BoundedSender<T, CAPACITY>, BoundedReceiver<T, CAPACITY>)> {
+    pub fn create_channel(safety_context: SafetyContext) -> WrtResult<(BoundedSender<T, CAPACITY>, BoundedReceiver<T, CAPACITY>)> {
         if CAPACITY == 0 {
             return Err(Error::Capacity);
         }
@@ -404,6 +401,7 @@ pub struct SafeAtomicCounter {
 
 impl SafeAtomicCounter {
     /// Create a new atomic counter with the given maximum value and safety context
+    #[must_use]
     pub const fn new(max_value: usize, safety_context: SafetyContext) -> Self {
         Self {
             value: AtomicUsize::new(0),
@@ -426,11 +424,9 @@ impl SafeAtomicCounter {
         }
 
         // Perform safety verification if required
-        if self.safety_context.should_verify() {
-            if !self.verify_counter_safety(current + 1) {
-                self.safety_context.record_violation();
-                return Err(Error::Safety);
-            }
+        if self.safety_context.should_verify() && !self.verify_counter_safety(current + 1) {
+            self.safety_context.record_violation();
+            return Err(Error::Safety);
         }
 
         let new_value = self.value.fetch_add(1, Ordering::AcqRel) + 1;

@@ -357,7 +357,7 @@ mod tests {
 
         // Try to add too many components
         for i in 0..MAX_LINKED_COMPONENTS {
-            let result = linker.add_component(ComponentValue::String("Component operation result".into()), &binary);
+            let result = linker.add_component("Component not found", &binary);
             assert!(result.is_ok());
         }
 
@@ -529,9 +529,9 @@ mod tests {
         // Create more exports than allowed
         for i in 0..MAX_EXPORTS_PER_COMPONENT + 1 {
             exports.push(create_component_export(
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
                 ExportType::Function(create_function_signature(
-                    ComponentValue::String("Component operation result".into()),
+                    "Component not found",
                     vec![],
                     vec![ComponentType::S32],
                 )),
@@ -552,10 +552,10 @@ mod tests {
         // Create more imports than allowed
         for i in 0..MAX_IMPORTS_PER_COMPONENT + 1 {
             imports.push(create_component_import(
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
                 "env".to_string(),
                 ImportType::Function(create_function_signature(
-                    ComponentValue::String("Component operation result".into()),
+                    "Component not found",
                     vec![],
                     vec![ComponentType::S32],
                 )),
@@ -609,9 +609,9 @@ mod tests {
         // Create many exports (but within limits)
         for i in 0..100 {
             exports.push(create_component_export(
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
                 ExportType::Function(create_function_signature(
-                    ComponentValue::String("Component operation result".into()),
+                    "Component not found",
                     vec![ComponentType::S32],
                     vec![ComponentType::S32],
                 )),

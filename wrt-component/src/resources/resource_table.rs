@@ -278,7 +278,7 @@ impl ResourceTable {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()) reached", self.max_resources).to_string(),
+                "Component not found" reached", self.max_resources).to_string(),
             ));
         }
 
@@ -319,7 +319,7 @@ impl ResourceTable {
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    ComponentValue::String("Component operation result".into()).to_string(),
+                    "Component not found".to_string(),
                 ));
             }
         };
@@ -360,7 +360,7 @@ impl ResourceTable {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             ));
         }
 
@@ -382,7 +382,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -410,7 +410,7 @@ impl ResourceTable {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             ));
         }
 
@@ -474,7 +474,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -489,7 +489,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -570,22 +570,22 @@ mod tests {
 
     impl ResourceInterceptor for TestInterceptor {
         fn on_resource_create(&self, type_idx: u32, _resource: &Resource) -> Result<()> {
-            self.operations.lock().unwrap().push(ComponentValue::String("Component operation result".into()));
+            self.operations.lock().unwrap().push("Component not found");
             Ok(())
         }
 
         fn on_resource_drop(&self, handle: u32) -> Result<()> {
-            self.operations.lock().unwrap().push(ComponentValue::String("Component operation result".into()));
+            self.operations.lock().unwrap().push("Component not found");
             Ok(())
         }
 
         fn on_resource_borrow(&self, handle: u32) -> Result<()> {
-            self.operations.lock().unwrap().push(ComponentValue::String("Component operation result".into()));
+            self.operations.lock().unwrap().push("Component not found");
             Ok(())
         }
 
         fn on_resource_access(&self, handle: u32) -> Result<()> {
-            self.operations.lock().unwrap().push(ComponentValue::String("Component operation result".into()));
+            self.operations.lock().unwrap().push("Component not found");
             Ok(())
         }
 
@@ -597,7 +597,7 @@ mod tests {
             self.operations
                 .lock()
                 .unwrap()
-                .push(ComponentValue::String("Component operation result".into()));
+                .push("Component not found");
             Ok(())
         }
 
@@ -617,7 +617,7 @@ mod tests {
             self.operations
                 .lock()
                 .unwrap()
-                .push(ComponentValue::String("Component operation result".into()));
+                .push("Component not found");
 
             // For testing, we intercept only for handle 42
             if handle == 42 {
@@ -735,9 +735,9 @@ mod tests {
 
         // Check interceptor operations
         let operations = interceptor.get_operations();
-        assert!(operations.contains(&ComponentValue::String("Component operation result".into())));
-        assert!(operations.contains(&ComponentValue::String("Component operation result".into())));
-        assert!(operations.contains(&ComponentValue::String("Component operation result".into())));
+        assert!(operations.contains(&"Component not found"));
+        assert!(operations.contains(&"Component not found"));
+        assert!(operations.contains(&"Component not found"));
     }
 
     #[test]
@@ -773,10 +773,10 @@ mod tests {
 
         // Check that operations were recorded
         let ops = interceptor.get_operations();
-        assert!(ops.contains(&ComponentValue::String("Component operation result".into())));
-        assert!(ops.contains(&ComponentValue::String("Component operation result".into())));
-        assert!(ops.contains(&ComponentValue::String("Component operation result".into())));
-        assert!(ops.contains(&ComponentValue::String("Component operation result".into())));
+        assert!(ops.contains(&"Component not found"));
+        assert!(ops.contains(&"Component not found"));
+        assert!(ops.contains(&"Component not found"));
+        assert!(ops.contains(&"Component not found"));
     }
 
     #[test]

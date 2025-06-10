@@ -416,7 +416,7 @@ pub const VALIDATION_START_FUNCTION_ERROR: u16 = 8215;
 // Memory errors (8400-8499)
 /// General memory error
 pub const MEMORY_ERROR: u16 = 8400;
-/// Binary std/no_std choice
+/// Memory allocation error
 pub const MEMORY_ALLOCATION_ERROR: u16 = 8403;
 /// Memory grow failure error
 pub const MEMORY_GROW_FAILURE: u16 = 8404;
@@ -424,7 +424,7 @@ pub const MEMORY_GROW_FAILURE: u16 = 8404;
 pub const MEMORY_ALIGNMENT_ERROR_CODE: u16 = 8405;
 /// Memory size limit error
 pub const MEMORY_SIZE_LIMIT_ERROR: u16 = 8406;
-/// Binary std/no_std choice
+/// Memory deallocation error
 pub const MEMORY_DEALLOCATION_ERROR: u16 = 8407;
 
 // Runtime trap errors (8600-8699)

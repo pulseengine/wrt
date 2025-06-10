@@ -5,11 +5,20 @@
 
 #[cfg(feature = "std")]
 use std::{boxed::Box, format, string::String, vec, vec::Vec};
-#[cfg(not(feature = "std"))]
-use core::{fmt, mem};
 #[cfg(feature = "std")]
 use std::{fmt, mem};
 
+#[cfg(not(feature = "std"))]
+use core::{fmt, mem};
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{format, vec, string::String, boxed::Box};
+
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedVec as Vec, safe_memory::NoStdProvider};
+
+#[cfg(feature = "std")]
 use wrt_foundation::{bounded::BoundedVec, component_value::ComponentValue, prelude::*};
 
 use crate::{
@@ -40,7 +49,7 @@ pub struct CallFrame {
     #[cfg(feature = "std")]
     pub locals: Vec<Value>,
     #[cfg(not(any(feature = "std", )))]
-    pub locals: BoundedVec<Value, 64>,
+    pub locals: BoundedVec<Value, 64, NoStdProvider<65536>>,
     /// Return address information
     pub return_address: Option<u32>,
 }
@@ -54,7 +63,7 @@ impl CallFrame {
             #[cfg(feature = "std")]
             locals: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            locals: BoundedVec::new(),
+            locals: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             return_address: None,
         }
     }
@@ -77,7 +86,7 @@ impl CallFrame {
     /// Get a local variable by index
     pub fn get_local(&self, index: usize) -> WrtResult<&Value> {
         self.locals.get(index).ok_or_else(|| {
-            wrt_foundation::WrtError::invalid_input("Invalid input"))
+            wrt_foundation::WrtError::invalid_input("Invalid input")
         })
     }
 
@@ -87,7 +96,7 @@ impl CallFrame {
             self.locals[index] = value;
             Ok(())
         } else {
-            Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
+            Err(wrt_foundation::WrtError::invalid_input("Invalid input"))
         }
     }
 }
@@ -107,7 +116,7 @@ pub struct ComponentExecutionEngine {
     #[cfg(feature = "std")]
     call_stack: Vec<CallFrame>,
     #[cfg(not(any(feature = "std", )))]
-    call_stack: BoundedVec<CallFrame, MAX_CALL_FRAMES>,
+    call_stack: BoundedVec<CallFrame, MAX_CALL_FRAMES, NoStdProvider<65536>>,
 
     /// Canonical ABI processor
     canonical_abi: CanonicalAbi,
@@ -122,7 +131,7 @@ pub struct ComponentExecutionEngine {
     #[cfg(feature = "std")]
     host_functions: Vec<Box<dyn HostFunction>>,
     #[cfg(not(any(feature = "std", )))]
-    host_functions: BoundedVec<fn(&[Value]) -> WrtResult<Value>, MAX_IMPORTS>,
+    host_functions: BoundedVec<fn(&[Value]) -> WrtResult<Value>, MAX_IMPORTS, NoStdProvider<65536>>,
 
     /// Current component instance
     current_instance: Option<u32>,
@@ -165,14 +174,14 @@ impl ComponentExecutionEngine {
             #[cfg(feature = "std")]
             call_stack: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            call_stack: BoundedVec::new(),
+            call_stack: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             canonical_abi: CanonicalAbi::new(),
             resource_manager: ResourceLifecycleManager::new(),
             runtime_bridge: ComponentRuntimeBridge::new(),
             #[cfg(feature = "std")]
             host_functions: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            host_functions: BoundedVec::new(),
+            host_functions: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             current_instance: None,
             state: ExecutionState::Ready,
         }
@@ -184,14 +193,14 @@ impl ComponentExecutionEngine {
             #[cfg(feature = "std")]
             call_stack: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            call_stack: BoundedVec::new(),
+            call_stack: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             canonical_abi: CanonicalAbi::new(),
             resource_manager: ResourceLifecycleManager::new(),
             runtime_bridge: ComponentRuntimeBridge::with_config(bridge_config),
             #[cfg(feature = "std")]
             host_functions: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            host_functions: BoundedVec::new(),
+            host_functions: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             current_instance: None,
             state: ExecutionState::Ready,
         }
@@ -289,7 +298,7 @@ impl ComponentExecutionEngine {
         let function_name = {
             #[cfg(feature = "std")]
             {
-                alloc::ComponentValue::String("Component operation result".into())
+                alloc::format!("func_{}", function_id)
             }
             #[cfg(not(any(feature = "std", )))]
             {
@@ -300,7 +309,7 @@ impl ComponentExecutionEngine {
         };
         let result = self.runtime_bridge
             .execute_component_function(instance_id, &function_name, &component_values)
-            .map_err(|e| wrt_foundation::WrtError::Runtime(alloc::ComponentValue::String("Component operation result".into())))?;
+            .map_err(|e| wrt_foundation::WrtError::Runtime(alloc::format!("Execution error: {}", e)))?;
 
         // Convert result back to engine value format
         self.convert_component_value_to_value(&result)
@@ -313,7 +322,7 @@ impl ComponentExecutionEngine {
             if let Some(func) = self.host_functions.get_mut(index as usize) {
                 func.call(args)
             } else {
-                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input"))
             }
         }
         #[cfg(not(any(feature = "std", )))]
@@ -321,7 +330,7 @@ impl ComponentExecutionEngine {
             if let Some(func) = self.host_functions.get(index as usize) {
                 func(args)
             } else {
-                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input"))
             }
         }
     }
@@ -424,8 +433,8 @@ impl ComponentExecutionEngine {
 
     /// Convert engine values to component values (no_std version)
     #[cfg(not(any(feature = "std", )))]
-    fn convert_values_to_component(&self, values: &[Value]) -> WrtResult<BoundedVec<crate::canonical_abi::ComponentValue, 16>> {
-        let mut component_values = BoundedVec::new();
+    fn convert_values_to_component(&self, values: &[Value]) -> WrtResult<BoundedVec<crate::canonical_abi::ComponentValue, 16>, NoStdProvider<65536>> {
+        let mut component_values = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
         for value in values {
             let component_value = self.convert_value_to_component(value)?;
             component_values.push(component_value).map_err(|_| {
@@ -452,7 +461,7 @@ impl ComponentExecutionEngine {
             Value::F64(v) => Ok(ComponentValue::F64(*v)),
             Value::Char(c) => Ok(ComponentValue::Char(*c)),
             Value::String(s) => Ok(ComponentValue::String(s.clone())),
-            _ => Err(wrt_foundation::WrtError::invalid_input("Invalid input"))),
+            _ => Err(wrt_foundation::WrtError::invalid_input("Invalid input")),
         }
     }
 
@@ -473,7 +482,7 @@ impl ComponentExecutionEngine {
             ComponentValue::F64(v) => Ok(Value::F64(*v)),
             ComponentValue::Char(c) => Ok(Value::Char(*c)),
             ComponentValue::String(s) => Ok(Value::String(s.clone())),
-            _ => Err(wrt_foundation::WrtError::invalid_input("Invalid input"))),
+            _ => Err(wrt_foundation::WrtError::invalid_input("Invalid input")),
         }
     }
 
@@ -493,13 +502,13 @@ impl ComponentExecutionEngine {
             #[cfg(not(any(feature = "std", )))]
             {
                 wrt_foundation::bounded::BoundedString::from_str(module_name).map_err(|_| {
-                    wrt_foundation::WrtError::invalid_input("Invalid input"))
+                    wrt_foundation::WrtError::invalid_input("Invalid input")
                 })?
             }
         };
         self.runtime_bridge
             .register_component_instance(component_id, module_name_string, function_count, memory_size)
-            .map_err(|e| wrt_foundation::WrtError::Runtime(alloc::ComponentValue::String("Component operation result".into())))
+            .map_err(|e| wrt_foundation::WrtError::Runtime(alloc::format!("Conversion error: {}", e)))
     }
 
     /// Register a host function with the runtime bridge
@@ -523,7 +532,7 @@ impl ComponentExecutionEngine {
         
         self.runtime_bridge
             .register_host_function(name_string, signature, func)
-            .map_err(|e| wrt_foundation::WrtError::Runtime(alloc::ComponentValue::String("Component operation result".into())))
+            .map_err(|e| wrt_foundation::WrtError::Runtime(alloc::format!("Conversion error: {}", e)))
     }
 
     /// Register a host function with the runtime bridge (no_std version)
@@ -536,7 +545,7 @@ impl ComponentExecutionEngine {
         use crate::canonical_abi::ComponentType;
         
         let name_string = wrt_foundation::bounded::BoundedString::from_str(name).map_err(|_| {
-            wrt_foundation::WrtError::invalid_input("Invalid input"))
+            wrt_foundation::WrtError::invalid_input("Invalid input")
         })?;
         
         let signature = crate::component_instantiation::FunctionSignature {
@@ -551,7 +560,7 @@ impl ComponentExecutionEngine {
         
         self.runtime_bridge
             .register_host_function(name_string, signature, func)
-            .map_err(|e| wrt_foundation::WrtError::Runtime(alloc::ComponentValue::String("Component operation result".into())))
+            .map_err(|e| wrt_foundation::WrtError::Runtime(alloc::format!("Conversion error: {}", e)))
     }
 }
 

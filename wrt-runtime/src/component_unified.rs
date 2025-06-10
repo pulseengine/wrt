@@ -6,9 +6,12 @@
 use crate::unified_types::*;
 use wrt_foundation::{
     component::{ComponentType, ExternType},
-    safe_memory::MemoryProvider,
+    safe_memory::{MemoryProvider, NoStdProvider},
     prelude::*,
 };
+
+/// Default memory provider for runtime components
+pub type DefaultRuntimeProvider = NoStdProvider<1048576>;
 
 /// Unique identifier for component instances
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

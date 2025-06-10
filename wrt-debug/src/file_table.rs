@@ -5,7 +5,7 @@ use wrt_foundation::{
 
 /// File table support for resolving file indices to paths
 /// Provides the missing 2% for source file path resolution
-use crate::strings::{DebugString, StringTable};
+use crate::strings::DebugString;
 
 /// A file entry in the DWARF file table
 #[derive(Debug, Clone)]

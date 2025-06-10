@@ -11,6 +11,7 @@ use std::{fmt, mem, slice};
 #[cfg(feature = "std")]
 use std::{boxed::Box, vec::Vec};
 
+#[cfg(feature = "std")]
 use wrt_foundation::{bounded::BoundedVec, component_value::ComponentValue, prelude::*};
 
 use crate::{
@@ -37,13 +38,13 @@ pub struct ComponentMemoryManager {
     #[cfg(feature = "std")]
     memories: Vec<ComponentMemory>,
     #[cfg(not(any(feature = "std", )))]
-    memories: BoundedVec<ComponentMemory, MAX_MEMORIES>,
+    memories: BoundedVec<ComponentMemory, MAX_MEMORIES, NoStdProvider<65536>>,
 
     /// Memory sharing policies
     #[cfg(feature = "std")]
     sharing_policies: Vec<MemorySharingPolicy>,
     #[cfg(not(any(feature = "std", )))]
-    sharing_policies: BoundedVec<MemorySharingPolicy, MAX_MEMORIES>,
+    sharing_policies: BoundedVec<MemorySharingPolicy, MAX_MEMORIES, NoStdProvider<65536>>,
 
     /// Binary std/no_std choice
     total_allocated: usize,
@@ -57,13 +58,13 @@ pub struct ComponentTableManager {
     #[cfg(feature = "std")]
     tables: Vec<ComponentTable>,
     #[cfg(not(any(feature = "std", )))]
-    tables: BoundedVec<ComponentTable, MAX_TABLES>,
+    tables: BoundedVec<ComponentTable, MAX_TABLES, NoStdProvider<65536>>,
 
     /// Table sharing policies
     #[cfg(feature = "std")]
     sharing_policies: Vec<TableSharingPolicy>,
     #[cfg(not(any(feature = "std", )))]
-    sharing_policies: BoundedVec<TableSharingPolicy, MAX_TABLES>,
+    sharing_policies: BoundedVec<TableSharingPolicy, MAX_TABLES, NoStdProvider<65536>>,
 }
 
 /// Component memory instance
@@ -75,7 +76,7 @@ pub struct ComponentMemory {
     #[cfg(feature = "std")]
     pub data: Vec<u8>,
     #[cfg(not(any(feature = "std", )))]
-    pub data: BoundedVec<u8, { MAX_MEMORY_PAGES * WASM_PAGE_SIZE }>,
+    pub data: BoundedVec<u8, { MAX_MEMORY_PAGES * WASM_PAGE_SIZE }, NoStdProvider<65536>>,
     /// Memory limits
     pub limits: MemoryLimits,
     /// Shared flag
@@ -117,7 +118,7 @@ pub struct MemorySharingPolicy {
     #[cfg(feature = "std")]
     pub allowed_instances: Vec<u32>,
     #[cfg(not(any(feature = "std", )))]
-    pub allowed_instances: BoundedVec<u32, 32>,
+    pub allowed_instances: BoundedVec<u32, 32, NoStdProvider<65536>>,
 }
 
 /// Table sharing policy
@@ -131,7 +132,7 @@ pub struct TableSharingPolicy {
     #[cfg(feature = "std")]
     pub allowed_instances: Vec<u32>,
     #[cfg(not(any(feature = "std", )))]
-    pub allowed_instances: BoundedVec<u32, 32>,
+    pub allowed_instances: BoundedVec<u32, 32, NoStdProvider<65536>>,
 }
 
 /// Resource sharing mode
@@ -156,7 +157,7 @@ pub struct ComponentTable {
     #[cfg(feature = "std")]
     pub elements: Vec<TableElement>,
     #[cfg(not(any(feature = "std", )))]
-    pub elements: BoundedVec<TableElement, 65536>, // 64K elements max
+    pub elements: BoundedVec<TableElement, 65536, NoStdProvider<65536>>, // 64K elements max
     /// Element type
     pub element_type: CoreValType,
     /// Table limits
@@ -193,7 +194,7 @@ pub struct MemoryAccess {
     /// Bytes read/written
     pub bytes_accessed: usize,
     /// Error message if failed
-    pub error: Option<BoundedString<256>>,
+    pub error: Option<BoundedString<256, NoStdProvider<65536>>>,
 }
 
 impl ComponentMemoryManager {
@@ -203,11 +204,11 @@ impl ComponentMemoryManager {
             #[cfg(feature = "std")]
             memories: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            memories: BoundedVec::new(),
+            memories: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             sharing_policies: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            sharing_policies: BoundedVec::new(),
+            sharing_policies: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             total_allocated: 0,
             max_memory: 256 * 1024 * 1024, // 256MB default
         }
@@ -239,7 +240,7 @@ impl ComponentMemoryManager {
         #[cfg(feature = "std")]
         let data = vec![0u8; initial_size];
         #[cfg(not(any(feature = "std", )))]
-        let mut data = BoundedVec::new();
+        let mut data = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
         #[cfg(not(any(feature = "std", )))]
         {
             for _ in 0..initial_size {
@@ -293,7 +294,7 @@ impl ComponentMemoryManager {
     ) -> WrtResult<Vec<u8>> {
         let memory = self
             .get_memory(memory_id)
-            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         // Check permissions
         if !self.check_read_permission(memory_id, instance_id)? {
@@ -305,8 +306,7 @@ impl ComponentMemoryManager {
         // Check bounds
         let end_offset = offset as usize + size as usize;
         if end_offset > memory.data.len() {
-            return Err(wrt_foundation::WrtError::invalid_input("Invalid input"),
-            ));
+            return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
         }
 
         // Read data
@@ -343,7 +343,7 @@ impl ComponentMemoryManager {
 
         let memory = self
             .get_memory_mut(memory_id)
-            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         // Check bounds
         let end_offset = offset as usize + data.len();
@@ -374,7 +374,7 @@ impl ComponentMemoryManager {
     ) -> WrtResult<u32> {
         let memory = self
             .get_memory_mut(memory_id)
-            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         // Check permissions
         if !self.check_write_permission(memory_id, instance_id)? {
@@ -389,8 +389,7 @@ impl ComponentMemoryManager {
         // Check limits
         if let Some(max) = memory.limits.max {
             if new_pages > max as usize {
-                return Err(wrt_foundation::WrtError::invalid_input("Invalid input"),
-                ));
+                return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
             }
         }
 
@@ -425,7 +424,7 @@ impl ComponentMemoryManager {
     fn check_read_permission(&self, memory_id: u32, instance_id: Option<u32>) -> WrtResult<bool> {
         let memory = self
             .get_memory(memory_id)
-            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         if !memory.permissions.read {
             return Ok(false);
@@ -450,7 +449,7 @@ impl ComponentMemoryManager {
     fn check_write_permission(&self, memory_id: u32, instance_id: Option<u32>) -> WrtResult<bool> {
         let memory = self
             .get_memory(memory_id)
-            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         if !memory.permissions.write {
             return Ok(false);
@@ -526,11 +525,11 @@ impl ComponentTableManager {
             #[cfg(feature = "std")]
             tables: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            tables: BoundedVec::new(),
+            tables: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             sharing_policies: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            sharing_policies: BoundedVec::new(),
+            sharing_policies: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 
@@ -547,7 +546,7 @@ impl ComponentTableManager {
         #[cfg(feature = "std")]
         let elements = vec![TableElement::Null; limits.min as usize];
         #[cfg(not(any(feature = "std", )))]
-        let mut elements = BoundedVec::new();
+        let mut elements = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
         #[cfg(not(any(feature = "std", )))]
         {
             for _ in 0..limits.min {
@@ -587,10 +586,10 @@ impl ComponentTableManager {
     pub fn get_element(&self, table_id: u32, index: u32) -> WrtResult<&TableElement> {
         let table = self
             .get_table(table_id)
-            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         table.elements.get(index as usize).ok_or_else(|| {
-            wrt_foundation::WrtError::invalid_input("Invalid input"))
+            wrt_foundation::WrtError::invalid_input("Invalid input")
         })
     }
 
@@ -603,10 +602,10 @@ impl ComponentTableManager {
     ) -> WrtResult<()> {
         let table = self
             .get_table_mut(table_id)
-            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         if index as usize >= table.elements.len() {
-            return Err(wrt_foundation::WrtError::invalid_input("Invalid input")));
+            return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
         }
 
         table.elements[index as usize] = element;
@@ -617,7 +616,7 @@ impl ComponentTableManager {
     pub fn grow_table(&mut self, table_id: u32, size: u32, init: TableElement) -> WrtResult<u32> {
         let table = self
             .get_table_mut(table_id)
-            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         let current_size = table.elements.len();
         let new_size = current_size + size as usize;
@@ -625,8 +624,7 @@ impl ComponentTableManager {
         // Check limits
         if let Some(max) = table.limits.max {
             if new_size > max as usize {
-                return Err(wrt_foundation::WrtError::invalid_input("Invalid input"),
-                ));
+                return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
             }
         }
 

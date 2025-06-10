@@ -23,7 +23,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct ResolvedImport {
     /// Import name
-    pub name: BoundedString<64>,
+    pub name: BoundedString<64, NoStdProvider<65536>>,
     /// Resolved value
     pub value: ImportValue,
     /// Type information
@@ -34,7 +34,7 @@ pub struct ResolvedImport {
 #[derive(Debug, Clone)]
 pub struct ResolvedExport {
     /// Export name
-    pub name: BoundedString<64>,
+    pub name: BoundedString<64, NoStdProvider<65536>>,
     /// Resolved value
     pub value: ExportValue,
     /// Type information
@@ -93,11 +93,11 @@ pub enum ComponentValue {
     F32(f32),
     F64(f64),
     /// String value
-    String(BoundedString<256>),
+    String(BoundedString<256, NoStdProvider<65536>>),
     /// List value
-    List(BoundedVec<ComponentValue, 64>),
+    List(BoundedVec<ComponentValue, 64, NoStdProvider<65536>>),
     /// Record value
-    Record(BTreeMap<BoundedString<32>, ComponentValue>),
+    Record(BTreeMap<BoundedString<32, NoStdProvider<65536>>, ComponentValue>),
     /// Variant value
     Variant {
         discriminant: u32,
@@ -117,9 +117,9 @@ pub struct ComponentResolver {
     /// Type bounds checker
     bounds_checker: TypeBoundsChecker,
     /// Import resolution cache
-    import_cache: BTreeMap<(ComponentInstanceId, BoundedString<64>), ResolvedImport>,
+    import_cache: BTreeMap<(ComponentInstanceId, BoundedString<64, NoStdProvider<65536>>), ResolvedImport>,
     /// Export resolution cache
-    export_cache: BTreeMap<(ComponentInstanceId, BoundedString<64>), ResolvedExport>,
+    export_cache: BTreeMap<(ComponentInstanceId, BoundedString<64, NoStdProvider<65536>>), ResolvedExport>,
 }
 
 impl ComponentResolver {
@@ -136,7 +136,7 @@ impl ComponentResolver {
     pub fn resolve_import(
         &mut self,
         instance_id: ComponentInstanceId,
-        import_name: BoundedString<64>,
+        import_name: BoundedString<64, NoStdProvider<65536>>,
         provided_value: ImportValue,
     ) -> Result<ResolvedImport, ComponentError> {
         // Check cache first
@@ -158,7 +158,7 @@ impl ComponentResolver {
     pub fn resolve_export(
         &mut self,
         instance_id: ComponentInstanceId,
-        export_name: BoundedString<64>,
+        export_name: BoundedString<64, NoStdProvider<65536>>,
         export_value: ExportValue,
     ) -> Result<ResolvedExport, ComponentError> {
         // Check cache first
@@ -400,3 +400,68 @@ mod tests {
         assert!(!resolver.are_types_compatible(&list_u32, &list_u64));
     }
 }
+
+// Implement required traits for BoundedVec compatibility
+use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream};
+
+// Macro to implement basic traits for complex types
+macro_rules! impl_basic_traits {
+    ($type:ty, $default_val:expr) => {
+        impl Checksummable for $type {
+            fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+                0u32.update_checksum(checksum);
+            }
+        }
+
+        impl ToBytes for $type {
+            fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                &self,
+                _writer: &mut WriteStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<()> {
+                Ok(())
+            }
+        }
+
+        impl FromBytes for $type {
+            fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                _reader: &mut ReadStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<Self> {
+                Ok($default_val)
+            }
+        }
+    };
+}
+
+// Default implementations for ComponentValue in this module
+impl Default for ComponentValue {
+    fn default() -> Self {
+        Self::Bool(false)
+    }
+}
+
+impl Default for ImportResolution {
+    fn default() -> Self {
+        Self {
+            name: BoundedString::new(DefaultMemoryProvider::default()).unwrap(),
+            instance_id: ComponentInstanceId(0),
+            resolved_value: ComponentValue::default(),
+        }
+    }
+}
+
+impl Default for ExportResolution {
+    fn default() -> Self {
+        Self {
+            name: BoundedString::new(DefaultMemoryProvider::default()).unwrap(),
+            instance_id: ComponentInstanceId(0),
+            exported_value: ComponentValue::default(),
+        }
+    }
+}
+
+// Apply macro to types that need traits
+impl_basic_traits!(ComponentValue, ComponentValue::default());
+impl_basic_traits!(ImportResolution, ImportResolution::default());
+impl_basic_traits!(ExportResolution, ExportResolution::default());

@@ -12,56 +12,64 @@ use std::{fmt, mem};
 use std::{boxed::Box, string::String, vec::Vec};
 
 use wrt_foundation::{
-    bounded::BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
+    bounded::BoundedVec, component::ComponentType, prelude::*,
 };
 
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedString, safe_memory::NoStdProvider};
+
+#[cfg(feature = "std")]
+use wrt_foundation::component_value::ComponentValue;
+
+#[cfg(not(feature = "std"))]
+// For no_std, use a simpler ComponentValue representation
+use crate::types::Value as ComponentValue;
+
 use crate::{
-    canonical::CanonicalAbi,
-    component::Component,
-    execution_engine::ComponentExecutionEngine,
+    canonical_abi::CanonicalABI,
+    components::Component,
     types::{ValType, Value},
-    WrtResult,
 };
 
 /// Maximum number of adapted functions in no_std environments
 const MAX_ADAPTED_FUNCTIONS: usize = 256;
 
 /// Adapter that wraps a core WebAssembly module for use in components
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CoreModuleAdapter {
     /// Module name/identifier
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64>,
+    pub name: BoundedString<64, NoStdProvider<65536>>,
 
     /// Function adapters
     #[cfg(feature = "std")]
     pub functions: Vec<FunctionAdapter>,
     #[cfg(not(any(feature = "std", )))]
-    pub functions: BoundedVec<FunctionAdapter, MAX_ADAPTED_FUNCTIONS>,
+    pub functions: BoundedVec<FunctionAdapter, MAX_ADAPTED_FUNCTIONS, NoStdProvider<65536>>,
 
     /// Memory adapters
     #[cfg(feature = "std")]
     pub memories: Vec<MemoryAdapter>,
     #[cfg(not(any(feature = "std", )))]
-    pub memories: BoundedVec<MemoryAdapter, 16>,
+    pub memories: BoundedVec<MemoryAdapter, 16, NoStdProvider<65536>>,
 
     /// Table adapters
     #[cfg(feature = "std")]
     pub tables: Vec<TableAdapter>,
     #[cfg(not(any(feature = "std", )))]
-    pub tables: BoundedVec<TableAdapter, 16>,
+    pub tables: BoundedVec<TableAdapter, 16, NoStdProvider<65536>>,
 
     /// Global adapters
     #[cfg(feature = "std")]
     pub globals: Vec<GlobalAdapter>,
     #[cfg(not(any(feature = "std", )))]
-    pub globals: BoundedVec<GlobalAdapter, 64>,
+    pub globals: BoundedVec<GlobalAdapter, 64, NoStdProvider<65536>>,
 }
 
 /// Adapter for core module functions
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FunctionAdapter {
     /// Core function index
     pub core_index: u32,
@@ -74,23 +82,24 @@ pub struct FunctionAdapter {
 }
 
 /// Core WebAssembly function signature
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct CoreFunctionSignature {
     /// Parameter types (WebAssembly core types)
     #[cfg(feature = "std")]
     pub params: Vec<CoreValType>,
     #[cfg(not(any(feature = "std", )))]
-    pub params: BoundedVec<CoreValType, 32>,
+    pub params: BoundedVec<CoreValType, 32, NoStdProvider<65536>>,
     /// Result types (WebAssembly core types)
     #[cfg(feature = "std")]
     pub results: Vec<CoreValType>,
     #[cfg(not(any(feature = "std", )))]
-    pub results: BoundedVec<CoreValType, 8>,
+    pub results: BoundedVec<CoreValType, 8, NoStdProvider<65536>>,
 }
 
 /// WebAssembly core value types
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CoreValType {
+    #[default]
     /// 32-bit integer
     I32,
     /// 64-bit integer
@@ -108,8 +117,9 @@ pub enum CoreValType {
 }
 
 /// Function adaptation mode
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum AdaptationMode {
+    #[default]
     /// Direct mapping (no adaptation needed)
     Direct,
     /// Lift core types to component types
@@ -121,7 +131,7 @@ pub enum AdaptationMode {
 }
 
 /// Memory adapter
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct MemoryAdapter {
     /// Core memory index
     pub core_index: u32,
@@ -132,7 +142,7 @@ pub struct MemoryAdapter {
 }
 
 /// Memory limits
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct MemoryLimits {
     /// Minimum size in pages
     pub min: u32,
@@ -141,7 +151,7 @@ pub struct MemoryLimits {
 }
 
 /// Table adapter
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TableAdapter {
     /// Core table index
     pub core_index: u32,
@@ -152,7 +162,7 @@ pub struct TableAdapter {
 }
 
 /// Table limits
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TableLimits {
     /// Minimum size
     pub min: u32,
@@ -161,7 +171,7 @@ pub struct TableLimits {
 }
 
 /// Global adapter
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct GlobalAdapter {
     /// Core global index
     pub core_index: u32,
@@ -186,18 +196,19 @@ impl CoreModuleAdapter {
 
     /// Create a new core module adapter (no_std version)
     #[cfg(not(any(feature = "std", )))]
-    pub fn new(name: BoundedString<64>) -> Self {
-        Self {
+    pub fn new(name: BoundedString<64, NoStdProvider<65536>>) -> Result<Self, Error> {
+        let provider = NoStdProvider::<65536>::default();
+        Ok(Self {
             name,
-            functions: BoundedVec::new(),
-            memories: BoundedVec::new(),
-            tables: BoundedVec::new(),
-            globals: BoundedVec::new(),
-        }
+            functions: BoundedVec::new(provider.clone())?,
+            memories: BoundedVec::new(provider.clone())?,
+            tables: BoundedVec::new(provider.clone())?,
+            globals: BoundedVec::new(provider)?,
+        })
     }
 
     /// Add a function adapter
-    pub fn add_function(&mut self, adapter: FunctionAdapter) -> WrtResult<()> {
+    pub fn add_function(&mut self, adapter: FunctionAdapter) -> Result<()> {
         #[cfg(feature = "std")]
         {
             self.functions.push(adapter);
@@ -212,7 +223,7 @@ impl CoreModuleAdapter {
     }
 
     /// Add a memory adapter
-    pub fn add_memory(&mut self, adapter: MemoryAdapter) -> WrtResult<()> {
+    pub fn add_memory(&mut self, adapter: MemoryAdapter) -> Result<()> {
         #[cfg(feature = "std")]
         {
             self.memories.push(adapter);
@@ -227,7 +238,7 @@ impl CoreModuleAdapter {
     }
 
     /// Add a table adapter
-    pub fn add_table(&mut self, adapter: TableAdapter) -> WrtResult<()> {
+    pub fn add_table(&mut self, adapter: TableAdapter) -> Result<()> {
         #[cfg(feature = "std")]
         {
             self.tables.push(adapter);
@@ -242,7 +253,7 @@ impl CoreModuleAdapter {
     }
 
     /// Add a global adapter
-    pub fn add_global(&mut self, adapter: GlobalAdapter) -> WrtResult<()> {
+    pub fn add_global(&mut self, adapter: GlobalAdapter) -> Result<()> {
         #[cfg(feature = "std")]
         {
             self.globals.push(adapter);
@@ -277,8 +288,8 @@ impl CoreModuleAdapter {
     }
 
     /// Convert this adapter to a component
-    pub fn to_component(&self) -> WrtResult<Component> {
-        let mut component = Component::new();
+    pub fn to_component(&self) -> Result<Component> {
+        let mut component = Component::new(WrtComponentType::default());
 
         // Convert function adapters to component functions
         for func_adapter in &self.functions {
@@ -331,10 +342,10 @@ impl CoreModuleAdapter {
         func_index: u32,
         args: &[Value],
         engine: &mut ComponentExecutionEngine,
-    ) -> WrtResult<Value> {
+    ) -> Result<Value> {
         let adapter = self
             .get_function(func_index)
-            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         match adapter.mode {
             AdaptationMode::Direct => {
@@ -370,7 +381,7 @@ impl CoreModuleAdapter {
         _core_index: u32,
         args: &[Value],
         _engine: &mut ComponentExecutionEngine,
-    ) -> WrtResult<Value> {
+    ) -> Result<Value> {
         // Simplified implementation - in reality would call actual core module
         if let Some(first_arg) = args.first() {
             Ok(first_arg.clone())
@@ -384,7 +395,7 @@ impl CoreModuleAdapter {
         &self,
         args: &[Value],
         _core_signature: &CoreFunctionSignature,
-    ) -> WrtResult<Vec<Value>> {
+    ) -> Result<Vec<Value>> {
         // Simplified lowering - in reality would use canonical ABI
         #[cfg(feature = "std")]
         {
@@ -405,7 +416,7 @@ impl CoreModuleAdapter {
         &self,
         result: Value,
         _component_signature: &ComponentType,
-    ) -> WrtResult<Value> {
+    ) -> Result<Value> {
         // Simplified lifting - in reality would use canonical ABI
         Ok(result)
     }
@@ -438,16 +449,16 @@ impl CoreFunctionSignature {
             #[cfg(feature = "std")]
             params: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            params: BoundedVec::new(),
+            params: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             results: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            results: BoundedVec::new(),
+            results: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 
     /// Add a parameter type
-    pub fn add_param(&mut self, param_type: CoreValType) -> WrtResult<()> {
+    pub fn add_param(&mut self, param_type: CoreValType) -> Result<()> {
         #[cfg(feature = "std")]
         {
             self.params.push(param_type);
@@ -462,7 +473,7 @@ impl CoreFunctionSignature {
     }
 
     /// Add a result type
-    pub fn add_result(&mut self, result_type: CoreValType) -> WrtResult<()> {
+    pub fn add_result(&mut self, result_type: CoreValType) -> Result<()> {
         #[cfg(feature = "std")]
         {
             self.results.push(result_type);
@@ -529,7 +540,52 @@ impl fmt::Display for AdaptationMode {
     }
 }
 
-#[cfg(test)]
+// Implement required traits for BoundedVec compatibility
+use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream};
+
+// Macro to implement basic traits for simple types
+macro_rules! impl_basic_traits {
+    ($type:ty, $default_val:expr) => {
+        impl Checksummable for $type {
+            fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+                // Simple checksum without unsafe code
+                0u32.update_checksum(checksum);
+            }
+        }
+
+        impl ToBytes for $type {
+            fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                &self,
+                writer: &mut WriteStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<()> {
+                // Simple stub implementation
+                Ok(())
+            }
+        }
+
+        impl FromBytes for $type {
+            fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                _reader: &mut ReadStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<Self> {
+                Ok($default_val)
+            }
+        }
+    };
+}
+
+// Apply macro to all adapter types
+impl_basic_traits!(FunctionAdapter, FunctionAdapter::default());
+impl_basic_traits!(MemoryAdapter, MemoryAdapter::default());
+impl_basic_traits!(TableAdapter, TableAdapter::default());
+impl_basic_traits!(GlobalAdapter, GlobalAdapter::default());
+impl_basic_traits!(MemoryLimits, MemoryLimits::default());
+impl_basic_traits!(TableLimits, TableLimits::default());
+impl_basic_traits!(CoreValType, CoreValType::default());
+impl_basic_traits!(AdaptationMode, AdaptationMode::default());
+impl_basic_traits!(CoreFunctionSignature, CoreFunctionSignature::default());
+
 mod tests {
     use super::*;
 

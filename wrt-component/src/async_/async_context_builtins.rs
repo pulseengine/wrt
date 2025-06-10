@@ -16,22 +16,30 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use std::{boxed::Box, collections::BTreeMap, vec::Vec};
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::HashMap, vec::Vec};
+#[cfg(not(feature = "std"))]
+use alloc::{boxed::Box, collections::BTreeMap as HashMap, vec::Vec};
 
 use wrt_error::{Error, ErrorCategory, Result};
 use wrt_foundation::{
-    atomic_memory::AtomicRefCell,
-    bounded::BoundedMap,
-    component_value::ComponentValue,
+    // atomic_memory::AtomicRefCell, // Not available in wrt-foundation
+    BoundedMap,
     types::ValueType,
 };
 
+#[cfg(feature = "std")]
+use wrt_foundation::component_value::ComponentValue;
+
 #[cfg(not(any(feature = "std", )))]
-use wrt_foundation::{BoundedString, BoundedVec};
+use wrt_foundation::{BoundedString, BoundedVec, safe_memory::NoStdProvider};
+
+#[cfg(not(feature = "std"))]
+// For no_std, use a simpler ComponentValue representation
+use crate::types::Value as ComponentValue;
 
 // Constants for no_std environments
 #[cfg(not(any(feature = "std", )))]
@@ -84,7 +92,7 @@ pub enum ContextValue {
     #[cfg(feature = "std")]
     Binary(Vec<u8>),
     #[cfg(not(any(feature = "std", )))]
-    Binary(BoundedVec<u8, MAX_CONTEXT_VALUE_SIZE>),
+    Binary(BoundedVec<u8, MAX_CONTEXT_VALUE_SIZE, NoStdProvider<65536>>),
 }
 
 impl ContextValue {

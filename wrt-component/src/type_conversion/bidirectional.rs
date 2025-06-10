@@ -55,7 +55,7 @@ fn convert_format_valtype_to_valuetype(format_val_type: &FormatValType) -> Resul
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::NOT_IMPLEMENTED,
-            ComponentValue::String("Component operation result".into()),
+            "Component not found",
         )),
     }
 }
@@ -70,7 +70,7 @@ fn convert_types_valtype_to_valuetype(val_type: &TypesValType) -> Result<ValueTy
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::NOT_IMPLEMENTED,
-            ComponentValue::String("Component operation result".into()),
+            "Component not found",
         )),
     }
 }
@@ -387,13 +387,10 @@ pub fn types_valtype_to_format_valtype(types_val_type: &TypesValType) -> FormatV
             FormatValType::Bool
         }
         TypesValType::ErrorContext => FormatValType::ErrorContext,
-        TypesValType::ResultErr(err_type) => {
-            FormatValType::ResultErr(Box::new(types_valtype_to_format_valtype(err_type)))
-        }
-        TypesValType::ResultBoth(ok_type, err_type) => FormatValType::ResultBoth(
-            Box::new(types_valtype_to_format_valtype(ok_type)),
-            Box::new(types_valtype_to_format_valtype(err_type)),
-        ), // All enums handled above
+        TypesValType::Result { ok: _, err: _ } => {
+            // Map to FormatValType::Result with a placeholder type
+            FormatValType::Result(Box::new(FormatValType::Unit))
+        } // All enums handled above
     }
 }
 
@@ -528,7 +525,7 @@ pub fn runtime_to_format_extern_type(
         ExternType::Function(func_type) => {
             // Convert parameter types
             let param_names: Vec<String> =
-                (0..func_type.params.len()).map(|i| ComponentValue::String("Component operation result".into())).collect();
+                (0..func_type.params.len()).map(|i| "Component not found").collect();
 
             // Create param_types manually to handle errors gracefully
             let mut param_types = Vec::new();
@@ -633,7 +630,7 @@ pub fn format_to_common_val_type(val_type: &FormatValType) -> Result<ValueType> 
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::NOT_IMPLEMENTED,
-            NotImplementedError(ComponentValue::String("Component operation result".into())),
+            NotImplementedError("Component not found"),
         )),
     }
 }
@@ -680,7 +677,7 @@ pub fn extern_type_to_func_type(extern_type: &ExternType) -> Result<TypesFuncTyp
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::INVALID_TYPE,
-            InvalidArgumentError(ComponentValue::String("Component operation result".into())),
+            InvalidArgumentError("Component not found"),
         )),
     }
 }
@@ -936,7 +933,7 @@ pub fn complete_types_to_format_extern_type(
         wrt_foundation::ExternType::Function(func_type) => {
             // Convert parameter types
             let param_names: Vec<String> =
-                (0..func_type.params.len()).map(|i| ComponentValue::String("Component operation result".into())).collect();
+                (0..func_type.params.len()).map(|i| "Component not found").collect();
 
             // Create param_types manually to handle errors gracefully
             let mut param_types = Vec::new();
@@ -1111,7 +1108,7 @@ pub fn complete_format_to_types_extern_type(
             // Type references typically map to resources for now
             // In the future, this could be expanded to include more complex type mappings
             Ok(wrt_foundation::ExternType::Resource(wrt_foundation::ResourceType {
-                name: ComponentValue::String("Component operation result".into()),
+                name: "Component not found",
                 rep_type: wrt_foundation::ValueType::I32, // Default representation
             }))
         }

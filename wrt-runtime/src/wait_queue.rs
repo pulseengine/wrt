@@ -13,7 +13,7 @@
 
 extern crate alloc;
 
-use crate::prelude::*;
+use crate::prelude::{Debug, Eq, PartialEq};
 use crate::thread_manager::{ThreadId, ThreadState};
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_platform::sync::{Mutex, Condvar};
@@ -77,7 +77,7 @@ pub struct WaitQueue {
 
 impl WaitQueue {
     /// Create new wait queue
-    pub fn new(id: WaitQueueId) -> Self {
+    #[must_use] pub fn new(id: WaitQueueId) -> Self {
         Self {
             id,
             #[cfg(feature = "std")]
@@ -197,7 +197,7 @@ impl WaitQueue {
         }
         #[cfg(not(feature = "std"))]
         {
-            for slot in self.waiters.iter_mut() {
+            for slot in &mut self.waiters {
                 if let Some(entry) = slot {
                     if entry.thread_id == thread_id {
                         *slot = None;
@@ -240,7 +240,7 @@ impl WaitQueue {
         #[cfg(not(feature = "std"))]
         {
             let now = wrt_platform::time::current_time_ns();
-            for slot in self.waiters.iter_mut() {
+            for slot in &mut self.waiters {
                 if let Some(entry) = slot {
                     if let Some(timeout) = entry.timeout {
                         let elapsed_ns = now.saturating_sub(entry.enqueue_time);
@@ -265,20 +265,20 @@ impl WaitQueue {
         {
             // Convert BoundedVec to Vec (our type alias)
             let mut result = Vec::new();
-            for item in timed_out.iter() {
-                let _ = result.push(item);
+            for item in &timed_out {
+                let () = result.push(item);
             }
             result
         }
     }
     
     /// Get number of waiting threads
-    pub fn waiter_count(&self) -> u32 {
+    #[must_use] pub fn waiter_count(&self) -> u32 {
         self.stats.current_waiters
     }
     
     /// Get queue statistics
-    pub fn stats(&self) -> &WaitQueueStats {
+    #[must_use] pub fn stats(&self) -> &WaitQueueStats {
         &self.stats
     }
 }
@@ -299,7 +299,7 @@ pub struct WaitQueueManager {
 
 impl WaitQueueManager {
     /// Create new wait queue manager
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self {
             #[cfg(feature = "std")]
             queues: BTreeMap::new(),
@@ -324,7 +324,7 @@ impl WaitQueueManager {
         #[cfg(not(feature = "std"))]
         {
             // Find empty slot
-            for (id, slot) in self.queues.iter_mut() {
+            for (id, slot) in &mut self.queues {
                 if slot.is_none() {
                     *id = queue_id;
                     *slot = Some(queue);
@@ -346,7 +346,7 @@ impl WaitQueueManager {
         timeout_ms: Option<u64>,
         priority: u8,
     ) -> Result<WaitResult> {
-        let timeout = timeout_ms.map(|ms| Duration::from_millis(ms));
+        let timeout = timeout_ms.map(Duration::from_millis);
         
         // Get queue
         let queue = self.get_queue_mut(queue_id)?;
@@ -419,7 +419,7 @@ impl WaitQueueManager {
         }
         
         self.global_stats.total_notifies += 1;
-        self.global_stats.total_threads_notified += notified as u64;
+        self.global_stats.total_threads_notified += u64::from(notified);
         
         Ok(notified)
     }
@@ -441,7 +441,7 @@ impl WaitQueueManager {
         }
         #[cfg(not(feature = "std"))]
         {
-            for (id, slot) in self.queues.iter_mut() {
+            for (id, slot) in &mut self.queues {
                 if *id == queue_id && slot.is_some() {
                     *slot = None;
                     *id = 0;
@@ -471,7 +471,7 @@ impl WaitQueueManager {
         }
         #[cfg(not(feature = "std"))]
         {
-            for (_id, slot) in self.queues.iter_mut() {
+            for (_id, slot) in &mut self.queues {
                 if let Some(queue) = slot {
                     let timed_out = queue.process_timeouts();
                     total_timeouts += timed_out.len() as u64;
@@ -494,7 +494,7 @@ impl WaitQueueManager {
         }
         #[cfg(not(feature = "std"))]
         {
-            for (id, slot) in self.queues.iter_mut() {
+            for (id, slot) in &mut self.queues {
                 if *id == queue_id {
                     if let Some(queue) = slot {
                         return Ok(queue);
@@ -565,7 +565,7 @@ impl WaitQueueGlobalStats {
     }
     
     /// Get average threads notified per notify operation
-    pub fn average_threads_per_notify(&self) -> f64 {
+    #[must_use] pub fn average_threads_per_notify(&self) -> f64 {
         if self.total_notifies == 0 {
             0.0
         } else {

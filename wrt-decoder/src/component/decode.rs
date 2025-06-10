@@ -2,16 +2,19 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_format::{binary, component::Component};
-
-use super::parse::{
-    parse_alias_section, parse_canon_section, parse_component_section,
-    parse_component_type_section, parse_core_instance_section, parse_core_module_section,
-    parse_core_type_section, parse_export_section, parse_import_section, parse_instance_section,
-    parse_start_section, parse_value_section,
-};
-use crate::prelude::*;
+// Component decoding is only available with std feature due to complex recursive types
+#[cfg(feature = "std")]
+mod component_decode {
+    use wrt_error::{codes, Error, ErrorCategory, Result};
+    use wrt_format::{binary, component::Component};
+    
+    use crate::component::parse::{
+        parse_alias_section, parse_canon_section, parse_component_section,
+        parse_component_type_section, parse_core_instance_section, parse_core_module_section,
+        parse_core_type_section, parse_export_section, parse_import_section, parse_instance_section,
+        parse_start_section, parse_value_section,
+    };
+    use crate::prelude::*;
 
 /// Decode a WebAssembly Component Model binary into a structured component
 /// representation
@@ -55,7 +58,7 @@ pub fn decode_component(bytes: &[u8]) -> Result<Component> {
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    format!("Invalid section size at offset {:#x}", offset),
+                    "Invalid section size",
                 ));
             }
         };
@@ -65,10 +68,7 @@ pub fn decode_component(bytes: &[u8]) -> Result<Component> {
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::PARSE_ERROR,
-                format!(
-                    "Section size {} exceeds binary size at offset {:#x}",
-                    section_size, offset
-                ),
+                "Section size exceeds binary size",
             ));
         }
 
@@ -84,7 +84,7 @@ pub fn decode_component(bytes: &[u8]) -> Result<Component> {
                 match binary::read_string(section_bytes, 0) {
                     Ok((name, name_offset)) => {
                         // If this is a name section, extract the component name
-                        if name == "name" {
+                        if name == b"name" {
                             if let Ok(name_section) =
                                 crate::component::name_section::parse_component_name_section(
                                     &section_bytes[name_offset..],
@@ -284,3 +284,68 @@ pub fn parse_error_with_context(_message: &str, _context: &str) -> Error {
 pub fn parse_error_with_position(_message: &str, _position: usize) -> Error {
     Error::parse_error("Parse error at position")
 }
+
+} // end of component_decode module
+
+// Re-export public APIs when std feature is enabled
+#[cfg(feature = "std")]
+pub use component_decode::{
+    decode_component, decode_error, decode_error_with_context, decode_error_with_position,
+    decode_error_with_type, decode_error_with_value, parse_error, parse_error_with_context,
+    parse_error_with_position
+};
+
+// No-std stub implementations
+#[cfg(not(feature = "std"))]
+pub mod no_std_stubs {
+    use wrt_error::{codes, Error, ErrorCategory, Result};
+    
+    /// Stub component type for no_std decoding
+    #[derive(Debug, Clone)]
+    pub struct Component;
+    
+    /// Decode component (no_std stub)
+    pub fn decode_component(_bytes: &[u8]) -> Result<Component> {
+        Err(Error::new(
+            ErrorCategory::Validation,
+            codes::UNSUPPORTED_OPERATION,
+            "Component decoding requires std feature"
+        ))
+    }
+    
+    /// Helper functions (no_std stubs)
+    pub fn decode_error(_message: &str) -> Error {
+        Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, "Component decode error")
+    }
+    
+    pub fn decode_error_with_context(_message: &str, _context: &str) -> Error {
+        Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, "Component decode error with context")
+    }
+    
+    pub fn decode_error_with_position(_message: &str, _position: usize) -> Error {
+        Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, "Component decode error at position")
+    }
+    
+    pub fn decode_error_with_type(_message: &str, _type_name: &str) -> Error {
+        Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, "Component decode error with type")
+    }
+    
+    pub fn decode_error_with_value(_message: &str, _value: &str) -> Error {
+        Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, "Component decode error with value")
+    }
+    
+    pub fn parse_error(_message: &str) -> Error {
+        Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Component parse error")
+    }
+    
+    pub fn parse_error_with_context(_message: &str, _context: &str) -> Error {
+        Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Parse error")
+    }
+    
+    pub fn parse_error_with_position(_message: &str, _position: usize) -> Error {
+        Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Parse error at position")
+    }
+}
+
+#[cfg(not(feature = "std"))]
+pub use no_std_stubs::*;

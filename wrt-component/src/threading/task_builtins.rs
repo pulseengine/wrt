@@ -17,17 +17,22 @@
 
 extern crate alloc;
 
-use std::{boxed::Box, collections::BTreeMap, vec::Vec};
+#[cfg(not(feature = "std"))]
+use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::HashMap, vec::Vec};
 
 use wrt_error::{Error, ErrorCategory, Result};
 use wrt_foundation::{
-    atomic_memory::AtomicRefCell,
-    bounded::BoundedMap,
-    component_value::ComponentValue,
+    BoundedMap,
     types::ValueType,
 };
+
+// Simplified AtomicRefCell for this implementation
+use core::cell::RefCell as AtomicRefCell;
+
+#[cfg(feature = "std")]
+use wrt_foundation::component_value::ComponentValue;
 
 #[cfg(not(any(feature = "std", )))]
 use wrt_foundation::{BoundedString, BoundedVec};
@@ -96,7 +101,7 @@ pub enum TaskReturn {
     #[cfg(feature = "std")]
     Binary(Vec<u8>),
     #[cfg(not(any(feature = "std", )))]
-    Binary(BoundedVec<u8, MAX_TASK_RESULT_SIZE>),
+    Binary(BoundedVec<u8, MAX_TASK_RESULT_SIZE, NoStdProvider<65536>>),
     /// Task returned nothing (void)
     Void,
 }
@@ -158,7 +163,7 @@ pub struct Task {
     #[cfg(feature = "std")]
     pub metadata: HashMap<String, ComponentValue>,
     #[cfg(not(any(feature = "std", )))]
-    pub metadata: BoundedMap<BoundedString<32>, ComponentValue, 8>,
+    pub metadata: BoundedMap<BoundedString<32, NoStdProvider<65536>>, ComponentValue, 8, NoStdProvider<65536>>,
 }
 
 impl Task {
@@ -426,7 +431,7 @@ impl TaskBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Task not found"
                 ))
             }
@@ -455,7 +460,7 @@ impl TaskBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Task not found"
                 ))
             }
@@ -507,7 +512,7 @@ impl TaskBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Task not found"
                 ))
             }
@@ -588,8 +593,8 @@ pub mod task_helpers {
     }
 
     #[cfg(not(any(feature = "std", )))]
-    pub fn wait_for_tasks(task_ids: &[TaskId]) -> Result<BoundedVec<Option<TaskReturn>, MAX_TASKS>> {
-        let mut results = BoundedVec::new();
+    pub fn wait_for_tasks(task_ids: &[TaskId]) -> Result<BoundedVec<Option<TaskReturn>, MAX_TASKS, NoStdProvider<65536>>> {
+        let mut results = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
         for &task_id in task_ids {
             let result = TaskBuiltins::task_wait(task_id)?;
             results.push(result)

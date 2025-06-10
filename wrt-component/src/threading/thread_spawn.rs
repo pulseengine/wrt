@@ -1,10 +1,13 @@
 use crate::{
-    canonical_options::CanonicalOptions,
+    canonical_abi::canonical_options::CanonicalOptions,
     post_return::{CleanupTask, CleanupTaskType, PostReturnRegistry},
-    task_manager::{TaskId, TaskManager, TaskState, TaskType},
+    threading::task_manager::{TaskId, TaskManager, TaskState, TaskType},
     virtualization::{Capability, ResourceUsage, VirtualizationManager},
-    ComponentInstanceId, ResourceHandle, ValType,
 };
+// Placeholder types
+pub type ComponentInstanceId = u32;
+pub type ResourceHandle = u32;
+pub type ValType = u32;
 use core::{
     fmt,
     sync::atomic::{AtomicBool, AtomicU32, Ordering},
@@ -76,7 +79,7 @@ pub struct ThreadConfiguration {
     pub name: Option<String>,
     pub detached: bool,
     pub cpu_affinity: Option<u32>,
-    pub capabilities: BoundedVec<Capability, 16>,
+    pub capabilities: BoundedVec<Capability, 16, NoStdProvider<65536>>,
 }
 
 impl Default for ThreadConfiguration {
@@ -87,7 +90,7 @@ impl Default for ThreadConfiguration {
             name: None,
             detached: false,
             cpu_affinity: None,
-            capabilities: BoundedVec::new(),
+            capabilities: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 }
@@ -113,7 +116,7 @@ pub enum ThreadResult {
 pub struct ThreadSpawnRequest {
     pub component_id: ComponentInstanceId,
     pub function_name: String,
-    pub arguments: BoundedVec<ComponentValue, 16>,
+    pub arguments: BoundedVec<ComponentValue, 16, NoStdProvider<65536>>,
     pub configuration: ThreadConfiguration,
     pub return_type: Option<ValType>,
 }
@@ -121,8 +124,8 @@ pub struct ThreadSpawnRequest {
 pub struct ComponentThreadManager {
     threads: BoundedHashMap<ThreadId, ThreadHandle, MAX_THREAD_JOIN_HANDLES>,
     component_threads:
-        BoundedHashMap<ComponentInstanceId, BoundedVec<ThreadId, MAX_THREADS_PER_COMPONENT>, 64>,
-    spawn_requests: BoundedVec<ThreadSpawnRequest, MAX_THREAD_SPAWN_REQUESTS>,
+        BoundedHashMap<ComponentInstanceId, BoundedVec<ThreadId, MAX_THREADS_PER_COMPONENT, NoStdProvider<65536>>, 64>,
+    spawn_requests: BoundedVec<ThreadSpawnRequest, MAX_THREAD_SPAWN_REQUESTS, NoStdProvider<65536>>,
     next_thread_id: AtomicU32,
     task_manager: TaskManager,
     virt_manager: Option<VirtualizationManager>,
@@ -137,7 +140,7 @@ impl ComponentThreadManager {
         Self {
             threads: BoundedHashMap::new(),
             component_threads: BoundedHashMap::new(),
-            spawn_requests: BoundedVec::new(),
+            spawn_requests: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             next_thread_id: AtomicU32::new(1),
             task_manager: TaskManager::new(),
             virt_manager: None,
@@ -186,7 +189,7 @@ impl ComponentThreadManager {
     pub fn join_thread(&mut self, thread_id: ThreadId) -> ThreadSpawnResult<ThreadResult> {
         let handle = self.threads.get(&thread_id).ok_or_else(|| ThreadSpawnError {
             kind: ThreadSpawnErrorKind::ThreadNotFound,
-            message: ComponentValue::String("Component operation result".into())),
+            message: "Component not found",
         })?;
 
         if handle.detached {
@@ -225,7 +228,7 @@ impl ComponentThreadManager {
         } else {
             Err(ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::ThreadNotFound,
-                message: ComponentValue::String("Component operation result".into())),
+                message: "Component not found",
             })
         }
     }
@@ -252,7 +255,7 @@ impl ComponentThreadManager {
         self.task_manager.cleanup_instance_resources(component_id).map_err(|e| {
             ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::SpawnFailed,
-                message: ComponentValue::String("Component operation result".into()),
+                message: "Component not found",
             }
         })?;
 
@@ -375,7 +378,7 @@ impl ComponentThreadManager {
             })
             .map_err(|e| ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::SpawnFailed,
-                message: ComponentValue::String("Component operation result".into()),
+                message: "Component not found",
             })?;
 
         self.active_thread_count.fetch_add(1, Ordering::SeqCst);
@@ -390,15 +393,15 @@ impl ComponentThreadManager {
     ) -> ThreadSpawnResult<()> {
         let task_id = self
             .task_manager
-            .create_task(request.component_id, &ComponentValue::String("Component operation result".into())))
+            .create_task(request.component_id, &"Component not found")
             .map_err(|e| ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::SpawnFailed,
-                message: ComponentValue::String("Component operation result".into()),
+                message: "Component not found",
             })?;
 
         self.task_manager.start_task(task_id).map_err(|e| ThreadSpawnError {
             kind: ThreadSpawnErrorKind::SpawnFailed,
-            message: ComponentValue::String("Component operation result".into()),
+            message: "Component not found",
         })?;
 
         self.active_thread_count.fetch_add(1, Ordering::SeqCst);
@@ -409,7 +412,7 @@ impl ComponentThreadManager {
     fn join_std_thread(&mut self, thread_id: ThreadId) -> ThreadSpawnResult<ThreadResult> {
         let handle = self.threads.get(&thread_id).ok_or_else(|| ThreadSpawnError {
             kind: ThreadSpawnErrorKind::ThreadNotFound,
-            message: ComponentValue::String("Component operation result".into())),
+            message: "Component not found",
         })?;
 
         // Wait for completion using futex
@@ -473,7 +476,7 @@ impl ComponentThreadManager {
             // Add cleanup task for thread resources
             let cleanup_task = CleanupTask {
                 task_type: CleanupTaskType::Custom {
-                    name: ComponentValue::String("Component operation result".into())),
+                    name: "Component not found",
                     data: Vec::new(),
                 },
                 priority: 5,
@@ -493,7 +496,7 @@ impl ComponentThreadManager {
     ) -> ThreadResult {
         match Self::call_component_function(component_id, function_name, arguments) {
             Ok(result) => ThreadResult::Success(result),
-            Err(e) => ThreadResult::Error(ComponentValue::String("Component operation result".into())),
+            Err(e) => ThreadResult::Error("Component not found"),
         }
     }
 
@@ -525,7 +528,7 @@ impl ThreadSpawnBuiltins {
         &mut self,
         component_id: ComponentInstanceId,
         function_name: String,
-        arguments: BoundedVec<ComponentValue, 16>,
+        arguments: BoundedVec<ComponentValue, 16, NoStdProvider<65536>>,
         config: ThreadConfiguration,
     ) -> ThreadSpawnResult<ThreadId> {
         let request = ThreadSpawnRequest {
@@ -553,7 +556,7 @@ impl ThreadSpawnBuiltins {
             }
             ThreadResult::Panic(msg) => Err(ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::JoinFailed,
-                message: ComponentValue::String("Component operation result".into()),
+                message: "Component not found",
             }),
         }
     }
@@ -624,7 +627,7 @@ mod tests {
         let request = ThreadSpawnRequest {
             component_id,
             function_name: "test_function".to_string(),
-            arguments: BoundedVec::new(),
+            arguments: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             configuration: ThreadConfiguration::default(),
             return_type: Some(ValType::I32),
         };

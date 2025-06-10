@@ -150,17 +150,15 @@ pub struct QnxLimitProvider;
 
 impl ComprehensiveLimitProvider for QnxLimitProvider {
     fn discover_limits(&self) -> Result<ComprehensivePlatformLimits, Error> {
-        let mut limits = ComprehensivePlatformLimits::default();
-        limits.platform_id = PlatformId::QNX;
-        
-        // QNX-specific limit discovery
-        // In a real implementation, this would query SYSPAGE, memory partitions, etc.
-        limits.max_total_memory = 512 * 1024 * 1024; // 512MB conservative for QNX
-        limits.max_wasm_linear_memory = 256 * 1024 * 1024; // 256MB
-        limits.max_stack_bytes = 2 * 1024 * 1024; // 2MB stack
-        limits.max_components = 128; // Conservative for embedded
-        limits.max_debug_overhead = 32 * 1024 * 1024; // 32MB debug
-        limits.asil_level = AsilLevel::AsilB; // Assume automotive grade
+        let limits = ComprehensivePlatformLimits {
+            platform_id: PlatformId::QNX,
+            max_total_memory: 512 * 1024 * 1024, // 512MB conservative for QNX
+            max_wasm_linear_memory: 256 * 1024 * 1024, // 256MB
+            max_stack_bytes: 2 * 1024 * 1024, // 2MB stack
+            max_components: 128, // Conservative for embedded
+            max_debug_overhead: 32 * 1024 * 1024, // 32MB debug
+            asil_level: AsilLevel::AsilB, // Assume automotive grade
+        };
         
         Ok(limits)
     }
@@ -218,14 +216,15 @@ impl EmbeddedLimitProvider {
 
 impl ComprehensiveLimitProvider for EmbeddedLimitProvider {
     fn discover_limits(&self) -> Result<ComprehensivePlatformLimits, Error> {
-        let mut limits = ComprehensivePlatformLimits::default();
-        limits.platform_id = PlatformId::Embedded;
-        limits.max_total_memory = self.memory_size;
-        limits.max_wasm_linear_memory = (self.memory_size * 2) / 3; // 66% for WASM
-        limits.max_stack_bytes = self.memory_size / 16; // 6.25% for stack
-        limits.max_components = 16; // Very limited for embedded
-        limits.max_debug_overhead = self.memory_size / 20; // 5% for debug
-        limits.asil_level = self.asil_level;
+        let limits = ComprehensivePlatformLimits {
+            platform_id: PlatformId::Embedded,
+            max_total_memory: self.memory_size,
+            max_wasm_linear_memory: (self.memory_size * 2) / 3, // 66% for WASM
+            max_stack_bytes: self.memory_size / 16, // 6.25% for stack
+            max_components: 16, // Very limited for embedded
+            max_debug_overhead: self.memory_size / 20, // 5% for debug
+            asil_level: self.asil_level,
+        };
         
         Ok(limits)
     }

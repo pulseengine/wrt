@@ -8,7 +8,7 @@
 //! as defined in the WebAssembly Component Model.
 
 // Use the prelude for consistent imports
-use crate::prelude::*;
+use crate::prelude::{Any, BuiltinType, Debug, Eq, Error, ErrorCategory, HashMap, PartialEq, Result, Value, codes, str};
 
 // Type aliases for no_std compatibility
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
@@ -31,7 +31,7 @@ type HandlerFn = Box<dyn Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send +
 // Handler data wrapper for no_std
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-/// Handler data wrapper for no_std environments
+/// Handler data wrapper for `no_std` environments
 pub struct HandlerData {
     _phantom: core::marker::PhantomData<()>,
 }
@@ -49,9 +49,9 @@ impl wrt_foundation::traits::ToBytes for HandlerData {
         0
     }
 
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
-        _writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
         Ok(())
@@ -60,8 +60,8 @@ impl wrt_foundation::traits::ToBytes for HandlerData {
 
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 impl wrt_foundation::traits::FromBytes for HandlerData {
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
-        _reader: &mut wrt_foundation::traits::ReadStream<'a>,
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        _reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         Ok(HandlerData::default())
@@ -141,7 +141,7 @@ pub struct BuiltinHost {
     /// Interceptor for built-in calls
     #[cfg(feature = "std")]
     interceptor: Option<Arc<dyn BuiltinInterceptor>>,
-    /// Built-in handlers (builtin_type_name -> handler)
+    /// Built-in handlers (`builtin_type_name` -> handler)
     handlers: HandlerMap,
     /// Critical built-ins that should have fallbacks
     critical_builtins: CriticalBuiltinsMap,
@@ -198,9 +198,9 @@ impl BuiltinHost {
         }
     }
 
-    /// Create a new built-in host (no_std version)
+    /// Create a new built-in host (`no_std` version)
     #[cfg(all(not(feature = "std"), not(feature = "std")))]
-    pub fn new(component_name: &str, host_id: &str) -> Self {
+    #[must_use] pub fn new(component_name: &str, host_id: &str) -> Self {
         let string_provider = wrt_foundation::NoStdProvider::<256>::default();
         let map_provider = wrt_foundation::NoStdProvider::<1024>::default();
         let comp_name = HostString::from_str(component_name, string_provider.clone())
@@ -240,7 +240,7 @@ impl BuiltinHost {
         self.handlers.insert(builtin_type.name().to_string(), Box::new(handler));
     }
 
-    /// Register a handler for a built-in function (no_std version)
+    /// Register a handler for a built-in function (`no_std` version)
     #[cfg(all(not(feature = "std"), not(feature = "std")))]
     pub fn register_handler<F>(&mut self, builtin_type: BuiltinType, _handler: F)
     where
@@ -266,7 +266,7 @@ impl BuiltinHost {
         self.critical_builtins.insert(builtin_type, Box::new(handler));
     }
 
-    /// Register a fallback for a critical built-in function (no_std version)
+    /// Register a fallback for a critical built-in function (`no_std` version)
     #[cfg(all(not(feature = "std"), not(feature = "std")))]
     pub fn register_fallback<F>(&mut self, builtin_type: BuiltinType, _handler: F)
     where
@@ -418,7 +418,7 @@ impl BuiltinHost {
         ))
     }
 
-    /// Internal implementation of execute_builtin without interception (no_std version)
+    /// Internal implementation of `execute_builtin` without interception (`no_std` version)
     #[cfg(all(not(feature = "std"), not(feature = "std")))]
     fn execute_builtin_internal(
         &self,

@@ -9,10 +9,14 @@ use std::{collections::BTreeMap, vec::Vec};
 use std::{collections::BTreeMap, vec::Vec};
 
 use wrt_foundation::{
-    BoundedString, BoundedVec, NoStdProvider,
+    BoundedString, BoundedVec,
     prelude::*,
 };
 use wrt_error::{Error, Result};
+
+// Platform-aware type aliases for WIT component integration
+type ComponentProvider = wrt_foundation::safe_memory::NoStdProvider<4096>;  // 4KB for component data
+type WitBoundedString<const N: usize> = BoundedString<N, ComponentProvider>;
 
 // Re-export WIT AST types for convenience
 pub use wrt_format::ast::{
@@ -44,7 +48,7 @@ pub struct WitComponentContext {
 #[derive(Debug, Clone)]
 pub struct InterfaceMapping {
     /// WIT interface name
-    pub wit_name: BoundedString<64, NoStdProvider<1024>>,
+    pub wit_name: WitBoundedString<64, NoStdProvider<65536>>,
     
     /// Component interface ID
     pub component_id: u32,
@@ -63,7 +67,7 @@ pub struct InterfaceMapping {
 #[derive(Debug, Clone)]
 pub struct TypeMapping {
     /// WIT type name
-    pub wit_name: BoundedString<64, NoStdProvider<1024>>,
+    pub wit_name: WitBoundedString<64, NoStdProvider<65536>>,
     
     /// Component type representation
     pub component_type: ComponentType,
@@ -82,7 +86,7 @@ pub struct TypeMapping {
 #[derive(Debug, Clone)]
 pub struct FunctionMapping {
     /// WIT function name
-    pub wit_name: BoundedString<64, NoStdProvider<1024>>,
+    pub wit_name: WitBoundedString<64, NoStdProvider<65536>>,
     
     /// Component function index
     pub function_index: u32,
@@ -140,7 +144,7 @@ pub struct RecordType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldType {
     /// Field name
-    pub name: BoundedString<32, NoStdProvider<1024>>,
+    pub name: WitBoundedString<32, NoStdProvider<65536>>,
     /// Field type
     pub field_type: Box<ComponentType>,
 }
@@ -156,7 +160,7 @@ pub struct VariantType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CaseType {
     /// Case name
-    pub name: BoundedString<32, NoStdProvider<1024>>,
+    pub name: WitBoundedString<32, NoStdProvider<65536>>,
     /// Optional case type
     pub case_type: Option<Box<ComponentType>>,
 }
@@ -165,21 +169,21 @@ pub struct CaseType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct EnumType {
     /// Enum values
-    pub values: Vec<BoundedString<32, NoStdProvider<1024>>>,
+    pub values: Vec<WitBoundedString<32, NoStdProvider<65536>>>,
 }
 
 /// Flags type definition
 #[derive(Debug, Clone, PartialEq)]
 pub struct FlagsType {
     /// Flag names
-    pub flags: Vec<BoundedString<32, NoStdProvider<1024>>>,
+    pub flags: Vec<WitBoundedString<32, NoStdProvider<65536>>>,
 }
 
 /// Resource type definition
 #[derive(Debug, Clone, PartialEq)]
 pub struct ResourceType {
     /// Resource name
-    pub name: BoundedString<64, NoStdProvider<1024>>,
+    pub name: WitBoundedString<64, NoStdProvider<65536>>,
     /// Resource methods
     pub methods: Vec<FunctionType>,
 }
@@ -399,7 +403,7 @@ impl WitComponentContext {
                 if let Some(mapping) = self.type_mappings.get(type_name) {
                     Ok(mapping.component_type.clone())
                 } else {
-                    Err(Error::parse_error(&ComponentValue::String("Component operation result".into())))
+                    Err(Error::parse_error(&"Component not found"))
                 }
             }
             TypeExpr::List(inner) => {

@@ -8,6 +8,13 @@
 //! These implementations are used when no hardware SIMD support is available
 //! or in no_std environments where we can't detect CPU features.
 
+#![allow(clippy::cast_sign_loss)] // Mathematical operations require specific casting
+#![allow(clippy::cast_possible_wrap)] // Mathematical operations require specific casting
+#![allow(clippy::cast_lossless)] // Mathematical operations require specific casting
+#![allow(clippy::if_not_else)] // SIMD comparisons use != for mask generation
+#![allow(clippy::float_cmp)] // SIMD operations require exact floating point comparisons
+#![allow(clippy::cast_abs_to_unsigned)] // SIMD absolute value operations
+
 
 use super::{SimdLevel, SimdProvider};
 

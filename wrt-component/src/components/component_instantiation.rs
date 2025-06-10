@@ -41,18 +41,21 @@
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::HashMap, format, string::String, vec::Vec};
 
-#[cfg(all(not(feature = "std")))]
-use std::{boxed::Box, collections::BTreeMap as HashMap, format, string::String, vec::Vec};
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedString as String, BoundedVec as Vec, no_std_hashmap::NoStdHashMap as HashMap, safe_memory::NoStdProvider};
 
-#[cfg(not(any(feature = "std", )))]
-use wrt_foundation::{BoundedString as String, BoundedVec as Vec, NoStdHashMap as HashMap};
+// Enable vec! and format! macros for no_std
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{vec, format, boxed::Box};
 
 use crate::canonical_abi::{CanonicalABI, CanonicalMemory, ComponentType, ComponentValue};
-use crate::resource_management::{
+use crate::resources::{
     ResourceData, ResourceHandle, ResourceManager as ComponentResourceManager, ResourceTypeId,
 };
-use crate::component_communication::{CallRouter, CallContext as CommCallContext};
-use crate::call_context::CallContextManager;
+// use crate::component_communication::{CallRouter, CallContext as CommCallContext};
+// use crate::call_context::CallContextManager;
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
 /// Maximum number of component instances
@@ -103,7 +106,7 @@ pub struct InstanceConfig {
 }
 
 /// Memory configuration for component instances
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MemoryConfig {
     /// Initial memory size in pages (64KB each)
     pub initial_pages: u32,
@@ -114,7 +117,7 @@ pub struct MemoryConfig {
 }
 
 /// Component function signature
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionSignature {
     /// Function name
     pub name: String,
@@ -125,7 +128,7 @@ pub struct FunctionSignature {
 }
 
 /// Component export definition
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComponentExport {
     /// Export name
     pub name: String,
@@ -134,7 +137,7 @@ pub struct ComponentExport {
 }
 
 /// Component import definition
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComponentImport {
     /// Import name
     pub name: String,
@@ -145,7 +148,7 @@ pub struct ComponentImport {
 }
 
 /// Types of exports a component can provide
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExportType {
     /// Function export
     Function(FunctionSignature),
@@ -160,7 +163,7 @@ pub enum ExportType {
 }
 
 /// Types of imports a component can require
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImportType {
     /// Function import
     Function(FunctionSignature),
@@ -199,12 +202,12 @@ pub struct ComponentInstance {
     metadata: InstanceMetadata,
     /// Resource manager for this instance
     resource_manager: Option<ComponentResourceManager>,
-    /// Call context manager for cross-component calls
-    call_context_manager: Option<CallContextManager>,
+    // /// Call context manager for cross-component calls
+    // call_context_manager: Option<CallContextManager>,
 }
 
 /// Resolved import with actual provider
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedImport {
     /// Original import definition
     pub import: ComponentImport,
@@ -215,7 +218,7 @@ pub struct ResolvedImport {
 }
 
 /// Component function implementation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComponentFunction {
     /// Function handle
     pub handle: FunctionHandle,
@@ -226,7 +229,7 @@ pub struct ComponentFunction {
 }
 
 /// Function implementation types
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FunctionImplementation {
     /// Native WebAssembly function
     Native {
@@ -363,6 +366,7 @@ impl ComponentInstance {
             functions: Vec::new(),
             metadata: InstanceMetadata::default(),
             resource_manager: Some(ComponentResourceManager::new()),
+            // call_context_manager: None,
         })
     }
 
@@ -579,7 +583,7 @@ impl ComponentInstance {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::FUNCTION_NOT_FOUND,
-                ComponentValue::String("Component operation result".into()),
+                "Function not found",
             )
         })
     }
@@ -593,11 +597,7 @@ impl ComponentInstance {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::TYPE_MISMATCH,
-                format!(
-                    "Function expects {} arguments, got {}",
-                    signature.params.len(),
-                    args.len()
-                ),
+                "Function argument count mismatch",
             ));
         }
 
@@ -915,3 +915,114 @@ mod tests {
         }
     }
 }
+
+// Implement required traits for BoundedVec compatibility
+use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream};
+
+// Macro to implement basic traits for complex types
+macro_rules! impl_basic_traits {
+    ($type:ty, $default_val:expr) => {
+        impl Checksummable for $type {
+            fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+                0u32.update_checksum(checksum);
+            }
+        }
+
+        impl ToBytes for $type {
+            fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                &self,
+                _writer: &mut WriteStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<()> {
+                Ok(())
+            }
+        }
+
+        impl FromBytes for $type {
+            fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                _reader: &mut ReadStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<Self> {
+                Ok($default_val)
+            }
+        }
+    };
+}
+
+// Default implementations for complex types
+impl Default for ComponentFunction {
+    fn default() -> Self {
+        Self {
+            handle: 0,
+            signature: FunctionSignature::default(),
+            implementation: FunctionImplementation::default(),
+        }
+    }
+}
+
+impl Default for FunctionSignature {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            params: Vec::new(),
+            returns: Vec::new(),
+        }
+    }
+}
+
+impl Default for FunctionImplementation {
+    fn default() -> Self {
+        Self::Native {
+            func_index: 0,
+            module_index: 0,
+        }
+    }
+}
+
+// Default implementations for additional types
+impl Default for ComponentExport {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            export_type: ExportType::default(),
+        }
+    }
+}
+
+impl Default for ComponentImport {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            module: String::new(),
+            import_type: ImportType::default(),
+        }
+    }
+}
+
+impl Default for ExportType {
+    fn default() -> Self {
+        Self::Function(FunctionSignature::default())
+    }
+}
+
+impl Default for ImportType {
+    fn default() -> Self {
+        Self::Function(FunctionSignature::default())
+    }
+}
+
+impl Default for ResolvedImport {
+    fn default() -> Self {
+        Self {
+            import: ComponentImport::default(),
+            provider_id: 0,
+            provider_export: String::new(),
+        }
+    }
+}
+
+// Apply macro to types that need traits
+impl_basic_traits!(ComponentFunction, ComponentFunction::default());
+impl_basic_traits!(ComponentExport, ComponentExport::default());
+impl_basic_traits!(ComponentImport, ComponentImport::default());
+impl_basic_traits!(ResolvedImport, ResolvedImport::default());

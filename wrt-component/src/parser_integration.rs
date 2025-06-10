@@ -56,37 +56,37 @@ pub struct ParsedComponent {
     #[cfg(feature = "std")]
     pub types: Vec<ComponentType>,
     #[cfg(not(any(feature = "std", )))]
-    pub types: BoundedVec<ComponentType, MAX_PARSED_SECTIONS>,
+    pub types: BoundedVec<ComponentType, MAX_PARSED_SECTIONS, NoStdProvider<65536>>,
 
     /// Component imports
     #[cfg(feature = "std")]
     pub imports: Vec<ParsedImport>,
     #[cfg(not(any(feature = "std", )))]
-    pub imports: BoundedVec<ParsedImport, MAX_PARSED_SECTIONS>,
+    pub imports: BoundedVec<ParsedImport, MAX_PARSED_SECTIONS, NoStdProvider<65536>>,
 
     /// Component exports
     #[cfg(feature = "std")]
     pub exports: Vec<ParsedExport>,
     #[cfg(not(any(feature = "std", )))]
-    pub exports: BoundedVec<ParsedExport, MAX_PARSED_SECTIONS>,
+    pub exports: BoundedVec<ParsedExport, MAX_PARSED_SECTIONS, NoStdProvider<65536>>,
 
     /// Embedded core modules
     #[cfg(feature = "std")]
     pub modules: Vec<ParsedModule>,
     #[cfg(not(any(feature = "std", )))]
-    pub modules: BoundedVec<ParsedModule, 16>,
+    pub modules: BoundedVec<ParsedModule, 16, NoStdProvider<65536>>,
 
     /// Component instances
     #[cfg(feature = "std")]
     pub instances: Vec<ParsedInstance>,
     #[cfg(not(any(feature = "std", )))]
-    pub instances: BoundedVec<ParsedInstance, 16>,
+    pub instances: BoundedVec<ParsedInstance, 16, NoStdProvider<65536>>,
 
     /// Canonical function adapters
     #[cfg(feature = "std")]
     pub canonicals: Vec<ParsedCanonical>,
     #[cfg(not(any(feature = "std", )))]
-    pub canonicals: BoundedVec<ParsedCanonical, MAX_PARSED_SECTIONS>,
+    pub canonicals: BoundedVec<ParsedCanonical, MAX_PARSED_SECTIONS, NoStdProvider<65536>>,
 }
 
 /// Parsed import declaration
@@ -96,7 +96,7 @@ pub struct ParsedImport {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64>,
+    pub name: BoundedString<64, NoStdProvider<65536>>,
     /// Import type
     pub import_type: ImportKind,
 }
@@ -130,7 +130,7 @@ pub struct ParsedExport {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64>,
+    pub name: BoundedString<64, NoStdProvider<65536>>,
     /// Export kind
     pub export_kind: ExportKind,
 }
@@ -157,7 +157,7 @@ pub struct ParsedModule {
     #[cfg(feature = "std")]
     pub data: Vec<u8>,
     #[cfg(not(any(feature = "std", )))]
-    pub data: BoundedVec<u8, 65536>, // 64KB max for no_std
+    pub data: BoundedVec<u8, 65536, NoStdProvider<65536>>, // 64KB max for no_std
 }
 
 /// Parsed component instance
@@ -169,7 +169,7 @@ pub struct ParsedInstance {
     #[cfg(feature = "std")]
     pub args: Vec<InstantiationArg>,
     #[cfg(not(any(feature = "std", )))]
-    pub args: BoundedVec<InstantiationArg, 32>,
+    pub args: BoundedVec<InstantiationArg, 32, NoStdProvider<65536>>,
 }
 
 /// Instantiation argument
@@ -179,7 +179,7 @@ pub struct InstantiationArg {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64>,
+    pub name: BoundedString<64, NoStdProvider<65536>>,
     /// Argument index/value
     pub index: u32,
 }
@@ -260,20 +260,17 @@ impl ComponentLoader {
     pub fn parse_component(&self, binary_data: &[u8]) -> WrtResult<ParsedComponent> {
         // Validate size
         if binary_data.len() > self.max_component_size {
-            return Err(wrt_foundation::WrtError::invalid_input("Invalid input"),
-            ));
+            return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
         }
 
         // Validate basic structure
         if binary_data.len() < 8 {
-            return Err(wrt_foundation::WrtError::invalid_input("Invalid input"),
-            ));
+            return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
         }
 
         // Check magic bytes (simplified - would check actual WASM component magic)
         if &binary_data[0..4] != b"\x00asm" {
-            return Err(wrt_foundation::WrtError::invalid_input("Invalid input"),
-            ));
+            return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
         }
 
         // Parse sections (simplified implementation)
@@ -303,7 +300,7 @@ impl ComponentLoader {
         let import_name = "default".to_string();
         #[cfg(not(any(feature = "std", )))]
         let import_name = BoundedString::from_str("default")
-            .map_err(|_| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
+            .map_err(|_| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         parsed.add_import(ParsedImport {
             name: import_name,
@@ -315,7 +312,7 @@ impl ComponentLoader {
         let export_name = "main".to_string();
         #[cfg(not(any(feature = "std", )))]
         let export_name = BoundedString::from_str("main")
-            .map_err(|_| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
+            .map_err(|_| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         parsed.add_export(ParsedExport {
             name: export_name,
@@ -363,7 +360,7 @@ impl ComponentLoader {
 
     /// Convert parsed component to runtime component
     pub fn to_runtime_component(&self, parsed: &ParsedComponent) -> WrtResult<Component> {
-        let mut component = Component::new();
+        let mut component = Component::new(WrtComponentType::default());
 
         // Convert types
         for component_type in &parsed.types {
@@ -430,10 +427,10 @@ impl ComponentLoader {
     /// Create module adapter from parsed module
     fn create_module_adapter(&self, module: &ParsedModule) -> WrtResult<CoreModuleAdapter> {
         #[cfg(feature = "std")]
-        let name = ComponentValue::String("Component operation result".into());
+        let name = "Component not found";
         #[cfg(not(any(feature = "std", )))]
         let name = BoundedString::from_str("module")
-            .map_err(|_| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
+            .map_err(|_| wrt_foundation::WrtError::invalid_input("Invalid input"))?;
 
         let adapter = CoreModuleAdapter::new(name);
 
@@ -468,27 +465,27 @@ impl ParsedComponent {
             #[cfg(feature = "std")]
             types: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            types: BoundedVec::new(),
+            types: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             imports: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            imports: BoundedVec::new(),
+            imports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             exports: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            exports: BoundedVec::new(),
+            exports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             modules: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            modules: BoundedVec::new(),
+            modules: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             instances: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            instances: BoundedVec::new(),
+            instances: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             canonicals: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            canonicals: BoundedVec::new(),
+            canonicals: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 

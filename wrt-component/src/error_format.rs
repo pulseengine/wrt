@@ -3,6 +3,9 @@
 //! This module provides alternatives to the format! macro for error messages
 //! in no_std environments.
 
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
 use wrt_error::{Error, ErrorCategory};
 
 /// Error context for canonical ABI operations
@@ -22,46 +25,46 @@ pub enum CanonicalErrorContext {
 /// Format an error message for the given context
 #[cfg(feature = "std")]
 pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorContext) -> Error {
-    use std::format;
+    use alloc::format;
 
     let message = match context {
         CanonicalErrorContext::OutOfBounds { addr, size } => {
-            ComponentValue::String("Component operation result".into())
+            format!("Memory access out of bounds at address {:#x}, size {}", addr, size)
         }
         CanonicalErrorContext::InvalidUtf8 => "Invalid UTF-8 string".to_string(),
         CanonicalErrorContext::InvalidCodePoint { code_point } => {
-            ComponentValue::String("Component operation result".into())
+            format!("Invalid Unicode code point: {:#x}", code_point)
         }
         CanonicalErrorContext::InvalidDiscriminant { discriminant } => {
-            ComponentValue::String("Component operation result".into())
+            format!("Invalid discriminant value: {}", discriminant)
         }
         CanonicalErrorContext::NotImplemented(feature) => {
-            ComponentValue::String("Component operation result".into())
+            format!("Feature not implemented: {}", feature)
         }
         CanonicalErrorContext::TypeMismatch => "Type mismatch".to_string(),
         CanonicalErrorContext::ResourceNotFound { handle } => {
-            ComponentValue::String("Component operation result".into())
+            format!("Resource not found with handle: {}", handle)
         }
         CanonicalErrorContext::InvalidAlignment { addr, align } => {
-            ComponentValue::String("Component operation result".into())
+            format!("Invalid alignment: address {:#x} not aligned to {}", addr, align)
         }
         CanonicalErrorContext::InvalidSize { expected, actual } => {
-            ComponentValue::String("Component operation result".into())
+            format!("Invalid size: expected {}, got {}", expected, actual)
         }
     };
 
     Error::new(category, code, message)
 }
 
-/// Format an error message for the given context (no_std version)
+/// Format an error message for the given context (no_std version with static messages)
 #[cfg(not(feature = "std"))]
 pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorContext) -> Error {
     let message = match context {
-        CanonicalErrorContext::OutOfBounds { .. } => "Address out of bounds",
+        CanonicalErrorContext::OutOfBounds { .. } => "Memory access out of bounds",
         CanonicalErrorContext::InvalidUtf8 => "Invalid UTF-8 string",
-        CanonicalErrorContext::InvalidCodePoint { .. } => "Invalid UTF-8 code point",
-        CanonicalErrorContext::InvalidDiscriminant { .. } => "Invalid variant discriminant",
-        CanonicalErrorContext::NotImplemented(feature) => feature,
+        CanonicalErrorContext::InvalidCodePoint { .. } => "Invalid Unicode code point",
+        CanonicalErrorContext::InvalidDiscriminant { .. } => "Invalid discriminant value",
+        CanonicalErrorContext::NotImplemented(_) => "Feature not implemented",
         CanonicalErrorContext::TypeMismatch => "Type mismatch",
         CanonicalErrorContext::ResourceNotFound { .. } => "Resource not found",
         CanonicalErrorContext::InvalidAlignment { .. } => "Invalid alignment",
@@ -70,6 +73,7 @@ pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorC
 
     Error::new(category, code, message)
 }
+
 
 /// Component error context
 #[derive(Debug, Clone, Copy)]
@@ -89,14 +93,14 @@ pub fn format_component_error(
     code: u32,
     context: ComponentErrorContext,
 ) -> Error {
-    use std::format;
+    use alloc::format;
 
     let message = match context {
         ComponentErrorContext::ImportNotFound(name) => {
-            ComponentValue::String("Component operation result".into())
+            format!("Import not found: {}", name)
         }
         ComponentErrorContext::ExportNotFound(name) => {
-            ComponentValue::String("Component operation result".into())
+            format!("Export not found: {}", name)
         }
         ComponentErrorContext::InvalidComponentType => "Invalid component type".to_string(),
         ComponentErrorContext::LinkingFailed => "Component linking failed".to_string(),

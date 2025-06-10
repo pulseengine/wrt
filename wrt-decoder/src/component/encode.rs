@@ -2,10 +2,12 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-use wrt_error::Result;
-use wrt_format::{binary, component::Component};
-
-use crate::prelude::*;
+// Component encoding requires std for Box and Vec - entire module is std-only
+#[cfg(feature = "std")]
+mod std_encoding {
+    use wrt_error::Result;
+    use wrt_format::{binary, component::Component};
+    use crate::prelude::*;
 
 /// Encode a WebAssembly Component Model component into binary format
 pub fn encode_component(component: &Component) -> Result<Vec<u8>> {
@@ -426,15 +428,16 @@ fn encode_val_type(ty: &wrt_format::component::FormatValType, data: &mut Vec<u8>
             data.push(binary::VAL_TYPE_RESULT_TAG);
             encode_val_type(ok_ty, data)?;
         }
-        wrt_format::component::FormatValType::ResultErr(err_ty) => {
-            data.push(binary::VAL_TYPE_RESULT_ERR_TAG);
-            encode_val_type(err_ty, data)?;
-        }
-        wrt_format::component::FormatValType::ResultBoth(ok_ty, err_ty) => {
-            data.push(binary::VAL_TYPE_RESULT_BOTH_TAG);
-            encode_val_type(ok_ty, data)?;
-            encode_val_type(err_ty, data)?;
-        }
+        // TODO: Fix FormatValType enum to support ResultErr and ResultBoth variants
+        // wrt_format::component::FormatValType::ResultErr(err_ty) => {
+        //     data.push(binary::VAL_TYPE_RESULT_ERR_TAG);
+        //     encode_val_type(err_ty, data)?;
+        // }
+        // wrt_format::component::FormatValType::ResultBoth(ok_ty, err_ty) => {
+        //     data.push(binary::VAL_TYPE_RESULT_BOTH_TAG);
+        //     encode_val_type(ok_ty, data)?;
+        //     encode_val_type(err_ty, data)?;
+        // }
         wrt_format::component::FormatValType::Own(type_idx) => {
             data.push(binary::VAL_TYPE_OWN_TAG);
             data.extend_from_slice(&write_leb128_u32(*type_idx));
@@ -751,3 +754,61 @@ mod tests {
         assert!(binary.len() > 8);
     }
 }
+
+} // end std_encoding module
+
+// Re-export std functions when std is available
+#[cfg(feature = "std")]
+pub use std_encoding::*;
+
+// No_std implementation following functional safety guidelines
+#[cfg(not(feature = "std"))]
+mod no_std_encoding {
+    use wrt_error::{Error, ErrorCategory, Result, codes};
+    use wrt_foundation::{BoundedVec, safe_memory::NoStdProvider};
+    
+    // No_std stub types for components that can't be fully encoded without heap allocation
+    #[derive(Debug, Clone)]
+    pub struct Component {
+        // Simplified component representation for no_std
+        pub magic: [u8; 4],
+        pub version: [u8; 4],
+    }
+    
+    /// No_std encode function with bounded output and safety constraints
+    /// 
+    /// # Safety Requirements
+    /// - Uses bounded allocation with compile-time limits
+    /// - Fails gracefully when limits are exceeded
+    /// - No heap allocation or dynamic memory
+    pub fn encode_component(component: &Component) -> Result<BoundedVec<u8, 1024, NoStdProvider<2048>>> {
+        let provider = NoStdProvider::<2048>::new();
+        let mut binary = BoundedVec::new(provider).map_err(|_| Error::new(
+            ErrorCategory::Memory,
+            codes::MEMORY_ALLOCATION_FAILED,
+            "Failed to create encoding buffer"
+        ))?;
+        
+        // Write magic and version - these are fixed size and safe
+        for &byte in &component.magic {
+            binary.push(byte).map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ALLOCATION_FAILED,
+                "Component encoding buffer overflow"
+            ))?;
+        }
+        
+        for &byte in &component.version {
+            binary.push(byte).map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ALLOCATION_FAILED,
+                "Component encoding buffer overflow"
+            ))?;
+        }
+        
+        Ok(binary)
+    }
+}
+
+#[cfg(not(feature = "std"))]
+pub use no_std_encoding::*;

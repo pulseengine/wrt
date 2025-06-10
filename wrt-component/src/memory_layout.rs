@@ -295,7 +295,7 @@ impl LayoutOptimizer {
 pub struct CanonicalMemoryPool {
     /// Binary std/no_std choice
     #[cfg(not(any(feature = "std", )))]
-    pools: [BoundedVec<MemoryBuffer, 16>; 4],
+    pools: [BoundedVec<MemoryBuffer, 16, NoStdProvider<65536>>; 4],
     #[cfg(feature = "std")]
     pools: [Vec<MemoryBuffer>; 4],
     /// Size classes: 64B, 256B, 1KB, 4KB
@@ -313,7 +313,7 @@ impl CanonicalMemoryPool {
     pub fn new() -> Self {
         Self {
             #[cfg(not(any(feature = "std", )))]
-            pools: [BoundedVec::new(), BoundedVec::new(), BoundedVec::new(), BoundedVec::new()],
+            pools: [BoundedVec::new(DefaultMemoryProvider::default()).unwrap(), BoundedVec::new(DefaultMemoryProvider::default()).unwrap(), BoundedVec::new(DefaultMemoryProvider::default()).unwrap(), BoundedVec::new(DefaultMemoryProvider::default()).unwrap()],
             #[cfg(feature = "std")]
             pools: [Vec::new(), Vec::new(), Vec::new(), Vec::new()],
             size_classes: [64, 256, 1024, 4096],

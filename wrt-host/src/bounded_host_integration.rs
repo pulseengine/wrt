@@ -63,7 +63,7 @@
 //! # Cross-References
 //!
 //! - [`wrt_foundation::safety_system`]: Safety level definitions and verification
-//! - [`wrt_component::bounded_resource_management`]: Component resource management
+//! - `wrt_component::bounded_resource_management`: Component resource management
 //! - [`wrt_foundation::memory_system`]: Memory provider integration
 //!
 //! # REQ Traceability
@@ -118,7 +118,7 @@ impl Default for HostIntegrationLimits {
 
 impl HostIntegrationLimits {
     /// Create limits for embedded platforms
-    pub fn embedded() -> Self {
+    #[must_use] pub fn embedded() -> Self {
         Self {
             max_host_functions: 32,
             max_callbacks: 128,
@@ -131,7 +131,7 @@ impl HostIntegrationLimits {
     }
     
     /// Create limits for QNX platforms
-    pub fn qnx() -> Self {
+    #[must_use] pub fn qnx() -> Self {
         Self {
             max_host_functions: 128,
             max_callbacks: 512,
@@ -179,7 +179,7 @@ pub struct BoundedCallContext {
     pub function_id: HostFunctionId,
     /// Identifier of the component instance making the call
     pub component_instance: ComponentInstanceId,
-    /// Parameter data for the function call (bounded by max_parameter_size)
+    /// Parameter data for the function call (bounded by `max_parameter_size`)
     pub parameters: Vec<u8>,
     /// Current call stack depth for recursion prevention
     pub call_depth: usize,
@@ -198,7 +198,7 @@ impl BoundedCallContext {
     /// * `component_instance` - Identifier of the calling component instance
     /// * `parameters` - Parameter data for the function call
     /// * `safety_level` - ASIL safety level (0=QM, 1=ASIL-A, 2=ASIL-B, 3=ASIL-C, 4=ASIL-D)
-    pub fn new(
+    #[must_use] pub fn new(
         function_id: HostFunctionId,
         component_instance: ComponentInstanceId,
         parameters: Vec<u8>,
@@ -254,7 +254,7 @@ impl BoundedCallContext {
 /// and execution status information.
 #[derive(Debug, Clone)]
 pub struct BoundedCallResult {
-    /// Return data from the host function (bounded by max_return_size)
+    /// Return data from the host function (bounded by `max_return_size`)
     pub return_data: Vec<u8>,
     /// Amount of memory used during function execution
     pub memory_used: usize,
@@ -270,7 +270,7 @@ impl BoundedCallResult {
     /// # Arguments
     ///
     /// * `return_data` - Data returned from the host function
-    pub fn success(return_data: Vec<u8>) -> Self {
+    #[must_use] pub fn success(return_data: Vec<u8>) -> Self {
         let memory_used = return_data.len();
         Self {
             return_data,
@@ -281,7 +281,7 @@ impl BoundedCallResult {
     }
     
     /// Create an error result indicating function call failure
-    pub fn error() -> Self {
+    #[must_use] pub fn error() -> Self {
         Self {
             return_data: Vec::new(),
             memory_used: 0,
@@ -505,13 +505,13 @@ impl BoundedHostIntegrationManager {
     }
     
     /// Get host function by ID
-    pub fn get_function(&self, function_id: HostFunctionId) -> Option<&dyn BoundedHostFunction> {
+    #[must_use] pub fn get_function(&self, function_id: HostFunctionId) -> Option<&dyn BoundedHostFunction> {
         self.functions.get((function_id.0 - 1) as usize)
-            .map(|f| f.as_ref())
+            .map(core::convert::AsRef::as_ref)
     }
     
     /// List all registered functions
-    pub fn list_functions(&self) -> Vec<(HostFunctionId, &str)> {
+    #[must_use] pub fn list_functions(&self) -> Vec<(HostFunctionId, &str)> {
         self.functions.iter()
             .enumerate()
             .map(|(idx, func)| (HostFunctionId(idx as u32 + 1), func.name()))
@@ -535,7 +535,7 @@ impl BoundedHostIntegrationManager {
     }
     
     /// Get integration statistics
-    pub fn get_statistics(&self) -> HostIntegrationStatistics {
+    #[must_use] pub fn get_statistics(&self) -> HostIntegrationStatistics {
         let active_calls = self.active_calls.len();
         let max_call_depth = self.active_calls.iter()
             .map(|_| 1) // Simplified depth calculation
@@ -603,7 +603,7 @@ pub struct HostIntegrationStatistics {
 /// Convenience functions for creating common host functions
 
 /// Create a simple echo function
-pub fn create_echo_function() -> SimpleBoundedHostFunction {
+#[must_use] pub fn create_echo_function() -> SimpleBoundedHostFunction {
     SimpleBoundedHostFunction::new(
         "echo".to_string(),
         |context| {
@@ -616,7 +616,7 @@ pub fn create_echo_function() -> SimpleBoundedHostFunction {
 }
 
 /// Create a memory info function
-pub fn create_memory_info_function() -> SimpleBoundedHostFunction {
+#[must_use] pub fn create_memory_info_function() -> SimpleBoundedHostFunction {
     SimpleBoundedHostFunction::new(
         "memory_info".to_string(),
         |context| {
@@ -630,7 +630,7 @@ pub fn create_memory_info_function() -> SimpleBoundedHostFunction {
 }
 
 /// Create a safety check function
-pub fn create_safety_check_function() -> SimpleBoundedHostFunction {
+#[must_use] pub fn create_safety_check_function() -> SimpleBoundedHostFunction {
     SimpleBoundedHostFunction::new(
         "safety_check".to_string(),
         |context| {

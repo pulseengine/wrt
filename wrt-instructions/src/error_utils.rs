@@ -1,4 +1,4 @@
-//! Error formatting utilities for no_std compatibility
+//! Error formatting utilities for `no_std` compatibility
 
 use wrt_error::{Error, ErrorCategory};
 
@@ -112,9 +112,9 @@ pub fn format_error(category: ErrorCategory, code: u32, context: InstructionErro
     Error::new(category, code as u16, static_message)
 }
 
-/// Binary std/no_std choice
+/// Binary `std/no_std` choice
 #[cfg(not(feature = "std"))]
-pub fn format_error(category: ErrorCategory, code: u32, context: InstructionErrorContext) -> Error {
+#[must_use] pub fn format_error(category: ErrorCategory, code: u32, context: InstructionErrorContext) -> Error {
     let _message = match context {
         InstructionErrorContext::TypeMismatch { expected, .. } => expected,
         InstructionErrorContext::StackUnderflow { .. } => "Stack underflow",

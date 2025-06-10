@@ -36,13 +36,13 @@ pub struct HostIntegrationManager {
     #[cfg(feature = "std")]
     host_functions: Vec<HostFunctionRegistry>,
     #[cfg(not(any(feature = "std", )))]
-    host_functions: BoundedVec<HostFunctionRegistry, MAX_HOST_FUNCTIONS>,
+    host_functions: BoundedVec<HostFunctionRegistry, MAX_HOST_FUNCTIONS, NoStdProvider<65536>>,
 
     /// Event handlers
     #[cfg(feature = "std")]
     event_handlers: Vec<EventHandler>,
     #[cfg(not(any(feature = "std", )))]
-    event_handlers: BoundedVec<EventHandler, MAX_EVENT_HANDLERS>,
+    event_handlers: BoundedVec<EventHandler, MAX_EVENT_HANDLERS, NoStdProvider<65536>>,
 
     /// Host resource manager
     host_resources: HostResourceManager,
@@ -61,7 +61,7 @@ pub struct HostFunctionRegistry {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64>,
+    pub name: BoundedString<64, NoStdProvider<65536>>,
     /// Function signature
     pub signature: ComponentType,
     /// Function implementation
@@ -152,7 +152,7 @@ pub enum EventData {
         #[cfg(feature = "std")]
         message: String,
         #[cfg(not(any(feature = "std", )))]
-        message: BoundedString<256>,
+        message: BoundedString<256, NoStdProvider<65536>>,
         error_code: u32,
     },
 }
@@ -164,13 +164,13 @@ pub struct HostResourceManager {
     #[cfg(feature = "std")]
     resources: Vec<HostResource>,
     #[cfg(not(any(feature = "std", )))]
-    resources: BoundedVec<HostResource, 256>,
+    resources: BoundedVec<HostResource, 256, NoStdProvider<65536>>,
 
     /// Resource sharing policies
     #[cfg(feature = "std")]
     sharing_policies: Vec<HostResourceSharingPolicy>,
     #[cfg(not(any(feature = "std", )))]
-    sharing_policies: BoundedVec<HostResourceSharingPolicy, 64>,
+    sharing_policies: BoundedVec<HostResourceSharingPolicy, 64, NoStdProvider<65536>>,
 }
 
 /// Host-owned resource
@@ -223,7 +223,7 @@ pub struct HostResourceSharingPolicy {
     #[cfg(feature = "std")]
     pub allowed_instances: Vec<u32>,
     #[cfg(not(any(feature = "std", )))]
-    pub allowed_instances: BoundedVec<u32, 32>,
+    pub allowed_instances: BoundedVec<u32, 32, NoStdProvider<65536>>,
     /// Sharing mode
     pub sharing_mode: ResourceSharingMode,
 }
@@ -254,7 +254,7 @@ pub struct SecurityPolicy {
     #[cfg(feature = "std")]
     pub allowed_resource_types: Vec<HostResourceType>,
     #[cfg(not(any(feature = "std", )))]
-    pub allowed_resource_types: BoundedVec<HostResourceType, 16>,
+    pub allowed_resource_types: BoundedVec<HostResourceType, 16, NoStdProvider<65536>>,
 }
 
 impl HostIntegrationManager {
@@ -264,11 +264,11 @@ impl HostIntegrationManager {
             #[cfg(feature = "std")]
             host_functions: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            host_functions: BoundedVec::new(),
+            host_functions: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             event_handlers: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            event_handlers: BoundedVec::new(),
+            event_handlers: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             host_resources: HostResourceManager::new(),
             canonical_abi: CanonicalAbi::new(),
             security_policy: SecurityPolicy::default(),
@@ -296,7 +296,7 @@ impl HostIntegrationManager {
     #[cfg(not(any(feature = "std", )))]
     pub fn register_host_function(
         &mut self,
-        name: BoundedString<64>,
+        name: BoundedString<64, NoStdProvider<65536>>,
         signature: ComponentType,
         implementation: fn(&[Value]) -> WrtResult<Value>,
         permissions: HostFunctionPermissions,
@@ -321,7 +321,7 @@ impl HostIntegrationManager {
         engine: &mut ComponentExecutionEngine,
     ) -> WrtResult<Value> {
         let function = self.host_functions.get(function_id as usize).ok_or_else(|| {
-            wrt_foundation::WrtError::invalid_input("Invalid input"))
+            wrt_foundation::WrtError::invalid_input("Invalid input")
         })?;
 
         // Check security policy
@@ -464,7 +464,7 @@ impl HostIntegrationManager {
     ) -> WrtResult<()> {
         let resource =
             self.host_resources.resources.get(resource_id as usize).ok_or_else(|| {
-                wrt_foundation::WrtError::invalid_input("Invalid input"))
+                wrt_foundation::WrtError::invalid_input("Invalid input")
             })?;
 
         if !resource.permissions.shareable {
@@ -476,7 +476,7 @@ impl HostIntegrationManager {
         #[cfg(feature = "std")]
         let mut allowed_instances = Vec::new();
         #[cfg(not(any(feature = "std", )))]
-        let mut allowed_instances = BoundedVec::new();
+        let mut allowed_instances = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
 
         #[cfg(feature = "std")]
         {
@@ -549,11 +549,11 @@ impl HostResourceManager {
             #[cfg(feature = "std")]
             resources: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            resources: BoundedVec::new(),
+            resources: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             sharing_policies: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            sharing_policies: BoundedVec::new(),
+            sharing_policies: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 
@@ -613,7 +613,7 @@ impl Default for SecurityPolicy {
             allowed_resource_types: vec![HostResourceType::Buffer],
             #[cfg(not(any(feature = "std", )))]
             allowed_resource_types: {
-                let mut types = BoundedVec::new();
+                let mut types = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
                 let _ = types.push(HostResourceType::Buffer);
                 types
             },

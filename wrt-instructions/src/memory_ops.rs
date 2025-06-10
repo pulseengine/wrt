@@ -59,7 +59,7 @@
 //! assert_eq!(result, Value::I32(42));
 //! ```
 
-use crate::prelude::*;
+use crate::prelude::{BoundedCapacity, Debug, Error, PartialEq, PureInstruction, Result, Value, ValueType};
 use crate::validation::{Validate, ValidationContext, validate_memory_op};
 
 
@@ -131,8 +131,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for i32 values
-    pub fn i32(memory_index: u32, offset: u32, align: u32) -> Self {
+    /// A new `MemoryLoad` for i32 values
+    #[must_use] pub fn i32(memory_index: u32, offset: u32, align: u32) -> Self {
         Self { memory_index, offset, align, value_type: ValueType::I32, signed: false, width: 32 }
     }
 
@@ -145,8 +145,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for i32 values from memory 0
-    pub fn i32_legacy(offset: u32, align: u32) -> Self {
+    /// A new `MemoryLoad` for i32 values from memory 0
+    #[must_use] pub fn i32_legacy(offset: u32, align: u32) -> Self {
         Self::i32(0, offset, align)
     }
 
@@ -159,8 +159,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for i64 values
-    pub fn i64(offset: u32, align: u32) -> Self {
+    /// A new `MemoryLoad` for i64 values
+    #[must_use] pub fn i64(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I64, signed: false, width: 64 }
     }
 
@@ -173,8 +173,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for f32 values
-    pub fn f32(offset: u32, align: u32) -> Self {
+    /// A new `MemoryLoad` for f32 values
+    #[must_use] pub fn f32(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::F32, signed: false, width: 32 }
     }
 
@@ -187,8 +187,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for f64 values
-    pub fn f64(offset: u32, align: u32) -> Self {
+    /// A new `MemoryLoad` for f64 values
+    #[must_use] pub fn f64(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::F64, signed: false, width: 64 }
     }
 
@@ -202,8 +202,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for i32 values loading from 8-bit memory
-    pub fn i32_load8(offset: u32, align: u32, signed: bool) -> Self {
+    /// A new `MemoryLoad` for i32 values loading from 8-bit memory
+    #[must_use] pub fn i32_load8(offset: u32, align: u32, signed: bool) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I32, signed, width: 8 }
     }
 
@@ -217,8 +217,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for i32 values loading from 16-bit memory
-    pub fn i32_load16(offset: u32, align: u32, signed: bool) -> Self {
+    /// A new `MemoryLoad` for i32 values loading from 16-bit memory
+    #[must_use] pub fn i32_load16(offset: u32, align: u32, signed: bool) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I32, signed, width: 16 }
     }
 
@@ -232,8 +232,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for i64 values loading from 8-bit memory
-    pub fn i64_load8(offset: u32, align: u32, signed: bool) -> Self {
+    /// A new `MemoryLoad` for i64 values loading from 8-bit memory
+    #[must_use] pub fn i64_load8(offset: u32, align: u32, signed: bool) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I64, signed, width: 8 }
     }
 
@@ -247,8 +247,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for i64 values loading from 16-bit memory
-    pub fn i64_load16(offset: u32, align: u32, signed: bool) -> Self {
+    /// A new `MemoryLoad` for i64 values loading from 16-bit memory
+    #[must_use] pub fn i64_load16(offset: u32, align: u32, signed: bool) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I64, signed, width: 16 }
     }
 
@@ -262,8 +262,8 @@ impl MemoryLoad {
     ///
     /// # Returns
     ///
-    /// A new MemoryLoad for i64 values loading from 32-bit memory
-    pub fn i64_load32(offset: u32, align: u32, signed: bool) -> Self {
+    /// A new `MemoryLoad` for i64 values loading from 32-bit memory
+    #[must_use] pub fn i64_load32(offset: u32, align: u32, signed: bool) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I64, signed, width: 32 }
     }
 
@@ -389,7 +389,7 @@ impl MemoryLoad {
                 let byte = bytes.get(0).copied().ok_or_else(|| Error::memory_error("Index out of bounds"))?;
                 #[cfg(not(any(feature = "std", )))]
                 let byte = bytes.get(0).map_err(|_| Error::memory_error("Index out of bounds"))?;
-                let value = if self.signed { (byte as i8) as i32 } else { byte as i32 };
+                let value = if self.signed { i32::from(byte as i8) } else { i32::from(byte) };
                 Ok(Value::I32(value))
             }
             (ValueType::I64, 8) => {
@@ -401,7 +401,7 @@ impl MemoryLoad {
                 let byte = bytes.get(0).copied().ok_or_else(|| Error::memory_error("Index out of bounds"))?;
                 #[cfg(not(any(feature = "std", )))]
                 let byte = bytes.get(0).map_err(|_| Error::memory_error("Index out of bounds"))?;
-                let value = if self.signed { (byte as i8) as i64 } else { byte as i64 };
+                let value = if self.signed { i64::from(byte as i8) } else { i64::from(byte) };
                 Ok(Value::I64(value))
             }
             (ValueType::I32, 16) => {
@@ -421,13 +421,13 @@ impl MemoryLoad {
                     for i in 0..2 {
                         arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
                     }
-                    (i16::from_le_bytes(arr)) as i32
+                    i32::from(i16::from_le_bytes(arr))
                 } else {
                     let mut arr = [0u8; 2];
                     for i in 0..2 {
                         arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
                     }
-                    (u16::from_le_bytes(arr)) as i32
+                    i32::from(u16::from_le_bytes(arr))
                 };
                 Ok(Value::I32(value))
             }
@@ -448,13 +448,13 @@ impl MemoryLoad {
                     for i in 0..2 {
                         arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
                     }
-                    (i16::from_le_bytes(arr)) as i64
+                    i64::from(i16::from_le_bytes(arr))
                 } else {
                     let mut arr = [0u8; 2];
                     for i in 0..2 {
                         arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
                     }
-                    (u16::from_le_bytes(arr)) as i64
+                    i64::from(u16::from_le_bytes(arr))
                 };
                 Ok(Value::I64(value))
             }
@@ -475,13 +475,13 @@ impl MemoryLoad {
                     for i in 0..4 {
                         arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
                     }
-                    (i32::from_le_bytes(arr)) as i64
+                    i64::from(i32::from_le_bytes(arr))
                 } else {
                     let mut arr = [0u8; 4];
                     for i in 0..4 {
                         arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
                     }
-                    (u32::from_le_bytes(arr)) as i64
+                    i64::from(u32::from_le_bytes(arr))
                 };
                 Ok(Value::I64(value))
             }
@@ -502,8 +502,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for i32 values
-    pub fn i32(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for i32 values
+    #[must_use] pub fn i32(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I32, width: 32 }
     }
 
@@ -516,8 +516,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for i64 values
-    pub fn i64(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for i64 values
+    #[must_use] pub fn i64(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I64, width: 64 }
     }
 
@@ -530,8 +530,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for f32 values
-    pub fn f32(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for f32 values
+    #[must_use] pub fn f32(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::F32, width: 32 }
     }
 
@@ -544,8 +544,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for f64 values
-    pub fn f64(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for f64 values
+    #[must_use] pub fn f64(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::F64, width: 64 }
     }
 
@@ -558,8 +558,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for storing an i32 value as 8 bits
-    pub fn i32_store8(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for storing an i32 value as 8 bits
+    #[must_use] pub fn i32_store8(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I32, width: 8 }
     }
 
@@ -572,8 +572,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for storing an i32 value as 16 bits
-    pub fn i32_store16(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for storing an i32 value as 16 bits
+    #[must_use] pub fn i32_store16(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I32, width: 16 }
     }
 
@@ -586,8 +586,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for storing an i64 value as 8 bits
-    pub fn i64_store8(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for storing an i64 value as 8 bits
+    #[must_use] pub fn i64_store8(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I64, width: 8 }
     }
 
@@ -600,8 +600,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for storing an i64 value as 16 bits
-    pub fn i64_store16(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for storing an i64 value as 16 bits
+    #[must_use] pub fn i64_store16(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I64, width: 16 }
     }
 
@@ -614,8 +614,8 @@ impl MemoryStore {
     ///
     /// # Returns
     ///
-    /// A new MemoryStore for storing an i64 value as 32 bits
-    pub fn i64_store32(offset: u32, align: u32) -> Self {
+    /// A new `MemoryStore` for storing an i64 value as 32 bits
+    #[must_use] pub fn i64_store32(offset: u32, align: u32) -> Self {
         Self { memory_index: 0, offset, align, value_type: ValueType::I64, width: 32 }
     }
 
@@ -755,7 +755,7 @@ pub trait DataSegmentOperations {
 
 impl MemoryFill {
     /// Create a new memory fill operation
-    pub fn new(memory_index: u32) -> Self {
+    #[must_use] pub fn new(memory_index: u32) -> Self {
         Self { memory_index }
     }
 
@@ -812,7 +812,7 @@ impl MemoryFill {
 
 impl MemoryCopy {
     /// Create a new memory copy operation
-    pub fn new(dest_memory_index: u32, src_memory_index: u32) -> Self {
+    #[must_use] pub fn new(dest_memory_index: u32, src_memory_index: u32) -> Self {
         Self { dest_memory_index, src_memory_index }
     }
 
@@ -873,7 +873,7 @@ impl MemoryCopy {
 
 impl MemoryInit {
     /// Create a new memory init operation
-    pub fn new(memory_index: u32, data_index: u32) -> Self {
+    #[must_use] pub fn new(memory_index: u32, data_index: u32) -> Self {
         Self { memory_index, data_index }
     }
 
@@ -958,7 +958,7 @@ impl MemoryInit {
 
 impl DataDrop {
     /// Create a new data drop operation
-    pub fn new(data_index: u32) -> Self {
+    #[must_use] pub fn new(data_index: u32) -> Self {
         Self { data_index }
     }
 
@@ -1009,7 +1009,7 @@ pub struct MemorySize {
 
 impl MemorySize {
     /// Create a new memory size operation
-    pub fn new(memory_index: u32) -> Self {
+    #[must_use] pub fn new(memory_index: u32) -> Self {
         Self { memory_index }
     }
 
@@ -1038,7 +1038,7 @@ pub struct MemoryGrow {
 
 impl MemoryGrow {
     /// Create a new memory grow operation
-    pub fn new(memory_index: u32) -> Self {
+    #[must_use] pub fn new(memory_index: u32) -> Self {
         Self { memory_index }
     }
 

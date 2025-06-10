@@ -11,17 +11,24 @@ use std::{fmt, mem, future::Future, pin::Pin, task::{Context, Poll}};
 #[cfg(feature = "std")]
 use std::{boxed::Box, vec::Vec, sync::Arc};
 
+// Enable vec! macro for no_std
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{vec, boxed::Box};
+
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedVec as Vec, safe_memory::NoStdProvider};
+
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
     prelude::*,
 };
 
-use crate::{
-    async_types::{AsyncReadResult, Future as ComponentFuture, FutureHandle, FutureState, Stream, StreamHandle, StreamState},
-    task_manager::{Task, TaskContext, TaskId, TaskState},
-    types::{ValType, Value},
-    WrtResult,
-};
+use crate::async_::async_types::{AsyncReadResult, Future as ComponentFuture, FutureHandle, FutureState, Stream, StreamHandle, StreamState};
+use crate::threading::task_manager::{Task, TaskContext, TaskId, TaskState};
+use crate::types::{ValType, Value};
+use wrt_error::Result as WrtResult;
 
 use wrt_error::{Error, ErrorCategory, Result};
 
@@ -38,13 +45,13 @@ pub struct AsyncExecutionEngine {
     #[cfg(feature = "std")]
     executions: Vec<AsyncExecution>,
     #[cfg(not(any(feature = "std", )))]
-    executions: BoundedVec<AsyncExecution, MAX_CONCURRENT_EXECUTIONS>,
+    executions: BoundedVec<AsyncExecution, MAX_CONCURRENT_EXECUTIONS, NoStdProvider<65536>>,
     
     /// Execution context pool for reuse
     #[cfg(feature = "std")]
     context_pool: Vec<ExecutionContext>,
     #[cfg(not(any(feature = "std", )))]
-    context_pool: BoundedVec<ExecutionContext, 16>,
+    context_pool: BoundedVec<ExecutionContext, 16, NoStdProvider<65536>>,
     
     /// Next execution ID
     next_execution_id: u64,
@@ -81,7 +88,7 @@ pub struct AsyncExecution {
     #[cfg(feature = "std")]
     pub children: Vec<ExecutionId>,
     #[cfg(not(any(feature = "std", )))]
-    pub children: BoundedVec<ExecutionId, 16>,
+    pub children: BoundedVec<ExecutionId, 16, NoStdProvider<65536>>,
 }
 
 /// Execution context for async operations
@@ -91,19 +98,19 @@ pub struct ExecutionContext {
     pub component_instance: u32,
     
     /// Current function being executed
-    pub function_name: BoundedString<128>,
+    pub function_name: BoundedString<128, NoStdProvider<65536>>,
     
     /// Call stack
     #[cfg(feature = "std")]
     pub call_stack: Vec<CallFrame>,
     #[cfg(not(any(feature = "std", )))]
-    pub call_stack: BoundedVec<CallFrame, MAX_ASYNC_CALL_DEPTH>,
+    pub call_stack: BoundedVec<CallFrame, MAX_ASYNC_CALL_DEPTH, NoStdProvider<65536>>,
     
     /// Local variables
     #[cfg(feature = "std")]
     pub locals: Vec<Value>,
     #[cfg(not(any(feature = "std", )))]
-    pub locals: BoundedVec<Value, 256>,
+    pub locals: BoundedVec<Value, 256, NoStdProvider<65536>>,
     
     /// Memory views for the execution
     pub memory_views: MemoryViews,
@@ -113,7 +120,7 @@ pub struct ExecutionContext {
 #[derive(Debug, Clone)]
 pub struct CallFrame {
     /// Function name
-    pub function: BoundedString<128>,
+    pub function: BoundedString<128, NoStdProvider<65536>>,
     
     /// Return address (instruction pointer)
     pub return_ip: usize,
@@ -148,13 +155,13 @@ pub struct WaitSet {
     #[cfg(feature = "std")]
     pub futures: Vec<FutureHandle>,
     #[cfg(not(any(feature = "std", )))]
-    pub futures: BoundedVec<FutureHandle, 16>,
+    pub futures: BoundedVec<FutureHandle, 16, NoStdProvider<65536>>,
     
     /// Streams to wait for
     #[cfg(feature = "std")]
     pub streams: Vec<StreamHandle>,
     #[cfg(not(any(feature = "std", )))]
-    pub streams: BoundedVec<StreamHandle, 16>,
+    pub streams: BoundedVec<StreamHandle, 16, NoStdProvider<65536>>,
 }
 
 /// Memory views for async execution
@@ -229,7 +236,7 @@ pub enum AsyncExecutionState {
 pub enum AsyncExecutionOperation {
     /// Calling an async function
     FunctionCall {
-        name: BoundedString<128>,
+        name: BoundedString<128, NoStdProvider<65536>>,
         args: Vec<Value>,
     },
     
@@ -263,7 +270,7 @@ pub enum AsyncExecutionOperation {
     
     /// Creating a subtask
     SpawnSubtask {
-        function: BoundedString<128>,
+        function: BoundedString<128, NoStdProvider<65536>>,
         args: Vec<Value>,
     },
 }
@@ -329,12 +336,12 @@ impl AsyncExecutionEngine {
             #[cfg(feature = "std")]
             executions: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            executions: BoundedVec::new(),
+            executions: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             
             #[cfg(feature = "std")]
             context_pool: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            context_pool: BoundedVec::new(),
+            context_pool: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             
             next_execution_id: 1,
             stats: ExecutionStats::new(),
@@ -365,7 +372,7 @@ impl AsyncExecutionEngine {
             #[cfg(feature = "std")]
             children: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            children: BoundedVec::new(),
+            children: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         };
         
         self.executions.push(execution).map_err(|_| {
@@ -775,11 +782,11 @@ impl ExecutionContext {
             #[cfg(feature = "std")]
             call_stack: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            call_stack: BoundedVec::new(),
+            call_stack: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             locals: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            locals: BoundedVec::new(),
+            locals: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             memory_views: MemoryViews::new(),
         }
     }
@@ -974,7 +981,7 @@ mod tests {
             futures: vec![FutureHandle(1), FutureHandle(2)],
             #[cfg(not(any(feature = "std", )))]
             futures: {
-                let mut futures = BoundedVec::new();
+                let mut futures = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
                 futures.push(FutureHandle(1)).unwrap();
                 futures.push(FutureHandle(2)).unwrap();
                 futures
@@ -983,7 +990,7 @@ mod tests {
             streams: vec![StreamHandle(3)],
             #[cfg(not(any(feature = "std", )))]
             streams: {
-                let mut streams = BoundedVec::new();
+                let mut streams = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
                 streams.push(StreamHandle(3)).unwrap();
                 streams
             },

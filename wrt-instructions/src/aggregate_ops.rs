@@ -10,9 +10,9 @@
 //! - array.len: Get the length of an array
 //!
 //! These operations support the WebAssembly 3.0 GC proposal
-//! and work across std, no_std+alloc, and pure no_std environments.
+//! and work across std, `no_std+alloc`, and pure `no_std` environments.
 
-use crate::prelude::*;
+use crate::prelude::{BoundedCapacity, Debug, Eq, PartialEq, PureInstruction};
 use wrt_error::{Error, Result};
 use wrt_foundation::{
     types::{ValueType},
@@ -30,7 +30,7 @@ pub struct StructNew {
 
 impl StructNew {
     /// Create a new struct.new instruction
-    pub fn new(type_index: u32) -> Self {
+    #[must_use] pub fn new(type_index: u32) -> Self {
         Self { type_index }
     }
 
@@ -59,7 +59,7 @@ pub struct StructGet {
 
 impl StructGet {
     /// Create a new struct.get instruction
-    pub fn new(type_index: u32, field_index: u32) -> Self {
+    #[must_use] pub fn new(type_index: u32, field_index: u32) -> Self {
         Self { type_index, field_index }
     }
 
@@ -96,7 +96,7 @@ pub struct StructSet {
 
 impl StructSet {
     /// Create a new struct.set instruction
-    pub fn new(type_index: u32, field_index: u32) -> Self {
+    #[must_use] pub fn new(type_index: u32, field_index: u32) -> Self {
         Self { type_index, field_index }
     }
 
@@ -133,7 +133,7 @@ pub struct ArrayNew {
 
 impl ArrayNew {
     /// Create a new array.new instruction
-    pub fn new(type_index: u32) -> Self {
+    #[must_use] pub fn new(type_index: u32) -> Self {
         Self { type_index }
     }
 
@@ -160,7 +160,7 @@ pub struct ArrayGet {
 
 impl ArrayGet {
     /// Create a new array.get instruction
-    pub fn new(type_index: u32) -> Self {
+    #[must_use] pub fn new(type_index: u32) -> Self {
         Self { type_index }
     }
 
@@ -195,7 +195,7 @@ pub struct ArraySet {
 
 impl ArraySet {
     /// Create a new array.set instruction
-    pub fn new(type_index: u32) -> Self {
+    #[must_use] pub fn new(type_index: u32) -> Self {
         Self { type_index }
     }
 
@@ -232,7 +232,7 @@ pub struct ArrayLen {
 
 impl ArrayLen {
     /// Create a new array.len instruction
-    pub fn new(type_index: u32) -> Self {
+    #[must_use] pub fn new(type_index: u32) -> Self {
         Self { type_index }
     }
 

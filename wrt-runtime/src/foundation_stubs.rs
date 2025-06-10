@@ -100,7 +100,9 @@ pub type LargeVec<T> = wrt_foundation::bounded::BoundedVec<T, 65536, wrt_foundat
 
 /// ASIL levels for safety context
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default)]
 pub enum AsilLevel {
+    #[default]
     QM = 0,
     AsilA = 1,
     AsilB = 2,
@@ -108,11 +110,6 @@ pub enum AsilLevel {
     AsilD = 4,
 }
 
-impl Default for AsilLevel {
-    fn default() -> Self {
-        AsilLevel::QM
-    }
-}
 
 /// Safety context stub
 #[derive(Debug, Clone)]

@@ -36,14 +36,35 @@
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use crate::prelude::BoundedVecExt;
-use wrt_format::{binary, read_name};
+use wrt_format::binary;
+use wrt_foundation::NoStdProvider;
+
+/// Read a name from binary data (no_std version)
+/// Returns (name_bytes, total_bytes_read)
+fn read_name(data: &[u8], offset: usize) -> Result<(&[u8], usize)> {
+    if offset >= data.len() {
+        return Err(Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Offset beyond data"));
+    }
+    
+    // Read length as LEB128
+    let (name_len, leb_bytes) = binary::read_leb128_u32(data, offset)?;
+    let name_start = offset + leb_bytes;
+    let name_end = name_start + name_len as usize;
+    
+    if name_end > data.len() {
+        return Err(Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Name extends beyond data"));
+    }
+    
+    Ok((&data[name_start..name_end], leb_bytes + name_len as usize))
+}
+// BoundedCapacity trait is private, using alternative approaches for length operations
 use wrt_foundation::{
     bounded::{
         BoundedString, BoundedVec, MAX_BUFFER_SIZE, MAX_COMPONENT_LIST_ITEMS,
         MAX_COMPONENT_RECORD_FIELDS, MAX_COMPONENT_TYPES, MAX_WASM_NAME_LENGTH,
     },
     component::{MAX_COMPONENT_EXPORTS, MAX_COMPONENT_IMPORTS},
-    safe_memory::{NoStdProvider, SafeSlice},
+    safe_memory::SafeSlice,
     verification::VerificationLevel,
 };
 
@@ -264,7 +285,7 @@ impl ComponentHeader {
                     let section_data = &bytes
                         [section_info.offset..section_info.offset + section_info.size as usize];
                     if let Ok((section_name, name_size)) = read_name(section_data, 0) {
-                        if section_name == name {
+                        if core::str::from_utf8(section_name).map_or(false, |s| s == name) {
                             return Some((
                                 section_info.offset + name_size,
                                 section_info.size - name_size as u32,
@@ -305,9 +326,10 @@ pub fn decode_component_header(
     header.size = bytes.len();
 
     // Create empty collections for the component header
-    let types = BoundedVec::new(provider.clone())?;
-    let exports = BoundedVec::new(provider.clone())?;
-    let imports = BoundedVec::new(provider)?;
+    let header_provider = NoStdProvider::<1024>::default();
+    let types = BoundedVec::new(header_provider.clone())?;
+    let exports = BoundedVec::new(header_provider.clone())?;
+    let imports = BoundedVec::new(header_provider)?;
 
     header.types = types;
     header.exports = exports;
@@ -465,7 +487,11 @@ fn scan_component_imports(
             // In a real implementation, we would read the import type here
             // For now, just store the name
             let import = ComponentImport {
-                name: name.into(),
+                name: {
+                    let name_str = core::str::from_utf8(name)
+                        .map_err(|_| Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Invalid UTF-8 in name"))?;
+                    BoundedString::from_str_truncate(name_str, NoStdProvider::<1024>::default())?
+                },
                 type_index: 0, // Placeholder
             };
 
@@ -523,7 +549,11 @@ fn scan_component_exports(
             // In a real implementation, we would read the export type here
             // For now, just store the name
             let export = ComponentExport {
-                name: name.into(),
+                name: {
+                    let name_str = core::str::from_utf8(name)
+                        .map_err(|_| Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Invalid UTF-8 in name"))?;
+                    BoundedString::from_str_truncate(name_str, NoStdProvider::<1024>::default())?
+                },
                 type_index: 0, // Placeholder
                 kind: 0,       // Placeholder
             };
@@ -622,9 +652,9 @@ pub fn describe_component_structure(bytes: &[u8]) -> Result<String> {
          Imports: {}\n",
         header.size,
         header.section_count,
-        header.types.len(),
-        header.exports.len(),
-        header.imports.len()
+        header.types.iter().count(),
+        header.exports.iter().count(),
+        header.imports.iter().count()
     );
 
     // Add capability information
@@ -646,7 +676,9 @@ pub fn describe_component_structure(bytes: &[u8]) -> Result<String> {
     if !header.exports.is_empty() {
         description.push_str("Export names:\n");
         for export in header.exports.iter() {
-            description.push_str(&format!("- {}\n", export.name));
+            if let Ok(name_str) = export.name.as_str() {
+                description.push_str(&format!("- {}\n", name_str));
+            }
         }
     }
 
@@ -654,7 +686,9 @@ pub fn describe_component_structure(bytes: &[u8]) -> Result<String> {
     if !header.imports.is_empty() {
         description.push_str("Import names:\n");
         for import in header.imports.iter() {
-            description.push_str(&format!("- {}\n", import.name));
+            if let Ok(name_str) = import.name.as_str() {
+                description.push_str(&format!("- {}\n", name_str));
+            }
         }
     }
 

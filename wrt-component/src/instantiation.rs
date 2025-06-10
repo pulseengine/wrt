@@ -65,7 +65,7 @@ pub struct InstanceImport {
     #[cfg(feature = "std")]
     pub exports: BTreeMap<String, ExportValue>,
     #[cfg(not(any(feature = "std", )))]
-    pub exports: BoundedVec<(BoundedString<64>, ExportValue), MAX_EXPORTS>,
+    pub exports: BoundedVec<(BoundedString<64, NoStdProvider<65536>>, ExportValue), MAX_EXPORTS>,
 }
 
 /// Export value from an instance
@@ -96,7 +96,7 @@ pub struct ImportValues {
     #[cfg(feature = "std")]
     imports: BTreeMap<String, ImportValue>,
     #[cfg(not(any(feature = "std", )))]
-    imports: BoundedVec<(BoundedString<64>, ImportValue), MAX_IMPORTS>,
+    imports: BoundedVec<(BoundedString<64, NoStdProvider<65536>>, ImportValue), MAX_IMPORTS>,
 }
 
 impl ImportValues {
@@ -106,7 +106,7 @@ impl ImportValues {
             #[cfg(feature = "std")]
             imports: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            imports: BoundedVec::new(),
+            imports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 
@@ -119,7 +119,7 @@ impl ImportValues {
 
     /// Add an import value (no_std version)
     #[cfg(not(any(feature = "std", )))]
-    pub fn add(&mut self, name: BoundedString<64>, value: ImportValue) -> WrtResult<()> {
+    pub fn add(&mut self, name: BoundedString<64, NoStdProvider<65536>>, value: ImportValue) -> WrtResult<()> {
         self.imports
             .push((name, value))
             .map_err(|_| wrt_foundation::WrtError::ResourceExhausted("Too many imports".into()))
@@ -220,13 +220,13 @@ impl Component {
             #[cfg(feature = "std")]
             module_instances,
             #[cfg(not(any(feature = "std", )))]
-            imports: BoundedVec::new(),
+            imports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(not(any(feature = "std", )))]
-            exports: BoundedVec::new(),
+            exports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(not(any(feature = "std", )))]
-            resource_tables: BoundedVec::new(),
+            resource_tables: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(not(any(feature = "std", )))]
-            module_instances: BoundedVec::new(),
+            module_instances: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         };
 
         Ok(instance)
@@ -243,8 +243,7 @@ impl Component {
                         self.validate_import_type(import, value)?;
                     }
                     None => {
-                        return Err(wrt_foundation::WrtError::invalid_input("Invalid input")).into(),
-                        ));
+                        return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
                     }
                 }
             }
@@ -254,8 +253,7 @@ impl Component {
             // In no_std, we have limited validation
             // Just check that we have some imports if required
             if self.imports.len() > 0 && imports.imports.len() == 0 {
-                return Err(wrt_foundation::WrtError::invalid_input("Invalid input"),
-                ));
+                return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
             }
         }
 
@@ -334,8 +332,8 @@ impl Component {
     }
 
     #[cfg(not(any(feature = "std", )))]
-    fn create_resource_tables(&self) -> WrtResult<BoundedVec<ResourceTable, 16>> {
-        let mut tables = BoundedVec::new();
+    fn create_resource_tables(&self) -> WrtResult<BoundedVec<ResourceTable, 16>, NoStdProvider<65536>> {
+        let mut tables = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
 
         // Create resource tables based on component types
         for (type_id, _) in self.types.iter().enumerate() {
@@ -372,8 +370,8 @@ impl Component {
         &self,
         imports: &ImportValues,
         context: &mut InstantiationContext,
-    ) -> WrtResult<BoundedVec<ResolvedImport, MAX_IMPORTS>> {
-        let mut resolved = BoundedVec::new();
+    ) -> WrtResult<BoundedVec<ResolvedImport, MAX_IMPORTS>, NoStdProvider<65536>> {
+        let mut resolved = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
 
         for import in &self.imports {
             // Find matching import by name
@@ -445,10 +443,10 @@ impl Component {
     #[cfg(not(any(feature = "std", )))]
     fn initialize_modules(
         &self,
-        resolved_imports: &BoundedVec<ResolvedImport, MAX_IMPORTS>,
+        resolved_imports: &BoundedVec<ResolvedImport, MAX_IMPORTS, NoStdProvider<65536>>,
         context: &mut InstantiationContext,
-    ) -> WrtResult<BoundedVec<ModuleInstance, MAX_INSTANCES>> {
-        let mut instances = BoundedVec::new();
+    ) -> WrtResult<BoundedVec<ModuleInstance, MAX_INSTANCES>, NoStdProvider<65536>> {
+        let mut instances = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
 
         // Initialize each embedded module
         for (module_index, _module) in self.modules.iter().enumerate() {
@@ -515,10 +513,10 @@ impl Component {
     #[cfg(not(any(feature = "std", )))]
     fn extract_exports(
         &self,
-        module_instances: &BoundedVec<ModuleInstance, MAX_INSTANCES>,
+        module_instances: &BoundedVec<ModuleInstance, MAX_INSTANCES, NoStdProvider<65536>>,
         context: &mut InstantiationContext,
-    ) -> WrtResult<BoundedVec<ResolvedExport, MAX_EXPORTS>> {
-        let mut exports = BoundedVec::new();
+    ) -> WrtResult<BoundedVec<ResolvedExport, MAX_EXPORTS>, NoStdProvider<65536>> {
+        let mut exports = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
 
         for export in &self.exports {
             let resolved = match &export.kind {
@@ -567,7 +565,7 @@ pub struct ResolvedExport {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64>,
+    pub name: BoundedString<64, NoStdProvider<65536>>,
     pub value: ExportValue,
 }
 

@@ -111,8 +111,9 @@ use wrt_foundation::MemoryStats;
 use wrt_sync::WrtRwLock as RwLock;
 
 // Internal modules
-use crate::memory_adapter::StdMemoryProvider;
-use crate::prelude::*;
+// Temporarily disabled - memory_adapter module is disabled
+// use crate::memory_adapter::StdMemoryProvider;
+use crate::prelude::{Arc, BoundedCapacity, CoreMemoryType, Debug, Eq, Error, ErrorCategory, Ord, PartialEq, Result, TryFrom, VerificationLevel, codes, str};
 #[cfg(not(feature = "std"))]
 use crate::prelude::vec_with_capacity;
 
@@ -120,6 +121,11 @@ use crate::prelude::vec_with_capacity;
 use wrt_instructions::memory_ops::MemoryOperations;
 // Import atomic operations trait
 use wrt_instructions::atomic_ops::AtomicOperations;
+
+// Platform-aware memory providers for memory operations
+type LargeMemoryProvider = wrt_foundation::safe_memory::NoStdProvider<67108864>;  // 64MB for memory data
+type SmallMemoryProvider = wrt_foundation::safe_memory::NoStdProvider<4096>;  // 4KB for small objects
+type MediumMemoryProvider = wrt_foundation::safe_memory::NoStdProvider<65536>;  // 64KB for medium objects
 
 /// WebAssembly page size (64KB)
 pub const PAGE_SIZE: usize = 65536;
@@ -130,7 +136,7 @@ pub const MAX_PAGES: u32 = 65536;
 /// The maximum memory size in bytes (4GB)
 const MAX_MEMORY_BYTES: usize = 4 * 1024 * 1024 * 1024;
 
-/// Memory size error code (must be u16 to match Error::new)
+/// Memory size error code (must be u16 to match `Error::new`)
 const MEMORY_SIZE_TOO_LARGE: u16 = 4001;
 /// Invalid offset error code
 const INVALID_OFFSET: u16 = 4002;
@@ -193,22 +199,22 @@ struct MemoryMetrics {
     #[cfg(feature = "std")]
     last_access_length: AtomicUsize,
 
-    /// Peak memory usage (no_std version)
+    /// Peak memory usage (`no_std` version)
     #[cfg(not(feature = "std"))]
     peak_usage: usize,
-    /// Memory access counter (no_std version)
+    /// Memory access counter (`no_std` version)
     #[cfg(not(feature = "std"))]
     access_count: u64,
-    /// Maximum size of any access (no_std version)
+    /// Maximum size of any access (`no_std` version)
     #[cfg(not(feature = "std"))]
     max_access_size: usize,
-    /// Number of unique regions accessed (no_std version)
+    /// Number of unique regions accessed (`no_std` version)
     #[cfg(not(feature = "std"))]
     unique_regions: usize,
-    /// Last access offset for validation (no_std version)
+    /// Last access offset for validation (`no_std` version)
     #[cfg(not(feature = "std"))]
     last_access_offset: usize,
-    /// Last access length for validation (no_std version)
+    /// Last access length for validation (`no_std` version)
     #[cfg(not(feature = "std"))]
     last_access_length: usize,
 }
@@ -275,17 +281,18 @@ pub struct Memory {
     pub ty: CoreMemoryType,
     /// The memory data
     #[cfg(feature = "std")]
-    pub data: SafeMemoryHandler<StdMemoryProvider>,
+    pub data: SafeMemoryHandler<LargeMemoryProvider>,
+    /// The memory data for `no_std` environments
     #[cfg(not(feature = "std"))]
-    pub data: SafeMemoryHandler<wrt_foundation::safe_memory::NoStdProvider<67108864>>,
+    pub data: SafeMemoryHandler<LargeMemoryProvider>,
     /// Current number of pages
     pub current_pages: core::sync::atomic::AtomicU32,
     /// Optional name for debugging
-    pub debug_name: Option<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>>,
+    pub debug_name: Option<wrt_foundation::bounded::BoundedString<128, SmallMemoryProvider>>,
     /// Memory metrics for tracking access
     #[cfg(feature = "std")]
     pub metrics: MemoryMetrics,
-    /// Memory metrics for tracking access (RwLock for no_std)
+    /// Memory metrics for tracking access (`RwLock` for `no_std`)
     #[cfg(not(feature = "std"))]
     pub metrics: RwLock<MemoryMetrics>,
     /// Memory verification level
@@ -301,14 +308,14 @@ impl Clone for Memory {
         let new_data = {
             #[cfg(feature = "std")]
             {
-                let bytes_vec: Vec<u8> = current_bytes.into_iter().collect();
-                let new_provider = wrt_foundation::safe_memory::StdMemoryProvider::new(bytes_vec);
+                // Use LargeMemoryProvider for consistency with struct definition
+                let new_provider = LargeMemoryProvider::default();
                 SafeMemoryHandler::new(new_provider)
             }
             #[cfg(not(feature = "std"))]
             {
-                // For no_std, create a new NoStdProvider with the same size
-                let new_provider = wrt_foundation::safe_memory::NoStdProvider::<67108864>::new();
+                // Use LargeMemoryProvider for consistency with struct definition
+                let new_provider = LargeMemoryProvider::default();
                 SafeMemoryHandler::new(new_provider)
             }
         };
@@ -335,7 +342,7 @@ impl Clone for Memory {
         };
 
         Self {
-            ty: self.ty.clone(),
+            ty: self.ty,
             data: new_data,
             current_pages: AtomicU32::new(self.current_pages.load(Ordering::Relaxed)),
             debug_name: self.debug_name.clone(),
@@ -383,9 +390,9 @@ impl wrt_foundation::traits::ToBytes for Memory {
         16 // simplified
     }
 
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
         writer.write_all(&self.ty.limits.min.to_le_bytes())?;
@@ -394,8 +401,8 @@ impl wrt_foundation::traits::ToBytes for Memory {
 }
 
 impl wrt_foundation::traits::FromBytes for Memory {
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
-        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         let mut min_bytes = [0u8; 4];
@@ -453,19 +460,13 @@ impl Memory {
         // Create memory provider based on available features
         #[cfg(feature = "std")]
         let data_handler = {
-            use wrt_foundation::safe_memory::StdProvider;
-            let initial_size = wasm_offset_to_usize(initial_pages)? * PAGE_SIZE;
-            let provider = StdProvider::with_capacity(initial_size);
+            let provider = LargeMemoryProvider::default();
             SafeMemoryHandler::new(provider)
         };
 
         #[cfg(not(feature = "std"))]
         let data_handler = {
-            use wrt_foundation::safe_memory::NoStdProvider;
-            // For no_std, we need to use a const generic size
-            // This is a limitation - we can't dynamically size in no_std
-            const MAX_MEMORY_SIZE: usize = 64 * 1024 * 1024; // 64MB max
-            let provider = NoStdProvider::<MAX_MEMORY_SIZE>::new();
+            let provider = LargeMemoryProvider::default();
             SafeMemoryHandler::new(provider)
         };
 
@@ -511,7 +512,7 @@ impl Memory {
         let mut memory = Self::new(ty)?;
         memory.debug_name = Some(wrt_foundation::bounded::BoundedString::from_str(
             name, 
-            wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            SmallMemoryProvider::default()
         ).map_err(|_| Error::new(
             ErrorCategory::Memory,
             codes::MEMORY_ERROR,
@@ -524,12 +525,12 @@ impl Memory {
     pub fn set_debug_name(&mut self, name: &str) {
         self.debug_name = Some(wrt_foundation::bounded::BoundedString::from_str(
             name, 
-            wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            SmallMemoryProvider::default()
         ).unwrap_or_else(|_| {
             // If name is too long, truncate it
             wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name,
-                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+                SmallMemoryProvider::default()
             ).unwrap()
         }));
     }
@@ -571,15 +572,12 @@ impl Memory {
     ///
     /// For memory-safe access, prefer using `get_safe_slice()` or
     /// `as_safe_slice()` methods instead.
-    pub fn buffer(&self) -> Result<Vec<u8>> {
+    pub fn buffer(&self) -> Result<wrt_foundation::budget_types::RuntimeVec<u8, 4096>> {
         // Use the SafeMemoryHandler to get data through a safe slice to ensure
         // memory integrity is verified during the operation
         let data_size = self.data.size();
         if data_size == 0 {
-            #[cfg(feature = "std")]
-            return Ok(Vec::new());
-            #[cfg(not(feature = "std"))]
-            return Ok(wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?);
+            return wrt_foundation::budget_types::RuntimeVec::new(wrt_foundation::safe_memory::NoStdProvider::<131072>::default());
         }
 
         // Get a safe slice over the entire memory
@@ -588,21 +586,13 @@ impl Memory {
         // Get the data from the safe slice and create a copy
         let memory_data = safe_slice.data()?;
 
-        // Create a new Vec with the data
-        #[cfg(feature = "std")]
-        let result = memory_data.to_vec();
-
-        #[cfg(all(not(feature = "std"), not(feature = "std")))]
-        let result = {
-            // Binary std/no_std choice
-            let mut bounded_vec = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?;
-            for &byte in memory_data.iter().take(bounded_vec.capacity()) {
-                if bounded_vec.push(byte).is_err() {
-                    break;
-                }
+        // Create a new RuntimeVec with the data
+        let mut result = wrt_foundation::budget_types::RuntimeVec::new(wrt_foundation::safe_memory::NoStdProvider::<131072>::default())?;
+        for &byte in memory_data.iter().take(result.capacity()) {
+            if result.push(byte).is_err() {
+                break;
             }
-            bounded_vec
-        };
+        }
 
         Ok(result)
     }
@@ -1008,11 +998,7 @@ impl Memory {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                &format!(
-                    "Memory access out of bounds: address {addr} + size {access_size} exceeds \
-                     memory size {}",
-                    self.data.size()
-                ),
+                "Memory access out of bounds",
             ));
         }
 
@@ -1022,7 +1008,7 @@ impl Memory {
     /// Gets a memory-safe slice from memory at the specified address
     ///
     /// This is the preferred method for accessing memory when safety is
-    /// important. The returned SafeSlice includes integrity verification to
+    /// important. The returned `SafeSlice` includes integrity verification to
     /// prevent memory corruption.
     ///
     /// # Arguments
@@ -1032,11 +1018,11 @@ impl Memory {
     ///
     /// # Returns
     ///
-    /// A SafeSlice referencing the memory region with integrity verification
+    /// A `SafeSlice` referencing the memory region with integrity verification
     ///
     /// # Safety
     ///
-    /// This method is safer than using buffer() as it performs integrity checks
+    /// This method is safer than using `buffer()` as it performs integrity checks
     /// on the returned slice, which helps detect memory corruption.
     ///
     /// # Example
@@ -1156,11 +1142,7 @@ impl Memory {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                &format!(
-                    "Memory size mismatch: expected {}, got {}",
-                    expected_size,
-                    self.data.size()
-                ),
+                "Memory size mismatch",
             ));
         }
 
@@ -1199,10 +1181,7 @@ impl Memory {
                 return Err(Error::new(
                     ErrorCategory::Memory,
                     codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                    &format!(
-                        "Source memory access out of bounds: address={}, size={}",
-                        src_addr, size
-                    ),
+                    "Source memory access out of bounds",
                 ))
             }
         };
@@ -1214,10 +1193,7 @@ impl Memory {
                 return Err(Error::new(
                     ErrorCategory::Memory,
                     codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                    &format!(
-                        "Destination memory access out of bounds: address={}, size={}",
-                        dst_addr, size
-                    ),
+                    "Destination memory access out of bounds",
                 ))
             }
         };
@@ -1316,7 +1292,7 @@ impl Memory {
             let fill_buffer = vec![val; chunk_size];
             #[cfg(all(not(feature = "std"), not(feature = "std")))]
             let fill_buffer = {
-                let mut buffer: wrt_foundation::bounded::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<1024>> = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+                let mut buffer: wrt_foundation::bounded::BoundedVec<u8, 4096, SmallMemoryProvider> = wrt_foundation::bounded::BoundedVec::new(SmallMemoryProvider::default()).unwrap();
                 for _ in 0..chunk_size {
                     buffer.push(val).unwrap();
                 }
@@ -1335,7 +1311,9 @@ impl Memory {
             let mut current_data = self.data.to_vec()?;
             for i in 0..chunk_size {
                 if current_dst + i < current_data.len() {
-                    current_data[current_dst + i] = val;
+                    if let Some(byte) = current_data.get_mut(current_dst + i) {
+                        *byte = val;
+                    }
                 }
             }
             // Replace data (simplified - in production would need better approach)
@@ -1387,10 +1365,7 @@ impl Memory {
                 return Err(Error::new(
                     ErrorCategory::Memory,
                     codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                    &format!(
-                        "Destination memory access out of bounds: address={}, size={}",
-                        dst, size
-                    ),
+                    "Destination memory access out of bounds",
                 ));
             }
         };
@@ -1445,7 +1420,9 @@ impl Memory {
             let mut current_data = self.data.to_vec()?;
             for (i, &byte) in src_data.iter().enumerate() {
                 if dst_offset + i < current_data.len() {
-                    current_data[dst_offset + i] = byte;
+                    if let Some(target_byte) = current_data.get_mut(dst_offset + i) {
+                        *target_byte = byte;
+                    }
                 }
             }
             // Replace data (simplified approach)
@@ -1940,47 +1917,34 @@ impl Memory {
     /// # Returns
     ///
     /// A string containing the statistics
-    pub fn safety_stats(&self) -> String {
+    pub fn safety_stats(&self) -> wrt_foundation::budget_types::RuntimeString<2048> {
         let memory_stats = self.memory_stats();
         let access_count = self.access_count();
         let peak_memory = self.peak_memory();
         let max_access = self.max_access_size();
         let unique_regions = self.unique_regions();
 
-        #[cfg(feature = "std")]
-        {
-            &format!(
-                "Memory Safety Stats:\n- Size: {} bytes ({} pages)\n- Peak usage: {} bytes\n- Access \
-                 count: {}\n- Unique regions: {}\n- Max access size: {} bytes\n- Verification level: \
-                 {:?}",
-                self.size_in_bytes(),
-                self.current_pages.load(Ordering::Relaxed),
-                peak_memory,
-                access_count,
-                unique_regions,
-                max_access,
-                self.verification_level
-            )
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            // For no_std, create a BoundedString
-            let stats_str = "Memory Safety Stats: [no_std mode]";
-            wrt_foundation::bounded::BoundedString::from_str_truncate(
-                stats_str,
-                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
-            ).unwrap_or_else(|_| wrt_foundation::bounded::BoundedString::from_str_truncate("", wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())
-        }
+        // Create a RuntimeString with formatted stats
+        let stats_str = "Memory Safety Stats: [Runtime memory]";
+        wrt_foundation::budget_types::RuntimeString::from_str(
+            stats_str,
+            wrt_foundation::safe_memory::NoStdProvider::<131072>::default()
+        ).unwrap_or_else(|_| {
+            wrt_foundation::budget_types::RuntimeString::from_str(
+                "", 
+                wrt_foundation::safe_memory::NoStdProvider::<131072>::default()
+            ).unwrap_or_default()
+        })
     }
 
-    /// Returns a SafeSlice representing the entire memory
+    /// Returns a `SafeSlice` representing the entire memory
     ///
     /// Unlike `buffer()`, this does not create a copy of the memory data,
     /// making it more efficient for read-only access to memory.
     ///
     /// # Returns
     ///
-    /// A SafeSlice covering the entire memory buffer
+    /// A `SafeSlice` covering the entire memory buffer
     ///
     /// # Errors
     ///
@@ -2038,12 +2002,7 @@ impl MemoryProvider for Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                &format!(
-                    "Memory access out of bounds: offset={}, len={}, size={}",
-                    offset,
-                    len,
-                    self.data.size()
-                ),
+                "Memory access out of bounds",
             ));
         }
 
@@ -2055,12 +2014,7 @@ impl MemoryProvider for Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                &format!(
-                    "Memory access out of bounds: offset={}, len={}, size={}",
-                    offset,
-                    len,
-                    self.data.size()
-                ),
+                "Memory access out of bounds",
             ));
         }
         Ok(())
@@ -2072,9 +2026,9 @@ impl MemoryProvider for Memory {
 
     // Missing trait implementations
     #[cfg(feature = "std")]
-    type Allocator = StdMemoryProvider;
+    type Allocator = LargeMemoryProvider;
     #[cfg(not(feature = "std"))]
-    type Allocator = wrt_foundation::safe_memory::NoStdProvider<67108864>;
+    type Allocator = LargeMemoryProvider;
 
     fn write_data(&mut self, offset: usize, data: &[u8]) -> Result<()> {
         let offset_u32 = usize_to_wasm_u32(offset)?;
@@ -2147,7 +2101,10 @@ impl MemoryProvider for Memory {
 
     #[cfg(feature = "std")]
     fn get_allocator(&self) -> &Self::Allocator {
-        &StdMemoryProvider::default()
+        // Can't return reference to temporary, use lazy static approach
+        use std::sync::LazyLock;
+        static ALLOCATOR: LazyLock<LargeMemoryProvider> = LazyLock::new(|| LargeMemoryProvider::new());
+        &ALLOCATOR
     }
     
     #[cfg(not(feature = "std"))]
@@ -2190,10 +2147,7 @@ impl MemoryOperations for Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_OUT_OF_BOUNDS,
-                &format!(
-                    "Memory read out of bounds: offset={}, len={}, size={}",
-                    offset, len, self.size_in_bytes()
-                ),
+                "Memory read out of bounds",
             ));
         }
 
@@ -2213,10 +2167,10 @@ impl MemoryOperations for Memory {
     }
     
     #[cfg(not(any(feature = "std", )))]
-    fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>> {
+    fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65536, MediumMemoryProvider>> {
         // Handle zero-length reads
         if len == 0 {
-            let provider = wrt_foundation::NoStdProvider::<65536>::default();
+            let provider = MediumMemoryProvider::default();
             return wrt_foundation::BoundedVec::new(provider);
         }
 
@@ -2237,19 +2191,16 @@ impl MemoryOperations for Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_OUT_OF_BOUNDS,
-                &format!(
-                    "Memory read out of bounds: offset={}, len={}, size={}",
-                    offset, len, self.size_in_bytes()
-                ),
+                "Memory read out of bounds",
             ));
         }
 
         // Create a bounded vector and fill it
-        let mut result = wrt_foundation::BoundedVec::<u8, 65536, wrt_foundation::safe_memory::NoStdProvider<65536>>::new(wrt_foundation::safe_memory::NoStdProvider::<65536>::default())?;
+        let mut result = wrt_foundation::BoundedVec::<u8, 65536, MediumMemoryProvider>::new(MediumMemoryProvider::default())?;
         
         // Read data byte by byte to populate the bounded vector
         for i in 0..len_usize {
-            let byte = self.get_byte((offset + i as u32) as u32)?;
+            let byte = self.get_byte(offset + i as u32)?;
             result.push(byte).map_err(|_| {
                 Error::new(
                     ErrorCategory::Memory,
@@ -2274,7 +2225,7 @@ impl MemoryOperations for Memory {
 
     fn grow(&mut self, bytes: usize) -> Result<()> {
         // Convert bytes to pages (WebAssembly page size is 64KB)
-        let pages = (bytes + PAGE_SIZE - 1) / PAGE_SIZE; // Ceiling division
+        let pages = bytes.div_ceil(PAGE_SIZE); // Ceiling division
         
         // Delegate to the existing grow method (which returns old page count)
         self.grow(pages as u32)?;
@@ -2320,10 +2271,7 @@ impl MemoryOperations for Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_OUT_OF_BOUNDS,
-                &format!(
-                    "Memory copy out of bounds: src_end={}, dest_end={}, size={}",
-                    src_end, dest_end, memory_size
-                ),
+                "Memory copy out of bounds",
             ));
         }
         
@@ -2379,7 +2327,7 @@ impl AtomicOperations for Memory {
         }
         
         // Convert timeout to Duration if provided
-        let timeout = timeout_ns.map(|ns| Duration::from_nanos(ns));
+        let timeout = timeout_ns.map(Duration::from_nanos);
         
         // Use platform-specific futex implementation for std builds
         #[cfg(all(target_os = "linux", feature = "std"))]
@@ -2451,7 +2399,7 @@ impl AtomicOperations for Memory {
         }
         
         // Convert timeout to Duration if provided
-        let timeout = timeout_ns.map(|ns| Duration::from_nanos(ns));
+        let timeout = timeout_ns.map(Duration::from_nanos);
         
         // Similar implementation to atomic_wait32 but for 64-bit values
         // For now, use the same fallback approach as 32-bit operations

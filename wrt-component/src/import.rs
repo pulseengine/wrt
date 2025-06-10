@@ -62,7 +62,7 @@ impl Import {
         if ns_str.is_empty() {
             self.name.clone()
         } else {
-            ComponentValue::String("Component operation result".into())
+            "Component not found"
         }
     }
 

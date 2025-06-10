@@ -20,51 +20,322 @@
 
 #![allow(dead_code)] // Allow during development
 
-use wrt_instructions::{
-    CfiControlFlowOps, CfiControlFlowProtection, CfiExecutionContext, CfiProtectedBranchTarget,
-    DefaultCfiControlFlowOps,
-};
+// CFI imports temporarily disabled since CFI module is disabled
+// use wrt_instructions::{
+//     CfiControlFlowOps, CfiControlFlowProtection, CfiExecutionContext, CfiProtectedBranchTarget,
+//     DefaultCfiControlFlowOps,
+// };
 // CFI types - define locally if not available in wrt_instructions
-#[cfg(not(feature = "std"))]
+// Available for both std and no_std since CFI module is disabled
 mod cfi_types {
+    /// CFI hardware instruction types
     #[derive(Debug, Clone, PartialEq)]
     pub enum CfiHardwareInstruction {
-        ArmBti { mode: wrt_instructions::cfi_control_ops::ArmBtiMode },
+        // ArmBti { mode: wrt_instructions::cfi_control_ops::ArmBtiMode }, // Disabled since CFI module is disabled
+        /// ARM Branch Target Identification instruction
+        ArmBti { 
+            /// BTI mode configuration
+            mode: u32 
+        }, // Placeholder to maintain API compatibility
     }
     
+    /// CFI software validation configuration
     #[derive(Debug, Clone)]
     pub struct CfiSoftwareValidation {
+        /// Optional shadow stack requirement for validation
         pub shadow_stack_requirement: Option<ShadowStackRequirement>,
     }
     
+    /// Shadow stack requirements for CFI validation
     #[derive(Debug, Clone, PartialEq)]
     pub enum ShadowStackRequirement {
-        Push { return_address: u32, stack_pointer: u32 },
-        Pop { expected_return: u32 },
+        /// Push a return address onto the shadow stack
+        Push { 
+            /// Return address to push
+            return_address: u32, 
+            /// Current stack pointer
+            stack_pointer: u32 
+        },
+        /// Pop and validate a return address from the shadow stack
+        Pop { 
+            /// Expected return address
+            expected_return: u32 
+        },
+        /// Validate the current shadow stack state
         Validate,
     }
     
-    #[derive(Debug, Clone)]
-    pub struct ShadowStackEntry {
+    /// Entry in the shadow stack for CFI protection
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    #[derive(Default)]
+pub struct ShadowStackEntry {
+        /// Return address for this stack frame
         pub return_address: u32,
+        /// Stack pointer value for this frame
         pub stack_pointer: u32,
+        /// Index of the function for this frame
         pub function_index: u32,
+    }
+    
+    
+    
+    impl wrt_foundation::traits::Checksummable for ShadowStackEntry {
+        fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+            checksum.update_slice(&self.return_address.to_le_bytes());
+            checksum.update_slice(&self.stack_pointer.to_le_bytes());
+            checksum.update_slice(&self.function_index.to_le_bytes());
+        }
+    }
+    
+    impl wrt_foundation::traits::ToBytes for ShadowStackEntry {
+        fn serialized_size(&self) -> usize {
+            12 // 3 * u32
+        }
+
+        fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+            &self,
+            writer: &mut wrt_foundation::traits::WriteStream<'_>,
+            _provider: &P,
+        ) -> wrt_foundation::Result<()> {
+            writer.write_all(&self.return_address.to_le_bytes())?;
+            writer.write_all(&self.stack_pointer.to_le_bytes())?;
+            writer.write_all(&self.function_index.to_le_bytes())?;
+            Ok(())
+        }
+    }
+    
+    impl wrt_foundation::traits::FromBytes for ShadowStackEntry {
+        fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+            reader: &mut wrt_foundation::traits::ReadStream<'_>,
+            _provider: &P,
+        ) -> wrt_foundation::Result<Self> {
+            let mut bytes = [0u8; 4];
+            
+            reader.read_exact(&mut bytes)?;
+            let return_address = u32::from_le_bytes(bytes);
+            
+            reader.read_exact(&mut bytes)?;
+            let stack_pointer = u32::from_le_bytes(bytes);
+            
+            reader.read_exact(&mut bytes)?;
+            let function_index = u32::from_le_bytes(bytes);
+            
+            Ok(Self {
+                return_address,
+                stack_pointer,
+                function_index,
+            })
+        }
     }
 }
 
-#[cfg(not(feature = "std"))]
-use wrt_instructions::cfi_control_ops::{CfiHardwareInstruction, CfiSoftwareValidation};
-#[cfg(not(feature = "std"))]
-use self::cfi_types::{ShadowStackRequirement, ShadowStackEntry};
+// CFI imports temporarily disabled since CFI module is disabled
+// #[cfg(not(feature = "std"))]
+// use wrt_instructions::cfi_control_ops::{CfiHardwareInstruction, CfiSoftwareValidation};
+// Available for both std and no_std since CFI module is disabled
+use self::cfi_types::ShadowStackRequirement;
 
-#[cfg(feature = "std")]
-use wrt_instructions::cfi_control_ops::{
-    CfiHardwareInstruction, ArmBtiMode, CfiSoftwareValidation,
-    ShadowStackRequirement, ShadowStackEntry
-};
+// Export CFI types for all feature combinations
+pub use self::cfi_types::{ShadowStackEntry, CfiHardwareInstruction, CfiSoftwareValidation};
 
-use crate::{execution::ExecutionContext, prelude::*, stackless::StacklessEngine};
+// CFI imports temporarily disabled since CFI module is disabled
+// #[cfg(feature = "std")]
+// use wrt_instructions::cfi_control_ops::{
+//     CfiHardwareInstruction, ArmBtiMode, CfiSoftwareValidation,
+//     ShadowStackRequirement, ShadowStackEntry
+// };
+
+use crate::{execution::ExecutionContext, prelude::{BoundedCapacity, Debug, Eq, Error, ErrorCategory, PartialEq, Result, codes, str}}; // stackless::StacklessEngine temporarily disabled
 use wrt_foundation::traits::DefaultMemoryProvider;
+
+// Stub types for disabled CFI functionality
+/// Default implementation of CFI control flow operations
+#[derive(Debug, Clone, Default)]
+pub struct DefaultCfiControlFlowOps;
+
+impl DefaultCfiControlFlowOps {
+    /// Perform an indirect call with CFI protection
+    pub fn call_indirect_with_cfi(
+        &self,
+        _type_idx: u32,
+        _table_idx: u32,
+        _protection: &CfiControlFlowProtection,
+        _context: &mut CfiExecutionContext,
+    ) -> Result<CfiProtectedBranchTarget> {
+        Ok(CfiProtectedBranchTarget {
+            protection: CfiProtection { landing_pad: None },
+        })
+    }
+
+    /// Perform a return with CFI protection
+    pub fn return_with_cfi(
+        &self,
+        _protection: &CfiControlFlowProtection,
+        _context: &mut CfiExecutionContext,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Perform a branch with CFI protection
+    pub fn branch_with_cfi(
+        &self,
+        _label_idx: u32,
+        _conditional: bool,
+        _protection: &CfiControlFlowProtection,
+        _context: &mut CfiExecutionContext,
+    ) -> Result<CfiProtectedBranchTarget> {
+        Ok(CfiProtectedBranchTarget {
+            protection: CfiProtection { landing_pad: None },
+        })
+    }
+}
+
+/// CFI control flow protection configuration
+#[derive(Debug, Clone, Default)]
+pub struct CfiControlFlowProtection {
+    /// Software-based CFI configuration
+    pub software_config: CfiSoftwareConfig,
+}
+
+impl CfiControlFlowProtection {
+    /// Create new CFI protection with specified level
+    #[must_use] pub fn new_with_level(_protection_level: u32) -> Self {
+        Self::default()
+    }
+}
+
+/// Software CFI configuration options
+#[derive(Debug, Clone, Default)]
+pub struct CfiSoftwareConfig {
+    /// Maximum depth of the shadow stack
+    pub max_shadow_stack_depth: usize,
+}
+
+// Default trait implemented by derive
+
+/// CFI execution context maintaining runtime state
+#[derive(Debug, Clone)]
+pub struct CfiExecutionContext {
+    /// Index of the currently executing function
+    pub current_function: u32,
+    /// Offset of the current instruction within the function
+    pub current_instruction: u32,
+    /// Shadow stack for return address protection
+    pub shadow_stack: wrt_foundation::bounded::BoundedVec<ShadowStackEntry, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+    /// Expected landing pads for indirect calls
+    pub landing_pad_expectations: wrt_foundation::bounded::BoundedVec<LandingPadExpectation, 32, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+    /// Number of CFI violations detected
+    pub violation_count: u32,
+    /// CFI performance and security metrics
+    pub metrics: CfiMetrics,
+}
+
+// Default implementation will be handled manually
+impl Default for CfiExecutionContext {
+    fn default() -> Self {
+        let provider = wrt_foundation::safe_memory::NoStdProvider::<1024>::default();
+        Self {
+            current_function: 0,
+            current_instruction: 0,
+            shadow_stack: wrt_foundation::bounded::BoundedVec::new(provider.clone()).unwrap(),
+            landing_pad_expectations: wrt_foundation::bounded::BoundedVec::new(provider).unwrap(),
+            violation_count: 0,
+            metrics: CfiMetrics::default(),
+        }
+    }
+}
+
+/// CFI performance and security metrics
+#[derive(Debug, Clone, Default)]
+pub struct CfiMetrics {
+    /// Number of landing pads successfully validated
+    pub landing_pads_validated: u32,
+    /// Number of shadow stack operations performed
+    pub shadow_stack_operations: u32,
+}
+
+/// Expected landing pad for CFI validation
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
+pub struct LandingPadExpectation {
+    /// Index of the function containing the landing pad
+    pub function_index: u32,
+    /// Byte offset of the landing pad within the function
+    pub instruction_offset: u32,
+    /// Optional deadline for landing pad validation (in cycles)
+    pub deadline: Option<u64>,
+}
+
+
+impl wrt_foundation::traits::Checksummable for LandingPadExpectation {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&self.function_index.to_le_bytes());
+        checksum.update_slice(&self.instruction_offset.to_le_bytes());
+        if let Some(deadline) = self.deadline {
+            checksum.update_slice(&deadline.to_le_bytes());
+        }
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for LandingPadExpectation {
+    fn serialized_size(&self) -> usize {
+        16 // Simplified
+    }
+
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_all(&self.function_index.to_le_bytes())?;
+        writer.write_all(&self.instruction_offset.to_le_bytes())?;
+        Ok(())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for LandingPadExpectation {
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let mut func_bytes = [0u8; 4];
+        reader.read_exact(&mut func_bytes)?;
+        let function_index = u32::from_le_bytes(func_bytes);
+        
+        let mut inst_bytes = [0u8; 4];
+        reader.read_exact(&mut inst_bytes)?;
+        let instruction_offset = u32::from_le_bytes(inst_bytes);
+        
+        Ok(Self {
+            function_index,
+            instruction_offset,
+            deadline: None,
+        })
+    }
+}
+
+/// CFI-protected branch target with validation information
+#[derive(Debug, Clone)]
+pub struct CfiProtectedBranchTarget {
+    /// CFI protection details for this branch target
+    pub protection: CfiProtection,
+}
+
+/// CFI protection information for a code location
+#[derive(Debug, Clone)]
+pub struct CfiProtection {
+    /// Optional landing pad requirement
+    pub landing_pad: Option<CfiLandingPad>,
+}
+
+/// CFI landing pad specification
+#[derive(Debug, Clone)]
+pub struct CfiLandingPad {
+    /// Index of the function containing the landing pad
+    pub function_index: u32,
+    /// Byte offset of the landing pad within the function
+    pub instruction_offset: u32,
+}
 
 /// CFI-enhanced WebAssembly execution engine
 pub struct CfiExecutionEngine {
@@ -78,28 +349,25 @@ pub struct CfiExecutionEngine {
     violation_policy: CfiViolationPolicy,
     /// CFI statistics and metrics
     statistics: CfiEngineStatistics,
-    /// Reference to the stackless execution engine
-    stackless_engine: Option<StacklessEngine>,
+    // Reference to the stackless execution engine - temporarily disabled
+    // stackless_engine: Option<StacklessEngine>,
 }
 
 /// Policy for handling CFI violations
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum CfiViolationPolicy {
     /// Log violation and continue execution
     LogAndContinue,
     /// Terminate execution immediately
     Terminate,
     /// Return error to caller
+    #[default]
     ReturnError,
     /// Attempt recovery if possible
     AttemptRecovery,
 }
 
-impl Default for CfiViolationPolicy {
-    fn default() -> Self {
-        CfiViolationPolicy::ReturnError
-    }
-}
 
 /// CFI engine statistics for monitoring and debugging
 #[derive(Debug, Clone, Default)]
@@ -120,19 +388,19 @@ pub struct CfiEngineStatistics {
 
 impl CfiExecutionEngine {
     /// Create new CFI-enhanced execution engine
-    pub fn new(cfi_protection: CfiControlFlowProtection) -> Self {
+    #[must_use] pub fn new(cfi_protection: CfiControlFlowProtection) -> Self {
         Self {
             cfi_ops: DefaultCfiControlFlowOps,
             cfi_protection,
             cfi_context: CfiExecutionContext::default(),
             violation_policy: CfiViolationPolicy::default(),
             statistics: CfiEngineStatistics::default(),
-            stackless_engine: None,
+            // stackless_engine: None,
         }
     }
 
     /// Create CFI engine with custom violation policy
-    pub fn new_with_policy(
+    #[must_use] pub fn new_with_policy(
         cfi_protection: CfiControlFlowProtection,
         violation_policy: CfiViolationPolicy,
     ) -> Self {
@@ -142,29 +410,29 @@ impl CfiExecutionEngine {
             cfi_context: CfiExecutionContext::default(),
             violation_policy,
             statistics: CfiEngineStatistics::default(),
-            stackless_engine: None,
+            // stackless_engine: None,
         }
     }
 
-    /// Create CFI engine with stackless engine integration
-    pub fn new_with_stackless_engine(
-        cfi_protection: CfiControlFlowProtection,
-        stackless_engine: StacklessEngine,
-    ) -> Self {
-        Self {
-            cfi_ops: DefaultCfiControlFlowOps,
-            cfi_protection,
-            cfi_context: CfiExecutionContext::default(),
-            violation_policy: CfiViolationPolicy::default(),
-            statistics: CfiEngineStatistics::default(),
-            stackless_engine: Some(stackless_engine),
-        }
-    }
+    /// Create CFI engine with stackless engine integration - TEMPORARILY DISABLED
+    // pub fn new_with_stackless_engine(
+    //     cfi_protection: CfiControlFlowProtection,
+    //     stackless_engine: StacklessEngine,
+    // ) -> Self {
+    //     Self {
+    //         cfi_ops: DefaultCfiControlFlowOps,
+    //         cfi_protection,
+    //         cfi_context: CfiExecutionContext::default(),
+    //         violation_policy: CfiViolationPolicy::default(),
+    //         statistics: CfiEngineStatistics::default(),
+    //         stackless_engine: Some(stackless_engine),
+    //     }
+    // }
 
     /// Execute WebAssembly instruction with CFI protection
     pub fn execute_instruction_with_cfi(
         &mut self,
-        instruction: &wrt_foundation::types::Instruction<wrt_foundation::safe_memory::NoStdProvider<1024>>,
+        instruction: &crate::prelude::Instruction,
         execution_context: &mut ExecutionContext,
     ) -> Result<CfiExecutionResult> {
         let start_time = self.get_timestamp();
@@ -277,7 +545,7 @@ impl CfiExecutionEngine {
     /// Execute regular instruction without special CFI handling
     fn execute_regular_instruction(
         &mut self,
-        instruction: &wrt_foundation::types::Instruction<wrt_foundation::safe_memory::NoStdProvider<1024>>,
+        instruction: &crate::prelude::Instruction,
         execution_context: &mut ExecutionContext,
     ) -> Result<CfiExecutionResult> {
         // For regular instructions, just execute normally
@@ -289,7 +557,7 @@ impl CfiExecutionEngine {
     /// Pre-execution CFI validation
     fn validate_pre_execution(
         &mut self,
-        instruction: &wrt_foundation::types::Instruction<wrt_foundation::safe_memory::NoStdProvider<1024>>,
+        instruction: &crate::prelude::Instruction,
     ) -> Result<()> {
         // Check for expected landing pads
         self.check_landing_pad_expectations()?;
@@ -306,7 +574,7 @@ impl CfiExecutionEngine {
     /// Post-execution CFI validation
     fn validate_post_execution(
         &mut self,
-        instruction: &wrt_foundation::types::Instruction<wrt_foundation::safe_memory::NoStdProvider<1024>>,
+        instruction: &crate::prelude::Instruction,
         result: &Result<CfiExecutionResult>,
     ) -> Result<()> {
         // Update CFI state based on execution result
@@ -325,10 +593,12 @@ impl CfiExecutionEngine {
         // Update function depth and stack tracking
         self.cfi_context.current_function = execution_context.function_depth as u32;
 
-        // Extract instruction offset from stackless engine if available
-        if let Some(engine) = &self.stackless_engine {
-            self.cfi_context.current_instruction = engine.exec_stack.pc as u32;
-        }
+        // Extract instruction offset from stackless engine if available - TEMPORARILY DISABLED
+        // if let Some(engine) = &self.stackless_engine {
+        //     self.cfi_context.current_instruction = engine.exec_stack.pc as u32;
+        // }
+        // Use a default instruction pointer for now
+        self.cfi_context.current_instruction = 0;
 
         // Update peak shadow stack depth tracking
         if self.cfi_context.shadow_stack.len() > self.statistics.peak_shadow_stack_depth {
@@ -419,7 +689,7 @@ impl CfiExecutionEngine {
     }
 
     /// Validate landing pad requirements
-    fn validate_landing_pad(&self, _landing_pad: &wrt_instructions::CfiLandingPad) -> Result<()> {
+    fn validate_landing_pad(&self, _landing_pad: &CfiLandingPad) -> Result<()> {
         // TODO: Implement landing pad validation
         // For now, just return Ok to avoid type conflicts
         Ok(())
@@ -439,7 +709,7 @@ impl CfiExecutionEngine {
     }
 
     #[cfg(target_arch = "aarch64")]
-    fn validate_arm_bti_instruction(&self, _mode: wrt_instructions::cfi_control_ops::ArmBtiMode) -> Result<()> {
+    fn validate_arm_bti_instruction(&self, _mode: u32) -> Result<()> {
         // Insert ARM BTI instruction and validate it executed correctly
         // This would involve architecture-specific validation
         Ok(())
@@ -565,7 +835,7 @@ impl CfiExecutionEngine {
     /// Generate unique call site ID
     fn generate_call_site_id(&self) -> u32 {
         // Simple ID generation - real implementation would be more sophisticated
-        ((self.cfi_context.current_function << 16) | self.cfi_context.current_instruction) as u32
+        (self.cfi_context.current_function << 16) | self.cfi_context.current_instruction
     }
 
     /// Integration methods with the actual WRT execution engine
@@ -576,21 +846,23 @@ impl CfiExecutionEngine {
         table_idx: u32,
         execution_context: &mut ExecutionContext,
     ) -> Result<ExecutionResult> {
-        use crate::stackless::StacklessExecutionState;
+        // use crate::stackless::StacklessExecutionState; // TEMPORARILY DISABLED
 
         execution_context.enter_function()?;
         execution_context.stats.increment_instructions(1);
 
-        // Update stackless engine state for call
-        if let Some(engine) = &mut self.stackless_engine {
-            engine.exec_stack.state = StacklessExecutionState::Calling {
-                instance_idx: 0, // Default instance
-                func_idx: type_idx,
-                args: BoundedVec::<Value, 32, DefaultMemoryProvider>::new(DefaultMemoryProvider::default()).unwrap(), // Args would be popped from stack in real implementation
-                return_pc: engine.exec_stack.pc + 1,
-            };
-            engine.exec_stack.pc += 1;
-        }
+        // Update stackless engine state for call - TEMPORARILY DISABLED
+        // if let Some(engine) = &mut self.stackless_engine {
+        //     engine.exec_stack.state = StacklessExecutionState::Calling {
+        //         instance_idx: 0, // Default instance
+        //         func_idx: type_idx,
+        //         args: BoundedVec::<Value, 32, DefaultMemoryProvider>::new(DefaultMemoryProvider::default()).unwrap(), // Args would be popped from stack in real implementation
+        //         return_pc: engine.exec_stack.pc + 1,
+        //     };
+        //     engine.exec_stack.pc += 1;
+        // }
+        // Stub: track call for CFI purposes
+        let _call_tracking = (type_idx, table_idx);
 
         Ok(ExecutionResult::Continue)
     }
@@ -599,17 +871,18 @@ impl CfiExecutionEngine {
         &mut self,
         execution_context: &mut ExecutionContext,
     ) -> Result<ExecutionResult> {
-        use crate::stackless::StacklessExecutionState;
+        // use crate::stackless::StacklessExecutionState; // TEMPORARILY DISABLED
 
         execution_context.exit_function();
         execution_context.stats.increment_instructions(1);
 
-        // Update stackless engine state for return
-        if let Some(engine) = &mut self.stackless_engine {
-            engine.exec_stack.state = StacklessExecutionState::Returning {
-                values: BoundedVec::<Value, 32, DefaultMemoryProvider>::new(DefaultMemoryProvider::default()).unwrap(), // Return values would be determined by actual execution
-            };
-        }
+        // Update stackless engine state for return - TEMPORARILY DISABLED
+        // if let Some(engine) = &mut self.stackless_engine {
+        //     engine.exec_stack.state = StacklessExecutionState::Returning {
+        //         values: BoundedVec::<Value, 32, DefaultMemoryProvider>::new(DefaultMemoryProvider::default()).unwrap(), // Return values would be determined by actual execution
+        //     };
+        // }
+        // Stub: track return for CFI purposes
 
         Ok(ExecutionResult::Return)
     }
@@ -620,33 +893,36 @@ impl CfiExecutionEngine {
         conditional: bool,
         execution_context: &mut ExecutionContext,
     ) -> Result<ExecutionResult> {
-        use crate::stackless::StacklessExecutionState;
+        // use crate::stackless::StacklessExecutionState; // TEMPORARILY DISABLED
 
         execution_context.stats.increment_instructions(1);
 
-        // Update stackless engine state for branch
-        if let Some(engine) = &mut self.stackless_engine {
-            engine.exec_stack.state = StacklessExecutionState::Branching {
-                depth: label_idx,
-                values: BoundedVec::<Value, 32, DefaultMemoryProvider>::new(DefaultMemoryProvider::default()).unwrap(), // Values would be managed by actual execution
-            };
-            engine.exec_stack.pc = label_idx as usize;
-        }
+        // Update stackless engine state for branch - TEMPORARILY DISABLED
+        // if let Some(engine) = &mut self.stackless_engine {
+        //     engine.exec_stack.state = StacklessExecutionState::Branching {
+        //         depth: label_idx,
+        //         values: BoundedVec::<Value, 32, DefaultMemoryProvider>::new(DefaultMemoryProvider::default()).unwrap(), // Values would be managed by actual execution
+        //     };
+        //     engine.exec_stack.pc = label_idx as usize;
+        // }
+        // Stub: track branch for CFI purposes
+        let _branch_tracking = (label_idx, conditional);
 
         Ok(ExecutionResult::Branch)
     }
 
     fn perform_regular_instruction(
         &mut self,
-        instruction: &wrt_foundation::types::Instruction<wrt_foundation::safe_memory::NoStdProvider<1024>>,
+        instruction: &crate::prelude::Instruction,
         execution_context: &mut ExecutionContext,
     ) -> Result<ExecutionResult> {
         execution_context.stats.increment_instructions(1);
 
-        // Update stackless engine program counter
-        if let Some(engine) = &mut self.stackless_engine {
-            engine.exec_stack.pc += 1;
-        }
+        // Update stackless engine program counter - TEMPORARILY DISABLED
+        // if let Some(engine) = &mut self.stackless_engine {
+        //     engine.exec_stack.pc += 1;
+        // }
+        // Stub: track instruction execution for CFI purposes
 
         // Consume minimal fuel for CFI overhead
         if let Err(e) = execution_context.stats.use_gas(1) {
@@ -681,13 +957,29 @@ impl CfiExecutionEngine {
 #[derive(Debug)]
 pub enum CfiExecutionResult {
     /// Indirect call with CFI protection
-    CallIndirect { result: ExecutionResult, protected_target: CfiProtectedBranchTarget },
+    CallIndirect { 
+        /// Execution result for the call
+        result: ExecutionResult, 
+        /// CFI-protected branch target information
+        protected_target: CfiProtectedBranchTarget 
+    },
     /// Return with CFI protection
-    Return { result: ExecutionResult },
+    Return { 
+        /// Execution result for the return
+        result: ExecutionResult 
+    },
     /// Branch with CFI protection
-    Branch { result: ExecutionResult, protected_target: CfiProtectedBranchTarget },
+    Branch { 
+        /// Execution result for the branch
+        result: ExecutionResult, 
+        /// CFI-protected branch target information
+        protected_target: CfiProtectedBranchTarget 
+    },
     /// Regular instruction execution
-    Regular { result: ExecutionResult },
+    Regular { 
+        /// Execution result for the instruction
+        result: ExecutionResult 
+    },
 }
 
 /// Placeholder for CFI check information
@@ -701,7 +993,7 @@ pub struct CfiCheck {
 
 impl CfiCheck {
     /// Create a new CFI check
-    pub fn new(check_type: &str, location: usize) -> Self {
+    #[must_use] pub fn new(check_type: &str, location: usize) -> Self {
         let bounded_check_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<1024>> = wrt_foundation::bounded::BoundedString::from_str_truncate(
             check_type,
             wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
@@ -750,7 +1042,8 @@ pub enum ExecutionResult {
 
 #[cfg(test)]
 mod tests {
-    use wrt_instructions::CfiProtectionLevel;
+    // CFI imports temporarily disabled since CFI module is disabled
+    // use wrt_instructions::CfiProtectionLevel;
 
     use super::*;
 

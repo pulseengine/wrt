@@ -1,14 +1,15 @@
 //! Core type definitions for wrt-runtime
 //!
 //! This module provides essential type definitions that are used throughout
-//! the runtime. These types are designed to work in both std and no_std environments.
+//! the runtime. These types are designed to work in both std and `no_std` environments.
 
-use crate::simple_types::*;
+use crate::simple_types::{LocalsVec, ParameterVec, RuntimeProvider, ValueStackVec};
+use crate::prelude::ToString;
 use wrt_foundation::{
     traits::{Checksummable, ToBytes, FromBytes},
     safe_memory::NoStdProvider,
     bounded::BoundedVec,
-    prelude::*,
+    prelude::{BoundedCapacity, Clone, Debug, Default, Eq, Error, ErrorCategory, PartialEq, Result, codes},
 };
 use wrt_instructions::Value;
 
@@ -34,9 +35,9 @@ impl Checksummable for CallFrame {
 }
 
 impl ToBytes for CallFrame {
-    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &PStream,
     ) -> wrt_foundation::WrtResult<()> {
         writer.write_all(&self.function_index.to_le_bytes())?;
@@ -46,8 +47,8 @@ impl ToBytes for CallFrame {
 }
 
 impl FromBytes for CallFrame {
-    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
-        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+    fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
         provider: &PStream,
     ) -> wrt_foundation::WrtResult<Self> {
         let mut func_bytes = [0u8; 4];
@@ -93,9 +94,9 @@ impl Checksummable for ComponentExecutionState {
 }
 
 impl ToBytes for ComponentExecutionState {
-    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &PStream,
     ) -> wrt_foundation::WrtResult<()> {
         writer.write_all(&[if self.is_running { 1 } else { 0 }])?;
@@ -107,8 +108,8 @@ impl ToBytes for ComponentExecutionState {
 }
 
 impl FromBytes for ComponentExecutionState {
-    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
-        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+    fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &PStream,
     ) -> wrt_foundation::WrtResult<Self> {
         let mut byte = [0u8; 1];
@@ -125,7 +126,7 @@ impl FromBytes for ComponentExecutionState {
         
         let mut gas_bytes = [0u8; 4];
         reader.read_exact(&mut gas_bytes)?;
-        let gas_remaining = u32::from_le_bytes(gas_bytes) as u64;
+        let gas_remaining = u64::from(u32::from_le_bytes(gas_bytes));
         
         Ok(ComponentExecutionState {
             is_running,
@@ -163,12 +164,14 @@ impl ExecutionContext {
     
     /// Push a value onto the value stack
     pub fn push_value(&mut self, value: Value) -> Result<()> {
-        self.value_stack.push(value).map_err(|e| Error::new(ErrorCategory::Runtime, codes::CAPACITY_EXCEEDED, &e.to_string()))
+        self.value_stack.push(value).map_err(|_| {
+            Error::new(ErrorCategory::Runtime, codes::CAPACITY_EXCEEDED, "Value stack capacity exceeded")
+        })
     }
     
     /// Pop a value from the value stack
     pub fn pop_value(&mut self) -> Option<Value> {
-        self.value_stack.pop().map(|v| v) // Value types should be the same
+        self.value_stack.pop().ok().flatten()
     }
     
     /// Get the current stack depth

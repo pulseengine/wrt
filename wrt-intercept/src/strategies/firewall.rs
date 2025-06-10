@@ -3,8 +3,11 @@
 //! This strategy enforces security rules for function calls between
 //! components and hosts. It can allow or deny calls based on various criteria.
 
-use crate::prelude::*;
-#[cfg(not(feature = "std"))]
+use crate::prelude::{Debug, str, Value};
+use wrt_error::{Error, ErrorCategory, Result, codes};
+
+#[cfg(feature = "std")]
+use std::{sync::{Arc, RwLock}, collections::HashSet};
 use crate::LinkInterceptorStrategy;
 
 /// A rule to enforce on function calls
@@ -25,11 +28,11 @@ pub enum FirewallRule {
     DenyTarget(String),
 }
 
-/// A rule to enforce on function calls (no_std version)
+/// A rule to enforce on function calls (`no_std` version)
 #[cfg(not(feature = "std"))]
 #[derive(Debug, Clone)]
 pub enum FirewallRule {
-    /// Binary std/no_std choice
+    /// Binary `std/no_std` choice
     AllowAll,
     /// Deny all calls
     DenyAll,
@@ -47,7 +50,7 @@ pub struct FirewallConfig {
     pub check_parameters: bool,
 }
 
-/// Configuration for the firewall strategy (no_std version)
+/// Configuration for the firewall strategy (`no_std` version)
 #[cfg(not(feature = "std"))]
 #[derive(Debug, Clone, Default)]
 pub struct FirewallConfig {
@@ -70,7 +73,7 @@ pub struct FirewallStrategy {
     denied_functions: RwLock<HashSet<String>>,
 }
 
-/// A strategy that enforces security rules on function calls (no_std version)
+/// A strategy that enforces security rules on function calls (`no_std` version)
 #[cfg(not(feature = "std"))]
 pub struct FirewallStrategy {
     /// Configuration for this strategy
@@ -79,7 +82,7 @@ pub struct FirewallStrategy {
 
 impl FirewallStrategy {
     /// Create a new firewall strategy with the given configuration
-    pub fn new(config: FirewallConfig) -> Self {
+    #[must_use] pub fn new(config: FirewallConfig) -> Self {
         Self {
             config,
             #[cfg(feature = "std")]

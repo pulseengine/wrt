@@ -11,9 +11,9 @@
 //! - Memory grow and size operations for each memory
 //! - Full validation for memory indices
 //!
-//! The implementation works across std, no_std+alloc, and pure no_std environments.
+//! The implementation works across std, `no_std+alloc`, and pure `no_std` environments.
 
-use crate::prelude::*;
+use crate::prelude::{DataSegmentOperations, Debug, MemoryOperations, PureInstruction, Validate, ValidationContext};
 use wrt_error::{Error, Result};
 use wrt_foundation::{
     types::ValueType,
@@ -42,7 +42,7 @@ pub struct MultiMemoryLoad {
 
 impl MultiMemoryLoad {
     /// Create a new multi-memory load operation
-    pub fn new(
+    #[must_use] pub fn new(
         memory_index: u32,
         offset: u32,
         align: u32,
@@ -61,72 +61,72 @@ impl MultiMemoryLoad {
     }
 
     /// Create i32.load operation for specific memory
-    pub fn i32_load(memory_index: u32, offset: u32, align: u32) -> Self {
+    #[must_use] pub fn i32_load(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I32, false, 32)
     }
 
     /// Create i64.load operation for specific memory
-    pub fn i64_load(memory_index: u32, offset: u32, align: u32) -> Self {
+    #[must_use] pub fn i64_load(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I64, false, 64)
     }
 
     /// Create f32.load operation for specific memory
-    pub fn f32_load(memory_index: u32, offset: u32, align: u32) -> Self {
+    #[must_use] pub fn f32_load(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::F32, false, 32)
     }
 
     /// Create f64.load operation for specific memory
-    pub fn f64_load(memory_index: u32, offset: u32, align: u32) -> Self {
+    #[must_use] pub fn f64_load(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::F64, false, 64)
     }
 
-    /// Create i32.load8_s operation for specific memory
-    pub fn i32_load8_s(memory_index: u32, offset: u32, align: u32) -> Self {
+    /// Create `i32.load8_s` operation for specific memory
+    #[must_use] pub fn i32_load8_s(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I32, true, 8)
     }
 
-    /// Create i32.load8_u operation for specific memory
-    pub fn i32_load8_u(memory_index: u32, offset: u32, align: u32) -> Self {
+    /// Create `i32.load8_u` operation for specific memory
+    #[must_use] pub fn i32_load8_u(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I32, false, 8)
     }
 
-    /// Create i32.load16_s operation for specific memory
-    pub fn i32_load16_s(memory_index: u32, offset: u32, align: u32) -> Self {
+    /// Create `i32.load16_s` operation for specific memory
+    #[must_use] pub fn i32_load16_s(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I32, true, 16)
     }
 
-    /// Create i32.load16_u operation for specific memory
-    pub fn i32_load16_u(memory_index: u32, offset: u32, align: u32) -> Self {
+    /// Create `i32.load16_u` operation for specific memory
+    #[must_use] pub fn i32_load16_u(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I32, false, 16)
     }
 
-    /// Create i64.load8_s operation for specific memory
-    pub fn i64_load8_s(memory_index: u32, offset: u32, align: u32) -> Self {
+    /// Create `i64.load8_s` operation for specific memory
+    #[must_use] pub fn i64_load8_s(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I64, true, 8)
     }
 
-    /// Create i64.load8_u operation for specific memory
-    pub fn i64_load8_u(memory_index: u32, offset: u32, align: u32) -> Self {
+    /// Create `i64.load8_u` operation for specific memory
+    #[must_use] pub fn i64_load8_u(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I64, false, 8)
     }
 
-    /// Create i64.load16_s operation for specific memory
-    pub fn i64_load16_s(memory_index: u32, offset: u32, align: u32) -> Self {
+    /// Create `i64.load16_s` operation for specific memory
+    #[must_use] pub fn i64_load16_s(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I64, true, 16)
     }
 
-    /// Create i64.load16_u operation for specific memory
-    pub fn i64_load16_u(memory_index: u32, offset: u32, align: u32) -> Self {
+    /// Create `i64.load16_u` operation for specific memory
+    #[must_use] pub fn i64_load16_u(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I64, false, 16)
     }
 
-    /// Create i64.load32_s operation for specific memory
-    pub fn i64_load32_s(memory_index: u32, offset: u32, align: u32) -> Self {
+    /// Create `i64.load32_s` operation for specific memory
+    #[must_use] pub fn i64_load32_s(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I64, true, 32)
     }
 
-    /// Create i64.load32_u operation for specific memory
-    pub fn i64_load32_u(memory_index: u32, offset: u32, align: u32) -> Self {
+    /// Create `i64.load32_u` operation for specific memory
+    #[must_use] pub fn i64_load32_u(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I64, false, 32)
     }
 
@@ -169,7 +169,7 @@ pub struct MultiMemoryStore {
 
 impl MultiMemoryStore {
     /// Create a new multi-memory store operation
-    pub fn new(
+    #[must_use] pub fn new(
         memory_index: u32,
         offset: u32,
         align: u32,
@@ -186,47 +186,47 @@ impl MultiMemoryStore {
     }
 
     /// Create i32.store operation for specific memory
-    pub fn i32_store(memory_index: u32, offset: u32, align: u32) -> Self {
+    #[must_use] pub fn i32_store(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I32, 32)
     }
 
     /// Create i64.store operation for specific memory
-    pub fn i64_store(memory_index: u32, offset: u32, align: u32) -> Self {
+    #[must_use] pub fn i64_store(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I64, 64)
     }
 
     /// Create f32.store operation for specific memory
-    pub fn f32_store(memory_index: u32, offset: u32, align: u32) -> Self {
+    #[must_use] pub fn f32_store(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::F32, 32)
     }
 
     /// Create f64.store operation for specific memory
-    pub fn f64_store(memory_index: u32, offset: u32, align: u32) -> Self {
+    #[must_use] pub fn f64_store(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::F64, 64)
     }
 
     /// Create i32.store8 operation for specific memory
-    pub fn i32_store8(memory_index: u32, offset: u32, align: u32) -> Self {
+    #[must_use] pub fn i32_store8(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I32, 8)
     }
 
     /// Create i32.store16 operation for specific memory
-    pub fn i32_store16(memory_index: u32, offset: u32, align: u32) -> Self {
+    #[must_use] pub fn i32_store16(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I32, 16)
     }
 
     /// Create i64.store8 operation for specific memory
-    pub fn i64_store8(memory_index: u32, offset: u32, align: u32) -> Self {
+    #[must_use] pub fn i64_store8(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I64, 8)
     }
 
     /// Create i64.store16 operation for specific memory
-    pub fn i64_store16(memory_index: u32, offset: u32, align: u32) -> Self {
+    #[must_use] pub fn i64_store16(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I64, 16)
     }
 
     /// Create i64.store32 operation for specific memory
-    pub fn i64_store32(memory_index: u32, offset: u32, align: u32) -> Self {
+    #[must_use] pub fn i64_store32(memory_index: u32, offset: u32, align: u32) -> Self {
         Self::new(memory_index, offset, align, ValueType::I64, 32)
     }
 
@@ -261,7 +261,7 @@ pub struct MultiMemoryBulk {
 
 impl MultiMemoryBulk {
     /// Create new multi-memory bulk operations helper
-    pub fn new(memory_index: u32) -> Self {
+    #[must_use] pub fn new(memory_index: u32) -> Self {
         Self { memory_index }
     }
 
@@ -318,7 +318,7 @@ pub struct MultiMemoryCrossCopy {
 
 impl MultiMemoryCrossCopy {
     /// Create new cross-memory copy operation
-    pub fn new(dest_memory_index: u32, src_memory_index: u32) -> Self {
+    #[must_use] pub fn new(dest_memory_index: u32, src_memory_index: u32) -> Self {
         Self {
             dest_memory_index,
             src_memory_index,
@@ -359,7 +359,7 @@ pub struct MultiMemorySize {
 
 impl MultiMemorySize {
     /// Create new memory size operation
-    pub fn new(memory_index: u32) -> Self {
+    #[must_use] pub fn new(memory_index: u32) -> Self {
         Self { memory_index }
     }
 
@@ -382,7 +382,7 @@ pub struct MultiMemoryGrow {
 
 impl MultiMemoryGrow {
     /// Create new memory grow operation
-    pub fn new(memory_index: u32) -> Self {
+    #[must_use] pub fn new(memory_index: u32) -> Self {
         Self { memory_index }
     }
 
@@ -406,7 +406,7 @@ impl MultiMemoryGrow {
         // Try to grow - convert pages to bytes
         let delta_bytes = (page_count as usize) * 65536;
         match memory.grow(delta_bytes) {
-            Ok(_) => Ok(Value::I32(old_size_pages as i32)),
+            Ok(()) => Ok(Value::I32(old_size_pages as i32)),
             Err(_) => Ok(Value::I32(-1)), // WebAssembly convention for grow failure
         }
     }

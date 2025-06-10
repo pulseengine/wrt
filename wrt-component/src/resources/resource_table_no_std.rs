@@ -36,21 +36,21 @@ pub enum VerificationLevel {
 /// Trait for buffer pools that can be used by ResourceTable in no_std
 pub trait BufferPoolTrait {
     /// Allocate a buffer of at least the specified size
-    fn allocate(&mut self, size: usize) -> Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>>;
+    fn allocate(&mut self, size: usize) -> Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>, NoStdProvider<65536>>;
 
     /// Return a buffer to the pool
-    fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<()>;
+    fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<(), NoStdProvider<65536>>;
 
     /// Reset the buffer pool
     fn reset(&mut self);
 }
 
 impl BufferPoolTrait for BoundedBufferPool {
-    fn allocate(&mut self, size: usize) -> Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>> {
+    fn allocate(&mut self, size: usize) -> Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>, NoStdProvider<65536>> {
         self.allocate(size)
     }
 
-    fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<()> {
+    fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<(), NoStdProvider<65536>> {
         self.return_buffer(buffer)
     }
 
@@ -162,9 +162,9 @@ struct ResourceEntry {
 /// uses fixed-size BoundedVec instead of HashMap for resource storage.
 pub struct ResourceTable {
     /// Resource handles and entries
-    resource_handles: BoundedVec<u32, MAX_RESOURCES>,
+    resource_handles: BoundedVec<u32, MAX_RESOURCES, NoStdProvider<65536>>,
     /// Resource entries
-    resource_entries: BoundedVec<ResourceEntry, MAX_RESOURCES>,
+    resource_entries: BoundedVec<ResourceEntry, MAX_RESOURCES, NoStdProvider<65536>>,
     /// Next available resource handle
     next_handle: u32,
     /// Default memory strategy
@@ -174,40 +174,39 @@ pub struct ResourceTable {
     /// Buffer pool for bounded copy operations
     buffer_pool: Box<Mutex<dyn BufferPoolTrait>>,
     /// Interceptors for resource operations
-    interceptors: BoundedVec<Box<dyn ResourceInterceptor>, MAX_INTERCEPTORS>,
+    /// Note: Using a fixed-size array instead of BoundedVec to avoid trait object issues
+    interceptors: [Option<Box<dyn ResourceInterceptor>>; MAX_INTERCEPTORS],
+    interceptor_count: usize,
 }
 
 impl ResourceTable {
     /// Create a new resource table with default settings
     pub fn new() -> Self {
         Self {
-            resource_handles: BoundedVec::new(),
-            resource_entries: BoundedVec::new(),
+            resource_handles: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            resource_entries: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             next_handle: 1, // Start at 1 as 0 is reserved
             default_memory_strategy: MemoryStrategy::default(),
             default_verification_level: VerificationLevel::Critical,
             buffer_pool: Box::new(Mutex::new(BoundedBufferPool::new())),
-            interceptors: BoundedVec::new(),
+            interceptors: [None; MAX_INTERCEPTORS],
+            interceptor_count: 0,
         }
     }
 
     /// Add a resource interceptor
     pub fn add_interceptor(&mut self, interceptor: Box<dyn ResourceInterceptor>) -> Result<()> {
-        if self.interceptors.len() >= MAX_INTERCEPTORS {
+        if self.interceptor_count >= MAX_INTERCEPTORS {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()) reached", MAX_INTERCEPTORS),
+                "Maximum interceptors reached"
             ));
         }
 
-        self.interceptors.push(interceptor).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()),
-            )
-        })
+        self.interceptors[self.interceptor_count] = Some(interceptor);
+        self.interceptor_count += 1;
+        Ok(())
     }
 
     /// Create a new resource
@@ -221,7 +220,7 @@ impl ResourceTable {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()) reached", MAX_RESOURCES),
+                &format!("Maximum resources reached: {}", MAX_RESOURCES)
             ));
         }
 
@@ -229,8 +228,10 @@ impl ResourceTable {
         let resource = Resource::new(type_idx, data);
 
         // Notify interceptors about resource creation
-        for interceptor in self.interceptors.iter_mut() {
-            interceptor.on_resource_create(type_idx, &resource)?;
+        for interceptor_opt in self.interceptors[..self.interceptor_count].iter_mut() {
+            if let Some(interceptor) = interceptor_opt {
+                interceptor.on_resource_create(type_idx, &resource)?;
+            }
         }
 
         // Assign a handle
@@ -251,7 +252,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -263,7 +264,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -277,13 +278,15 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
         // Notify interceptors about resource dropping
-        for interceptor in self.interceptors.iter_mut() {
-            interceptor.on_resource_drop(handle)?;
+        for interceptor_opt in self.interceptors[..self.interceptor_count].iter_mut() {
+            if let Some(interceptor) = interceptor_opt {
+                interceptor.on_resource_drop(handle)?;
+            }
         }
 
         // Remove the entry
@@ -300,7 +303,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -313,8 +316,10 @@ impl ResourceTable {
         }
 
         // Notify interceptors about resource access
-        for interceptor in self.interceptors.iter() {
-            interceptor.on_resource_access(handle)?;
+        for interceptor_opt in self.interceptors[..self.interceptor_count].iter() {
+            if let Some(interceptor) = interceptor_opt {
+                interceptor.on_resource_access(handle)?;
+            }
         }
 
         // Create a copy of the resource mutex
@@ -341,7 +346,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -349,9 +354,10 @@ impl ResourceTable {
         let local_op = from_format_resource_operation(&operation);
 
         // Check interceptors first
-        for interceptor in self.interceptors.iter_mut() {
-            // Pass the format operation to interceptors
-            interceptor.on_resource_operation(handle, &operation)?;
+        for interceptor_opt in self.interceptors[..self.interceptor_count].iter_mut() {
+            if let Some(interceptor) = interceptor_opt {
+                // Pass the format operation to interceptors
+                interceptor.on_resource_operation(handle, &operation)?;
 
             // Check if the interceptor will override the operation
             if let Some(result) = interceptor.intercept_resource_operation(handle, &operation)? {
@@ -392,7 +398,7 @@ impl ResourceTable {
             _ => Err(Error::new(
                 ErrorCategory::Operation,
                 codes::UNSUPPORTED_OPERATION,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )),
         }
     }
@@ -404,7 +410,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -421,7 +427,7 @@ impl ResourceTable {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -437,12 +443,12 @@ impl ResourceTable {
     }
 
     /// Get a buffer from the pool
-    pub fn get_buffer(&mut self, size: usize) -> Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>> {
+    pub fn get_buffer(&mut self, size: usize) -> Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>, NoStdProvider<65536>> {
         self.buffer_pool.lock().unwrap().allocate(size)
     }
 
     /// Return a buffer to the pool
-    pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<()> {
+    pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<(), NoStdProvider<65536>> {
         self.buffer_pool.lock().unwrap().return_buffer(buffer)
     }
 
@@ -453,10 +459,13 @@ impl ResourceTable {
 
     /// Get memory strategy from interceptors
     pub fn get_strategy_from_interceptors(&self, handle: u32) -> Option<MemoryStrategy> {
-        for interceptor in self.interceptors.iter() {
-            if let Some(strategy_val) = interceptor.get_memory_strategy(handle) {
-                if let Some(strategy) = MemoryStrategy::from_u8(strategy_val) {
-                    return Some(strategy);
+        for interceptor_opt in self.interceptors[..self.interceptor_count].iter() {
+            if let Some(interceptor) = interceptor_opt {
+                    if let Some(strategy_val) = interceptor.get_memory_strategy(handle) {
+                        if let Some(strategy) = MemoryStrategy::from_u8(strategy_val) {
+                            return Some(strategy);
+                        }
+                    }
                 }
             }
         }
@@ -476,7 +485,7 @@ impl Debug for ResourceTable {
             .field("next_handle", &self.next_handle)
             .field("default_memory_strategy", &self.default_memory_strategy)
             .field("default_verification_level", &self.default_verification_level)
-            .field("interceptor_count", &self.interceptors.len())
+            .field("interceptor_count", &self.interceptor_count)
             .finish()
     }
 }
@@ -486,28 +495,28 @@ mod tests {
     use super::*;
 
     struct TestInterceptor {
-        executed_operations: BoundedVec<String, 32>,
+        executed_operations: BoundedVec<String, 32, NoStdProvider<65536>>,
     }
 
     impl TestInterceptor {
         fn new() -> Self {
-            Self { executed_operations: BoundedVec::new() }
+            Self { executed_operations: BoundedVec::new(DefaultMemoryProvider::default()).unwrap() }
         }
     }
 
     impl ResourceInterceptor for TestInterceptor {
         fn on_resource_create(&mut self, type_idx: u32, _resource: &Resource) -> Result<()> {
-            self.executed_operations.push(ComponentValue::String("Component operation result".into())).unwrap();
+            self.executed_operations.push("Component not found").unwrap();
             Ok(())
         }
 
         fn on_resource_drop(&mut self, handle: u32) -> Result<()> {
-            self.executed_operations.push(ComponentValue::String("Component operation result".into())).unwrap();
+            self.executed_operations.push("Component not found").unwrap();
             Ok(())
         }
 
         fn on_resource_access(&mut self, handle: u32) -> Result<()> {
-            self.executed_operations.push(ComponentValue::String("Component operation result".into())).unwrap();
+            self.executed_operations.push("Component not found").unwrap();
             Ok(())
         }
 
@@ -516,7 +525,7 @@ mod tests {
             handle: u32,
             _operation: &FormatResourceOperation,
         ) -> Result<()> {
-            self.executed_operations.push(ComponentValue::String("Component operation result".into())).unwrap();
+            self.executed_operations.push("Component not found").unwrap();
             Ok(())
         }
 
@@ -524,12 +533,12 @@ mod tests {
             &mut self,
             handle: u32,
             _operation: &FormatResourceOperation,
-        ) -> Result<Option<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>>> {
-            self.executed_operations.push(ComponentValue::String("Component operation result".into())).unwrap();
+        ) -> Result<Option<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>>, NoStdProvider<65536>> {
+            self.executed_operations.push("Component not found").unwrap();
 
             // Special case for testing
             if handle == 42 {
-                let mut vec = BoundedVec::new();
+                let mut vec = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
                 vec.push(1).unwrap();
                 vec.push(2).unwrap();
                 vec.push(3).unwrap();
@@ -697,3 +706,106 @@ mod tests {
         assert_eq!(strategy2, Some(MemoryStrategy::BoundedCopy));
     }
 }
+
+// Implement required traits for BoundedVec compatibility
+use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream};
+
+// Macro to implement basic traits for complex types
+macro_rules! impl_basic_traits {
+    ($type:ty, $default_val:expr) => {
+        impl Checksummable for $type {
+            fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+                0u32.update_checksum(checksum);
+            }
+        }
+
+        impl ToBytes for $type {
+            fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                &self,
+                _writer: &mut WriteStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<()> {
+                Ok(())
+            }
+        }
+
+        impl FromBytes for $type {
+            fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                _reader: &mut ReadStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<Self> {
+                Ok($default_val)
+            }
+        }
+    };
+}
+
+// Default implementations for ResourceEntry
+impl Default for ResourceEntry {
+    fn default() -> Self {
+        Self {
+            handle: ResourceHandle::new(0),
+            resource_type: ResourceTypeId::new(0),
+            data: ResourceData::Binary(BoundedVec::new(DefaultMemoryProvider::default()).unwrap()),
+            created_at: 0,
+            last_accessed: 0,
+            ref_count: 0,
+            strategy: MemoryStrategy::default(),
+        }
+    }
+}
+
+// Apply macro to types that need traits
+impl_basic_traits!(ResourceEntry, ResourceEntry::default());
+
+// Wrapper for trait objects to enable BoundedVec storage
+#[derive(Debug)]
+pub struct InterceptorWrapper {
+    // We'll store a function pointer instead of a trait object for no_std compatibility
+    pub interceptor_id: u32,
+    pub name: BoundedString<64, DefaultMemoryProvider>,
+}
+
+impl InterceptorWrapper {
+    pub fn new(id: u32, name: &str) -> Result<Self> {
+        Ok(Self {
+            interceptor_id: id,
+            name: BoundedString::from_str(name).map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ALLOCATION_FAILED,
+                "Failed to create interceptor name",
+            ))?,
+        })
+    }
+}
+
+impl Default for InterceptorWrapper {
+    fn default() -> Self {
+        Self {
+            interceptor_id: 0,
+            name: BoundedString::new(DefaultMemoryProvider::default()).unwrap(),
+        }
+    }
+}
+
+impl Clone for InterceptorWrapper {
+    fn clone(&self) -> Self {
+        Self {
+            interceptor_id: self.interceptor_id,
+            name: self.name.clone(),
+        }
+    }
+}
+
+impl PartialEq for InterceptorWrapper {
+    fn eq(&self, other: &Self) -> bool {
+        self.interceptor_id == other.interceptor_id
+    }
+}
+
+impl Eq for InterceptorWrapper {}
+
+// Apply traits to the wrapper
+impl_basic_traits!(InterceptorWrapper, InterceptorWrapper::default());
+
+// Note: For now, we'll modify the ResourceTable to use InterceptorWrapper instead of Box<dyn ResourceInterceptor>

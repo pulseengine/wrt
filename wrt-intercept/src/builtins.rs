@@ -3,7 +3,11 @@
 //! This module provides facilities for intercepting built-in function calls
 //! in the WebAssembly Component Model implementation.
 
-use crate::prelude::*;
+use crate::prelude::{BuiltinType, Debug, str, Value};
+use wrt_error::{Error, Result};
+
+#[cfg(feature = "std")]
+use std::{sync::{Arc, RwLock}, collections::HashSet};
 
 #[cfg(feature = "std")]
 use wrt_foundation::component_value::{ComponentValue, ValType};
@@ -18,7 +22,7 @@ pub struct InterceptContext {
     /// The name of the component making the built-in call
     #[cfg(feature = "std")]
     pub component_name: String,
-    /// The name of the component making the built-in call (static in no_std)
+    /// The name of the component making the built-in call (static in `no_std`)
     #[cfg(not(feature = "std"))]
     pub component_name: &'static str,
     /// The built-in function being called
@@ -26,7 +30,7 @@ pub struct InterceptContext {
     /// The host environment's unique identifier
     #[cfg(feature = "std")]
     pub host_id: String,
-    /// The host environment's unique identifier (static in no_std)
+    /// The host environment's unique identifier (static in `no_std`)
     #[cfg(not(feature = "std"))]
     pub host_id: &'static str,
     /// Additional context data (if any)
@@ -46,7 +50,7 @@ impl InterceptContext {
     /// # Returns
     ///
     /// A new `InterceptContext` instance
-    pub fn new(_component_name: &str, builtin_type: BuiltinType, _host_id: &str) -> Self {
+    #[must_use] pub fn new(_component_name: &str, builtin_type: BuiltinType, _host_id: &str) -> Self {
         Self {
             #[cfg(feature = "std")]
             component_name: _component_name.to_string(),
@@ -326,6 +330,15 @@ pub enum BeforeBuiltinResult {
     Continue(Vec<ComponentValue<wrt_foundation::NoStdProvider<64>>>),
     /// Skip the built-in execution and use these values as the result
     Bypass(Vec<ComponentValue<wrt_foundation::NoStdProvider<64>>>),
+}
+
+/// Result of the `before_builtin` method (no_std version)
+#[cfg(not(feature = "std"))]
+pub enum BeforeBuiltinResult {
+    /// Continue with the built-in execution
+    Continue,
+    /// Skip the built-in execution
+    Bypass,
 }
 
 #[cfg(test)]

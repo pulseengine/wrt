@@ -19,6 +19,7 @@
 //! - `no_std` support.
 
 #![cfg_attr(not(feature = "std"), no_std)] // Rule: Enforce no_std when std feature is not enabled
+#![cfg_attr(all(not(feature = "std"), not(feature = "disable-panic-handler")), no_main)]
 #![deny(missing_docs)] // Rule 9: Require documentation.
 #![deny(clippy::panic)] // Rule 3: No panic!.
 #![deny(clippy::unwrap_used)] // Rule 3: No unwrap.
@@ -116,6 +117,14 @@ pub mod generic_threading;
 
 
 // Watchdog (requires std)
+
+// Panic handler for testing individual crates - only when not disabled
+// Disabled to avoid conflicts with wrt-panic's panic handler
+// #[cfg(all(not(feature = "std"), not(feature = "disable-panic-handler")))]
+// #[panic_handler] 
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }
 #[cfg(feature = "std")]
 pub mod watchdog;
 
@@ -126,8 +135,14 @@ pub mod ipc;
 #[cfg(feature = "std")]
 pub mod high_availability;
 
-// Panic handler for no_std builds - always enabled unless explicitly disabled
-#[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// Panic handler for no_std builds
+// Only define panic handler if we're the final crate and no other panic handler exists
+#[cfg(all(
+    not(feature = "std"), 
+    not(test), 
+    not(feature = "disable-panic-handler"),
+    feature = "enable-panic-handler"
+))]
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     // For safety-critical systems, enter infinite loop to maintain known safe state
@@ -538,9 +553,11 @@ struct PanicAllocator;
 
 #[cfg(all(not(feature = "std"), not(test)))]
 unsafe impl core::alloc::GlobalAlloc for PanicAllocator {
+    #[allow(clippy::panic)] // Intentional panic to prevent allocation in no_std
     unsafe fn alloc(&self, _layout: core::alloc::Layout) -> *mut u8 {
         panic!("Attempted allocation in no_std mode")
     }
+    #[allow(clippy::panic)] // Intentional panic to prevent deallocation in no_std
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: core::alloc::Layout) {
         panic!("Attempted deallocation in no_std mode")
     }

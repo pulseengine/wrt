@@ -22,8 +22,20 @@
 //! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 #![warn(missing_docs)]
+
+// Simple global allocator for no_std mode - use a static buffer
+#[cfg(all(not(feature = "std"), feature = "enable-panic-handler"))]
+use linked_list_allocator::LockedHeap;
+
+#[cfg(all(not(feature = "std"), feature = "enable-panic-handler"))]
+#[global_allocator]
+static ALLOCATOR: LockedHeap = LockedHeap::empty();
+
+// Static heap memory for the allocator
+#[cfg(all(not(feature = "std"), feature = "enable-panic-handler"))]
+static mut HEAP: [u8; 64 * 1024] = [0; 64 * 1024]; // 64KB heap
 
 // Conditional imports based on std feature
 #[cfg(feature = "std")]
@@ -376,7 +388,16 @@ fn main() -> Result<()> {
 
 /// Main entry point for no_std mode
 #[cfg(not(feature = "std"))]
-fn main() -> Result<()> {
+fn main() {
+    // Initialize the allocator if available
+    #[cfg(feature = "enable-panic-handler")]
+    {
+        #[allow(unsafe_code)] // Required for allocator initialization
+        unsafe {
+            ALLOCATOR.lock().init(HEAP.as_mut_ptr(), HEAP.len());
+        }
+    }
+    
     // In no_std mode, we typically get module data from embedded storage
     // For this demo, we'll use a minimal WASM module
     const DEMO_MODULE: &[u8] = &[
@@ -391,7 +412,14 @@ fn main() -> Result<()> {
     config.max_memory = 4096; // 4KB for embedded
 
     let mut engine = WrtdEngine::new(config);
-    engine.execute_module()
+    if let Err(_e) = engine.execute_module() {
+        // In no_std mode, we can't easily print errors
+        // For embedded applications, this would typically trigger some error handling mechanism
+        // For now, we just enter an infinite loop (panic-like behavior)
+        loop {
+            core::hint::spin_loop();
+        }
+    }
 }
 
 // Panic handler for no_std builds

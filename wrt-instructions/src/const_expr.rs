@@ -10,7 +10,7 @@
 //! The extended constant expressions proposal adds support for more
 //! instructions in constant contexts.
 
-use crate::prelude::*;
+use crate::prelude::{BoundedCapacity, BoundedVec, Debug, PartialEq};
 use wrt_error::{Error, Result};
 use wrt_foundation::{
     types::{RefType, ValueType},
@@ -83,7 +83,7 @@ pub struct ConstExprSequence {
 
 impl ConstExprSequence {
     /// Create a new constant expression sequence
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self {
             instructions: Default::default(),
             len: 0,
@@ -108,7 +108,7 @@ impl ConstExprSequence {
         })
     }
     
-    /// Helper to pop from stack in both std and no_std environments
+    /// Helper to pop from stack in both std and `no_std` environments
     #[cfg(not(feature = "std"))]
     fn stack_pop(stack: &mut BoundedVec<Value, 8, wrt_foundation::NoStdProvider<128>>) -> Result<Value> {
         match stack.pop() {

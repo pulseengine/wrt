@@ -2,7 +2,7 @@
 //!
 //! This module provides the implementation for WebAssembly function types.
 
-use crate::prelude::*;
+use crate::prelude::{Debug, DefaultProvider, FuncType};
 
 /// Placeholder Function type for runtime functions
 #[derive(Debug, Clone)]

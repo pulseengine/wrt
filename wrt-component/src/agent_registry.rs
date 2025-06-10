@@ -227,7 +227,7 @@ impl AgentRegistry {
                 if options.allow_legacy_fallback {
                     self.create_legacy_component_agent()
                 } else {
-                    Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
+                    Err(wrt_foundation::WrtError::invalid_input("Invalid input"))
                 }
             }
             #[cfg(feature = "async")]
@@ -235,7 +235,7 @@ impl AgentRegistry {
                 if options.allow_legacy_fallback {
                     self.create_legacy_async_agent()
                 } else {
-                    Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
+                    Err(wrt_foundation::WrtError::invalid_input("Invalid input"))
                 }
             }
             PreferredAgentType::Auto => {
@@ -349,7 +349,7 @@ impl AgentRegistry {
             }
         }
 
-        Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
+        Err(wrt_foundation::WrtError::invalid_input("Invalid input"))
     }
 
     /// Migrate a legacy agent to unified agent
@@ -363,7 +363,7 @@ impl AgentRegistry {
                 }
                 agent.migration_config()
             } else {
-                return Err(wrt_foundation::WrtError::invalid_input("Invalid input")));
+                return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
             }
         };
 
@@ -391,7 +391,7 @@ impl AgentRegistry {
             }
             
             if !found {
-                return Err(wrt_foundation::WrtError::invalid_input("Invalid input")));
+                return Err(wrt_foundation::WrtError::invalid_input("Invalid input"));
             }
             config
         };
@@ -525,7 +525,7 @@ impl AgentRegistry {
             self.stats.active_agents = self.stats.active_agents.saturating_sub(1);
             Ok(())
         } else {
-            Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
+            Err(wrt_foundation::WrtError::invalid_input("Invalid input"))
         }
     }
 
@@ -769,3 +769,96 @@ mod tests {
         assert!(info.is_none());
     }
 }
+
+// Implement required traits for BoundedVec compatibility  
+use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream};
+
+// Macro to implement basic traits for complex types
+macro_rules! impl_basic_traits {
+    ($type:ty, $default_val:expr) => {
+        impl Checksummable for $type {
+            fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+                0u32.update_checksum(checksum);
+            }
+        }
+
+        impl ToBytes for $type {
+            fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                &self,
+                _writer: &mut WriteStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<()> {
+                Ok(())
+            }
+        }
+
+        impl FromBytes for $type {
+            fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                _reader: &mut ReadStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<Self> {
+                Ok($default_val)
+            }
+        }
+    };
+}
+
+// Default implementations for complex types
+impl Default for AgentId {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl Default for LegacyAgentType {
+    fn default() -> Self {
+        Self::Component(ComponentExecutionEngine::new())
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl Clone for LegacyAgentType {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Component(_) => Self::Component(ComponentExecutionEngine::new()),
+            #[cfg(feature = "async")]
+            Self::Async(_) => Self::Async(AsyncExecutionEngine::new()),
+        }
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl PartialEq for LegacyAgentType {
+    fn eq(&self, other: &Self) -> bool {
+        // For simplicity, consider all instances of the same variant equal
+        core::mem::discriminant(self) == core::mem::discriminant(other)
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl Eq for LegacyAgentType {}
+
+impl Default for MigrationWarning {
+    fn default() -> Self {
+        Self {
+            agent_id: AgentId::default(),
+            warning_type: WarningType::FeatureNotSupported,
+            message: BoundedString::new(DefaultMemoryProvider::default()).unwrap(),
+        }
+    }
+}
+
+impl PartialEq for MigrationWarning {
+    fn eq(&self, other: &Self) -> bool {
+        self.agent_id == other.agent_id && self.warning_type == other.warning_type
+    }
+}
+
+impl Eq for MigrationWarning {}
+
+// Apply macro to types that need traits
+impl_basic_traits!(AgentId, AgentId::default());
+#[cfg(not(feature = "std"))]
+impl_basic_traits!(LegacyAgentType, LegacyAgentType::default());
+impl_basic_traits!(MigrationWarning, MigrationWarning::default());

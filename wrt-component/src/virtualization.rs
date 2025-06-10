@@ -1,16 +1,28 @@
 use crate::{
-    canonical_options::CanonicalOptions, post_return::PostReturnRegistry, ComponentInstance,
-    ComponentInstanceId, ResourceHandle, ValType,
+    canonical_abi::canonical_options::CanonicalOptions, 
+    post_return::PostReturnRegistry, 
+    components::component_instantiation::ComponentInstance,
 };
+
+// Placeholder types
+pub type ComponentInstanceId = u32;
+pub type ResourceHandle = u32;
+pub type ValType = u32;
 use core::{
     fmt,
     sync::atomic::{AtomicBool, AtomicU32, Ordering},
 };
 use wrt_foundation::{
     bounded_collections::{BoundedHashMap, BoundedVec},
-    component_value::ComponentValue,
     safe_memory::SafeMemory,
 };
+
+#[cfg(feature = "std")]
+use wrt_foundation::component_value::ComponentValue;
+
+#[cfg(not(feature = "std"))]
+// For no_std, use a simpler ComponentValue representation
+use crate::types::Value as ComponentValue;
 
 const MAX_VIRTUAL_COMPONENTS: usize = 256;
 const MAX_VIRTUAL_IMPORTS: usize = 1024;
@@ -50,12 +62,12 @@ pub type VirtualizationResult<T> = Result<T, VirtualizationError>;
 pub enum Capability {
     Memory { max_size: usize },
     FileSystem { read_only: bool, path_prefix: Option<String> },
-    Network { allowed_hosts: BoundedVec<String, 32> },
+    Network { allowed_hosts: BoundedVec<String, 32, NoStdProvider<65536>> },
     Time { precision_ms: u64 },
     Random,
     Threading { max_threads: u32 },
     Logging { max_level: LogLevel },
-    Custom { name: String, data: BoundedVec<u8, 256> },
+    Custom { name: String, data: BoundedVec<u8, 256, NoStdProvider<65536>> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
@@ -81,11 +93,11 @@ pub struct VirtualComponent {
     pub instance_id: ComponentInstanceId,
     pub name: String,
     pub parent: Option<ComponentInstanceId>,
-    pub children: BoundedVec<ComponentInstanceId, MAX_VIRTUAL_COMPONENTS>,
-    pub capabilities: BoundedVec<Capability, MAX_CAPABILITY_GRANTS>,
+    pub children: BoundedVec<ComponentInstanceId, MAX_VIRTUAL_COMPONENTS, NoStdProvider<65536>>,
+    pub capabilities: BoundedVec<Capability, MAX_CAPABILITY_GRANTS, NoStdProvider<65536>>,
     pub virtual_imports: BoundedHashMap<String, VirtualImport, MAX_VIRTUAL_IMPORTS>,
     pub virtual_exports: BoundedHashMap<String, VirtualExport, MAX_VIRTUAL_EXPORTS>,
-    pub memory_regions: BoundedVec<VirtualMemoryRegion, MAX_VIRTUAL_MEMORY_REGIONS>,
+    pub memory_regions: BoundedVec<VirtualMemoryRegion, MAX_VIRTUAL_MEMORY_REGIONS, NoStdProvider<65536>>,
     pub isolation_level: IsolationLevel,
     pub resource_limits: ResourceLimits,
     pub is_sandboxed: bool,
@@ -175,7 +187,7 @@ impl Default for ResourceLimits {
 pub struct VirtualizationManager {
     virtual_components:
         BoundedHashMap<ComponentInstanceId, VirtualComponent, MAX_VIRTUAL_COMPONENTS>,
-    capability_grants: BoundedVec<CapabilityGrant, MAX_CAPABILITY_GRANTS>,
+    capability_grants: BoundedVec<CapabilityGrant, MAX_CAPABILITY_GRANTS, NoStdProvider<65536>>,
     host_exports: BoundedHashMap<String, HostExport, MAX_VIRTUAL_EXPORTS>,
     sandbox_registry: BoundedHashMap<ComponentInstanceId, SandboxState, MAX_VIRTUAL_COMPONENTS>,
     next_virtual_id: AtomicU32,
@@ -224,7 +236,7 @@ impl VirtualizationManager {
     pub fn new() -> Self {
         Self {
             virtual_components: BoundedHashMap::new(),
-            capability_grants: BoundedVec::new(),
+            capability_grants: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             host_exports: BoundedHashMap::new(),
             sandbox_registry: BoundedHashMap::new(),
             next_virtual_id: AtomicU32::new(1000),
@@ -264,11 +276,11 @@ impl VirtualizationManager {
             instance_id,
             name: name.to_string(),
             parent,
-            children: BoundedVec::new(),
-            capabilities: BoundedVec::new(),
+            children: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            capabilities: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             virtual_imports: BoundedHashMap::new(),
             virtual_exports: BoundedHashMap::new(),
-            memory_regions: BoundedVec::new(),
+            memory_regions: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             isolation_level,
             resource_limits: ResourceLimits::default(),
             is_sandboxed: isolation_level != IsolationLevel::None,
@@ -461,14 +473,14 @@ impl VirtualizationManager {
         let import =
             component.virtual_imports.get(import_name).ok_or_else(|| VirtualizationError {
                 kind: VirtualizationErrorKind::ImportNotFound,
-                message: ComponentValue::String("Component operation result".into()),
+                message: "Component not found",
             })?;
 
         if let Some(ref capability) = import.capability_required {
             if !self.check_capability(instance_id, capability) {
                 return Err(VirtualizationError {
                     kind: VirtualizationErrorKind::CapabilityDenied,
-                    message: ComponentValue::String("Component operation result".into()),
+                    message: "Component not found",
                 });
             }
         }
@@ -654,7 +666,7 @@ pub fn create_memory_capability(max_size: usize) -> Capability {
 }
 
 pub fn create_network_capability(allowed_hosts: &[&str]) -> Capability {
-    let mut hosts = BoundedVec::new();
+    let mut hosts = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
     for host in allowed_hosts {
         let _ = hosts.push(host.to_string());
     }

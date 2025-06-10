@@ -193,13 +193,13 @@ mod tests {
         #[cfg(not(any(feature = "std", )))]
         #[test]
         fn test_simple_hashmap_no_alloc() {
-            use wrt_foundation::no_std_hashmap::SimpleHashMap;
+            use wrt_foundation::BoundedMap;
 
             const CAPACITY: usize = 16;
             const PROVIDER_SIZE: usize = CAPACITY * 32;
             let provider = NoStdProvider::<PROVIDER_SIZE>::default();
-            let mut map: SimpleHashMap<u32, u32, CAPACITY, NoStdProvider<PROVIDER_SIZE>> =
-                SimpleHashMap::new(provider).unwrap();
+            let mut map: BoundedMap<u32, u32, CAPACITY, NoStdProvider<PROVIDER_SIZE>> =
+                BoundedMap::new();
 
             assert!(map.is_empty());
 
@@ -589,11 +589,12 @@ mod tests {
 // PANIC HANDLER FOR NO_STD ENVIRONMENTS
 // ===========================================
 
-#[cfg(all(not(feature = "std"), not(test)))]
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
+// Panic handler disabled to avoid conflicts with workspace builds
+// #[cfg(all(not(feature = "std"), not(test)))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }
 
 // ===========================================
 // ENTRY POINT FOR NO_STD ENVIRONMENTS

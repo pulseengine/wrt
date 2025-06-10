@@ -45,13 +45,13 @@ pub struct TaskManager {
     #[cfg(feature = "std")]
     tasks: BTreeMap<TaskId, Task>,
     #[cfg(not(any(feature = "std", )))]
-    tasks: BoundedVec<(TaskId, Task), MAX_TASKS>,
+    tasks: BoundedVec<(TaskId, Task), MAX_TASKS, NoStdProvider<65536>>,
 
     /// Ready queue for runnable tasks
     #[cfg(feature = "std")]
     ready_queue: Vec<TaskId>,
     #[cfg(not(any(feature = "std", )))]
-    ready_queue: BoundedVec<TaskId, MAX_TASKS>,
+    ready_queue: BoundedVec<TaskId, MAX_TASKS, NoStdProvider<65536>>,
 
     /// Currently executing task
     current_task: Option<TaskId>,
@@ -81,12 +81,12 @@ pub struct Task {
     #[cfg(feature = "std")]
     pub subtasks: Vec<TaskId>,
     #[cfg(not(any(feature = "std", )))]
-    pub subtasks: BoundedVec<TaskId, MAX_SUBTASKS>,
+    pub subtasks: BoundedVec<TaskId, MAX_SUBTASKS, NoStdProvider<65536>>,
     /// Borrowed resource handles
     #[cfg(feature = "std")]
     pub borrowed_handles: Vec<ResourceHandle>,
     #[cfg(not(any(feature = "std", )))]
-    pub borrowed_handles: BoundedVec<ResourceHandle, 64>,
+    pub borrowed_handles: BoundedVec<ResourceHandle, 64, NoStdProvider<65536>>,
     /// Task-local storage
     pub context: TaskContext,
     /// Waiting on waitables
@@ -95,7 +95,7 @@ pub struct Task {
     #[cfg(feature = "std")]
     pub return_values: Option<Vec<Value>>,
     #[cfg(not(any(feature = "std", )))]
-    pub return_values: Option<BoundedVec<Value, 16>>,
+    pub return_values: Option<BoundedVec<Value, 16, NoStdProvider<65536>>>,
     /// Error context (if failed)
     pub error_context: Option<ErrorContextHandle>,
 }
@@ -143,12 +143,12 @@ pub struct TaskContext {
     #[cfg(feature = "std")]
     pub call_stack: Vec<CallFrame>,
     #[cfg(not(any(feature = "std", )))]
-    pub call_stack: BoundedVec<CallFrame, MAX_TASK_CALL_DEPTH>,
+    pub call_stack: BoundedVec<CallFrame, MAX_TASK_CALL_DEPTH, NoStdProvider<65536>>,
     /// Task-local storage
     #[cfg(feature = "std")]
     pub storage: BTreeMap<String, ComponentValue>,
     #[cfg(not(any(feature = "std", )))]
-    pub storage: BoundedVec<(BoundedString<64>, ComponentValue), 32>,
+    pub storage: BoundedVec<(BoundedString<64, NoStdProvider<65536>>, ComponentValue), 32, NoStdProvider<65536>>,
     /// Task creation time (simplified)
     pub created_at: u64,
     /// Task deadline (if any)
@@ -166,7 +166,7 @@ pub struct CallFrame {
     #[cfg(feature = "std")]
     pub locals: Vec<Value>,
     #[cfg(not(any(feature = "std", )))]
-    pub locals: BoundedVec<Value, 32>,
+    pub locals: BoundedVec<Value, 32, NoStdProvider<65536>>,
     /// Return address
     pub return_address: Option<u32>,
 }
@@ -193,11 +193,11 @@ impl TaskManager {
             #[cfg(feature = "std")]
             tasks: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            tasks: BoundedVec::new(),
+            tasks: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             ready_queue: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            ready_queue: BoundedVec::new(),
+            ready_queue: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             current_task: None,
             next_task_id: 0,
             resource_manager: ResourceLifecycleManager::new(),
@@ -235,22 +235,22 @@ impl TaskManager {
             #[cfg(feature = "std")]
             subtasks: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            subtasks: BoundedVec::new(),
+            subtasks: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             borrowed_handles: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            borrowed_handles: BoundedVec::new(),
+            borrowed_handles: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             context: TaskContext {
                 component_instance,
                 function_index,
                 #[cfg(feature = "std")]
                 call_stack: Vec::new(),
                 #[cfg(not(any(feature = "std", )))]
-                call_stack: BoundedVec::new(),
+                call_stack: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
                 #[cfg(feature = "std")]
                 storage: BTreeMap::new(),
                 #[cfg(not(any(feature = "std", )))]
-                storage: BoundedVec::new(),
+                storage: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
                 created_at: self.get_current_time(),
                 deadline: None,
             },
@@ -373,7 +373,7 @@ impl TaskManager {
                 Err(wrt_foundation::WrtError::InvalidState("Task is not ready to run".into()))
             }
         } else {
-            Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
+            Err(wrt_foundation::WrtError::invalid_input("Invalid input"))
         }
     }
 
@@ -388,7 +388,7 @@ impl TaskManager {
                 }
                 #[cfg(not(any(feature = "std", )))]
                 {
-                    let mut bounded_values = BoundedVec::new();
+                    let mut bounded_values = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
                     for value in values {
                         bounded_values.push(value).map_err(|_| {
                             wrt_foundation::WrtError::ResourceExhausted(
@@ -405,7 +405,7 @@ impl TaskManager {
                 self.current_task = task.parent;
                 Ok(())
             } else {
-                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input"))
             }
         } else {
             Err(wrt_foundation::WrtError::InvalidState("No current task".into()))
@@ -429,7 +429,7 @@ impl TaskManager {
                 // Return special value indicating we're waiting
                 Ok(u32::MAX) // Convention: MAX means "blocking"
             } else {
-                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input"))
             }
         } else {
             Err(wrt_foundation::WrtError::InvalidState("No current task".into()))
@@ -460,7 +460,7 @@ impl TaskManager {
                 self.current_task = task.parent;
                 Ok(())
             } else {
-                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input"))
             }
         } else {
             Err(wrt_foundation::WrtError::InvalidState("No current task".into()))

@@ -6,11 +6,12 @@
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::HashMap, format, string::String, vec::Vec};
 
-#[cfg(all(not(feature = "std")))]
-use std::{boxed::Box, collections::BTreeMap as HashMap, format, string::String, vec::Vec};
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedString as String, BoundedVec as Vec, no_std_hashmap::NoStdHashMap as HashMap, safe_memory::NoStdProvider};
 
-#[cfg(not(any(feature = "std", )))]
-use wrt_foundation::{BoundedString as String, BoundedVec as Vec, NoStdHashMap as HashMap};
+// Type aliases for no_std compatibility
+#[cfg(not(feature = "std"))]
+type Box<T> = wrt_foundation::SafeBox<T, NoStdProvider<65536>>;
 
 use crate::component_instantiation::{
     create_component_export, create_component_import, ComponentExport, ComponentImport,
@@ -82,7 +83,7 @@ pub struct LinkGraph {
 }
 
 /// Graph node representing a component
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GraphNode {
     /// Component ID
     pub component_id: ComponentId,
@@ -95,7 +96,7 @@ pub struct GraphNode {
 }
 
 /// Graph edge representing a dependency relationship
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GraphEdge {
     /// Source node index
     pub from: usize,
@@ -231,8 +232,8 @@ impl ComponentLinker {
         if !self.components.contains_key(id) {
             return Err(Error::new(
                 ErrorCategory::Runtime,
-                codes::COMPONENT_NOT_FOUND,
-                ComponentValue::String("Component operation result".into()),
+                wrt_error::codes::RESOURCE_NOT_FOUND,
+                "Component not found",
             ));
         }
 
@@ -269,8 +270,8 @@ impl ComponentLinker {
         let component = self.components.get(component_id).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Runtime,
-                codes::COMPONENT_NOT_FOUND,
-                ComponentValue::String("Component operation result".into()),
+                wrt_error::codes::RESOURCE_NOT_FOUND,
+                "Component not found",
             )
         })?;
 
@@ -355,6 +356,7 @@ impl ComponentLinker {
         }
 
         // Create some example exports and imports based on binary content
+        #[cfg(feature = "std")]
         let exports = vec![create_component_export(
             "main".to_string(),
             ExportType::Function(crate::component_instantiation::create_function_signature(
@@ -363,7 +365,44 @@ impl ComponentLinker {
                 vec![crate::canonical_abi::ComponentType::S32],
             )),
         )];
+        
+        #[cfg(not(feature = "std"))]
+        let exports = {
+            let mut exports = Vec::new();
+            let mut params = Vec::new();
+            let mut results = Vec::new();
+            results.push(crate::canonical_abi::ComponentType::S32).map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ALLOCATION_FAILED,
+                "Memory allocation failed"
+            ))?;
+            
+            let signature = crate::component_instantiation::create_function_signature(
+                String::new_from_str("main").map_err(|_| Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ALLOCATION_FAILED,
+                    "Memory allocation failed"
+                ))?,
+                params,
+                results,
+            );
+            
+            exports.push(create_component_export(
+                String::new_from_str("main").map_err(|_| Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ALLOCATION_FAILED,
+                    "Memory allocation failed"
+                ))?,
+                ExportType::Function(signature),
+            )).map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ALLOCATION_FAILED,
+                "Memory allocation failed"
+            ))?;
+            exports
+        };
 
+        #[cfg(feature = "std")]
         let imports = vec![create_component_import(
             "log".to_string(),
             "env".to_string(),
@@ -416,7 +455,7 @@ impl ComponentLinker {
         Err(Error::new(
             ErrorCategory::Runtime,
             codes::IMPORT_NOT_SATISFIED,
-            ComponentValue::String("Component operation result".into()),
+            "Component not found",
         ))
     }
 
@@ -494,7 +533,7 @@ impl LinkGraph {
         let node_index = self.find_node_index(component_id).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Runtime,
-                codes::COMPONENT_NOT_FOUND,
+                wrt_error::codes::RESOURCE_NOT_FOUND,
                 "Component not found in graph",
             )
         })?;
@@ -524,18 +563,51 @@ impl LinkGraph {
 
     /// Perform topological sort to determine instantiation order
     pub fn topological_sort(&self) -> Result<Vec<ComponentId>> {
-        let mut visited = vec![false; self.nodes.len()];
-        let mut temp_visited = vec![false; self.nodes.len()];
-        let mut result = Vec::new();
-
-        for i in 0..self.nodes.len() {
-            if !visited[i] {
-                self.topological_sort_visit(i, &mut visited, &mut temp_visited, &mut result)?;
+        #[cfg(feature = "std")]
+        {
+            let mut visited = vec![false; self.nodes.len()];
+            let mut temp_visited = vec![false; self.nodes.len()];
+            let mut result = Vec::new();
+            
+            for i in 0..self.nodes.len() {
+                if !visited[i] {
+                    self.topological_sort_visit(i, &mut visited, &mut temp_visited, &mut result)?;
+                }
             }
+            
+            result.reverse();
+            Ok(result)
         }
-
-        result.reverse();
-        Ok(result)
+        #[cfg(not(feature = "std"))]
+        {
+            // For no_std, create bounded vectors
+            let mut visited = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+            let mut temp_visited = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+            let mut result = Vec::new();
+            
+            // Initialize with false values
+            for _ in 0..self.nodes.len() {
+                visited.push(false).map_err(|_| Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ALLOCATION_FAILED,
+                    "Memory allocation failed"
+                ))?;
+                temp_visited.push(false).map_err(|_| Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ALLOCATION_FAILED,
+                    "Memory allocation failed"
+                ))?;
+            }
+            
+            for i in 0..self.nodes.len() {
+                if !visited[i] {
+                    self.topological_sort_visit(i, &mut visited, &mut temp_visited, &mut result)?;
+                }
+            }
+            
+            result.reverse();
+            Ok(result)
+        }
     }
 
     fn topological_sort_visit(
@@ -671,3 +743,78 @@ mod tests {
         assert_eq!(stats.instances_created, 0);
     }
 }
+
+// Implement required traits for BoundedVec compatibility  
+use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream};
+
+// Macro to implement basic traits
+macro_rules! impl_basic_traits {
+    ($type:ty, $default_val:expr) => {
+        impl Checksummable for $type {
+            fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+                0u32.update_checksum(checksum);
+            }
+        }
+
+        impl ToBytes for $type {
+            fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                &self,
+                _writer: &mut WriteStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<()> {
+                Ok(())
+            }
+        }
+
+        impl FromBytes for $type {
+            fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                _reader: &mut ReadStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<Self> {
+                Ok($default_val)
+            }
+        }
+    };
+}
+
+// Default implementations for complex types
+impl Default for GraphEdge {
+    fn default() -> Self {
+        Self {
+            from: 0,
+            to: 0,
+            import: ComponentImport {
+                name: String::new(),
+                module: String::new(),
+                import_type: ImportType::Function(FunctionSignature {
+                    name: String::new(),
+                    params: Vec::new(),
+                    returns: Vec::new(),
+                }),
+            },
+            export: ComponentExport {
+                name: String::new(),
+                export_type: ExportType::Function(FunctionSignature {
+                    name: String::new(),
+                    params: Vec::new(),
+                    returns: Vec::new(),
+                }),
+            },
+            weight: 0,
+        }
+    }
+}
+
+impl Default for GraphNode {
+    fn default() -> Self {
+        Self {
+            component_id: String::new(),
+            index: 0,
+            dependencies: Vec::new(),
+            dependents: Vec::new(),
+        }
+    }
+}
+
+impl_basic_traits!(GraphEdge, GraphEdge::default());
+impl_basic_traits!(GraphNode, GraphNode::default());

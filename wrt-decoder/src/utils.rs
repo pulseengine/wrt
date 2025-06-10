@@ -24,7 +24,15 @@ pub fn read_name_as_string(data: &[u8], offset: usize) -> Result<(String, usize)
     let name = match core::str::from_utf8(name_bytes) {
         #[cfg(feature = "std")]
         Ok(s) => std::string::ToString::to_string(s),
-                Ok(s) => alloc::string::ToString::to_string(s),
+        #[cfg(not(feature = "std"))]
+        Ok(s) => {
+            use wrt_foundation::BoundedString;
+            BoundedString::from_str(s).map_err(|_| Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "String too long for bounded storage",
+            ))?
+        },
         Err(_) => {
             return Err(Error::new(
                 ErrorCategory::Parse,

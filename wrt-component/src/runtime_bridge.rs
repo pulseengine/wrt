@@ -29,7 +29,7 @@ use std::{vec::Vec, string::String, collections::HashMap, boxed::Box, format};
 use std::{vec::Vec, string::String, collections::BTreeMap as HashMap, boxed::Box, format};
 
 #[cfg(not(any(feature = "std", )))]
-use wrt_foundation::{BoundedVec as Vec, BoundedString as String, NoStdHashMap as HashMap};
+use wrt_foundation::{BoundedVec as Vec, BoundedString as String, BoundedMap as HashMap};
 
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::{values::Value as CoreValue, types::ValueType};
@@ -372,7 +372,7 @@ impl ValueConverter {
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::TYPE_MISMATCH,
-                        ComponentValue::String("Component operation result".into()),
+                        "Component not found",
                     ))
                 } else {
                     // Fallback conversion
@@ -587,7 +587,7 @@ impl HostFunctionRegistry {
             signature,
             implementation: Box::new(func),
             metadata: HostFunctionMetadata {
-                description: ComponentValue::String("Component operation result".into()),
+                description: "Component not found",
                 parameter_count: 0, // Would be determined from signature
                 return_count: 1,
                 is_pure: false,
@@ -710,7 +710,7 @@ impl ComponentRuntimeBridge {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_STATE,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             ));
         }
 

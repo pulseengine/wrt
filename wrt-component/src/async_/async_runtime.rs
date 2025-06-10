@@ -51,13 +51,13 @@ pub struct AsyncRuntime {
     #[cfg(feature = "std")]
     streams: Vec<StreamEntry>,
     #[cfg(not(any(feature = "std", )))]
-    streams: BoundedVec<StreamEntry, MAX_CONCURRENT_TASKS>,
+    streams: BoundedVec<StreamEntry, MAX_CONCURRENT_TASKS, NoStdProvider<65536>>,
     
     /// Future registry
     #[cfg(feature = "std")]
     futures: Vec<FutureEntry>,
     #[cfg(not(any(feature = "std", )))]
-    futures: BoundedVec<FutureEntry, MAX_CONCURRENT_TASKS>,
+    futures: BoundedVec<FutureEntry, MAX_CONCURRENT_TASKS, NoStdProvider<65536>>,
     
     /// Runtime configuration
     config: RuntimeConfig,
@@ -76,13 +76,13 @@ pub struct TaskScheduler {
     #[cfg(feature = "std")]
     ready_queue: VecDeque<ScheduledTask>,
     #[cfg(not(any(feature = "std", )))]
-    ready_queue: BoundedVec<ScheduledTask, MAX_CONCURRENT_TASKS>,
+    ready_queue: BoundedVec<ScheduledTask, MAX_CONCURRENT_TASKS, NoStdProvider<65536>>,
     
     /// Waiting tasks (blocked on I/O or timers)
     #[cfg(feature = "std")]
     waiting_tasks: Vec<WaitingTask>,
     #[cfg(not(any(feature = "std", )))]
-    waiting_tasks: BoundedVec<WaitingTask, MAX_CONCURRENT_TASKS>,
+    waiting_tasks: BoundedVec<WaitingTask, MAX_CONCURRENT_TASKS, NoStdProvider<65536>>,
     
     /// Current time for scheduling
     current_time: u64,
@@ -98,13 +98,13 @@ pub struct Reactor {
     #[cfg(feature = "std")]
     pending_events: VecDeque<ReactorEvent>,
     #[cfg(not(any(feature = "std", )))]
-    pending_events: BoundedVec<ReactorEvent, MAX_REACTOR_EVENTS>,
+    pending_events: BoundedVec<ReactorEvent, MAX_REACTOR_EVENTS, NoStdProvider<65536>>,
     
     /// Event handlers
     #[cfg(feature = "std")]
     event_handlers: Vec<EventHandler>,
     #[cfg(not(any(feature = "std", )))]
-    event_handlers: BoundedVec<EventHandler, MAX_REACTOR_EVENTS>,
+    event_handlers: BoundedVec<EventHandler, MAX_REACTOR_EVENTS, NoStdProvider<65536>>,
 }
 
 /// Runtime configuration
@@ -150,7 +150,7 @@ pub struct StreamEntry {
     #[cfg(feature = "std")]
     pub tasks: Vec<TaskId>,
     #[cfg(not(any(feature = "std", )))]
-    pub tasks: BoundedVec<TaskId, 16>,
+    pub tasks: BoundedVec<TaskId, 16, NoStdProvider<65536>>,
 }
 
 /// Entry for a registered future
@@ -164,7 +164,7 @@ pub struct FutureEntry {
     #[cfg(feature = "std")]
     pub tasks: Vec<TaskId>,
     #[cfg(not(any(feature = "std", )))]
-    pub tasks: BoundedVec<TaskId, 16>,
+    pub tasks: BoundedVec<TaskId, 16, NoStdProvider<65536>>,
 }
 
 /// Scheduled task in the ready queue
@@ -206,7 +206,7 @@ pub enum TaskFunction {
     },
     /// Custom user function
     Custom {
-        name: BoundedString<64>,
+        name: BoundedString<64, NoStdProvider<65536>>,
         // In a real implementation, this would be a function pointer
         // For now, we'll use a placeholder
         placeholder: u32,
@@ -307,11 +307,11 @@ impl AsyncRuntime {
             #[cfg(feature = "std")]
             streams: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            streams: BoundedVec::new(),
+            streams: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             futures: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            futures: BoundedVec::new(),
+            futures: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             config: RuntimeConfig::default(),
             stats: RuntimeStats::new(),
             is_running: false,
@@ -433,7 +433,7 @@ impl AsyncRuntime {
             #[cfg(feature = "std")]
             tasks: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            tasks: BoundedVec::new(),
+            tasks: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         };
         
         self.streams.push(entry).map_err(|_| {
@@ -457,7 +457,7 @@ impl AsyncRuntime {
             #[cfg(feature = "std")]
             tasks: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            tasks: BoundedVec::new(),
+            tasks: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         };
         
         self.futures.push(entry).map_err(|_| {
@@ -509,11 +509,11 @@ impl TaskScheduler {
             #[cfg(feature = "std")]
             ready_queue: VecDeque::new(),
             #[cfg(not(any(feature = "std", )))]
-            ready_queue: BoundedVec::new(),
+            ready_queue: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             waiting_tasks: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            waiting_tasks: BoundedVec::new(),
+            waiting_tasks: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             current_time: 0,
             task_manager: TaskManager::new(),
         }
@@ -726,11 +726,11 @@ impl Reactor {
             #[cfg(feature = "std")]
             pending_events: VecDeque::new(),
             #[cfg(not(any(feature = "std", )))]
-            pending_events: BoundedVec::new(),
+            pending_events: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             event_handlers: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            event_handlers: BoundedVec::new(),
+            event_handlers: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 

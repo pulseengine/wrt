@@ -40,13 +40,13 @@ pub struct ResourceLifecycleManager {
     #[cfg(feature = "std")]
     resources: Vec<ResourceEntry>,
     #[cfg(not(any(feature = "std", )))]
-    resources: BoundedVec<ResourceEntry, MAX_RESOURCES>,
+    resources: BoundedVec<ResourceEntry, MAX_RESOURCES, NoStdProvider<65536>>,
     
     /// Drop handlers registry
     #[cfg(feature = "std")]
     drop_handlers: Vec<DropHandler>,
     #[cfg(not(any(feature = "std", )))]
-    drop_handlers: BoundedVec<DropHandler, MAX_RESOURCES>,
+    drop_handlers: BoundedVec<DropHandler, MAX_RESOURCES, NoStdProvider<65536>>,
     
     /// Lifecycle policies
     policies: LifecyclePolicies,
@@ -78,7 +78,7 @@ pub struct ResourceEntry {
     #[cfg(feature = "std")]
     pub handlers: Vec<DropHandlerId>,
     #[cfg(not(any(feature = "std", )))]
-    pub handlers: BoundedVec<DropHandlerId, MAX_DROP_HANDLERS>,
+    pub handlers: BoundedVec<DropHandlerId, MAX_DROP_HANDLERS, NoStdProvider<65536>>,
     /// Creation time (for debugging)
     pub created_at: u64,
     /// Last access time (for GC)
@@ -185,19 +185,19 @@ pub enum ResourceState {
 #[derive(Debug, Clone)]
 pub struct ResourceMetadata {
     /// Resource name for debugging
-    pub name: BoundedString<64>,
+    pub name: BoundedString<64, NoStdProvider<65536>>,
     /// Resource size in bytes
     pub size_bytes: usize,
     /// Tags for categorization
     #[cfg(feature = "std")]
-    pub tags: Vec<BoundedString<32>>,
+    pub tags: Vec<BoundedString<32, NoStdProvider<65536>>>,
     #[cfg(not(any(feature = "std", )))]
-    pub tags: BoundedVec<BoundedString<32>, 8>,
+    pub tags: BoundedVec<BoundedString<32, NoStdProvider<65536>>, 8, NoStdProvider<65536>>,
     /// Additional properties
     #[cfg(feature = "std")]
-    pub properties: Vec<(BoundedString<32>, Value)>,
+    pub properties: Vec<(BoundedString<32, NoStdProvider<65536>>, Value)>,
     #[cfg(not(any(feature = "std", )))]
-    pub properties: BoundedVec<(BoundedString<32>, Value), 16>,
+    pub properties: BoundedVec<(BoundedString<32, NoStdProvider<65536>>, Value), 16>,
 }
 
 /// Drop handler function type
@@ -211,7 +211,7 @@ pub enum DropHandlerFunction {
     MemoryCleanup,
     /// Custom cleanup function
     Custom {
-        name: BoundedString<64>,
+        name: BoundedString<64, NoStdProvider<65536>>,
         // In a real implementation, this would be a function pointer
         placeholder: u32,
     },
@@ -230,7 +230,7 @@ pub struct ResourceCreateRequest {
     #[cfg(feature = "std")]
     pub custom_handlers: Vec<DropHandlerFunction>,
     #[cfg(not(any(feature = "std", )))]
-    pub custom_handlers: BoundedVec<DropHandlerFunction, MAX_DROP_HANDLERS>,
+    pub custom_handlers: BoundedVec<DropHandlerFunction, MAX_DROP_HANDLERS, NoStdProvider<65536>>,
 }
 
 /// Drop operation result
@@ -278,11 +278,11 @@ impl ResourceLifecycleManager {
             #[cfg(feature = "std")]
             resources: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            resources: BoundedVec::new(),
+            resources: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             drop_handlers: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            drop_handlers: BoundedVec::new(),
+            drop_handlers: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             policies: LifecyclePolicies::default(),
             stats: LifecycleStats::new(),
             next_resource_id: 1,
@@ -614,12 +614,12 @@ impl ResourceLifecycleManager {
     
     /// Check for resource leaks (no_std version)
     #[cfg(not(any(feature = "std", )))]
-    pub fn check_for_leaks(&mut self) -> Result<BoundedVec<ResourceId, 64>> {
+    pub fn check_for_leaks(&mut self) -> Result<BoundedVec<ResourceId, 64>, NoStdProvider<65536>> {
         if !self.policies.leak_detection {
-            return Ok(BoundedVec::new());
+            return Ok(BoundedVec::new(DefaultMemoryProvider::default()).unwrap());
         }
 
-        let mut leaked_resources = BoundedVec::new();
+        let mut leaked_resources = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
         let current_time = self.get_current_time();
 
         for resource in &self.resources {
@@ -729,11 +729,11 @@ impl ResourceMetadata {
             #[cfg(feature = "std")]
             tags: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            tags: BoundedVec::new(),
+            tags: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             properties: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            properties: BoundedVec::new(),
+            properties: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 
@@ -869,7 +869,7 @@ mod tests {
             #[cfg(feature = "std")]
             custom_handlers: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            custom_handlers: BoundedVec::new(),
+            custom_handlers: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         };
         
         let resource_id = manager.create_resource(request).unwrap();
@@ -889,7 +889,7 @@ mod tests {
             #[cfg(feature = "std")]
             custom_handlers: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            custom_handlers: BoundedVec::new(),
+            custom_handlers: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         };
         
         let resource_id = manager.create_resource(request).unwrap();
@@ -937,7 +937,7 @@ mod tests {
             #[cfg(feature = "std")]
             custom_handlers: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            custom_handlers: BoundedVec::new(),
+            custom_handlers: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         };
         
         let resource_id = manager.create_resource(request).unwrap();

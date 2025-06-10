@@ -6,10 +6,13 @@
 //!
 //! This module provides helpers for encoding component value types.
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_format::{binary, component::FormatValType};
-
-use crate::prelude::*;
+// Component value type encoding is only available with std feature
+#[cfg(feature = "std")]
+mod component_val_type {
+    use wrt_error::{codes, Error, ErrorCategory, Result};
+    use wrt_format::{binary, component::FormatValType};
+    
+    use crate::prelude::*;
 
 /// Helper function to encode a value type to binary format
 pub fn encode_val_type(result: &mut Vec<u8>, val_type: &FormatValType) -> Result<()> {
@@ -91,7 +94,7 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &FormatValType) -> Result
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::PARSE_ERROR,
-                "Resource types are not supported for encoding yet".to_string(),
+                "Resource types are not supported for encoding yet",
             ));
         }
         FormatValType::Char => result.push(0x16),
@@ -117,9 +120,37 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &FormatValType) -> Result
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::PARSE_ERROR,
-                "Unsupported value type for encoding".to_string(),
+                "Unsupported value type for encoding",
             ));
         }
     }
     Ok(())
 }
+
+} // end of component_val_type module
+
+// Re-export public APIs when std feature is enabled
+#[cfg(feature = "std")]
+pub use component_val_type::encode_val_type;
+
+// No-std stub implementations
+#[cfg(not(feature = "std"))]
+pub mod no_std_stubs {
+    use wrt_error::{codes, Error, ErrorCategory, Result};
+    
+    /// Stub value type for no_std encoding
+    #[derive(Debug, Clone)]
+    pub struct FormatValType;
+    
+    /// Encode value type (no_std stub)  
+    pub fn encode_val_type(_result: &mut wrt_foundation::BoundedVec<u8, 1024, wrt_foundation::NoStdProvider<2048>>, _val_type: &FormatValType) -> Result<()> {
+        Err(Error::new(
+            ErrorCategory::Validation,
+            codes::UNSUPPORTED_OPERATION,
+            "Value type encoding requires std feature"
+        ))
+    }
+}
+
+#[cfg(not(feature = "std"))]
+pub use no_std_stubs::*;

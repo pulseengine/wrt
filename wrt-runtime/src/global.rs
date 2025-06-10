@@ -10,7 +10,7 @@ use wrt_foundation::{
     values::Value as WrtValue,
 };
 
-use crate::prelude::*;
+use crate::prelude::{Debug, Eq, Error, ErrorCategory, PartialEq, Result, codes};
 
 // Import format! macro for string formatting
 #[cfg(feature = "std")]
@@ -21,8 +21,8 @@ use alloc::format;
 /// Represents a WebAssembly global variable in the runtime
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Global {
-    /// The global type (value_type and mutability).
-    /// The initial_value from WrtGlobalType is used to set the runtime `value`
+    /// The global type (`value_type` and mutability).
+    /// The `initial_value` from `WrtGlobalType` is used to set the runtime `value`
     /// field upon creation.
     ty: WrtGlobalType,
     /// The current runtime value of the global variable.
@@ -75,8 +75,8 @@ impl Global {
         Ok(())
     }
 
-    /// Get the WrtGlobalType descriptor (value_type, mutability, and original
-    /// initial_value).
+    /// Get the `WrtGlobalType` descriptor (`value_type`, mutability, and original
+    /// `initial_value`).
     pub fn global_type_descriptor(&self) -> &WrtGlobalType {
         &self.ty
     }
@@ -108,7 +108,7 @@ fn value_type_to_u8(value_type: &WrtValueType) -> u8 {
 impl wrt_foundation::traits::Checksummable for Global {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         checksum.update_slice(&value_type_to_u8(&self.ty.value_type).to_le_bytes());
-        checksum.update_slice(&[self.ty.mutable as u8]);
+        checksum.update_slice(&[u8::from(self.ty.mutable)]);
     }
 }
 
@@ -117,19 +117,19 @@ impl wrt_foundation::traits::ToBytes for Global {
         16 // simplified
     }
 
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
         writer.write_all(&value_type_to_u8(&self.ty.value_type).to_le_bytes())?;
-        writer.write_all(&[self.ty.mutable as u8])
+        writer.write_all(&[u8::from(self.ty.mutable)])
     }
 }
 
 impl wrt_foundation::traits::FromBytes for Global {
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
-        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 1];

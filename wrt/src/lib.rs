@@ -61,24 +61,24 @@ extern crate std;
 // Binary std/no_std choice
 // All memory management uses bounded collections with NoStdProvider
 
-// Panic handler for no_std builds - only when not building as a dependency
-// This provides ASIL-compliant panic handling for safety-critical systems
-#[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    // ASIL-B/D compliant panic handling:
-    // 1. Ensure deterministic behavior (no heap allocations)
-    // 2. Enter safe state immediately
-    // 3. Prevent any restart or recovery attempts
-    
-    // For safety-critical systems, we enter an infinite loop
-    // to ensure the system remains in a known safe state
-    loop {
-        // Use spin_loop hint for power efficiency and better behavior
-        // in virtualized environments
-        core::hint::spin_loop();
-    }
-}
+// Panic handler for no_std builds - temporarily disabled to avoid workspace conflicts
+// Applications using WRT should provide their own panic handler
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     // ASIL-B/D compliant panic handling:
+//     // 1. Ensure deterministic behavior (no heap allocations)
+//     // 2. Enter safe state immediately
+//     // 3. Prevent any restart or recovery attempts
+//     
+//     // For safety-critical systems, we enter an infinite loop
+//     // to ensure the system remains in a known safe state
+//     loop {
+//         // Use spin_loop hint for power efficiency and better behavior
+//         // in virtualized environments
+//         core::hint::spin_loop();
+//     }
+// }
 
 // Define debug_println macro for conditional debug printing
 #[cfg(feature = "std")]
