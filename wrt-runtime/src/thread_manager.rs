@@ -6,34 +6,43 @@
 
 extern crate alloc;
 
-use crate::prelude::*;
+use crate::prelude::{BoundedCapacity, Debug, Eq, PartialEq, str};
 use wrt_error::{Error, ErrorCategory, Result, codes};
 
 #[cfg(feature = "std")]
 use wrt_platform::threading::{Thread, ThreadHandle, ThreadSpawnOptions};
 
 // For no_std builds, provide dummy types  
+/// Thread representation for `no_std` environments
 #[cfg(not(feature = "std"))]
 #[derive(Debug)]
 pub struct Thread {
+    /// Thread identifier
     pub id: ThreadId,
 }
 
+/// Thread handle for `no_std` environments
 #[cfg(not(feature = "std"))]
 #[derive(Debug)]
 pub struct ThreadHandle {
+    /// Thread identifier
     pub id: ThreadId,
 }
 
+/// Thread spawn options for `no_std` environments
 #[cfg(not(feature = "std"))]
 pub struct ThreadSpawnOptions {
+    /// Optional stack size for the thread
     pub stack_size: Option<usize>,
+    /// Optional thread priority
     pub priority: Option<i32>,
+    /// Optional thread name
     pub name: Option<&'static str>,
 }
 
 #[cfg(not(feature = "std"))]
 impl ThreadHandle {
+    /// Terminate the thread (not supported in `no_std` mode)
     pub fn terminate(&self) -> Result<()> {
         Err(Error::new(
             ErrorCategory::NotSupported,
@@ -42,6 +51,7 @@ impl ThreadHandle {
         ))
     }
     
+    /// Join thread with timeout (not supported in `no_std` mode)
     pub fn join_timeout(&self, _timeout: core::time::Duration) -> Result<()> {
         Err(Error::new(
             ErrorCategory::NotSupported,
@@ -50,6 +60,7 @@ impl ThreadHandle {
         ))
     }
     
+    /// Join thread (not supported in `no_std` mode)
     pub fn join(&self) -> Result<()> {
         Err(Error::new(
             ErrorCategory::NotSupported,
@@ -86,7 +97,7 @@ pub enum ThreadState {
 
 impl ThreadState {
     /// Check if thread is completed
-    pub fn is_completed(&self) -> bool {
+    #[must_use] pub fn is_completed(&self) -> bool {
         matches!(self, ThreadState::Completed | ThreadState::Failed | ThreadState::Terminated)
     }
 }
@@ -141,7 +152,7 @@ pub struct ThreadInfo {
 
 impl ThreadInfo {
     /// Create new thread info
-    pub fn new(
+    #[must_use] pub fn new(
         thread_id: ThreadId,
         function_index: u32,
         stack_size: usize,
@@ -161,17 +172,17 @@ impl ThreadInfo {
     }
     
     /// Check if thread is active (running or ready)
-    pub fn is_active(&self) -> bool {
+    #[must_use] pub fn is_active(&self) -> bool {
         matches!(self.state, ThreadState::Ready | ThreadState::Running | ThreadState::Blocked)
     }
     
     /// Check if thread has completed
-    pub fn is_completed(&self) -> bool {
+    #[must_use] pub fn is_completed(&self) -> bool {
         matches!(self.state, ThreadState::Completed | ThreadState::Failed | ThreadState::Terminated)
     }
     
     /// Get thread execution duration in nanoseconds
-    pub fn execution_duration(&self) -> Option<u64> {
+    #[must_use] pub fn execution_duration(&self) -> Option<u64> {
         self.completed_at.map(|end| end.saturating_sub(self.created_at))
     }
 }
@@ -188,6 +199,7 @@ pub struct ThreadExecutionContext {
     /// Thread-local global state
     #[cfg(feature = "std")]
     pub local_globals: Vec<crate::Global>,
+    /// Thread-local global state for `no_std` environments (fixed size array)
     #[cfg(not(feature = "std"))]
     pub local_globals: [Option<crate::Global>; 8],  // Fixed size array for no_std
     /// Execution statistics
@@ -242,7 +254,7 @@ pub struct ThreadExecutionStats {
 
 impl ThreadExecutionStats {
     /// Create new thread execution statistics
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self {
             instructions_executed: 0,
             function_calls: 0,
@@ -372,7 +384,7 @@ impl ThreadManager {
         #[cfg(not(feature = "std"))]
         {
             // Find empty slot in the fixed array
-            for slot in self.threads.iter_mut() {
+            for slot in &mut self.threads {
                 if slot.is_none() {
                     *slot = Some(context);
                     break;
@@ -400,7 +412,7 @@ impl ThreadManager {
         // Create thread spawn options
         let spawn_options = ThreadSpawnOptions {
             stack_size: Some(context.info.stack_size),
-            priority: Some(context.info.priority as i32),
+            priority: Some(i32::from(context.info.priority)),
             name: Some("wasm-thread"),
         };
         
@@ -454,27 +466,24 @@ impl ThreadManager {
         let stats_clone = {
             let context = self.get_thread_context_mut(thread_id)?;
             
-            if let Some(handle) = &context.handle {
+            if let Some(handle) = context.handle.take() {
                 // Wait for thread completion
                 let result = if let Some(timeout) = timeout_ms {
                     let duration = core::time::Duration::from_millis(timeout);
-                    handle.join_timeout(duration).map(|_| ())
+                    handle.join_timeout(duration)
                 } else {
-                    handle.join().map(|_| ())
+                    handle.join()
                 };
                 
-                match result {
-                    Ok(_) => {
-                        context.update_state(ThreadState::Completed);
-                    }
-                    Err(_) => {
-                        context.update_state(ThreadState::Failed);
-                        return Err(Error::new(
-                            ErrorCategory::Runtime,
-                            codes::EXECUTION_ERROR,
-                            "Thread join failed"
-                        ));
-                    }
+                if let Ok(()) = result {
+                    context.update_state(ThreadState::Completed);
+                } else {
+                    context.update_state(ThreadState::Failed);
+                    return Err(Error::new(
+                        ErrorCategory::Runtime,
+                        codes::EXECUTION_ERROR,
+                        "Thread join failed"
+                    ));
                 }
             }
             
@@ -576,7 +585,7 @@ impl ThreadManager {
         }
         #[cfg(not(feature = "std"))]
         {
-            for slot in self.threads.iter() {
+            for slot in &self.threads {
                 if let Some(context) = slot {
                     if context.info.thread_id == thread_id {
                         return Ok(context);
@@ -587,6 +596,7 @@ impl ThreadManager {
         }
     }
     
+    /// Get mutable reference to thread execution context
     pub fn get_thread_context_mut(&mut self, thread_id: ThreadId) -> Result<&mut ThreadExecutionContext> {
         #[cfg(feature = "std")]
         {
@@ -596,7 +606,7 @@ impl ThreadManager {
         }
         #[cfg(not(feature = "std"))]
         {
-            for slot in self.threads.iter_mut() {
+            for slot in &mut self.threads {
                 if let Some(context) = slot {
                     if context.info.thread_id == thread_id {
                         return Ok(context);
@@ -644,7 +654,7 @@ impl ThreadManagerStats {
     }
     
     /// Get thread success rate (0.0 to 1.0)
-    pub fn success_rate(&self) -> f64 {
+    #[must_use] pub fn success_rate(&self) -> f64 {
         let total_completed = self.threads_completed + self.threads_failed;
         if total_completed == 0 {
             0.0
@@ -654,7 +664,7 @@ impl ThreadManagerStats {
     }
     
     /// Check if thread management is healthy
-    pub fn is_healthy(&self) -> bool {
+    #[must_use] pub fn is_healthy(&self) -> bool {
         self.success_rate() > 0.95 && self.threads_spawned > 0
     }
 }

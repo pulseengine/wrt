@@ -30,7 +30,7 @@ use wrt_foundation::{
 };
 
 #[cfg(not(any(feature = "std", )))]
-use wrt_foundation::{BoundedString, BoundedVec};
+use wrt_foundation::{BoundedString};
 
 // Constants for no_std environments
 #[cfg(not(any(feature = "std", )))]
@@ -117,7 +117,7 @@ pub struct FixedLengthList {
     #[cfg(feature = "std")]
     pub elements: Vec<ComponentValue>,
     #[cfg(not(any(feature = "std", )))]
-    pub elements: BoundedVec<ComponentValue, MAX_FIXED_LIST_SIZE>,
+    pub elements: BoundedVec<ComponentValue, MAX_FIXED_LIST_SIZE, NoStdProvider<65536>>,
 }
 
 impl FixedLengthList {
@@ -134,7 +134,7 @@ impl FixedLengthList {
     #[cfg(not(any(feature = "std", )))]
     pub fn new(list_type: FixedLengthListType) -> Result<Self> {
         list_type.validate_size()?;
-        let elements = BoundedVec::new();
+        let elements = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
         Ok(Self {
             list_type,
             elements,
@@ -159,7 +159,7 @@ impl FixedLengthList {
                 return Err(Error::new(
                     ErrorCategory::Type,
                     wrt_error::codes::TYPE_MISMATCH,
-                    &ComponentValue::String("Component operation result".into())
+                    &"Component not found"
                 ));
             }
         }
@@ -264,7 +264,7 @@ impl FixedLengthList {
         if index >= self.list_type.length {
             return Err(Error::new(
                 ErrorCategory::InvalidInput,
-                wrt_error::codes::INVALID_INDEX,
+                wrt_error::codes::OUT_OF_BOUNDS_ERROR,
                 "Index out of bounds"
             ));
         }
@@ -294,7 +294,7 @@ impl FixedLengthList {
             } else {
                 return Err(Error::new(
                     ErrorCategory::InvalidInput,
-                    wrt_error::codes::INVALID_INDEX,
+                    wrt_error::codes::OUT_OF_BOUNDS_ERROR,
                     "Cannot set non-consecutive index"
                 ));
             }
@@ -315,7 +315,7 @@ impl FixedLengthList {
         if self.is_full() {
             return Err(Error::new(
                 ErrorCategory::InvalidInput,
-                wrt_error::codes::INVALID_INDEX,
+                wrt_error::codes::OUT_OF_BOUNDS_ERROR,
                 "Fixed-length list is already full"
             ));
         }
@@ -370,7 +370,7 @@ pub struct FixedLengthListTypeRegistry {
     #[cfg(feature = "std")]
     types: Vec<FixedLengthListType>,
     #[cfg(not(any(feature = "std", )))]
-    types: BoundedVec<FixedLengthListType, MAX_TYPE_DEFINITIONS>,
+    types: BoundedVec<FixedLengthListType, MAX_TYPE_DEFINITIONS, NoStdProvider<65536>>,
 }
 
 impl FixedLengthListTypeRegistry {
@@ -379,7 +379,7 @@ impl FixedLengthListTypeRegistry {
             #[cfg(feature = "std")]
             types: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            types: BoundedVec::new(),
+            types: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 
@@ -567,7 +567,7 @@ pub mod fixed_list_utils {
         if start >= end {
             return Err(Error::new(
                 ErrorCategory::InvalidInput,
-                wrt_error::codes::INVALID_RANGE,
+                wrt_error::codes::OUT_OF_BOUNDS_ERROR,
                 "Start must be less than end"
             ));
         }
@@ -622,7 +622,7 @@ pub mod fixed_list_utils {
         if start + length > list.length() {
             return Err(Error::new(
                 ErrorCategory::InvalidInput,
-                wrt_error::codes::INVALID_RANGE,
+                wrt_error::codes::OUT_OF_BOUNDS_ERROR,
                 "Slice range exceeds list bounds"
             ));
         }

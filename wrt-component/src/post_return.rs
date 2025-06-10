@@ -60,7 +60,7 @@ pub struct PostReturnRegistry {
     #[cfg(feature = "std")]
     pending_cleanups: BTreeMap<ComponentInstanceId, Vec<CleanupTask>>,
     #[cfg(not(any(feature = "std", )))]
-    pending_cleanups: BoundedVec<(ComponentInstanceId, BoundedVec<CleanupTask, MAX_CLEANUP_TASKS_NO_STD>), MAX_CLEANUP_TASKS_NO_STD>,
+    pending_cleanups: BoundedVec<(ComponentInstanceId, BoundedVec<CleanupTask, MAX_CLEANUP_TASKS_NO_STD, NoStdProvider<65536>>), MAX_CLEANUP_TASKS_NO_STD>,
     
     /// Async execution engine for async cleanup
     async_engine: Option<Arc<AsyncExecutionEngine>>,
@@ -145,7 +145,7 @@ pub enum CleanupData {
     #[cfg(feature = "std")]
     Custom { cleanup_id: String, parameters: Vec<ComponentValue> },
     #[cfg(not(any(feature = "std", )))]
-    Custom { cleanup_id: BoundedString<64>, parameters: BoundedVec<ComponentValue, 16> },
+    Custom { cleanup_id: BoundedString<64, NoStdProvider<65536>>, parameters: BoundedVec<ComponentValue, 16, NoStdProvider<65536>> },
     /// Async cleanup data
     Async { 
         stream_handle: Option<StreamHandle>, 
@@ -217,14 +217,14 @@ pub struct PostReturnContext {
     #[cfg(feature = "std")]
     pub tasks: Vec<CleanupTask>,
     #[cfg(not(any(feature = "std", )))]
-    pub tasks: BoundedVec<CleanupTask, MAX_CLEANUP_TASKS_NO_STD>,
+    pub tasks: BoundedVec<CleanupTask, MAX_CLEANUP_TASKS_NO_STD, NoStdProvider<65536>>,
     /// Binary std/no_std choice
     pub realloc_manager: Option<Arc<ReallocManager>>,
     /// Custom cleanup handlers
     #[cfg(feature = "std")]
     pub custom_handlers: BTreeMap<String, Box<dyn Fn(&CleanupData) -> Result<()> + Send + Sync>>,
     #[cfg(not(any(feature = "std", )))]
-    pub custom_handlers: BoundedVec<(BoundedString<64>, fn(&CleanupData) -> Result<()>), MAX_CLEANUP_HANDLERS>,
+    pub custom_handlers: BoundedVec<(BoundedString<64, NoStdProvider<65536>>, fn(&CleanupData) -> Result<(), NoStdProvider<65536>>), MAX_CLEANUP_HANDLERS>,
     /// Async canonical ABI for async cleanup
     pub async_abi: Option<Arc<AsyncCanonicalAbi>>,
     /// Component ID for this context
@@ -239,11 +239,11 @@ impl PostReturnRegistry {
             #[cfg(feature = "std")]
             functions: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            functions: BoundedVec::new(),
+            functions: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             pending_cleanups: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            pending_cleanups: BoundedVec::new(),
+            pending_cleanups: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             async_engine: None,
             cancellation_manager: None,
             handle_tracker: None,
@@ -267,11 +267,11 @@ impl PostReturnRegistry {
             #[cfg(feature = "std")]
             functions: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            functions: BoundedVec::new(),
+            functions: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             pending_cleanups: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            pending_cleanups: BoundedVec::new(),
+            pending_cleanups: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             async_engine,
             cancellation_manager,
             handle_tracker,
@@ -311,7 +311,7 @@ impl PostReturnRegistry {
                     "Too many post-return functions"
                 )
             })?;
-            self.pending_cleanups.push((instance_id, BoundedVec::new())).map_err(|_| {
+            self.pending_cleanups.push((instance_id, BoundedVec::new(DefaultMemoryProvider::default()).unwrap())).map_err(|_| {
                 Error::new(
                     ErrorCategory::Resource,
                     wrt_error::codes::RESOURCE_EXHAUSTED,
@@ -970,7 +970,7 @@ pub mod helpers {
     pub fn custom_cleanup_task(
         instance_id: ComponentInstanceId,
         cleanup_id: &str,
-        parameters: BoundedVec<ComponentValue, 16>,
+        parameters: BoundedVec<ComponentValue, 16, NoStdProvider<65536>>,
         priority: u8,
     ) -> Result<CleanupTask> {
         let cleanup_id = BoundedString::from_str(cleanup_id).map_err(|_| {

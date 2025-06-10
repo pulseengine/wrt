@@ -19,6 +19,7 @@ use std::{
 };
 
 use wrt_error::{kinds::ThreadingError, Error, Result};
+#[cfg(feature = "std")]
 use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
 
 use super::BuiltinHandler;
@@ -175,7 +176,7 @@ impl ThreadManager {
         // Find the thread
         let mut threads = self.threads.write().unwrap();
         let thread = threads.get_mut(&thread_id).ok_or_else(|| {
-            Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))
+            Error::new(ThreadingError("Component not found"))
         })?;
 
         // Check if thread is already joined
@@ -240,7 +241,7 @@ impl ThreadManager {
         // Find the thread
         let threads = self.threads.read().unwrap();
         let thread = threads.get(&thread_id).ok_or_else(|| {
-            Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))
+            Error::new(ThreadingError("Component not found"))
         })?;
 
         // Check the state
@@ -320,9 +321,9 @@ impl ThreadManager {
                 Ok(previous)
             }
             Some(_) => {
-                Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into()))))
+                Err(Error::new(ThreadingError("Component not found")))
             }
-            None => Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))),
+            None => Err(Error::new(ThreadingError("Component not found"))),
         }
     }
 
@@ -361,7 +362,7 @@ impl ThreadManager {
                 "Sync ID {} is not a condition variable",
                 sync_id
             )))),
-            None => Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))),
+            None => Err(Error::new(ThreadingError("Component not found"))),
         }
     }
 
@@ -401,7 +402,7 @@ impl ThreadManager {
                 "Sync ID {} is not a condition variable",
                 sync_id
             )))),
-            None => Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))),
+            None => Err(Error::new(ThreadingError("Component not found"))),
         }
     }
 
@@ -430,7 +431,7 @@ impl ThreadManager {
                 "Sync ID {} is not a read-write lock",
                 sync_id
             )))),
-            None => Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))),
+            None => Err(Error::new(ThreadingError("Component not found"))),
         }
     }
 
@@ -467,7 +468,7 @@ impl ThreadManager {
                 "Sync ID {} is not a read-write lock",
                 sync_id
             )))),
-            None => Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))),
+            None => Err(Error::new(ThreadingError("Component not found"))),
         }
     }
 }
@@ -846,7 +847,7 @@ mod tests {
             3 => Err(Error::new("Test error")),
 
             // Unknown function
-            _ => Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))),
+            _ => Err(Error::new(ThreadingError("Component not found"))),
         }
     }
 

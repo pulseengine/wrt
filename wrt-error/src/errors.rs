@@ -155,21 +155,25 @@ impl Error {
     );
     
     /// Create a component error with dynamic context (using static fallback)
+    #[must_use]
     pub const fn component_error(_message: &'static str) -> Self {
         Self::new(ErrorCategory::Component, codes::COMPONENT_ERROR, "Component error")
     }
     
     /// Create a WIT parse error with dynamic message (using static fallback)
+    #[must_use]
     pub const fn wit_parse_error(_message: &'static str) -> Self {
         Self::new(ErrorCategory::Parse, codes::WIT_PARSE_ERROR, "WIT parse error")
     }
     
     /// Create an invalid input error with dynamic message (using static fallback)
+    #[must_use]
     pub const fn invalid_input(_message: &'static str) -> Self {
         Self::new(ErrorCategory::Validation, codes::INVALID_INPUT, "Invalid input")
     }
     
     /// Create an unsupported error with dynamic message (using static fallback)
+    #[must_use]
     pub const fn unsupported(_message: &'static str) -> Self {
         Self::new(ErrorCategory::System, codes::UNSUPPORTED, "Unsupported operation")
     }

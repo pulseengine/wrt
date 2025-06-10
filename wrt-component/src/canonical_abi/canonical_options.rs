@@ -10,13 +10,16 @@ use std::sync::{Arc, RwLock};
 use std::sync::{Arc, RwLock};
 
 use wrt_foundation::prelude::*;
-use wrt_runtime::{Instance, Memory};
+// use wrt_runtime::{Instance, Memory};
 
 use crate::{
-    canonical_realloc::{ReallocManager, StringEncoding},
+    canonical_abi::canonical_realloc::{ReallocManager, StringEncoding, ComponentInstanceId},
     memory_layout::MemoryLayout,
-    types::{ComponentError, ComponentInstanceId},
+    prelude::*,
 };
+
+// Type alias for compatibility
+pub type ComponentError = Error;
 
 /// Complete canonical options for lift/lower operations
 #[derive(Debug, Clone)]
@@ -340,7 +343,7 @@ impl CanonicalOptionsBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::canonical_realloc::ReallocManager;
+    use crate::canonical_abi::canonical_realloc::ReallocManager;
 
     #[test]
     fn test_canonical_options_creation() {

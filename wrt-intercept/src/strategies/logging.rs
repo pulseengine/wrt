@@ -4,11 +4,11 @@
 //! It can be configured to log arguments, results, timing, etc.
 
 #[cfg(feature = "std")]
-use std::time::Instant;
+use std::{time::Instant, sync::{Arc, Mutex}};
 
 // Import the prelude for unified access to standard types
-use crate::prelude::*;
-#[cfg(not(feature = "std"))]
+use crate::prelude::{Debug, str, Value};
+use wrt_error::Result;
 use crate::LinkInterceptorStrategy;
 
 /// Trait for formatting values in logging output
@@ -79,7 +79,7 @@ pub struct LoggingStrategy<S: LogSink, F: ValueFormatter = DefaultValueFormatter
     timing: Arc<Mutex<Option<Instant>>>,
 }
 
-/// A simple logging strategy for no_std environments
+/// A simple logging strategy for `no_std` environments
 #[cfg(not(feature = "std"))]
 pub struct LoggingStrategy {
     /// Configuration
@@ -254,16 +254,22 @@ where
 
 // Binary std/no_std choice
 #[cfg(not(feature = "std"))]
+impl Default for LoggingStrategy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LoggingStrategy {
-    /// Create a new logging strategy for no_std environments
-    pub fn new() -> Self {
+    /// Create a new logging strategy for `no_std` environments
+    #[must_use] pub fn new() -> Self {
         Self {
             config: LoggingConfig::default(),
         }
     }
     
     /// Configure the logging strategy
-    pub fn with_config(mut self, config: LoggingConfig) -> Self {
+    #[must_use] pub fn with_config(mut self, config: LoggingConfig) -> Self {
         self.config = config;
         self
     }

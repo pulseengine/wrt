@@ -28,7 +28,7 @@ use wrt_foundation::{
     component_value::ComponentValue,
 };
 
-use crate::async_types::{Future, FutureHandle, Stream, StreamHandle, Waitable, WaitableSet};
+use crate::async_::async_types::{Future, FutureHandle, Stream, StreamHandle, Waitable, WaitableSet};
 use crate::task_builtins::{TaskId as TaskBuiltinId, TaskStatus};
 
 // Constants for no_std environments
@@ -134,13 +134,13 @@ impl WaitableEntry {
     pub fn check_ready(&mut self) -> bool {
         self.ready = match &self.waitable {
             Waitable::Future(future) => {
-                matches!(future.state, crate::async_types::FutureState::Resolved(_) | 
-                                     crate::async_types::FutureState::Rejected(_))
+                matches!(future.state, crate::async_::async_types::FutureState::Ready | 
+                                     crate::async_::async_types::FutureState::Error)
             }
             Waitable::Stream(stream) => {
                 match stream.state {
-                    crate::async_types::StreamState::Open => true, // Data available to read
-                    crate::async_types::StreamState::Closed => true, // EOF condition
+                    crate::async_::async_types::StreamState::Open => true, // Data available to read
+                    crate::async_::async_types::StreamState::Closed => true, // EOF condition
                     _ => false,
                 }
             }
@@ -265,8 +265,8 @@ impl WaitableSetImpl {
     }
 
     #[cfg(not(any(feature = "std", )))]
-    pub fn check_ready(&mut self) -> Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS>> {
-        let mut ready = BoundedVec::new();
+    pub fn check_ready(&mut self) -> Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS>, NoStdProvider<65536>> {
+        let mut ready = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
         for (_, entry) in self.waitables.iter_mut() {
             if entry.check_ready() {
                 ready.push(entry.clone())
@@ -445,7 +445,7 @@ impl WaitableSetBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Waitable set not found"
                 ))
             }
@@ -461,7 +461,7 @@ impl WaitableSetBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Waitable set not found"
                 ))
             }
@@ -477,7 +477,7 @@ impl WaitableSetBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Waitable set not found"
                 ))
             }
@@ -515,7 +515,7 @@ impl WaitableSetBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Waitable set not found"
                 ))
             }
@@ -539,7 +539,7 @@ impl WaitableSetBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Waitable set not found"
                 ))
             }
@@ -547,14 +547,14 @@ impl WaitableSetBuiltins {
     }
 
     #[cfg(not(any(feature = "std", )))]
-    pub fn waitable_set_poll_all(set_id: WaitableSetId) -> Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS>> {
+    pub fn waitable_set_poll_all(set_id: WaitableSetId) -> Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS>, NoStdProvider<65536>> {
         Self::with_registry_mut(|registry| {
             if let Some(set) = registry.get_set_mut(set_id) {
                 set.check_ready()
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Waitable set not found"
                 ))
             }
@@ -639,7 +639,7 @@ pub mod waitable_set_helpers {
     pub fn waitable_from_future_handle(handle: FutureHandle) -> Waitable {
         Waitable::Future(Future {
             handle,
-            state: crate::async_types::FutureState::Pending,
+            state: crate::async_::async_types::FutureState::Pending,
         })
     }
 
@@ -647,7 +647,7 @@ pub mod waitable_set_helpers {
     pub fn waitable_from_stream_handle(handle: StreamHandle) -> Waitable {
         Waitable::Stream(Stream {
             handle,
-            state: crate::async_types::StreamState::Open,
+            state: crate::async_::async_types::StreamState::Open,
         })
     }
 }
@@ -655,7 +655,7 @@ pub mod waitable_set_helpers {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::async_types::{FutureState, StreamState};
+    use crate::async_::async_types::{FutureState, StreamState};
 
     #[test]
     fn test_waitable_set_id_generation() {

@@ -149,7 +149,7 @@ safety = ["wrt-foundation/safety",
 # Platform and Helper Mode Features
 helper-mode = ["wrt-platform/helper-mode"]
 # Disable panic handler for library usage
-disable-panic-handler = []
+disable-panic-handler = ["wrt-platform/disable-panic-handler"]
 platform-macos = ["wrt-platform/platform-macos"]
 # Platform feature enables SIMD operations
 platform = ["wrt-math/platform"]

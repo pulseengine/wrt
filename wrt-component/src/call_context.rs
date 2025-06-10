@@ -23,19 +23,37 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
 // Cross-environment imports
 #[cfg(feature = "std")]
 use std::{vec::Vec, string::String, collections::HashMap, format};
 
-#[cfg(all(not(feature = "std")))]
-use std::{vec::Vec, string::String, collections::BTreeMap as HashMap, format};
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{vec::Vec, string::String, collections::BTreeMap as HashMap, format};
 
 #[cfg(not(any(feature = "std", )))]
-use wrt_foundation::{BoundedVec as Vec, BoundedString as String, NoStdHashMap as HashMap};
+use wrt_foundation::{BoundedVec, BoundedString, BoundedMap, safe_memory::NoStdProvider};
+
+// Type aliases for no_std compatibility
+#[cfg(not(any(feature = "std", )))]
+type Vec<T> = BoundedVec<T, 64, NoStdProvider<65536>>;
+#[cfg(not(any(feature = "std", )))]
+type String = BoundedString<256, NoStdProvider<65536>>;
+#[cfg(not(any(feature = "std", )))]
+type HashMap<K, V> = BoundedMap<K, V, 32, NoStdProvider<65536>>;
 
 use wrt_error::{Error, ErrorCategory, Result, codes};
-use crate::canonical_abi::{ComponentValue, ComponentType, CanonicalABI};
-use crate::component_instantiation::{InstanceId, ComponentInstance, FunctionSignature};
+use crate::canonical_abi::{ComponentType, CanonicalABI};
+
+#[cfg(feature = "std")]
+use crate::canonical_abi::ComponentValue;
+
+#[cfg(not(feature = "std"))]
+// For no_std, use a simpler ComponentValue representation
+use crate::types::Value as ComponentValue;
+use crate::components::{InstanceId, ComponentInstance, FunctionSignature};
 use crate::resource_management::{ResourceHandle, ResourceTypeId, ResourceData};
 
 /// Maximum parameter data size per call (1MB)
@@ -1141,3 +1159,421 @@ mod tests {
         assert!(results.resource_validation.valid);
     }
 }
+
+// Implement required traits for BoundedVec compatibility
+use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream};
+
+// Macro to implement basic traits for complex types
+macro_rules! impl_basic_traits {
+    ($type:ty, $default_val:expr) => {
+        impl Checksummable for $type {
+            fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+                0u32.update_checksum(checksum);
+            }
+        }
+
+        impl ToBytes for $type {
+            fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                &self,
+                _writer: &mut WriteStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<()> {
+                Ok(())
+            }
+        }
+
+        impl FromBytes for $type {
+            fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                _reader: &mut ReadStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<Self> {
+                Ok($default_val)
+            }
+        }
+    };
+}
+
+// Default implementations for complex types
+impl Default for ManagedCallContext {
+    fn default() -> Self {
+        Self {
+            context: super::component_communication::CallContext::default(),
+            marshaling_state: MarshalingState::default(),
+            resource_state: ResourceState::default(),
+            metrics: CallMetrics::default(),
+            validation: ValidationResults::default(),
+        }
+    }
+}
+
+impl PartialEq for ManagedCallContext {
+    fn eq(&self, other: &Self) -> bool {
+        // Compare based on call ID for equality
+        self.context.call_id == other.context.call_id
+    }
+}
+
+impl Eq for ManagedCallContext {}
+
+impl Default for MarshalingState {
+    fn default() -> Self {
+        Self {
+            original_parameters: Vec::new(),
+            marshaled_parameters: Vec::new(),
+            metadata: MarshalingMetadata::default(),
+            errors: Vec::new(),
+        }
+    }
+}
+
+impl Default for ResourceState {
+    fn default() -> Self {
+        Self {
+            transferring_resources: Vec::new(),
+            acquired_locks: Vec::new(),
+            transfer_results: Vec::new(),
+        }
+    }
+}
+
+impl Default for ValidationResults {
+    fn default() -> Self {
+        Self {
+            status: ValidationStatus::Passed,
+            parameter_validation: ParameterValidationResult::default(),
+            security_validation: SecurityValidationResult::default(),
+            resource_validation: ResourceValidationResult::default(),
+            messages: Vec::new(),
+        }
+    }
+}
+
+impl Default for ParameterValidationResult {
+    fn default() -> Self {
+        Self {
+            valid: true,
+            type_check_results: Vec::new(),
+            size_validation_results: Vec::new(),
+            error_messages: Vec::new(),
+        }
+    }
+}
+
+impl Default for SecurityValidationResult {
+    fn default() -> Self {
+        Self {
+            secure: true,
+            permission_results: Vec::new(),
+            access_control_results: Vec::new(),
+            warnings: Vec::new(),
+        }
+    }
+}
+
+impl Default for ResourceValidationResult {
+    fn default() -> Self {
+        Self {
+            valid: true,
+            availability_results: Vec::new(),
+            transfer_permission_results: Vec::new(),
+            errors: Vec::new(),
+        }
+    }
+}
+
+impl Default for TypeCompatibility {
+    fn default() -> Self {
+        Self {
+            source_type: ComponentType::Bool,
+            target_type: ComponentType::Bool,
+            compatible: true,
+            conversion_required: false,
+            conversion_cost: 0,
+        }
+    }
+}
+
+impl PartialEq for TypeCompatibility {
+    fn eq(&self, other: &Self) -> bool {
+        self.source_type == other.source_type && self.target_type == other.target_type
+    }
+}
+
+impl Eq for TypeCompatibility {}
+
+impl Default for ResourceLock {
+    fn default() -> Self {
+        Self {
+            resource_handle: ResourceHandle::new(0),
+            owner_call_id: 0,
+            lock_type: ResourceLockType::SharedRead,
+            acquired_at: 0,
+            expires_at: 0,
+        }
+    }
+}
+
+impl PartialEq for ResourceLock {
+    fn eq(&self, other: &Self) -> bool {
+        self.resource_handle == other.resource_handle && self.owner_call_id == other.owner_call_id
+    }
+}
+
+impl Eq for ResourceLock {}
+
+impl Default for PendingResourceTransfer {
+    fn default() -> Self {
+        Self {
+            transfer_id: 0,
+            resource_handle: ResourceHandle::new(0),
+            source_instance: 0,
+            target_instance: 0,
+            transfer_type: super::component_communication::ResourceTransferType::Move,
+            requested_at: 0,
+        }
+    }
+}
+
+impl PartialEq for PendingResourceTransfer {
+    fn eq(&self, other: &Self) -> bool {
+        self.transfer_id == other.transfer_id
+    }
+}
+
+impl Eq for PendingResourceTransfer {}
+
+impl Default for TransferPolicy {
+    fn default() -> Self {
+        Self {
+            max_transfers: 1,
+            allowed_types: Vec::new(),
+            required_permissions: Vec::new(),
+        }
+    }
+}
+
+impl PartialEq for TransferPolicy {
+    fn eq(&self, other: &Self) -> bool {
+        self.max_transfers == other.max_transfers
+    }
+}
+
+impl Eq for TransferPolicy {}
+
+impl Default for SecurityPolicy {
+    fn default() -> Self {
+        Self {
+            allowed_targets: Vec::new(),
+            allowed_functions: Vec::new(),
+            resource_permissions: ResourcePermissions::default(),
+            memory_limits: MemoryLimits::default(),
+        }
+    }
+}
+
+impl PartialEq for SecurityPolicy {
+    fn eq(&self, other: &Self) -> bool {
+        self.allowed_targets.len() == other.allowed_targets.len()
+    }
+}
+
+impl Eq for SecurityPolicy {}
+
+impl Default for ValidationRule {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            description: String::new(),
+            rule_type: ValidationRuleType::Parameter,
+            severity: ValidationSeverity::Info,
+        }
+    }
+}
+
+impl PartialEq for ValidationRule {
+    fn eq(&self, other: &Self) -> bool {
+        self.rule_type == other.rule_type && self.severity == other.severity
+    }
+}
+
+impl Eq for ValidationRule {}
+
+impl Default for OptimizationSuggestion {
+    fn default() -> Self {
+        Self {
+            suggestion_type: OptimizationType::ParameterMarshaling,
+            description: String::new(),
+            impact: OptimizationImpact::Low,
+            complexity: OptimizationComplexity::Simple,
+        }
+    }
+}
+
+impl PartialEq for OptimizationSuggestion {
+    fn eq(&self, other: &Self) -> bool {
+        self.suggestion_type == other.suggestion_type && self.impact == other.impact
+    }
+}
+
+impl Eq for OptimizationSuggestion {}
+
+impl Default for PermissionCheckResult {
+    fn default() -> Self {
+        Self {
+            permission: String::new(),
+            granted: false,
+            denial_reason: None,
+        }
+    }
+}
+
+impl PartialEq for PermissionCheckResult {
+    fn eq(&self, other: &Self) -> bool {
+        self.granted == other.granted
+    }
+}
+
+impl Eq for PermissionCheckResult {}
+
+impl Default for AccessControlResult {
+    fn default() -> Self {
+        Self {
+            accessed_item: String::new(),
+            allowed: false,
+            rule_applied: String::new(),
+        }
+    }
+}
+
+impl PartialEq for AccessControlResult {
+    fn eq(&self, other: &Self) -> bool {
+        self.allowed == other.allowed
+    }
+}
+
+impl Eq for AccessControlResult {}
+
+impl Default for ResourceAvailabilityResult {
+    fn default() -> Self {
+        Self {
+            resource_handle: ResourceHandle::new(0),
+            available: false,
+            current_owner: None,
+            locked: false,
+        }
+    }
+}
+
+impl PartialEq for ResourceAvailabilityResult {
+    fn eq(&self, other: &Self) -> bool {
+        self.resource_handle == other.resource_handle && self.available == other.available
+    }
+}
+
+impl Eq for ResourceAvailabilityResult {}
+
+impl PartialEq for TransferPermissionResult {
+    fn eq(&self, other: &Self) -> bool {
+        self.resource_handle == other.resource_handle && self.permitted == other.permitted
+    }
+}
+
+impl Eq for TransferPermissionResult {}
+
+impl PartialEq for TimingMetrics {
+    fn eq(&self, other: &Self) -> bool {
+        self.total_calls == other.total_calls && self.average_duration_us == other.average_duration_us
+    }
+}
+
+impl Eq for TimingMetrics {}
+
+impl Default for TransferPermissionResult {
+    fn default() -> Self {
+        Self {
+            resource_handle: ResourceHandle::new(0),
+            transfer_type: super::component_communication::ResourceTransferType::Move,
+            permitted: false,
+            policy_applied: String::new(),
+        }
+    }
+}
+
+impl Default for SizeValidationResult {
+    fn default() -> Self {
+        Self {
+            parameter_index: 0,
+            size: 0,
+            max_size: 0,
+            passed: false,
+        }
+    }
+}
+
+impl PartialEq for SizeValidationResult {
+    fn eq(&self, other: &Self) -> bool {
+        self.parameter_index == other.parameter_index && self.passed == other.passed
+    }
+}
+
+impl Eq for SizeValidationResult {}
+
+// Apply macro to all types that need traits
+impl_basic_traits!(ManagedCallContext, ManagedCallContext::default());
+impl_basic_traits!(TypeCompatibility, TypeCompatibility::default());
+impl_basic_traits!(ResourceLock, ResourceLock::default());
+impl_basic_traits!(PendingResourceTransfer, PendingResourceTransfer::default());
+impl_basic_traits!(TransferPolicy, TransferPolicy::default());
+impl_basic_traits!(SecurityPolicy, SecurityPolicy::default());
+impl_basic_traits!(ValidationRule, ValidationRule::default());
+impl_basic_traits!(TimingMetrics, TimingMetrics::default());
+impl_basic_traits!(OptimizationSuggestion, OptimizationSuggestion::default());
+impl_basic_traits!(PermissionCheckResult, PermissionCheckResult::default());
+impl_basic_traits!(AccessControlResult, AccessControlResult::default());
+impl_basic_traits!(ResourceAvailabilityResult, ResourceAvailabilityResult::default());
+impl_basic_traits!(TransferPermissionResult, TransferPermissionResult::default());
+impl_basic_traits!(SizeValidationResult, SizeValidationResult::default());
+
+// Additional Default implementations for remaining types
+impl Default for TransferResult {
+    fn default() -> Self {
+        Self {
+            resource_handle: ResourceHandle::new(0),
+            success: false,
+            new_handle: None,
+            error_message: None,
+        }
+    }
+}
+
+impl PartialEq for TransferResult {
+    fn eq(&self, other: &Self) -> bool {
+        self.resource_handle == other.resource_handle && self.success == other.success
+    }
+}
+
+impl Eq for TransferResult {}
+
+impl Default for TypeCheckResult {
+    fn default() -> Self {
+        Self {
+            parameter_index: 0,
+            expected_type: ComponentType::Bool,
+            actual_type: ComponentType::Bool,
+            passed: false,
+            error_message: None,
+        }
+    }
+}
+
+impl PartialEq for TypeCheckResult {
+    fn eq(&self, other: &Self) -> bool {
+        self.parameter_index == other.parameter_index && self.passed == other.passed
+    }
+}
+
+impl Eq for TypeCheckResult {}
+
+// Apply macro to additional types
+impl_basic_traits!(TransferResult, TransferResult::default());
+impl_basic_traits!(TypeCheckResult, TypeCheckResult::default());

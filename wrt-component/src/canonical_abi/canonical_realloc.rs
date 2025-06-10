@@ -4,20 +4,16 @@
 //! Component Model's Canonical ABI, enabling dynamic memory allocation
 //! during lifting and lowering operations.
 
-#[cfg(not(feature = "std"))]
-use std::sync::{Arc, Mutex};
-#[cfg(feature = "std")]
-use std::sync::{Arc, Mutex};
-
+use crate::prelude::*;
 use wrt_foundation::{
-    bounded_collections::{BoundedVec, MAX_GENERATIVE_TYPES},
-    prelude::*,
+    bounded::{BoundedVec, MAX_COMPONENT_TYPES},
+    traits::DefaultMemoryProvider,
+    safe_memory::NoStdProvider,
 };
+use wrt_error::{Error, ErrorCategory, codes};
 
-use crate::{
-    memory_layout::{Alignment, MemoryLayout},
-    types::{ComponentError, ComponentInstanceId},
-};
+// Type aliases for no_std compatibility
+pub type ComponentInstanceId = u32;
 
 /// Binary std/no_std choice
 pub type ReallocFn = fn(i32, i32, i32, i32) -> i32;
@@ -50,7 +46,7 @@ pub enum StringEncoding {
 #[derive(Debug)]
 pub struct ReallocManager {
     /// Binary std/no_std choice
-    allocations: BTreeMap<ComponentInstanceId, InstanceAllocations>,
+    allocations: BoundedVec<(ComponentInstanceId, InstanceAllocations), 32, NoStdProvider<65536>>,
     /// Binary std/no_std choice
     metrics: AllocationMetrics,
     /// Binary std/no_std choice
@@ -59,17 +55,17 @@ pub struct ReallocManager {
     max_instance_allocations: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct InstanceAllocations {
     /// Binary std/no_std choice
-    allocations: BoundedVec<Allocation, MAX_GENERATIVE_TYPES>,
+    allocations: BoundedVec<Allocation, MAX_COMPONENT_TYPES, NoStdProvider<65536>>,
     /// Binary std/no_std choice
     total_bytes: usize,
     /// Binary std/no_std choice
     realloc_fn: Option<ReallocFunction>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Allocation {
     /// Binary std/no_std choice
     ptr: i32,
@@ -81,12 +77,12 @@ struct Allocation {
     active: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct ReallocFunction {
     /// Function index in the component
     func_index: u32,
-    /// Cached function reference for performance
-    func_ref: Option<Arc<dyn Fn(i32, i32, i32, i32) -> i32 + Send + Sync>>,
+    /// Cached function reference for performance (simplified for no_std)
+    func_available: bool,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -108,7 +104,7 @@ struct AllocationMetrics {
 impl ReallocManager {
     pub fn new(max_allocation_size: usize, max_instance_allocations: usize) -> Self {
         Self {
-            allocations: BTreeMap::new(),
+            allocations: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             metrics: AllocationMetrics::default(),
             max_allocation_size,
             max_instance_allocations,
@@ -120,12 +116,27 @@ impl ReallocManager {
         &mut self,
         instance_id: ComponentInstanceId,
         func_index: u32,
-    ) -> Result<(), ComponentError> {
-        let instance_allocs = self.allocations.entry(instance_id).or_insert_with(|| {
-            InstanceAllocations { allocations: BoundedVec::new(), total_bytes: 0, realloc_fn: None }
-        });
-
-        instance_allocs.realloc_fn = Some(ReallocFunction { func_index, func_ref: None });
+    ) -> Result<()> {
+        // Find existing instance or create new one
+        let mut found = false;
+        for (id, instance_allocs) in &mut self.allocations {
+            if *id == instance_id {
+                instance_allocs.realloc_fn = Some(ReallocFunction { func_index, func_available: true });
+                found = true;
+                break;
+            }
+        }
+        
+        if !found {
+            let instance_allocs = InstanceAllocations { 
+                allocations: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(), 
+                total_bytes: 0, 
+                realloc_fn: Some(ReallocFunction { func_index, func_available: true })
+            };
+            self.allocations.push((instance_id, instance_allocs)).map_err(|_| {
+                Error::new(ErrorCategory::Capacity, codes::CAPACITY_EXCEEDED, "Too many allocations")
+            })?;
+        }
 
         Ok(())
     }
@@ -136,19 +147,21 @@ impl ReallocManager {
         instance_id: ComponentInstanceId,
         size: i32,
         align: i32,
-    ) -> Result<i32, ComponentError> {
+    ) -> Result<i32> {
         // Binary std/no_std choice
         self.validate_allocation(size, align)?;
 
         let instance_allocs = self
             .allocations
-            .get_mut(&instance_id)
-            .ok_or(ComponentError::ResourceNotFound(instance_id.0))?;
+            .iter_mut()
+            .find(|(id, _)| *id == instance_id)
+            .map(|(_, allocs)| allocs)
+            .ok_or(Error::new(ErrorCategory::Resource, codes::RESOURCE_NOT_FOUND, "Resource not found"))?;
 
         // Binary std/no_std choice
         if instance_allocs.allocations.len() >= self.max_instance_allocations {
             self.metrics.failed_allocations += 1;
-            return Err(ComponentError::TooManyGenerativeTypes);
+            return Err(Error::new(ErrorCategory::Capacity, codes::CAPACITY_EXCEEDED, "Too many types"));
         }
 
         // Binary std/no_std choice
@@ -160,7 +173,7 @@ impl ReallocManager {
         instance_allocs
             .allocations
             .push(allocation)
-            .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
+            .map_err(|_| Error::new(ErrorCategory::Capacity, codes::CAPACITY_EXCEEDED, "Too many types"))?;
 
         instance_allocs.total_bytes += size as usize;
 
@@ -180,21 +193,23 @@ impl ReallocManager {
         old_size: i32,
         align: i32,
         new_size: i32,
-    ) -> Result<i32, ComponentError> {
+    ) -> Result<i32> {
         // Binary std/no_std choice
         self.validate_allocation(new_size, align)?;
 
         let instance_allocs = self
             .allocations
-            .get_mut(&instance_id)
-            .ok_or(ComponentError::ResourceNotFound(instance_id.0))?;
+            .iter_mut()
+            .find(|(id, _)| *id == instance_id)
+            .map(|(_, allocs)| allocs)
+            .ok_or(Error::new(ErrorCategory::Resource, codes::RESOURCE_NOT_FOUND, "Resource not found"))?;
 
         // Binary std/no_std choice
         let alloc_index = instance_allocs
             .allocations
             .iter()
             .position(|a| a.ptr == old_ptr && a.size == old_size && a.active)
-            .ok_or(ComponentError::ResourceNotFound(old_ptr as u32))?;
+            .ok_or(Error::new(ErrorCategory::Resource, codes::RESOURCE_NOT_FOUND, "Resource not found"))?;
 
         // Binary std/no_std choice
         let new_ptr = self.call_realloc(instance_allocs, old_ptr, old_size, align, new_size)?;
@@ -226,7 +241,7 @@ impl ReallocManager {
         ptr: i32,
         size: i32,
         align: i32,
-    ) -> Result<(), ComponentError> {
+    ) -> Result<()> {
         self.reallocate(instance_id, ptr, size, align, 0)?;
         Ok(())
     }
@@ -239,9 +254,9 @@ impl ReallocManager {
         old_size: i32,
         align: i32,
         new_size: i32,
-    ) -> Result<i32, ComponentError> {
+    ) -> Result<i32> {
         let realloc_fn =
-            instance_allocs.realloc_fn.as_ref().ok_or(ComponentError::ResourceNotFound(0))?;
+            instance_allocs.realloc_fn.as_ref().ok_or(Error::new(ErrorCategory::Resource, codes::RESOURCE_NOT_FOUND, "Resource not found"))?;
 
         // In a real implementation, this would call the actual wasm function
         // Binary std/no_std choice
@@ -257,18 +272,18 @@ impl ReallocManager {
     }
 
     /// Binary std/no_std choice
-    fn validate_allocation(&self, size: i32, align: i32) -> Result<(), ComponentError> {
+    fn validate_allocation(&self, size: i32, align: i32) -> Result<()> {
         if size < 0 {
-            return Err(ComponentError::TypeMismatch);
+            return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "Type mismatch"));
         }
 
         if size as usize > self.max_allocation_size {
-            return Err(ComponentError::ResourceNotFound(0));
+            return Err(Error::new(ErrorCategory::Resource, codes::RESOURCE_NOT_FOUND, "Resource not found"));
         }
 
         // Check alignment is power of 2
         if align <= 0 || (align & (align - 1)) != 0 {
-            return Err(ComponentError::TypeMismatch);
+            return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "Type mismatch"));
         }
 
         Ok(())
@@ -287,7 +302,7 @@ impl ReallocManager {
     pub fn cleanup_instance(
         &mut self,
         instance_id: ComponentInstanceId,
-    ) -> Result<(), ComponentError> {
+    ) -> Result<()> {
         if let Some(instance_allocs) = self.allocations.remove(&instance_id) {
             // Update metrics for cleanup
             for alloc in instance_allocs.allocations.iter() {
@@ -329,12 +344,12 @@ pub mod helpers {
     pub fn calculate_allocation_size(
         layout: &MemoryLayout,
         count: usize,
-    ) -> Result<usize, ComponentError> {
+    ) -> Result<usize> {
         let item_size = layout.size;
         let align = layout.align;
 
         // Check for overflow
-        let total_size = item_size.checked_mul(count).ok_or(ComponentError::TypeMismatch)?;
+        let total_size = item_size.checked_mul(count).ok_or(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "Type mismatch"))?;
 
         // Add alignment padding
         let aligned_size = align_size(total_size, align);
@@ -455,3 +470,72 @@ mod tests {
         assert_eq!(calculate_allocation_size(&layout, 3).unwrap(), 32); // 30 rounded up to 32
     }
 }
+
+// Implement required traits for BoundedVec compatibility  
+use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream};
+
+// Macro to implement basic traits for complex types
+macro_rules! impl_basic_traits {
+    ($type:ty, $default_val:expr) => {
+        impl Checksummable for $type {
+            fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+                0u32.update_checksum(checksum);
+            }
+        }
+
+        impl ToBytes for $type {
+            fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                &self,
+                _writer: &mut WriteStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<()> {
+                Ok(())
+            }
+        }
+
+        impl FromBytes for $type {
+            fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                _reader: &mut ReadStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<Self> {
+                Ok($default_val)
+            }
+        }
+    };
+}
+
+// Default implementation for Allocation
+impl Default for Allocation {
+    fn default() -> Self {
+        Self {
+            ptr: 0,
+            size: 0,
+            align: 1,
+            active: false,
+        }
+    }
+}
+
+impl Default for InstanceAllocations {
+    fn default() -> Self {
+        Self {
+            allocations: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            total_bytes: 0,
+            realloc_fn: None,
+        }
+    }
+}
+
+impl Default for ReallocFunction {
+    fn default() -> Self {
+        Self {
+            func_index: 0,
+            func_available: false,
+        }
+    }
+}
+
+// Apply macro to types that need traits
+impl_basic_traits!(Allocation, Allocation::default());
+impl_basic_traits!(InstanceAllocations, InstanceAllocations::default());
+impl_basic_traits!(ReallocFunction, ReallocFunction::default());

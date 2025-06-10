@@ -6,7 +6,7 @@
 
 use core::{fmt::Debug, time::Duration};
 
-#[cfg(all(not(feature = "std")))]
+#[cfg(not(feature = "std"))]
 use std::{boxed::Box, string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::{boxed::Box, string::String, vec::Vec};

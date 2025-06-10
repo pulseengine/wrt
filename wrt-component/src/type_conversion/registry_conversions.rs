@@ -122,7 +122,7 @@ pub fn register_valtype_conversions(registry: &mut TypeConversionRegistry) {
                 kind: ConversionErrorKind::InvalidVariant,
                 source_type: "FormatValType",
                 target_type: "ValueType",
-                context: Some(ComponentValue::String("Component operation result".into())),
+                context: Some("Component not found"),
                 source: None,
             }),
         }

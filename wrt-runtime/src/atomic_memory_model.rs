@@ -5,7 +5,7 @@
 
 extern crate alloc;
 
-use crate::prelude::*;
+use crate::prelude::{Debug, Eq, PartialEq};
 use wrt_foundation::traits::BoundedCapacity;
 use crate::atomic_execution::{AtomicMemoryContext, AtomicExecutionStats};
 use crate::thread_manager::{ThreadManager, ThreadId, ThreadState};
@@ -195,9 +195,9 @@ impl AtomicMemoryModel {
         }
         
         result.total_optimizations = 
-            result.ordering_optimized as u32 +
-            result.scheduling_optimized as u32 +
-            result.layout_optimized as u32;
+            u32::from(result.ordering_optimized) +
+            u32::from(result.scheduling_optimized) +
+            u32::from(result.layout_optimized);
         
         Ok(result)
     }
@@ -359,20 +359,17 @@ impl AtomicMemoryModel {
 
 /// Memory ordering enforcement policy
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum MemoryOrderingPolicy {
     /// Strict sequential consistency for all operations
     StrictSequential,
     /// Relaxed ordering with minimal constraints
     Relaxed,
     /// Adaptive ordering based on operation types
+    #[default]
     Adaptive,
 }
 
-impl Default for MemoryOrderingPolicy {
-    fn default() -> Self {
-        MemoryOrderingPolicy::Adaptive
-    }
-}
 
 /// Thread synchronization state tracking
 #[derive(Debug)]
@@ -561,9 +558,9 @@ impl wrt_foundation::traits::ToBytes for DataRaceReport {
         8 // Just the memory address for simplicity
     }
 
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
         writer.write_all(&self.memory_address.to_le_bytes())
@@ -571,8 +568,8 @@ impl wrt_foundation::traits::ToBytes for DataRaceReport {
 }
 
 impl wrt_foundation::traits::FromBytes for DataRaceReport {
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
-        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 8];
@@ -607,18 +604,18 @@ impl wrt_foundation::traits::ToBytes for OrderingViolationReport {
         4 // Just the thread_id for simplicity
     }
 
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
-        writer.write_all(&(self.thread_id as u32).to_le_bytes())
+        writer.write_all(&self.thread_id.to_le_bytes())
     }
 }
 
 impl wrt_foundation::traits::FromBytes for OrderingViolationReport {
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
-        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 4];
@@ -648,16 +645,16 @@ impl wrt_foundation::traits::Checksummable for DeadlockReport {
 
 impl wrt_foundation::traits::ToBytes for DeadlockReport {
     fn serialized_size(&self) -> usize { 4 }
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
-        &self, writer: &mut wrt_foundation::traits::WriteStream<'a>, _provider: &P,
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        &self, writer: &mut wrt_foundation::traits::WriteStream<'_>, _provider: &P,
     ) -> wrt_foundation::Result<()> {
         writer.write_all(&[0u8; 4])
     }
 }
 
 impl wrt_foundation::traits::FromBytes for DeadlockReport {
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
-        _reader: &mut wrt_foundation::traits::ReadStream<'a>, _provider: &P,
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        _reader: &mut wrt_foundation::traits::ReadStream<'_>, _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         Ok(Self::default())
     }
@@ -680,16 +677,16 @@ impl wrt_foundation::traits::Checksummable for SyncViolationReport {
 
 impl wrt_foundation::traits::ToBytes for SyncViolationReport {
     fn serialized_size(&self) -> usize { 4 }
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
-        &self, writer: &mut wrt_foundation::traits::WriteStream<'a>, _provider: &P,
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        &self, writer: &mut wrt_foundation::traits::WriteStream<'_>, _provider: &P,
     ) -> wrt_foundation::Result<()> {
-        writer.write_all(&(self.thread_id as u32).to_le_bytes())
+        writer.write_all(&self.thread_id.to_le_bytes())
     }
 }
 
 impl wrt_foundation::traits::FromBytes for SyncViolationReport {
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
-        reader: &mut wrt_foundation::traits::ReadStream<'a>, _provider: &P,
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>, _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 4];
         reader.read_exact(&mut bytes)?;

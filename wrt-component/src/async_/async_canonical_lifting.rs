@@ -17,10 +17,10 @@ use wrt_foundation::{
 };
 
 use crate::{
-    canonical_options::CanonicalOptions,
+    canonical_abi::canonical_options::CanonicalOptions,
     types::{ValType, Value},
-    WrtResult,
 };
+use wrt_error::Result as WrtResult;
 
 use wrt_error::{Error, ErrorCategory, Result};
 
@@ -75,7 +75,7 @@ pub struct AsyncCanonicalEncoder {
     #[cfg(feature = "std")]
     buffer: Vec<u8>,
     #[cfg(not(any(feature = "std", )))]
-    buffer: BoundedVec<u8, MAX_IMMEDIATE_SIZE>,
+    buffer: BoundedVec<u8, MAX_IMMEDIATE_SIZE, NoStdProvider<65536>>,
     
     /// Current write position
     position: usize,
@@ -88,7 +88,7 @@ impl AsyncCanonicalEncoder {
             #[cfg(feature = "std")]
             buffer: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            buffer: BoundedVec::new(),
+            buffer: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             position: 0,
         }
     }

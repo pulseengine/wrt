@@ -6,9 +6,9 @@
 
 extern crate alloc;
 
-use crate::prelude::*;
+use crate::prelude::{Debug, Eq, PartialEq};
 use wrt_error::{Error, ErrorCategory, Result, codes};
-use wrt_foundation::traits::*;
+use wrt_foundation::traits::{BoundedCapacity, BytesWriter, LittleEndian};
 
 #[cfg(feature = "std")]
 use std::vec::Vec;
@@ -17,12 +17,14 @@ use alloc::vec::Vec;
 
 /// Branch prediction hint indicating likelihood of branch being taken
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum BranchLikelihood {
     /// Branch is very unlikely to be taken (< 10% probability)
     VeryUnlikely,
     /// Branch is unlikely to be taken (10-40% probability)
     Unlikely,
     /// Branch probability is unknown or balanced (40-60% probability)
+    #[default]
     Unknown,
     /// Branch is likely to be taken (60-90% probability)
     Likely,
@@ -32,7 +34,7 @@ pub enum BranchLikelihood {
 
 impl BranchLikelihood {
     /// Create likelihood from branch hint value (0=false, 1=true)
-    pub fn from_hint_value(hint: u8) -> Self {
+    #[must_use] pub fn from_hint_value(hint: u8) -> Self {
         match hint {
             0 => BranchLikelihood::Unlikely,  // likely_false
             1 => BranchLikelihood::Likely,    // likely_true
@@ -41,7 +43,7 @@ impl BranchLikelihood {
     }
     
     /// Get probability estimate as a value between 0.0 and 1.0
-    pub fn probability(&self) -> f64 {
+    #[must_use] pub fn probability(&self) -> f64 {
         match self {
             BranchLikelihood::VeryUnlikely => 0.05,
             BranchLikelihood::Unlikely => 0.25,
@@ -52,21 +54,16 @@ impl BranchLikelihood {
     }
     
     /// Check if branch is predicted to be taken
-    pub fn is_predicted_taken(&self) -> bool {
+    #[must_use] pub fn is_predicted_taken(&self) -> bool {
         self.probability() > 0.5
     }
     
     /// Check if this is a strong prediction (high confidence)
-    pub fn is_strong_prediction(&self) -> bool {
+    #[must_use] pub fn is_strong_prediction(&self) -> bool {
         matches!(self, BranchLikelihood::VeryUnlikely | BranchLikelihood::VeryLikely)
     }
 }
 
-impl Default for BranchLikelihood {
-    fn default() -> Self {
-        BranchLikelihood::Unknown
-    }
-}
 
 /// Branch prediction information for a specific instruction
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -83,7 +80,7 @@ pub struct BranchPrediction {
 
 impl BranchPrediction {
     /// Create new branch prediction
-    pub fn new(
+    #[must_use] pub fn new(
         instruction_offset: u32,
         likelihood: BranchLikelihood,
         taken_target: Option<u32>,
@@ -98,7 +95,7 @@ impl BranchPrediction {
     }
     
     /// Get the predicted next instruction offset
-    pub fn predicted_target(&self) -> Option<u32> {
+    #[must_use] pub fn predicted_target(&self) -> Option<u32> {
         if self.likelihood.is_predicted_taken() {
             self.taken_target
         } else {
@@ -107,7 +104,7 @@ impl BranchPrediction {
     }
     
     /// Get the unlikely target (for prefetching)
-    pub fn unlikely_target(&self) -> Option<u32> {
+    #[must_use] pub fn unlikely_target(&self) -> Option<u32> {
         if self.likelihood.is_predicted_taken() {
             self.fallthrough_target
         } else {
@@ -128,9 +125,9 @@ impl wrt_foundation::traits::ToBytes for BranchPrediction {
         12 // instruction_offset(4) + likelihood(1) + taken_target(4) + fallthrough_target(4) - simplified
     }
 
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
         writer.write_all(&self.instruction_offset.to_le_bytes())?;
@@ -141,8 +138,8 @@ impl wrt_foundation::traits::ToBytes for BranchPrediction {
 }
 
 impl wrt_foundation::traits::FromBytes for BranchPrediction {
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
-        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 4];
@@ -188,7 +185,7 @@ pub struct FunctionBranchPredictor {
 
 impl FunctionBranchPredictor {
     /// Create new function branch predictor
-    pub fn new(function_index: u32) -> Self {
+    #[must_use] pub fn new(function_index: u32) -> Self {
         Self {
             function_index,
             #[cfg(feature = "std")]
@@ -221,7 +218,7 @@ impl FunctionBranchPredictor {
         }
         #[cfg(not(feature = "std"))]
         {
-            for prediction in self.predictions.iter() {
+            for prediction in &self.predictions {
                 if prediction.instruction_offset == instruction_offset {
                     return Some(prediction);
                 }
@@ -282,9 +279,9 @@ impl wrt_foundation::traits::ToBytes for FunctionBranchPredictor {
         8 // Just function_index for simplicity
     }
 
-    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
-        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
         writer.write_all(&self.function_index.to_le_bytes())
@@ -292,8 +289,8 @@ impl wrt_foundation::traits::ToBytes for FunctionBranchPredictor {
 }
 
 impl wrt_foundation::traits::FromBytes for FunctionBranchPredictor {
-    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
-        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 4];
@@ -318,7 +315,7 @@ pub struct ModuleBranchPredictor {
 
 impl ModuleBranchPredictor {
     /// Create new module branch predictor
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self {
             #[cfg(feature = "std")]
             function_predictors: std::collections::BTreeMap::new(),
@@ -350,7 +347,7 @@ impl ModuleBranchPredictor {
         }
         #[cfg(not(feature = "std"))]
         {
-            for predictor in self.function_predictors.iter() {
+            for predictor in &self.function_predictors {
                 if predictor.function_index == function_index {
                     return Some(predictor);
                 }
@@ -558,7 +555,7 @@ pub struct PredictionStats {
 
 impl PredictionStats {
     /// Create new prediction statistics
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self {
             correct_predictions: 0,
             incorrect_predictions: 0,
@@ -579,7 +576,7 @@ impl PredictionStats {
     }
     
     /// Get prediction accuracy as percentage (0.0 to 1.0)
-    pub fn accuracy(&self) -> f64 {
+    #[must_use] pub fn accuracy(&self) -> f64 {
         if self.total_branches == 0 {
             0.0
         } else {
@@ -588,12 +585,12 @@ impl PredictionStats {
     }
     
     /// Get total number of predictions made
-    pub fn total_predictions(&self) -> u64 {
+    #[must_use] pub fn total_predictions(&self) -> u64 {
         self.correct_predictions + self.incorrect_predictions
     }
     
     /// Check if we have enough data for reliable statistics
-    pub fn has_sufficient_data(&self) -> bool {
+    #[must_use] pub fn has_sufficient_data(&self) -> bool {
         self.total_predictions() >= 100
     }
 }

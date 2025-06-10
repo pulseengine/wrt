@@ -125,7 +125,7 @@ pub struct ResourceEntry {
 #[derive(Debug, Clone)]
 pub struct ResourceMetadata {
     /// Type name
-    pub type_name: BoundedString<64>,
+    pub type_name: BoundedString<64, NoStdProvider<65536>>,
     
     /// Creation timestamp
     pub created_at: u64,
@@ -174,13 +174,13 @@ pub struct ResourceRepresentationEntry {
 #[derive(Debug, Clone)]
 pub struct ConcreteResourceRepresentation {
     /// Type name
-    pub type_name: BoundedString<64>,
+    pub type_name: BoundedString<64, NoStdProvider<65536>>,
     
     /// Representation size
     pub size: usize,
     
     /// Valid handles
-    pub valid_handles: BoundedVec<u32, 64>,
+    pub valid_handles: BoundedVec<u32, 64, NoStdProvider<65536>>,
     
     /// Handle to representation mapping
     pub handle_values: BoundedVec<(u32, RepresentationValue), 64>,
@@ -225,10 +225,10 @@ pub struct NetworkConnection {
     pub socket_fd: i32,
     
     /// Local address
-    pub local_addr: BoundedString<64>,
+    pub local_addr: BoundedString<64, NoStdProvider<65536>>,
     
     /// Remote address
-    pub remote_addr: BoundedString<64>,
+    pub remote_addr: BoundedString<64, NoStdProvider<65536>>,
     
     /// Connection state
     pub state: ConnectionState,
@@ -260,12 +260,12 @@ impl ResourceRepresentationManager {
             #[cfg(feature = "std")]
             representations: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            representations: BoundedVec::new(),
+            representations: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             
             #[cfg(feature = "std")]
             handle_to_resource: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            handle_to_resource: BoundedVec::new(),
+            handle_to_resource: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             
             next_representation_id: 1,
             stats: RepresentationStats::new(),
@@ -301,8 +301,8 @@ impl ResourceRepresentationManager {
             let concrete = ConcreteResourceRepresentation {
                 type_name: BoundedString::from_str(representation.type_name()).unwrap_or_default(),
                 size: representation.representation_size(),
-                valid_handles: BoundedVec::new(),
-                handle_values: BoundedVec::new(),
+                valid_handles: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+                handle_values: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             };
             
             let entry = ResourceRepresentationEntry {
@@ -486,7 +486,7 @@ impl ResourceRepresentationManager {
         mutable: bool,
     ) -> Result<()> {
         let metadata = ResourceMetadata {
-            type_name: BoundedString::from_str(&ComponentValue::String("Component operation result".into())).unwrap_or_default(),
+            type_name: BoundedString::from_str(&"Component not found").unwrap_or_default(),
             created_at: self.get_current_time(),
             last_accessed: self.get_current_time(),
             access_count: 0,
@@ -628,7 +628,7 @@ impl FileHandleRepresentation {
             #[cfg(feature = "std")]
             file_descriptors: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            file_descriptors: BoundedVec::new(),
+            file_descriptors: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 }
@@ -729,7 +729,7 @@ impl MemoryBufferRepresentation {
             #[cfg(feature = "std")]
             buffers: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            buffers: BoundedVec::new(),
+            buffers: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 }
@@ -766,7 +766,7 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
                     )
                 })?;
             
-            let mut fields = BoundedVec::new();
+            let mut fields = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
             fields.push(("pointer".to_string(), RepresentationValue::U64(ptr as u64))).unwrap();
             fields.push(("size".to_string(), RepresentationValue::U64(size as u64))).unwrap();
             
@@ -850,7 +850,7 @@ impl NetworkConnectionRepresentation {
             #[cfg(feature = "std")]
             connections: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            connections: BoundedVec::new(),
+            connections: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 }
@@ -889,7 +889,7 @@ impl ResourceRepresentation for NetworkConnectionRepresentation {
                     )
                 })?;
             
-            let mut fields = BoundedVec::new();
+            let mut fields = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
             fields.push(("socket_fd".to_string(), RepresentationValue::U32(conn.socket_fd as u32))).unwrap();
             fields.push(("local_addr".to_string(), RepresentationValue::String(conn.local_addr.to_string()))).unwrap();
             fields.push(("remote_addr".to_string(), RepresentationValue::String(conn.remote_addr.to_string()))).unwrap();

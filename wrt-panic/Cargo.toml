@@ -1,0 +1,53 @@
+[package]
+name = "wrt-panic"
+version.workspace = true
+edition.workspace = true
+description = "Panic handler for WRT - provides ASIL-B/D compliant panic handling"
+license.workspace = true
+repository.workspace = true
+keywords = ["panic", "no_std", "embedded", "safety", "asil"]
+categories = ["no-std", "embedded"]
+
+[dependencies]
+# Core WRT foundation for safety system integration
+wrt-foundation = { workspace = true, default-features = false }
+
+# std support is controlled via features, not dependencies
+# std is built into Rust and doesn't need to be listed as a dependency
+
+[features]
+# Default features - pure no_std by default following WRT pattern
+default = []
+
+# Binary choice: std OR no_std (following wrt-foundation pattern)
+std = ["wrt-foundation/std"]
+no_std = []
+
+# Development profile panic handler (with enhanced debugging info)
+dev = []
+
+# Release profile panic handler (minimal, optimized for production) 
+release = []
+
+# ASIL-B compliance features (≥90% Single-Point Fault Metric)
+asil-b = []
+
+# ASIL-D compliance features (≥99% Single-Point Fault Metric)
+asil-d = []
+
+# Safety features for enhanced fault detection
+safety = ["wrt-foundation/safety"]
+
+# Optimization features for performance-critical paths
+optimize = ["wrt-foundation/optimize"]
+
+# Enable panic handler (for binary applications only)
+default-panic-handler = []
+
+[lib]
+name = "wrt_panic"
+path = "src/lib.rs"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

@@ -38,21 +38,130 @@ pub use binary_parser::{
 pub use decode::decode_component as decode_component_internal;
 #[cfg(feature = "std")]
 pub use encode::encode_component;
-pub use name_section::{
-    generate_component_name_section, parse_component_name_section, ComponentNameSection, NameMap,
-    NameMapEntry, SortIdentifier,
+
+pub use component_name_section::{
+    generate_component_name_section, parse_component_name_section, ComponentNameSection,
 };
+
+#[cfg(feature = "std")]
+pub use name_section::{NameMap, NameMapEntry, SortIdentifier};
+
 pub use types::{
-    Component, ComponentAnalyzer, ComponentMetadata, ComponentType, CoreExternType, CoreInstance,
-    CoreType, Export, ExportInfo, ExternType, Import, ImportInfo, Instance, ModuleInfo, Start,
+    ComponentAnalyzer, ComponentMetadata, ComponentType, CoreExternType, CoreInstance,
+    CoreType, ExportInfo, ExternType, ImportInfo, Instance, ModuleInfo, Start,
     ValType,
 };
+
+#[cfg(feature = "std")]  
+pub use types::{Component, Export, Import};
+
+#[cfg(feature = "std")]
 pub use utils::*;
+
 pub use val_type::encode_val_type;
 pub use validation::{validate_component, validate_component_with_config, ValidationConfig};
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
+#[cfg(feature = "std")]
 use crate::{prelude::*, utils::BinaryType};
+
+#[cfg(not(feature = "std"))]
+use crate::prelude::*;
+
+// No_std stub for BinaryType when utils is not available
+#[cfg(not(feature = "std"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BinaryType {
+    Module,
+    Component,
+}
+
+// No_std safe utility functions with bounded behavior
+#[cfg(not(feature = "std"))]
+mod no_std_utils {
+    use super::*;
+    use wrt_foundation::BoundedString;
+    
+    /// Detect binary type with safety bounds for no_std
+    /// 
+    /// # Safety Requirements
+    /// - Only reads fixed-size magic bytes
+    /// - No dynamic allocation
+    /// - Fails gracefully on invalid input
+    pub fn detect_binary_type(binary: &[u8]) -> Result<BinaryType> {
+        if binary.len() < 8 {
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Binary too short for WASM header"
+            ));
+        }
+        
+        // Check for WASM magic number (fixed 4 bytes)
+        if &binary[0..4] == b"\0asm" {
+            // Check version to determine module vs component
+            let version = u32::from_le_bytes([binary[4], binary[5], binary[6], binary[7]]);
+            if version == 1 {
+                Ok(BinaryType::Module)
+            } else {
+                Ok(BinaryType::Component)
+            }
+        } else {
+            Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Invalid WASM magic number"
+            ))
+        }
+    }
+    
+    /// Read name as bounded string with safety constraints
+    ///
+    /// # Safety Requirements  
+    /// - Uses bounded string with compile-time limit
+    /// - Validates UTF-8 without dynamic allocation
+    /// - Fails gracefully on oversized strings
+    pub fn read_name_as_string(data: &[u8], offset: usize) -> Result<(BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<512>>, usize)> {
+        if offset >= data.len() {
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Offset beyond data length"
+            ));
+        }
+        
+        // Read length (LEB128 - simplified to single byte for safety)
+        let length = data[offset] as usize;
+        let name_start = offset + 1;
+        
+        if name_start + length > data.len() {
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Name length exceeds data"
+            ));
+        }
+        
+        // Validate UTF-8 and create bounded string
+        let name_bytes = &data[name_start..name_start + length];
+        let name_str = core::str::from_utf8(name_bytes).map_err(|_| Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Invalid UTF-8 in name"
+        ))?;
+        
+        let bounded_name = BoundedString::from_str(name_str, wrt_foundation::NoStdProvider::new()).map_err(|_| Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Name too long for bounded storage"
+        ))?;
+        
+        Ok((bounded_name, length + 1))
+    }
+}
+
+#[cfg(not(feature = "std"))]
+use no_std_utils::{detect_binary_type, read_name_as_string};
 
 /// Decode a component from binary data
 ///
@@ -65,7 +174,7 @@ use crate::{prelude::*, utils::BinaryType};
 /// # Returns
 ///
 /// * `Result<Component>` - The decoded component or an error
-#[cfg(feature = "component-model-core")]
+#[cfg(feature = "std")]
 pub fn decode_component_binary(binary: &[u8]) -> Result<Component> {
     decode_component_internal(binary)
 }
@@ -82,9 +191,15 @@ pub fn decode_component_binary(binary: &[u8]) -> Result<Component> {
 /// # Returns
 ///
 /// * `Result<Component>` - The decoded component or an error
+#[cfg(feature = "std")]
 pub fn decode_component(binary: &[u8]) -> Result<Component> {
     // Detect binary type first
-    match crate::utils::detect_binary_type(binary)? {
+    #[cfg(feature = "std")]
+    let binary_type = crate::utils::detect_binary_type(binary)?;
+    #[cfg(not(feature = "std"))]
+    let binary_type = detect_binary_type(binary)?;
+    
+    match binary_type {
         BinaryType::CoreModule => {
             // Can't decode a core module as a component
             Err(Error::new(
@@ -134,6 +249,7 @@ pub fn decode_component(binary: &[u8]) -> Result<Component> {
 }
 
 /// Parse the sections of a Component Model component
+#[cfg(feature = "std")]
 fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()> {
     let mut offset = 0;
 
@@ -162,7 +278,10 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
         match section_id {
             0x00 => {
                 // Custom section - delegate to common custom section parser
+                #[cfg(feature = "std")]
                 let (name, bytes_read) = crate::utils::read_name_as_string(section_data, 0)?;
+                #[cfg(not(feature = "std"))]
+                let (name, bytes_read) = read_name_as_string(section_data, 0)?;
                 let custom_data = &section_data[bytes_read..];
 
                 // Store custom section as needed

@@ -1,11 +1,14 @@
 //! Prelude module for wrt-runtime
 //!
-//! This module provides a unified set of imports for both std and no_std
+//! This module provides a unified set of imports for both std and `no_std`
 //! environments. It re-exports commonly used types and traits to ensure
 //! consistency across all crates in the WRT project and simplify imports in
 //! individual modules.
 
 // Core imports for both std and no_std environments
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
 
 // Binary std/no_std choice
 #[cfg(not(feature = "std"))]
@@ -13,65 +16,71 @@ pub use wrt_foundation::{
     NoStdProvider,
 };
 
-// Define HashMap and HashSet type aliases with all required generics
+// Platform-aware collection type aliases that adapt to target platform capabilities
+/// `HashMap` type for `no_std` environments with bounded capacity
 #[cfg(not(feature = "std"))]
-pub type HashMap<K, V> = wrt_foundation::BoundedMap<K, V, 128, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+pub type HashMap<K, V> = wrt_foundation::BoundedMap<K, V, 128, wrt_foundation::memory_system::MediumProvider>;
 
+/// `HashSet` type for `no_std` environments with bounded capacity
 #[cfg(not(feature = "std"))]
-pub type HashSet<T> = wrt_foundation::BoundedSet<T, 128, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+pub type HashSet<T> = wrt_foundation::BoundedSet<T, 128, wrt_foundation::memory_system::MediumProvider>;
 
-// For pure no_std, we'll rely on explicit BoundedVec usage instead of Vec alias
-// to avoid conflicts with other crates' Vec definitions
+// Platform-aware string and vector types
 #[cfg(not(feature = "std"))]
 pub use wrt_foundation::bounded::BoundedString;
 
 #[cfg(not(feature = "std"))]
-pub type String = wrt_foundation::bounded::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+pub use alloc::string::{String, ToString};
 
+// Note: Use alloc::vec::Vec directly for no_std mode
 #[cfg(not(feature = "std"))]
-pub type Vec<T> = wrt_foundation::bounded::BoundedVec<T, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+pub use alloc::vec::Vec;
 
-// Helper macro to create BoundedVec with standard parameters
+// Helper macro to create Vec 
+/// Create a new Vec for `no_std` environments
 #[cfg(not(feature = "std"))]
 #[macro_export]
 macro_rules! vec_new {
     () => {
-        wrt_foundation::bounded::BoundedVec::<_, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
+        Vec::new()
     };
 }
 
-// Helper function to create BoundedVec with capacity (capacity is ignored in bounded collections)
+// Helper function to create Vec with capacity
+/// Create a Vec with specified capacity for `no_std` environments
 #[cfg(not(feature = "std"))]
-pub fn vec_with_capacity<T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + core::fmt::Debug + PartialEq + Eq>(_capacity: usize) -> wrt_foundation::bounded::BoundedVec<T, 256, wrt_foundation::safe_memory::NoStdProvider<1024>> {
-    wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
+#[must_use] pub fn vec_with_capacity<T>(capacity: usize) -> Vec<T> {
+    Vec::with_capacity(capacity)
 }
 
-// Add vec! macro for no_std environments
+// Add vec! macro for no_std environments without alloc
+/// Vec creation macro for pure `no_std` environments without alloc
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 #[macro_export]
 macro_rules! vec {
     () => {
-        Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
+        Vec::new()
     };
     ($elem:expr; $n:expr) => {
         {
-            let mut v = Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+            let mut v = Vec::new();
             for _ in 0..$n {
-                v.push($elem).unwrap();
+                v.push($elem);
             }
             v
         }
     };
     ($($x:expr),*) => {
         {
-            let mut v = Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
-            $(v.push($x).unwrap();)*
+            let mut v = Vec::new();
+            $(v.push($x);)*
             v
         }
     };
 }
 
 // Simple format! implementation for no_std mode using a fixed buffer
+/// Simplified format macro for `no_std` environments
 #[cfg(not(feature = "std"))]
 #[macro_export]
 macro_rules! format {
@@ -89,6 +98,7 @@ macro_rules! format {
 pub use crate::format;
 
 // Helper functions for Option<Value> conversion
+/// Convert Option<Value> to Option<i32> for `no_std` environments
 #[cfg(not(feature = "std"))]
 pub fn option_value_as_i32(value: &Option<wrt_foundation::Value>) -> Option<i32> {
     match value {
@@ -97,6 +107,7 @@ pub fn option_value_as_i32(value: &Option<wrt_foundation::Value>) -> Option<i32>
     }
 }
 
+/// Convert Option<Value> to Option<i64> for `no_std` environments
 #[cfg(not(feature = "std"))]
 pub fn option_value_as_i64(value: &Option<wrt_foundation::Value>) -> Option<i64> {
     match value {
@@ -105,73 +116,47 @@ pub fn option_value_as_i64(value: &Option<wrt_foundation::Value>) -> Option<i64>
     }
 }
 
+/// Convert Option<Value> to Option<f32> for `no_std` environments
 #[cfg(not(feature = "std"))]
 pub fn option_value_as_f32(value: &Option<wrt_foundation::Value>) -> Option<f32> {
     match value {
-        Some(wrt_foundation::Value::F32(val)) => Some(val.to_f32()),
+        Some(wrt_foundation::Value::F32(val)) => Some(val.value()),
         _ => None,
     }
 }
 
+/// Convert Option<Value> to Option<f64> for `no_std` environments
 #[cfg(not(feature = "std"))]
 pub fn option_value_as_f64(value: &Option<wrt_foundation::Value>) -> Option<f64> {
     match value {
-        Some(wrt_foundation::Value::F64(val)) => Some(val.to_f64()),
+        Some(wrt_foundation::Value::F64(val)) => Some(val.value()),
         _ => None,
     }
 }
 
-// Add ToString trait for no_std
-#[cfg(not(feature = "std"))]
-pub trait ToString {
-    fn to_string(&self) -> String;
-}
-
-#[cfg(not(feature = "std"))]
-impl ToString for &str {
-    fn to_string(&self) -> String {
-        let mut bounded_string = String::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
-        // Copy characters up to the capacity limit
-        for ch in self.chars().take(256) {
-            if bounded_string.push(ch).is_err() {
-                break;
-            }
-        }
-        bounded_string
-    }
-}
-
-#[cfg(not(feature = "std"))]
-impl ToString for str {
-    fn to_string(&self) -> String {
-        let mut bounded_string = String::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
-        // Copy characters up to the capacity limit
-        for ch in self.chars().take(256) {
-            if bounded_string.push(ch).is_err() {
-                break;
-            }
-        }
-        bounded_string
-    }
-}
+// ToString is provided by alloc when available
 
 // Arc and Mutex for no_std with alloc
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use alloc::sync::Arc;
 
 // For pure no_std without alloc, use reference wrapper
+/// Arc-like reference wrapper for pure `no_std` environments without alloc
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 #[derive(Debug, Clone)]
 pub struct Arc<T> {
+    /// Inner value being wrapped
     inner: T,
 }
 
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 impl<T> Arc<T> {
+    /// Create a new Arc wrapper for pure `no_std` environments
     pub fn new(value: T) -> Self {
         Self { inner: value }
     }
     
+    /// Compare Arc pointers (always returns false in `no_std` mode)
     pub fn ptr_eq(_this: &Self, _other: &Self) -> bool {
         // In no_std mode, we can't do pointer comparison, so just return false
         false
@@ -286,14 +271,22 @@ pub use wrt_foundation::{
     MemoryStats,
 };
 
-// Type aliases with default memory provider for the runtime
-pub type DefaultProvider = wrt_foundation::safe_memory::NoStdProvider<1024>;
+// Type aliases with platform-aware memory provider for the runtime
+/// Default memory provider for runtime operations (64KB buffer)
+pub type DefaultProvider = wrt_foundation::safe_memory::NoStdProvider<65536>;
+/// WebAssembly instruction type with default provider
 pub type Instruction = wrt_foundation::types::Instruction<DefaultProvider>;
+/// Function type with default provider
 pub type FuncType = wrt_foundation::types::FuncType<DefaultProvider>;
+/// Runtime function type alias for consistency
 pub type RuntimeFuncType = wrt_foundation::types::FuncType<DefaultProvider>;
+/// WebAssembly global variable type
 pub type GlobalType = wrt_foundation::types::GlobalType;
+/// WebAssembly memory type
 pub type MemoryType = wrt_foundation::types::MemoryType;
+/// WebAssembly table type
 pub type TableType = wrt_foundation::types::TableType;
+/// External type for component model with default provider
 pub type ExternType = wrt_foundation::component::ExternType<DefaultProvider>;
 
 // Safety-critical wrapper types for runtime (deterministic, verifiable)
@@ -332,14 +325,15 @@ pub use crate::execution::{ExecutionContext, ExecutionStats}; /* Removed Executi
 // Function struct for the runtime.
 pub use crate::global::Global;
 // Adapters and helpers if they are part of the public API exported by this prelude
-pub use crate::memory_adapter::MemoryAdapter;
+// Temporarily disabled - memory_adapter module is disabled
+// pub use crate::memory_adapter::MemoryAdapter;
 // Module items specific to wrt-runtime module structure
 pub use crate::module::{Data, Element, Export, ExportItem, ExportKind, Import, OtherExport};
-// Stackless execution engine components
-pub use crate::stackless::{
-    StacklessCallbackRegistry, StacklessEngine, StacklessExecutionState, StacklessFrame,
-    StacklessStack,
-};
+// Stackless execution engine components - temporarily disabled
+// pub use crate::stackless::{
+//     StacklessCallbackRegistry, StacklessEngine, StacklessExecutionState, StacklessFrame,
+//     StacklessStack,
+// };
 pub use crate::{
     memory::Memory, module::Module as RuntimeModule,
     module_instance::ModuleInstance as RuntimeModuleInstance, table::Table,

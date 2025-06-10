@@ -47,7 +47,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(ComponentValue::String("Component operation result".into())),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -67,7 +67,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(ComponentValue::String("Component operation result".into())),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -101,7 +101,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(ComponentValue::String("Component operation result".into())),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -114,7 +114,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(ComponentValue::String("Component operation result".into())),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -150,7 +150,7 @@ impl ResourceArena {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             ));
         }
 
@@ -159,7 +159,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(ComponentValue::String("Component operation result".into())),
+                PoisonedLockError("Component not found"),
             )
         })?;
 
@@ -176,7 +176,7 @@ impl ResourceArena {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(ComponentValue::String("Component operation result".into())),
+                PoisonedLockError("Component not found"),
             )
         })?;
 

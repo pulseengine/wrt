@@ -23,6 +23,7 @@ members = [
     "wrt-verification-tool",
     "wrt-test-registry",
     "wrt-platform",
+    "wrt-panic",
     "wrt-tests/integration"]
 resolver = "2"  # Use edition 2021 resolver
 
@@ -46,7 +47,7 @@ wrt-error-ng = { path = "wrt-error-ng", version = "0.2.0", default-features = fa
 wrt-sync = { path = "wrt-sync", version = "0.2.0", default-features = false }
 wrt-format = { path = "wrt-format", version = "0.2.0", default-features = false }
 wrt-foundation = { path = "wrt-foundation", version = "0.2.0", default-features = false }
-wrt-decoder = { path = "wrt-decoder", version = "0.2.0", default-features = false }
+wrt-decoder = { path = "wrt-decoder", version = "0.2.0", default-features = false, features = ["std"] }
 wrt-debug = { path = "wrt-debug", version = "0.2.0", default-features = false }
 wrt-runtime = { path = "wrt-runtime", version = "0.2.0", default-features = false }
 wrt-logging = { path = "wrt-logging", version = "0.2.0", default-features = false }
@@ -58,6 +59,7 @@ wrt-intercept = { path = "wrt-intercept", version = "0.2.0", default-features = 
 wrt-test-registry = { path = "wrt-test-registry", version = "0.2.0", default-features = false }
 wrt-math = { path = "wrt-math", version = "0.2.0", default-features = false }
 wrt-platform = { path = "wrt-platform", version = "0.2.0", default-features = false }
+wrt-panic = { path = "wrt-panic", version = "0.2.0", default-features = false }
 wrt-verification-tool = { path = "wrt-verification-tool", version = "0.2.0", default-features = false }
 
 [workspace.lints.rust]

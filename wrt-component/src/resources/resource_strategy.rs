@@ -22,7 +22,7 @@ pub trait ResourceStrategy: Send + Sync {
         &self,
         data: &[u8],
         operation: ResourceOperation,
-    ) -> Result<BoundedVec<u8, MAX_BUFFER_SIZE>>;
+    ) -> Result<BoundedVec<u8, MAX_BUFFER_SIZE>, NoStdProvider<65536>>;
 
     /// Check if the strategy allows a certain operation
     fn allows_operation(&self, operation: ResourceOperation) -> bool {

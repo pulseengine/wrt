@@ -302,54 +302,26 @@ pub fn parse_branch_hint_section(data: &[u8]) -> Result<BranchHintSection> {
 /// Encode branch hint section to binary data
 #[cfg(feature = "std")]
 pub fn encode_branch_hint_section(section: &BranchHintSection) -> Result<Vec<u8>> {
+    use crate::prelude::write_leb128_u32 as format_write_leb128_u32;
     let mut data = Vec::new();
 
     // Write function count
-    write_leb128_u32(&mut data, usize_to_wasm_u32(section.function_count())?);
+    data.extend_from_slice(&format_write_leb128_u32(usize_to_wasm_u32(section.function_count())?));
 
     // Write each function's hints
-    #[cfg(feature = "std")]
-    {
-        for (func_idx, hints) in &section.function_hints {
-            write_leb128_u32(&mut data, *func_idx);
-            write_leb128_u32(&mut data, usize_to_wasm_u32(hints.len())?);
+    for (func_idx, hints) in &section.function_hints {
+        data.extend_from_slice(&format_write_leb128_u32(*func_idx));
+        data.extend_from_slice(&format_write_leb128_u32(usize_to_wasm_u32(hints.len())?));
 
-            for (offset, hint) in hints.iter() {
-                write_leb128_u32(&mut data, *offset);
-                data.push(hint.to_byte());
-            }
-        }
-    }
-    #[cfg(all(not(feature = "std")))]
-    {
-        for (func_idx, hints) in &section.function_hints {
-            write_leb128_u32(&mut data, *func_idx);
-            write_leb128_u32(&mut data, usize_to_wasm_u32(hints.len())?);
-
-            for (offset, hint) in hints.iter() {
-                write_leb128_u32(&mut data, *offset);
-                data.push(hint.to_byte());
-            }
+        for (offset, hint) in hints.iter() {
+            data.extend_from_slice(&format_write_leb128_u32(*offset));
+            data.push(hint.to_byte());
         }
     }
 
     Ok(data)
 }
 
-/// Helper function to write LEB128 u32
-#[cfg(feature = "std")]
-fn write_leb128_u32(data: &mut Vec<u8>, mut value: u32) {
-    loop {
-        let byte = (value & 0x7F) as u8;
-        value >>= 7;
-        if value == 0 {
-            data.push(byte);
-            break;
-        } else {
-            data.push(byte | 0x80);
-        }
-    }
-}
 
 /// Branch hint section name constant
 pub const BRANCH_HINT_SECTION_NAME: &str = "metadata.code.branch_hint";

@@ -14,6 +14,7 @@ use wrt_runtime::Memory;
 use crate::{
     memory_layout::{calculate_layout, MemoryLayout},
     prelude::*,
+    resources::buffer_pool::BufferPool,
     string_encoding::{
         lift_string_with_options, lower_string_with_options, CanonicalStringOptions, StringEncoding,
     },
@@ -228,7 +229,7 @@ impl CanonicalABI {
             _ => Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::NOT_IMPLEMENTED,
-                NotImplementedError(ComponentValue::String("Component operation result".into())),
+                NotImplementedError("Component not found"),
             )),
         }
     }
@@ -345,8 +346,7 @@ impl CanonicalABI {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::OUT_OF_BOUNDS_ERROR,
-                ComponentValue::String("Component operation result".into())),
-            ))
+                "Component not found"))
         }
     }
 
@@ -358,8 +358,7 @@ impl CanonicalABI {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::OUT_OF_BOUNDS_ERROR,
-                ComponentValue::String("Component operation result".into())),
-            ))
+                "Component not found"))
         }
     }
 
@@ -371,8 +370,7 @@ impl CanonicalABI {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::OUT_OF_BOUNDS_ERROR,
-                ComponentValue::String("Component operation result".into())),
-            ))
+                "Component not found"))
         }
     }
 
@@ -493,7 +491,7 @@ impl CanonicalABI {
             None => Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_TYPE,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )),
         }
     }
@@ -536,7 +534,7 @@ impl CanonicalABI {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::OUT_OF_BOUNDS_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             ));
         }
 
@@ -616,7 +614,7 @@ impl CanonicalABI {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_TYPE,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             ));
         }
 
@@ -664,7 +662,7 @@ impl CanonicalABI {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_TYPE,
-                ComponentValue::String("Component operation result".into())", discriminant, cases.len() - 1),
+                "Component not found",
             ));
         }
 
@@ -696,7 +694,7 @@ impl CanonicalABI {
             _ => Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_TYPE,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )),
         }
     }
@@ -741,7 +739,7 @@ impl CanonicalABI {
             _ => Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_TYPE,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )),
         }
     }
@@ -755,8 +753,7 @@ impl CanonicalABI {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::OUT_OF_BOUNDS_ERROR,
-                ComponentValue::String("Component operation result".into())),
-            ))
+                "Component not found"))
         }
     }
 
@@ -768,8 +765,7 @@ impl CanonicalABI {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::OUT_OF_BOUNDS_ERROR,
-                ComponentValue::String("Component operation result".into())),
-            ))
+                "Component not found"))
         }
     }
 
@@ -781,8 +777,7 @@ impl CanonicalABI {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::OUT_OF_BOUNDS_ERROR,
-                ComponentValue::String("Component operation result".into())),
-            ))
+                "Component not found"))
         }
     }
 
@@ -1082,7 +1077,7 @@ impl CanonicalABI {
             _ => Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::NOT_IMPLEMENTED,
-                NotImplementedError(ComponentValue::String("Component operation result".into())),
+                NotImplementedError("Component not found"),
             )),
         }
     }
@@ -1114,7 +1109,7 @@ impl CanonicalABI {
                 return Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    ComponentValue::String("Component operation result".into()),
+                    "Component not found",
                 ));
             }
         }
@@ -1413,7 +1408,7 @@ pub fn convert_value_for_canonical_abi(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(ComponentValue::String("Component operation result".into())),
+                        ValueOutOfRangeError("Component not found"),
                     ))
                 }
             } else {
@@ -1434,7 +1429,7 @@ pub fn convert_value_for_canonical_abi(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(ComponentValue::String("Component operation result".into())),
+                        ValueOutOfRangeError("Component not found"),
                     ))
                 }
             } else {
@@ -1455,7 +1450,7 @@ pub fn convert_value_for_canonical_abi(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(ComponentValue::String("Component operation result".into())),
+                        ValueOutOfRangeError("Component not found"),
                     ))
                 }
             } else {
@@ -1476,7 +1471,7 @@ pub fn convert_value_for_canonical_abi(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(ComponentValue::String("Component operation result".into())),
+                        ValueOutOfRangeError("Component not found"),
                     ))
                 }
             } else {
@@ -1497,7 +1492,7 @@ pub fn convert_value_for_canonical_abi(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(ComponentValue::String("Component operation result".into())),
+                        ValueOutOfRangeError("Component not found"),
                     ))
                 }
             } else {
@@ -1518,7 +1513,7 @@ pub fn convert_value_for_canonical_abi(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(ComponentValue::String("Component operation result".into())),
+                        ValueOutOfRangeError("Component not found"),
                     ))
                 }
             } else {
@@ -1552,7 +1547,7 @@ pub fn convert_value_for_canonical_abi(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(ComponentValue::String("Component operation result".into())),
+                        ValueOutOfRangeError("Component not found"),
                     ))
                 }
             } else {
@@ -1660,7 +1655,7 @@ pub fn convert_value_for_canonical_abi(
                         return Err(Error::new(
                             ErrorCategory::Runtime,
                             codes::TYPE_MISMATCH,
-                            NotImplementedError(ComponentValue::String("Component operation result".into())),
+                            NotImplementedError("Component not found"),
                         ));
                     }
                 }
@@ -1708,7 +1703,7 @@ pub fn convert_value_for_canonical_abi(
                         return Err(Error::new(
                             ErrorCategory::Runtime,
                             codes::TYPE_MISMATCH,
-                            NotImplementedError(ComponentValue::String("Component operation result".into())),
+                            NotImplementedError("Component not found"),
                         ));
                     }
                 }
@@ -1718,7 +1713,7 @@ pub fn convert_value_for_canonical_abi(
                         return Err(Error::new(
                             ErrorCategory::Runtime,
                             codes::TYPE_MISMATCH,
-                            NotImplementedError(ComponentValue::String("Component operation result".into())),
+                            NotImplementedError("Component not found"),
                         ));
                     }
                 }
@@ -1838,7 +1833,7 @@ pub fn convert_value_for_type(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::OUT_OF_BOUNDS_ERROR,
-                        OutOfBoundsAccess(ComponentValue::String("Component operation result".into())),
+                        OutOfBoundsAccess("Component not found"),
                     ))
                 }
             } else if let Some(v) = value.as_f32() {
@@ -1848,7 +1843,7 @@ pub fn convert_value_for_type(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::OUT_OF_BOUNDS_ERROR,
-                        OutOfBoundsAccess(ComponentValue::String("Component operation result".into())),
+                        OutOfBoundsAccess("Component not found"),
                     ))
                 }
             } else if let Some(v) = value.as_f64() {
@@ -1858,7 +1853,7 @@ pub fn convert_value_for_type(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::OUT_OF_BOUNDS_ERROR,
-                        OutOfBoundsAccess(ComponentValue::String("Component operation result".into())),
+                        OutOfBoundsAccess("Component not found"),
                     ))
                 }
             } else {
@@ -1881,7 +1876,7 @@ pub fn convert_value_for_type(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::OUT_OF_BOUNDS_ERROR,
-                        OutOfBoundsAccess(ComponentValue::String("Component operation result".into())),
+                        OutOfBoundsAccess("Component not found"),
                     ))
                 }
             } else if let Some(v) = value.as_f64() {
@@ -1891,7 +1886,7 @@ pub fn convert_value_for_type(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::OUT_OF_BOUNDS_ERROR,
-                        OutOfBoundsAccess(ComponentValue::String("Component operation result".into())),
+                        OutOfBoundsAccess("Component not found"),
                     ))
                 }
             } else {
@@ -1942,3 +1937,4 @@ pub fn convert_value_for_type(
         _ => Ok(value.clone()),
     }
 }
+

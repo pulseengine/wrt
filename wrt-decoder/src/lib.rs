@@ -38,7 +38,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(clippy::missing_panics_doc)]
-//#![deny(missing_docs)] // Temporarily disabled for build
+#![allow(missing_docs)] // Temporarily disabled for build
 
 // Import core
 extern crate core;
@@ -61,7 +61,6 @@ pub mod prelude;
 pub mod streaming_validator;
 
 // Conditionally include other modules
-#[cfg(feature = "std")]
 pub mod component;
 #[cfg(feature = "std")]
 pub mod utils;
@@ -90,6 +89,10 @@ pub use wrt_error::{codes, kinds, Error, Result};
 #[cfg(feature = "std")]
 pub use wrt_foundation::safe_memory::StdProvider as StdMemoryProvider;
 pub use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice};
+
+// Component functionality (std only)
+#[cfg(feature = "std")]
+pub use component::decode_no_alloc;
 
 /// Validate WebAssembly header
 ///

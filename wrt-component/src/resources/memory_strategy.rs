@@ -63,7 +63,7 @@ impl ResourceStrategy for MemoryStrategy {
         &self,
         data: &[u8],
         operation: ResourceOperation,
-    ) -> Result<BoundedVec<u8, MAX_BUFFER_SIZE>> {
+    ) -> Result<BoundedVec<u8, MAX_BUFFER_SIZE>, NoStdProvider<65536>> {
         match self {
             // Zero-copy strategy - returns a view without copying for reads, a copy for writes
             MemoryStrategy::ZeroCopy => match operation {
@@ -72,7 +72,7 @@ impl ResourceStrategy for MemoryStrategy {
                         Error::new(
                             wrt_error::ErrorCategory::Memory,
                             wrt_error::codes::MEMORY_ERROR,
-                            ComponentValue::String("Component operation result".into()),
+                            "Component not found",
                         )
                     })?;
 
@@ -81,7 +81,7 @@ impl ResourceStrategy for MemoryStrategy {
                             Error::new(
                                 wrt_error::ErrorCategory::Memory,
                                 wrt_error::codes::MEMORY_ERROR,
-                                ComponentValue::String("Component operation result".into()),
+                                "Component not found",
                             )
                         })?;
                     }
@@ -92,7 +92,7 @@ impl ResourceStrategy for MemoryStrategy {
                         Error::new(
                             wrt_error::ErrorCategory::Memory,
                             wrt_error::codes::MEMORY_ERROR,
-                            ComponentValue::String("Component operation result".into()),
+                            "Component not found",
                         )
                     })?;
 
@@ -101,7 +101,7 @@ impl ResourceStrategy for MemoryStrategy {
                             Error::new(
                                 wrt_error::ErrorCategory::Memory,
                                 wrt_error::codes::MEMORY_ERROR,
-                                ComponentValue::String("Component operation result".into()),
+                                "Component not found",
                             )
                         })?;
                     }
@@ -116,7 +116,7 @@ impl ResourceStrategy for MemoryStrategy {
                     Error::new(
                         wrt_error::ErrorCategory::Memory,
                         wrt_error::codes::MEMORY_ERROR,
-                        ComponentValue::String("Component operation result".into()),
+                        "Component not found",
                     )
                 })?;
 
@@ -125,7 +125,7 @@ impl ResourceStrategy for MemoryStrategy {
                         Error::new(
                             wrt_error::ErrorCategory::Memory,
                             wrt_error::codes::MEMORY_ERROR,
-                            ComponentValue::String("Component operation result".into()),
+                            "Component not found",
                         )
                     })?;
                 }
@@ -141,7 +141,7 @@ impl ResourceStrategy for MemoryStrategy {
                     Error::new(
                         wrt_error::ErrorCategory::Memory,
                         wrt_error::codes::MEMORY_ERROR,
-                        ComponentValue::String("Component operation result".into()),
+                        "Component not found",
                     )
                 })?;
 
@@ -150,7 +150,7 @@ impl ResourceStrategy for MemoryStrategy {
                         Error::new(
                             wrt_error::ErrorCategory::Memory,
                             wrt_error::codes::MEMORY_ERROR,
-                            ComponentValue::String("Component operation result".into()),
+                            "Component not found",
                         )
                     })?;
                 }

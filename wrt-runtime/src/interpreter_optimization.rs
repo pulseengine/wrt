@@ -6,7 +6,7 @@
 
 extern crate alloc;
 
-use crate::prelude::*;
+use crate::prelude::{BoundedCapacity, Debug, Eq, PartialEq};
 use crate::branch_prediction::{
     BranchLikelihood, ModuleBranchPredictor, PredictiveExecutionContext,
 };
@@ -20,10 +20,12 @@ use alloc::vec::Vec;
 
 /// Optimization strategy for interpreter execution
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum OptimizationStrategy {
     /// No optimization - standard interpretation
     None,
     /// Basic branch prediction only
+    #[default]
     BranchPrediction,
     /// Branch prediction + instruction prefetching
     PredictionWithPrefetch,
@@ -31,11 +33,6 @@ pub enum OptimizationStrategy {
     Aggressive,
 }
 
-impl Default for OptimizationStrategy {
-    fn default() -> Self {
-        OptimizationStrategy::BranchPrediction
-    }
-}
 
 /// Execution path optimization information
 #[derive(Debug, Clone)]
@@ -101,7 +98,7 @@ pub struct InstructionPrefetchCache {
 
 impl InstructionPrefetchCache {
     /// Create new prefetch cache
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self {
             #[cfg(feature = "std")]
             cache: alloc::collections::BTreeMap::new(),
@@ -442,7 +439,7 @@ pub struct OptimizationMetrics {
 
 impl OptimizationMetrics {
     /// Calculate overall optimization effectiveness score
-    pub fn effectiveness_score(&self) -> f64 {
+    #[must_use] pub fn effectiveness_score(&self) -> f64 {
         if self.total_branches == 0 {
             return 0.0;
         }
@@ -458,7 +455,7 @@ impl OptimizationMetrics {
     }
     
     /// Check if optimizations are providing significant benefit
-    pub fn is_effective(&self) -> bool {
+    #[must_use] pub fn is_effective(&self) -> bool {
         self.effectiveness_score() > 0.6 && self.predicted_branches > 10
     }
 }

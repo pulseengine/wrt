@@ -73,11 +73,7 @@ pub use wit_aware_debugger::{
     TypeMetadata, WitStepMode, WitTypeKind as DebugWitTypeKind,
 };
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_foundation::{
-    bounded::{BoundedVec, MAX_DWARF_ABBREV_CACHE},
-    prelude::*,
-    NoStdProvider,
-};
+use wrt_foundation::prelude::*;
 
 #[cfg(feature = "abbrev")]
 mod abbrev;

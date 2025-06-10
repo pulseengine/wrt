@@ -3,9 +3,6 @@
 //! This module contains verification harnesses for the wrt-logging crate.
 //! It is only included when the `kani` feature is enabled.
 
-use wrt_error::Result;
-use wrt_host::CallbackRegistry;
-
 use super::*;
 
 #[cfg(kani)]
@@ -48,16 +45,22 @@ fn verify_log_operation() {
 #[cfg(kani)]
 #[kani::proof]
 fn verify_logging_ext() {
-    // Create a registry
-    let mut registry = CallbackRegistry::new();
+    #[cfg(feature = "std")]
+    {
+        use wrt_host::CallbackRegistry;
+        use crate::handler::LoggingExt;
+        
+        // Create a registry
+        let mut registry = CallbackRegistry::new();
 
-    // Add handler (using LoggingExt trait)
-    let registry_with_handler = {
-        let mut r = CallbackRegistry::new();
-        r.register_log_handler(|_| {});
-        r
-    };
+        // Add handler (using LoggingExt trait)
+        let registry_with_handler = {
+            let mut r = CallbackRegistry::new();
+            r.register_log_handler(|_| {});
+            r
+        };
 
-    // Verify that we can log
-    registry_with_handler.handle_log(LogOperation::new(LogLevel::Info, "test message".to_string()));
+        // Verify that we can log
+        registry_with_handler.handle_log(LogOperation::new(LogLevel::Info, "test message".to_string()));
+    }
 }

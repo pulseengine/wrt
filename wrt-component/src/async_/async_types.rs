@@ -11,12 +11,21 @@ use std::{fmt, mem};
 #[cfg(feature = "std")]
 use std::{boxed::Box, string::String, vec::Vec};
 
+#[cfg(feature = "std")]
 use wrt_foundation::{bounded::BoundedVec, component_value::ComponentValue, prelude::*};
 
-use crate::{
-    types::{ValType, Value},
-    WrtResult,
-};
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{bounded::{BoundedVec, BoundedString}, NoStdProvider};
+
+#[cfg(feature = "std")]
+use wrt_foundation::component_value::ComponentValue;
+
+#[cfg(not(feature = "std"))]
+// For no_std, use a simpler ComponentValue representation
+use crate::types::Value as ComponentValue;
+
+use crate::types::{ValType, Value};
+use wrt_error::Result as WrtResult;
 
 /// Maximum number of pending values in a stream for no_std environments
 const MAX_STREAM_BUFFER: usize = 1024;
@@ -49,7 +58,7 @@ pub struct Stream<T> {
     #[cfg(feature = "std")]
     pub buffer: Vec<T>,
     #[cfg(not(any(feature = "std", )))]
-    pub buffer: BoundedVec<T, MAX_STREAM_BUFFER>,
+    pub buffer: BoundedVec<T, MAX_STREAM_BUFFER, NoStdProvider<65536>>,
     /// Readable end closed
     pub readable_closed: bool,
     /// Writable end closed  
@@ -82,12 +91,12 @@ pub struct ErrorContext {
     #[cfg(feature = "std")]
     pub message: String,
     #[cfg(not(any(feature = "std", )))]
-    pub message: BoundedString<1024>,
+    pub message: BoundedString<1024, NoStdProvider<65536>>,
     /// Stack trace if available
     #[cfg(feature = "std")]
     pub stack_trace: Option<Vec<StackFrame>>,
     #[cfg(not(any(feature = "std", )))]
-    pub stack_trace: Option<BoundedVec<StackFrame, 32>>,
+    pub stack_trace: Option<BoundedVec<StackFrame, 32, NoStdProvider<65536>>>,
     /// Additional debug information
     pub debug_info: DebugInfo,
 }
@@ -125,7 +134,7 @@ pub struct StackFrame {
     #[cfg(feature = "std")]
     pub function: String,
     #[cfg(not(any(feature = "std", )))]
-    pub function: BoundedString<128>,
+    pub function: BoundedString<128, NoStdProvider<65536>>,
     /// Component instance
     pub component_instance: Option<u32>,
     /// Instruction offset
@@ -143,7 +152,7 @@ pub struct DebugInfo {
     #[cfg(feature = "std")]
     pub properties: Vec<(String, ComponentValue)>,
     #[cfg(not(any(feature = "std", )))]
-    pub properties: BoundedVec<(BoundedString<64>, ComponentValue), 16>,
+    pub properties: BoundedVec<(BoundedString<64, NoStdProvider<65536>>, ComponentValue), 16, NoStdProvider<65536>>,
 }
 
 /// Async read result
@@ -179,7 +188,7 @@ pub struct WaitableSet {
     #[cfg(feature = "std")]
     pub waitables: Vec<Waitable>,
     #[cfg(not(any(feature = "std", )))]
-    pub waitables: BoundedVec<Waitable, MAX_WAITABLES>,
+    pub waitables: BoundedVec<Waitable, MAX_WAITABLES, NoStdProvider<65536>>,
     /// Ready mask (bit per waitable)
     pub ready_mask: u64,
 }
@@ -194,7 +203,7 @@ impl<T> Stream<T> {
             #[cfg(feature = "std")]
             buffer: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            buffer: BoundedVec::new(),
+            buffer: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             readable_closed: false,
             writable_closed: false,
         }
@@ -279,19 +288,19 @@ impl ErrorContext {
 
     /// Create a new error context (no_std)
     #[cfg(not(any(feature = "std", )))]
-    pub fn new(handle: ErrorContextHandle, message: BoundedString<1024>) -> Self {
+    pub fn new(handle: ErrorContextHandle, message: BoundedString<1024, NoStdProvider<65536>>) -> Self {
         Self { handle, message, stack_trace: None, debug_info: DebugInfo::new() }
     }
 
     /// Get debug string representation
-    pub fn debug_string(&self) -> BoundedString<2048> {
+    pub fn debug_string(&self) -> BoundedString<2048, NoStdProvider<65536>> {
         #[cfg(feature = "std")]
         {
             let mut result = self.message.clone();
             if let Some(trace) = &self.stack_trace {
                 result.push_str("\nStack trace:\n");
                 for frame in trace {
-                    result.push_str(&ComponentValue::String("Component operation result".into()));
+                    result.push_str(&"Component not found");
                 }
             }
             BoundedString::from_str(&result).unwrap_or_default()
@@ -313,7 +322,7 @@ impl DebugInfo {
             #[cfg(feature = "std")]
             properties: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            properties: BoundedVec::new(),
+            properties: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 
@@ -325,7 +334,7 @@ impl DebugInfo {
 
     /// Add a property (no_std)
     #[cfg(not(any(feature = "std", )))]
-    pub fn add_property(&mut self, key: BoundedString<64>, value: ComponentValue) -> WrtResult<()> {
+    pub fn add_property(&mut self, key: BoundedString<64, NoStdProvider<65536>>, value: ComponentValue) -> WrtResult<()> {
         self.properties.push((key, value)).map_err(|_| {
             wrt_foundation::WrtError::ResourceExhausted("Too many debug properties".into())
         })
@@ -339,7 +348,7 @@ impl WaitableSet {
             #[cfg(feature = "std")]
             waitables: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            waitables: BoundedVec::new(),
+            waitables: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             ready_mask: 0,
         }
     }

@@ -24,7 +24,9 @@ use crate::{
     unified_types::UnifiedMemoryAdapter as UnifiedMemoryAdapterTrait,
     prelude::*,
 };
-use wrt_instructions::CfiControlFlowProtection;
+// CFI imports temporarily disabled since CFI module is disabled
+// use wrt_instructions::CfiControlFlowProtection;
+use crate::cfi_engine::CfiControlFlowProtection;
 use wrt_error::{Error, ErrorCategory, Result};
 
 /// Simple platform memory adapter trait for platform_runtime.rs

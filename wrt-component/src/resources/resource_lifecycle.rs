@@ -47,7 +47,7 @@ pub struct ResourceType {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(feature = "std"))]
-    pub name: BoundedString<64>,
+    pub name: BoundedString<64, NoStdProvider<65536>>,
     /// Destructor function index (if any)
     pub destructor: Option<u32>,
 }
@@ -80,7 +80,7 @@ pub struct ResourceMetadata {
     #[cfg(feature = "std")]
     pub user_data: Option<Vec<u8>>,
     #[cfg(not(feature = "std"))]
-    pub user_data: Option<BoundedVec<u8, 256>>,
+    pub user_data: Option<BoundedVec<u8, 256>, NoStdProvider<65536>>,
 }
 
 /// Resource lifecycle manager
@@ -99,7 +99,7 @@ pub struct ResourceLifecycleManager {
     #[cfg(not(feature = "std"))]
     borrows: wrt_foundation::no_std_hashmap::SimpleHashMap<
         ResourceHandle,
-        BoundedVec<BorrowInfo, MAX_BORROWS_PER_RESOURCE>,
+        BoundedVec<BorrowInfo, MAX_BORROWS_PER_RESOURCE, NoStdProvider<65536>>,
         MAX_RESOURCES,
     >,
     /// Resource type registry
@@ -238,7 +238,7 @@ impl ResourceLifecycleManager {
                 Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    ComponentValue::String("Component operation result".into()),
+                    "Component not found",
                 )
             })?
             .clone();
@@ -312,7 +312,7 @@ impl ResourceLifecycleManager {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_INVALID_HANDLE,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -388,7 +388,7 @@ impl ResourceLifecycleManager {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_INVALID_HANDLE,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -482,7 +482,7 @@ impl ResourceLifecycleManager {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_INVALID_HANDLE,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -579,7 +579,7 @@ impl ResourceLifecycleManager {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_INVALID_HANDLE,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -647,7 +647,7 @@ impl ResourceLifecycleManager {
                 Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_INVALID_HANDLE,
-                    ComponentValue::String("Component operation result".into()),
+                    "Component not found",
                 )
             })
         }

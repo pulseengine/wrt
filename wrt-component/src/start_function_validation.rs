@@ -49,12 +49,12 @@ pub type StartFunctionResult<T> = Result<T, StartFunctionError>;
 #[derive(Debug, Clone)]
 pub struct StartFunctionDescriptor {
     pub name: String,
-    pub parameters: BoundedVec<StartFunctionParam, MAX_START_FUNCTION_PARAMS>,
+    pub parameters: BoundedVec<StartFunctionParam, MAX_START_FUNCTION_PARAMS, NoStdProvider<65536>>,
     pub return_type: Option<ValType>,
     pub required: bool,
     pub timeout_ms: u64,
     pub validation_level: ValidationLevel,
-    pub dependencies: BoundedVec<String, MAX_START_FUNCTION_EXPORTS>,
+    pub dependencies: BoundedVec<String, MAX_START_FUNCTION_EXPORTS, NoStdProvider<65536>>,
 }
 
 #[derive(Debug, Clone)]
@@ -100,7 +100,7 @@ pub struct StartFunctionExecutionResult {
     pub execution_time_ms: u64,
     pub memory_usage: usize,
     pub error_message: Option<String>,
-    pub side_effects: BoundedVec<SideEffect, 32>,
+    pub side_effects: BoundedVec<SideEffect, 32, NoStdProvider<65536>>,
 }
 
 #[derive(Debug, Clone)]
@@ -242,7 +242,7 @@ impl StartFunctionValidator {
     ) -> StartFunctionResult<
         BoundedVec<(ComponentInstanceId, ValidationState), MAX_START_FUNCTION_VALIDATIONS>,
     > {
-        let mut results = BoundedVec::new();
+        let mut results = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
 
         let pending_components: Vec<ComponentInstanceId> = self
             .validations
@@ -414,7 +414,7 @@ impl StartFunctionValidator {
             if !self.check_dependency_available(component_id, dependency) {
                 return Err(StartFunctionError {
                     kind: StartFunctionErrorKind::DependencyNotMet,
-                    message: ComponentValue::String("Component operation result".into()),
+                    message: "Component not found",
                     component_id: Some(component_id),
                 });
             }
@@ -425,8 +425,8 @@ impl StartFunctionValidator {
     fn prepare_arguments(
         &self,
         descriptor: &StartFunctionDescriptor,
-    ) -> StartFunctionResult<BoundedVec<ComponentValue, MAX_START_FUNCTION_PARAMS>> {
-        let mut arguments = BoundedVec::new();
+    ) -> StartFunctionResult<BoundedVec<ComponentValue, MAX_START_FUNCTION_PARAMS>, NoStdProvider<65536>> {
+        let mut arguments = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
 
         for param in descriptor.parameters.iter() {
             let value = if let Some(ref default) = param.default_value {
@@ -434,7 +434,7 @@ impl StartFunctionValidator {
             } else if param.required {
                 return Err(StartFunctionError {
                     kind: StartFunctionErrorKind::ValidationFailed,
-                    message: ComponentValue::String("Component operation result".into()),
+                    message: "Component not found",
                     component_id: None,
                 });
             } else {
@@ -472,7 +472,7 @@ impl StartFunctionValidator {
             Ok(result) => Ok(result),
             Err(e) => Err(StartFunctionError {
                 kind: StartFunctionErrorKind::ExecutionFailed,
-                message: ComponentValue::String("Component operation result".into()),
+                message: "Component not found",
                 component_id: Some(component_id),
             }),
         }
@@ -481,14 +481,14 @@ impl StartFunctionValidator {
     fn analyze_side_effects(
         &self,
         execution_context: &ExecutionContext,
-    ) -> StartFunctionResult<BoundedVec<SideEffect, 32>> {
-        let mut side_effects = BoundedVec::new();
+    ) -> StartFunctionResult<BoundedVec<SideEffect, 32>, NoStdProvider<65536>> {
+        let mut side_effects = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
 
         // Binary std/no_std choice
         if execution_context.memory_allocations() > 0 {
             let effect = SideEffect {
                 effect_type: SideEffectType::MemoryAllocation,
-                description: ComponentValue::String("Component operation result".into())),
+                description: "Memory allocated during start function execution".to_string(),
                 severity: if execution_context.memory_usage() > 1024 * 1024 {
                     SideEffectSeverity::Warning
                 } else {
@@ -506,7 +506,7 @@ impl StartFunctionValidator {
         if execution_context.resources_created() > 0 {
             let effect = SideEffect {
                 effect_type: SideEffectType::ResourceCreation,
-                description: ComponentValue::String("Component operation result".into())),
+                description: "Resources created during start function execution".to_string(),
                 severity: SideEffectSeverity::Info,
             };
             side_effects.push(effect).map_err(|_| StartFunctionError {
@@ -610,12 +610,12 @@ pub struct ValidationSummary {
 pub fn create_start_function_descriptor(name: &str) -> StartFunctionDescriptor {
     StartFunctionDescriptor {
         name: name.to_string(),
-        parameters: BoundedVec::new(),
+        parameters: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         return_type: None,
         required: true,
         timeout_ms: DEFAULT_START_TIMEOUT_MS,
         validation_level: ValidationLevel::Standard,
-        dependencies: BoundedVec::new(),
+        dependencies: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
     }
 }
 
@@ -662,12 +662,12 @@ mod tests {
         // Invalid descriptor (empty name)
         let invalid_descriptor = StartFunctionDescriptor {
             name: String::new(),
-            parameters: BoundedVec::new(),
+            parameters: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             return_type: None,
             required: true,
             timeout_ms: 1000,
             validation_level: ValidationLevel::Standard,
-            dependencies: BoundedVec::new(),
+            dependencies: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         };
         assert!(validator.validate_descriptor(&invalid_descriptor).is_err());
     }

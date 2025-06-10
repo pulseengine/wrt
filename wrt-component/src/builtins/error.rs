@@ -15,6 +15,7 @@ use std::{
 };
 
 use wrt_error::{codes, kinds::ValidationError, Error, ErrorCategory, Result, WrtError};
+#[cfg(feature = "std")]
 use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
 
 use super::BuiltinHandler;
@@ -198,7 +199,7 @@ impl BuiltinHandler for ErrorTraceHandler {
         // Add trace to the error context
         let mut store = self.store.lock().unwrap();
         let error_context = store.get_error_mut(error_id).ok_or_else(|| {
-            WrtError::resource_error(ComponentValue::String("Component operation result".into()))
+            WrtError::resource_error("Component not found")
         })?;
         error_context.add_trace(trace_message);
 

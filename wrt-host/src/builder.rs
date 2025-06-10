@@ -9,7 +9,7 @@
 //! interceptors, and other configuration options.
 
 // Use the prelude for consistent imports
-use crate::prelude::*;
+use crate::prelude::{Any, BuiltinType, CallbackRegistry, CallbackType, Error, HashSet, HostFunctionHandler, Result, Value, str};
 
 // Type aliases for no_std compatibility
 #[cfg(feature = "std")]
@@ -32,7 +32,7 @@ pub struct HostBuilder {
     #[cfg(feature = "std")]
     required_builtins: HashSet<BuiltinType>,
     
-    /// Built-in types that are required by the component (no_std version)
+    /// Built-in types that are required by the component (`no_std` version)
     #[cfg(all(not(feature = "std"), not(feature = "std")))]
     required_builtins: HashSet<BuiltinType, 32, wrt_foundation::NoStdProvider<1024>>,
 
@@ -576,15 +576,15 @@ mod tests {
 
 /// Create a runtime error with the specified message
 ///
-/// This function properly handles both std and no_std environments
-pub fn runtime_error(message: &'static str) -> Error {
+/// This function properly handles both std and `no_std` environments
+#[must_use] pub fn runtime_error(message: &'static str) -> Error {
     Error::runtime_error(message)
 }
 
 /// Create a runtime error with a context string
 ///
-/// This function properly handles both std and no_std environments
-pub fn runtime_error_with_context(_message: &str, _context: &str) -> Error {
+/// This function properly handles both std and `no_std` environments
+#[must_use] pub fn runtime_error_with_context(_message: &str, _context: &str) -> Error {
     // In no_std environments, we use a static error message
     Error::runtime_error("Runtime error with context")
 }

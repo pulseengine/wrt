@@ -4,7 +4,7 @@
 
 //! Prelude module for wrt-instructions
 //!
-//! This module provides a unified set of imports for both std and no_std
+//! This module provides a unified set of imports for both std and `no_std`
 //! environments. It re-exports commonly used types and traits to ensure
 //! consistency across all crates in the WRT project and simplify imports in
 //! individual modules.
@@ -34,8 +34,7 @@ pub use std::{
     vec::Vec,
 };
 
-// no_std alternatives using bounded collections
-#[cfg(not(feature = "std"))]
+// BoundedVec available for both std and no_std modes
 pub use wrt_foundation::bounded::{BoundedVec, BoundedString};
 
 // Type alias for Vec in no_std mode to match wrt-runtime behavior

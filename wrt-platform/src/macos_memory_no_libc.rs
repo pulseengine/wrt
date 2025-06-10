@@ -13,7 +13,7 @@
 
 use core::ptr::{self, NonNull};
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{Error, ErrorCategory, Result};
 
 use crate::memory::{PageAllocator, WASM_PAGE_SIZE};
 
@@ -74,6 +74,7 @@ impl MacOsAllocator {
     ) -> *mut u8 {
         let mut ret: *mut u8;
 
+        #[cfg(target_arch = "x86_64")]
         core::arch::asm!(
             "syscall",
             inout("rax") SYSCALL_MMAP => _,
@@ -87,6 +88,18 @@ impl MacOsAllocator {
             out("rcx") _,
             out("r11") _,
         );
+        #[cfg(target_arch = "aarch64")]
+        core::arch::asm!(
+            "svc #0x80",
+            inout("x8") SYSCALL_MMAP => _,
+            in("x0") addr,
+            in("x1") len,
+            in("x2") prot,
+            in("x3") flags,
+            in("x4") fd,
+            in("x5") offset,
+            lateout("x0") ret,
+        );
 
         ret
     }
@@ -95,6 +108,7 @@ impl MacOsAllocator {
     unsafe fn munmap(addr: *mut u8, len: usize) -> i32 {
         let mut ret: i32;
 
+        #[cfg(target_arch = "x86_64")]
         core::arch::asm!(
             "syscall",
             inout("rax") SYSCALL_MUNMAP => _,
@@ -103,6 +117,14 @@ impl MacOsAllocator {
             lateout("rax") ret,
             out("rcx") _,
             out("r11") _,
+        );
+        #[cfg(target_arch = "aarch64")]
+        core::arch::asm!(
+            "svc #0x80",
+            inout("x8") SYSCALL_MUNMAP => _,
+            in("x0") addr,
+            in("x1") len,
+            lateout("x0") ret,
         );
 
         ret

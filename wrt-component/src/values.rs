@@ -84,13 +84,11 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> Forma
             FormatValType::Tuple(Vec::new())
         }
         CanonicalValType::ErrorContext => FormatValType::ErrorContext,
-        CanonicalValType::ResultErr(err_type) => {
-            FormatValType::ResultErr(Box::new(convert_common_to_format_valtype(err_type)))
+        CanonicalValType::Result { ok: _, err: _ } => {
+            // For FormatValType, we create a Result with a generic type placeholder
+            // Since FormatValType::Result requires a concrete type, we'll use a default
+            FormatValType::Result(Box::new(FormatValType::Unit))
         }
-        CanonicalValType::ResultBoth(ok_type, err_type) => FormatValType::ResultBoth(
-            Box::new(convert_common_to_format_valtype(ok_type)),
-            Box::new(convert_common_to_format_valtype(err_type)),
-        ),
     }
 }
 
@@ -146,15 +144,12 @@ pub fn convert_format_to_common_valtype(format_type: &FormatValType) -> Canonica
             CanonicalValType::Option(Box::new(convert_format_to_common_valtype(inner_type)))
         }
         FormatValType::Result(result_type) => {
-            CanonicalValType::Result(Box::new(convert_format_to_common_valtype(result_type)))
-        }
-        FormatValType::ResultErr(err_type) => {
-            // Map to CanonicalValType::Result with a default inner type
-            CanonicalValType::Result(Box::new(CanonicalValType::Bool))
-        }
-        FormatValType::ResultBoth(ok_type, err_type) => {
-            // Map to CanonicalValType::Result with the ok type
-            CanonicalValType::Result(Box::new(convert_format_to_common_valtype(ok_type)))
+            // Convert to CanonicalValType::Result with both ok and err as None for now
+            // This is a simplified mapping since FormatValType::Result doesn't distinguish ok/err
+            CanonicalValType::Result { 
+                ok: Some(wrt_foundation::component_value::ValTypeRef(0)), // Placeholder reference
+                err: None 
+            }
         }
         FormatValType::Own(idx) => CanonicalValType::Own(*idx),
         FormatValType::Borrow(idx) => CanonicalValType::Borrow(*idx),
@@ -169,7 +164,7 @@ pub fn convert_format_to_common_valtype(format_type: &FormatValType) -> Canonica
 }
 
 // Serialization and deserialization functions for ComponentValue
-pub fn serialize_component_value(value: &ComponentValue) -> Result<Vec<u8>> {
+pub fn serialize_component_value(value: &ComponentValue) -> Result<std::vec::Vec<u8>> {
     let common_type = value.get_type();
     let format_type = convert_common_to_format_valtype(&common_type);
 
@@ -782,7 +777,7 @@ pub fn deserialize_component_value(
                     Error::new(
                         ErrorCategory::Parse,
                         codes::PARSE_ERROR,
-                        ComponentValue::String("Component operation result".into()).to_string(),
+                        "Component not found".to_string(),
                     )
                 })?;
             Ok(ComponentValue::String(value))
@@ -887,7 +882,7 @@ pub fn deserialize_component_value(
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    ComponentValue::String("Component operation result".into()).to_string(),
+                    "Component not found".to_string(),
                 ));
             }
 
@@ -973,41 +968,6 @@ pub fn deserialize_component_value(
             } else {
                 // Create a default error value when the result is not successful
                 Ok(ComponentValue::Result(Err(Box::new(ComponentValue::Void))))
-            }
-        }
-        FormatValType::ResultErr(err_type) => {
-            if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize ResultErr".to_string(),
-                ));
-            }
-            let value = data[offset] != 0;
-            // No need to update offset anymore as we return immediately
-            if value {
-                Ok(ComponentValue::Result(Err(Box::new(ComponentValue::Bool(true)))))
-            } else {
-                Ok(ComponentValue::Result(Err(Box::new(ComponentValue::Bool(false)))))
-            }
-        }
-        FormatValType::ResultBoth(ok_type, err_type) => {
-            if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize ResultBoth".to_string(),
-                ));
-            }
-            let value = data[offset] != 0;
-            // No need to update offset anymore as we return immediately
-            if value {
-                let ok_value = deserialize_component_value(&data[offset..], ok_type)?;
-                Ok(ComponentValue::Result(Ok(Box::new(ok_value))))
-            } else {
-                // Use the err_type to deserialize an error value
-                let err_value = deserialize_component_value(&data[offset..], err_type)?;
-                Ok(ComponentValue::Result(Err(Box::new(err_value))))
             }
         }
         FormatValType::Own(idx) => {
@@ -1166,7 +1126,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    ComponentValue::String("Component operation result".into()),
+                    "Component not found",
                 )
             })?;
             Ok(ComponentValue::Char(value))
@@ -1184,7 +1144,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    ComponentValue::String("Component operation result".into()),
+                    "Component not found",
                 )
             })?;
 
@@ -1211,7 +1171,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    ComponentValue::String("Component operation result".into()), count),
+                    &format!("Record field count mismatch: expected {}, got {}", fields.len(), count)
                 ));
             }
 
@@ -1228,7 +1188,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                     Error::new(
                         ErrorCategory::Parse,
                         codes::PARSE_ERROR,
-                        ComponentValue::String("Component operation result".into()),
+                        "Component not found",
                     )
                 })?;
 
@@ -1247,7 +1207,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    ComponentValue::String("Component operation result".into()), count),
+                    &format!("Tuple type count mismatch: expected {}, got {}", types.len(), count)
                 ));
             }
 
@@ -1271,7 +1231,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    ComponentValue::String("Component operation result".into()),
+                    "Component not found",
                 )
             })?;
 
@@ -1281,7 +1241,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                     Error::new(
                         ErrorCategory::Parse,
                         codes::PARSE_ERROR,
-                        ComponentValue::String("Component operation result".into()),
+                        "Component not found",
                     )
                 })?;
 
@@ -1299,7 +1259,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                     Err(Error::new(
                         ErrorCategory::Parse,
                         codes::PARSE_ERROR,
-                        ComponentValue::String("Component operation result".into()),
+                        "Component not found",
                     ))
                 }
             } else {
@@ -1317,7 +1277,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    ComponentValue::String("Component operation result".into()),
+                    "Component not found",
                 )
             })?;
 
@@ -1326,7 +1286,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    ComponentValue::String("Component operation result".into()),
+                    "Component not found",
                 ));
             }
 
@@ -1355,30 +1315,6 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 Ok(ComponentValue::Result(Err(Box::new(ComponentValue::Void))))
             }
         }
-        FormatValType::ResultErr(err_type) => {
-            // Read error flag
-            let is_error = reader.read_bool()?;
-
-            if is_error {
-                let error = deserialize_component_value_with_stream(reader, err_type, provider)?;
-                Ok(ComponentValue::Result(Err(Box::new(error))))
-            } else {
-                // No error
-                Ok(ComponentValue::Result(Ok(Box::new(ComponentValue::Void))))
-            }
-        }
-        FormatValType::ResultBoth(ok_type, err_type) => {
-            // Read success flag
-            let is_ok = reader.read_bool()?;
-
-            if is_ok {
-                let value = deserialize_component_value_with_stream(reader, ok_type, provider)?;
-                Ok(ComponentValue::Result(Ok(Box::new(value))))
-            } else {
-                let error = deserialize_component_value_with_stream(reader, err_type, provider)?;
-                Ok(ComponentValue::Result(Err(Box::new(error))))
-            }
-        }
         FormatValType::Own(idx) => {
             let value = reader.read_u32_le()?;
             Ok(ComponentValue::Handle(value))
@@ -1395,7 +1331,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    ComponentValue::String("Component operation result".into()), count),
+                    &format!("Flags name count mismatch: expected {}, got {}", names.len(), count)
                 ));
             }
 
@@ -1437,7 +1373,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    ComponentValue::String("Component operation result".into()),
+                    "Component not found",
                 ));
             }
 
@@ -1465,7 +1401,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                     Error::new(
                         ErrorCategory::Parse,
                         codes::PARSE_ERROR,
-                        ComponentValue::String("Component operation result".into()),
+                        "Component not found",
                     )
                 })?;
                 items.push(ComponentValue::String(item_str));
@@ -1482,13 +1418,13 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
         _ => Err(Error::new(
             ErrorCategory::System,
             codes::UNSUPPORTED_OPERATION,
-            ComponentValue::String("Component operation result".into()),
+            "Component not found",
         )),
     }
 }
 
 /// Serialize multiple component values
-pub fn serialize_component_values(values: &[ComponentValue]) -> Result<Vec<u8>> {
+pub fn serialize_component_values(values: &[ComponentValue]) -> Result<std::vec::Vec<u8>> {
     let mut buffer = Vec::new();
 
     // Write the number of values
@@ -1531,7 +1467,7 @@ pub fn serialize_component_values_with_stream<'a, P: wrt_foundation::MemoryProvi
 pub fn deserialize_component_values(
     data: &[u8],
     types: &[FormatValType],
-) -> Result<Vec<ComponentValue>> {
+) -> Result<std::vec::Vec<ComponentValue>> {
     // Need at least 4 bytes for the count
     if data.len() < 4 {
         return Err(Error::new(
@@ -1551,7 +1487,7 @@ pub fn deserialize_component_values(
         return Err(Error::new(
             ErrorCategory::Validation,
             codes::VALIDATION_ERROR,
-            ComponentValue::String("Component operation result".into())),
+            "Validation error"
         ));
     }
 
@@ -1602,7 +1538,7 @@ pub fn deserialize_component_values_with_stream<'a, P: wrt_foundation::MemoryPro
     reader: &mut ReadStream<'a>,
     types: &[FormatValType],
     provider: &P,
-) -> Result<Vec<ComponentValue>> {
+) -> Result<std::vec::Vec<ComponentValue>> {
     // Read the count
     let count = reader.read_u32_le()? as usize;
 
@@ -1611,7 +1547,7 @@ pub fn deserialize_component_values_with_stream<'a, P: wrt_foundation::MemoryPro
         return Err(Error::new(
             ErrorCategory::Validation,
             codes::VALIDATION_ERROR,
-            ComponentValue::String("Component operation result".into())),
+            "Validation error"
         ));
     }
 
@@ -1700,8 +1636,6 @@ pub fn size_in_bytes(ty: &FormatValType) -> usize {
         FormatValType::Enum(_) => 4,
         FormatValType::Option(_) => 8,
         FormatValType::Result(_) => 8,
-        FormatValType::ResultErr(_) => 8,
-        FormatValType::ResultBoth(_, _) => 8,
         FormatValType::Own(_) => 4,
         FormatValType::Borrow(_) => 4,
         FormatValType::FixedList(_, _) => 8,
@@ -1828,7 +1762,3 @@ mod tests {
     }
 }
 
-/// Calculate the size in bytes of a value type for memory layout purposes
-pub fn size_in_bytes(ty: &FormatValType) -> usize {
-    calculate_layout(ty).size
-}

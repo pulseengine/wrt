@@ -82,10 +82,9 @@ pub mod integration_analysis {
     impl MemorySubsystemIntegration {
         /// Binary std/no_std choice
         ///
-        /// Binary std/no_std choice
+        /// Potential side channel vulnerabilities:
         /// 1. Time to find free block varies by fragmentation
         /// 2. Cache state changes based on traversed free list
-        /// Binary std/no_std choice
         ///
         /// Binary std/no_std choice
         pub fn analyze_allocation_timing() -> &'static str {

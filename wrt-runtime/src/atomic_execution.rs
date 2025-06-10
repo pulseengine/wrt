@@ -16,7 +16,7 @@
 
 extern crate alloc;
 
-use crate::prelude::*;
+use crate::prelude::Debug;
 use crate::thread_manager::{ThreadManager, ThreadId, ThreadExecutionStats};
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_instructions::atomic_ops::{
@@ -35,8 +35,10 @@ use wrt_foundation::bounded::BoundedVec;
 use wrt_platform::sync::Duration;
 
 // Type alias for return results
+/// Result vector type for std environments
 #[cfg(feature = "std")]
 pub type ResultVec = Vec<u32>;
+/// Result vector type for `no_std` environments with bounded capacity
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 pub type ResultVec = wrt_foundation::bounded::BoundedVec<u32, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
 
@@ -174,27 +176,27 @@ impl AtomicMemoryContext {
             },
             AtomicLoadOp::I32AtomicLoad8U { memarg } => {
                 let addr = self.calculate_address(memarg)?;
-                let value = self.atomic_load_u8(addr, MemoryOrdering::SeqCst)? as u32;
+                let value = u32::from(self.atomic_load_u8(addr, MemoryOrdering::SeqCst)?);
                 Ok(result_vec![value])
             },
             AtomicLoadOp::I32AtomicLoad16U { memarg } => {
                 let addr = self.calculate_address(memarg)?;
-                let value = self.atomic_load_u16(addr, MemoryOrdering::SeqCst)? as u32;
+                let value = u32::from(self.atomic_load_u16(addr, MemoryOrdering::SeqCst)?);
                 Ok(result_vec![value])
             },
             AtomicLoadOp::I64AtomicLoad8U { memarg } => {
                 let addr = self.calculate_address(memarg)?;
-                let value = self.atomic_load_u8(addr, MemoryOrdering::SeqCst)? as u64;
+                let value = u64::from(self.atomic_load_u8(addr, MemoryOrdering::SeqCst)?);
                 Ok(result_vec![value as u32, (value >> 32) as u32])
             },
             AtomicLoadOp::I64AtomicLoad16U { memarg } => {
                 let addr = self.calculate_address(memarg)?;
-                let value = self.atomic_load_u16(addr, MemoryOrdering::SeqCst)? as u64;
+                let value = u64::from(self.atomic_load_u16(addr, MemoryOrdering::SeqCst)?);
                 Ok(result_vec![value as u32, (value >> 32) as u32])
             },
             AtomicLoadOp::I64AtomicLoad32U { memarg } => {
                 let addr = self.calculate_address(memarg)?;
-                let value = self.atomic_load_u32(addr, MemoryOrdering::SeqCst)? as u64;
+                let value = u64::from(self.atomic_load_u32(addr, MemoryOrdering::SeqCst)?);
                 Ok(result_vec![value as u32, (value >> 32) as u32])
             },
         }
@@ -401,7 +403,7 @@ impl AtomicMemoryContext {
     /// # Safety
     /// 
     /// This function creates atomic references to memory. It's safe because:
-    /// - Address bounds are checked by calculate_address() before calling
+    /// - Address bounds are checked by `calculate_address()` before calling
     /// - Memory is valid WebAssembly linear memory owned by this context
     /// - Alignment requirements are checked by caller for multi-byte types
     /// - The atomic types ensure thread-safe access
@@ -595,7 +597,7 @@ impl AtomicMemoryContext {
         {
             // Binary std/no_std choice
             let mut found = false;
-            for (wait_addr, queue) in self.wait_queues.iter_mut() {
+            for (wait_addr, queue) in &mut self.wait_queues {
                 if *wait_addr == addr as u32 {
                     // Find empty slot in queue
                     for slot in queue.iter_mut() {
@@ -610,7 +612,7 @@ impl AtomicMemoryContext {
             }
             if !found {
                 // Find empty queue slot
-                for (wait_addr, queue) in self.wait_queues.iter_mut() {
+                for (wait_addr, queue) in &mut self.wait_queues {
                     if *wait_addr == 0 {  // 0 means unused
                         *wait_addr = addr as u32;
                         queue[0] = Some(thread_id);
@@ -657,7 +659,7 @@ impl AtomicMemoryContext {
         #[cfg(not(feature = "std"))]
         {
             // Binary std/no_std choice
-            for (wait_addr, queue) in self.wait_queues.iter_mut() {
+            for (wait_addr, queue) in &mut self.wait_queues {
                 if *wait_addr == addr as u32 {
                     let mut removed = 0;
                     // For arrays, we remove by setting elements to None from the end
@@ -719,7 +721,7 @@ impl AtomicExecutionStats {
     }
     
     /// Get atomic operation throughput (operations per call)
-    pub fn throughput(&self) -> f64 {
+    #[must_use] pub fn throughput(&self) -> f64 {
         if self.total_operations == 0 {
             0.0
         } else {
@@ -728,7 +730,7 @@ impl AtomicExecutionStats {
     }
     
     /// Check if atomic execution is performing well
-    pub fn is_healthy(&self) -> bool {
+    #[must_use] pub fn is_healthy(&self) -> bool {
         self.total_operations > 0 && self.ordering_conflicts < self.total_operations / 10
     }
 }

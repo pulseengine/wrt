@@ -39,7 +39,9 @@ pub use std::{
     vec::Vec,
 };
 
-// Don't duplicate format import since it's already in the use block above
+// No_std equivalents - use wrt-foundation types (Vec and String defined below with specific providers)
+#[cfg(not(feature = "std"))]
+pub use wrt_foundation::{BoundedMap as HashMap};
 
 // Import synchronization primitives for no_std
 //#[cfg(not(feature = "std"))]
@@ -90,17 +92,18 @@ pub use wrt_foundation::{
 // Binary std/no_std choice
 pub use crate::decoder_no_alloc;
 
-// Type aliases for no_std mode
+// Use our unified memory management system
 #[cfg(not(feature = "std"))]
-pub use wrt_foundation::{BoundedString, BoundedVec, NoStdProvider};
+pub use wrt_foundation::{
+    BoundedString, BoundedVec,
+    unified_types_simple::{DefaultTypes, EmbeddedTypes},
+};
 
-// For no_std mode, provide bounded collection aliases
-/// Bounded vector for no_std environments
+// For no_std mode, use concrete bounded types with fixed capacities
 #[cfg(not(feature = "std"))]
-pub type Vec<T> = BoundedVec<T, 1024, NoStdProvider<2048>>;
-/// Bounded string for no_std environments
+pub type Vec<T> = wrt_foundation::BoundedVec<T, 256, wrt_foundation::NoStdProvider<4096>>;
 #[cfg(not(feature = "std"))]
-pub type String = BoundedString<512, NoStdProvider<1024>>;
+pub type String = wrt_foundation::BoundedString<256, wrt_foundation::NoStdProvider<4096>>;
 
 // For no_std mode, provide a minimal ToString trait
 /// Minimal ToString trait for no_std environments
@@ -113,7 +116,7 @@ pub trait ToString {
 #[cfg(not(feature = "std"))]
 impl ToString for &str {
     fn to_string(&self) -> String {
-        String::from_str(self, NoStdProvider::<1024>::default()).unwrap_or_default()
+        String::from_str(self, wrt_foundation::safe_memory::NoStdProvider::<4096>::new()).unwrap_or_default()
     }
 }
 

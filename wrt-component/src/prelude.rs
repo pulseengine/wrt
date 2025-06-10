@@ -6,7 +6,7 @@
 //! individual modules.
 
 // Core imports for both std and no_std environments
-// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub use std::{
     boxed::Box,
     collections::{BTreeMap as HashMap, BTreeSet as HashSet},
@@ -17,19 +17,27 @@ pub use std::{
     vec::Vec,
 };
 
-// Binary std/no_std choice
-#[cfg(all(not(feature = "std"), not(feature = "std")))]
-pub use wrt_foundation::{
-    bounded::{BoundedString as String, BoundedVec as Vec},
-    BoundedMap as HashMap, BoundedSet as HashSet, NoStdProvider,
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[cfg(not(feature = "std"))]
+pub use alloc::{
+    boxed::Box,
+    collections::{BTreeMap, BTreeSet},
+    format,
+    string::{String, ToString},
+    sync::Arc,
+    vec,
+    vec::Vec,
 };
 
-// Arc and Box are not available in pure no_std, use placeholders
-#[cfg(all(not(feature = "std"), not(feature = "std")))]
-pub type Arc<T> = core::marker::PhantomData<T>;
+// Binary std/no_std choice - remove conflicting type aliases
+#[cfg(not(feature = "std"))]
+pub use wrt_foundation::{
+    bounded::{BoundedString, BoundedVec},
+    BoundedMap, BoundedSet,
+};
 
-#[cfg(all(not(feature = "std"), not(feature = "std")))]
-pub type Box<T> = core::marker::PhantomData<T>;
 pub use core::{
     any::Any,
     array,
@@ -58,11 +66,18 @@ pub use std::{
 };
 
 // Re-export from wrt-decoder
+#[cfg(feature = "std")]
 pub use wrt_decoder::{
     component::decode::decode_component, component::decode::Component as DecodedComponent,
-    component::decode_no_alloc, component::parse, component::validation, decoder_no_alloc,
-    sections,
+    component::parse, component::validation,
 };
+
+#[cfg(feature = "std")]
+pub use wrt_decoder::decode_no_alloc;
+
+pub use wrt_decoder::decoder_no_alloc;
+
+// Note: sections moved to decoder_no_alloc or not available
 // Re-export from wrt-error
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 // Re-export from wrt-format
@@ -74,13 +89,28 @@ pub use wrt_foundation::builder::ResourceItemBuilder;
 pub use wrt_foundation::component_builder::{
     ComponentTypeBuilder, ExportBuilder, ImportBuilder, NamespaceBuilder,
 };
+// Re-export BoundedVec and BoundedString only when std is enabled to avoid conflicts
+#[cfg(feature = "std")]
+pub use wrt_foundation::bounded::{BoundedString, BoundedVec};
+// Re-export component_value for both std and no_std
+#[cfg(feature = "std")]
+pub use wrt_foundation::component_value::{ComponentValue, ValType};
+
+#[cfg(not(feature = "std"))]
+pub use wrt_foundation::component_value::ValType;
+
+// Unified type aliases for std/no_std compatibility
+#[cfg(not(feature = "std"))]
+pub type ComponentVec<T> = wrt_foundation::bounded::BoundedVec<T, 64, wrt_foundation::safe_memory::NoStdProvider<8192>>;
+
+#[cfg(feature = "std")]
+pub type ComponentVec<T> = Vec<T>;
 // Re-export from wrt-foundation
 pub use wrt_foundation::{
-    bounded::{BoundedCollection, BoundedStack, BoundedString, BoundedVec, MAX_WASM_NAME_LENGTH},
+    bounded::{BoundedStack, MAX_WASM_NAME_LENGTH},
     // Builtin types
     builtin::BuiltinType,
     component::ComponentType,
-    component_value::{ComponentValue, ValType},
     // Resource types
     resource::{ResourceOperation, ResourceType},
     // SafeMemory types
@@ -89,10 +119,11 @@ pub use wrt_foundation::{
     values::Value,
     // Verification types
     verification::VerificationLevel,
+    // Memory providers
+    memory_system::{SmallProvider, LargeProvider, MediumProvider},
+    safe_memory::NoStdProvider,
     // Common types
-    DefaultMemoryProvider,
     ExternType,
-    MemoryProvider,
 };
 // Re-export from wrt-host
 pub use wrt_host::{
@@ -101,17 +132,17 @@ pub use wrt_host::{
     function::{CloneableFn, HostFunctionHandler},
     host::BuiltinHost,
 };
-// Re-export from wrt-intercept
-pub use wrt_intercept::{
-    // Builtin interceptors
-    builtins::{BeforeBuiltinResult, BuiltinInterceptor, BuiltinSerialization, InterceptContext},
-    InterceptionResult,
-
-    // Core interception types
-    LinkInterceptor,
-    LinkInterceptorStrategy,
-    Modification,
-};
+// Re-export from wrt-intercept - commented out until available
+// pub use wrt_intercept::{
+//     // Builtin interceptors
+//     builtins::{BeforeBuiltinResult, BuiltinInterceptor, BuiltinSerialization, InterceptContext},
+//     InterceptionResult,
+//
+//     // Core interception types
+//     LinkInterceptor,
+//     LinkInterceptorStrategy,
+//     Modification,
+// };
 // Import synchronization primitives for no_std
 #[cfg(not(feature = "std"))]
 pub use wrt_sync::{Mutex, RwLock};
@@ -126,97 +157,100 @@ pub use crate::{
     // Builtins
     builtins::{BuiltinHandler, BuiltinRegistry},
     // Canonical ABI
-    canonical::CanonicalABI,
+    canonical_abi::CanonicalABI,
     // Component model core types
-    component::{Component, ExternValue, FunctionValue, GlobalValue, MemoryValue, TableValue},
-    component_registry::ComponentRegistry,
+    components::{Component, ExternValue, FunctionValue, GlobalValue, MemoryValue, TableValue},
+    components::ComponentRegistry,
     // Execution context
-    execution::{TimeBoundedConfig, TimeBoundedContext, TimeBoundedOutcome},
+    // execution::{TimeBoundedConfig, TimeBoundedContext, TimeBoundedOutcome},
     // Export/Import
-    export::Export,
-    export_map::{ExportMap, SafeExportMap},
+    // export::Export,
+    // export_map::{ExportMap, SafeExportMap},
     // Factory and instance
-    factory::ComponentFactory,
+    // factory::ComponentFactory,
     // Host and namespace
-    host::Host,
-    import::Import,
-    import_map::{ImportMap, SafeImportMap},
-    instance::InstanceValue,
-    namespace::Namespace,
-    // Binary std/no_std choice
-    no_alloc,
+    // host::Host,
+    // import::Import,
+    // import_map::{ImportMap, SafeImportMap},
+    // instance::InstanceValue,
+    // namespace::Namespace,
     // Resources
     resources::{
-        BufferPool, MemoryStrategy, ResourceManager, ResourceOperation as RuntimeResourceOperation,
+        // BufferPool, 
+        MemoryStrategy, 
+        ResourceManager, 
+        // ResourceOperation as RuntimeResourceOperation,
         ResourceTable,
     },
     // Memory strategies
-    strategies::memory::{
-        BoundedCopyStrategy, FullIsolationStrategy, MemoryOptimizationStrategy, ZeroCopyStrategy,
-    },
+    // strategies::memory::{
+    //     BoundedCopyStrategy, FullIsolationStrategy, MemoryOptimizationStrategy, ZeroCopyStrategy,
+    // },
     // Type conversion
-    type_conversion::{
-        format_to_types_extern_type, format_val_type_to_value_type,
-        format_valtype_to_types_valtype, types_to_format_extern_type,
-        types_valtype_to_format_valtype, value_type_to_format_val_type, IntoFormatType,
-        IntoRuntimeType,
-    },
+    // type_conversion::{
+    //     format_to_types_extern_type, format_val_type_to_value_type,
+    //     format_valtype_to_types_valtype, types_to_format_extern_type,
+    //     types_valtype_to_format_valtype, value_type_to_format_val_type, IntoFormatType,
+    //     IntoRuntimeType,
+    // },
     // Types and values
     types::ComponentInstance,
-    values::{
-        component_to_core_value, core_to_component_value, deserialize_component_value,
-        serialize_component_value,
-    },
+    // values::{
+    //     component_to_core_value, core_to_component_value, deserialize_component_value,
+    //     serialize_component_value,
+    // },
 };
 // Re-export from this crate for no_std environments
+#[cfg(not(feature = "std"))]
 pub use crate::{
     // Builtins
     builtins::{BuiltinHandler, BuiltinRegistry},
     // Canonical ABI
-    canonical::CanonicalABI,
+    canonical_abi::CanonicalABI,
     // Component model core types
-    component::{Component, ExternValue, FunctionValue, GlobalValue, MemoryValue, TableValue},
-    component_registry_no_std::ComponentRegistry,
-    component_value_no_std::{
-        convert_format_to_valtype, convert_valtype_to_format, serialize_component_value_no_std,
-    },
+    components::{Component, ExternValue, FunctionValue, GlobalValue, MemoryValue, TableValue},
+    components::ComponentRegistry,
+    // component_value_no_std::{
+    //     convert_format_to_valtype, convert_valtype_to_format, serialize_component_value_no_std,
+    // },
     // Execution context
-    execution::{TimeBoundedConfig, TimeBoundedContext, TimeBoundedOutcome},
+    // execution::{TimeBoundedConfig, TimeBoundedContext, TimeBoundedOutcome},
     // Export/Import
-    export::Export,
-    export_map::{ExportMap, SafeExportMap},
+    // export::Export,
+    // export_map::{ExportMap, SafeExportMap},
     // Factory and instance
-    factory::ComponentFactory,
+    // factory::ComponentFactory,
     // Host and namespace
-    host::Host,
-    import::Import,
-    import_map::{ImportMap, SafeImportMap},
-    instance_no_std::{InstanceCollection, InstanceValue, InstanceValueBuilder},
-    namespace::Namespace,
-    // Binary std/no_std choice
-    no_alloc,
+    // host::Host,
+    // import::Import,
+    // import_map::{ImportMap, SafeImportMap},
+    // instance_no_std::{InstanceCollection, InstanceValue, InstanceValueBuilder},
+    // namespace::Namespace,
     // Resources
     resources::{
-        BoundedBufferPool, MemoryStrategy, ResourceArena, ResourceManager,
-        ResourceOperation as RuntimeResourceOperation, ResourceStrategyNoStd, ResourceTable,
+        // BoundedBufferPool, 
+        MemoryStrategy, 
+        // ResourceArena, 
+        ResourceManager,
+        // ResourceOperation as RuntimeResourceOperation, ResourceStrategyNoStd, 
+        ResourceTable,
     },
     // Memory strategies
-    strategies::memory::{
-        BoundedCopyStrategy, FullIsolationStrategy, MemoryOptimizationStrategy, ZeroCopyStrategy,
-    },
+    // strategies::memory::{
+    //     BoundedCopyStrategy, FullIsolationStrategy, MemoryOptimizationStrategy, ZeroCopyStrategy,
+    // },
     // Type conversion
-    type_conversion::{
-        format_to_types_extern_type, format_val_type_to_value_type,
-        format_valtype_to_types_valtype, types_to_format_extern_type,
-        types_valtype_to_format_valtype, value_type_to_format_val_type, IntoFormatType,
-        IntoRuntimeType,
-    },
+    // type_conversion::{
+    //     format_to_types_extern_type, format_val_type_to_value_type,
+    //     format_valtype_to_types_valtype, types_to_format_extern_type,
+    //     types_valtype_to_format_valtype, value_type_to_format_val_type, IntoFormatType,
+    //     IntoRuntimeType,
+    // },
     // Types and values
     types::ComponentInstance,
 };
-// Binary std/no_std choice
-#[cfg(all(not(feature = "std"), not(feature = "std")))]
+// Additional no_std specific re-exports
+#[cfg(not(feature = "std"))]
 pub use crate::{
-    // Binary std/no_std choice
-    no_alloc,
+    // no_alloc,  // Comment out for now
 };

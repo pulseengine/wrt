@@ -11,7 +11,7 @@ use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
     bounded_collections::BoundedMap,
     traits::{Checksummable, ToBytes, FromBytes},
-    prelude::*,
+    prelude::{BoundedCapacity, Clone, Copy, Debug, Default, Eq, PartialEq, Value},
 };
 use wrt_error::{Error, ErrorCategory, codes};
 
@@ -38,7 +38,7 @@ pub struct PlatformCapacities {
 
 impl PlatformCapacities {
     /// Default capacities for general-purpose platforms
-    pub const fn default() -> Self {
+    #[must_use] pub const fn default() -> Self {
         Self {
             small_capacity: 64,
             medium_capacity: 1024,
@@ -48,7 +48,7 @@ impl PlatformCapacities {
     }
     
     /// Reduced capacities for embedded platforms with limited memory
-    pub const fn embedded() -> Self {
+    #[must_use] pub const fn embedded() -> Self {
         Self {
             small_capacity: 16,
             medium_capacity: 256,
@@ -58,7 +58,7 @@ impl PlatformCapacities {
     }
     
     /// Safety-critical configuration with conservative limits
-    pub const fn safety_critical() -> Self {
+    #[must_use] pub const fn safety_critical() -> Self {
         Self {
             small_capacity: 32,
             medium_capacity: 512,
@@ -70,7 +70,9 @@ impl PlatformCapacities {
 
 /// Backward compatibility constants
 pub const SMALL_CAPACITY: usize = PlatformCapacities::default().small_capacity;
+/// Medium capacity for backward compatibility
 pub const MEDIUM_CAPACITY: usize = PlatformCapacities::default().medium_capacity;
+/// Large capacity for backward compatibility
 pub const LARGE_CAPACITY: usize = PlatformCapacities::default().large_capacity;
 
 // =============================================================================
@@ -165,11 +167,11 @@ pub type RuntimeString = BoundedString<1024, DefaultRuntimeProvider>;
 pub type ComponentName = BoundedString<64, DefaultRuntimeProvider>;
 
 /// Map for storing exports by name (using BTreeMap-style bounded map)
-/// Note: T must implement Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq
+/// Note: T must implement Sized + Checksummable + `ToBytes` + `FromBytes` + Default + Clone + `PartialEq` + Eq
 pub type ExportMap<T> = BoundedMap<RuntimeString, T, 1024, DefaultRuntimeProvider>;
 
 /// Map for storing imports by name
-/// Note: T must implement Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq
+/// Note: T must implement Sized + Checksummable + `ToBytes` + `FromBytes` + Default + Clone + `PartialEq` + Eq
 pub type ImportMap<T> = BoundedMap<RuntimeString, T, 1024, DefaultRuntimeProvider>;
 
 /// Vector for function parameters
@@ -292,25 +294,25 @@ where
 
 /// Re-export commonly used types for easy migration
 pub mod compat {
-    use super::*;
+    use super::{BoundedString, BoundedVec, DefaultRuntimeProvider};
     
     /// Legacy vector type for backward compatibility (medium capacity)
-    /// Note: T must implement Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq
+    /// Note: T must implement Sized + Checksummable + `ToBytes` + `FromBytes` + Default + Clone + `PartialEq` + Eq
     pub type Vec<T> = BoundedVec<T, 1024, DefaultRuntimeProvider>;
     
     /// Legacy string type for backward compatibility  
     pub type String = BoundedString<1024, DefaultRuntimeProvider>;
     
     /// Legacy small vector type for backward compatibility
-    /// Note: T must implement Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq
+    /// Note: T must implement Sized + Checksummable + `ToBytes` + `FromBytes` + Default + Clone + `PartialEq` + Eq
     pub type SmallVec<T> = BoundedVec<T, 64, DefaultRuntimeProvider>;
     
     /// Legacy medium vector type for backward compatibility
-    /// Note: T must implement Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq
+    /// Note: T must implement Sized + Checksummable + `ToBytes` + `FromBytes` + Default + Clone + `PartialEq` + Eq
     pub type MediumVec<T> = BoundedVec<T, 1024, DefaultRuntimeProvider>;
     
     /// Legacy large vector type for backward compatibility
-    /// Note: T must implement Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq
+    /// Note: T must implement Sized + Checksummable + `ToBytes` + `FromBytes` + Default + Clone + `PartialEq` + Eq
     pub type LargeVec<T> = BoundedVec<T, 65536, DefaultRuntimeProvider>;
 }
 

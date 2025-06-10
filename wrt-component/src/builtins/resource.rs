@@ -6,7 +6,6 @@
 // - resource.rep: Get the representation of a resource
 // - resource.get: Get a resource handle
 
-use std::{boxed::Box, sync::Arc, vec::Vec};
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
@@ -14,7 +13,17 @@ use std::{
     vec::Vec,
 };
 
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedVec as Vec, safe_memory::NoStdProvider};
+
+// Enable vec! macro for no_std
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::vec;
+
 use wrt_error::{Error, Result};
+#[cfg(feature = "std")]
 use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
 
 use crate::{
@@ -42,10 +51,11 @@ impl BuiltinHandler for ResourceCreateHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::new(format!(
-                "resource.create: Expected 1 argument, got {}",
-                args.len()
-            )));
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Parameter,
+                wrt_error::codes::EXECUTION_ERROR,
+                "resource.create: Expected 1 argument"
+            ));
         }
 
         // Extract the resource representation from args
@@ -53,10 +63,11 @@ impl BuiltinHandler for ResourceCreateHandler {
             ComponentValue::U32(value) => *value,
             ComponentValue::U64(value) => *value as u32,
             _ => {
-                return Err(Error::new(format!(
-                    "resource.create: Expected u32 or u64 representation, got {:?}",
-                    args[0]
-                )));
+                return Err(Error::new(
+                    wrt_error::ErrorCategory::Parameter,
+                    wrt_error::codes::TYPE_MISMATCH,
+                    "resource.create: Expected u32 or u64 representation"
+                ));
             }
         };
 
@@ -65,7 +76,20 @@ impl BuiltinHandler for ResourceCreateHandler {
         let id = manager.add_host_resource(rep);
 
         // Return the resource ID
-        Ok(vec![ComponentValue::U32(id.0)])
+        #[cfg(feature = "std")]
+        {
+            Ok(vec![ComponentValue::U32(id.0)])
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let mut result = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+            result.push(ComponentValue::U32(id.0)).map_err(|_| Error::new(
+                wrt_error::ErrorCategory::Memory,
+                wrt_error::codes::MEMORY_ALLOCATION_FAILED,
+                "Memory allocation failed"
+            ))?;
+            Ok(result)
+        }
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
@@ -93,27 +117,33 @@ impl BuiltinHandler for ResourceDropHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::new(format!(
-                "resource.drop: Expected 1 argument, got {}",
-                args.len()
-            )));
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Parameter,
+                wrt_error::codes::EXECUTION_ERROR,
+                "resource.drop: Expected 1 argument"
+            ));
         }
 
         // Extract the resource ID from args
         let id = match &args[0] {
             ComponentValue::U32(value) => ResourceId(*value),
             _ => {
-                return Err(Error::new(format!(
-                    "resource.drop: Expected u32 resource ID, got {:?}",
-                    args[0]
-                )));
+                return Err(Error::new(
+                    wrt_error::ErrorCategory::Parameter,
+                    wrt_error::codes::TYPE_MISMATCH,
+                    "resource.drop: Expected u32 resource ID"
+                ));
             }
         };
 
         // Drop the resource
         let mut manager = self.resource_manager.lock().unwrap();
         if !manager.has_resource(id) {
-            return Err(Error::new(ComponentValue::String("Component operation result".into())));
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Resource,
+                wrt_error::codes::RESOURCE_NOT_FOUND,
+                "Resource not found"
+            ));
         }
 
         manager.delete_resource(id);
@@ -147,27 +177,33 @@ impl BuiltinHandler for ResourceRepHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::new(format!(
-                "resource.rep: Expected 1 argument, got {}",
-                args.len()
-            )));
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Parameter,
+                wrt_error::codes::EXECUTION_ERROR,
+                "resource.rep: Expected 1 argument"
+            ));
         }
 
         // Extract the resource ID from args
         let id = match &args[0] {
             ComponentValue::U32(value) => ResourceId(*value),
             _ => {
-                return Err(Error::new(format!(
-                    "resource.rep: Expected u32 resource ID, got {:?}",
-                    args[0]
-                )));
+                return Err(Error::new(
+                    wrt_error::ErrorCategory::Parameter,
+                    wrt_error::codes::TYPE_MISMATCH,
+                    "resource.rep: Expected u32 resource ID"
+                ));
             }
         };
 
         // Get the resource representation
         let manager = self.resource_manager.lock().unwrap();
         if !manager.has_resource(id) {
-            return Err(Error::new(ComponentValue::String("Component operation result".into())));
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Resource,
+                wrt_error::codes::RESOURCE_NOT_FOUND,
+                "Resource not found"
+            ));
         }
 
         // Get the resource as u32
@@ -203,10 +239,11 @@ impl BuiltinHandler for ResourceGetHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::new(format!(
-                "resource.get: Expected 1 argument, got {}",
-                args.len()
-            )));
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Parameter,
+                wrt_error::codes::EXECUTION_ERROR,
+                "resource.get: Expected 1 argument"
+            ));
         }
 
         // Extract the resource representation from args
@@ -214,10 +251,11 @@ impl BuiltinHandler for ResourceGetHandler {
             ComponentValue::U32(value) => *value,
             ComponentValue::U64(value) => *value as u32,
             _ => {
-                return Err(Error::new(format!(
-                    "resource.get: Expected u32 or u64 representation, got {:?}",
-                    args[0]
-                )));
+                return Err(Error::new(
+                    wrt_error::ErrorCategory::Parameter,
+                    wrt_error::codes::TYPE_MISMATCH,
+                    "resource.get: Expected u32 or u64 representation"
+                ));
             }
         };
 
@@ -235,7 +273,20 @@ impl BuiltinHandler for ResourceGetHandler {
 
         // Not found, create a new one
         let id = manager.add_host_resource(rep);
-        Ok(vec![ComponentValue::U32(id.0)])
+        #[cfg(feature = "std")]
+        {
+            Ok(vec![ComponentValue::U32(id.0)])
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let mut result = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+            result.push(ComponentValue::U32(id.0)).map_err(|_| Error::new(
+                wrt_error::ErrorCategory::Memory,
+                wrt_error::codes::MEMORY_ALLOCATION_FAILED,
+                "Memory allocation failed"
+            ))?;
+            Ok(result)
+        }
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {

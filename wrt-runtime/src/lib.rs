@@ -29,15 +29,15 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-// Panic handler for no_std builds when building standalone
-#[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    // For safety-critical systems, enter infinite loop to maintain known safe state
-    loop {
-        core::hint::spin_loop();
-    }
-}
+// Panic handler disabled to avoid conflicts with wrt-platform
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     // For safety-critical systems, enter infinite loop to maintain known safe state
+//     loop {
+//         core::hint::spin_loop();
+//     }
+// }
 
 // Binary std/no_std choice
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -64,16 +64,17 @@ pub mod memory;
 pub mod simple_types;
 pub mod unified_types;
 
-// Component model integration
-pub mod component_unified;
-pub mod memory_adapter;
-pub mod memory_config_adapter;
-pub mod memory_helpers;
+// Component model integration - temporarily disabled for compilation
+// pub mod component_unified;
+// pub mod memory_adapter;
+// pub mod memory_config_adapter;
+// pub mod memory_helpers;
+/// WebAssembly module representation and management
 pub mod module;
 // pub mod module_builder; // Temporarily disabled due to compilation issues
 pub mod module_instance;
 pub mod prelude;
-pub mod stackless;
+// pub mod stackless; // Temporarily disabled due to compilation issues
 pub mod table;
 pub mod thread_manager;
 pub mod types;
@@ -136,9 +137,9 @@ pub use memory::Memory;
 // };
 // pub use module_builder::{load_module_from_binary, ModuleBuilder}; // Temporarily disabled
 // pub use module_instance::ModuleInstance;
-pub use stackless::{
-    StacklessCallbackRegistry, StacklessEngine, StacklessExecutionState, StacklessFrame,
-};
+// pub use stackless::{
+//     StacklessCallbackRegistry, StacklessEngine, StacklessExecutionState, StacklessFrame,
+// }; // Temporarily disabled due to compilation issues
 pub use table::Table;
 
 // Agent D: Re-export platform-aware runtime types - temporarily disabled
@@ -169,3 +170,5 @@ mod tests;
 // };
 
 // Panic handler is provided by the main binary crate to avoid conflicts
+
+// Panic handler is provided by wrt-platform when needed

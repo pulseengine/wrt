@@ -3,7 +3,6 @@
 //! Provides single-pass WASM validation with immediate limit checking against
 //! platform capabilities.
 
-#![cfg_attr(not(feature = "std"), no_std)]
 
 use wrt_error::{Error, ErrorCategory, codes};
 use wrt_foundation::bounded::BoundedVec;
@@ -159,7 +158,7 @@ impl ToBytes for Section {
     fn serialized_size(&self) -> usize {
         match self {
             Section::Memory(mem) => 1 + 4 + if mem.maximum.is_some() { 4 } else { 0 },
-            Section::Code(code) => 1 + 4 + 4,
+            Section::Code(_code) => 1 + 4 + 4,
             _ => 1, // Just the discriminant
         }
     }
@@ -301,7 +300,7 @@ pub struct StreamingWasmValidator {
 
 /// Validation state tracking
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ValidationState {
+pub enum ValidationState {
     /// Waiting for header
     Header,
     /// Processing sections

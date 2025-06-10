@@ -1687,6 +1687,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "linked_list_allocator"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9afa463f5405ee81cdb9cc2baf37e08ec7e4c8209442b5d72c04cfb2cd6e6286"
+dependencies = [
+ "spinning_top",
+]
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2634,6 +2643,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58b69356da67e2fc1f542c71ea7e654a361a79c938e4424392ecf4fa065d2193"
 dependencies = [
  "smallvec",
+]
+
+[[package]]
+name = "spinning_top"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b9eb1a2f4c41445a3a0ff9abc5221c5fcd28e1f13cd7c0397706f9ac938ddb0"
+dependencies = [
+ "lock_api",
 ]
 
 [[package]]
@@ -4242,6 +4260,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "wrt-panic"
+version = "0.2.0"
+dependencies = [
+ "wrt-foundation",
+]
+
+[[package]]
 name = "wrt-platform"
 version = "0.2.0"
 dependencies = [
@@ -4315,9 +4340,11 @@ dependencies = [
 name = "wrtd"
 version = "0.2.0"
 dependencies = [
+ "linked_list_allocator",
  "wrt",
  "wrt-error",
  "wrt-logging",
+ "wrt-panic",
  "wrt-runtime",
 ]
 

@@ -5,7 +5,7 @@
 
 extern crate alloc;
 
-use crate::prelude::*;
+use crate::prelude::{Debug, Error, ErrorCategory, Ord, Result, codes, str};
 
 // Import format! macro for string formatting
 #[cfg(feature = "std")]
@@ -84,7 +84,7 @@ impl ExecutionStats {
     }
 
     /// Check if gas limit is exceeded
-    pub fn is_gas_exceeded(&self) -> bool {
+    #[must_use] pub fn is_gas_exceeded(&self) -> bool {
         self.gas_limit > 0 && self.gas_used >= self.gas_limit
     }
 
@@ -124,7 +124,7 @@ pub struct ExecutionContext {
 
 impl ExecutionContext {
     /// Create a new execution context
-    pub fn new(max_function_depth: usize) -> Self {
+    #[must_use] pub fn new(max_function_depth: usize) -> Self {
         Self {
             stats: ExecutionStats::default(),
             trapped: false,
@@ -134,12 +134,12 @@ impl ExecutionContext {
     }
     
     /// Create execution context with platform-aware limits
-    pub fn new_with_limits(max_function_depth: usize) -> Self {
+    #[must_use] pub fn new_with_limits(max_function_depth: usize) -> Self {
         Self::new(max_function_depth)
     }
     
     /// Create execution context from platform limits
-    pub fn from_platform_limits(platform_limits: &crate::platform_stubs::ComprehensivePlatformLimits) -> Self {
+    #[must_use] pub fn from_platform_limits(platform_limits: &crate::platform_stubs::ComprehensivePlatformLimits) -> Self {
         let max_depth = platform_limits.max_stack_bytes / (8 * 64); // Estimate stack depth
         Self::new(max_depth.max(16)) // Minimum depth of 16
     }
@@ -171,7 +171,7 @@ impl ExecutionContext {
     }
 
     /// Check if execution is trapped
-    pub fn is_trapped(&self) -> bool {
+    #[must_use] pub fn is_trapped(&self) -> bool {
         self.trapped
     }
 
@@ -194,7 +194,7 @@ pub struct CallFrame {
 
 impl CallFrame {
     /// Create a new call frame
-    pub fn new(function_index: u32, pc: usize, locals_count: u32) -> Self {
+    #[must_use] pub fn new(function_index: u32, pc: usize, locals_count: u32) -> Self {
         Self {
             function_index,
             pc,
@@ -214,7 +214,7 @@ pub struct InstrumentationPoint {
 
 impl InstrumentationPoint {
     /// Create a new instrumentation point
-    pub fn new(location: usize, point_type: &str) -> Self {
+    #[must_use] pub fn new(location: usize, point_type: &str) -> Self {
         let bounded_point_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<1024>> = wrt_foundation::bounded::BoundedString::from_str_truncate(
             point_type,
             wrt_foundation::safe_memory::NoStdProvider::<1024>::default()

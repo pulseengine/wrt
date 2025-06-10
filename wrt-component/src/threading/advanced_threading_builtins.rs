@@ -18,20 +18,32 @@
 
 extern crate alloc;
 
-use std::{boxed::Box, collections::BTreeMap, vec::Vec};
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::HashMap, vec::Vec};
+
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedVec as Vec, BoundedMap as HashMap, safe_memory::NoStdProvider};
 
 use wrt_error::{Error, ErrorCategory, Result};
 use wrt_foundation::{
     atomic_memory::AtomicRefCell,
     bounded::{BoundedMap, BoundedVec},
-    component_value::ComponentValue,
     types::ValueType,
 };
 
-#[cfg(not(any(feature = "std", )))]
-use wrt_foundation::{BoundedString, BoundedVec};
+#[cfg(feature = "std")]
+use wrt_foundation::component_value::ComponentValue;
+
+#[cfg(not(feature = "std"))]
+use wrt_foundation::BoundedString;
+
+// Type aliases for no_std compatibility
+#[cfg(not(feature = "std"))]
+type String = BoundedString<256, NoStdProvider<65536>>;
+
+#[cfg(not(feature = "std"))]
+// For no_std, use a simpler ComponentValue representation
+use crate::types::Value as ComponentValue;
 
 use crate::thread_builtins::{ComponentFunction, FunctionSignature, ParallelismInfo, ThreadBuiltins, ThreadError, ThreadJoinResult, ThreadSpawnConfig, ValueType as ThreadValueType};
 use crate::task_cancellation::{CancellationToken, with_cancellation_scope};
@@ -123,7 +135,7 @@ pub struct IndirectCall {
     #[cfg(feature = "std")]
     pub arguments: Vec<ComponentValue>,
     #[cfg(not(any(feature = "std", )))]
-    pub arguments: BoundedVec<ComponentValue, 16>,
+    pub arguments: BoundedVec<ComponentValue, 16, NoStdProvider<65536>>,
 }
 
 impl IndirectCall {
@@ -221,7 +233,7 @@ pub struct AdvancedThread {
     #[cfg(feature = "std")]
     pub child_threads: Vec<AdvancedThreadId>,
     #[cfg(not(any(feature = "std", )))]
-    pub child_threads: BoundedVec<AdvancedThreadId, MAX_THREADS>,
+    pub child_threads: BoundedVec<AdvancedThreadId, MAX_THREADS, NoStdProvider<65536>>,
 }
 
 impl AdvancedThread {
@@ -241,7 +253,7 @@ impl AdvancedThread {
             #[cfg(feature = "std")]
             child_threads: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            child_threads: BoundedVec::new(),
+            child_threads: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         }
     }
 
@@ -581,7 +593,7 @@ impl AdvancedThreadingBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Thread not found"
                 ))
             }
@@ -608,7 +620,7 @@ impl AdvancedThreadingBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Thread not found"
                 ))
             }
@@ -628,7 +640,7 @@ impl AdvancedThreadingBuiltins {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    wrt_error::codes::INVALID_HANDLE,
+                    wrt_error::codes::RESOURCE_INVALID_HANDLE,
                     "Thread not found"
                 ))
             }
@@ -715,8 +727,8 @@ pub mod advanced_threading_helpers {
     }
 
     #[cfg(not(any(feature = "std", )))]
-    pub fn cancel_child_threads(parent_id: AdvancedThreadId) -> Result<BoundedVec<AdvancedThreadId, MAX_THREADS>> {
-        let mut cancelled = BoundedVec::new();
+    pub fn cancel_child_threads(parent_id: AdvancedThreadId) -> Result<BoundedVec<AdvancedThreadId, MAX_THREADS>, NoStdProvider<65536>> {
+        let mut cancelled = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
         
         AdvancedThreadingBuiltins::with_registry_mut(|registry| {
             if let Some(parent) = registry.get_thread(parent_id) {

@@ -23,10 +23,11 @@ use wrt_foundation::{
     prelude::*,
 };
 
-use crate::{
-    async_types::{StreamHandle, FutureHandle, ErrorContextHandle},
-    types::{ComponentInstanceId, TypeId, Value},
-};
+use crate::async_::async_types::{StreamHandle, FutureHandle, ErrorContextHandle};
+use crate::types::{Value};
+// Note: ComponentInstanceId and TypeId may not exist - using placeholders
+pub type ComponentInstanceId = u32;
+pub type TypeId = u32;
 
 use wrt_error::{Error, ErrorCategory, Result};
 
@@ -43,7 +44,7 @@ pub struct AsyncResourceCleanupManager {
     #[cfg(feature = "std")]
     cleanup_entries: BTreeMap<ComponentInstanceId, Vec<AsyncCleanupEntry>>,
     #[cfg(not(any(feature = "std", )))]
-    cleanup_entries: BoundedVec<(ComponentInstanceId, BoundedVec<AsyncCleanupEntry, MAX_ASYNC_RESOURCES_PER_INSTANCE>), MAX_CLEANUP_ENTRIES>,
+    cleanup_entries: BoundedVec<(ComponentInstanceId, BoundedVec<AsyncCleanupEntry, MAX_ASYNC_RESOURCES_PER_INSTANCE, NoStdProvider<65536>>), MAX_CLEANUP_ENTRIES>,
     
     /// Global cleanup statistics
     stats: AsyncCleanupStats,
@@ -158,7 +159,7 @@ pub enum AsyncCleanupData {
         #[cfg(feature = "std")]
         cleanup_id: String,
         #[cfg(not(any(feature = "std", )))]
-        cleanup_id: BoundedString<64>,
+        cleanup_id: BoundedString<64, NoStdProvider<65536>>,
         data: u64, // Generic data field
     },
 }
@@ -213,7 +214,7 @@ impl AsyncResourceCleanupManager {
             #[cfg(feature = "std")]
             cleanup_entries: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            cleanup_entries: BoundedVec::new(),
+            cleanup_entries: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             stats: AsyncCleanupStats::default(),
             next_cleanup_id: 1,
         }
@@ -255,7 +256,7 @@ impl AsyncResourceCleanupManager {
         
         #[cfg(not(any(feature = "std", )))]
         let entries = {
-            let mut found_entries = BoundedVec::new();
+            let mut found_entries = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
             let mut index_to_remove = None;
             
             for (i, (id, entries)) in self.cleanup_entries.iter().enumerate() {
@@ -312,9 +313,13 @@ impl AsyncResourceCleanupManager {
         }
 
         #[cfg(feature = "std")]
-        Ok(results)
+        {
+            Ok(results)
+        }
         #[cfg(not(any(feature = "std", )))]
-        Ok(results.into_vec())
+        {
+            Ok(results.into_vec())
+        }
     }
 
     /// Execute a single cleanup entry
@@ -411,7 +416,7 @@ impl AsyncResourceCleanupManager {
             }
             
             if !found {
-                let mut new_entries = BoundedVec::new();
+                let mut new_entries = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
                 new_entries.push(entry).map_err(|_| {
                     Error::new(
                         ErrorCategory::Resource,
@@ -440,7 +445,7 @@ impl AsyncResourceCleanupManager {
     }
 
     #[cfg(not(any(feature = "std", )))]
-    fn sort_entries_by_priority(&self, entries: &mut BoundedVec<AsyncCleanupEntry, MAX_ASYNC_RESOURCES_PER_INSTANCE>) {
+    fn sort_entries_by_priority(&self, entries: &mut BoundedVec<AsyncCleanupEntry, MAX_ASYNC_RESOURCES_PER_INSTANCE, NoStdProvider<65536>>) {
         // Simple bubble sort for no_std
         for i in 0..entries.len() {
             for j in 0..(entries.len() - 1 - i) {

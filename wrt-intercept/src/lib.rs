@@ -362,7 +362,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     }
 }
 
-/// Simplified strategy pattern for intercepting component linking in no_std environments
+/// Simplified strategy pattern for intercepting component linking in `no_std` environments
 #[cfg(not(feature = "std"))]
 pub trait LinkInterceptorStrategy: Send + Sync {
     /// Called before a function call is made
@@ -450,9 +450,9 @@ impl LinkInterceptor {
     ///
     /// # Returns
     ///
-    /// * `Self` - A new LinkInterceptor instance
+    /// * `Self` - A new `LinkInterceptor` instance
     #[cfg_attr(not(feature = "std"), allow(unused_variables))]
-    pub fn new(name: &str) -> Self {
+    #[must_use] pub fn new(name: &str) -> Self {
         Self { 
             #[cfg(feature = "std")]
             name: name.to_string(), 
@@ -531,8 +531,8 @@ impl LinkInterceptor {
     /// # Returns
     ///
     /// * `&str` - The interceptor name
-    pub fn name(&self) -> &str {
-        &self.name
+    #[must_use] pub fn name(&self) -> &str {
+        self.name
     }
 
     /// Gets the first strategy in this interceptor
@@ -663,7 +663,7 @@ pub struct InterceptionResult {
     pub modifications: Vec<Modification>,
 }
 
-/// Result of an interception operation (no_std version)
+/// Result of an interception operation (`no_std` version)
 #[cfg(not(feature = "std"))]
 #[derive(Debug, Clone)]
 pub struct InterceptionResult {
@@ -698,11 +698,11 @@ pub enum Modification {
     },
 }
 
-/// Modification to apply to serialized data (no_std version)
+/// Modification to apply to serialized data (`no_std` version)
 #[cfg(not(feature = "std"))]
 #[derive(Debug, Clone)]
 pub enum Modification {
-    /// No modifications in no_std
+    /// No modifications in `no_std`
     None,
 }
 

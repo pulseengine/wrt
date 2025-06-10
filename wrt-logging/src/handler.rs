@@ -4,10 +4,8 @@
 
 #[cfg(feature = "std")]
 use std::boxed::Box;
-#[cfg(not(feature = "std"))]
-use wrt_host::Box;
 
-use wrt_host::{callback::CallbackType, CallbackRegistry};
+use wrt_host::CallbackRegistry;
 
 use crate::operation::LogOperation;
 
@@ -33,13 +31,13 @@ pub trait LoggingExt {
 
 // For pure no_std configuration
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
-/// Function type for handling log operations (no dynamic dispatch in no_std)
+/// Function type for handling log operations (no dynamic dispatch in `no_std`)
 pub type LogHandler<P> = fn(LogOperation<P>);
 
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
-/// Extension trait for CallbackRegistry to add logging-specific methods (no_std)
+/// Extension trait for `CallbackRegistry` to add logging-specific methods (`no_std`)
 pub trait LoggingExt {
-    /// Register a simple log handler function (no_std only supports function pointers)
+    /// Register a simple log handler function (`no_std` only supports function pointers)
     fn register_log_handler<P>(&mut self, handler: LogHandler<P>)
     where
         P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq;

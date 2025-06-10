@@ -11,6 +11,15 @@ use std::{fmt, mem};
 #[cfg(feature = "std")]
 use std::{boxed::Box, vec::Vec};
 
+// Enable vec! macro for no_std
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{vec, boxed::Box};
+
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedVec as Vec, safe_memory::NoStdProvider};
+
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
     prelude::*,
@@ -38,13 +47,13 @@ pub struct StreamingCanonicalAbi {
     #[cfg(feature = "std")]
     streams: Vec<StreamingContext>,
     #[cfg(not(any(feature = "std", )))]
-    streams: BoundedVec<StreamingContext, MAX_CONCURRENT_STREAMS>,
+    streams: BoundedVec<StreamingContext, MAX_CONCURRENT_STREAMS, NoStdProvider<65536>>,
     
     /// Buffer pool for reusing memory
     #[cfg(feature = "std")]
     buffer_pool: Vec<Vec<u8>>,
     #[cfg(not(any(feature = "std", )))]
-    buffer_pool: BoundedVec<BoundedVec<u8, MAX_STREAM_BUFFER_SIZE>, 16>,
+    buffer_pool: BoundedVec<BoundedVec<u8, MAX_STREAM_BUFFER_SIZE, NoStdProvider<65536>>, 16>,
     
     /// Next stream ID
     next_stream_id: u32,
@@ -64,7 +73,7 @@ pub struct StreamingContext {
     #[cfg(feature = "std")]
     pub buffer: Vec<u8>,
     #[cfg(not(any(feature = "std", )))]
-    pub buffer: BoundedVec<u8, MAX_STREAM_BUFFER_SIZE>,
+    pub buffer: BoundedVec<u8, MAX_STREAM_BUFFER_SIZE, NoStdProvider<65536>>,
     /// Bytes read/written so far
     pub bytes_processed: u64,
     /// Stream direction
@@ -169,12 +178,12 @@ impl StreamingCanonicalAbi {
             #[cfg(feature = "std")]
             streams: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            streams: BoundedVec::new(),
+            streams: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             
             #[cfg(feature = "std")]
             buffer_pool: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            buffer_pool: BoundedVec::new(),
+            buffer_pool: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             
             next_stream_id: 1,
             backpressure_config: BackpressureConfig::default(),
@@ -197,7 +206,7 @@ impl StreamingCanonicalAbi {
             #[cfg(feature = "std")]
             buffer: self.get_buffer_from_pool(),
             #[cfg(not(any(feature = "std", )))]
-            buffer: BoundedVec::new(),
+            buffer: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             bytes_processed: 0,
             direction,
             backpressure: BackpressureState::new(&self.backpressure_config),

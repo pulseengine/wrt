@@ -42,15 +42,22 @@
 #[cfg(feature = "std")]
 use std::{vec::Vec, string::String, collections::HashMap, boxed::Box, format, sync::Arc};
 
-#[cfg(all(not(feature = "std")))]
-use std::{vec::Vec, string::String, collections::BTreeMap as HashMap, boxed::Box, format, sync::Arc};
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedVec as Vec, BoundedString as String, no_std_hashmap::NoStdHashMap as HashMap, safe_memory::NoStdProvider};
 
-#[cfg(not(any(feature = "std", )))]
-use wrt_foundation::{BoundedVec as Vec, BoundedString as String, NoStdHashMap as HashMap};
+// Enable vec! and format! macros for no_std
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{vec, format, boxed::Box};
+
+// Type aliases for no_std
+#[cfg(not(feature = "std"))]
+type Arc<T> = wrt_foundation::SafeArc<T, NoStdProvider<65536>>;
 
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_intercept::{LinkInterceptorStrategy, ResourceCanonicalOperation};
-use wrt_foundation::{ComponentValue, ValType, NoStdProvider};
+use wrt_foundation::{ComponentValue, ValType};
 
 // Import our communication system components
 use crate::component_communication::{
@@ -271,7 +278,7 @@ impl ComponentCommunicationStrategy {
                 return Err(Error::new(
                     ErrorCategory::Security,
                     codes::ACCESS_DENIED,
-                    ComponentValue::String("Component operation result".into()),
+                    "Component not found",
                 ));
             }
 
@@ -283,7 +290,7 @@ impl ComponentCommunicationStrategy {
                 return Err(Error::new(
                     ErrorCategory::Security,
                     codes::ACCESS_DENIED,
-                    ComponentValue::String("Component operation result".into()),
+                    "Component not found",
                 ));
             }
         }
@@ -893,7 +900,7 @@ mod tests {
             ..Default::default()
         };
         
-        let display = ComponentValue::String("Component operation result".into());
+        let display = format!("{}", stats);
         assert!(display.contains("100"));
         assert!(display.contains("95"));
         assert!(display.contains("5"));

@@ -7,38 +7,21 @@
 //! The parser follows the Component Model Binary Format specification and
 //! provides robust error handling, validation, and memory safety.
 
-// Environment-specific imports with conditional compilation
+// Component binary parsing is only available with std feature due to complex recursive types
 #[cfg(feature = "std")]
-use std::{format, vec::Vec};
+mod component_binary_parser {
+    // Environment-specific imports with conditional compilation
+    use std::{format, vec::Vec};
 
-#[cfg(all(not(feature = "std")))]
-use std::{format, vec::Vec};
+    use core::fmt;
+    use wrt_error::{codes, Error, ErrorCategory, Result};
+    use wrt_format::{binary, component::Component};
+    use wrt_foundation::traits::Validatable;
 
-use core::fmt;
-use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_format::{binary, component::Component};
-use wrt_foundation::traits::Validatable;
-
-// Import ValidationLevel from foundation if available, otherwise define locally
-#[cfg(feature = "std")]
-pub use wrt_foundation::VerificationLevel as ValidationLevel;
-
-#[cfg(not(feature = "std"))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ValidationLevel {
-    Minimal,
-    Standard,
-    Full,
-}
-
-#[cfg(not(feature = "std"))]
-impl Default for ValidationLevel {
-    fn default() -> Self {
-        Self::Standard
-    }
-}
-
-use crate::prelude::*;
+    // Import ValidationLevel from foundation if available, otherwise define locally
+    pub use wrt_foundation::VerificationLevel as ValidationLevel;
+    
+    use crate::prelude::*;
 
 /// Component Magic Number: "\0asm" (same as modules)
 const COMPONENT_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
@@ -662,3 +645,92 @@ mod tests {
         assert!(result3.is_ok());
     }
 }
+
+} // end of component_binary_parser module
+
+// Re-export public APIs when std feature is enabled
+#[cfg(feature = "std")]
+pub use component_binary_parser::{
+    ComponentBinaryParser, ComponentHeader, ComponentSectionId, ValidationLevel,
+    parse_component_binary, parse_component_binary_with_validation
+};
+
+// No-std stub implementations
+#[cfg(not(feature = "std"))]
+pub mod no_std_stubs {
+    use wrt_error::{codes, Error, ErrorCategory, Result};
+    
+    /// Validation level stub for no_std environments
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum ValidationLevel {
+        Minimal,
+        Standard,
+        Full,
+    }
+    
+    /// Component binary parser stub for no_std environments
+    #[derive(Debug, Clone)]
+    pub struct ComponentBinaryParser;
+    
+    /// Component header stub for no_std environments
+    #[derive(Debug, Clone)]
+    pub struct ComponentHeader;
+    
+    /// Component section ID stub for no_std environments
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum ComponentSectionId {
+        Custom,
+        CoreModule,
+        CoreInstance,
+        CoreType,
+        Component,
+        Instance,
+        Alias,
+        Type,
+        Canon,
+        Start,
+        Import,
+        Export,
+        Value,
+    }
+    
+    /// Stub component type for no_std parsing
+    #[derive(Debug, Clone)]
+    pub struct Component;
+    
+    impl ComponentBinaryParser {
+        pub fn new() -> Self { Self }
+        pub fn with_validation_level(_level: ValidationLevel) -> Self { Self }
+        pub fn parse(&mut self, _bytes: &[u8]) -> Result<Component> {
+            Err(Error::new(
+                ErrorCategory::Validation,
+                codes::UNSUPPORTED_OPERATION,
+                "Component binary parsing requires std feature"
+            ))
+        }
+    }
+    
+    /// Parse component binary (no_std stub)
+    pub fn parse_component_binary(_bytes: &[u8]) -> Result<Component> {
+        Err(Error::new(
+            ErrorCategory::Validation,
+            codes::UNSUPPORTED_OPERATION,
+            "Component binary parsing requires std feature"
+        ))
+    }
+    
+    /// Parse component binary with validation (no_std stub)
+    pub fn parse_component_binary_with_validation(
+        _bytes: &[u8],
+        _validation_level: ValidationLevel,
+    ) -> Result<Component> {
+        Err(Error::new(
+            ErrorCategory::Validation,
+            codes::UNSUPPORTED_OPERATION,
+            "Component binary parsing requires std feature"
+        ))
+    }
+}
+
+#[cfg(not(feature = "std"))]
+pub use no_std_stubs::*;

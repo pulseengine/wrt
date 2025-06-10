@@ -3,8 +3,7 @@
 
 extern crate alloc;
 use alloc::{string::String, vec::Vec};
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use core::{fmt, mem};
+// Always import Error and Result regardless of feature flags
 use wrt_error::{Error, Result};
 use crate::level::LogLevel;
 
@@ -43,7 +42,7 @@ impl Default for BoundedLoggingLimits {
 
 impl BoundedLoggingLimits {
     /// Create limits for embedded platforms
-    pub fn embedded() -> Self {
+    #[must_use] pub fn embedded() -> Self {
         Self {
             max_log_buffer_size: 8 * 1024,   // 8KB
             max_log_message_size: 256,       // 256B per message
@@ -55,7 +54,7 @@ impl BoundedLoggingLimits {
     }
     
     /// Create limits for QNX platforms
-    pub fn qnx() -> Self {
+    #[must_use] pub fn qnx() -> Self {
         Self {
             max_log_buffer_size: 32 * 1024,  // 32KB
             max_log_message_size: 512,       // 512B per message
@@ -95,36 +94,38 @@ pub struct ComponentLoggingId(pub u32);
 /// Bounded log entry
 #[derive(Debug, Clone)]
 pub struct BoundedLogEntry {
+    /// Unique identifier for this log entry
     pub id: u64,
+    /// Timestamp when this entry was created
     pub timestamp: u64,
+    /// Log level for this entry
     pub level: LogLevel,
+    /// Logger that created this entry
     pub logger_id: LoggerId,
+    /// Component that generated this entry
     pub component_id: ComponentLoggingId,
+    /// Log message content
     pub message: String,
+    /// Additional metadata for this entry
     pub metadata: LogMetadata,
 }
 
 /// Log metadata for tracking and filtering
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct LogMetadata {
+    /// Module path where the log originated
     pub module: Option<String>,
+    /// Source file where the log originated
     pub file: Option<String>,
+    /// Line number where the log originated
     pub line: Option<u32>,
+    /// Thread ID that generated this log
     pub thread_id: Option<u32>,
+    /// Safety level (0-255, higher is more critical)
     pub safety_level: u8,
 }
 
-impl Default for LogMetadata {
-    fn default() -> Self {
-        Self {
-            module: None,
-            file: None,
-            line: None,
-            thread_id: None,
-            safety_level: 0, // QM
-        }
-    }
-}
 
 /// Bounded log buffer for storing log entries
 pub struct BoundedLogBuffer {
@@ -136,7 +137,12 @@ pub struct BoundedLogBuffer {
 }
 
 impl BoundedLogBuffer {
-    pub fn new(max_entries: usize, max_buffer_size: usize) -> Self {
+    /// Create a new bounded log buffer
+    /// 
+    /// # Arguments
+    /// * `max_entries` - Maximum number of log entries to store
+    /// * `max_buffer_size` - Maximum total buffer size in bytes
+    #[must_use] pub fn new(max_entries: usize, max_buffer_size: usize) -> Self {
         Self {
             entries: Vec::new(),
             max_entries,
@@ -146,6 +152,13 @@ impl BoundedLogBuffer {
         }
     }
     
+    /// Add a new log entry to the buffer
+    /// 
+    /// # Arguments
+    /// * `entry` - The log entry to add
+    /// 
+    /// # Errors
+    /// Returns an error if the entry cannot be added
     pub fn add_entry(&mut self, mut entry: BoundedLogEntry) -> Result<()> {
         let entry_size = entry.message.len() + 
             entry.metadata.module.as_ref().map_or(0, |s| s.len()) +
@@ -197,52 +210,72 @@ impl BoundedLogBuffer {
         }
     }
     
-    pub fn get_entries(&self) -> &[BoundedLogEntry] {
+    /// Get all log entries
+    #[must_use] pub fn get_entries(&self) -> &[BoundedLogEntry] {
         &self.entries
     }
     
-    pub fn get_entries_by_level(&self, level: LogLevel) -> Vec<&BoundedLogEntry> {
+    /// Get log entries filtered by level
+    #[must_use] pub fn get_entries_by_level(&self, level: LogLevel) -> Vec<&BoundedLogEntry> {
         self.entries.iter()
             .filter(|entry| entry.level == level)
             .collect()
     }
     
-    pub fn get_entries_by_component(&self, component_id: ComponentLoggingId) -> Vec<&BoundedLogEntry> {
+    /// Get log entries filtered by component
+    #[must_use] pub fn get_entries_by_component(&self, component_id: ComponentLoggingId) -> Vec<&BoundedLogEntry> {
         self.entries.iter()
             .filter(|entry| entry.component_id == component_id)
             .collect()
     }
     
+    /// Clear all log entries
     pub fn clear(&mut self) {
         self.entries.clear();
         self.buffer_size = 0;
     }
     
-    pub fn len(&self) -> usize {
+    /// Get number of log entries
+    #[must_use] pub fn len(&self) -> usize {
         self.entries.len()
     }
     
-    pub fn is_empty(&self) -> bool {
+    /// Check if buffer is empty
+    #[must_use] pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
     
-    pub fn buffer_size(&self) -> usize {
+    /// Get current buffer size in bytes
+    #[must_use] pub fn buffer_size(&self) -> usize {
         self.buffer_size
     }
 }
 
 /// Bounded logger instance
 pub struct BoundedLogger {
+    /// Unique identifier for this logger
     pub id: LoggerId,
+    /// Component this logger belongs to
     pub component_id: ComponentLoggingId,
+    /// Human-readable name for this logger
     pub name: String,
+    /// Minimum log level for this logger
     pub min_level: LogLevel,
+    /// Whether this logger is enabled
     pub enabled: bool,
+    /// Number of messages logged by this instance
     pub message_count: u64,
 }
 
 impl BoundedLogger {
-    pub fn new(
+    /// Create a new bounded logger
+    /// 
+    /// # Arguments
+    /// * `id` - Unique identifier for this logger
+    /// * `component_id` - Component this logger belongs to
+    /// * `name` - Human-readable name for this logger
+    /// * `min_level` - Minimum log level for this logger
+    #[must_use] pub fn new(
         id: LoggerId,
         component_id: ComponentLoggingId,
         name: String,
@@ -258,10 +291,12 @@ impl BoundedLogger {
         }
     }
     
-    pub fn should_log(&self, level: LogLevel) -> bool {
+    /// Check if this logger should log at the given level
+    #[must_use] pub fn should_log(&self, level: LogLevel) -> bool {
         self.enabled && level >= self.min_level
     }
     
+    /// Increment the message count for this logger
     pub fn increment_message_count(&mut self) {
         self.message_count = self.message_count.wrapping_add(1);
     }
@@ -357,23 +392,20 @@ impl BoundedLoggingManager {
         };
         
         // Add to buffer
-        match self.buffer.add_entry(entry) {
-            Ok(()) => {
-                // Find and update the logger's message count
-                if let Some(logger) = self.loggers.iter_mut().find(|l| l.id == logger_id) {
-                    logger.increment_message_count();
-                }
-                self.total_messages += 1;
-                
-                // Check if we should flush
-                if self.buffer.len() >= self.limits.flush_threshold {
-                    self.flush_pending = true;
-                }
+        if let Ok(()) = self.buffer.add_entry(entry) {
+            // Find and update the logger's message count
+            if let Some(logger) = self.loggers.iter_mut().find(|l| l.id == logger_id) {
+                logger.increment_message_count();
             }
-            Err(_) => {
-                self.dropped_messages += 1;
-                return Err(Error::OUT_OF_MEMORY);
+            self.total_messages += 1;
+            
+            // Check if we should flush
+            if self.buffer.len() >= self.limits.flush_threshold {
+                self.flush_pending = true;
             }
+        } else {
+            self.dropped_messages += 1;
+            return Err(Error::OUT_OF_MEMORY);
         }
         
         Ok(())
@@ -390,7 +422,7 @@ impl BoundedLoggingManager {
     }
     
     /// Get logger by ID
-    pub fn get_logger(&self, logger_id: LoggerId) -> Option<&BoundedLogger> {
+    #[must_use] pub fn get_logger(&self, logger_id: LoggerId) -> Option<&BoundedLogger> {
         self.loggers.iter().find(|logger| logger.id == logger_id)
     }
     
@@ -416,17 +448,17 @@ impl BoundedLoggingManager {
     }
     
     /// Get log entries
-    pub fn get_log_entries(&self) -> &[BoundedLogEntry] {
+    #[must_use] pub fn get_log_entries(&self) -> &[BoundedLogEntry] {
         self.buffer.get_entries()
     }
     
     /// Get log entries by level
-    pub fn get_entries_by_level(&self, level: LogLevel) -> Vec<&BoundedLogEntry> {
+    #[must_use] pub fn get_entries_by_level(&self, level: LogLevel) -> Vec<&BoundedLogEntry> {
         self.buffer.get_entries_by_level(level)
     }
     
     /// Get log entries by component
-    pub fn get_entries_by_component(&self, component_id: ComponentLoggingId) -> Vec<&BoundedLogEntry> {
+    #[must_use] pub fn get_entries_by_component(&self, component_id: ComponentLoggingId) -> Vec<&BoundedLogEntry> {
         self.buffer.get_entries_by_component(component_id)
     }
     
@@ -444,7 +476,7 @@ impl BoundedLoggingManager {
     }
     
     /// Check if flush is pending
-    pub fn is_flush_pending(&self) -> bool {
+    #[must_use] pub fn is_flush_pending(&self) -> bool {
         self.flush_pending
     }
     
@@ -454,7 +486,7 @@ impl BoundedLoggingManager {
     }
     
     /// Get logging statistics
-    pub fn get_statistics(&self) -> BoundedLoggingStatistics {
+    #[must_use] pub fn get_statistics(&self) -> BoundedLoggingStatistics {
         let memory_used = self.buffer.buffer_size();
         let memory_utilization = if self.limits.max_log_buffer_size > 0 {
             (memory_used as f64 / self.limits.max_log_buffer_size as f64) * 100.0
@@ -501,13 +533,21 @@ impl BoundedLoggingManager {
 /// Logging statistics
 #[derive(Debug, Clone)]
 pub struct BoundedLoggingStatistics {
+    /// Number of registered loggers
     pub registered_loggers: usize,
+    /// Number of active loggers
     pub active_loggers: usize,
+    /// Total number of log entries stored
     pub total_log_entries: usize,
+    /// Memory used in bytes
     pub memory_used: usize,
-    pub memory_utilization: f64, // Percentage
+    /// Memory utilization as percentage (0.0-100.0)
+    pub memory_utilization: f64,
+    /// Total number of messages processed
     pub total_messages: u64,
+    /// Number of messages dropped due to limits
     pub dropped_messages: u64,
+    /// Whether there are pending flush operations
     pub flush_pending: bool,
 }
 

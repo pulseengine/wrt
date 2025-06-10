@@ -10,7 +10,7 @@ use core::{
     time::Duration,
 };
 
-#[cfg(all(not(feature = "std")))]
+#[cfg(not(feature = "std"))]
 use std::{collections::BTreeMap, string::String, sync::Arc};
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, string::String, sync::Arc};

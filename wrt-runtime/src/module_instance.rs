@@ -11,13 +11,13 @@ use wrt_debug::FunctionInfo;
 #[cfg(feature = "debug")]
 use wrt_debug::{DwarfDebugInfo, LineInfo};
 
-use crate::{global::Global, memory::Memory, module::{Module, MemoryWrapper, TableWrapper, GlobalWrapper}, prelude::*, table::Table};
+use crate::{global::Global, memory::Memory, module::{Module, MemoryWrapper, TableWrapper, GlobalWrapper}, prelude::{Debug, DefaultProvider, Error, ErrorCategory, FuncType, Result, codes}, table::Table};
 
 // Platform sync primitives
 #[cfg(not(feature = "std"))]
 use wrt_platform::sync::Mutex;
 #[cfg(feature = "std")]
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 #[cfg(not(feature = "std"))]
 use alloc::sync::Arc;
 
@@ -63,47 +63,59 @@ impl ModuleInstance {
     }
 
     /// Get the module associated with this instance
-    pub fn module(&self) -> &Arc<Module> {
+    #[must_use] pub fn module(&self) -> &Arc<Module> {
         &self.module
     }
 
     /// Get a memory from this instance
     pub fn memory(&self, idx: u32) -> Result<MemoryWrapper> {
+        #[cfg(feature = "std")]
         let memories = self
             .memories
             .lock()
-            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::POISONED_LOCK, "Mutex poisoned when accessing memories"))?;
+            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to lock memories"))?;
+        
+        #[cfg(not(feature = "std"))]
+        let memories = self.memories.lock();
 
-        memories
+        let memory = memories
             .get(idx as usize)
-            .map(|memory| memory.clone())
-            .map_err(|_| Error::new(ErrorCategory::Resource, codes::MEMORY_NOT_FOUND, "Runtime operation error"))
+            .map_err(|_| Error::new(ErrorCategory::Resource, codes::MEMORY_NOT_FOUND, "Runtime operation error"))?;
+        Ok(memory.clone())
     }
 
     /// Get a table from this instance
     pub fn table(&self, idx: u32) -> Result<TableWrapper> {
+        #[cfg(feature = "std")]
         let tables = self
             .tables
             .lock()
-            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::POISONED_LOCK, "Mutex poisoned when accessing tables"))?;
+            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to lock tables"))?;
+        
+        #[cfg(not(feature = "std"))]
+        let tables = self.tables.lock();
 
-        tables
+        let table = tables
             .get(idx as usize)
-            .map(|table| table.clone())
-            .map_err(|_| Error::new(ErrorCategory::Resource, codes::TABLE_NOT_FOUND, "Runtime operation error"))
+            .map_err(|_| Error::new(ErrorCategory::Resource, codes::TABLE_NOT_FOUND, "Runtime operation error"))?;
+        Ok(table.clone())
     }
 
     /// Get a global from this instance
     pub fn global(&self, idx: u32) -> Result<GlobalWrapper> {
+        #[cfg(feature = "std")]
         let globals = self
             .globals
             .lock()
-            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::POISONED_LOCK, "Mutex poisoned when accessing globals"))?;
+            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to lock globals"))?;
+        
+        #[cfg(not(feature = "std"))]
+        let globals = self.globals.lock();
 
-        globals
+        let global = globals
             .get(idx as usize)
-            .map(|global| global.clone())
-            .map_err(|_| Error::new(ErrorCategory::Resource, codes::GLOBAL_NOT_FOUND, "Runtime operation error"))
+            .map_err(|_| Error::new(ErrorCategory::Resource, codes::GLOBAL_NOT_FOUND, "Runtime operation error"))?;
+        Ok(global.clone())
     }
 
     /// Get the function type for a function
@@ -116,63 +128,71 @@ impl ModuleInstance {
             Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH, "Type index not found")
         })?;
 
-        Ok(ty)
+        // Convert from module's PlatformProvider (8192) to runtime's DefaultProvider (65536)
+        // Since FuncType has a provider parameter, we need to construct a new one with the correct provider
+        let default_provider = DefaultProvider::default();
+        let mut converted_params = wrt_foundation::bounded::BoundedVec::new(default_provider.clone())?;
+        for param in &ty.params {
+            converted_params.push(param)?;
+        }
+        let mut converted_results = wrt_foundation::bounded::BoundedVec::new(default_provider.clone())?;
+        for result in &ty.results {
+            converted_results.push(result)?;
+        }
+        let converted_ty = wrt_foundation::types::FuncType {
+            params: converted_params,
+            results: converted_results,
+        };
+
+        Ok(converted_ty)
     }
 
     /// Add a memory to this instance
     pub fn add_memory(&self, memory: Memory) -> Result<()> {
+        #[cfg(feature = "std")]
         let mut memories = self
             .memories
             .lock()
-            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::POISONED_LOCK, "Mutex poisoned when adding memory"))?;
+            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to lock memories"))?;
+        
+        #[cfg(not(feature = "std"))]
+        let mut memories = self.memories.lock();
 
-        memories.push(MemoryWrapper::new(memory));
+        memories.push(MemoryWrapper::new(memory))
+            .map_err(|_| Error::new(ErrorCategory::Memory, codes::CAPACITY_EXCEEDED, "Memory capacity exceeded"))?;
         Ok(())
     }
 
     /// Add a table to this instance
     pub fn add_table(&self, table: Table) -> Result<()> {
+        #[cfg(feature = "std")]
         let mut tables = self
             .tables
             .lock()
-            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::POISONED_LOCK, "Mutex poisoned when adding table"))?;
+            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to lock tables"))?;
+        
+        #[cfg(not(feature = "std"))]
+        let mut tables = self.tables.lock();
 
-        tables.push(TableWrapper::new(table));
+        tables.push(TableWrapper::new(table))
+            .map_err(|_| Error::new(ErrorCategory::Memory, codes::CAPACITY_EXCEEDED, "Table capacity exceeded"))?;
         Ok(())
     }
 
     /// Add a global to this instance
     pub fn add_global(&self, global: Global) -> Result<()> {
+        #[cfg(feature = "std")]
         let mut globals = self
             .globals
             .lock()
-            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::POISONED_LOCK, "Mutex poisoned when adding global"))?;
+            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to lock globals"))?;
+        
+        #[cfg(not(feature = "std"))]
+        let mut globals = self.globals.lock();
 
-        globals.push(GlobalWrapper::new(global));
+        globals.push(GlobalWrapper::new(global))
+            .map_err(|_| Error::new(ErrorCategory::Memory, codes::CAPACITY_EXCEEDED, "Global capacity exceeded"))?;
         Ok(())
-    }
-}
-
-// Implement the ModuleInstance trait for module_instance
-impl crate::stackless::extensions::ModuleInstance for ModuleInstance {
-    fn module(&self) -> &Module {
-        &self.module
-    }
-
-    fn memory(&self, idx: u32) -> Result<MemoryWrapper> {
-        self.memory(idx)
-    }
-
-    fn table(&self, idx: u32) -> Result<TableWrapper> {
-        self.table(idx)
-    }
-
-    fn global(&self, idx: u32) -> Result<GlobalWrapper> {
-        self.global(idx)
-    }
-
-    fn function_type(&self, idx: u32) -> Result<FuncType> {
-        self.function_type(idx)
     }
 
     /// Initialize debug information for this instance
@@ -211,3 +231,26 @@ impl crate::stackless::extensions::ModuleInstance for ModuleInstance {
         self.debug_info.as_ref().map_or(false, |di| di.has_debug_info())
     }
 }
+
+// Implement the ModuleInstance trait for module_instance - temporarily disabled
+// impl crate::stackless::extensions::ModuleInstance for ModuleInstance {
+    // fn module(&self) -> &Module {
+    //     &self.module
+    // }
+
+    // fn memory(&self, idx: u32) -> Result<MemoryWrapper> {
+    //     self.memory(idx)
+    // }
+
+    // fn table(&self, idx: u32) -> Result<TableWrapper> {
+    //     self.table(idx)
+    // }
+
+    // fn global(&self, idx: u32) -> Result<GlobalWrapper> {
+    //     self.global(idx)
+    // }
+
+    // fn function_type(&self, idx: u32) -> Result<FuncType> {
+    //     self.function_type(idx)
+    // }
+// } // End of commented impl block

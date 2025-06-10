@@ -3,11 +3,14 @@
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
-    component_value::ComponentValue,
     prelude::*,
     traits::DefaultMemoryProvider,
     WrtResult,
 };
+
+#[cfg(feature = "std")]
+#[cfg(feature = "std")]
+use wrt_foundation::component_value::ComponentValue;
 
 use crate::types::Value;
 

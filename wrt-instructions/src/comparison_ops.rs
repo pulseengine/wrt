@@ -8,7 +8,7 @@
 //! instructions, including equality, inequality, and relational operations for
 //! various numeric types.
 
-use crate::prelude::*;
+use crate::prelude::{Debug, Error, ErrorCategory, PureInstruction, Result, Value, ValueType, codes};
 use crate::validation::{Validate, ValidationContext};
 use wrt_math as math;
 

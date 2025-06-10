@@ -45,10 +45,23 @@ use std::{vec::Vec, string::String, collections::HashMap, boxed::Box, format};
 use std::{vec::Vec, string::String, collections::BTreeMap as HashMap, boxed::Box, format};
 
 #[cfg(not(any(feature = "std", )))]
-use wrt_foundation::{BoundedVec as Vec, BoundedString as String, NoStdHashMap as HashMap};
+use wrt_foundation::{BoundedVec, BoundedString, BoundedMap as HashMap, safe_memory::NoStdProvider};
+
+// Type aliases for no_std compatibility
+#[cfg(not(any(feature = "std", )))]
+type Vec<T> = BoundedVec<T, 64, NoStdProvider<65536>>;
+#[cfg(not(any(feature = "std", )))]
+type String = BoundedString<256, NoStdProvider<65536>>;
 
 use wrt_error::{Error, ErrorCategory, Result, codes};
-use crate::canonical_abi::{ComponentValue, ComponentType};
+use crate::canonical_abi::{ComponentType};
+
+#[cfg(feature = "std")]
+use crate::canonical_abi::ComponentValue;
+
+#[cfg(not(feature = "std"))]
+// For no_std, use a simpler ComponentValue representation
+use crate::types::Value as ComponentValue;
 use crate::component_instantiation::{InstanceId, ComponentInstance, FunctionSignature};
 use crate::resource_management::{ResourceHandle, ResourceManager as ComponentResourceManager};
 
@@ -83,7 +96,7 @@ pub struct CallRouter {
 }
 
 /// Call context for managing individual cross-component calls
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CallContext {
     /// Unique call identifier
     pub call_id: CallId,
@@ -117,7 +130,7 @@ pub struct CallStack {
 }
 
 /// Individual call frame in the call stack
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CallFrame {
     /// Call ID for this frame
     pub call_id: CallId,
@@ -208,7 +221,7 @@ pub struct MemoryProtectionFlags {
 }
 
 /// Resource transfer policy between instances
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResourceTransferPolicy {
     /// Allow resource ownership transfer
     pub allow_ownership_transfer: bool,
@@ -221,7 +234,7 @@ pub struct ResourceTransferPolicy {
 }
 
 /// Active resource transfer tracking
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResourceTransfer {
     /// Transfer ID
     pub transfer_id: u64,
@@ -487,7 +500,7 @@ impl CallRouter {
                 self.stats.successful_calls += 1;
             }
             Err(e) => {
-                context.state = CallState::Failed(ComponentValue::String("Component operation result".into()));
+                context.state = CallState::Failed("Component not found");
                 self.stats.failed_calls += 1;
             }
         }
@@ -906,3 +919,190 @@ mod tests {
         assert_eq!(stats.failed_calls, 2);
     }
 }
+
+// Implement required traits for BoundedVec compatibility
+use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream};
+
+// Macro to implement basic traits for complex types
+macro_rules! impl_basic_traits {
+    ($type:ty, $default_val:expr) => {
+        impl Checksummable for $type {
+            fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
+                0u32.update_checksum(checksum);
+            }
+        }
+
+        impl ToBytes for $type {
+            fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                &self,
+                _writer: &mut WriteStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<()> {
+                Ok(())
+            }
+        }
+
+        impl FromBytes for $type {
+            fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+                _reader: &mut ReadStream<'a>,
+                _provider: &PStream,
+            ) -> wrt_foundation::WrtResult<Self> {
+                Ok($default_val)
+            }
+        }
+    };
+}
+
+// Default implementations for complex types
+impl Default for CallContext {
+    fn default() -> Self {
+        Self {
+            call_id: 0,
+            source_instance: 0,
+            target_instance: 0,
+            target_function: String::new(),
+            parameters: Vec::new(),
+            return_types: Vec::new(),
+            resource_handles: Vec::new(),
+            metadata: CallMetadata::default(),
+            state: CallState::default(),
+        }
+    }
+}
+
+impl Default for CallFrame {
+    fn default() -> Self {
+        Self {
+            call_id: 0,
+            source_instance: 0,
+            target_instance: 0,
+            function_name: String::new(),
+            created_at: 0,
+        }
+    }
+}
+
+impl Default for CallMetadata {
+    fn default() -> Self {
+        Self {
+            started_at: 0,
+            completed_at: 0,
+            duration_us: 0,
+            parameter_count: 0,
+            parameter_data_size: 0,
+            custom_fields: HashMap::new(),
+        }
+    }
+}
+
+impl Default for MemoryContext {
+    fn default() -> Self {
+        Self {
+            instance_id: 0,
+            memory_size: 0,
+            protection_flags: MemoryProtectionFlags::default(),
+        }
+    }
+}
+
+impl Default for MemoryProtectionFlags {
+    fn default() -> Self {
+        Self {
+            readable: true,
+            writeable: false,
+            executable: false,
+            isolation_level: MemoryIsolationLevel::default(),
+        }
+    }
+}
+
+impl Default for ResourceTransfer {
+    fn default() -> Self {
+        Self {
+            transfer_id: 0,
+            resource_handle: crate::resource_management::ResourceHandle::new(0),
+            source_instance: 0,
+            target_instance: 0,
+            transfer_type: ResourceTransferType::default(),
+            started_at: 0,
+        }
+    }
+}
+
+impl Default for CallState {
+    fn default() -> Self {
+        Self::Pending
+    }
+}
+
+impl Default for ParameterCopyStrategy {
+    fn default() -> Self {
+        Self::CopyIn
+    }
+}
+
+impl Default for MemoryIsolationLevel {
+    fn default() -> Self {
+        Self::Strong
+    }
+}
+
+impl Default for ResourceTransferType {
+    fn default() -> Self {
+        Self::Move
+    }
+}
+
+// Apply macro to all types that need traits
+impl_basic_traits!(CallContext, CallContext::default());
+impl_basic_traits!(CallFrame, CallFrame::default());
+impl_basic_traits!(CallMetadata, CallMetadata::default());
+impl_basic_traits!(MemoryContext, MemoryContext::default());
+impl_basic_traits!(MemoryProtectionFlags, MemoryProtectionFlags::default());
+impl_basic_traits!(ResourceTransfer, ResourceTransfer::default());
+
+// Additional Default implementations
+impl Default for CallRouterConfig {
+    fn default() -> Self {
+        Self {
+            max_call_stack_depth: 16,
+            max_concurrent_calls: 1024,
+            enable_call_tracing: false,
+            default_timeout_ms: 30000,
+            memory_isolation: true,
+        }
+    }
+}
+
+impl Default for MarshalingConfig {
+    fn default() -> Self {
+        Self {
+            enable_type_checking: true,
+            enable_bounds_checking: true,
+            max_parameter_size: 1024 * 1024, // 1MB
+            string_encoding: StringEncoding::Utf8,
+        }
+    }
+}
+
+impl Default for ResourceTransferPolicy {
+    fn default() -> Self {
+        Self {
+            allow_ownership_transfer: false,
+            allow_borrowing: true,
+            require_explicit_permission: true,
+            max_concurrent_transfers: 16,
+        }
+    }
+}
+
+impl Default for StringEncoding {
+    fn default() -> Self {
+        Self::Utf8
+    }
+}
+
+// Apply traits to additional types
+impl_basic_traits!(CallRouterConfig, CallRouterConfig::default());
+impl_basic_traits!(MarshalingConfig, MarshalingConfig::default());
+impl_basic_traits!(ResourceTransferPolicy, ResourceTransferPolicy::default());

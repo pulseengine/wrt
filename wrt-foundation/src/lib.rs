@@ -171,6 +171,8 @@ pub mod unified_types_simple;
 pub mod memory_system;
 /// Global memory configuration and platform-aware allocation system
 pub mod global_memory_config;
+/// Budget-aware type aliases for different crates
+pub mod budget_types;
 /// ASIL-aware safety primitives for safety-critical applications
 pub mod safety_system;
 /// ASIL-tagged testing framework for safety verification
@@ -280,6 +282,16 @@ pub use unified_types_simple::{
 pub use memory_system::{
     UnifiedMemoryProvider, ConfigurableProvider, SmallProvider, MediumProvider, LargeProvider,
     NoStdProviderWrapper, MemoryProviderFactory,
+};
+
+// Re-export budget types for convenient access
+pub use budget_types::{
+    RuntimeVec, RuntimeString, RuntimeMap,
+    FoundationVec, FoundationString, FoundationMap,
+    FormatVec, FormatString, FormatMap,
+    ComponentVec, ComponentString, ComponentMap,
+    DecoderVec, DecoderString,
+    InstructionsVec, InstructionsString,
 };
 
 #[cfg(feature = "std")]

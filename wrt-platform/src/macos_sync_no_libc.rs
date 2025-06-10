@@ -11,9 +11,9 @@
 //! macOS-specific `FutexLike` implementation using direct syscalls without
 //! libc.
 
-use core::{fmt, marker::PhantomData, ptr::NonNull, sync::atomic::AtomicU32};
+use core::{marker::PhantomData, sync::atomic::AtomicU32};
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{Error, ErrorCategory, Result};
 
 use crate::sync::{FutexLike, TimeoutResult};
 
@@ -58,7 +58,7 @@ impl MacOsFutex {
     unsafe fn ulock_wait(operation: u32, addr: *const u32, value: u64, timeout: u32) -> i32 {
         let mut result: i32;
 
-        // x86_64 syscall ABI: rax=syscall number, args in rdi, rsi, rdx, r10
+        #[cfg(target_arch = "x86_64")]
         core::arch::asm!(
             "syscall",
             inout("rax") SYSCALL_ULOCK_WAIT => _,
@@ -70,6 +70,16 @@ impl MacOsFutex {
             out("rcx") _,
             out("r11") _,
         );
+        #[cfg(target_arch = "aarch64")]
+        core::arch::asm!(
+            "svc #0x80",
+            inout("x8") SYSCALL_ULOCK_WAIT => _,
+            in("x0") operation,
+            in("x1") addr,
+            in("x2") value,
+            in("x3") timeout,
+            lateout("x0") result,
+        );
 
         result
     }
@@ -78,7 +88,7 @@ impl MacOsFutex {
     unsafe fn ulock_wake(operation: u32, addr: *const u32, wake_flags: u64) -> i32 {
         let mut result: i32;
 
-        // x86_64 syscall ABI: rax=syscall number, args in rdi, rsi, rdx
+        #[cfg(target_arch = "x86_64")]
         core::arch::asm!(
             "syscall",
             inout("rax") SYSCALL_ULOCK_WAKE => _,
@@ -88,6 +98,15 @@ impl MacOsFutex {
             lateout("rax") result,
             out("rcx") _,
             out("r11") _,
+        );
+        #[cfg(target_arch = "aarch64")]
+        core::arch::asm!(
+            "svc #0x80",
+            inout("x8") SYSCALL_ULOCK_WAKE => _,
+            in("x0") operation,
+            in("x1") addr,
+            in("x2") wake_flags,
+            lateout("x0") result,
         );
 
         result
@@ -169,7 +188,7 @@ impl FutexLike for MacOsFutex {
         }
     }
 
-    fn notify_one(&self) -> Result<()> {
+    fn wake(&self, count: u32) -> Result<()> {
         let addr = &self.value as *const AtomicU32 as *const u32;
         let operation = ULF_WAKE;
 
@@ -178,7 +197,7 @@ impl FutexLike for MacOsFutex {
         // value. addr points to self.value, which is valid for the lifetime of
         // self.
         let result = unsafe {
-            Self::ulock_wake(operation, addr, 0) // Wake one waiter
+            Self::ulock_wake(operation, addr, count as u64) // Wake 'count' waiters
         };
 
         if result >= 0 {
@@ -186,28 +205,15 @@ impl FutexLike for MacOsFutex {
             Ok(())
         } else {
             // Error
-            Err(Error::new(ErrorCategory::System, 1, "Failed to notify one"))
+            Err(Error::new(ErrorCategory::System, 1, "Failed to wake waiters"))
         }
     }
 
     fn notify_all(&self) -> Result<()> {
-        let addr = &self.value as *const AtomicU32 as *const u32;
-        let operation = ULF_WAKE;
+        self.wake(u32::MAX)
+    }
 
-        // Call the syscall
-        // SAFETY: We're calling _ulock_wake, which requires a pointer to the atomic
-        // value. addr points to self.value, which is valid for the lifetime of
-        // self.
-        let result = unsafe {
-            Self::ulock_wake(operation, addr, ULF_WAKE_ALL) // Wake all waiters
-        };
-
-        if result >= 0 {
-            // Success, return number of waiters woken (>= 0)
-            Ok(())
-        } else {
-            // Error
-            Err(Error::new(ErrorCategory::System, 1, "Failed to notify all"))
-        }
+    fn notify_one(&self) -> Result<()> {
+        self.wake(1)
     }
 }

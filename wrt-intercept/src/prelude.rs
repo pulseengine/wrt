@@ -1,6 +1,6 @@
 //! Prelude module for wrt-intercept
 //!
-//! This module provides a unified set of imports for both std and no_std
+//! This module provides a unified set of imports for both std and `no_std`
 //! environments. It re-exports commonly used types and traits to ensure
 //! consistency across all crates in the WRT project and simplify imports in
 //! individual modules.
@@ -78,4 +78,7 @@ pub use crate::{
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
-pub use crate::builtins::{BeforeBuiltinResult, BuiltinInterceptor, BuiltinSerialization};
+pub use crate::builtins::{BuiltinInterceptor, BuiltinSerialization};
+
+// Export BeforeBuiltinResult for both std and no_std
+pub use crate::builtins::BeforeBuiltinResult;

@@ -75,19 +75,19 @@ pub struct HandleLifetimeTracker {
     #[cfg(feature = "std")]
     owned_handles: Vec<OwnedHandleEntry>,
     #[cfg(not(any(feature = "std", )))]
-    owned_handles: BoundedVec<OwnedHandleEntry, MAX_BORROWED_HANDLES>,
+    owned_handles: BoundedVec<OwnedHandleEntry, MAX_BORROWED_HANDLES, NoStdProvider<65536>>,
     
     /// Active borrowed handles
     #[cfg(feature = "std")]
     borrowed_handles: Vec<BorrowedHandleEntry>,
     #[cfg(not(any(feature = "std", )))]
-    borrowed_handles: BoundedVec<BorrowedHandleEntry, MAX_BORROWED_HANDLES>,
+    borrowed_handles: BoundedVec<BorrowedHandleEntry, MAX_BORROWED_HANDLES, NoStdProvider<65536>>,
     
     /// Lifetime scope stack
     #[cfg(feature = "std")]
     scope_stack: Vec<LifetimeScopeEntry>,
     #[cfg(not(any(feature = "std", )))]
-    scope_stack: BoundedVec<LifetimeScopeEntry, MAX_LIFETIME_DEPTH>,
+    scope_stack: BoundedVec<LifetimeScopeEntry, MAX_LIFETIME_DEPTH, NoStdProvider<65536>>,
     
     /// Next handle ID
     next_handle_id: AtomicU32,
@@ -118,7 +118,7 @@ pub struct OwnedHandleEntry {
     pub owner: ComponentId,
     
     /// Type name for debugging
-    pub type_name: BoundedString<64>,
+    pub type_name: BoundedString<64, NoStdProvider<65536>>,
     
     /// Creation timestamp
     pub created_at: u64,
@@ -180,7 +180,7 @@ pub struct LifetimeScopeEntry {
     #[cfg(feature = "std")]
     pub borrows: Vec<BorrowId>,
     #[cfg(not(any(feature = "std", )))]
-    pub borrows: BoundedVec<BorrowId, MAX_BORROWED_HANDLES>,
+    pub borrows: BoundedVec<BorrowId, MAX_BORROWED_HANDLES, NoStdProvider<65536>>,
     
     /// Creation timestamp
     pub created_at: u64,
@@ -336,17 +336,17 @@ impl HandleLifetimeTracker {
             #[cfg(feature = "std")]
             owned_handles: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            owned_handles: BoundedVec::new(),
+            owned_handles: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             
             #[cfg(feature = "std")]
             borrowed_handles: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            borrowed_handles: BoundedVec::new(),
+            borrowed_handles: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             
             #[cfg(feature = "std")]
             scope_stack: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            scope_stack: BoundedVec::new(),
+            scope_stack: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             
             next_handle_id: AtomicU32::new(1),
             next_borrow_id: AtomicU64::new(1),
@@ -547,7 +547,7 @@ impl HandleLifetimeTracker {
             #[cfg(feature = "std")]
             borrows: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            borrows: BoundedVec::new(),
+            borrows: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             created_at: self.get_current_time(),
             active: true,
         };

@@ -126,10 +126,14 @@ mod tests {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    use wrt_foundation::NoStdHashMap;
-                    let mut fields = NoStdHashMap::new();
-                    fields.insert("compression".to_string(), "gzip".to_string());
-                    fields.insert("version".to_string(), "1.0".to_string());
+                    use wrt_foundation::{BoundedMap, BoundedString};
+                    let mut fields = BoundedMap::new();
+                    let compression_key = BoundedString::from_str("compression").unwrap();
+                    let compression_val = BoundedString::from_str("gzip").unwrap();
+                    let version_key = BoundedString::from_str("version").unwrap();
+                    let version_val = BoundedString::from_str("1.0").unwrap();
+                    fields.insert(compression_key, compression_val).unwrap();
+                    fields.insert(version_key, version_val).unwrap();
                     fields
                 }
             },
@@ -149,8 +153,8 @@ mod tests {
         // Register up to the maximum
         for i in 0..MAX_RESOURCE_TYPES {
             let result = manager.register_resource_type(
-                ComponentValue::String("Component operation result".into()),
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
+                "Component not found",
                 true,
                 false,
             );
@@ -625,29 +629,29 @@ mod tests {
         let state = ResourceState::Active;
 
         let error1 = ResourceError::HandleNotFound(handle);
-        assert_eq!(ComponentValue::String("Component operation result".into()), "Resource handle 42 not found");
+        assert_eq!("Component not found", "Resource handle 42 not found");
 
         let error2 = ResourceError::TypeNotFound(type_id);
-        assert_eq!(ComponentValue::String("Component operation result".into()), "Resource type 1 not found");
+        assert_eq!("Component not found", "Resource type 1 not found");
 
         let error3 = ResourceError::InvalidState(handle, state);
-        assert_eq!(ComponentValue::String("Component operation result".into()), "Resource 42 in invalid state: Active");
+        assert_eq!("Component not found", "Resource 42 in invalid state: Active");
 
         let error4 = ResourceError::AccessDenied(handle);
-        assert_eq!(ComponentValue::String("Component operation result".into()), "Access denied to resource 42");
+        assert_eq!("Component not found", "Access denied to resource 42");
 
         let error5 = ResourceError::LimitExceeded("Too many resources".to_string());
-        assert_eq!(ComponentValue::String("Component operation result".into()), "Resource limit exceeded: Too many resources");
+        assert_eq!("Component not found", "Resource limit exceeded: Too many resources");
 
         let error6 = ResourceError::TypeMismatch("Expected file, got socket".to_string());
-        assert_eq!(ComponentValue::String("Component operation result".into()), "Resource type mismatch: Expected file, got socket");
+        assert_eq!("Component not found", "Resource type mismatch: Expected file, got socket");
 
         let error7 =
             ResourceError::OwnershipViolation("Cannot transfer owned resource".to_string());
-        assert_eq!(ComponentValue::String("Component operation result".into()), "Ownership violation: Cannot transfer owned resource");
+        assert_eq!("Component not found", "Ownership violation: Cannot transfer owned resource");
 
         let error8 = ResourceError::AlreadyExists(handle);
-        assert_eq!(ComponentValue::String("Component operation result".into()), "Resource 42 already exists");
+        assert_eq!("Component not found", "Resource 42 already exists");
     }
 
     #[test]
@@ -842,7 +846,7 @@ mod tests {
         for i in 1..=3 {
             let config = InstanceConfig::default();
             let mut instance =
-                ComponentInstance::new(i, ComponentValue::String("Component operation result".into()), config, vec![], vec![])
+                ComponentInstance::new(i, "Component not found", config, vec![], vec![])
                     .unwrap();
 
             instance.initialize().unwrap();
@@ -851,8 +855,8 @@ mod tests {
             let resource_manager = instance.get_resource_manager_mut().unwrap();
             let file_type = resource_manager
                 .register_resource_type(
-                    ComponentValue::String("Component operation result".into()),
-                    ComponentValue::String("Component operation result".into()),
+                    "Component not found",
+                    "Component not found",
                     true,
                     false,
                 )
@@ -977,8 +981,8 @@ mod tests {
         for i in 0..10 {
             let type_id = manager
                 .register_resource_type(
-                    ComponentValue::String("Component operation result".into()),
-                    ComponentValue::String("Component operation result".into()),
+                    "Component not found",
+                    "Component not found",
                     i % 2 == 0, // Alternate borrowable
                     i % 3 == 0, // Every third needs finalization
                 )
@@ -991,7 +995,7 @@ mod tests {
         // Verify all types were registered correctly
         for (i, type_id) in type_ids.iter().enumerate() {
             let resource_type = manager.get_resource_type(*type_id).unwrap();
-            assert_eq!(resource_type.name, ComponentValue::String("Component operation result".into()));
+            assert_eq!(resource_type.name, "Component not found");
             assert_eq!(resource_type.borrowable, i % 2 == 0);
             assert_eq!(resource_type.needs_finalization, i % 3 == 0);
         }

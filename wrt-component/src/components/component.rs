@@ -6,7 +6,7 @@
 #[cfg(feature = "std")]
 use log::{debug, error, info, trace, warn};
 // Import wrt_decoder types for decode and parse
-use wrt_decoder::component::decode::Component as DecodedComponent;
+// use wrt_decoder::component::decode::Component as DecodedComponent;
 // Additional imports that aren't in the prelude
 use wrt_format::component::ExternType as FormatExternType;
 use wrt_foundation::resource::ResourceOperation as FormatResourceOperation;
@@ -180,7 +180,7 @@ impl RuntimeInstance {
             Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             ))
         }
     }
@@ -211,7 +211,7 @@ impl RuntimeInstance {
             Error::new(
                 ErrorCategory::Function,
                 codes::FUNCTION_NOT_FOUND,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -273,13 +273,13 @@ impl RuntimeInstance {
             Err(Error::new(
                 ErrorCategory::System,
                 codes::NOT_IMPLEMENTED,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             ))
         } else {
             Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             ))
         }
     }
@@ -422,7 +422,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -431,7 +431,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -457,7 +457,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -465,7 +465,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })
     }
@@ -488,7 +488,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -496,7 +496,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })
     }
@@ -511,7 +511,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -528,7 +528,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -545,7 +545,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -562,7 +562,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -579,7 +579,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -596,7 +596,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -618,7 +618,7 @@ impl MemoryValue {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -672,7 +672,7 @@ impl Host {
             Error::new(
                 ErrorCategory::Component,
                 codes::COMPONENT_LINKING_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             )
         })?;
 
@@ -681,7 +681,7 @@ impl Host {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                ComponentValue::String("Component operation result".into()), args.len()),
+                "Component not found",
             ));
         }
 
@@ -788,7 +788,7 @@ pub fn scan_builtins(bytes: &[u8]) -> Result<BuiltinRequirements> {
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::DECODING_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             ));
         }
     }
@@ -803,7 +803,7 @@ fn scan_module_for_builtins(module: &[u8], requirements: &mut BuiltinRequirement
         Err(err) => Err(Error::new(
             ErrorCategory::Parse,
             codes::DECODING_ERROR,
-            ComponentValue::String("Component operation result".into()),
+            "Component not found",
         )),
     }
 }
@@ -870,7 +870,7 @@ fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::DECODING_ERROR,
-                ComponentValue::String("Component operation result".into()),
+                "Component not found",
             ));
         }
     }

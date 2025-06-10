@@ -35,13 +35,13 @@ pub struct CrossComponentCallManager {
     #[cfg(feature = "std")]
     targets: Vec<CallTarget>,
     #[cfg(not(any(feature = "std", )))]
-    targets: BoundedVec<CallTarget, MAX_CALL_TARGETS>,
+    targets: BoundedVec<CallTarget, MAX_CALL_TARGETS, NoStdProvider<65536>>,
 
     /// Call stack for tracking cross-component calls
     #[cfg(feature = "std")]
     call_stack: Vec<CrossCallFrame>,
     #[cfg(not(any(feature = "std", )))]
-    call_stack: BoundedVec<CrossCallFrame, MAX_CROSS_CALL_DEPTH>,
+    call_stack: BoundedVec<CrossCallFrame, MAX_CROSS_CALL_DEPTH, NoStdProvider<65536>>,
 
     /// Canonical ABI processor
     canonical_abi: CanonicalAbi,
@@ -109,7 +109,7 @@ pub struct CrossCallFrame {
     #[cfg(feature = "std")]
     pub transferred_resources: Vec<TransferredResource>,
     #[cfg(not(any(feature = "std", )))]
-    pub transferred_resources: BoundedVec<TransferredResource, 32>,
+    pub transferred_resources: BoundedVec<TransferredResource, 32, NoStdProvider<65536>>,
 }
 
 /// Record of a transferred resource
@@ -132,7 +132,7 @@ pub struct CrossCallResult {
     #[cfg(feature = "std")]
     pub transferred_resources: Vec<TransferredResource>,
     #[cfg(not(any(feature = "std", )))]
-    pub transferred_resources: BoundedVec<TransferredResource, 32>,
+    pub transferred_resources: BoundedVec<TransferredResource, 32, NoStdProvider<65536>>,
     /// Call statistics
     pub stats: CallStatistics,
 }
@@ -157,11 +157,11 @@ impl CrossComponentCallManager {
             #[cfg(feature = "std")]
             targets: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            targets: BoundedVec::new(),
+            targets: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             #[cfg(feature = "std")]
             call_stack: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            call_stack: BoundedVec::new(),
+            call_stack: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
             canonical_abi: CanonicalAbi::new(),
             resource_manager: ResourceLifecycleManager::new(),
             max_call_depth: MAX_CROSS_CALL_DEPTH,
@@ -210,7 +210,7 @@ impl CrossComponentCallManager {
         let target = self
             .targets
             .get(target_id as usize)
-            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input"))?
             .clone();
 
         // Check permissions
@@ -230,7 +230,7 @@ impl CrossComponentCallManager {
             #[cfg(feature = "std")]
             transferred_resources: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            transferred_resources: BoundedVec::new(),
+            transferred_resources: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
         };
 
         // Push call frame
@@ -282,7 +282,7 @@ impl CrossComponentCallManager {
                     #[cfg(feature = "std")]
                     transferred_resources: Vec::new(),
                     #[cfg(not(any(feature = "std", )))]
-                    transferred_resources: BoundedVec::new(),
+                    transferred_resources: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
                     stats,
                 }
             }

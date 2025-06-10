@@ -4,7 +4,7 @@
 
 //! Prelude module for wrt-host
 //!
-//! This module provides a unified set of imports for both std and no_std
+//! This module provides a unified set of imports for both std and `no_std`
 //! environments. It re-exports commonly used types and traits to ensure
 //! consistency across all crates in the WRT project and simplify imports in
 //! individual modules.
@@ -26,7 +26,7 @@ pub use core::fmt::Write as FmtWrite;
 // Arc is not available in pure no_std, use a reference wrapper
 #[cfg(not(feature = "std"))]
 #[derive(Debug, Clone)]
-/// Arc-like wrapper for no_std environments
+/// Arc-like wrapper for `no_std` environments
 pub struct Arc<T> {
     inner: T,
 }
@@ -48,9 +48,9 @@ impl<T> core::ops::Deref for Arc<T> {
 }
 
 // In pure no_std mode, we need a minimal Box implementation for trait objects
-/// Simple Box implementation for no_std environments
+/// Simple Box implementation for `no_std` environments
 ///
-/// This provides API compatibility with `std::boxed::Box` in no_std environments.
+/// This provides API compatibility with `std::boxed::Box` in `no_std` environments.
 /// Unlike the standard Box, this does not allocate on the heap but provides
 /// the same interface for trait object storage.
 #[cfg(not(feature = "std"))]
@@ -63,9 +63,9 @@ pub struct Box<T> {
 impl<T> Box<T> {
     /// Create a new Box containing the given value
     ///
-    /// This is a simplified Box implementation for no_std environments.
-    /// In no_std mode, this doesn't actually allocate on the heap but
-    /// provides API compatibility with std::boxed::Box.
+    /// This is a simplified Box implementation for `no_std` environments.
+    /// In `no_std` mode, this doesn't actually allocate on the heap but
+    /// provides API compatibility with `std::boxed::Box`.
     pub fn new(value: T) -> Self {
         Self { inner: value }
     }

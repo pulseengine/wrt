@@ -1,14 +1,25 @@
-#[cfg(not(feature = "std"))]
-use std::{collections::BTreeMap, vec::Vec};
 #[cfg(feature = "std")]
 use std::collections::BTreeMap;
+
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedMap as BTreeMap, BoundedVec as Vec, safe_memory::NoStdProvider};
+
+// Type aliases for no_std compatibility
+#[cfg(not(feature = "std"))]
+type HashMap<K, V> = BTreeMap<K, V, 64, NoStdProvider<65536>>;
 
 use core::fmt;
 
 use wrt_foundation::{
     bounded_collections::{BoundedVec, MAX_GENERATIVE_TYPES},
-    component_value::ComponentValue,
 };
+
+#[cfg(feature = "std")]
+use wrt_foundation::component_value::ComponentValue;
+
+#[cfg(not(feature = "std"))]
+// For no_std, use a simpler ComponentValue representation
+use crate::types::Value as ComponentValue;
 
 use crate::{
     generative_types::{BoundKind, TypeBound},
@@ -17,7 +28,10 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypeBoundsChecker {
+    #[cfg(feature = "std")]
     type_hierarchy: BTreeMap<TypeId, BoundedVec<TypeRelation, MAX_GENERATIVE_TYPES>>,
+    #[cfg(not(feature = "std"))]
+    type_hierarchy: BTreeMap<TypeId, BoundedVec<TypeRelation, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>, 32, NoStdProvider<65536>>,
     cached_relations: BTreeMap<(TypeId, TypeId), RelationResult>,
 }
 
@@ -240,7 +254,7 @@ impl TypeBoundsChecker {
 
     fn add_relation(&mut self, relation: TypeRelation) -> Result<(), ComponentError> {
         let relations =
-            self.type_hierarchy.entry(relation.sub_type).or_insert_with(|| BoundedVec::new());
+            self.type_hierarchy.entry(relation.sub_type).or_insert_with(|| BoundedVec::new(DefaultMemoryProvider::default()).unwrap());
 
         relations.push(relation).map_err(|_| ComponentError::TooManyTypeBounds)?;
 

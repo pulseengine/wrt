@@ -40,8 +40,8 @@ pub enum BoundKind {
 pub struct GenerativeTypeRegistry {
     next_type_id: AtomicU32,
     instance_types:
-        BTreeMap<ComponentInstanceId, BoundedVec<GenerativeResourceType, MAX_GENERATIVE_TYPES>>,
-    type_bounds: BTreeMap<TypeId, BoundedVec<TypeBound, MAX_GENERATIVE_TYPES>>,
+        BTreeMap<ComponentInstanceId, BoundedVec<GenerativeResourceType, MAX_GENERATIVE_TYPES>, NoStdProvider<65536>>,
+    type_bounds: BTreeMap<TypeId, BoundedVec<TypeBound, MAX_GENERATIVE_TYPES>, NoStdProvider<65536>>,
     resource_mappings: BTreeMap<ResourceHandle, GenerativeResourceType>,
     bounds_checker: TypeBoundsChecker,
 }
@@ -68,7 +68,7 @@ impl GenerativeTypeRegistry {
             GenerativeResourceType { base_type, instance_id, unique_type_id, generation: 0 };
 
         let instance_types =
-            self.instance_types.entry(instance_id).or_insert_with(|| BoundedVec::new());
+            self.instance_types.entry(instance_id).or_insert_with(|| BoundedVec::new(DefaultMemoryProvider::default()).unwrap());
 
         instance_types
             .push(generative_type.clone())
@@ -90,7 +90,7 @@ impl GenerativeTypeRegistry {
         type_id: TypeId,
         bound: TypeBound,
     ) -> Result<(), ComponentError> {
-        let bounds = self.type_bounds.entry(type_id).or_insert_with(|| BoundedVec::new());
+        let bounds = self.type_bounds.entry(type_id).or_insert_with(|| BoundedVec::new(DefaultMemoryProvider::default()).unwrap());
 
         bounds.push(bound.clone()).map_err(|_| ComponentError::TooManyTypeBounds)?;
 
