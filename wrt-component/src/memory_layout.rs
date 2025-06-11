@@ -132,7 +132,7 @@ fn calculate_tuple_layout(types: &[ValType]) -> MemoryLayout {
 }
 
 /// Calculate layout for a variant type
-fn calculate_variant_layout(cases: &[(String, Option<ValType>)]) -> MemoryLayout {
+fn calculate_variant_layout(cases: &[(String, Option<ValType<NoStdProvider<65536>>>)]) -> MemoryLayout {
     // Discriminant size based on number of cases
     let discriminant_size = discriminant_size(cases.len());
     let discriminant_alignment = discriminant_size;
@@ -181,7 +181,7 @@ fn calculate_option_layout(inner: &ValType) -> MemoryLayout {
 }
 
 /// Calculate layout for a result type
-fn calculate_result_layout(ok_ty: Option<&ValType>, err_ty: Option<&ValType>) -> MemoryLayout {
+fn calculate_result_layout(ok_ty: Option<&ValType<NoStdProvider<65536>>>, err_ty: Option<&ValType<NoStdProvider<65536>>>) -> MemoryLayout {
     // Result is a variant with ok and err cases
     let mut max_payload_size = 0;
     let mut max_payload_alignment = 1;
@@ -313,7 +313,7 @@ impl CanonicalMemoryPool {
     pub fn new() -> Self {
         Self {
             #[cfg(not(any(feature = "std", )))]
-            pools: [BoundedVec::new(DefaultMemoryProvider::default()).unwrap(), BoundedVec::new(DefaultMemoryProvider::default()).unwrap(), BoundedVec::new(DefaultMemoryProvider::default()).unwrap(), BoundedVec::new(DefaultMemoryProvider::default()).unwrap()],
+            pools: [BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(), BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(), BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(), BoundedVec::new(NoStdProvider::<65536>::default()).unwrap()],
             #[cfg(feature = "std")]
             pools: [Vec::new(), Vec::new(), Vec::new(), Vec::new()],
             size_classes: [64, 256, 1024, 4096],

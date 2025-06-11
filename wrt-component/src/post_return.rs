@@ -239,11 +239,11 @@ impl PostReturnRegistry {
             #[cfg(feature = "std")]
             functions: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            functions: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            functions: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             #[cfg(feature = "std")]
             pending_cleanups: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            pending_cleanups: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            pending_cleanups: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             async_engine: None,
             cancellation_manager: None,
             handle_tracker: None,
@@ -267,11 +267,11 @@ impl PostReturnRegistry {
             #[cfg(feature = "std")]
             functions: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            functions: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            functions: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             #[cfg(feature = "std")]
             pending_cleanups: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            pending_cleanups: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            pending_cleanups: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             async_engine,
             cancellation_manager,
             handle_tracker,
@@ -311,7 +311,7 @@ impl PostReturnRegistry {
                     "Too many post-return functions"
                 )
             })?;
-            self.pending_cleanups.push((instance_id, BoundedVec::new(DefaultMemoryProvider::default()).unwrap())).map_err(|_| {
+            self.pending_cleanups.push((instance_id, BoundedVec::new(NoStdProvider::<65536>::default()).unwrap())).map_err(|_| {
                 Error::new(
                     ErrorCategory::Resource,
                     wrt_error::codes::RESOURCE_EXHAUSTED,

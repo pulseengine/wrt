@@ -122,9 +122,9 @@ pub enum ComponentType {
     Flags(FlagsType),
     
     /// Special types
-    Option(Box<ComponentType>),
-    Result(Box<ComponentType>, Box<ComponentType>),
-    List(Box<ComponentType>),
+    Option(Box<ComponentType<NoStdProvider<65536>>),
+    Result(Box<ComponentType<NoStdProvider<65536>>, Box<ComponentType<NoStdProvider<65536>>),
+    List(Box<ComponentType<NoStdProvider<65536>>),
     
     /// Resources
     Resource(ResourceType),
@@ -146,7 +146,7 @@ pub struct FieldType {
     /// Field name
     pub name: WitBoundedString<32, NoStdProvider<65536>>,
     /// Field type
-    pub field_type: Box<ComponentType>,
+    pub field_type: Box<ComponentType<NoStdProvider<65536>>,
 }
 
 /// Variant type definition
@@ -162,7 +162,7 @@ pub struct CaseType {
     /// Case name
     pub name: WitBoundedString<32, NoStdProvider<65536>>,
     /// Optional case type
-    pub case_type: Option<Box<ComponentType>>,
+    pub case_type: Option<Box<ComponentType<NoStdProvider<65536>>>,
 }
 
 /// Enum type definition
@@ -192,9 +192,9 @@ pub struct ResourceType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionType {
     /// Parameter types
-    pub params: Vec<ComponentType>,
+    pub params: Vec<ComponentType<NoStdProvider<65536>>,
     /// Return types
-    pub returns: Vec<ComponentType>,
+    pub returns: Vec<ComponentType<NoStdProvider<65536>>,
 }
 
 /// Component configuration
@@ -376,7 +376,7 @@ impl WitComponentContext {
     }
     
     /// Convert WIT type to component type
-    fn convert_wit_type(&self, wit_type: &TypeExpr) -> Result<ComponentType> {
+    fn convert_wit_type(&self, wit_type: &TypeExpr) -> Result<ComponentType<NoStdProvider<65536>> {
         match wit_type {
             TypeExpr::Primitive(prim) => {
                 Ok(match prim.kind {

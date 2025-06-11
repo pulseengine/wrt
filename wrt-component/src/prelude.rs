@@ -147,8 +147,8 @@ pub use wrt_host::{
 #[cfg(not(feature = "std"))]
 pub use wrt_sync::{Mutex, RwLock};
 
-// Include debug logging macro
-pub use crate::debug_println;
+// Include debug logging macro (crate-internal only)
+// pub use crate::debug_println;
 // Re-export Instant for no_std environments
 pub use crate::resources::Instant;
 // Re-export from this crate conditionally based on std/no_std
@@ -229,11 +229,11 @@ pub use crate::{
     // Resources
     resources::{
         // BoundedBufferPool, 
-        MemoryStrategy, 
+        // MemoryStrategy,  // Commented out due to resource_table_no_std being disabled
         // ResourceArena, 
         ResourceManager,
         // ResourceOperation as RuntimeResourceOperation, ResourceStrategyNoStd, 
-        ResourceTable,
+        // ResourceTable,  // Commented out due to resource_table_no_std being disabled
     },
     // Memory strategies
     // strategies::memory::{

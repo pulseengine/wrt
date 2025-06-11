@@ -88,7 +88,7 @@ impl AsyncCanonicalEncoder {
             #[cfg(feature = "std")]
             buffer: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            buffer: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            buffer: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             position: 0,
         }
     }
@@ -469,7 +469,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         Ok(result)
     }
     
-    fn decode_variant(&mut self, cases: &[(String, Option<ValType>)], options: &CanonicalOptions) -> Result<Value> {
+    fn decode_variant(&mut self, cases: &[(String, Option<ValType<NoStdProvider<65536>>)], options: &CanonicalOptions) -> Result<Value> {
         let tag = self.decode_u32()?;
         
         if let Some((_, case_type)) = cases.get(tag as usize) {

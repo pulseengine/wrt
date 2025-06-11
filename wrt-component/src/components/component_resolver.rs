@@ -3,13 +3,13 @@
 //! This module provides functionality for resolving imports and exports
 //! during component instantiation and linking.
 
-#[cfg(not(feature = "std"))]
-use std::{collections::BTreeMap, vec::Vec};
 #[cfg(feature = "std")]
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, vec::Vec};
+#[cfg(not(feature = "std"))]
+use alloc::{collections::BTreeMap, vec::Vec};
 
 use wrt_foundation::{
-    bounded_collections::{BoundedString, BoundedVec, MAX_GENERATIVE_TYPES},
+    bounded::{BoundedString, BoundedVec, MAX_GENERATIVE_TYPES},
     prelude::*,
 };
 
@@ -27,7 +27,7 @@ pub struct ResolvedImport {
     /// Resolved value
     pub value: ImportValue,
     /// Type information
-    pub val_type: Option<ValType>,
+    pub val_type: Option<ValType<NoStdProvider<65536>>>,
 }
 
 /// Export resolution result
@@ -38,7 +38,7 @@ pub struct ResolvedExport {
     /// Resolved value
     pub value: ExportValue,
     /// Type information
-    pub val_type: Option<ValType>,
+    pub val_type: Option<ValType<NoStdProvider<65536>>>,
 }
 
 /// Import value types
@@ -261,7 +261,7 @@ impl ComponentResolver {
     }
 
     /// Get the type of an import value
-    fn get_import_type(&self, import: &ImportValue) -> Result<Option<ValType>, ComponentError> {
+    fn get_import_type(&self, import: &ImportValue) -> Result<Option<ValType<NoStdProvider<65536>>>, ComponentError> {
         match import {
             ImportValue::Function { .. } => Ok(None), // Function types are handled separately
             ImportValue::Global { .. } => Ok(None),   // Global types are handled separately
@@ -273,7 +273,7 @@ impl ComponentResolver {
     }
 
     /// Get the type of an export value
-    fn get_export_type(&self, export: &ExportValue) -> Result<Option<ValType>, ComponentError> {
+    fn get_export_type(&self, export: &ExportValue) -> Result<Option<ValType<NoStdProvider<65536>>>, ComponentError> {
         match export {
             ExportValue::Function { .. } => Ok(None), // Function types are handled separately
             ExportValue::Global { .. } => Ok(None),   // Global types are handled separately
@@ -444,7 +444,7 @@ impl Default for ComponentValue {
 impl Default for ImportResolution {
     fn default() -> Self {
         Self {
-            name: BoundedString::new(DefaultMemoryProvider::default()).unwrap(),
+            name: BoundedString::new(NoStdProvider::<65536>::default()).unwrap(),
             instance_id: ComponentInstanceId(0),
             resolved_value: ComponentValue::default(),
         }
@@ -454,7 +454,7 @@ impl Default for ImportResolution {
 impl Default for ExportResolution {
     fn default() -> Self {
         Self {
-            name: BoundedString::new(DefaultMemoryProvider::default()).unwrap(),
+            name: BoundedString::new(NoStdProvider::<65536>::default()).unwrap(),
             instance_id: ComponentInstanceId(0),
             exported_value: ComponentValue::default(),
         }
@@ -462,6 +462,4 @@ impl Default for ExportResolution {
 }
 
 // Apply macro to types that need traits
-impl_basic_traits!(ComponentValue, ComponentValue::default());
-impl_basic_traits!(ImportResolution, ImportResolution::default());
-impl_basic_traits!(ExportResolution, ExportResolution::default());
+// Note: ComponentValue traits are implemented in wrt-foundation

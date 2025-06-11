@@ -594,7 +594,7 @@ pub mod task_helpers {
 
     #[cfg(not(any(feature = "std", )))]
     pub fn wait_for_tasks(task_ids: &[TaskId]) -> Result<BoundedVec<Option<TaskReturn>, MAX_TASKS, NoStdProvider<65536>>> {
-        let mut results = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+        let mut results = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
         for &task_id in task_ids {
             let result = TaskBuiltins::task_wait(task_id)?;
             results.push(result)

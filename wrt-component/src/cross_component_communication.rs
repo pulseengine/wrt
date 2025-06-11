@@ -43,7 +43,7 @@
 use std::{vec::Vec, string::String, collections::HashMap, boxed::Box, format, sync::Arc};
 
 #[cfg(not(feature = "std"))]
-use wrt_foundation::{BoundedVec as Vec, BoundedString as String, no_std_hashmap::NoStdHashMap as HashMap, safe_memory::NoStdProvider};
+use wrt_foundation::{BoundedVec as Vec, BoundedString as String, safe_memory::NoStdProvider};
 
 // Enable vec! and format! macros for no_std
 #[cfg(not(feature = "std"))]

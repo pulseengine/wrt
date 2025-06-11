@@ -11,18 +11,61 @@ use log::{debug, error, info, trace, warn};
 use wrt_format::component::ExternType as FormatExternType;
 use wrt_foundation::resource::ResourceOperation as FormatResourceOperation;
 
+// HashMap imports
+#[cfg(feature = "std")]
+use std::collections::HashMap;
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{bounded::BoundedVec, safe_memory::NoStdProvider};
+
+// Simple HashMap substitute for no_std using BoundedVec
+#[cfg(not(feature = "std"))]
+pub struct SimpleMap<K, V> {
+    entries: BoundedVec<(K, V), 64, NoStdProvider<65536>>,
+}
+
+#[cfg(not(feature = "std"))]
+impl<K: PartialEq + Clone, V: Clone> SimpleMap<K, V> {
+    pub fn new() -> Self {
+        Self {
+            entries: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+        }
+    }
+    
+    pub fn insert(&mut self, key: K, value: V) {
+        // Remove existing entry if present
+        self.entries.retain(|(k, _)| k != &key);
+        // Add new entry
+        let _ = self.entries.push((key, value));
+    }
+    
+    pub fn get(&self, key: &K) -> Option<&V> {
+        self.entries.iter().find(|(k, _)| k == key).map(|(_, v)| v)
+    }
+    
+    pub fn contains_key(&self, key: &K) -> bool {
+        self.entries.iter().any(|(k, _)| k == key)
+    }
+    
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+}
+
+#[cfg(not(feature = "std"))]
+type HashMap<K, V> = SimpleMap<K, V>;
+
 // Runtime types with explicit namespacing
 use wrt_runtime::types::{MemoryType, TableType};
 use wrt_runtime::{
     func::FuncType as RuntimeFuncType,
-    global::{Global, GlobalType},
+    global::{Global, WrtGlobalType as GlobalType},
     memory::Memory,
     table::Table,
 };
 
 // Import RwLock from prelude (it will be std::sync::RwLock or a no_std equivalent from the
 // prelude)
-use crate::execution::{run_with_time_bounds, TimeBoundedConfig, TimeBoundedOutcome};
+// use wrt_runtime::execution::{run_with_time_bounds, TimeBoundedConfig, TimeBoundedOutcome};
 // Binary std/no_std choice
 
 // core::str is already imported via prelude
@@ -47,9 +90,9 @@ type TypeDef = wrt_format::component::ComponentType;
 #[derive(Debug, Clone)]
 pub struct WrtComponentType {
     /// Component imports
-    pub imports: Vec<(String, String, ExternType)>,
+    pub imports: Vec<(String, String, ExternType<NoStdProvider<65536>>)>,
     /// Component exports
-    pub exports: Vec<(String, ExternType)>,
+    pub exports: Vec<(String, ExternType<NoStdProvider<65536>>)>,
     /// Component instances
     pub instances: Vec<wrt_format::component::ComponentTypeDefinition>,
     /// Verification level for this component type
@@ -797,14 +840,16 @@ pub fn scan_builtins(bytes: &[u8]) -> Result<BuiltinRequirements> {
 /// Scans a module binary for builtins
 fn scan_module_for_builtins(module: &[u8], requirements: &mut BuiltinRequirements) -> Result<()> {
     // This would need to be implemented for core modules
-    // For now, we'll just return success
-    match wrt_decoder::module::decode_module(module) {
-        Ok(_) => Ok(()),
-        Err(err) => Err(Error::new(
+    // For now, we'll just return success (decoder module not available in current build)
+    // TODO: Implement proper module validation when decoder API is available
+    if module.is_empty() {
+        Err(Error::new(
             ErrorCategory::Parse,
             codes::DECODING_ERROR,
-            "Component not found",
-        )),
+            "Empty module provided",
+        ))
+    } else {
+        Ok(())
     }
 }
 

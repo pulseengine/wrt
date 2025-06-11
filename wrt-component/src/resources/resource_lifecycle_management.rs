@@ -278,11 +278,11 @@ impl ResourceLifecycleManager {
             #[cfg(feature = "std")]
             resources: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            resources: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            resources: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             #[cfg(feature = "std")]
             drop_handlers: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            drop_handlers: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            drop_handlers: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             policies: LifecyclePolicies::default(),
             stats: LifecycleStats::new(),
             next_resource_id: 1,
@@ -616,10 +616,10 @@ impl ResourceLifecycleManager {
     #[cfg(not(any(feature = "std", )))]
     pub fn check_for_leaks(&mut self) -> Result<BoundedVec<ResourceId, 64>, NoStdProvider<65536>> {
         if !self.policies.leak_detection {
-            return Ok(BoundedVec::new(DefaultMemoryProvider::default()).unwrap());
+            return Ok(BoundedVec::new(NoStdProvider::<65536>::default()).unwrap());
         }
 
-        let mut leaked_resources = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+        let mut leaked_resources = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
         let current_time = self.get_current_time();
 
         for resource in &self.resources {
@@ -729,11 +729,11 @@ impl ResourceMetadata {
             #[cfg(feature = "std")]
             tags: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            tags: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            tags: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             #[cfg(feature = "std")]
             properties: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            properties: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            properties: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
         }
     }
 
@@ -869,7 +869,7 @@ mod tests {
             #[cfg(feature = "std")]
             custom_handlers: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            custom_handlers: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            custom_handlers: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
         };
         
         let resource_id = manager.create_resource(request).unwrap();
@@ -889,7 +889,7 @@ mod tests {
             #[cfg(feature = "std")]
             custom_handlers: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            custom_handlers: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            custom_handlers: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
         };
         
         let resource_id = manager.create_resource(request).unwrap();
@@ -937,7 +937,7 @@ mod tests {
             #[cfg(feature = "std")]
             custom_handlers: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            custom_handlers: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            custom_handlers: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
         };
         
         let resource_id = manager.create_resource(request).unwrap();

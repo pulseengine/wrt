@@ -36,7 +36,7 @@ pub struct BufferSizeClass {
 impl BufferSizeClass {
     /// Create a new buffer size class
     pub fn new(size: usize) -> Self {
-        Self { size, buffers: BoundedVec::new(DefaultMemoryProvider::default()).unwrap() }
+        Self { size, buffers: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap() }
     }
 
     /// Get a buffer from this size class if one is available
@@ -112,7 +112,7 @@ impl BoundedBufferPool {
         }
 
         // No suitable buffer found, create a new one
-        let mut buffer = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+        let mut buffer = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
         for _ in 0..size {
             buffer.push(0).map_err(|_| {
                 Error::new(

@@ -7,13 +7,11 @@
 use std::{boxed::Box, collections::HashMap, format, string::String, vec::Vec};
 
 #[cfg(not(feature = "std"))]
-use wrt_foundation::{BoundedString as String, BoundedVec as Vec, no_std_hashmap::NoStdHashMap as HashMap, safe_memory::NoStdProvider};
-
-// Type aliases for no_std compatibility
+use alloc::boxed::Box;
 #[cfg(not(feature = "std"))]
-type Box<T> = wrt_foundation::SafeBox<T, NoStdProvider<65536>>;
+use wrt_foundation::{bounded::BoundedString as String, bounded::BoundedVec as Vec, safe_memory::NoStdProvider};
 
-use crate::component_instantiation::{
+use crate::components::component_instantiation::{
     create_component_export, create_component_import, ComponentExport, ComponentImport,
     ComponentInstance, ExportType, FunctionSignature, ImportType, InstanceConfig, InstanceId,
     ResolvedImport,
@@ -49,11 +47,11 @@ pub struct ComponentDefinition {
     /// Component ID
     pub id: ComponentId,
     /// Component binary (simplified as bytes)
-    pub binary: Vec<u8>,
+    pub binary: BoundedVec<u8, 1048576, NoStdProvider<65536>>, // 1MB max binary size
     /// Parsed exports
-    pub exports: Vec<ComponentExport>,
+    pub exports: BoundedVec<ComponentExport, 64, NoStdProvider<65536>>,
     /// Parsed imports
-    pub imports: Vec<ComponentImport>,
+    pub imports: BoundedVec<ComponentImport, 64, NoStdProvider<65536>>,
     /// Component metadata
     pub metadata: ComponentMetadata,
 }
@@ -581,8 +579,8 @@ impl LinkGraph {
         #[cfg(not(feature = "std"))]
         {
             // For no_std, create bounded vectors
-            let mut visited = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
-            let mut temp_visited = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+            let mut visited = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
+            let mut temp_visited = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
             let mut result = Vec::new();
             
             // Initialize with false values

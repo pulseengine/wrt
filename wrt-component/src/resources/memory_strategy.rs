@@ -4,12 +4,12 @@
 // SPDX-License-Identifier: MIT
 
 use wrt_error::{Error, Result};
-use wrt_foundation::bounded::{BoundedCollection, BoundedVec, MAX_BUFFER_SIZE};
+use wrt_foundation::bounded::{BoundedVec, MAX_BUFFER_SIZE};
 
 #[cfg(feature = "std")]
 use super::resource_table::MemoryStrategy;
-use super::resource_table_no_std::MemoryStrategy;
-use crate::resources::{ResourceOperation, ResourceStrategy};
+// use super::resource_table_no_std::MemoryStrategy; // Module not available
+// use crate::resources::{ResourceOperation, ResourceStrategy}; // Types not available
 
 #[cfg(feature = "std")]
 impl ResourceStrategy for MemoryStrategy {

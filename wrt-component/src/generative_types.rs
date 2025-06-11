@@ -1,14 +1,14 @@
-#[cfg(not(feature = "std"))]
-use std::{collections::BTreeMap, vec::Vec};
 #[cfg(feature = "std")]
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, vec::Vec};
+#[cfg(not(feature = "std"))]
+use alloc::{collections::BTreeMap, vec::Vec};
 
 use core::sync::atomic::{AtomicU32, Ordering};
 
 use wrt_foundation::{
-    bounded_collections::{BoundedVec, MAX_GENERATIVE_TYPES},
+    bounded::{BoundedVec, MAX_GENERATIVE_TYPES},
     component_value::ComponentValue,
-    resource::{ResourceHandle, ResourceType},
+    resource::{ResourceType},
 };
 
 use crate::{
@@ -68,7 +68,7 @@ impl GenerativeTypeRegistry {
             GenerativeResourceType { base_type, instance_id, unique_type_id, generation: 0 };
 
         let instance_types =
-            self.instance_types.entry(instance_id).or_insert_with(|| BoundedVec::new(DefaultMemoryProvider::default()).unwrap());
+            self.instance_types.entry(instance_id).or_insert_with(|| BoundedVec::new(NoStdProvider::<65536>::default()).unwrap());
 
         instance_types
             .push(generative_type.clone())
@@ -90,7 +90,7 @@ impl GenerativeTypeRegistry {
         type_id: TypeId,
         bound: TypeBound,
     ) -> Result<(), ComponentError> {
-        let bounds = self.type_bounds.entry(type_id).or_insert_with(|| BoundedVec::new(DefaultMemoryProvider::default()).unwrap());
+        let bounds = self.type_bounds.entry(type_id).or_insert_with(|| BoundedVec::new(NoStdProvider::<65536>::default()).unwrap());
 
         bounds.push(bound.clone()).map_err(|_| ComponentError::TooManyTypeBounds)?;
 

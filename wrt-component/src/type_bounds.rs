@@ -11,7 +11,7 @@ type HashMap<K, V> = BTreeMap<K, V, 64, NoStdProvider<65536>>;
 use core::fmt;
 
 use wrt_foundation::{
-    bounded_collections::{BoundedVec, MAX_GENERATIVE_TYPES},
+    bounded::{BoundedVec, MAX_GENERATIVE_TYPES},
 };
 
 #[cfg(feature = "std")]
@@ -254,7 +254,7 @@ impl TypeBoundsChecker {
 
     fn add_relation(&mut self, relation: TypeRelation) -> Result<(), ComponentError> {
         let relations =
-            self.type_hierarchy.entry(relation.sub_type).or_insert_with(|| BoundedVec::new(DefaultMemoryProvider::default()).unwrap());
+            self.type_hierarchy.entry(relation.sub_type).or_insert_with(|| BoundedVec::new(NoStdProvider::<65536>::default()).unwrap());
 
         relations.push(relation).map_err(|_| ComponentError::TooManyTypeBounds)?;
 

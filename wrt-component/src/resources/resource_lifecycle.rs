@@ -7,6 +7,11 @@
 #[cfg(not(feature = "std"))]
 use wrt_foundation::bounded::{BoundedString, BoundedVec};
 
+#[cfg(feature = "std")]
+use std::collections::HashMap;
+#[cfg(not(feature = "std"))]
+// HashMap disabled for no_std
+
 use crate::prelude::*;
 
 /// Maximum number of active resources in pure no_std environments
@@ -92,21 +97,22 @@ pub struct ResourceLifecycleManager {
     resources: HashMap<ResourceHandle, Resource>,
     #[cfg(not(feature = "std"))]
     resources:
-        wrt_foundation::no_std_hashmap::SimpleHashMap<ResourceHandle, Resource, MAX_RESOURCES>,
+        wrt_foundation::SimpleHashMap<ResourceHandle, Resource, MAX_RESOURCES, NoStdProvider<65536>>,
     /// Borrow tracking
     #[cfg(feature = "std")]
     borrows: HashMap<ResourceHandle, Vec<BorrowInfo>>,
     #[cfg(not(feature = "std"))]
-    borrows: wrt_foundation::no_std_hashmap::SimpleHashMap<
+    borrows: wrt_foundation::SimpleHashMap<
         ResourceHandle,
         BoundedVec<BorrowInfo, MAX_BORROWS_PER_RESOURCE, NoStdProvider<65536>>,
         MAX_RESOURCES,
+        NoStdProvider<65536>,
     >,
     /// Resource type registry
     #[cfg(feature = "std")]
     types: HashMap<u32, ResourceType>,
     #[cfg(not(feature = "std"))]
-    types: wrt_foundation::no_std_hashmap::SimpleHashMap<u32, ResourceType, 256>,
+    types: wrt_foundation::SimpleHashMap<u32, ResourceType, 256, NoStdProvider<65536>>,
     /// Lifecycle hooks
     hooks: LifecycleHooks,
     /// Metrics
@@ -172,18 +178,9 @@ impl ResourceLifecycleManager {
     pub fn new() -> Self {
         Self {
             next_handle: 1, // 0 is reserved for invalid handle
-            #[cfg(feature = "std")]
             resources: HashMap::new(),
-            #[cfg(not(feature = "std"))]
-            resources: wrt_foundation::no_std_hashmap::SimpleHashMap::new(),
-            #[cfg(feature = "std")]
             borrows: HashMap::new(),
-            #[cfg(not(feature = "std"))]
-            borrows: wrt_foundation::no_std_hashmap::SimpleHashMap::new(),
-            #[cfg(feature = "std")]
             types: HashMap::new(),
-            #[cfg(not(feature = "std"))]
-            types: wrt_foundation::no_std_hashmap::SimpleHashMap::new(),
             hooks: LifecycleHooks::default(),
             metrics: ResourceMetrics::default(),
         }

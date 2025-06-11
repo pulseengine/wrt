@@ -4,11 +4,10 @@
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
     prelude::*,
-    traits::DefaultMemoryProvider,
+    safe_memory::NoStdProvider,
     WrtResult,
 };
 
-#[cfg(feature = "std")]
 #[cfg(feature = "std")]
 use wrt_foundation::component_value::ComponentValue;
 
@@ -117,7 +116,7 @@ impl ComponentRuntimeBridge {
     #[cfg(not(feature = "std"))]
     pub fn register_host_function(
         &mut self,
-        _name: BoundedString<64, DefaultMemoryProvider>,
+        _name: BoundedString<64, NoStdProvider::<65536>>,
         _signature: crate::component_instantiation::FunctionSignature,
         _func: fn(&[ComponentValue]) -> Result<ComponentValue, wrt_error::Error>,
     ) -> Result<usize, wrt_error::Error> {
@@ -249,9 +248,9 @@ pub mod cfi_stubs {
     pub struct CfiExecutionContext {
         pub current_function: u32,
         pub current_instruction: u32,
-        pub shadow_stack: BoundedVec<u32, 1024, DefaultMemoryProvider>,
+        pub shadow_stack: BoundedVec<u32, 1024, NoStdProvider::<65536>>,
         pub violation_count: u32,
-        pub landing_pad_expectations: BoundedVec<LandingPadExpectation, 16, DefaultMemoryProvider>,
+        pub landing_pad_expectations: BoundedVec<LandingPadExpectation, 16, NoStdProvider::<65536>>,
         pub metrics: CfiMetrics,
     }
     
@@ -330,9 +329,9 @@ pub mod cfi_stubs {
             Self {
                 current_function: 0,
                 current_instruction: 0,
-                shadow_stack: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+                shadow_stack: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
                 violation_count: 0,
-                landing_pad_expectations: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+                landing_pad_expectations: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
                 metrics: CfiMetrics::default(),
             }
         }

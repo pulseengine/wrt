@@ -1,4 +1,9 @@
+#[cfg(feature = "std")]
 use std::{string::String, vec, vec::Vec};
+
+#[cfg(not(feature = "std"))]
+use alloc::{string::String, vec, vec::Vec};
+
 /// Registry-based type conversions
 ///
 /// This module implements conversions between format and runtime types using
@@ -163,17 +168,17 @@ mod tests {
 
         // Test Format to Types ValType
         let format_val_type = FormatValType::S32;
-        let types_val_type = registry.convert::<FormatValType, ValType>(&format_val_type).unwrap();
+        let types_val_type = registry.convert::<FormatValType, ValType<NoStdProvider<65536>>>(&format_val_type).unwrap();
         assert!(matches!(types_val_type, ValType::S32));
 
         // Test Types to Format ValType
         let types_val_type = ValType::Bool;
-        let format_val_type = registry.convert::<ValType, FormatValType>(&types_val_type).unwrap();
+        let format_val_type = registry.convert::<ValType, FormatValType<NoStdProvider<65536>>>(&types_val_type).unwrap();
         assert!(matches!(format_val_type, FormatValType::Bool));
 
         // Test ValueType to FormatValType
         let value_type = ValueType::I32;
-        let format_val_type = registry.convert::<ValueType, FormatValType>(&value_type).unwrap();
+        let format_val_type = registry.convert::<ValueType, FormatValType<NoStdProvider<65536>>>(&value_type).unwrap();
         assert!(matches!(format_val_type, FormatValType::S32));
     }
 }

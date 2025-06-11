@@ -30,7 +30,7 @@
 use wrt_error::kinds::{InvalidArgumentError, NotImplementedError};
 use wrt_format::component::{
     ComponentTypeDefinition, ConstValue as FormatConstValue, ExternType as FormatExternType,
-    ResourceOperation as FormatResourceOperation, ResourceRepresentation, ValType as FormatValType,
+    FormatResourceOperation, ResourceRepresentation, ValType as FormatValType,
 };
 use wrt_foundation::{
     component::{ComponentType, FuncType as TypesFuncType, InstanceType},
@@ -150,7 +150,7 @@ fn convert_types_to_format_valtype(types_val_type: &TypesValType) -> FormatValTy
 /// let format_type = value_type_to_format_val_type(&i32_type).unwrap();
 /// assert!(matches!(format_type, wrt_format::component::ValType::S32));
 /// ```
-pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatValType> {
+pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatValType<NoStdProvider<65536>>> {
     match value_type {
         ValueType::I32 => Ok(FormatValType::S32),
         ValueType::I64 => Ok(FormatValType::S64),
@@ -645,7 +645,7 @@ pub fn format_to_common_val_type(val_type: &FormatValType) -> Result<ValueType> 
 ///
 /// Result containing the converted format value type, or an error if
 /// conversion is not possible
-pub fn common_to_format_val_type(value_type: &ValueType) -> Result<FormatValType> {
+pub fn common_to_format_val_type(value_type: &ValueType) -> Result<FormatValType<NoStdProvider<65536>>> {
     match value_type {
         ValueType::I32 => Ok(FormatValType::S32),
         ValueType::I64 => Ok(FormatValType::S64),
@@ -706,14 +706,14 @@ impl IntoFormatType<FormatExternType> for TypesExternType {
     }
 }
 
-impl IntoRuntimeType<TypesValType> for FormatValType {
-    fn into_runtime_type(self) -> Result<TypesValType> {
+impl IntoRuntimeType<TypesValType<NoStdProvider<65536>>> for FormatValType {
+    fn into_runtime_type(self) -> Result<TypesValType<NoStdProvider<65536>>> {
         Ok(format_valtype_to_types_valtype(&self))
     }
 }
 
-impl IntoFormatType<FormatValType> for TypesValType {
-    fn into_format_type(self) -> Result<FormatValType> {
+impl IntoFormatType<FormatValType<NoStdProvider<65536>>> for TypesValType {
+    fn into_format_type(self) -> Result<FormatValType<NoStdProvider<65536>>> {
         Ok(types_valtype_to_format_valtype(&self))
     }
 }

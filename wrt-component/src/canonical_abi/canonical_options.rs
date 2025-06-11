@@ -5,7 +5,9 @@
 //! post-return functions, and memory management.
 
 #[cfg(not(feature = "std"))]
-use std::sync::{Arc, RwLock};
+use alloc::sync::Arc;
+#[cfg(not(feature = "std"))]
+use wrt_sync::RwLock;
 #[cfg(feature = "std")]
 use std::sync::{Arc, RwLock};
 

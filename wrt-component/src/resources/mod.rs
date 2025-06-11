@@ -21,6 +21,7 @@ pub mod resource_arena;
 pub mod resource_arena_no_std;
 pub mod resource_builder;
 pub mod resource_interceptor;
+pub mod resource_lifecycle;
 #[cfg(feature = "std")]
 pub mod resource_manager;
 pub mod resource_manager_no_std;
@@ -46,7 +47,7 @@ pub use buffer_pool::BufferPool;
 #[cfg(feature = "std")]
 pub use memory_access::MemoryAccessMode;
 // Common re-exports for both std and no_std
-pub use memory_strategy::MemoryStrategy as MemoryStrategyTrait;
+// pub use memory_strategy::MemoryStrategy as MemoryStrategyTrait;
 // Export ResourceArena based on feature flags
 #[cfg(feature = "std")]
 pub use resource_arena::ResourceArena;
@@ -61,8 +62,8 @@ pub use resource_manager::{ResourceId, ResourceManager};
 pub use resource_manager_no_std::{ResourceId, ResourceManager};
 // Export resource_operation based on feature flags
 #[cfg(feature = "std")]
-pub use resource_operation::{from_format_resource_operation, to_format_resource_operation};
-pub use resource_operation_no_std::{from_format_resource_operation, to_format_resource_operation};
+// pub use resource_operation::{from_format_resource_operation, to_format_resource_operation};
+// pub use resource_operation_no_std::{from_format_resource_operation, to_format_resource_operation};
 // Export ResourceStrategy
 pub use resource_strategy::ResourceStrategy;
 pub use resource_strategy_no_std::{ResourceStrategyNoStd, MAX_BUFFER_SIZE};
@@ -71,6 +72,7 @@ pub use resource_strategy_no_std::{ResourceStrategyNoStd, MAX_BUFFER_SIZE};
 pub use resource_table::{
     BufferPoolTrait, MemoryStrategy, Resource, ResourceTable, VerificationLevel,
 };
+#[cfg(not(feature = "std"))]
 pub use resource_table_no_std::{
     BufferPoolTrait, MemoryStrategy, Resource, ResourceTable, VerificationLevel,
 };

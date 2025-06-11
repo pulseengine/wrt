@@ -154,7 +154,7 @@ impl HandleRepresentationManager {
         Self {
             representations: BoundedHashMap::new(),
             metadata: BoundedHashMap::new(),
-            access_policies: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            access_policies: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             type_registry: GenerativeTypeRegistry::new(),
             bounds_checker: TypeBoundsChecker::new(),
             virt_manager: None,
@@ -204,7 +204,7 @@ impl HandleRepresentationManager {
             last_accessed: self.get_current_time(),
             access_count: 0,
             creator_component: component_id,
-            tags: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            tags: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             custom_data: BoundedHashMap::new(),
         };
 

@@ -178,12 +178,12 @@ impl StreamingCanonicalAbi {
             #[cfg(feature = "std")]
             streams: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            streams: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            streams: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             
             #[cfg(feature = "std")]
             buffer_pool: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            buffer_pool: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            buffer_pool: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             
             next_stream_id: 1,
             backpressure_config: BackpressureConfig::default(),
@@ -206,7 +206,7 @@ impl StreamingCanonicalAbi {
             #[cfg(feature = "std")]
             buffer: self.get_buffer_from_pool(),
             #[cfg(not(any(feature = "std", )))]
-            buffer: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            buffer: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             bytes_processed: 0,
             direction,
             backpressure: BackpressureState::new(&self.backpressure_config),

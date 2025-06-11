@@ -42,16 +42,17 @@
 use std::{vec::Vec, string::String, collections::HashMap, boxed::Box, format};
 
 #[cfg(all(not(feature = "std")))]
-use std::{vec::Vec, string::String, collections::BTreeMap as HashMap, boxed::Box, format};
+use alloc::{vec::Vec, string::String, collections::BTreeMap as HashMap, boxed::Box, format};
 
-#[cfg(not(any(feature = "std", )))]
-use wrt_foundation::{BoundedVec, BoundedString, BoundedMap as HashMap, safe_memory::NoStdProvider};
+// Note: Using alloc for no_std instead of wrt_foundation bounded types for now
+// #[cfg(not(any(feature = "std", )))]
+// use wrt_foundation::{BoundedVec, BoundedString, BoundedMap as HashMap, safe_memory::NoStdProvider};
 
-// Type aliases for no_std compatibility
-#[cfg(not(any(feature = "std", )))]
-type Vec<T> = BoundedVec<T, 64, NoStdProvider<65536>>;
-#[cfg(not(any(feature = "std", )))]
-type String = BoundedString<256, NoStdProvider<65536>>;
+// Type aliases for no_std compatibility (commented out to avoid conflicts)
+// #[cfg(not(any(feature = "std", )))]
+// type Vec<T> = BoundedVec<T, 64, NoStdProvider<65536>>;
+// #[cfg(not(any(feature = "std", )))]
+// type String = BoundedString<256, NoStdProvider<65536>>;
 
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use crate::canonical_abi::{ComponentType};
@@ -62,7 +63,7 @@ use crate::canonical_abi::ComponentValue;
 #[cfg(not(feature = "std"))]
 // For no_std, use a simpler ComponentValue representation
 use crate::types::Value as ComponentValue;
-use crate::component_instantiation::{InstanceId, ComponentInstance, FunctionSignature};
+use crate::components::component_instantiation::{InstanceId, ComponentInstance, FunctionSignature};
 use crate::resource_management::{ResourceHandle, ResourceManager as ComponentResourceManager};
 
 /// Maximum call stack depth to prevent infinite recursion
@@ -109,7 +110,7 @@ pub struct CallContext {
     /// Call parameters
     pub parameters: Vec<ComponentValue>,
     /// Expected return types
-    pub return_types: Vec<ComponentType>,
+    pub return_types: Vec<ComponentType<NoStdProvider<65536>>>,
     /// Resource handles passed with this call
     pub resource_handles: Vec<ResourceHandle>,
     /// Call metadata
@@ -525,7 +526,7 @@ impl CallRouter {
         target_instance: InstanceId,
         target_function: String,
         parameters: Vec<ComponentValue>,
-        return_types: Vec<ComponentType>,
+        return_types: Vec<ComponentType<NoStdProvider<65536>>>,
     ) -> Result<CallContext> {
         if parameters.len() > MAX_CALL_PARAMETERS {
             return Err(Error::new(

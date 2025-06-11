@@ -53,7 +53,7 @@ pub struct ResourceTypeMetadata {
     /// Resource type ID
     pub type_id: ResourceTypeId,
     /// Resource type name
-    pub name: BoundedVec<u8, 256, wrt_foundation::DefaultMemoryProvider>,
+    pub name: BoundedVec<u8, 256, wrt_foundation::safe_memory::NoStdProvider<65536>>,
     /// Size of the resource data
     pub size: usize,
 }
@@ -97,7 +97,7 @@ pub enum ResourceValidationLevel {
 #[derive(Debug, Clone)]
 pub enum ResourceData {
     /// Raw bytes
-    Bytes(BoundedVec<u8, 4096, wrt_foundation::DefaultMemoryProvider>),
+    Bytes(BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<65536>>),
     /// Custom data pointer (for std only)
     #[cfg(feature = "std")]
     Custom(Box<dyn std::any::Any + Send + Sync>),
@@ -374,7 +374,7 @@ impl ResourceTable {
 
 /// Helper function to create resource data from bytes
 pub fn create_resource_data_bytes(data: &[u8]) -> Result<ResourceData, ResourceError> {
-    let mut vec = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+    let mut vec = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
     for &byte in data {
         vec.push(byte).map_err(|_| ResourceError::LimitExceeded)?;
     }
@@ -394,7 +394,7 @@ pub fn create_resource_data_custom<T: std::any::Any + Send + Sync>(data: T) -> R
 
 /// Helper function to create a resource type
 pub fn create_resource_type(name: &str) -> Result<ResourceTypeMetadata, ResourceError> {
-    let mut name_vec = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+    let mut name_vec = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
     for &byte in name.as_bytes() {
         name_vec.push(byte).map_err(|_| ResourceError::LimitExceeded)?;
     }
@@ -453,7 +453,7 @@ impl Default for ResourceTypeId {
 
 impl Default for ResourceData {
     fn default() -> Self {
-        Self::Binary(BoundedVec::new(DefaultMemoryProvider::default()).unwrap())
+        Self::Binary(BoundedVec::new(NoStdProvider::<65536>::default()).unwrap())
     }
 }
 

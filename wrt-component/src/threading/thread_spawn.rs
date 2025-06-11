@@ -90,7 +90,7 @@ impl Default for ThreadConfiguration {
             name: None,
             detached: false,
             cpu_affinity: None,
-            capabilities: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            capabilities: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
         }
     }
 }
@@ -118,7 +118,7 @@ pub struct ThreadSpawnRequest {
     pub function_name: String,
     pub arguments: BoundedVec<ComponentValue, 16, NoStdProvider<65536>>,
     pub configuration: ThreadConfiguration,
-    pub return_type: Option<ValType>,
+    pub return_type: Option<ValType<NoStdProvider<65536>>,
 }
 
 pub struct ComponentThreadManager {
@@ -140,7 +140,7 @@ impl ComponentThreadManager {
         Self {
             threads: BoundedHashMap::new(),
             component_threads: BoundedHashMap::new(),
-            spawn_requests: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            spawn_requests: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             next_thread_id: AtomicU32::new(1),
             task_manager: TaskManager::new(),
             virt_manager: None,
@@ -492,7 +492,7 @@ impl ComponentThreadManager {
         component_id: ComponentInstanceId,
         function_name: &str,
         arguments: &[ComponentValue],
-        return_type: &Option<ValType>,
+        return_type: &Option<ValType<NoStdProvider<65536>>,
     ) -> ThreadResult {
         match Self::call_component_function(component_id, function_name, arguments) {
             Ok(result) => ThreadResult::Success(result),
@@ -627,7 +627,7 @@ mod tests {
         let request = ThreadSpawnRequest {
             component_id,
             function_name: "test_function".to_string(),
-            arguments: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            arguments: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             configuration: ThreadConfiguration::default(),
             return_type: Some(ValType::I32),
         };

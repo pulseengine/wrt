@@ -42,10 +42,11 @@
 use std::{collections::HashMap, string::String, vec::Vec};
 
 #[cfg(all(not(feature = "std")))]
-use std::{collections::BTreeMap as HashMap, string::String, vec::Vec};
+use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
 
-#[cfg(not(any(feature = "std", )))]
-use wrt_foundation::{BoundedString, BoundedVec, BoundedMap as HashMap};
+// Note: Using alloc for no_std instead of wrt_foundation bounded types for now
+// #[cfg(not(any(feature = "std", )))]
+// use wrt_foundation::{BoundedString, BoundedVec, BoundedMap as HashMap};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
@@ -652,7 +653,7 @@ impl CanonicalABI {
     pub fn lift_variant<M: CanonicalMemory>(
         &self,
         memory: &M,
-        cases: &[(String, Option<ComponentType>)],
+        cases: &[(String, Option<ComponentType<NoStdProvider<65536>>>)],
         offset: u32,
     ) -> Result<ComponentValue> {
         let discriminant = memory.read_u32_le(offset)?;
@@ -716,8 +717,8 @@ impl CanonicalABI {
     pub fn lift_result<M: CanonicalMemory>(
         &self,
         memory: &M,
-        ok_ty: &Option<Box<ComponentType>>,
-        err_ty: &Option<Box<ComponentType>>,
+        ok_ty: &Option<Box<ComponentType<NoStdProvider<65536>>>>,
+        err_ty: &Option<Box<ComponentType<NoStdProvider<65536>>>>,
         offset: u32,
     ) -> Result<ComponentValue> {
         let discriminant = memory.read_u32_le(offset)?;

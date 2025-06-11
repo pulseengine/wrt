@@ -243,7 +243,7 @@ impl ErrorContextImpl {
             handle: ErrorContextHandle::new(),
             severity,
             debug_message: bounded_message,
-            stack_trace: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            stack_trace: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             metadata: BoundedMap::new(),
             error_code: None,
             source_error: None,

@@ -147,10 +147,10 @@ impl WitComponentBuilder {
     ) -> Result<ComponentInterface, ComponentError> {
         let mut interface = ComponentInterface {
             name: world.name,
-            imports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
-            exports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
-            async_imports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
-            async_exports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            exports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            async_imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            async_exports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
         };
 
         for import in world.imports.iter() {
@@ -209,10 +209,10 @@ impl WitComponentBuilder {
     ) -> Result<ComponentInterface, ComponentError> {
         let mut interface = ComponentInterface {
             name: wit_interface.name,
-            imports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
-            exports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
-            async_imports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
-            async_exports: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            exports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            async_imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            async_exports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
         };
 
         for func in wit_interface.functions.iter() {
@@ -241,8 +241,8 @@ impl WitComponentBuilder {
     ) -> Result<InterfaceFunction, ComponentError> {
         let mut interface_func = InterfaceFunction {
             name: wit_func.name.clone(),
-            params: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
-            results: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            params: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            results: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             component_type_id: None,
         };
 
@@ -276,8 +276,8 @@ impl WitComponentBuilder {
     ) -> Result<AsyncInterfaceFunction, ComponentError> {
         let mut async_func = AsyncInterfaceFunction {
             name: wit_func.name.clone(),
-            params: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
-            results: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            params: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            results: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             component_type_id: None,
         };
 

@@ -11,10 +11,17 @@ use wrt_foundation::resource::ResourceOperation as FormatResourceOperation;
 // Additional dependencies not in prelude
 use wrt_runtime::Memory;
 
+// HashMap imports
+#[cfg(feature = "std")]
+use std::collections::HashMap;
+#[cfg(not(feature = "std"))]
+// HashMap disabled for no_std
+
 use crate::{
+    resources::buffer_pool::BufferPool,
     memory_layout::{calculate_layout, MemoryLayout},
     prelude::*,
-    resources::buffer_pool::BufferPool,
+    resources::BoundedBufferPool,
     string_encoding::{
         lift_string_with_options, lower_string_with_options, CanonicalStringOptions, StringEncoding,
     },
@@ -27,15 +34,15 @@ const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024; // 10MB
 #[derive(Debug)]
 pub struct CanonicalABI {
     /// Binary std/no_std choice
-    buffer_pool: Arc<RwLock<BufferPool>>,
-    /// Memory strategy for canonical operations
-    memory_strategy: MemoryStrategy,
+    buffer_pool: BoundedBufferPool,
+    /// Memory strategy for canonical operations  
+    memory_strategy: u32, // Placeholder for MemoryStrategy
     /// Verification level for canonical operations
-    verification_level: VerificationLevel,
+    verification_level: u32, // Placeholder for VerificationLevel
     /// Optional interceptor for canonical operations
-    interceptor: Option<Arc<LinkInterceptor>>,
+    interceptor: Option<u32>, // Placeholder for LinkInterceptor
     /// Metrics for canonical operations
-    metrics: Arc<Mutex<CanonicalMetrics>>,
+    metrics: CanonicalMetrics,
     /// String encoding options
     string_options: CanonicalStringOptions,
 }
@@ -102,7 +109,7 @@ impl CanonicalABI {
     /// Lift a value from the WebAssembly memory into a Value
     pub fn lift(
         &self,
-        ty: &ValType,
+        ty: &ValType<NoStdProvider<65536>>,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
@@ -178,7 +185,7 @@ impl CanonicalABI {
 
     fn lift_value(
         &self,
-        ty: &ValType,
+        ty: &ValType<NoStdProvider<65536>>,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
@@ -236,7 +243,7 @@ impl CanonicalABI {
 
     fn lift_tuple(
         &self,
-        types: &[ValType],
+        types: &[ValType<NoStdProvider<65536>>],
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
@@ -279,7 +286,7 @@ impl CanonicalABI {
 
     fn lift_fixed_list(
         &self,
-        inner_ty: &ValType,
+        inner_ty: &ValType<NoStdProvider<65536>>,
         size: u32,
         addr: u32,
         resource_table: &ResourceTable,
@@ -505,7 +512,7 @@ impl CanonicalABI {
     // Complex type lifting operations
     fn lift_list(
         &self,
-        inner_ty: &Box<ValType>,
+        inner_ty: &Box<ValType<NoStdProvider<65536>>>,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
@@ -598,7 +605,7 @@ impl CanonicalABI {
 
     fn lift_variant(
         &self,
-        cases: &[(String, Option<ValType>)],
+        cases: &[(String, Option<ValType<NoStdProvider<65536>>>)],
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
@@ -671,7 +678,7 @@ impl CanonicalABI {
 
     fn lift_option(
         &self,
-        inner_ty: &Box<ValType>,
+        inner_ty: &Box<ValType<NoStdProvider<65536>>>,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
@@ -701,8 +708,8 @@ impl CanonicalABI {
 
     fn lift_result(
         &self,
-        ok_ty: Option<&Box<ValType>>,
-        err_ty: Option<&Box<ValType>>,
+        ok_ty: Option<&Box<ValType<NoStdProvider<65536>>>>,
+        err_ty: Option<&Box<ValType<NoStdProvider<65536>>>>,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
@@ -870,7 +877,7 @@ impl CanonicalABI {
     fn lower_list(
         &self,
         values: &[Box<wrt_foundation::values::Value>],
-        inner_ty: &ValType,
+        inner_ty: &ValType<NoStdProvider<65536>>,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &mut [u8],
@@ -922,7 +929,7 @@ impl CanonicalABI {
     fn lower_value(
         &self,
         value: &wrt_foundation::values::Value,
-        ty: &ValType,
+        ty: &ValType<NoStdProvider<65536>>,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &mut [u8],
@@ -1380,7 +1387,7 @@ mod tests {
 /// Result containing the converted Value
 pub fn convert_value_for_canonical_abi(
     value: &wrt_foundation::values::Value,
-    target_type: &wrt_format::component::ValType,
+    target_type: &wrt_format::component::ValType<NoStdProvider<65536>>,
 ) -> Result<wrt_foundation::values::Value> {
     // First convert the format ValType to a component-friendly ValType
     let component_type = crate::values::convert_format_to_common_valtype(target_type);
@@ -1807,7 +1814,7 @@ fn get_float_value(value: &wrt_foundation::values::Value) -> Result<f64> {
 /// Convert a value to the appropriate type for use in the canonical ABI
 pub fn convert_value_for_type(
     value: &wrt_foundation::values::Value,
-    ty: &ValType,
+    ty: &ValType<NoStdProvider<65536>>,
 ) -> Result<wrt_foundation::values::Value> {
     match ty {
         ValType::Bool => {

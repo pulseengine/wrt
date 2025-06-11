@@ -87,13 +87,13 @@ impl RuntimeComponentType {
     }
 }
 
-impl From<ComponentType> for RuntimeComponentType {
-    fn from(component_type: ComponentType) -> Self {
+impl From<ComponentType<NoStdProvider<65536>>> for RuntimeComponentType {
+    fn from(component_type: ComponentType<NoStdProvider<65536>>) -> Self {
         Self::new(component_type)
     }
 }
 
-impl From<RuntimeComponentType> for ComponentType {
+impl From<RuntimeComponentType> for ComponentType<NoStdProvider<65536>> {
     fn from(wrapper: RuntimeComponentType) -> Self {
         wrapper.into_inner()
     }

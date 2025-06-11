@@ -42,7 +42,7 @@
 use std::{boxed::Box, collections::HashMap, format, string::String, vec::Vec};
 
 #[cfg(not(feature = "std"))]
-use wrt_foundation::{BoundedString as String, BoundedVec as Vec, no_std_hashmap::NoStdHashMap as HashMap, safe_memory::NoStdProvider};
+use wrt_foundation::{bounded::{BoundedString as String, BoundedVec as Vec}, safe_memory::NoStdProvider};
 
 // Enable vec! and format! macros for no_std
 #[cfg(not(feature = "std"))]
@@ -51,7 +51,7 @@ extern crate alloc;
 use alloc::{vec, format, boxed::Box};
 
 use crate::canonical_abi::{CanonicalABI, CanonicalMemory, ComponentType, ComponentValue};
-use crate::resources::{
+use crate::resource_management::{
     ResourceData, ResourceHandle, ResourceManager as ComponentResourceManager, ResourceTypeId,
 };
 // use crate::component_communication::{CallRouter, CallContext as CommCallContext};
@@ -122,9 +122,9 @@ pub struct FunctionSignature {
     /// Function name
     pub name: String,
     /// Parameter types
-    pub params: Vec<ComponentType>,
+    pub params: BoundedVec<ComponentType, 16, NoStdProvider<65536>>,
     /// Return types
-    pub returns: Vec<ComponentType>,
+    pub returns: BoundedVec<ComponentType, 16, NoStdProvider<65536>>,
 }
 
 /// Component export definition
@@ -189,15 +189,15 @@ pub struct ComponentInstance {
     /// Instance configuration
     pub config: InstanceConfig,
     /// Component exports
-    pub exports: Vec<ComponentExport>,
+    pub exports: BoundedVec<ComponentExport, 64, NoStdProvider<65536>>,
     /// Component imports (resolved)
-    pub imports: Vec<ResolvedImport>,
+    pub imports: BoundedVec<ResolvedImport, 64, NoStdProvider<65536>>,
     /// Instance memory
     pub memory: Option<ComponentMemory>,
     /// Canonical ABI for value conversion
     abi: CanonicalABI,
     /// Function table
-    functions: Vec<ComponentFunction>,
+    functions: BoundedVec<ComponentFunction, 128, NoStdProvider<65536>>,
     /// Instance metadata
     metadata: InstanceMetadata,
     /// Resource manager for this instance
@@ -262,7 +262,7 @@ pub struct ComponentMemory {
     /// Current memory size in bytes
     pub current_size: u32,
     /// Memory data (simplified for this implementation)
-    pub data: Vec<u8>,
+    pub data: BoundedVec<u8, 65536, NoStdProvider<65536>>,
 }
 
 /// Instance metadata for debugging and introspection
@@ -756,8 +756,8 @@ impl std::error::Error for InstantiationError {}
 /// Create a function signature
 pub fn create_function_signature(
     name: String,
-    params: Vec<ComponentType>,
-    returns: Vec<ComponentType>,
+    params: Vec<ComponentType<NoStdProvider<65536>>>,
+    returns: Vec<ComponentType<NoStdProvider<65536>>>,
 ) -> FunctionSignature {
     FunctionSignature { name, params, returns }
 }

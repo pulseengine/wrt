@@ -6,7 +6,8 @@
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::bounded::{BoundedVec, MAX_BUFFER_SIZE};
 
-use crate::resources::{MemoryStrategy, ResourceOperation, ResourceStrategy};
+use super::{MemoryStrategy, ResourceOperation};
+use super::resource_strategy::ResourceStrategy;
 
 /// No-std version of ResourceStrategy implementation
 /// This struct provides resource access strategies for no_std environments

@@ -13,10 +13,21 @@ use std::{string::String, vec::Vec};
 use wrt_foundation::{bounded::BoundedVec, prelude::*, traits::{Checksummable, ToBytes, FromBytes}};
 
 use crate::{
-    async_types::{StreamHandle, FutureHandle},
-    component::Component,
+    components::component::Component,
     instantiation::{ModuleInstance, ResolvedExport, ResolvedImport, ResourceTable},
 };
+
+#[cfg(feature = "component-model-async")]
+use crate::async_::async_types::{StreamHandle, FutureHandle};
+
+// Fallback types when async features are not enabled
+#[cfg(not(feature = "component-model-async"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct StreamHandle(pub u32);
+
+#[cfg(not(feature = "component-model-async"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct FutureHandle(pub u32);
 
 /// Represents an instantiated component
 #[derive(Debug, Clone)]
@@ -29,22 +40,22 @@ pub struct ComponentInstance {
     #[cfg(feature = "std")]
     pub imports: Vec<ResolvedImport>,
     #[cfg(not(any(feature = "std", )))]
-    pub imports: BoundedVec<ResolvedImport, 256, wrt_foundation::DefaultMemoryProvider>,
+    pub imports: BoundedVec<ResolvedImport, 256, wrt_foundation::safe_memory::NoStdProvider<65536>>,
     /// Resolved exports from this instance
     #[cfg(feature = "std")]
     pub exports: Vec<ResolvedExport>,
     #[cfg(not(any(feature = "std", )))]
-    pub exports: BoundedVec<ResolvedExport, 256, wrt_foundation::DefaultMemoryProvider>,
+    pub exports: BoundedVec<ResolvedExport, 256, wrt_foundation::safe_memory::NoStdProvider<65536>>,
     /// Resource tables for this instance
     #[cfg(feature = "std")]
     pub resource_tables: Vec<ResourceTable>,
     #[cfg(not(any(feature = "std", )))]
-    pub resource_tables: BoundedVec<ResourceTable, 16, wrt_foundation::DefaultMemoryProvider>,
+    pub resource_tables: BoundedVec<ResourceTable, 16, wrt_foundation::safe_memory::NoStdProvider<65536>>,
     /// Module instances embedded in this component
     #[cfg(feature = "std")]
     pub module_instances: Vec<ModuleInstance>,
     #[cfg(not(any(feature = "std", )))]
-    pub module_instances: BoundedVec<ModuleInstance, 64, wrt_foundation::DefaultMemoryProvider>,
+    pub module_instances: BoundedVec<ModuleInstance, 64, wrt_foundation::safe_memory::NoStdProvider<65536>>,
 }
 
 /// State of a component instance
@@ -98,7 +109,7 @@ pub enum ValType {
     /// String type
     String,
     /// List type with element type
-    List(Box<ValType>),
+    List(Box<ValType<NoStdProvider<65536>>>),
     /// Record type with named fields
     Record(Record),
     /// Tuple type with element types
@@ -108,7 +119,7 @@ pub enum ValType {
     /// Enum type with cases
     Enum(Enum),
     /// Option type with payload
-    Option(Box<ValType>),
+    Option(Box<ValType<NoStdProvider<65536>>>),
     /// Result type with ok/error types
     Result(Result_),
     /// Flags type with bitfields
@@ -118,9 +129,9 @@ pub enum ValType {
     /// Borrowed resource
     Borrow(u32),
     /// Stream type with element type
-    Stream(Box<ValType>),
+    Stream(Box<ValType<NoStdProvider<65536>>>),
     /// Future type with value type
-    Future(Box<ValType>),
+    Future(Box<ValType<NoStdProvider<65536>>>),
 }
 
 /// Record type definition
@@ -129,7 +140,7 @@ pub struct Record {
     #[cfg(feature = "std")]
     pub fields: Vec<Field>,
     #[cfg(not(any(feature = "std", )))]
-    pub fields: BoundedVec<Field, 64, wrt_foundation::DefaultMemoryProvider>,
+    pub fields: BoundedVec<Field, 64, wrt_foundation::safe_memory::NoStdProvider<65536>>,
 }
 
 /// Field in a record
@@ -138,7 +149,7 @@ pub struct Field {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64, wrt_foundation::DefaultMemoryProvider>,
+    pub name: BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<65536>>,
     pub ty: ValType,
 }
 
@@ -146,9 +157,9 @@ pub struct Field {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Tuple {
     #[cfg(feature = "std")]
-    pub types: Vec<ValType>,
+    pub types: Vec<ValType<NoStdProvider<65536>>>,
     #[cfg(not(any(feature = "std", )))]
-    pub types: BoundedVec<ValType, 32, wrt_foundation::DefaultMemoryProvider>,
+    pub types: BoundedVec<ValType, 32, wrt_foundation::safe_memory::NoStdProvider<65536>>,
 }
 
 /// Variant type definition
@@ -157,7 +168,7 @@ pub struct Variant {
     #[cfg(feature = "std")]
     pub cases: Vec<Case>,
     #[cfg(not(any(feature = "std", )))]
-    pub cases: BoundedVec<Case, 64, wrt_foundation::DefaultMemoryProvider>,
+    pub cases: BoundedVec<Case, 64, wrt_foundation::safe_memory::NoStdProvider<65536>>,
 }
 
 /// Case in a variant
@@ -166,8 +177,8 @@ pub struct Case {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64, wrt_foundation::DefaultMemoryProvider>,
-    pub ty: Option<ValType>,
+    pub name: BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<65536>>,
+    pub ty: Option<ValType<NoStdProvider<65536>>>,
     pub refines: Option<u32>,
 }
 
@@ -177,14 +188,14 @@ pub struct Enum {
     #[cfg(feature = "std")]
     pub cases: Vec<String>,
     #[cfg(not(any(feature = "std", )))]
-    pub cases: BoundedVec<BoundedString<64, wrt_foundation::DefaultMemoryProvider, NoStdProvider<65536>>, 64, wrt_foundation::DefaultMemoryProvider>,
+    pub cases: BoundedVec<BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<65536>>, 64, wrt_foundation::safe_memory::NoStdProvider<65536>>,
 }
 
 /// Result type definition (renamed to avoid conflict with std::result::Result)
 #[derive(Debug, Clone, PartialEq)]
 pub struct Result_ {
-    pub ok: Option<Box<ValType>>,
-    pub err: Option<Box<ValType>>,
+    pub ok: Option<Box<ValType<NoStdProvider<65536>>>>,
+    pub err: Option<Box<ValType<NoStdProvider<65536>>>>,
 }
 
 /// Flags type definition
@@ -193,7 +204,7 @@ pub struct Flags {
     #[cfg(feature = "std")]
     pub labels: Vec<String>,
     #[cfg(not(any(feature = "std", )))]
-    pub labels: BoundedVec<BoundedString<64, wrt_foundation::DefaultMemoryProvider, NoStdProvider<65536>>, 64, wrt_foundation::DefaultMemoryProvider>,
+    pub labels: BoundedVec<BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<65536>>, 64, wrt_foundation::safe_memory::NoStdProvider<65536>>,
 }
 
 /// Component model value
@@ -224,22 +235,22 @@ pub enum Value {
     /// Character value
     Char(char),
     /// String value
-    String(BoundedString<1024, wrt_foundation::DefaultMemoryProvider>),
+    String(BoundedString<1024, wrt_foundation::safe_memory::NoStdProvider<65536>>),
     /// List value
     #[cfg(feature = "std")]
     List(Vec<Value>),
     #[cfg(not(any(feature = "std", )))]
-    List(BoundedVec<Value, 256, wrt_foundation::DefaultMemoryProvider>),
+    List(BoundedVec<Value, 256, wrt_foundation::safe_memory::NoStdProvider<65536>>),
     /// Record value
     #[cfg(feature = "std")]
     Record(Vec<Value>),
     #[cfg(not(any(feature = "std", )))]
-    Record(BoundedVec<Value, 64, wrt_foundation::DefaultMemoryProvider>),
+    Record(BoundedVec<Value, 64, wrt_foundation::safe_memory::NoStdProvider<65536>>),
     /// Tuple value
     #[cfg(feature = "std")]
     Tuple(Vec<Value>),
     #[cfg(not(any(feature = "std", )))]
-    Tuple(BoundedVec<Value, 32, wrt_foundation::DefaultMemoryProvider>),
+    Tuple(BoundedVec<Value, 32, wrt_foundation::safe_memory::NoStdProvider<65536>>),
     /// Variant value
     Variant { discriminant: u32, value: Option<Box<Value>> },
     /// Enum value
@@ -412,54 +423,43 @@ impl wrt_foundation::traits::FromBytes for Value {
 }
 
 impl wrt_foundation::traits::Checksummable for Value {
-    fn checksum(&self) -> wrt_foundation::traits::Checksum {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         // Simple checksum based on the discriminant and basic content
-        let mut sum: u64 = 0;
+        let discriminant = match self {
+            Value::Bool(_) => 0u8,
+            Value::S8(_) => 1u8,
+            Value::U8(_) => 2u8,
+            Value::S16(_) => 3u8,
+            Value::U16(_) => 4u8,
+            Value::S32(_) => 5u8,
+            Value::U32(_) => 6u8,
+            Value::S64(_) => 7u8,
+            Value::U64(_) => 8u8,
+            Value::F32(_) => 9u8,
+            Value::F64(_) => 10u8,
+            Value::Char(_) => 11u8,
+            Value::String(_) => 12u8,
+            _ => 255u8,
+        };
+        checksum.update(discriminant);
         
+        // For simplicity, just update with basic data
         match self {
-            Value::Bool(b) => {
-                sum = sum.wrapping_add(if *b { 1 } else { 0 });
-            }
-            Value::S8(v) => {
-                sum = sum.wrapping_add(*v as u64);
-            }
-            Value::U8(v) => {
-                sum = sum.wrapping_add(*v as u64);
-            }
-            Value::S16(v) => {
-                sum = sum.wrapping_add(*v as u64);
-            }
-            Value::U16(v) => {
-                sum = sum.wrapping_add(*v as u64);
-            }
-            Value::S32(v) => {
-                sum = sum.wrapping_add(*v as u64);
-            }
-            Value::U32(v) => {
-                sum = sum.wrapping_add(*v as u64);
-            }
-            Value::S64(v) => {
-                sum = sum.wrapping_add(*v as u64);
-            }
-            Value::U64(v) => {
-                sum = sum.wrapping_add(*v);
-            }
-            Value::F32(v) => {
-                sum = sum.wrapping_add(v.to_bits() as u64);
-            }
-            Value::F64(v) => {
-                sum = sum.wrapping_add(v.to_bits());
-            }
-            Value::Char(c) => {
-                sum = sum.wrapping_add(*c as u64);
-            }
-            // For complex types, use a default checksum
-            _ => {
-                sum = sum.wrapping_add(255);
-            }
+            Value::Bool(b) => checksum.update(if *b { 1u8 } else { 0u8 }),
+            Value::S8(v) => checksum.update(*v as u8),
+            Value::U8(v) => checksum.update(*v),
+            Value::S16(v) => checksum.update_slice(&v.to_le_bytes()),
+            Value::U16(v) => checksum.update_slice(&v.to_le_bytes()),
+            Value::S32(v) => checksum.update_slice(&v.to_le_bytes()),
+            Value::U32(v) => checksum.update_slice(&v.to_le_bytes()),
+            Value::S64(v) => checksum.update_slice(&v.to_le_bytes()),
+            Value::U64(v) => checksum.update_slice(&v.to_le_bytes()),
+            Value::F32(v) => checksum.update_slice(&v.to_bits().to_le_bytes()),
+            Value::F64(v) => checksum.update_slice(&v.to_bits().to_le_bytes()),
+            Value::Char(c) => checksum.update_slice(&(*c as u32).to_le_bytes()),
+            Value::String(s) => checksum.update_slice(s.as_bytes()),
+            _ => {} // Skip complex types for now
         }
-        
-        wrt_foundation::traits::Checksum(sum)
     }
 }
 

@@ -50,7 +50,7 @@ pub type StartFunctionResult<T> = Result<T, StartFunctionError>;
 pub struct StartFunctionDescriptor {
     pub name: String,
     pub parameters: BoundedVec<StartFunctionParam, MAX_START_FUNCTION_PARAMS, NoStdProvider<65536>>,
-    pub return_type: Option<ValType>,
+    pub return_type: Option<ValType<NoStdProvider<65536>>,
     pub required: bool,
     pub timeout_ms: u64,
     pub validation_level: ValidationLevel,
@@ -242,7 +242,7 @@ impl StartFunctionValidator {
     ) -> StartFunctionResult<
         BoundedVec<(ComponentInstanceId, ValidationState), MAX_START_FUNCTION_VALIDATIONS>,
     > {
-        let mut results = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+        let mut results = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
 
         let pending_components: Vec<ComponentInstanceId> = self
             .validations
@@ -426,7 +426,7 @@ impl StartFunctionValidator {
         &self,
         descriptor: &StartFunctionDescriptor,
     ) -> StartFunctionResult<BoundedVec<ComponentValue, MAX_START_FUNCTION_PARAMS>, NoStdProvider<65536>> {
-        let mut arguments = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+        let mut arguments = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
 
         for param in descriptor.parameters.iter() {
             let value = if let Some(ref default) = param.default_value {
@@ -482,7 +482,7 @@ impl StartFunctionValidator {
         &self,
         execution_context: &ExecutionContext,
     ) -> StartFunctionResult<BoundedVec<SideEffect, 32>, NoStdProvider<65536>> {
-        let mut side_effects = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+        let mut side_effects = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
 
         // Binary std/no_std choice
         if execution_context.memory_allocations() > 0 {
@@ -610,12 +610,12 @@ pub struct ValidationSummary {
 pub fn create_start_function_descriptor(name: &str) -> StartFunctionDescriptor {
     StartFunctionDescriptor {
         name: name.to_string(),
-        parameters: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+        parameters: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
         return_type: None,
         required: true,
         timeout_ms: DEFAULT_START_TIMEOUT_MS,
         validation_level: ValidationLevel::Standard,
-        dependencies: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+        dependencies: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
     }
 }
 
@@ -662,12 +662,12 @@ mod tests {
         // Invalid descriptor (empty name)
         let invalid_descriptor = StartFunctionDescriptor {
             name: String::new(),
-            parameters: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            parameters: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             return_type: None,
             required: true,
             timeout_ms: 1000,
             validation_level: ValidationLevel::Standard,
-            dependencies: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            dependencies: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
         };
         assert!(validator.validate_descriptor(&invalid_descriptor).is_err());
     }

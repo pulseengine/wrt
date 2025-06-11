@@ -1,3 +1,4 @@
+#[cfg(feature = "std")]
 use std::{
     any::{Any, TypeId},
     boxed::Box,
@@ -5,6 +6,19 @@ use std::{
     fmt,
     marker::PhantomData,
     sync::Arc,
+};
+
+#[cfg(not(feature = "std"))]
+use alloc::{
+    boxed::Box,
+    collections::BTreeMap as HashMap,
+    sync::Arc,
+};
+#[cfg(not(feature = "std"))]
+use core::{
+    any::{Any, TypeId},
+    fmt,
+    marker::PhantomData,
 };
 /// Type Conversion Registry
 ///

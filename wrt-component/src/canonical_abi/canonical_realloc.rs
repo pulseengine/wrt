@@ -7,7 +7,6 @@
 use crate::prelude::*;
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_COMPONENT_TYPES},
-    traits::DefaultMemoryProvider,
     safe_memory::NoStdProvider,
 };
 use wrt_error::{Error, ErrorCategory, codes};
@@ -104,7 +103,7 @@ struct AllocationMetrics {
 impl ReallocManager {
     pub fn new(max_allocation_size: usize, max_instance_allocations: usize) -> Self {
         Self {
-            allocations: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            allocations: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             metrics: AllocationMetrics::default(),
             max_allocation_size,
             max_instance_allocations,
@@ -129,7 +128,7 @@ impl ReallocManager {
         
         if !found {
             let instance_allocs = InstanceAllocations { 
-                allocations: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(), 
+                allocations: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(), 
                 total_bytes: 0, 
                 realloc_fn: Some(ReallocFunction { func_index, func_available: true })
             };
@@ -519,7 +518,7 @@ impl Default for Allocation {
 impl Default for InstanceAllocations {
     fn default() -> Self {
         Self {
-            allocations: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            allocations: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             total_bytes: 0,
             realloc_fn: None,
         }

@@ -19,8 +19,8 @@
 #![cfg_attr(feature = "kani", feature(kani))]
 #![warn(clippy::missing_panics_doc)]
 
-// Binary std/no_std choice
-#[cfg(any(feature = "std", feature = "alloc"))]
+// Binary std/no_std choice  
+#[cfg(not(feature = "std"))]
 extern crate alloc;
 
 // Debug macro for both std and no_std environments
@@ -50,19 +50,24 @@ pub mod canonical_abi;
 pub mod components;
 pub mod execution_engine;
 pub mod export;
+pub mod generative_types;
 pub mod import;
 pub mod instance;
+pub mod instantiation;
 #[cfg(not(feature = "std"))]
 pub mod instance_no_std;
 pub mod memory_layout;
+pub mod parser;
 pub mod resource_management;
 pub mod resources;
 pub mod runtime;
 pub mod string_encoding;
 pub mod strategies;
+pub mod type_bounds;
 pub mod type_conversion;
 pub mod types;
 pub mod unified_execution_agent;
+pub mod unified_execution_agent_stubs;
 pub mod values;
 
 // Async support

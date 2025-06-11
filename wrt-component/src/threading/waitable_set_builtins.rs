@@ -266,7 +266,7 @@ impl WaitableSetImpl {
 
     #[cfg(not(any(feature = "std", )))]
     pub fn check_ready(&mut self) -> Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS>, NoStdProvider<65536>> {
-        let mut ready = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+        let mut ready = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
         for (_, entry) in self.waitables.iter_mut() {
             if entry.check_ready() {
                 ready.push(entry.clone())

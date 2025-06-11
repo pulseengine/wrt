@@ -134,7 +134,7 @@ impl FixedLengthList {
     #[cfg(not(any(feature = "std", )))]
     pub fn new(list_type: FixedLengthListType) -> Result<Self> {
         list_type.validate_size()?;
-        let elements = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+        let elements = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
         Ok(Self {
             list_type,
             elements,
@@ -379,7 +379,7 @@ impl FixedLengthListTypeRegistry {
             #[cfg(feature = "std")]
             types: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            types: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(),
+            types: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
         }
     }
 
