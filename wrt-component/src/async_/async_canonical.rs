@@ -33,7 +33,7 @@ use crate::{
         AsyncReadResult, ErrorContext, ErrorContextHandle, Future, FutureHandle, FutureState,
         Stream, StreamHandle, StreamState, Waitable, WaitableSet,
     },
-    types::{ValType, Value},
+    types::{ValType<NoStdProvider<65536>>, Value},
 };
 
 use wrt_error::{Error, ErrorCategory, Result};
@@ -89,7 +89,7 @@ pub mod async_canonical_lifting {
     
     pub fn async_canonical_lift(
         _values: &[u8],
-        _target_types: &[ValType],
+        _target_types: &[ValType<NoStdProvider<65536>>],
         _options: &CanonicalOptions,
     ) -> Result<Vec<Value>> {
         Ok(vec![])
@@ -206,19 +206,19 @@ pub struct AsyncCanonicalAbi {
     #[cfg(feature = "std")]
     streams: BTreeMap<StreamHandle, Box<dyn StreamValue>>,
     #[cfg(not(any(feature = "std", )))]
-    streams: BoundedVec<(StreamHandle, StreamValueEnum), MAX_ASYNC_RESOURCES>,
+    streams: BoundedVec<(StreamHandle, StreamValueEnum), MAX_ASYNC_RESOURCES, NoStdProvider<65536>>,
 
     /// Future registry
     #[cfg(feature = "std")]
     futures: BTreeMap<FutureHandle, Box<dyn FutureValue>>,
     #[cfg(not(any(feature = "std", )))]
-    futures: BoundedVec<(FutureHandle, FutureValueEnum), MAX_ASYNC_RESOURCES>,
+    futures: BoundedVec<(FutureHandle, FutureValueEnum), MAX_ASYNC_RESOURCES, NoStdProvider<65536>>,
 
     /// Error context registry
     #[cfg(feature = "std")]
     error_contexts: BTreeMap<ErrorContextHandle, ErrorContext>,
     #[cfg(not(any(feature = "std", )))]
-    error_contexts: BoundedVec<(ErrorContextHandle, ErrorContext), MAX_ASYNC_RESOURCES>,
+    error_contexts: BoundedVec<(ErrorContextHandle, ErrorContext), MAX_ASYNC_RESOURCES, NoStdProvider<65536>>,
 
     /// Next handle IDs
     next_stream_handle: u32,
@@ -235,7 +235,7 @@ pub trait StreamValue: fmt::Debug {
     fn cancel_write(&mut self) -> WrtResult<()>;
     fn close_readable(&mut self) -> WrtResult<()>;
     fn close_writable(&mut self) -> WrtResult<()>;
-    fn element_type(&self) -> &ValType;
+    fn element_type(&self) -> &ValType<NoStdProvider<65536>>;
     fn is_readable(&self) -> bool;
     fn is_writable(&self) -> bool;
 }
@@ -249,7 +249,7 @@ pub trait FutureValue: fmt::Debug {
     fn cancel_write(&mut self) -> WrtResult<()>;
     fn close_readable(&mut self) -> WrtResult<()>;
     fn close_writable(&mut self) -> WrtResult<()>;
-    fn value_type(&self) -> &ValType;
+    fn value_type(&self) -> &ValType<NoStdProvider<65536>>;
     fn is_readable(&self) -> bool;
     fn is_writable(&self) -> bool;
 }
@@ -307,7 +307,7 @@ impl AsyncCanonicalAbi {
     }
 
     /// Create a new stream
-    pub fn stream_new(&mut self, element_type: &ValType) -> WrtResult<StreamHandle> {
+    pub fn stream_new(&mut self, element_type: &ValType<NoStdProvider<65536>>) -> WrtResult<StreamHandle> {
         let handle = StreamHandle(self.next_stream_handle);
         self.next_stream_handle += 1;
 
@@ -576,7 +576,7 @@ impl AsyncCanonicalAbi {
     }
 
     /// Create a new future
-    pub fn future_new(&mut self, value_type: &ValType) -> WrtResult<FutureHandle> {
+    pub fn future_new(&mut self, value_type: &ValType<NoStdProvider<65536>>) -> WrtResult<FutureHandle> {
         let handle = FutureHandle(self.next_future_handle);
         self.next_future_handle += 1;
 
@@ -721,7 +721,7 @@ impl AsyncCanonicalAbi {
     pub fn error_context_debug_string(
         &self,
         handle: ErrorContextHandle,
-    ) -> WrtResult<BoundedString<2048, NoStdProvider<65536>>> {
+    ) -> Wrtcore::result::Result<BoundedString<2048, NoStdProvider<65536>>> {
         #[cfg(feature = "std")]
         {
             if let Some(error_context) = self.error_contexts.get(&handle) {
@@ -816,7 +816,7 @@ impl AsyncCanonicalAbi {
     pub fn async_lift(
         &mut self,
         values: &[u8],
-        target_types: &[ValType],
+        target_types: &[ValType<NoStdProvider<65536>>],
         context: &CanonicalLiftContext,
     ) -> Result<AsyncLiftResult> {
         // Check for immediate values first
@@ -827,11 +827,11 @@ impl AsyncCanonicalAbi {
 
         // Check for stream types
         if target_types.len() == 1 {
-            if let ValType::Stream(_) = &target_types[0] {
+            if let ValType<NoStdProvider<65536>>::Stream(_) = &target_types[0] {
                 let stream_handle = self.stream_new(&target_types[0])?;
                 return Ok(AsyncLiftResult::Stream(stream_handle));
             }
-            if let ValType::Future(_) = &target_types[0] {
+            if let ValType<NoStdProvider<65536>>::Future(_) = &target_types[0] {
                 let future_handle = self.future_new(&target_types[0])?;
                 return Ok(AsyncLiftResult::Future(future_handle));
             }
@@ -901,11 +901,11 @@ impl AsyncCanonicalAbi {
     }
 
     // Private helper methods for async operations
-    fn can_lift_immediately(&self, _values: &[u8], target_types: &[ValType]) -> Result<bool> {
+    fn can_lift_immediately(&self, _values: &[u8], target_types: &[ValType<NoStdProvider<65536>>]) -> Result<bool> {
         // Check if all target types are immediately liftable (not async types)
         for ty in target_types {
             match ty {
-                ValType::Stream(_) | ValType::Future(_) => return Ok(false),
+                ValType<NoStdProvider<65536>>::Stream(_) | ValType<NoStdProvider<65536>>::Future(_) => return Ok(false),
                 _ => {}
             }
         }
@@ -923,7 +923,7 @@ impl AsyncCanonicalAbi {
         Ok(true)
     }
 
-    fn lift_immediate(&self, values: &[u8], target_types: &[ValType], options: &CanonicalOptions) -> Result<Vec<Value>> {
+    fn lift_immediate(&self, values: &[u8], target_types: &[ValType<NoStdProvider<65536>>], options: &CanonicalOptions) -> Result<Vec<Value>> {
         // Use the stub canonical ABI lifting
         async_canonical_lifting::async_canonical_lift(values, target_types, options)
     }
@@ -998,7 +998,7 @@ where
         Ok(())
     }
 
-    fn element_type(&self) -> &ValType {
+    fn element_type(&self) -> &ValType<NoStdProvider<65536>> {
         &self.inner.element_type
     }
 
@@ -1063,7 +1063,7 @@ where
         Ok(())
     }
 
-    fn value_type(&self) -> &ValType {
+    fn value_type(&self) -> &ValType<NoStdProvider<65536>> {
         &self.inner.value_type
     }
 
@@ -1125,7 +1125,7 @@ mod tests {
         let mut abi = AsyncCanonicalAbi::new();
 
         // Create stream
-        let stream_handle = abi.stream_new(&ValType::U32).unwrap();
+        let stream_handle = abi.stream_new(&ValType<NoStdProvider<65536>>::U32).unwrap();
 
         // Write to stream
         let values = vec![Value::U32(42), Value::U32(24)];
@@ -1151,7 +1151,7 @@ mod tests {
         let mut abi = AsyncCanonicalAbi::new();
 
         // Create future
-        let future_handle = abi.future_new(&ValType::String).unwrap();
+        let future_handle = abi.future_new(&ValType<NoStdProvider<65536>>::String).unwrap();
 
         // Initially should block
         let result = abi.future_read(future_handle).unwrap();
@@ -1202,7 +1202,7 @@ mod tests {
         let mut abi = AsyncCanonicalAbi::new();
         let context = CanonicalLiftContext::default();
         let values = vec![42u8, 0, 0, 0];
-        let types = vec![ValType::U32];
+        let types = vec![ValType<NoStdProvider<65536>>::U32];
 
         match abi.async_lift(&values, &types, &context).unwrap() {
             AsyncLiftResult::Immediate(vals) => {
@@ -1218,7 +1218,7 @@ mod tests {
         let mut abi = AsyncCanonicalAbi::new();
         let context = CanonicalLiftContext::default();
         let values = vec![];
-        let types = vec![ValType::Stream(Box::new(ValType::U32))];
+        let types = vec![ValType<NoStdProvider<65536>>::Stream(Box::new(ValType<NoStdProvider<65536>>::U32))];
 
         match abi.async_lift(&values, &types, &context).unwrap() {
             AsyncLiftResult::Stream(handle) => {

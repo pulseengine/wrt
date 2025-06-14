@@ -24,6 +24,7 @@ categories = ["wasm", "os"]
 [dependencies]
 wrt-error = { workspace = true } # Assuming wrt-error is in workspace.dependencies
 wrt-sync = { workspace = true } # Add wrt-sync for synchronization primitives
+wrt-panic = { workspace = true, optional = true } # Dedicated panic handler
 # wrt-format = { workspace = true, optional = true } # For AST allocator - temporarily disabled to fix cyclic dependency
 # wrt-foundation = { workspace = true, optional = true } # For bounded collections - temporarily disabled to fix cyclic dependency
 # libc dependency removed - using direct syscalls instead
@@ -32,7 +33,7 @@ wrt-sync = { workspace = true } # Add wrt-sync for synchronization primitives
 criterion = { version = "0.6", features = ["html_reports"] }
 
 [features]
-default = [] # No std/alloc by default
+default = [] # No panic handler by default - libraries should provide their own
 # Binary choice: std OR no_std (no alloc middle ground)
 
 # Binary choice: std OR no_std (no alloc middle ground)
@@ -58,7 +59,10 @@ platform-vxworks = [] # VxWorks RTOS support (LKM and RTP)
 # arm-hardening = [] # If any platform code depends on this
 helper-mode = [] # Added for C-ABI runtime
 disable-panic-handler = ["wrt-error/disable-panic-handler", "wrt-sync/disable-panic-handler"] # Disable panic handler for library builds
-enable-panic-handler = [] # Enable panic handler for standalone no_std builds
+enable-panic-handler = ["dep:wrt-panic", "wrt-panic/default-panic-handler"] # Enable basic panic handler for standalone no_std builds
+dev-panic-handler = ["dep:wrt-panic", "wrt-panic/dev", "wrt-panic/default-panic-handler"] # Development panic handler with debugging
+asil-b-panic-handler = ["dep:wrt-panic", "wrt-panic/asil-b", "wrt-panic/default-panic-handler"] # ASIL-B compliant panic handler
+asil-d-panic-handler = ["dep:wrt-panic", "wrt-panic/asil-d", "wrt-panic/default-panic-handler"] # ASIL-D compliant panic handler
 
 [lib]
 crate-type = ["rlib", "staticlib"] # staticlib for C ABI helper if needed later

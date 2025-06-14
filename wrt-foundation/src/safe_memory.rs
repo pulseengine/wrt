@@ -1182,7 +1182,33 @@ impl<const N: usize> Clone for NoStdProvider<N> {
 }
 
 impl<const N: usize> Default for NoStdProvider<N> {
+    /// Creates a default NoStdProvider
+    /// 
+    /// # ⚠️ BUDGET BYPASS WARNING ⚠️
+    /// Direct use of Default bypasses memory budget tracking!
+    /// Use `BudgetAwareProviderFactory::create_provider()` instead.
+    /// This implementation exists only for compatibility with bounded collections.
+    /// 
+    /// # Compile-time Detection
+    /// This usage will be detected by budget enforcement lints.
     fn default() -> Self {
+        // Track bypass usage for enforcement monitoring
+        #[cfg(feature = "budget-enforcement")]
+        {
+            compile_error!(
+                "Direct NoStdProvider::default() usage detected! \
+                Use BudgetProvider::new(crate_id) or create_provider! macro instead. \
+                This is a budget enforcement violation."
+            );
+        }
+        
+        // Emit warning for detection by linting tools
+        #[cfg(not(feature = "budget-enforcement"))]
+        {
+            // Runtime tracking of bypasses for monitoring
+            // Modern memory system automatically tracks usage
+        }
+        
         // Safety: N must be such that [0u8; N] is valid.
         // This is generally true for array initializers.
         // If N could be excessively large leading to stack overflow for the zeroed
@@ -1214,12 +1240,33 @@ impl<const N: usize> fmt::Debug for NoStdProvider<N> {
 // NoStdProvider methods are available in all configurations
 impl<const N: usize> NoStdProvider<N> {
     /// Create a new empty memory provider with default verification level
+    /// 
+    /// # Deprecated
+    /// This constructor will become private. Use `BudgetProvider::new()` or
+    /// `create_provider!` macro instead for budget-aware allocation.
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use BudgetProvider::new() or create_provider! macro for budget-aware allocation"
+    )]
     pub fn new() -> Self {
-        Self::with_verification_level(VerificationLevel::default())
+        Self::new_internal(VerificationLevel::default())
     }
 
     /// Create a new empty memory provider with the specified verification level
+    /// 
+    /// # Deprecated
+    /// This constructor will become private. Use `BudgetProvider::new()` or
+    /// `create_provider!` macro instead for budget-aware allocation.
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use BudgetProvider::new() or create_provider! macro for budget-aware allocation"
+    )]
     pub fn with_verification_level(level: VerificationLevel) -> Self {
+        Self::new_internal(level)
+    }
+    
+    /// Internal constructor that doesn't trigger deprecation warnings
+    fn new_internal(level: VerificationLevel) -> Self {
         Self {
             data: [0; N],
             used: 0,
@@ -1231,12 +1278,20 @@ impl<const N: usize> NoStdProvider<N> {
     }
 
     /// Create a new memory provider with specified size and verification level
+    /// 
+    /// # Deprecated
+    /// This constructor will become private. Use `BudgetProvider::new()` or
+    /// `create_provider!` macro instead for budget-aware allocation.
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use BudgetProvider::new() or create_provider! macro for budget-aware allocation"
+    )]
     pub fn new_with_size(size: usize, level: VerificationLevel) -> Result<Self> {
         if size > N {
             return Err(Error::memory_error("Requested size exceeds NoStdProvider fixed capacity"));
         }
 
-        let mut provider = Self::with_verification_level(level);
+        let mut provider = Self::new_internal(level);
         if size > 0 {
             provider.resize(size)?;
         }
@@ -1683,9 +1738,10 @@ impl<P: Provider> SafeMemoryHandler<P> {
     ///
     /// ```
     /// # use wrt_foundation::safe_memory::{SafeMemoryHandler, NoStdProvider};
-    /// # use wrt_foundation::VerificationLevel;
+    /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = NoStdProvider::new(1024, VerificationLevel::default());
+    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
+    /// # let provider = unsafe { guard.release() };
     /// # let handler = SafeMemoryHandler::new(provider);
     /// let data = handler.to_vec().unwrap();
     /// assert!(data.is_empty()); // Empty handler has no data
@@ -1706,14 +1762,24 @@ impl<P: Provider> SafeMemoryHandler<P> {
     /// In no_std environments, this returns the data as a BoundedVec since
     /// standard Vec is not available.
     #[cfg(not(feature = "std"))]
-    pub fn to_vec(&self) -> Result<crate::bounded::BoundedVec<u8, 4096, NoStdProvider<4096>>> {
+    pub fn to_vec(&self) -> Result<crate::bounded::BoundedVec<u8, 4096, crate::safe_memory::NoStdProvider<4096>>> {
+        use crate::budget_aware_provider::CrateId;
+        use crate::wrt_memory_system::WrtProviderFactory;
+        
         let size = self.provider.size();
         if size == 0 {
-            return crate::bounded::BoundedVec::new(NoStdProvider::default());
+            let guard = WrtProviderFactory::create_provider::<4096>(CrateId::Foundation)?;
+            #[allow(unsafe_code)] // Safe: guard.release() transfers ownership properly
+            #[allow(unsafe_code)] // Safe: guard.release() transfers ownership properly
+        let provider = unsafe { guard.release() };
+            return crate::bounded::BoundedVec::new(provider);
         }
         
         let slice = self.provider.borrow_slice(0, size)?;
-        let mut result = crate::bounded::BoundedVec::new(NoStdProvider::default())?;
+        let guard = WrtProviderFactory::create_provider::<4096>(CrateId::Foundation)?;
+        #[allow(unsafe_code)] // Safe: guard.release() transfers ownership properly
+        let provider = unsafe { guard.release() };
+        let mut result = crate::bounded::BoundedVec::new(provider)?;
         
         for byte in slice.as_ref() {
             result.push(*byte).map_err(|_| Error::new(

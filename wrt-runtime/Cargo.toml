@@ -19,7 +19,7 @@ wrt-sync = { workspace = true, default-features = false }
 wrt-instructions = { workspace = true, default-features = false }
 wrt-host = { workspace = true, default-features = false }
 wrt-intercept = { workspace = true, default-features = false }
-wrt-platform = { workspace = true, default-features = false }
+wrt-platform = { workspace = true }
 wrt-debug = { workspace = true, default-features = false, optional = true }
 
 # No-std support (removed invalid alloc dependency)
@@ -27,7 +27,7 @@ wrt-debug = { workspace = true, default-features = false, optional = true }
 # No additional dependencies for now
 
 [features]
-default = []
+default = ["std"]
 # Binary choice: std OR no_std (no alloc middle ground)
 std = [
     # "wrt-decoder/std",

@@ -1,8 +1,17 @@
 use std::sync::Weak;
+use std::format;
 
 use wrt_format::component::ResourceOperation as FormatResourceOperation;
 use wrt_foundation::resource::ResourceOperation;
 use wrt_intercept::{builtins::InterceptContext as InterceptionContext, InterceptionResult};
+
+// Safety-critical imports for WRT allocator
+#[cfg(all(feature = "std", feature = "safety-critical"))]
+use wrt_foundation::allocator::{WrtHashMap, WrtVec, CrateId};
+#[cfg(all(feature = "std", not(feature = "safety-critical")))]
+use std::collections::HashMap;
+#[cfg(not(feature = "std"))]
+use alloc::collections::BTreeMap as HashMap;
 
 use super::{
     buffer_pool::BufferPool,
@@ -107,6 +116,9 @@ struct ResourceEntry {
     /// The resource instance
     resource: Arc<Mutex<Resource>>,
     /// Weak references to borrowed resources
+    #[cfg(feature = "safety-critical")]
+    borrows: WrtVec<Weak<Mutex<Resource>>, {CrateId::Component as u8}, 32>,
+    #[cfg(not(feature = "safety-critical"))]
     borrows: Vec<Weak<Mutex<Resource>>>,
     /// Memory strategy for this resource
     memory_strategy: MemoryStrategy,
@@ -169,6 +181,9 @@ impl BufferPoolTrait for SizeClassBufferPool {
 #[derive(Clone)]
 pub struct ResourceTable {
     /// Map of resource handles to resource entries
+    #[cfg(feature = "safety-critical")]
+    resources: WrtHashMap<u32, ResourceEntry, {CrateId::Component as u8}, 1024>,
+    #[cfg(not(feature = "safety-critical"))]
     resources: HashMap<u32, ResourceEntry>,
     /// Next available resource handle
     next_handle: u32,
@@ -181,6 +196,9 @@ pub struct ResourceTable {
     /// Buffer pool for bounded copy operations
     buffer_pool: Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
     /// Interceptors for resource operations
+    #[cfg(feature = "safety-critical")]
+    interceptors: WrtVec<Arc<dyn ResourceInterceptor>, {CrateId::Component as u8}, 16>,
+    #[cfg(not(feature = "safety-critical"))]
     interceptors: Vec<Arc<dyn ResourceInterceptor>>,
 }
 
@@ -201,6 +219,9 @@ impl ResourceTable {
     /// Create a new resource table with default settings
     pub fn new() -> Self {
         Self {
+            #[cfg(feature = "safety-critical")]
+            resources: WrtHashMap::new(),
+            #[cfg(not(feature = "safety-critical"))]
             resources: HashMap::new(),
             next_handle: 1, // Start at 1 as 0 is reserved
             max_resources: MAX_RESOURCES,
@@ -208,6 +229,9 @@ impl ResourceTable {
             default_verification_level: VerificationLevel::Critical,
             buffer_pool: Arc::new(Mutex::new(BufferPool::new(4096)))
                 as Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
+            #[cfg(feature = "safety-critical")]
+            interceptors: WrtVec::new(),
+            #[cfg(not(feature = "safety-critical"))]
             interceptors: Vec::new(),
         }
     }
@@ -215,6 +239,9 @@ impl ResourceTable {
     /// Create a new resource table with optimized size-class buffer pool
     pub fn new_with_optimized_memory() -> Self {
         Self {
+            #[cfg(feature = "safety-critical")]
+            resources: WrtHashMap::new(),
+            #[cfg(not(feature = "safety-critical"))]
             resources: HashMap::new(),
             next_handle: 1,
             max_resources: MAX_RESOURCES,
@@ -222,6 +249,9 @@ impl ResourceTable {
             default_verification_level: VerificationLevel::Critical,
             buffer_pool: Arc::new(Mutex::new(SizeClassBufferPool::new()))
                 as Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
+            #[cfg(feature = "safety-critical")]
+            interceptors: WrtVec::new(),
+            #[cfg(not(feature = "safety-critical"))]
             interceptors: Vec::new(),
         }
     }
@@ -233,6 +263,9 @@ impl ResourceTable {
         verification_level: VerificationLevel,
     ) -> Self {
         Self {
+            #[cfg(feature = "safety-critical")]
+            resources: WrtHashMap::new(),
+            #[cfg(not(feature = "safety-critical"))]
             resources: HashMap::new(),
             next_handle: 1,
             max_resources,
@@ -240,6 +273,9 @@ impl ResourceTable {
             default_verification_level: verification_level,
             buffer_pool: Arc::new(Mutex::new(BufferPool::new(4096)))
                 as Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
+            #[cfg(feature = "safety-critical")]
+            interceptors: WrtVec::new(),
+            #[cfg(not(feature = "safety-critical"))]
             interceptors: Vec::new(),
         }
     }
@@ -251,6 +287,9 @@ impl ResourceTable {
         verification_level: VerificationLevel,
     ) -> Self {
         Self {
+            #[cfg(feature = "safety-critical")]
+            resources: WrtHashMap::new(),
+            #[cfg(not(feature = "safety-critical"))]
             resources: HashMap::new(),
             next_handle: 1,
             max_resources,
@@ -258,13 +297,30 @@ impl ResourceTable {
             default_verification_level: verification_level,
             buffer_pool: Arc::new(Mutex::new(SizeClassBufferPool::new()))
                 as Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
+            #[cfg(feature = "safety-critical")]
+            interceptors: WrtVec::new(),
+            #[cfg(not(feature = "safety-critical"))]
             interceptors: Vec::new(),
         }
     }
 
     /// Add a resource interceptor
-    pub fn add_interceptor(&mut self, interceptor: Arc<dyn ResourceInterceptor>) {
-        self.interceptors.push(interceptor);
+    pub fn add_interceptor(&mut self, interceptor: Arc<dyn ResourceInterceptor>) -> Result<()> {
+        #[cfg(feature = "safety-critical")]
+        {
+            self.interceptors.push(interceptor).map_err(|_| {
+                Error::new(
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_EXHAUSTED,
+                    "Too many resource interceptors (limit: 16)"
+                )
+            })
+        }
+        #[cfg(not(feature = "safety-critical"))]
+        {
+            self.interceptors.push(interceptor);
+            Ok(())
+        }
     }
 
     /// Create a new resource
@@ -277,8 +333,8 @@ impl ResourceTable {
         if self.resources.len() >= self.max_resources {
             return Err(Error::new(
                 ErrorCategory::Resource,
-                codes::RESOURCE_ERROR,
-                "Component not found" reached", self.max_resources).to_string(),
+                codes::RESOURCE_EXHAUSTED,
+                format!("Maximum resources ({}) reached", self.max_resources),
             ));
         }
 
@@ -296,6 +352,9 @@ impl ResourceTable {
 
         let entry = ResourceEntry {
             resource: Arc::new(Mutex::new(resource)),
+            #[cfg(feature = "safety-critical")]
+            borrows: WrtVec::new(),
+            #[cfg(not(feature = "safety-critical"))]
             borrows: Vec::new(),
             memory_strategy: self
                 .get_strategy_from_interceptors(handle)
@@ -303,7 +362,20 @@ impl ResourceTable {
             verification_level: self.default_verification_level,
         };
 
-        self.resources.insert(handle, entry);
+        #[cfg(feature = "safety-critical")]
+        {
+            self.resources.insert(handle, entry).map_err(|_| {
+                Error::new(
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_EXHAUSTED,
+                    "Too many resources in table (limit: 1024)"
+                )
+            })?;
+        }
+        #[cfg(not(feature = "safety-critical"))]
+        {
+            self.resources.insert(handle, entry);
+        }
 
         Ok(handle)
     }
@@ -336,19 +408,51 @@ impl ResourceTable {
         // Store the weak reference in the original resource
         let weak_ref = Arc::downgrade(&resource);
         if let Some(entry) = self.resources.get_mut(&handle) {
-            entry.borrows.push(weak_ref);
+            #[cfg(feature = "safety-critical")]
+            {
+                entry.borrows.push(weak_ref).map_err(|_| {
+                    Error::new(
+                        ErrorCategory::Resource,
+                        codes::RESOURCE_EXHAUSTED,
+                        "Too many borrows for this resource (limit: 32)"
+                    )
+                })?;
+            }
+            #[cfg(not(feature = "safety-critical"))]
+            {
+                entry.borrows.push(weak_ref);
+            }
         }
 
         // Store the borrowed resource
-        self.resources.insert(
+        #[cfg(feature = "safety-critical")]
+        let result = self.resources.insert(
             borrow_handle,
             ResourceEntry {
                 resource,
-                borrows: Vec::new(),
+                borrows: WrtVec::new(),
                 memory_strategy: self.default_memory_strategy,
                 verification_level: self.default_verification_level,
             },
-        );
+        ).map_err(|_| {
+            Error::new(
+                ErrorCategory::Resource,
+                codes::RESOURCE_EXHAUSTED,
+                "Too many resources in table (limit: 1024)"
+            )
+        })?;
+        #[cfg(not(feature = "safety-critical"))]
+        {
+            self.resources.insert(
+                borrow_handle,
+                ResourceEntry {
+                    resource,
+                    borrows: Vec::new(),
+                    memory_strategy: self.default_memory_strategy,
+                    verification_level: self.default_verification_level,
+                },
+            );
+        }
 
         Ok(borrow_handle)
     }

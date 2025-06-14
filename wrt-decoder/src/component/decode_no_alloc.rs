@@ -34,10 +34,17 @@
 //! }
 //! ```
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
 use crate::prelude::BoundedVecExt;
+use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary;
-use wrt_foundation::NoStdProvider;
+use wrt_foundation::{NoStdProvider, BudgetProvider, CrateId};
+use wrt_foundation::traits::BoundedCapacity;
+
+// Helper functions to create properly sized providers
+#[allow(deprecated)] // Using deprecated API to avoid unsafe code
+fn create_provider_1024() -> Result<NoStdProvider<1024>> {
+    BudgetProvider::new::<1024>(CrateId::Decoder)
+}
 
 /// Read a name from binary data (no_std version)
 /// Returns (name_bytes, total_bytes_read)
@@ -45,38 +52,37 @@ fn read_name(data: &[u8], offset: usize) -> Result<(&[u8], usize)> {
     if offset >= data.len() {
         return Err(Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Offset beyond data"));
     }
-    
+
     // Read length as LEB128
     let (name_len, leb_bytes) = binary::read_leb128_u32(data, offset)?;
     let name_start = offset + leb_bytes;
     let name_end = name_start + name_len as usize;
-    
+
     if name_end > data.len() {
-        return Err(Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Name extends beyond data"));
+        return Err(Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Name extends beyond data",
+        ));
     }
-    
+
     Ok((&data[name_start..name_end], leb_bytes + name_len as usize))
 }
 // BoundedCapacity trait is private, using alternative approaches for length operations
 use wrt_foundation::{
     bounded::{
-        BoundedString, BoundedVec, MAX_BUFFER_SIZE, MAX_COMPONENT_LIST_ITEMS,
-        MAX_COMPONENT_RECORD_FIELDS, MAX_COMPONENT_TYPES, MAX_WASM_NAME_LENGTH,
+        BoundedString, BoundedVec, MAX_COMPONENT_TYPES,
     },
     component::{MAX_COMPONENT_EXPORTS, MAX_COMPONENT_IMPORTS},
-    safe_memory::SafeSlice,
     verification::VerificationLevel,
 };
 
 use crate::{
-    component::{
-        section::{
-            ComponentExport, ComponentImport, ComponentInstance, ComponentSection, ComponentType,
+    component::section::{
+            ComponentExport, ComponentImport, ComponentType,
         },
-        validation,
-    },
     decoder_no_alloc::{
-        create_error, create_memory_provider, verify_wasm_header, NoAllocErrorCode, MAX_MODULE_SIZE,
+        create_error, create_memory_provider, NoAllocErrorCode, MAX_MODULE_SIZE,
     },
     prelude::*,
 };
@@ -231,12 +237,13 @@ pub struct ComponentHeader {
 impl ComponentHeader {
     /// Creates a new ComponentHeader with default values
     pub fn new(verification_level: VerificationLevel) -> Self {
+        let provider = create_provider_1024().unwrap_or_else(|_| NoStdProvider::default());
         Self {
             size: 0,
             section_count: 0,
-            types: BoundedVec::empty(),
-            exports: BoundedVec::empty(),
-            imports: BoundedVec::empty(),
+            types: BoundedVec::new(provider.clone()).unwrap_or_default(),
+            exports: BoundedVec::new(provider.clone()).unwrap_or_default(),
+            imports: BoundedVec::new(provider).unwrap_or_default(),
             has_start: false,
             has_core_modules: false,
             has_sub_components: false,
@@ -488,15 +495,20 @@ fn scan_component_imports(
             // For now, just store the name
             let import = ComponentImport {
                 name: {
-                    let name_str = core::str::from_utf8(name)
-                        .map_err(|_| Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Invalid UTF-8 in name"))?;
+                    let name_str = core::str::from_utf8(name).map_err(|_| {
+                        Error::new(
+                            ErrorCategory::Parse,
+                            codes::PARSE_ERROR,
+                            "Invalid UTF-8 in name",
+                        )
+                    })?;
                     BoundedString::from_str_truncate(name_str, NoStdProvider::<1024>::default())?
                 },
                 type_index: 0, // Placeholder
             };
 
             // Try to add the import to our bounded collection
-            let _ = imports.try_push(import);
+            let _ = imports.push(import);
 
             // Skip the import type (simplified)
             if offset < section_data.len() {
@@ -550,8 +562,13 @@ fn scan_component_exports(
             // For now, just store the name
             let export = ComponentExport {
                 name: {
-                    let name_str = core::str::from_utf8(name)
-                        .map_err(|_| Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Invalid UTF-8 in name"))?;
+                    let name_str = core::str::from_utf8(name).map_err(|_| {
+                        Error::new(
+                            ErrorCategory::Parse,
+                            codes::PARSE_ERROR,
+                            "Invalid UTF-8 in name",
+                        )
+                    })?;
                     BoundedString::from_str_truncate(name_str, NoStdProvider::<1024>::default())?
                 },
                 type_index: 0, // Placeholder
@@ -559,7 +576,7 @@ fn scan_component_exports(
             };
 
             // Try to add the export to our bounded collection
-            let _ = exports.try_push(export);
+            let _ = exports.push(export);
 
             // Skip the export type and index (simplified)
             if offset < section_data.len() {
@@ -617,7 +634,7 @@ fn scan_component_types(
             };
 
             // Try to add the type to our bounded collection
-            let _ = types.try_push(component_type);
+            let _ = types.push(component_type);
 
             // Skip remaining type data (simplified)
             // In a real implementation, we would parse the type structure

@@ -7,13 +7,12 @@
 extern crate alloc;
 
 use crate::prelude::{Debug, Eq, PartialEq};
+use crate::bounded_runtime_infra::{
+    BoundedBranchPredictionMap, BoundedFunctionPredictorMap, RuntimeProvider,
+    new_branch_prediction_map, new_function_predictor_map
+};
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::traits::{BoundedCapacity, BytesWriter, LittleEndian};
-
-#[cfg(feature = "std")]
-use std::vec::Vec;
-#[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
 
 /// Branch prediction hint indicating likelihood of branch being taken
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -176,11 +175,8 @@ impl wrt_foundation::traits::FromBytes for BranchPrediction {
 pub struct FunctionBranchPredictor {
     /// Function index
     pub function_index: u32,
-    /// Branch predictions indexed by instruction offset
-    #[cfg(feature = "std")]
-    predictions: std::collections::BTreeMap<u32, BranchPrediction>,
-    #[cfg(not(feature = "std"))]
-    predictions: wrt_foundation::BoundedVec<BranchPrediction, 256, wrt_foundation::NoStdProvider<1024>>,
+    /// Branch predictions indexed by instruction offset using bounded collections
+    predictions: BoundedBranchPredictionMap<BranchPrediction>,
 }
 
 impl FunctionBranchPredictor {
@@ -188,43 +184,18 @@ impl FunctionBranchPredictor {
     #[must_use] pub fn new(function_index: u32) -> Self {
         Self {
             function_index,
-            #[cfg(feature = "std")]
-            predictions: std::collections::BTreeMap::new(),
-            #[cfg(not(feature = "std"))]
-            predictions: wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::<1024>::default()).unwrap(),
+            predictions: new_branch_prediction_map(),
         }
     }
     
     /// Add branch prediction for an instruction
     pub fn add_prediction(&mut self, prediction: BranchPrediction) -> Result<()> {
-        #[cfg(feature = "std")]
-        {
-            self.predictions.insert(prediction.instruction_offset, prediction);
-            Ok(())
-        }
-        #[cfg(not(any(feature = "std", )))]
-        {
-            self.predictions.push(prediction).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many branch predictions")
-            })
-        }
+        self.predictions.insert(prediction.instruction_offset, prediction)
     }
     
     /// Get branch prediction for instruction offset
     pub fn get_prediction(&self, instruction_offset: u32) -> Option<BranchPrediction> {
-        #[cfg(feature = "std")]
-        {
-            self.predictions.get(&instruction_offset).cloned()
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            for prediction in &self.predictions {
-                if prediction.instruction_offset == instruction_offset {
-                    return Some(prediction);
-                }
-            }
-            None
-        }
+        self.predictions.get(&instruction_offset).ok().flatten().cloned()
     }
     
     /// Get predicted next instruction for current offset
@@ -306,21 +277,15 @@ impl wrt_foundation::traits::FromBytes for FunctionBranchPredictor {
 /// Module-level branch prediction system
 #[derive(Debug, Clone)]
 pub struct ModuleBranchPredictor {
-    /// Function predictors indexed by function index
-    #[cfg(feature = "std")]
-    function_predictors: std::collections::BTreeMap<u32, FunctionBranchPredictor>,
-    #[cfg(not(feature = "std"))]
-    function_predictors: wrt_foundation::BoundedVec<FunctionBranchPredictor, 1024, wrt_foundation::NoStdProvider<1024>>,
+    /// Function predictors indexed by function index using bounded collections
+    function_predictors: BoundedFunctionPredictorMap<FunctionBranchPredictor>,
 }
 
 impl ModuleBranchPredictor {
     /// Create new module branch predictor
     #[must_use] pub fn new() -> Self {
         Self {
-            #[cfg(feature = "std")]
-            function_predictors: std::collections::BTreeMap::new(),
-            #[cfg(not(feature = "std"))]
-            function_predictors: wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::<1024>::default()).unwrap(),
+            function_predictors: new_function_predictor_map(),
         }
     }
     

@@ -41,6 +41,9 @@ macro_rules! debug_println {
 // Export our prelude module for consistent imports
 pub mod prelude;
 
+// Bounded infrastructure for static memory allocation
+pub mod bounded_component_infra;
+
 // Core component modules
 pub mod adapter;
 pub mod agent_registry;
@@ -57,6 +60,8 @@ pub mod instantiation;
 #[cfg(not(feature = "std"))]
 pub mod instance_no_std;
 pub mod memory_layout;
+#[cfg(feature = "safety-critical")]
+pub mod memory_limits;
 pub mod parser;
 pub mod resource_management;
 pub mod resources;

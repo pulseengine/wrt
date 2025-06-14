@@ -7,8 +7,12 @@ use core::fmt;
 #[cfg(feature = "std")]
 use std::fmt;
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "safety-critical"))]
+use wrt_foundation::allocator::{WrtVec, CrateId};
+#[cfg(all(feature = "std", not(feature = "safety-critical")))]
 use std::{string::String, vec::Vec};
+#[cfg(feature = "std")]
+use std::string::String;
 
 use wrt_foundation::{bounded::BoundedVec, prelude::*, traits::{Checksummable, ToBytes, FromBytes}};
 
@@ -37,22 +41,30 @@ pub struct ComponentInstance {
     /// Reference to the component definition
     pub component: Component,
     /// Resolved imports for this instance
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    pub imports: WrtVec<ResolvedImport, {CrateId::Component as u8}, 256>,
+    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub imports: Vec<ResolvedImport>,
     #[cfg(not(any(feature = "std", )))]
     pub imports: BoundedVec<ResolvedImport, 256, wrt_foundation::safe_memory::NoStdProvider<65536>>,
     /// Resolved exports from this instance
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    pub exports: WrtVec<ResolvedExport, {CrateId::Component as u8}, 256>,
+    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub exports: Vec<ResolvedExport>,
     #[cfg(not(any(feature = "std", )))]
     pub exports: BoundedVec<ResolvedExport, 256, wrt_foundation::safe_memory::NoStdProvider<65536>>,
     /// Resource tables for this instance
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    pub resource_tables: WrtVec<ResourceTable, {CrateId::Component as u8}, 16>,
+    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub resource_tables: Vec<ResourceTable>,
     #[cfg(not(any(feature = "std", )))]
     pub resource_tables: BoundedVec<ResourceTable, 16, wrt_foundation::safe_memory::NoStdProvider<65536>>,
     /// Module instances embedded in this component
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    pub module_instances: WrtVec<ModuleInstance, {CrateId::Component as u8}, 64>,
+    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub module_instances: Vec<ModuleInstance>,
     #[cfg(not(any(feature = "std", )))]
     pub module_instances: BoundedVec<ModuleInstance, 64, wrt_foundation::safe_memory::NoStdProvider<65536>>,
@@ -81,7 +93,7 @@ impl Default for ComponentInstanceState {
 
 /// Component model value type
 #[derive(Debug, Clone, PartialEq)]
-pub enum ValType {
+pub enum ValType<NoStdProvider<65536>> {
     /// Boolean type
     Bool,
     /// Signed 8-bit integer
@@ -150,7 +162,7 @@ pub struct Field {
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
     pub name: BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<65536>>,
-    pub ty: ValType,
+    pub ty: ValType<NoStdProvider<65536>>,
 }
 
 /// Tuple type definition
@@ -159,7 +171,7 @@ pub struct Tuple {
     #[cfg(feature = "std")]
     pub types: Vec<ValType<NoStdProvider<65536>>>,
     #[cfg(not(any(feature = "std", )))]
-    pub types: BoundedVec<ValType, 32, wrt_foundation::safe_memory::NoStdProvider<65536>>,
+    pub types: BoundedVec<ValType<NoStdProvider<65536>>, 32, wrt_foundation::safe_memory::NoStdProvider<65536>>,
 }
 
 /// Variant type definition
@@ -258,7 +270,7 @@ pub enum Value {
     /// Option value
     Option(Option<Box<Value>>),
     /// Result value
-    Result(Result<Option<Box<Value>>, Box<Value>>),
+    Result(core::result::Result<Option<Box<Value>>, Box<Value>>),
     /// Flags value
     Flags(u32),
     /// Owned resource
@@ -561,7 +573,7 @@ macro_rules! impl_basic_traits {
 }
 
 // Apply macro to all complex types
-impl_basic_traits!(ValType, ValType::default());
+impl_basic_traits!(ValType<NoStdProvider<65536>>, ValType<NoStdProvider<65536>>::default());
 impl_basic_traits!(Record, Record::default());
 impl_basic_traits!(Field, Field::default());
 impl_basic_traits!(Tuple, Tuple::default());

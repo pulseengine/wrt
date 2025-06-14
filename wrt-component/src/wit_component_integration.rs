@@ -9,13 +9,13 @@ use std::{collections::BTreeMap, vec::Vec};
 use std::{collections::BTreeMap, vec::Vec};
 
 use wrt_foundation::{
-    BoundedString, BoundedVec,
+    bounded::{BoundedString, BoundedVec},
     prelude::*,
 };
 use wrt_error::{Error, Result};
 
 // Platform-aware type aliases for WIT component integration
-type ComponentProvider = wrt_foundation::safe_memory::NoStdProvider<4096>;  // 4KB for component data
+type ComponentProvider = wrt_foundation::budget_provider::BudgetProvider<4096>;  // 4KB for component data
 type WitBoundedString<const N: usize> = BoundedString<N, ComponentProvider>;
 
 // Re-export WIT AST types for convenience
@@ -48,7 +48,7 @@ pub struct WitComponentContext {
 #[derive(Debug, Clone)]
 pub struct InterfaceMapping {
     /// WIT interface name
-    pub wit_name: WitBoundedString<64, NoStdProvider<65536>>,
+    pub wit_name: WitBoundedString<64>,
     
     /// Component interface ID
     pub component_id: u32,
@@ -67,7 +67,7 @@ pub struct InterfaceMapping {
 #[derive(Debug, Clone)]
 pub struct TypeMapping {
     /// WIT type name
-    pub wit_name: WitBoundedString<64, NoStdProvider<65536>>,
+    pub wit_name: WitBoundedString<64>,
     
     /// Component type representation
     pub component_type: ComponentType,
@@ -86,7 +86,7 @@ pub struct TypeMapping {
 #[derive(Debug, Clone)]
 pub struct FunctionMapping {
     /// WIT function name
-    pub wit_name: WitBoundedString<64, NoStdProvider<65536>>,
+    pub wit_name: WitBoundedString<64>,
     
     /// Component function index
     pub function_index: u32,
@@ -122,9 +122,9 @@ pub enum ComponentType {
     Flags(FlagsType),
     
     /// Special types
-    Option(Box<ComponentType<NoStdProvider<65536>>),
-    Result(Box<ComponentType<NoStdProvider<65536>>, Box<ComponentType<NoStdProvider<65536>>),
-    List(Box<ComponentType<NoStdProvider<65536>>),
+    Option(Box<ComponentType>),
+    Result(Box<ComponentType>, Box<ComponentType>),
+    List(Box<ComponentType>),
     
     /// Resources
     Resource(ResourceType),
@@ -144,9 +144,9 @@ pub struct RecordType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldType {
     /// Field name
-    pub name: WitBoundedString<32, NoStdProvider<65536>>,
+    pub name: WitBoundedString<32>,
     /// Field type
-    pub field_type: Box<ComponentType<NoStdProvider<65536>>,
+    pub field_type: Box<ComponentType>,
 }
 
 /// Variant type definition
@@ -160,30 +160,30 @@ pub struct VariantType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CaseType {
     /// Case name
-    pub name: WitBoundedString<32, NoStdProvider<65536>>,
+    pub name: WitBoundedString<32>,
     /// Optional case type
-    pub case_type: Option<Box<ComponentType<NoStdProvider<65536>>>,
+    pub case_type: Option<Box<ComponentType>>,
 }
 
 /// Enum type definition
 #[derive(Debug, Clone, PartialEq)]
 pub struct EnumType {
     /// Enum values
-    pub values: Vec<WitBoundedString<32, NoStdProvider<65536>>>,
+    pub values: Vec<WitBoundedString<32>>,
 }
 
 /// Flags type definition
 #[derive(Debug, Clone, PartialEq)]
 pub struct FlagsType {
     /// Flag names
-    pub flags: Vec<WitBoundedString<32, NoStdProvider<65536>>>,
+    pub flags: Vec<WitBoundedString<32>>,
 }
 
 /// Resource type definition
 #[derive(Debug, Clone, PartialEq)]
 pub struct ResourceType {
     /// Resource name
-    pub name: WitBoundedString<64, NoStdProvider<65536>>,
+    pub name: WitBoundedString<64>,
     /// Resource methods
     pub methods: Vec<FunctionType>,
 }
@@ -192,9 +192,9 @@ pub struct ResourceType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionType {
     /// Parameter types
-    pub params: Vec<ComponentType<NoStdProvider<65536>>,
+    pub params: Vec<ComponentType>,
     /// Return types
-    pub returns: Vec<ComponentType<NoStdProvider<65536>>,
+    pub returns: Vec<ComponentType>,
 }
 
 /// Component configuration
@@ -376,7 +376,7 @@ impl WitComponentContext {
     }
     
     /// Convert WIT type to component type
-    fn convert_wit_type(&self, wit_type: &TypeExpr) -> Result<ComponentType<NoStdProvider<65536>> {
+    fn convert_wit_type(&self, wit_type: &TypeExpr) -> Result<ComponentType> {
         match wit_type {
             TypeExpr::Primitive(prim) => {
                 Ok(match prim.kind {

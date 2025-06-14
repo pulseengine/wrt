@@ -30,10 +30,11 @@ static-debug = ["line-info", "debug-info", "function-info"] # All static feature
 runtime-inspection = ["static-debug"]  # Read runtime state
 runtime-variables = ["runtime-inspection"]  # Variable value inspection
 runtime-memory = ["runtime-inspection"]  # Memory inspection
+memory-profiling = ["runtime-memory"]  # Memory profiling and leak detection
 runtime-control = ["runtime-inspection"]  # Execution control
 runtime-breakpoints = ["runtime-control"]  # Breakpoint support
 runtime-stepping = ["runtime-control"]  # Step execution
-runtime-debug = ["runtime-variables", "runtime-memory", "runtime-breakpoints", "runtime-stepping"]  # All runtime features
+runtime-debug = ["runtime-variables", "runtime-memory", "runtime-breakpoints", "runtime-stepping", "memory-profiling"]  # All runtime features
 
 # WIT integration features
 wit-integration = ["runtime-debug", "std"]  # WIT source mapping and debugging

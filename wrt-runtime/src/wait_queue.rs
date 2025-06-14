@@ -13,14 +13,18 @@
 
 extern crate alloc;
 
-use crate::prelude::{Debug, Eq, PartialEq};
+use crate::prelude::{BoundedVec, Debug, Eq, PartialEq};
 use crate::thread_manager::{ThreadId, ThreadState};
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_platform::sync::{Mutex, Condvar};
 #[cfg(feature = "std")]
-use std::{vec::Vec, collections::BTreeMap, sync::Arc, time::{Duration, Instant}};
+use std::{sync::Arc, time::{Duration, Instant}};
 #[cfg(not(feature = "std"))]
-use alloc::{vec::Vec, collections::BTreeMap, sync::Arc};
+use alloc::sync::Arc;
+
+use crate::bounded_runtime_infra::{
+    BoundedWaitQueueVec, RuntimeProvider, new_thread_vec
+};
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 use wrt_foundation::{bounded::BoundedVec, traits::BoundedCapacity};
 #[cfg(not(feature = "std"))]
@@ -286,11 +290,9 @@ impl WaitQueue {
 /// Wait queue manager for coordinating multiple queues
 #[derive(Debug)]
 pub struct WaitQueueManager {
-    /// All active wait queues
-    #[cfg(feature = "std")]
-    queues: BTreeMap<WaitQueueId, WaitQueue>,
-    #[cfg(not(feature = "std"))]
-    queues: [(WaitQueueId, Option<WaitQueue>); 256], // Fixed size for no_std
+    /// All active wait queues - using fixed array for now until WaitQueue implements required traits
+    // TODO: Replace with BoundedVec once WaitQueue implements Checksummable, ToBytes, FromBytes
+    queues: [(WaitQueueId, Option<WaitQueue>); 32],
     /// Next queue ID to assign
     next_queue_id: WaitQueueId,
     /// Global statistics
@@ -301,10 +303,7 @@ impl WaitQueueManager {
     /// Create new wait queue manager
     #[must_use] pub fn new() -> Self {
         Self {
-            #[cfg(feature = "std")]
-            queues: BTreeMap::new(),
-            #[cfg(not(feature = "std"))]
-            queues: core::array::from_fn(|_| (0, None)),
+            queues: Default::default(),
             next_queue_id: 1,
             global_stats: WaitQueueGlobalStats::new(),
         }
@@ -319,7 +318,13 @@ impl WaitQueueManager {
         
         #[cfg(feature = "std")]
         {
-            self.queues.insert(queue_id, queue);
+            // Find empty slot in array
+            for i in 0..self.queues.len() {
+                if self.queues[i].1.is_none() {
+                    self.queues[i] = (queue_id, Some(queue));
+                    break;
+                }
+            }
         }
         #[cfg(not(feature = "std"))]
         {
@@ -428,7 +433,15 @@ impl WaitQueueManager {
     pub fn destroy_queue(&mut self, queue_id: WaitQueueId) -> Result<()> {
         #[cfg(feature = "std")]
         {
-            if self.queues.remove(&queue_id).is_some() {
+            let mut found = false;
+            for i in 0..self.queues.len() {
+                if self.queues[i].0 == queue_id && self.queues[i].1.is_some() {
+                    self.queues[i].1 = None;
+                    found = true;
+                    break;
+                }
+            }
+            if found {
                 self.global_stats.active_queues -= 1;
                 Ok(())
             } else {
@@ -464,9 +477,11 @@ impl WaitQueueManager {
         
         #[cfg(feature = "std")]
         {
-            for queue in self.queues.values_mut() {
-                let timed_out = queue.process_timeouts();
-                total_timeouts += timed_out.len() as u64;
+            for i in 0..self.queues.len() {
+                if let Some(ref mut queue) = self.queues[i].1 {
+                    let timed_out = queue.process_timeouts();
+                    total_timeouts += timed_out.len() as u64;
+                }
             }
         }
         #[cfg(not(feature = "std"))]
@@ -488,9 +503,14 @@ impl WaitQueueManager {
     fn get_queue_mut(&mut self, queue_id: WaitQueueId) -> Result<&mut WaitQueue> {
         #[cfg(feature = "std")]
         {
-            self.queues.get_mut(&queue_id).ok_or_else(|| {
-                Error::new(ErrorCategory::Validation, codes::INVALID_ARGUMENT, "Wait queue not found")
-            })
+            for i in 0..self.queues.len() {
+                if self.queues[i].0 == queue_id {
+                    if let Some(ref mut queue) = self.queues[i].1 {
+                        return Ok(queue);
+                    }
+                }
+            }
+            Err(Error::new(ErrorCategory::Validation, codes::INVALID_ARGUMENT, "Wait queue not found"))
         }
         #[cfg(not(feature = "std"))]
         {

@@ -21,7 +21,7 @@ use crate::{
     component::Component,
     execution_engine::ComponentExecutionEngine,
     instantiation::{ImportValues, InstantiationContext},
-    types::{ComponentInstance, ValType, Value},
+    types::{ComponentInstance, ValType<NoStdProvider<65536>>, Value},
     WrtResult,
 };
 
@@ -54,7 +54,7 @@ pub enum ValidationLevel {
 pub struct ParsedComponent {
     /// Component type definitions
     #[cfg(feature = "std")]
-    pub types: Vec<ComponentType<NoStdProvider<65536>>,
+    pub types: Vec<ComponentType,
     #[cfg(not(any(feature = "std", )))]
     pub types: BoundedVec<ComponentType, MAX_PARSED_SECTIONS, NoStdProvider<65536>>,
 

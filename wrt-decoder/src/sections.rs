@@ -10,7 +10,7 @@ use wrt_error::{errors::codes, Error, ErrorCategory, ErrorSource, Result};
 use wrt_format::{
     binary::{self, read_leb128_i32, read_leb128_i64},
     module::{
-        Data, DataMode, Element, Export, ExportKind, Global, Import, ImportDesc, Memory, Table,
+        Data, DataMode, Element, Export, ExportKind, Global, Import as FormatImport, ImportDesc, Memory, Table,
     },
     types::ValueType as FormatValueType,
 };
@@ -18,22 +18,33 @@ use wrt_format::{
 // Note: These functions should be available if they're exported by wrt_format
 // If not, we'll need to implement alternatives or define them locally
 use wrt_foundation::types::{
-    FuncType as WrtFuncType, GlobalType as WrtGlobalType, Import as WrtImport,
+    FuncType, GlobalType as WrtGlobalType, Import as WrtImport,
     MemoryType as WrtMemoryType, TableType as WrtTableType,
 };
+use wrt_foundation::NoStdProvider;
+
+// Type aliases with specific provider
+type WrtFuncType = FuncType<NoStdProvider<1024>>;
+type WrtFoundationImport = WrtImport<NoStdProvider<1024>>;
 
 // Import segment types from wrt-format
 use wrt_format::{
     module::Export as WrtExport, DataSegment as WrtDataSegment, ElementSegment as WrtElementSegment,
 };
 
-use crate::prelude::{format, String, Vec};
-use crate::memory_optimized::{StreamingCollectionParser, validate_utf8_slice, parse_string_inplace, check_bounds_u32, safe_usize_conversion};
+use crate::memory_optimized::{
+    check_bounds_u32, parse_string_inplace, safe_usize_conversion, validate_utf8_slice,
+    StreamingCollectionParser,
+};
 use crate::optimized_string::parse_utf8_string_inplace;
+use crate::prelude::{format, String, Vec};
 use wrt_foundation::safe_memory::SafeSlice;
 
 // Helper functions for missing imports
-fn parse_element_segment(bytes: &[u8], offset: usize) -> Result<(wrt_format::module::Element, usize)> {
+fn parse_element_segment(
+    bytes: &[u8],
+    offset: usize,
+) -> Result<(wrt_format::module::Element, usize)> {
     // Simplified element segment parsing - would need full implementation
     Err(Error::new(
         ErrorCategory::Parse,
@@ -43,7 +54,7 @@ fn parse_element_segment(bytes: &[u8], offset: usize) -> Result<(wrt_format::mod
 }
 
 fn parse_data(bytes: &[u8], offset: usize) -> Result<(wrt_format::module::Data, usize)> {
-    // Simplified data segment parsing - would need full implementation  
+    // Simplified data segment parsing - would need full implementation
     Err(Error::new(
         ErrorCategory::Parse,
         codes::PARSE_ERROR,
@@ -59,14 +70,14 @@ fn parse_limits(bytes: &[u8], offset: usize) -> Result<(wrt_format::types::Limit
             "Unexpected end while parsing limits",
         ));
     }
-    
+
     let flags = bytes[offset];
     let mut new_offset = offset + 1;
-    
+
     // Read minimum
     let (min, min_offset) = binary::read_leb128_u32(bytes, new_offset)?;
     new_offset = min_offset;
-    
+
     // Check if maximum is present (flag bit 0)
     let max = if flags & 0x01 != 0 {
         let (max_val, max_offset) = binary::read_leb128_u32(bytes, new_offset)?;
@@ -75,11 +86,11 @@ fn parse_limits(bytes: &[u8], offset: usize) -> Result<(wrt_format::types::Limit
     } else {
         None
     };
-    
-    // Check shared flag (flag bit 1) 
+
+    // Check shared flag (flag bit 1)
     let shared = flags & 0x02 != 0;
-    
-    Ok((wrt_format::types::Limits { min: min as u64, max, shared }, new_offset))
+
+    Ok((wrt_format::types::Limits { min: min as u64, max, shared, memory64: false }, new_offset))
 }
 
 /// Parsers implementation
@@ -89,11 +100,11 @@ pub mod parsers {
     /// Parse a type section with memory optimization
     pub fn parse_type_section(bytes: &[u8]) -> Result<Vec<WrtFuncType>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        
+
         // Binary std/no_std choice
         check_bounds_u32(count, 10000, "type count")?;
         let count_usize = safe_usize_conversion(count, "type count")?;
-        
+
         let mut format_func_types = Vec::new();
         format_func_types.reserve(count_usize.min(1024)); // Reserve conservatively
 
@@ -115,7 +126,7 @@ pub mod parsers {
             // Bounds check param count
             check_bounds_u32(param_count, 1000, "param count")?;
             let param_count_usize = safe_usize_conversion(param_count, "param count")?;
-            
+
             let mut params = Vec::new();
             params.reserve(param_count_usize.min(256)); // Conservative reservation
             for _ in 0..param_count {
@@ -129,15 +140,11 @@ pub mod parsers {
 
                 let val_type_byte = bytes[offset];
                 let format_val_type = wrt_format::conversion::parse_value_type(val_type_byte)
-                    .map_err(|e: wrt_error::Error| {
+                    .map_err(|_e: wrt_error::Error| {
                         Error::new(
                             ErrorCategory::Parse,
                             codes::INVALID_TYPE,
-                            format!(
-                                "Invalid param value type byte: 0x{:x} - {}",
-                                val_type_byte,
-                                e.message()
-                            ),
+                            "Invalid param value type byte",
                         )
                     })?;
                 params.push(format_val_type);
@@ -151,7 +158,7 @@ pub mod parsers {
             // Bounds check result count
             check_bounds_u32(result_count, 1000, "result count")?;
             let result_count_usize = safe_usize_conversion(result_count, "result count")?;
-            
+
             let mut results = Vec::new();
             results.reserve(result_count_usize.min(256)); // Conservative reservation
             for _ in 0..result_count {
@@ -165,15 +172,11 @@ pub mod parsers {
 
                 let val_type_byte = bytes[offset];
                 let format_val_type = wrt_format::conversion::parse_value_type(val_type_byte)
-                    .map_err(|e: wrt_error::Error| {
+                    .map_err(|_e: wrt_error::Error| {
                         Error::new(
                             ErrorCategory::Parse,
                             codes::INVALID_TYPE,
-                            format!(
-                                "Invalid result value type byte: 0x{:x} - {}",
-                                val_type_byte,
-                                e.message()
-                            ),
+                            "Invalid result value type byte",
                         )
                     })?;
                 results.push(format_val_type);
@@ -187,10 +190,9 @@ pub mod parsers {
             )?);
         }
 
-        format_func_types
-            .into_iter()
-            .map(|ft_format| crate::conversion::format_func_type_to_types_func_type(&ft_format))
-            .collect()
+        // Since wrt_format::types::FuncType is re-exported from wrt_foundation,
+        // we can return the vector directly
+        Ok(format_func_types)
     }
 
     /// Parse a function section
@@ -208,13 +210,13 @@ pub mod parsers {
     }
 
     /// Parse an import section with memory optimization
-    pub fn parse_import_section(bytes: &[u8]) -> Result<Vec<WrtImport>> {
+    pub fn parse_import_section(bytes: &[u8]) -> Result<Vec<WrtFoundationImport>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        
+
         // Binary std/no_std choice
         check_bounds_u32(count, 10000, "import count")?;
         let count_usize = safe_usize_conversion(count, "import count")?;
-        
+
         let mut format_imports = Vec::new();
         format_imports.reserve(count_usize.min(1024)); // Conservative reservation
 
@@ -270,7 +272,7 @@ pub mod parsers {
                     return Err(Error::new(
                         ErrorCategory::Parse,
                         codes::PARSE_ERROR,
-                        format!("Invalid import description kind: 0x{:x}", kind_byte),
+                        "Invalid import description kind",
                     ));
                 }
             };
@@ -282,11 +284,62 @@ pub mod parsers {
             });
         }
 
-        // Convert all wrt_format::module::Import to wrt_foundation::types::Import
-        format_imports
-            .into_iter()
-            .map(|fi| crate::conversion::format_import_to_types_import(&fi))
-            .collect()
+        // Convert wrt_format::Import to wrt_foundation::Import
+        // Since Table and Memory are now type aliases to foundation types, this should work directly
+        let mut wrt_imports = Vec::with_capacity(format_imports.len());
+        let provider = wrt_foundation::NoStdProvider::<1024>::default();
+        
+        for format_import in format_imports {
+            let module_name = wrt_foundation::bounded::WasmName::from_str(
+                &format_import.module,
+                provider.clone()
+            ).map_err(|_| Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Module name too long for bounded string"
+            ))?;
+            
+            let item_name = wrt_foundation::bounded::WasmName::from_str(
+                &format_import.name,
+                provider.clone()
+            ).map_err(|_| Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Item name too long for bounded string"
+            ))?;
+            
+            let wrt_desc = match format_import.desc {
+                wrt_format::module::ImportDesc::Function(type_idx) => {
+                    wrt_foundation::types::ImportDesc::Function(type_idx)
+                },
+                wrt_format::module::ImportDesc::Table(table) => {
+                    wrt_foundation::types::ImportDesc::Table(table)
+                },
+                wrt_format::module::ImportDesc::Memory(memory) => {
+                    wrt_foundation::types::ImportDesc::Memory(memory)
+                },
+                wrt_format::module::ImportDesc::Global(format_global) => {
+                    // Convert FormatGlobalType to wrt_foundation::GlobalType
+                    let global_type = wrt_foundation::GlobalType::new(
+                        format_global.value_type,
+                        format_global.mutable
+                    );
+                    wrt_foundation::types::ImportDesc::Global(global_type)
+                },
+                wrt_format::module::ImportDesc::Tag(type_idx) => {
+                    // Tag is not available in ImportDesc, map to Function for now
+                    wrt_foundation::types::ImportDesc::Function(type_idx)
+                },
+            };
+            
+            wrt_imports.push(WrtFoundationImport {
+                module_name,
+                item_name,
+                desc: wrt_desc,
+            });
+        }
+        
+        Ok(wrt_imports)
     }
 
     /// Parse a table section
@@ -294,21 +347,23 @@ pub mod parsers {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
         let mut wrt_tables = Vec::with_capacity(count as usize);
 
+        // Parse format tables and convert directly to foundation types
         for _ in 0..count {
             let (format_table, new_offset) = parse_format_module_table(bytes, offset)?;
             offset = new_offset;
-
-            let types_table =
-                crate::conversion::format_table_type_to_types_table_type(&format_table);
-            wrt_tables.push(types_table);
+            
+            // Since wrt_format::module::Table is now a type alias to wrt_foundation::TableType,
+            // we can use it directly
+            wrt_tables.push(format_table);
         }
+        
         Ok(wrt_tables)
     }
 
     fn parse_format_module_table(
         bytes: &[u8],
         mut offset: usize,
-    ) -> Result<(wrt_format::module::Table, usize)> {
+    ) -> Result<(wrt_foundation::TableType, usize)> {
         if offset >= bytes.len() {
             return Err(Error::new(
                 ErrorCategory::Parse,
@@ -324,11 +379,7 @@ pub mod parsers {
                 Error::new(
                     ErrorCategory::Parse,
                     codes::INVALID_TYPE,
-                    format!(
-                        "Invalid element type byte for table: 0x{:x}. Error: {}",
-                        element_type_byte,
-                        e.message()
-                    ),
+                    "Invalid element type byte for table",
                 )
             })?;
 
@@ -336,17 +387,33 @@ pub mod parsers {
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::INVALID_TYPE,
-                format!(
-                    "Table element type must be funcref or externref, found {:?}",
-                    element_type
-                ),
+                "Table element type must be funcref or externref",
             ));
         }
 
         let (limits, new_offset) = parse_limits(bytes, offset)?;
         offset = new_offset;
 
-        Ok((wrt_format::module::Table { element_type, limits }, offset))
+        // Convert ValueType to RefType for table element_type
+        let ref_type = match element_type {
+            FormatValueType::FuncRef => wrt_foundation::RefType::Funcref,
+            FormatValueType::ExternRef => wrt_foundation::RefType::Externref,
+            _ => {
+                return Err(Error::new(
+                    ErrorCategory::Parse,
+                    codes::INVALID_TYPE,
+                    "Table element type must be funcref or externref",
+                ));
+            }
+        };
+        
+        // Convert wrt_format::Limits to wrt_foundation::Limits
+        let foundation_limits = wrt_foundation::Limits::new(
+            limits.min as u32, // Convert u64 to u32
+            limits.max.map(|m| m as u32)
+        );
+        
+        Ok((wrt_foundation::TableType { element_type: ref_type, limits: foundation_limits }, offset))
     }
 
     /// Parse a memory section
@@ -354,27 +421,33 @@ pub mod parsers {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
         let mut wrt_memories = Vec::with_capacity(count as usize);
 
+        // Parse format memories and convert directly to foundation types
         for _ in 0..count {
             let (format_memory, new_offset) = parse_format_module_memory(bytes, offset)?;
             offset = new_offset;
-
-            let types_memory =
-                crate::conversion::format_memory_type_to_types_memory_type(&format_memory);
-            wrt_memories.push(types_memory);
+            
+            // Since wrt_format::module::Memory is now a type alias to wrt_foundation::MemoryType,
+            // we can use it directly
+            wrt_memories.push(format_memory);
         }
+        
         Ok(wrt_memories)
     }
 
     fn parse_format_module_memory(
         bytes: &[u8],
         offset: usize,
-    ) -> Result<(wrt_format::module::Memory, usize)> {
+    ) -> Result<(wrt_foundation::MemoryType, usize)> {
         let (limits, new_offset) = parse_limits(bytes, offset)?;
+        
+        // Convert wrt_format::Limits to wrt_foundation::Limits
+        let foundation_limits = wrt_foundation::Limits::new(
+            limits.min as u32, // Convert u64 to u32
+            limits.max.map(|m| m as u32)
+        );
+        
         Ok((
-            wrt_format::module::Memory {
-                limits: limits.clone(),
-                shared: limits.shared, // The shared flag from the parsed limits
-            },
+            wrt_foundation::MemoryType::new(foundation_limits, limits.shared),
             new_offset,
         ))
     }
@@ -400,11 +473,7 @@ pub mod parsers {
             Error::new(
                 ErrorCategory::Parse,
                 codes::INVALID_TYPE,
-                format!(
-                    "Invalid value type byte for global: 0x{:x}. Error: {}",
-                    val_type_byte,
-                    e.message()
-                ),
+                "Invalid value type byte for global",
             )
         })?;
 
@@ -415,7 +484,7 @@ pub mod parsers {
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    format!("Invalid mutability byte for global: 0x{:x}", mutability_byte),
+                    "Invalid mutability byte for global",
                 ))
             }
         };
@@ -487,8 +556,14 @@ pub mod parsers {
                 init: init_expr_bytes.to_vec(),
             };
 
-            let types_global = crate::conversion::format_global_to_types_global(&format_global)?;
-            wrt_globals.push(types_global);
+            // Convert FormatGlobalType to wrt_foundation::GlobalType
+            // Both types have the same structure (value_type and mutable)
+            let wrt_global = WrtGlobalType {
+                value_type: format_global_type.value_type,
+                mutable: format_global_type.mutable,
+            };
+            
+            wrt_globals.push(wrt_global);
         }
         Ok(wrt_globals)
     }
@@ -496,11 +571,11 @@ pub mod parsers {
     /// Parse an export section with memory optimization
     pub fn parse_export_section(bytes: &[u8]) -> Result<Vec<WrtExport>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        
+
         // Binary std/no_std choice
         check_bounds_u32(count, 10000, "export count")?;
         let count_usize = safe_usize_conversion(count, "export count")?;
-        
+
         let mut format_exports = Vec::new();
         format_exports.reserve(count_usize.min(1024)); // Conservative reservation
 
@@ -529,7 +604,7 @@ pub mod parsers {
                     return Err(Error::new(
                         ErrorCategory::Parse,
                         codes::PARSE_ERROR,
-                        format!("Invalid export kind byte: 0x{:x}", kind_byte),
+                        "Invalid export kind byte",
                     ))
                 }
             };
@@ -543,10 +618,8 @@ pub mod parsers {
                 index,
             });
         }
-        format_exports
-            .into_iter()
-            .map(|fe| crate::conversion::format_export_to_types_export(&fe))
-            .collect()
+        // Return the format_exports since wrt_format::module::Export is what's expected
+        Ok(format_exports)
     }
 
     /// Parse an element section
@@ -561,14 +634,13 @@ pub mod parsers {
                     Error::new(
                         e.category(),
                         e.code(),
-                        format!("Failed to parse element entry: {}", e.message()),
+                        "Failed to parse element entry",
                     )
                 })?;
             offset = new_offset;
 
-            let types_element =
-                crate::conversion::format_element_to_types_element_segment(&format_element)?;
-            wrt_elements.push(types_element);
+            // Since we're expecting wrt_format::ElementSegment, use the parsed element directly
+            wrt_elements.push(format_element);
         }
         Ok(wrt_elements)
     }
@@ -576,11 +648,11 @@ pub mod parsers {
     /// Parse a code section with memory optimization
     pub fn parse_code_section(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        
+
         // Binary std/no_std choice
         check_bounds_u32(count, 100000, "function count")?;
         let count_usize = safe_usize_conversion(count, "function count")?;
-        
+
         let mut bodies = Vec::new();
         bodies.reserve(count_usize.min(10000)); // Conservative reservation
 
@@ -588,7 +660,7 @@ pub mod parsers {
             // Get body size
             let (body_size, new_offset) = binary::read_leb128_u32(bytes, offset)?;
             offset = new_offset;
-            
+
             // Bounds check body size
             check_bounds_u32(body_size, 1_000_000, "function body size")?;
             let body_size_usize = safe_usize_conversion(body_size, "function body size")?;
@@ -626,14 +698,13 @@ pub mod parsers {
                 Error::new(
                     e.category(),
                     e.code(),
-                    format!("Failed to parse data segment entry: {}", e.message()),
+                    "Failed to parse data segment entry",
                 )
             })?;
             offset = new_offset;
 
-            let types_data_segment =
-                crate::conversion::format_data_to_types_data_segment(&format_data_segment)?;
-            wrt_data_segments.push(types_data_segment);
+            // Since we're expecting wrt_format::DataSegment, use the parsed data directly
+            wrt_data_segments.push(format_data_segment);
         }
         Ok(wrt_data_segments)
     }

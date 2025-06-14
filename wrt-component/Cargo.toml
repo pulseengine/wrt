@@ -25,6 +25,7 @@ wrt-sync = { workspace = true, default-features = false }
 log = { version = "0.4", optional = true }
 
 [dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
 
 [features]
 # By default, no features for pure no_std compatibility
@@ -41,7 +42,11 @@ std = [
     "wrt-sync/std",
     "wrt-error/std",
     "wrt-foundation/std",
+    "wrt-foundation/wrt-allocator",
     "dep:log"]
+
+# Safety-critical features
+safety-critical = ["wrt-foundation/wrt-allocator"]
 
 # For compatibility with verification script
 # This is a no-op since the crate is no_std by default
@@ -109,6 +114,16 @@ required-features = ["std"]
 name = "interceptor_example"
 path = "examples/interceptor_example.rs"
 required-features = ["std"]
+
+[[bench]]
+name = "wrt_allocator_benchmarks"
+harness = false
+required-features = ["std", "safety-critical"]
+
+[[bench]]
+name = "zero_cost_validation"
+harness = false
+required-features = ["std", "safety-critical"]
 
 
 [lints.rust]

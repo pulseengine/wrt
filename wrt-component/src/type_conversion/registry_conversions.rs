@@ -14,11 +14,11 @@ use alloc::{string::String, vec, vec::Vec};
 use std::{string::String, vec, vec::Vec};
 
 use wrt_format::component::{
-    ComponentTypeDefinition, ExternType as FormatExternType, ValType as FormatValType,
+    ComponentTypeDefinition, ExternType as FormatExternType, ValType<NoStdProvider<65536>> as FormatValType<NoStdProvider<65536>>,
 };
 use wrt_foundation::{
     component::{ComponentType, FuncType, InstanceType},
-    component_value::ValType,
+    component_value::ValType<NoStdProvider<65536>>,
     types::ValueType,
     ExternType as TypesExternType,
 };
@@ -30,83 +30,83 @@ use super::{
     },
 };
 
-/// Register ValType conversions in the TypeConversionRegistry
+/// Register ValType<NoStdProvider<65536>> conversions in the TypeConversionRegistry
 pub fn register_valtype_conversions(registry: &mut TypeConversionRegistry) {
-    // Format ValType to Types ValType - primitive types
-    registry.register(|format_val_type: &FormatValType| -> Result<ValType, ConversionError> {
+    // Format ValType<NoStdProvider<65536>> to Types ValType<NoStdProvider<65536>> - primitive types
+    registry.register(|format_val_type: &FormatValType<NoStdProvider<65536>>| -> core::result::Result<ValType<NoStdProvider<65536>>, ConversionError> {
         match format_val_type {
-            FormatValType::Bool => Ok(ValType::Bool),
-            FormatValType::S8 => Ok(ValType::S8),
-            FormatValType::U8 => Ok(ValType::U8),
-            FormatValType::S16 => Ok(ValType::S16),
-            FormatValType::U16 => Ok(ValType::U16),
-            FormatValType::S32 => Ok(ValType::S32),
-            FormatValType::U32 => Ok(ValType::U32),
-            FormatValType::S64 => Ok(ValType::S64),
-            FormatValType::U64 => Ok(ValType::U64),
-            FormatValType::F32 => Ok(ValType::F32),
-            FormatValType::F64 => Ok(ValType::F64),
-            FormatValType::Char => Ok(ValType::Char),
-            FormatValType::String => Ok(ValType::String),
-            FormatValType::Ref(idx) => Ok(ValType::Ref(*idx)),
-            FormatValType::Flags(names) => Ok(ValType::Flags(names.clone())),
-            FormatValType::Enum(cases) => Ok(ValType::Enum(cases.clone())),
-            FormatValType::Own(idx) => Ok(ValType::Own(*idx)),
-            FormatValType::Borrow(idx) => Ok(ValType::Borrow(*idx)),
+            FormatValType<NoStdProvider<65536>>::Bool => Ok(ValType<NoStdProvider<65536>>::Bool),
+            FormatValType<NoStdProvider<65536>>::S8 => Ok(ValType<NoStdProvider<65536>>::S8),
+            FormatValType<NoStdProvider<65536>>::U8 => Ok(ValType<NoStdProvider<65536>>::U8),
+            FormatValType<NoStdProvider<65536>>::S16 => Ok(ValType<NoStdProvider<65536>>::S16),
+            FormatValType<NoStdProvider<65536>>::U16 => Ok(ValType<NoStdProvider<65536>>::U16),
+            FormatValType<NoStdProvider<65536>>::S32 => Ok(ValType<NoStdProvider<65536>>::S32),
+            FormatValType<NoStdProvider<65536>>::U32 => Ok(ValType<NoStdProvider<65536>>::U32),
+            FormatValType<NoStdProvider<65536>>::S64 => Ok(ValType<NoStdProvider<65536>>::S64),
+            FormatValType<NoStdProvider<65536>>::U64 => Ok(ValType<NoStdProvider<65536>>::U64),
+            FormatValType<NoStdProvider<65536>>::F32 => Ok(ValType<NoStdProvider<65536>>::F32),
+            FormatValType<NoStdProvider<65536>>::F64 => Ok(ValType<NoStdProvider<65536>>::F64),
+            FormatValType<NoStdProvider<65536>>::Char => Ok(ValType<NoStdProvider<65536>>::Char),
+            FormatValType<NoStdProvider<65536>>::String => Ok(ValType<NoStdProvider<65536>>::String),
+            FormatValType<NoStdProvider<65536>>::Ref(idx) => Ok(ValType<NoStdProvider<65536>>::Ref(*idx)),
+            FormatValType<NoStdProvider<65536>>::Flags(names) => Ok(ValType<NoStdProvider<65536>>::Flags(names.clone())),
+            FormatValType<NoStdProvider<65536>>::Enum(cases) => Ok(ValType<NoStdProvider<65536>>::Enum(cases.clone())),
+            FormatValType<NoStdProvider<65536>>::Own(idx) => Ok(ValType<NoStdProvider<65536>>::Own(*idx)),
+            FormatValType<NoStdProvider<65536>>::Borrow(idx) => Ok(ValType<NoStdProvider<65536>>::Borrow(*idx)),
             // Complex types handled elsewhere or not supported
             _ => Err(ConversionError {
                 kind: ConversionErrorKind::NotImplemented,
-                source_type: "FormatValType",
-                target_type: "ValType",
+                source_type: "FormatValType<NoStdProvider<65536>>",
+                target_type: "ValType<NoStdProvider<65536>>",
                 context: Some("Complex type conversion requires registry capabilities".to_string()),
                 source: None,
             }),
         }
     });
 
-    // Types ValType to Format ValType - primitive types
-    registry.register(|types_val_type: &ValType| -> Result<FormatValType, ConversionError> {
+    // Types ValType<NoStdProvider<65536>> to Format ValType<NoStdProvider<65536>> - primitive types
+    registry.register(|types_val_type: &ValType<NoStdProvider<65536>>| -> core::result::Result<FormatValType<NoStdProvider<65536>>, ConversionError> {
         match types_val_type {
-            ValType::Bool => Ok(FormatValType::Bool),
-            ValType::S8 => Ok(FormatValType::S8),
-            ValType::U8 => Ok(FormatValType::U8),
-            ValType::S16 => Ok(FormatValType::S16),
-            ValType::U16 => Ok(FormatValType::U16),
-            ValType::S32 => Ok(FormatValType::S32),
-            ValType::U32 => Ok(FormatValType::U32),
-            ValType::S64 => Ok(FormatValType::S64),
-            ValType::U64 => Ok(FormatValType::U64),
-            ValType::F32 => Ok(FormatValType::F32),
-            ValType::F64 => Ok(FormatValType::F64),
-            ValType::Char => Ok(FormatValType::Char),
-            ValType::String => Ok(FormatValType::String),
-            ValType::Ref(idx) => Ok(FormatValType::Ref(*idx)),
-            ValType::Flags(names) => Ok(FormatValType::Flags(names.clone())),
-            ValType::Enum(cases) => Ok(FormatValType::Enum(cases.clone())),
-            ValType::Own(idx) => Ok(FormatValType::Own(*idx)),
-            ValType::Borrow(idx) => Ok(FormatValType::Borrow(*idx)),
+            ValType<NoStdProvider<65536>>::Bool => Ok(FormatValType<NoStdProvider<65536>>::Bool),
+            ValType<NoStdProvider<65536>>::S8 => Ok(FormatValType<NoStdProvider<65536>>::S8),
+            ValType<NoStdProvider<65536>>::U8 => Ok(FormatValType<NoStdProvider<65536>>::U8),
+            ValType<NoStdProvider<65536>>::S16 => Ok(FormatValType<NoStdProvider<65536>>::S16),
+            ValType<NoStdProvider<65536>>::U16 => Ok(FormatValType<NoStdProvider<65536>>::U16),
+            ValType<NoStdProvider<65536>>::S32 => Ok(FormatValType<NoStdProvider<65536>>::S32),
+            ValType<NoStdProvider<65536>>::U32 => Ok(FormatValType<NoStdProvider<65536>>::U32),
+            ValType<NoStdProvider<65536>>::S64 => Ok(FormatValType<NoStdProvider<65536>>::S64),
+            ValType<NoStdProvider<65536>>::U64 => Ok(FormatValType<NoStdProvider<65536>>::U64),
+            ValType<NoStdProvider<65536>>::F32 => Ok(FormatValType<NoStdProvider<65536>>::F32),
+            ValType<NoStdProvider<65536>>::F64 => Ok(FormatValType<NoStdProvider<65536>>::F64),
+            ValType<NoStdProvider<65536>>::Char => Ok(FormatValType<NoStdProvider<65536>>::Char),
+            ValType<NoStdProvider<65536>>::String => Ok(FormatValType<NoStdProvider<65536>>::String),
+            ValType<NoStdProvider<65536>>::Ref(idx) => Ok(FormatValType<NoStdProvider<65536>>::Ref(*idx)),
+            ValType<NoStdProvider<65536>>::Flags(names) => Ok(FormatValType<NoStdProvider<65536>>::Flags(names.clone())),
+            ValType<NoStdProvider<65536>>::Enum(cases) => Ok(FormatValType<NoStdProvider<65536>>::Enum(cases.clone())),
+            ValType<NoStdProvider<65536>>::Own(idx) => Ok(FormatValType<NoStdProvider<65536>>::Own(*idx)),
+            ValType<NoStdProvider<65536>>::Borrow(idx) => Ok(FormatValType<NoStdProvider<65536>>::Borrow(*idx)),
             // Complex types handled elsewhere or not supported
             _ => Err(ConversionError {
                 kind: ConversionErrorKind::NotImplemented,
-                source_type: "ValType",
-                target_type: "FormatValType",
+                source_type: "ValType<NoStdProvider<65536>>",
+                target_type: "FormatValType<NoStdProvider<65536>>",
                 context: Some("Complex type conversion requires registry capabilities".to_string()),
                 source: None,
             }),
         }
     });
 
-    // ValueType to FormatValType conversion
-    registry.register(|value_type: &ValueType| -> Result<FormatValType, ConversionError> {
+    // ValueType to FormatValType<NoStdProvider<65536>> conversion
+    registry.register(|value_type: &ValueType| -> core::result::Result<FormatValType<NoStdProvider<65536>>, ConversionError> {
         match value_type {
-            ValueType::I32 => Ok(FormatValType::S32),
-            ValueType::I64 => Ok(FormatValType::S64),
-            ValueType::F32 => Ok(FormatValType::F32),
-            ValueType::F64 => Ok(FormatValType::F64),
+            ValueType::I32 => Ok(FormatValType<NoStdProvider<65536>>::S32),
+            ValueType::I64 => Ok(FormatValType<NoStdProvider<65536>>::S64),
+            ValueType::F32 => Ok(FormatValType<NoStdProvider<65536>>::F32),
+            ValueType::F64 => Ok(FormatValType<NoStdProvider<65536>>::F64),
             ValueType::FuncRef | ValueType::ExternRef => Err(ConversionError {
                 kind: ConversionErrorKind::InvalidVariant,
                 source_type: "ValueType::FuncRef/ExternRef",
-                target_type: "FormatValType",
+                target_type: "FormatValType<NoStdProvider<65536>>",
                 context: Some(
                     "Reference types cannot be directly converted to component format types"
                         .to_string(),
@@ -116,16 +116,16 @@ pub fn register_valtype_conversions(registry: &mut TypeConversionRegistry) {
         }
     });
 
-    // FormatValType to ValueType conversion
-    registry.register(|format_val_type: &FormatValType| -> Result<ValueType, ConversionError> {
+    // FormatValType<NoStdProvider<65536>> to ValueType conversion
+    registry.register(|format_val_type: &FormatValType<NoStdProvider<65536>>| -> core::result::Result<ValueType, ConversionError> {
         match format_val_type {
-            FormatValType::S32 => Ok(ValueType::I32),
-            FormatValType::S64 => Ok(ValueType::I64),
-            FormatValType::F32 => Ok(ValueType::F32),
-            FormatValType::F64 => Ok(ValueType::F64),
+            FormatValType<NoStdProvider<65536>>::S32 => Ok(ValueType::I32),
+            FormatValType<NoStdProvider<65536>>::S64 => Ok(ValueType::I64),
+            FormatValType<NoStdProvider<65536>>::F32 => Ok(ValueType::F32),
+            FormatValType<NoStdProvider<65536>>::F64 => Ok(ValueType::F64),
             _ => Err(ConversionError {
                 kind: ConversionErrorKind::InvalidVariant,
-                source_type: "FormatValType",
+                source_type: "FormatValType<NoStdProvider<65536>>",
                 target_type: "ValueType",
                 context: Some("Component not found"),
                 source: None,
@@ -133,15 +133,15 @@ pub fn register_valtype_conversions(registry: &mut TypeConversionRegistry) {
         }
     });
 
-    // ValueType to ValType conversion
-    registry.register(|value_type: &ValueType| -> Result<ValType, ConversionError> {
+    // ValueType to ValType<NoStdProvider<65536>> conversion
+    registry.register(|value_type: &ValueType| -> core::result::Result<ValType<NoStdProvider<65536>>, ConversionError> {
         match value_type {
-            ValueType::I32 => Ok(ValType::S32),
-            ValueType::I64 => Ok(ValType::S64),
-            ValueType::F32 => Ok(ValType::F32),
-            ValueType::F64 => Ok(ValType::F64),
-            ValueType::FuncRef => Ok(ValType::Own(0)), // Default to resource type 0
-            ValueType::ExternRef => Ok(ValType::Ref(0)), // Default to type index 0
+            ValueType::I32 => Ok(ValType<NoStdProvider<65536>>::S32),
+            ValueType::I64 => Ok(ValType<NoStdProvider<65536>>::S64),
+            ValueType::F32 => Ok(ValType<NoStdProvider<65536>>::F32),
+            ValueType::F64 => Ok(ValType<NoStdProvider<65536>>::F64),
+            ValueType::FuncRef => Ok(ValType<NoStdProvider<65536>>::Own(0)), // Default to resource type 0
+            ValueType::ExternRef => Ok(ValType<NoStdProvider<65536>>::Ref(0)), // Default to type index 0
         }
     });
 }
@@ -167,18 +167,18 @@ mod tests {
         register_valtype_conversions(&mut registry);
 
         // Test Format to Types ValType
-        let format_val_type = FormatValType::S32;
-        let types_val_type = registry.convert::<FormatValType, ValType<NoStdProvider<65536>>>(&format_val_type).unwrap();
-        assert!(matches!(types_val_type, ValType::S32));
+        let format_val_type = FormatValType<NoStdProvider<65536>>::S32;
+        let types_val_type = registry.convert::<FormatValType<NoStdProvider<65536>>, ValType<NoStdProvider<65536>>>(&format_val_type).unwrap();
+        assert!(matches!(types_val_type, ValType<NoStdProvider<65536>>::S32));
 
         // Test Types to Format ValType
-        let types_val_type = ValType::Bool;
-        let format_val_type = registry.convert::<ValType, FormatValType<NoStdProvider<65536>>>(&types_val_type).unwrap();
-        assert!(matches!(format_val_type, FormatValType::Bool));
+        let types_val_type = ValType<NoStdProvider<65536>>::Bool;
+        let format_val_type = registry.convert::<ValType<NoStdProvider<65536>>, FormatValType<NoStdProvider<65536>>>(&types_val_type).unwrap();
+        assert!(matches!(format_val_type, FormatValType<NoStdProvider<65536>>::Bool));
 
         // Test ValueType to FormatValType
         let value_type = ValueType::I32;
         let format_val_type = registry.convert::<ValueType, FormatValType<NoStdProvider<65536>>>(&value_type).unwrap();
-        assert!(matches!(format_val_type, FormatValType::S32));
+        assert!(matches!(format_val_type, FormatValType<NoStdProvider<65536>>::S32));
     }
 }

@@ -18,6 +18,7 @@ extern crate alloc;
 
 use crate::prelude::Debug;
 use crate::thread_manager::{ThreadManager, ThreadId, ThreadExecutionStats};
+use crate::bounded_runtime_infra::new_atomic_op_map;
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_instructions::atomic_ops::{
     AtomicOp, AtomicLoadOp, AtomicStoreOp, AtomicRMWInstr, AtomicCmpxchgInstr,
@@ -115,10 +116,7 @@ impl AtomicMemoryContext {
             memory_base,
             memory_size: AtomicUsize::new(memory_size),
             thread_manager,
-            #[cfg(feature = "std")]
-            wait_queues: BTreeMap::new(),
-            #[cfg(not(feature = "std"))]
-            wait_queues: [(0, [const { None }; 8]); 16],  // Fixed arrays for no_std
+            wait_queues: new_atomic_op_map(),
             stats: AtomicExecutionStats::new(),
         })
     }

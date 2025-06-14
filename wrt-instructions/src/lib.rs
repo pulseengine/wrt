@@ -42,6 +42,10 @@ extern crate alloc;
 // Import prelude for common type access
 pub mod prelude;
 
+// Bounded infrastructure for static memory allocation
+#[cfg(not(feature = "std"))]
+pub mod bounded_instruction_infra;
+
 pub mod arithmetic_ops;
 pub mod comparison_ops;
 pub mod const_expr;

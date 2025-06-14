@@ -3037,11 +3037,19 @@ impl<const N_BITS: usize> FromBytes for BoundedBitSet<N_BITS> {
 mod tests {
     use super::*;
     use crate::safe_memory::NoStdProvider;
+    use crate::{budget_aware_provider::CrateId, wrt_memory_system::WrtProviderFactory};
+
+    // Helper function to initialize memory system for tests
+    fn init_test_memory_system() {
+        let _ = crate::memory_init::MemoryInitializer::initialize();
+    }
 
     // Test BoundedQueue
     #[test]
     fn test_bounded_queue() {
-        let provider = NoStdProvider::new();
+        init_test_memory_system();
+        let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
+        let provider = unsafe { guard.release() };
         let mut queue = BoundedQueue::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test enqueue
@@ -3084,7 +3092,9 @@ mod tests {
     // Test BoundedMap
     #[test]
     fn test_bounded_map() {
-        let provider = NoStdProvider::new();
+        init_test_memory_system();
+        let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
+        let provider = unsafe { guard.release() };
         let mut map = BoundedMap::<u32, u32, 3, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test insert
@@ -3122,7 +3132,9 @@ mod tests {
     // Test BoundedSet
     #[test]
     fn test_bounded_set() {
-        let provider = NoStdProvider::new();
+        init_test_memory_system();
+        let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
+        let provider = unsafe { guard.release() };
         let mut set = BoundedSet::<u32, 3, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test insert
@@ -3155,7 +3167,9 @@ mod tests {
     // Test BoundedDeque
     #[test]
     fn test_bounded_deque() {
-        let provider = NoStdProvider::new();
+        init_test_memory_system();
+        let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
+        let provider = unsafe { guard.release() };
         let mut deque = BoundedDeque::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test push_back

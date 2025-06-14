@@ -19,7 +19,7 @@ use crate::{
     canonical::CanonicalAbi,
     execution_engine::ComponentExecutionEngine,
     resource_lifecycle::ResourceLifecycleManager,
-    types::{ComponentInstance, ValType, Value},
+    types::{ComponentInstance, ValType<NoStdProvider<65536>>, Value},
     WrtResult,
 };
 
@@ -323,7 +323,7 @@ impl CrossComponentCallManager {
         args: &[Value],
         target: &CallTarget,
         caller_instance: u32,
-    ) -> WrtResult<(Vec<Value>, Vec<TransferredResource>)> {
+    ) -> Wrtcore::result::Result<(Vec<Value>, Vec<TransferredResource>)> {
         #[cfg(feature = "std")]
         let mut prepared_args = Vec::new();
         #[cfg(not(any(feature = "std", )))]

@@ -183,7 +183,11 @@ pub struct WrtRuntimeState {
 impl WrtRuntimeState {
     /// Create a new runtime state
     pub fn new() -> Self {
-        let provider = NoStdProvider::default();
+        // TODO: Specify appropriate size for this allocation
+
+        let guard = managed_alloc!(8192, CrateId::Runtime)?;
+
+        let provider = unsafe { guard.release() };
         Self {
             pc: 0,
             sp: 0,
@@ -298,7 +302,11 @@ pub struct WrtDebugMemory {
 impl WrtDebugMemory {
     /// Create a new debug memory accessor
     pub fn new(base_address: u32) -> Self {
-        let provider = NoStdProvider::default();
+        // TODO: Specify appropriate size for this allocation
+
+        let guard = managed_alloc!(8192, CrateId::Runtime)?;
+
+        let provider = unsafe { guard.release() };
         Self {
             memory_data: BoundedVec::new(provider),
             base_address,
@@ -526,9 +534,12 @@ impl DebuggableRuntime for DebuggableWrtRuntime {
     
     fn add_breakpoint(&mut self, mut bp: Breakpoint) -> Result<(), DebugError> {
         // Check for duplicate address
-        for existing_bp in self.breakpoints.values() {
-            if existing_bp.address == bp.address {
-                return Err(DebugError::DuplicateBreakpoint);
+        // Note: BoundedMap doesn't have values() method, so we iterate through entries manually
+        for i in 0..self.breakpoints.entries.len() {
+            if let Ok(entry) = self.breakpoints.entries.get(i) {
+                if entry.1.address == bp.address {
+                    return Err(DebugError::DuplicateBreakpoint);
+                }
             }
         }
         
@@ -571,7 +582,11 @@ pub fn create_component_metadata(
     binary_start: u32,
     binary_end: u32,
 ) -> Result<ComponentMetadata> {
-    let provider = NoStdProvider::default();
+    // TODO: Specify appropriate size for this allocation
+
+    let guard = managed_alloc!(8192, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
     
     Ok(ComponentMetadata {
         name: BoundedString::from_str(name, provider)
@@ -579,7 +594,9 @@ pub fn create_component_metadata(
         source_span,
         binary_start,
         binary_end,
+        #[allow(deprecated)]
         exports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
+        #[allow(deprecated)] 
         imports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
     })
 }
@@ -592,14 +609,20 @@ pub fn create_function_metadata(
     binary_offset: u32,
     is_async: bool,
 ) -> Result<FunctionMetadata> {
-    let provider = NoStdProvider::default();
+    // TODO: Specify appropriate size for this allocation
+
+    let guard = managed_alloc!(8192, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
     
     Ok(FunctionMetadata {
         name: BoundedString::from_str(name, provider)
             .map_err(|_| Error::runtime_error("Function name too long"))?,
         source_span,
         binary_offset,
+        #[allow(deprecated)]
         param_types: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
+        #[allow(deprecated)]
         return_types: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
         is_async,
     })
@@ -613,7 +636,11 @@ pub fn create_type_metadata(
     kind: WitTypeKind,
     size: Option<u32>,
 ) -> Result<TypeMetadata> {
-    let provider = NoStdProvider::default();
+    // TODO: Specify appropriate size for this allocation
+
+    let guard = managed_alloc!(8192, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
     
     Ok(TypeMetadata {
         name: BoundedString::from_str(name, provider)

@@ -28,7 +28,7 @@ use wrt_foundation::{
 use crate::{
     async_types::{Stream, StreamHandle, StreamState, AsyncReadResult},
     canonical_options::CanonicalOptions,
-    types::{ValType, Value},
+    types::{ValType<NoStdProvider<65536>>, Value},
     WrtResult,
 };
 
@@ -68,7 +68,7 @@ pub struct StreamingContext {
     /// Stream handle
     pub handle: StreamHandle,
     /// Element type being streamed
-    pub element_type: ValType,
+    pub element_type: ValType<NoStdProvider<65536>>,
     /// Current buffer
     #[cfg(feature = "std")]
     pub buffer: Vec<u8>,
@@ -193,7 +193,7 @@ impl StreamingCanonicalAbi {
     /// Create a new streaming context
     pub fn create_stream(
         &mut self,
-        element_type: ValType,
+        element_type: ValType<NoStdProvider<65536>>,
         direction: StreamDirection,
         options: CanonicalOptions,
     ) -> Result<StreamHandle> {
@@ -374,17 +374,17 @@ impl StreamingCanonicalAbi {
         }
     }
 
-    fn parse_values_from_buffer(&mut self, stream_index: usize) -> Result<(Vec<Value>, usize)> {
+    fn parse_values_from_buffer(&mut self, stream_index: usize) -> core::result::Result<(Vec<Value>, usize)> {
         let context = &self.streams[stream_index];
         
         // Simplified parsing - in real implementation would parse according to element type
         if context.buffer.len() >= 4 {
             let value = match context.element_type {
-                ValType::U32 => {
+                ValType<NoStdProvider<65536>>::U32 => {
                     let bytes = [context.buffer[0], context.buffer[1], context.buffer[2], context.buffer[3]];
                     Value::U32(u32::from_le_bytes(bytes))
                 }
-                ValType::String => {
+                ValType<NoStdProvider<65536>>::String => {
                     // Simplified string parsing
                     if context.buffer.len() >= 8 {
                         let len = u32::from_le_bytes([context.buffer[0], context.buffer[1], context.buffer[2], context.buffer[3]]) as usize;
@@ -408,7 +408,7 @@ impl StreamingCanonicalAbi {
             
             // Remove parsed bytes from buffer
             let bytes_consumed = match context.element_type {
-                ValType::String => {
+                ValType<NoStdProvider<65536>>::String => {
                     if context.buffer.len() >= 8 {
                         let len = u32::from_le_bytes([context.buffer[0], context.buffer[1], context.buffer[2], context.buffer[3]]) as usize;
                         4 + len
@@ -430,7 +430,7 @@ impl StreamingCanonicalAbi {
         }
     }
 
-    fn serialize_values_to_buffer(&mut self, _stream_index: usize, values: &[Value]) -> Result<(Vec<u8>, usize)> {
+    fn serialize_values_to_buffer(&mut self, _stream_index: usize, values: &[Value]) -> core::result::Result<(Vec<u8>, usize)> {
         let mut result_bytes = Vec::new();
         let mut values_consumed = 0;
 
@@ -457,11 +457,11 @@ impl StreamingCanonicalAbi {
         Ok((result_bytes, values_consumed))
     }
 
-    fn get_minimum_parse_size(&self, element_type: &ValType) -> usize {
+    fn get_minimum_parse_size(&self, element_type: &ValType<NoStdProvider<65536>>) -> usize {
         match element_type {
-            ValType::U32 | ValType::S32 => 4,
-            ValType::U64 | ValType::S64 => 8,
-            ValType::String => 4, // At least length prefix
+            ValType<NoStdProvider<65536>>::U32 | ValType<NoStdProvider<65536>>::S32 => 4,
+            ValType<NoStdProvider<65536>>::U64 | ValType<NoStdProvider<65536>>::S64 => 8,
+            ValType<NoStdProvider<65536>>::String => 4, // At least length prefix
             _ => 4, // Default minimum
         }
     }
@@ -576,7 +576,7 @@ mod tests {
     fn test_create_stream() {
         let mut abi = StreamingCanonicalAbi::new();
         let handle = abi.create_stream(
-            ValType::U32,
+            ValType<NoStdProvider<65536>>::U32,
             StreamDirection::Lifting,
             CanonicalOptions::default(),
         ).unwrap();
@@ -590,7 +590,7 @@ mod tests {
     fn test_streaming_lift_u32() {
         let mut abi = StreamingCanonicalAbi::new();
         let handle = abi.create_stream(
-            ValType::U32,
+            ValType<NoStdProvider<65536>>::U32,
             StreamDirection::Lifting,
             CanonicalOptions::default(),
         ).unwrap();
@@ -608,7 +608,7 @@ mod tests {
     fn test_streaming_lower_u32() {
         let mut abi = StreamingCanonicalAbi::new();
         let handle = abi.create_stream(
-            ValType::U32,
+            ValType<NoStdProvider<65536>>::U32,
             StreamDirection::Lowering,
             CanonicalOptions::default(),
         ).unwrap();
@@ -625,7 +625,7 @@ mod tests {
     fn test_stream_stats() {
         let mut abi = StreamingCanonicalAbi::new();
         let handle = abi.create_stream(
-            ValType::U32,
+            ValType<NoStdProvider<65536>>::U32,
             StreamDirection::Lifting,
             CanonicalOptions::default(),
         ).unwrap();
@@ -651,7 +651,7 @@ mod tests {
     fn test_close_stream() {
         let mut abi = StreamingCanonicalAbi::new();
         let handle = abi.create_stream(
-            ValType::U32,
+            ValType<NoStdProvider<65536>>::U32,
             StreamDirection::Lifting,
             CanonicalOptions::default(),
         ).unwrap();

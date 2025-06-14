@@ -1,3 +1,4 @@
+
 // WRT - wrt-platform
 // Module: Platform Memory Management Abstraction
 // SW-REQ-ID: REQ_PLATFORM_001, REQ_MEMORY_001
@@ -192,6 +193,13 @@ impl NoStdProvider {
 }
 
 /// Builder for `NoStdProvider` to provide a fluent configuration API.
+/// 
+/// # Deprecated
+/// Use `WrtProviderFactory::create_provider()` for budget-aware allocation instead.
+#[deprecated(
+    since = "0.3.0",
+    note = "Use WrtProviderFactory::create_provider() from wrt-foundation for new code"
+)]
 #[derive(Debug)]
 pub struct NoStdProviderBuilder {
     size: usize,

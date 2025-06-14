@@ -32,12 +32,14 @@ wat = "1.231.0"
 [features]
 default = []
 # Binary choice: std OR no_std (no alloc middle ground)
-std = ["wrt-format/std", "wrt-foundation/std"]
+std = ["wrt-format/std", "wrt-foundation/std", "wrt-foundation/wrt-allocator"]
 # For compatibility with verification script
 # This is a no-op since the crate is no_std by default
 no_std = []
 optimize = []
 safety = ["wrt-foundation/safety", "wrt-format/safety"]
+# Safety-critical features
+safety-critical = ["wrt-foundation/wrt-allocator"]
 wat = ["dep:wat", "std"]
 
 # Component Model features

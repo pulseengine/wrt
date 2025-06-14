@@ -20,7 +20,9 @@ use wrt_foundation::{BoundedVec as Vec, safe_memory::NoStdProvider};
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{boxed::Box, vec};
+use alloc::{boxed::Box, sync::Arc, vec};
+#[cfg(not(feature = "std"))]
+use wrt_sync::Mutex;
 
 use wrt_error::{Error, Result};
 #[cfg(feature = "std")]

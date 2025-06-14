@@ -71,8 +71,9 @@ pub use crate::component_builder::{
 // #[cfg(feature = "wrt-sync")] // Or a more specific feature if wrt-sync is always a dep
 
 // Re-export platform-specific memory builders if the feature is enabled
-#[cfg(feature = "platform-memory")]
-pub use crate::memory_builder::{LinearMemoryBuilder, PalMemoryProviderBuilder};
+// Memory builders removed in clean architecture
+// #[cfg(feature = "platform-memory")]
+// pub use crate::memory_builder::{LinearMemoryBuilder, PalMemoryProviderBuilder};
 // Binary std/no_std choice
 #[cfg(not(feature = "std"))]
 pub use crate::no_std_hashmap::SimpleHashMap;
@@ -85,7 +86,7 @@ pub use crate::{
     bounded_collections::{BoundedDeque, BoundedMap, BoundedQueue, BoundedSet},
     // Builder patterns
     builder::{
-        BoundedBuilder, MemoryBuilder, NoStdProviderBuilder, ResourceBuilder, ResourceItemBuilder,
+        BoundedBuilder, MemoryBuilder, ResourceBuilder, ResourceItemBuilder,
         StringBuilder,
     },
     // Builtin types
@@ -138,15 +139,12 @@ pub use crate::{
         DefaultTypes, EmbeddedTypes, DesktopTypes, SafetyCriticalTypes,
         PlatformCapacities, UnifiedTypes,
     },
-    // Memory system types
-    memory_system::{
-        UnifiedMemoryProvider, ConfigurableProvider, SmallProvider, MediumProvider, LargeProvider,
-        NoStdProviderWrapper, MemoryProviderFactory,
+    // Modern memory system types
+    wrt_memory_system::{
+        WrtProviderFactory, WRT_MEMORY_COORDINATOR,
     },
-    // Global memory configuration
-    global_memory_config::{
-        GlobalMemoryConfig, GlobalMemoryStats, ProviderType, PlatformAwareMemoryFactory,
-        GlobalMemoryAwareProvider, global_memory_config, initialize_global_memory_system,
+    memory_coordinator::{
+        GenericMemoryCoordinator, CrateIdentifier, AllocationId,
     },
     // Safety system types
     safety_system::{
@@ -159,12 +157,7 @@ pub use crate::{
     },
 };
 
-// Conditional re-exports for memory provider functions
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub use crate::global_memory_config::create_memory_provider;
-
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-pub use crate::global_memory_config::{create_small_provider, create_medium_provider, create_large_provider};
+// Modern memory system convenience functions already imported above
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
@@ -172,7 +165,7 @@ pub use crate::conversion::{ref_type_to_val_type, val_type_to_ref_type};
 
 // std-only memory provider
 #[cfg(feature = "std")]
-pub use crate::memory_system::UnifiedStdProvider;
+// UnifiedStdProvider is now part of the modern memory system
 
 // Alloc-dependent re-exports
 #[cfg(feature = "std")]

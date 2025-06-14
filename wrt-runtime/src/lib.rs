@@ -48,6 +48,9 @@ extern crate alloc;
 // Re-export prelude module publicly
 pub use prelude::*;
 
+// Test module for clean architecture migration
+pub mod clean_runtime_test;
+
 // Core modules
 pub mod atomic_execution;
 pub mod atomic_memory_model;
@@ -83,6 +86,9 @@ pub mod wait_queue;
 
 // Agent D: Platform-aware runtime and unified memory management - temporarily disabled
 // pub mod platform_runtime;
+
+// Bounded infrastructure for static memory allocation
+pub mod bounded_runtime_infra;
 
 // Temporary stub modules for parallel development
 mod foundation_stubs;

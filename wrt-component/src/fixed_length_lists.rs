@@ -14,7 +14,6 @@
 //! WebAssembly Component Model type system, enabling compile-time
 //! guaranteed list sizes for better performance and safety.
 
-#![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
 

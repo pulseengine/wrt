@@ -136,6 +136,12 @@ pub enum ControlOp {
     BrOnNonNull(u32),
 }
 
+impl Default for ControlOp {
+    fn default() -> Self {
+        ControlOp::Nop
+    }
+}
+
 /// Return operation (return)
 #[derive(Debug, Clone, PartialEq)]
 pub struct Return;
@@ -293,7 +299,7 @@ impl BrTable {
         }
         #[cfg(not(feature = "std"))]
         {
-            let provider = wrt_foundation::NoStdProvider::<8192>::new();
+            let provider = wrt_foundation::NoStdProvider::<8192>::default();
             let mut table = wrt_foundation::BoundedVec::new(provider).map_err(|_| {
                 Error::memory_error("Could not create BoundedVec")
             })?;
@@ -470,7 +476,11 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
             }
             Self::BrTable { table, default } => {
                 // Use from_slice for unified interface across all feature configurations
+                #[cfg(feature = "std")]
                 let slice: &[u32] = table.as_slice();
+                #[cfg(not(feature = "std"))]
+                let slice: &[u32] = table.as_slice().map_err(|_| Error::runtime_error("Failed to get table slice"))?;
+                
                 let br_table = BrTable::from_slice(slice, *default)?;
                 br_table.execute(context)
             }

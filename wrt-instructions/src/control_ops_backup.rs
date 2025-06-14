@@ -234,7 +234,9 @@ impl BrTable {
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            let provider = wrt_foundation::NoStdProvider::<8192>::new();\n            let mut table = wrt_foundation::BoundedVec::new(provider).map_err(|_| {\n                Error::memory_error(\"Could not create BoundedVec\")\n            })?;
+            let guard = managed_alloc!(8192, CrateId::Instructions)?;
+
+            let provider = unsafe { guard.release() };\n            let mut table = wrt_foundation::BoundedVec::new(provider).map_err(|_| {\n                Error::memory_error(\"Could not create BoundedVec\")\n            })?;
             for &label in table_slice {
                 table.push(label).map_err(|_| {
                     Error::memory_error("Branch table exceeds maximum size")
@@ -399,7 +401,9 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
                 let br_table = BrTable::new(table.clone(), *default);
                 #[cfg(not(feature = "std"))]
                 let br_table = {
-                    let provider = wrt_foundation::NoStdProvider::<8192>::new();\n                    let mut bounded_table = wrt_foundation::BoundedVec::new(provider).map_err(|_| {\n                        Error::new(ErrorCategory::Runtime, codes::MEMORY_ERROR, \"Could not create BoundedVec\")\n                    })?;
+                    let guard = managed_alloc!(8192, CrateId::Instructions)?;
+
+                    let provider = unsafe { guard.release() };\n                    let mut bounded_table = wrt_foundation::BoundedVec::new(provider).map_err(|_| {\n                        Error::new(ErrorCategory::Runtime, codes::MEMORY_ERROR, \"Could not create BoundedVec\")\n                    })?;
                     for &label in table.iter() {
                         bounded_table.push(label).map_err(|_| {
                             Error::new(ErrorCategory::Runtime, codes::MEMORY_ERROR, "Branch table too large")

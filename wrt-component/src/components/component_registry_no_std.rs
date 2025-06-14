@@ -138,7 +138,7 @@ impl ComponentRegistry {
     }
 
     /// Get all component names
-    pub fn names(&self) -> Result<BoundedVec<String, MAX_COMPONENTS>, NoStdProvider<65536>> {
+    pub fn names(&self) -> core::result::Result<BoundedVec<String, MAX_COMPONENTS, NoStdProvider<65536>>, NoStdProvider<65536>> {
         let mut result = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
         for name in self.names.iter() {
             result.push(name.clone()).map_err(|_| {

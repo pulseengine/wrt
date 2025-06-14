@@ -17,24 +17,17 @@ pub use wrt_foundation::{
 };
 
 // Platform-aware collection type aliases that adapt to target platform capabilities
-/// `HashMap` type for `no_std` environments with bounded capacity
+/// `BoundedHashMap` type for `no_std` environments with bounded capacity
 #[cfg(not(feature = "std"))]
-pub type HashMap<K, V> = wrt_foundation::BoundedMap<K, V, 128, wrt_foundation::memory_system::MediumProvider>;
+pub type BoundedHashMap<K, V> = wrt_foundation::no_std_hashmap::BoundedHashMap<K, V, 128, wrt_foundation::NoStdProvider<1024>>;
 
-/// `HashSet` type for `no_std` environments with bounded capacity
+/// `BoundedHashSet` type for `no_std` environments with bounded capacity  
 #[cfg(not(feature = "std"))]
-pub type HashSet<T> = wrt_foundation::BoundedSet<T, 128, wrt_foundation::memory_system::MediumProvider>;
+pub type BoundedHashSet<T> = wrt_foundation::no_std_hashmap::BoundedHashSet<T, 128, wrt_foundation::NoStdProvider<1024>>;
 
 // Platform-aware string and vector types
 #[cfg(not(feature = "std"))]
 pub use wrt_foundation::bounded::BoundedString;
-
-#[cfg(not(feature = "std"))]
-pub use alloc::string::{String, ToString};
-
-// Note: Use alloc::vec::Vec directly for no_std mode
-#[cfg(not(feature = "std"))]
-pub use alloc::vec::Vec;
 
 // Helper macro to create Vec 
 /// Create a new Vec for `no_std` environments
@@ -263,7 +256,7 @@ pub use wrt_foundation::{
         BoundedStack, BoundedVec,
         GlobalType as CoreGlobalType, MemoryType as CoreMemoryType, ResourceType,
         SafeMemoryHandler, SafeSlice, TableType as CoreTableType,
-        Value, ValueType, VerificationLevel,
+        ValueType, VerificationLevel,
     },
     safe_memory::SafeStack,
     types::{Limits, RefValue, ElementSegment, DataSegment},
@@ -271,23 +264,59 @@ pub use wrt_foundation::{
     MemoryStats,
 };
 
-// Type aliases with platform-aware memory provider for the runtime
-/// Default memory provider for runtime operations (64KB buffer)
-pub type DefaultProvider = wrt_foundation::safe_memory::NoStdProvider<65536>;
-/// WebAssembly instruction type with default provider
-pub type Instruction = wrt_foundation::types::Instruction<DefaultProvider>;
-/// Function type with default provider
-pub type FuncType = wrt_foundation::types::FuncType<DefaultProvider>;
-/// Runtime function type alias for consistency
-pub type RuntimeFuncType = wrt_foundation::types::FuncType<DefaultProvider>;
-/// WebAssembly global variable type
-pub type GlobalType = wrt_foundation::types::GlobalType;
-/// WebAssembly memory type
-pub type MemoryType = wrt_foundation::types::MemoryType;
-/// WebAssembly table type
-pub type TableType = wrt_foundation::types::TableType;
-/// External type for component model with default provider
-pub type ExternType = wrt_foundation::component::ExternType<DefaultProvider>;
+// Clean type aliases without provider parameters - for public APIs
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use wrt_foundation::clean_types::{
+    FuncType as CleanFuncType,
+    MemoryType as CleanMemoryType, 
+    TableType as CleanTableType,
+    GlobalType as CleanGlobalType,
+    ValType as CleanValType,
+    Value as CleanValue,
+    ExternType as CleanExternType,
+};
+
+// Public type aliases using clean types
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type FuncType = CleanFuncType;
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type MemoryType = CleanMemoryType;
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type TableType = CleanTableType;
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type GlobalType = CleanGlobalType;
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type ValType = CleanValType;
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type Value = CleanValue;
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type ExternType = CleanExternType;
+
+// Factory for internal allocation when needed
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use wrt_foundation::type_factory::RuntimeFactory64K as DefaultFactory;
+
+// Fallback for no-alloc environments - use legacy provider-based types temporarily
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub use wrt_foundation::types::{
+    FuncType, MemoryType, TableType, GlobalType, ValueType as ValType,
+};
+
+// Default provider for legacy compatibility
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type DefaultProvider = wrt_foundation::NoStdProvider<65536>;
+
+/// Runtime function type alias for consistency  
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type RuntimeFuncType = FuncType;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub type RuntimeFuncType = wrt_foundation::types::FuncType<wrt_foundation::NoStdProvider<1024>>;
+
+/// Runtime string type alias for consistency
+#[cfg(feature = "std")]
+pub type RuntimeString = String;
+#[cfg(not(feature = "std"))]
+pub type RuntimeString = wrt_foundation::bounded::BoundedString<256, wrt_foundation::NoStdProvider<1024>>;
 
 // Safety-critical wrapper types for runtime (deterministic, verifiable)
 pub use crate::module::{TableWrapper as RuntimeTable, MemoryWrapper as RuntimeMemory, GlobalWrapper as RuntimeGlobal};
@@ -299,8 +328,88 @@ pub use wrt_foundation::prelude::{ComponentValue, ValType as ComponentValType};
 pub use wrt_host::prelude::CallbackRegistry as HostFunctionRegistry;
 pub use wrt_host::prelude::HostFunctionHandler as HostFunction;
 pub use wrt_instructions::{
-    control_ops::BranchTarget as Label, instruction_traits::PureInstruction as InstructionExecutor,
+    control_ops::BranchTarget as Label, 
+    instruction_traits::PureInstruction as InstructionExecutor,
+    arithmetic_ops::ArithmeticOp,
+    control_ops::ControlOp,
 };
+
+// Temporary instruction type until unified enum is available
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Instruction {
+    Nop, // Unit variant for default
+    Arithmetic(ArithmeticOp),
+    Control(ControlOp),
+    // Add other variants as needed
+}
+
+impl Default for Instruction {
+    fn default() -> Self {
+        Instruction::Nop
+    }
+}
+
+// Implement required traits for Instruction
+impl wrt_foundation::traits::Checksummable for Instruction {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        match self {
+            Instruction::Nop => {
+                checksum.update_slice(&[0u8]); // Variant discriminant for Nop
+            }
+            Instruction::Arithmetic(op) => {
+                checksum.update_slice(&[1u8]); // Variant discriminant
+                // ArithmeticOp would need to implement Checksummable
+            }
+            Instruction::Control(op) => {
+                checksum.update_slice(&[2u8]); // Variant discriminant
+                // ControlOp would need to implement Checksummable
+            }
+        }
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for Instruction {
+    fn serialized_size(&self) -> usize {
+        1 + match self {
+            Instruction::Nop => 0,            // No additional data
+            Instruction::Arithmetic(_) => 4,  // Placeholder size
+            Instruction::Control(_) => 4,     // Placeholder size
+        }
+    }
+
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        match self {
+            Instruction::Nop => writer.write_all(&[0u8])?,
+            Instruction::Arithmetic(_) => writer.write_all(&[1u8])?,
+            Instruction::Control(_) => writer.write_all(&[2u8])?,
+        }
+        Ok(())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for Instruction {
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let mut discriminant = [0u8; 1];
+        reader.read_exact(&mut discriminant)?;
+        match discriminant[0] {
+            0 => Ok(Instruction::Nop),
+            1 => Ok(Instruction::Arithmetic(ArithmeticOp::default())),
+            2 => Ok(Instruction::Control(ControlOp::default())),
+            _ => Err(wrt_foundation::Error::new(
+                wrt_foundation::ErrorCategory::Validation,
+                wrt_foundation::codes::INVALID_VALUE,
+                "Invalid instruction discriminant"
+            ))
+        }
+    }
+}
 // Re-export from wrt-intercept (for runtime interception items)
 pub use wrt_intercept::prelude::LinkInterceptor as InterceptorRegistry;
 pub use wrt_intercept::prelude::LinkInterceptorStrategy as InterceptStrategy;

@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 use wrt_foundation::bounded::BoundedVec;
+use wrt_foundation::budget_aware_provider::CrateId;
+use wrt_foundation::wrt_memory_system::WrtProviderFactory;
 
 use crate::prelude::*;
 
@@ -35,12 +37,22 @@ pub struct BufferSizeClass {
 
 impl BufferSizeClass {
     /// Create a new buffer size class
-    pub fn new(size: usize) -> Self {
-        Self { size, buffers: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap() }
+    pub fn new(size: usize) -> Result<Self> {
+        let guard = WrtProviderFactory::create_provider::<65536>(CrateId::Component)?;
+        // Extract provider from guard (we'll keep the guard alive)
+        let provider = unsafe { guard.release() };
+        Ok(Self { 
+            size, 
+            buffers: BoundedVec::new(provider).map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ERROR,
+                "Failed to create bounded vector for buffer pool"
+            ))?
+        })
     }
 
     /// Get a buffer from this size class if one is available
-    pub fn get_buffer(&mut self) -> Option<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>, NoStdProvider<65536>> {
+    pub fn get_buffer(&mut self) -> Option<BoundedVec<u8, MAX_BUFFERS_PER_CLASS, NoStdProvider<65536>>, NoStdProvider<65536>> {
         if self.buffers.is_empty() {
             None
         } else {
@@ -52,7 +64,7 @@ impl BufferSizeClass {
     }
 
     /// Return a buffer to this size class
-    pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<(), NoStdProvider<65536>> {
+    pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS, NoStdProvider<65536>>) -> core::result::Result<(), NoStdProvider<65536>> {
         if self.buffers.len() >= MAX_BUFFERS_PER_CLASS {
             // Size class is full
             return Ok(());
@@ -98,7 +110,7 @@ impl BoundedBufferPool {
     }
 
     /// Allocate a buffer of at least the specified size
-    pub fn allocate(&mut self, size: usize) -> Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>, NoStdProvider<65536>> {
+    pub fn allocate(&mut self, size: usize) -> core::result::Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS, NoStdProvider<65536>>, NoStdProvider<65536>> {
         // Find a size class that can fit this buffer
         let matching_class = self.find_size_class(size);
 
@@ -112,7 +124,18 @@ impl BoundedBufferPool {
         }
 
         // No suitable buffer found, create a new one
-        let mut buffer = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
+        let guard = WrtProviderFactory::create_provider::<65536>(CrateId::Component)
+            .map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ERROR,
+                "Failed to allocate memory provider for buffer"
+            ))?;
+        let provider = unsafe { guard.release() };
+        let mut buffer = BoundedVec::new(provider).map_err(|_| Error::new(
+            ErrorCategory::Memory,
+            codes::MEMORY_ERROR,
+            "Failed to create bounded vector"
+        ))?;
         for _ in 0..size {
             buffer.push(0).map_err(|_| {
                 Error::new(
@@ -127,7 +150,7 @@ impl BoundedBufferPool {
     }
 
     /// Return a buffer to the pool
-    pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<(), NoStdProvider<65536>> {
+    pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS, NoStdProvider<65536>>) -> core::result::Result<(), NoStdProvider<65536>> {
         let size = buffer.capacity();
 
         // Find the appropriate size class
@@ -193,9 +216,11 @@ impl BoundedBufferPool {
         // Find an empty slot
         for i in 0..MAX_BUFFER_SIZE_CLASSES {
             if self.size_classes[i].is_none() {
-                self.size_classes[i] = Some(BufferSizeClass::new(size));
-                self.active_classes += 1;
-                return Some(i);
+                if let Ok(size_class) = BufferSizeClass::new(size) {
+                    self.size_classes[i] = Some(size_class);
+                    self.active_classes += 1;
+                    return Some(i);
+                }
             }
         }
 

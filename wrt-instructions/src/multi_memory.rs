@@ -552,7 +552,8 @@ mod tests {
                 return Err(Error::memory_error("Read out of bounds"));
             }
             
-            let mut result = wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::new())?;
+            let provider = wrt_foundation::wrt_provider!(len, wrt_foundation::budget_aware_provider::CrateId::Instructions).unwrap_or_default();
+            let mut result = wrt_foundation::BoundedVec::new(provider)?;
             for i in start..end {
                 result.push(self.data[i]).map_err(|_| Error::memory_error("Result vector full"))?;
             }

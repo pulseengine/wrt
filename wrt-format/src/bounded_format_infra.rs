@@ -3,18 +3,16 @@
 //! This module provides bounded alternatives for format collections
 //! to ensure static memory allocation throughout the format structures.
 
-#![cfg_attr(not(feature = "std"), no_std)]
 
 use wrt_foundation::{
-    bounded::{BoundedVec, BoundedString},
+    bounded::{BoundedString, BoundedVec},
+    safe_memory::NoStdProvider,
     no_std_hashmap::BoundedHashMap,
-    budget_provider::BudgetProvider,
-    budget_aware_provider::{BudgetAwareProviderFactory, CrateId},
     WrtResult,
 };
 
 /// Budget-aware memory provider for format (32KB)
-pub type FormatProvider = BudgetProvider<32768>;
+pub type FormatProvider = NoStdProvider<32768>;
 
 /// Maximum number of function parameters
 pub const MAX_FUNCTION_PARAMS: usize = 128;
@@ -83,95 +81,122 @@ pub type BoundedFieldName = BoundedString<MAX_FIELD_NAME_LENGTH, FormatProvider>
 pub type BoundedPackageUrl = BoundedString<MAX_PACKAGE_URL_LENGTH, FormatProvider>;
 
 /// Bounded map for interface definitions
-pub type BoundedInterfaceMap<V> = BoundedHashMap<
-    BoundedModuleName,
-    V,
-    MAX_INTERFACES,
-    FormatProvider
->;
+pub type BoundedInterfaceMap<V> =
+    BoundedHashMap<BoundedModuleName, V, MAX_INTERFACES, FormatProvider>;
 
 /// Bounded map for world items
-pub type BoundedWorldMap<V> = BoundedHashMap<
-    BoundedModuleName,
-    V,
-    MAX_WORLD_ITEMS,
-    FormatProvider
->;
+pub type BoundedWorldMap<V> = BoundedHashMap<BoundedModuleName, V, MAX_WORLD_ITEMS, FormatProvider>;
 
 /// Create a new bounded params vector
-pub fn new_params_vec<T>() -> WrtResult<BoundedParamsVec<T>> 
+pub fn new_params_vec<T>() -> WrtResult<BoundedParamsVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
-    let provider = FormatProvider::new(CrateId::Format)?;
+    let provider = FormatProvider::default();
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded results vector
-pub fn new_results_vec<T>() -> WrtResult<BoundedResultsVec<T>> 
+pub fn new_results_vec<T>() -> WrtResult<BoundedResultsVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
-    let provider = FormatProvider::new(CrateId::Format)?;
+    let provider = FormatProvider::default();
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded fields vector
-pub fn new_fields_vec<T>() -> WrtResult<BoundedFieldsVec<T>> 
+pub fn new_fields_vec<T>() -> WrtResult<BoundedFieldsVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
-    let provider = FormatProvider::new(CrateId::Format)?;
+    let provider = FormatProvider::default();
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded cases vector
-pub fn new_cases_vec<T>() -> WrtResult<BoundedCasesVec<T>> 
+pub fn new_cases_vec<T>() -> WrtResult<BoundedCasesVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
-    let provider = FormatProvider::new(CrateId::Format)?;
+    let provider = FormatProvider::default();
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded module name
 pub fn new_module_name() -> WrtResult<BoundedModuleName> {
-    let provider = FormatProvider::new(CrateId::Format)?;
-    BoundedString::from_str_truncate("", provider)
+    let provider = FormatProvider::default();
+    Ok(BoundedString::from_str_truncate("", provider)?)
 }
 
 /// Create a bounded module name from str
 pub fn bounded_module_from_str(s: &str) -> WrtResult<BoundedModuleName> {
-    let provider = FormatProvider::new(CrateId::Format)?;
-    BoundedString::from_str(s, provider)
+    let provider = FormatProvider::default();
+    Ok(BoundedString::from_str(s, provider)?)
 }
 
 /// Create a new bounded field name
 pub fn new_field_name() -> WrtResult<BoundedFieldName> {
-    let provider = FormatProvider::new(CrateId::Format)?;
-    BoundedString::from_str_truncate("", provider)
+    let provider = FormatProvider::default();
+    Ok(BoundedString::from_str_truncate("", provider)?)
 }
 
 /// Create a bounded field name from str
 pub fn bounded_field_from_str(s: &str) -> WrtResult<BoundedFieldName> {
-    let provider = FormatProvider::new(CrateId::Format)?;
-    BoundedString::from_str(s, provider)
+    let provider = FormatProvider::default();
+    Ok(BoundedString::from_str(s, provider)?)
 }
 
 /// Create a new bounded interface map
-pub fn new_interface_map<V>() -> WrtResult<BoundedInterfaceMap<V>> 
+pub fn new_interface_map<V>() -> WrtResult<BoundedInterfaceMap<V>>
 where
-    V: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    V: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
-    let provider = FormatProvider::new(CrateId::Format)?;
+    let provider = FormatProvider::default();
     BoundedHashMap::new(provider)
 }
 
 /// Create a new bounded world map
-pub fn new_world_map<V>() -> WrtResult<BoundedWorldMap<V>> 
+pub fn new_world_map<V>() -> WrtResult<BoundedWorldMap<V>>
 where
-    V: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    V: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
-    let provider = FormatProvider::new(CrateId::Format)?;
+    let provider = FormatProvider::default();
     BoundedHashMap::new(provider)
 }

@@ -153,6 +153,60 @@ impl Default for AsilLevel {
     }
 }
 
+/// Safety level wrapper for ASIL integration
+///
+/// This type provides a common interface for safety level operations
+/// across the WRT system, wrapping the core AsilLevel enum.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SafetyLevel {
+    asil: AsilLevel,
+}
+
+impl SafetyLevel {
+    /// Create a new safety level from an ASIL level
+    pub const fn new(asil: AsilLevel) -> Self {
+        Self { asil }
+    }
+
+    /// Get the underlying ASIL level
+    pub const fn asil_level(&self) -> AsilLevel {
+        self.asil
+    }
+
+    /// Check if this safety level requires memory protection
+    pub const fn requires_memory_protection(&self) -> bool {
+        self.asil.requires_memory_protection()
+    }
+
+    /// Check if this safety level requires runtime verification
+    pub const fn requires_runtime_verification(&self) -> bool {
+        self.asil.requires_runtime_verification()
+    }
+
+    /// Get the verification frequency for this safety level
+    pub const fn verification_frequency(&self) -> u32 {
+        self.asil.verification_frequency()
+    }
+}
+
+impl Default for SafetyLevel {
+    fn default() -> Self {
+        Self::new(AsilLevel::default())
+    }
+}
+
+impl From<AsilLevel> for SafetyLevel {
+    fn from(asil: AsilLevel) -> Self {
+        Self::new(asil)
+    }
+}
+
+impl core::fmt::Display for SafetyLevel {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.asil)
+    }
+}
+
 impl core::fmt::Display for AsilLevel {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())

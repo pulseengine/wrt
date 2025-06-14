@@ -10,14 +10,14 @@ use wrt_foundation::{
     values::{Value as WrtValue, FuncRef as WrtFuncRef, ExternRef as WrtExternRef},
     safe_memory::NoStdMemoryProvider,
     bounded::BoundedVec,
-    budget_types::RuntimeVec,
+    // Use clean collections instead of runtime allocator types
     verification::VerificationLevel,
 };
 
 // Platform-aware memory provider for table operations  
 type TableProvider = wrt_foundation::safe_memory::NoStdProvider<8192>;  // 8KB for table operations
 
-use crate::prelude::{BoundedCapacity, Debug, Eq, Error, ErrorCategory, Ord, PartialEq, Result, String, TryFrom, codes, format};
+use crate::prelude::{BoundedCapacity, Debug, Eq, Error, ErrorCategory, Ord, PartialEq, Result, String, TryFrom, codes, format, Arc};
 
 // Import the TableOperations trait from wrt-instructions
 use wrt_instructions::table_ops::TableOperations;

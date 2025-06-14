@@ -152,6 +152,12 @@ pub enum ArithmeticOp {
     F64Copysign,
 }
 
+impl Default for ArithmeticOp {
+    fn default() -> Self {
+        ArithmeticOp::I32Add
+    }
+}
+
 /// Execution context for arithmetic operations
 pub trait ArithmeticContext {
     /// Pop a value from the context

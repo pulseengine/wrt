@@ -8,7 +8,7 @@ use crate::{
         Future as WasmFuture, FutureHandle, FutureState, Stream as WasmStream, StreamHandle,
     },
     task_manager::{TaskId, TaskManager, TaskState},
-    ComponentInstanceId, ValType,
+    ComponentInstanceId, ValType<NoStdProvider<65536>>,
 };
 use core::{
     pin::Pin,
@@ -44,7 +44,7 @@ pub mod rust_async_bridge {
     }
 
     impl<T: Clone + Send + 'static> RustFuture for ComponentFutureAdapter<T> {
-        type Output = Result<T, String>;
+        type Output = core::result::Result<T, String>;
 
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
             let future = self.wasm_future.lock().unwrap();
@@ -75,7 +75,7 @@ pub mod rust_async_bridge {
         future: F,
         task_manager: &mut TaskManager,
         component_id: ComponentInstanceId,
-    ) -> Result<FutureHandle, String>
+    ) -> core::result::Result<FutureHandle, String>
     where
         F: RustFuture<Output = T> + Send + 'static,
         T: Into<ComponentValue>,
@@ -95,7 +95,7 @@ pub mod component_async {
     pub fn execute_async_operation(
         task_manager: &mut TaskManager,
         operation: AsyncOperation,
-    ) -> Result<TaskId, String> {
+    ) -> core::result::Result<TaskId, String> {
         // Create a task for the async operation
         let task_id = task_manager
             .create_task(operation.component_id, &operation.name)
@@ -195,7 +195,7 @@ mod tests {
 
         // Create a Component Model future - no Rust Future trait needed!
         let future_handle = FutureHandle(1);
-        let mut wasm_future = WasmFuture::<i32>::new(future_handle, ValType::I32);
+        let mut wasm_future = WasmFuture::<i32>::new(future_handle, ValType<NoStdProvider<65536>>::I32);
 
         // Poll it manually
         let result = poll_future(&mut wasm_future, &mut task_manager);
@@ -215,7 +215,7 @@ mod tests {
 
         // Create a Component Model stream - no Rust Stream trait needed!
         let stream_handle = StreamHandle(1);
-        let mut wasm_stream = WasmStream::<String>::new(stream_handle, ValType::String);
+        let mut wasm_stream = WasmStream::<String>::new(stream_handle, ValType<NoStdProvider<65536>>::String);
 
         // Add some values
         #[cfg(feature = "std")]

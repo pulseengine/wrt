@@ -5,8 +5,10 @@
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::bounded::{BoundedVec, MAX_BUFFER_SIZE};
+use wrt_foundation::safe_memory::NoStdProvider;
 
-use super::{MemoryStrategy, ResourceOperation};
+use super::MemoryStrategy;
+use wrt_foundation::resource::ResourceOperation;
 use super::resource_strategy::ResourceStrategy;
 
 /// No-std version of ResourceStrategy implementation
@@ -33,7 +35,7 @@ impl ResourceStrategy for ResourceStrategyNoStd {
         &self,
         data: &[u8],
         operation: ResourceOperation,
-    ) -> Result<BoundedVec<u8, MAX_BUFFER_SIZE>, NoStdProvider<65536>> {
+    ) -> core::result::Result<BoundedVec<u8, MAX_BUFFER_SIZE, NoStdProvider<65536>>, NoStdProvider<65536>> {
         match self.strategy {
             // Zero-copy strategy - returns a view without copying for reads, a copy for writes
             MemoryStrategy::ZeroCopy => match operation {

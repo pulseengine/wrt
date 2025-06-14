@@ -3,18 +3,19 @@
 //! This module provides bounded alternatives for daemon collections
 //! to ensure static memory allocation throughout the daemon operations.
 
-#![cfg_attr(not(feature = "std"), no_std)]
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
-    no_std_hashmap::BoundedHashMap,
+    bounded_collections::BoundedMap as BoundedHashMap,
+    safe_memory::NoStdProvider,
     budget_provider::BudgetProvider,
-    budget_aware_provider::{BudgetAwareProviderFactory, CrateId},
+    CrateId,
+    managed_alloc,
     WrtResult,
 };
 
 /// Budget-aware memory provider for WRTD daemon (64KB)
-pub type WrtdProvider = BudgetProvider<65536>;
+pub type WrtdProvider = NoStdProvider<32768>;
 
 /// Maximum number of daemon services
 pub const MAX_DAEMON_SERVICES: usize = 32;
@@ -154,108 +155,150 @@ pub type BoundedEnvMap = BoundedHashMap<
 
 /// Create a new bounded daemon service vector
 pub fn new_daemon_service_vec<T>() -> WrtResult<BoundedDaemonServiceVec<T>> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded connection vector
 pub fn new_connection_vec<T>() -> WrtResult<BoundedConnectionVec<T>> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded service config vector
 pub fn new_service_config_vec<T>() -> WrtResult<BoundedServiceConfigVec<T>> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded process vector
 pub fn new_process_vec<T>() -> WrtResult<BoundedProcessVec<T>> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded log entry vector
 pub fn new_log_entry_vec<T>() -> WrtResult<BoundedLogEntryVec<T>> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded service name
 pub fn new_service_name() -> WrtResult<BoundedServiceName> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     Ok(BoundedString::new(provider))
 }
 
 /// Create a bounded service name from str
 pub fn bounded_service_name_from_str(s: &str) -> WrtResult<BoundedServiceName> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     BoundedString::from_str(s, provider)
 }
 
 /// Create a new bounded configuration key
 pub fn new_config_key() -> WrtResult<BoundedConfigKey> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     Ok(BoundedString::new(provider))
 }
 
 /// Create a bounded configuration key from str
 pub fn bounded_config_key_from_str(s: &str) -> WrtResult<BoundedConfigKey> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     BoundedString::from_str(s, provider)
 }
 
 /// Create a new bounded configuration value
 pub fn new_config_value() -> WrtResult<BoundedConfigValue> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     Ok(BoundedString::new(provider))
 }
 
 /// Create a bounded configuration value from str
 pub fn bounded_config_value_from_str(s: &str) -> WrtResult<BoundedConfigValue> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     BoundedString::from_str(s, provider)
 }
 
 /// Create a new bounded log message
 pub fn new_log_message() -> WrtResult<BoundedLogMessage> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     Ok(BoundedString::new(provider))
 }
 
 /// Create a bounded log message from str
 pub fn bounded_log_message_from_str(s: &str) -> WrtResult<BoundedLogMessage> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     BoundedString::from_str(s, provider)
 }
 
 /// Create a new bounded service map
 pub fn new_service_map<V>() -> WrtResult<BoundedServiceMap<V>> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     BoundedHashMap::new(provider)
 }
 
 /// Create a new bounded connection map
-pub fn new_connection_map<V>() -> WrtResult<BoundedConnectionMap<V>> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+pub fn new_connection_map<V>() -> WrtResult<BoundedConnectionMap<V>>
+where
+    V: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     BoundedHashMap::new(provider)
 }
 
 /// Create a new bounded configuration map
 pub fn new_config_map() -> WrtResult<BoundedConfigMap> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     BoundedHashMap::new(provider)
 }
 
 /// Create a new bounded process map
-pub fn new_process_map<V>() -> WrtResult<BoundedProcessMap<V>> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+pub fn new_process_map<V>() -> WrtResult<BoundedProcessMap<V>>
+where
+    V: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     BoundedHashMap::new(provider)
 }
 
 /// Create a new bounded environment map
 pub fn new_env_map() -> WrtResult<BoundedEnvMap> {
-    let provider = WrtdProvider::new(CrateId::Platform)?;
+    let guard = managed_alloc!(32768, CrateId::Platform)?;
+
+    let provider = guard.provider().clone();
     BoundedHashMap::new(provider)
 }

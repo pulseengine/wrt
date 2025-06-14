@@ -324,12 +324,13 @@ pub const MAX_BINARY_SIZE: usize = 1024 * 1024; // 1 MB
 pub struct WrtComponentType {
     /// Component imports
     pub imports: BoundedVec<
-        (BoundedString<MAX_WASM_NAME_LENGTH>, BoundedString<MAX_WASM_NAME_LENGTH>, ExternType),
+        (BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<65536>>, BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<65536>>, ExternType<NoStdProvider<65536>>),
         MAX_COMPONENT_IMPORTS,
+        NoStdProvider<65536>,
     >,
     /// Component exports
     pub exports:
-        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, ExternType), MAX_COMPONENT_EXPORTS>,
+        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<65536>>, ExternType<NoStdProvider<65536>>), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
     /// Component instances
     pub instances:
         BoundedVec<wrt_format::component::ComponentTypeDefinition, MAX_COMPONENT_INSTANCES, NoStdProvider<65536>>,
@@ -504,7 +505,7 @@ impl WrtComponentTypeBuilder {
     }
 
     /// Build the component type
-    pub fn build(self) -> Result<WrtComponentType<NoStdProvider<65536>>> {
+    pub fn build(self) -> Result<WrtComponentType> {
         let mut component_type = WrtComponentType::new();
         component_type.verification_level = self.verification_level;
 
@@ -540,7 +541,7 @@ pub struct BuiltinRequirements {
     pub required: BoundedVec<BuiltinType, MAX_COMPONENT_TYPES, NoStdProvider<65536>>,
     /// Map of required builtin instances
     pub instances:
-        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, BuiltinType), MAX_COMPONENT_INSTANCES>,
+        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, BuiltinType), MAX_COMPONENT_INSTANCES, NoStdProvider<65536>>,
 }
 
 /// Runtime instance type for no_std
@@ -548,13 +549,13 @@ pub struct BuiltinRequirements {
 pub struct RuntimeInstance {
     /// Functions exported by this runtime
     functions:
-        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, ExternValue), MAX_COMPONENT_EXPORTS>,
+        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, ExternValue), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
     /// Memory exported by this runtime
-    memories: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, MemoryValue), MAX_COMPONENT_EXPORTS>,
+    memories: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, MemoryValue), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
     /// Tables exported by this runtime
-    tables: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, TableValue), MAX_COMPONENT_EXPORTS>,
+    tables: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, TableValue), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
     /// Globals exported by this runtime
-    globals: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, GlobalValue), MAX_COMPONENT_EXPORTS>,
+    globals: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, GlobalValue), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
     /// Verification level for memory operations
     verification_level: VerificationLevel,
 }
@@ -652,7 +653,7 @@ pub struct Component {
     pub instances: BoundedVec<InstanceValue, MAX_COMPONENT_INSTANCES, NoStdProvider<65536>>,
     /// Linked components with their namespaces (names and component IDs)
     pub linked_components:
-        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, usize), MAX_LINKED_COMPONENTS>,
+        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, usize), MAX_LINKED_COMPONENTS, NoStdProvider<65536>>,
     /// Runtime instance
     pub runtime: Option<RuntimeInstance>,
     /// Resource table for managing component resources
@@ -660,7 +661,7 @@ pub struct Component {
     /// Built-in requirements
     pub built_in_requirements: Option<BuiltinRequirements>,
     /// Original binary
-    pub original_binary: Option<BoundedVec<u8, MAX_BINARY_SIZE>, NoStdProvider<65536>>,
+    pub original_binary: Option<BoundedVec<u8, MAX_BINARY_SIZE, NoStdProvider<65536>>, NoStdProvider<65536>>,
     /// Verification level for all operations
     pub verification_level: VerificationLevel,
 }
@@ -821,7 +822,7 @@ impl Default for Component {
 /// Builder for Component in no_std environment
 pub struct ComponentBuilder {
     /// Component type
-    component_type: Option<WrtComponentType<NoStdProvider<65536>>>,
+    component_type: Option<WrtComponentType>,
     /// Component exports
     exports: Vec<Export>,
     /// Component imports
@@ -1215,7 +1216,7 @@ impl Default for TableValue {
 impl Default for TableType {
     fn default() -> Self {
         Self {
-            element_type: ValType::FuncRef,
+            element_type: ValType<NoStdProvider<65536>>::FuncRef,
             limits: Limits::default(),
         }
     }
@@ -1234,7 +1235,7 @@ impl Default for GlobalValue {
 impl Default for GlobalType {
     fn default() -> Self {
         Self {
-            content: ValType::I32,
+            content: ValType<NoStdProvider<65536>>::I32,
             mutable: false,
         }
     }

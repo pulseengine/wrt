@@ -281,7 +281,7 @@ impl<T> OwnHandle<T> {
     }
     
     /// Create from a Value
-    pub fn from_value(value: &Value) -> Result<Self, HandleConversionError> {
+    pub fn from_value(value: &Value) -> core::result::Result<Self, HandleConversionError> {
         match value {
             Value::Own(handle) => Ok(Self::new(*handle, 0)), // Generation would be validated separately
             _ => Err(HandleConversionError::TypeMismatch),
@@ -321,7 +321,7 @@ impl<T> BorrowHandle<T> {
     }
     
     /// Create from a Value
-    pub fn from_value(value: &Value, borrow_id: BorrowId) -> Result<Self, HandleConversionError> {
+    pub fn from_value(value: &Value, borrow_id: BorrowId) -> core::result::Result<Self, HandleConversionError> {
         match value {
             Value::Borrow(handle) => Ok(Self::new(*handle, 0, borrow_id)), // Generation would be validated separately
             _ => Err(HandleConversionError::TypeMismatch),

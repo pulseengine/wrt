@@ -22,11 +22,13 @@ log = { version = "0.4", optional = true }
 [features]
 default = []
 # Binary choice: std OR no_std (no alloc middle ground)
-std = ["log", "wrt-foundation/std", "wrt-intercept/std", "wrt-sync/std"]
+std = ["log", "wrt-foundation/std", "wrt-intercept/std", "wrt-sync/std", "wrt-foundation/wrt-allocator"]
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
 optimize = ["wrt-foundation/optimize", "wrt-intercept/optimize"]
 safety = ["wrt-foundation/safety", "wrt-intercept/safety", "std"]
+# Safety-critical features for ASIL-C compliance
+safety-critical = ["wrt-foundation/wrt-allocator"]
 kani = ["wrt-intercept/kani"]
 disable-panic-handler = [
     "wrt-error/disable-panic-handler",

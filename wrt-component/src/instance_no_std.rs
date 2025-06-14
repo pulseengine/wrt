@@ -190,7 +190,7 @@ impl Default for InstanceCollection {
 #[cfg(test)]
 mod tests {
     use wrt::types::{FuncType, ValueType};
-    use wrt_format::component::{ExternType, ValType};
+    use wrt_format::component::{ExternType, ValType<NoStdProvider<65536>>};
 
     use super::*;
     use crate::export::Export;
@@ -205,8 +205,8 @@ mod tests {
         // Since most of the types require ownership, we'll mock them for testing
         // In a real implementation, we would need to use the actual types
         let component_func_type = ExternType::Function {
-            params: vec![("a".to_string(), ValType::S32), ("b".to_string(), ValType::S32)],
-            results: vec![ValType::S32],
+            params: vec![("a".to_string(), ValType<NoStdProvider<65536>>::S32), ("b".to_string(), ValType<NoStdProvider<65536>>::S32)],
+            results: vec![ValType<NoStdProvider<65536>>::S32],
         };
 
         let export = Export {

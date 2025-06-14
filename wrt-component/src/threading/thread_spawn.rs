@@ -7,7 +7,7 @@ use crate::{
 // Placeholder types
 pub type ComponentInstanceId = u32;
 pub type ResourceHandle = u32;
-pub type ValType = u32;
+pub type ValType<NoStdProvider<65536>> = u32;
 use core::{
     fmt,
     sync::atomic::{AtomicBool, AtomicU32, Ordering},
@@ -57,7 +57,7 @@ impl fmt::Display for ThreadSpawnError {
 #[cfg(feature = "std")]
 impl std::error::Error for ThreadSpawnError {}
 
-pub type ThreadSpawnResult<T> = Result<T, ThreadSpawnError>;
+pub type ThreadSpawncore::result::Result<T> = Result<T, ThreadSpawnError>;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ThreadId(u32);
@@ -504,7 +504,7 @@ impl ComponentThreadManager {
         _component_id: ComponentInstanceId,
         _function_name: &str,
         _arguments: &[ComponentValue],
-    ) -> Result<Option<ComponentValue>, String> {
+    ) -> core::result::Result<Option<ComponentValue>, String> {
         Ok(Some(ComponentValue::I32(42)))
     }
 }
@@ -629,7 +629,7 @@ mod tests {
             function_name: "test_function".to_string(),
             arguments: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             configuration: ThreadConfiguration::default(),
-            return_type: Some(ValType::I32),
+            return_type: Some(ValType<NoStdProvider<65536>>::I32),
         };
 
         let handle = manager.spawn_thread(request).unwrap();

@@ -9,6 +9,9 @@ use crate::prelude::{Debug, Eq, PartialEq};
 use wrt_foundation::traits::BoundedCapacity;
 use crate::atomic_execution::{AtomicMemoryContext, AtomicExecutionStats};
 use crate::thread_manager::{ThreadManager, ThreadId, ThreadState};
+use crate::bounded_runtime_infra::{
+    BoundedThreadMap, RuntimeProvider, new_thread_map
+};
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_instructions::atomic_ops::{MemoryOrdering, AtomicOp};
 use wrt_platform::sync::Ordering as PlatformOrdering;
@@ -374,20 +377,14 @@ pub enum MemoryOrderingPolicy {
 /// Thread synchronization state tracking
 #[derive(Debug)]
 pub struct ThreadSyncState {
-    /// Active synchronization operations per thread
-    #[cfg(feature = "std")]
-    sync_operations: alloc::collections::BTreeMap<ThreadId, u32>,
-    #[cfg(not(feature = "std"))]
-    sync_operations: wrt_foundation::bounded::BoundedVec<(ThreadId, u32), 32, wrt_foundation::safe_memory::NoStdProvider<1024>>,  // Simplified for no_std
+    /// Active synchronization operations per thread using bounded collections
+    sync_operations: BoundedThreadMap<u32>,
 }
 
 impl ThreadSyncState {
     fn new() -> Result<Self> {
         Ok(Self {
-            #[cfg(feature = "std")]
-            sync_operations: alloc::collections::BTreeMap::new(),
-            #[cfg(not(feature = "std"))]
-            sync_operations: wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
+            sync_operations: new_thread_map(),
         })
     }
     

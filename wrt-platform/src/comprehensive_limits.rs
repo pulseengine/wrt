@@ -3,6 +3,7 @@
 //! Provides comprehensive platform limit discovery capabilities across different
 //! operating systems and runtime environments.
 
+
 use wrt_error::Error;
 
 #[cfg(feature = "std")]
@@ -334,7 +335,7 @@ mod tests {
     
     #[test]
     fn test_embedded_provider() {
-        let provider = EmbeddedLimitProvider::new(1024 * 1024, AsilLevel::ASIL_C);
+        let provider = EmbeddedLimitProvider::new(1024 * 1024, AsilLevel::AsilC);
         let limits = provider.discover_limits().unwrap();
         
         assert_eq!(limits.platform_id, PlatformId::Embedded);

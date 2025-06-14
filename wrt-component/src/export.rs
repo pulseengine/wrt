@@ -81,7 +81,7 @@ impl Export {
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
-    use wrt_format::component::{ExternType, ValType};
+    use wrt_format::component::{ExternType, ValType<NoStdProvider<65536>>};
 
     use super::*;
     use crate::component::{ExternValue, FunctionValue};
@@ -89,8 +89,8 @@ mod tests {
     #[test]
     fn test_export_creation() {
         let func_type = ExternType::Function {
-            params: vec![("a".to_string(), ValType::S32), ("b".to_string(), ValType::S32)],
-            results: vec![ValType::S32],
+            params: vec![("a".to_string(), ValType<NoStdProvider<65536>>::S32), ("b".to_string(), ValType<NoStdProvider<65536>>::S32)],
+            results: vec![ValType<NoStdProvider<65536>>::S32],
         };
 
         let func_value = FunctionValue { ty: func_type.clone(), export_name: "add".to_string() };

@@ -1,6 +1,5 @@
 //! Component Linker and Import/Export Resolution System
 
-#![cfg_attr(not(feature = "std"), no_std)]
 
 // Cross-environment imports
 #[cfg(feature = "std")]
@@ -246,7 +245,7 @@ impl ComponentLinker {
         if !dependent_instances.is_empty() {
             return Err(Error::new(
                 ErrorCategory::Runtime,
-                codes::RESOURCE_IN_USE,
+                codes::RESOURCE_ACCESS_ERROR,
                 "Component is in use by active instances",
             ));
         }
@@ -343,7 +342,7 @@ impl ComponentLinker {
     fn parse_component_binary(
         &self,
         binary: &[u8],
-    ) -> Result<(Vec<ComponentExport>, Vec<ComponentImport>, ComponentMetadata)> {
+    ) -> core::result::Result<(Vec<ComponentExport>, Vec<ComponentImport>, ComponentMetadata)> {
         // Simplified component parsing
         if binary.is_empty() {
             return Err(Error::new(
@@ -452,7 +451,7 @@ impl ComponentLinker {
 
         Err(Error::new(
             ErrorCategory::Runtime,
-            codes::IMPORT_NOT_SATISFIED,
+            codes::COMPONENT_IMPORT_NOT_FOUND_ERROR,
             "Component not found",
         ))
     }
@@ -510,7 +509,7 @@ impl LinkGraph {
         if self.find_node_index(&component_id).is_some() {
             return Err(Error::new(
                 ErrorCategory::Validation,
-                codes::DUPLICATE_COMPONENT,
+                codes::DUPLICATE_OPERATION,
                 "Component already exists in graph",
             ));
         }
@@ -618,7 +617,7 @@ impl LinkGraph {
         if temp_visited[node_index] {
             return Err(Error::new(
                 ErrorCategory::Validation,
-                codes::CIRCULAR_DEPENDENCY,
+                codes::VALIDATION_ERROR,
                 "Circular dependency detected",
             ));
         }

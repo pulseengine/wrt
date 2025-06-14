@@ -162,14 +162,14 @@ pub enum ResourceRepresentation {
     #[cfg(feature = "std")]
     Record(
         BoundedVec<
-            BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, NoStdProvider<0>>,
+            BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, crate::safe_memory::NoStdProvider<4096>>,
             MAX_RESOURCE_FIELDS,
-            NoStdProvider<0>,
+            crate::safe_memory::NoStdProvider<4096>,
         >,
     ),
     /// Aggregate representation with type indices
     #[cfg(feature = "std")]
-    Aggregate(BoundedVec<u32, MAX_RESOURCE_AGGREGATE_IDS, NoStdProvider<0>>),
+    Aggregate(BoundedVec<u32, MAX_RESOURCE_AGGREGATE_IDS, crate::safe_memory::NoStdProvider<4096>>),
     /// Binary std/no_std choice
     #[cfg(not(feature = "std"))]
     Record,
@@ -208,8 +208,11 @@ impl core::str::FromStr for ResourceRepresentation {
             "record" => {
                 #[cfg(feature = "std")]
                 {
+                    use crate::budget_aware_provider::CrateId;
+                    use crate::wrt_memory_system::WrtProviderFactory;
+                    
                     Ok(ResourceRepresentation::Record(
-                        BoundedVec::new(NoStdProvider::default()).map_err(|_e| {
+                        BoundedVec::new(WrtProviderFactory::create_provider(CrateId::Foundation)?).map_err(|_e| {
                             wrt_error::Error::new(
                                 wrt_error::ErrorCategory::Memory,
                                 wrt_error::codes::MEMORY_ALLOCATION_ERROR,
@@ -226,8 +229,11 @@ impl core::str::FromStr for ResourceRepresentation {
             "aggregate" => {
                 #[cfg(feature = "std")]
                 {
+                    use crate::budget_aware_provider::CrateId;
+                    use crate::wrt_memory_system::WrtProviderFactory;
+                    
                     Ok(ResourceRepresentation::Aggregate(
-                        BoundedVec::new(NoStdProvider::default()).map_err(|_e| {
+                        BoundedVec::new(WrtProviderFactory::create_provider(CrateId::Foundation)?).map_err(|_e| {
                             wrt_error::Error::new(
                                 wrt_error::ErrorCategory::Memory,
                                 wrt_error::codes::MEMORY_ALLOCATION_ERROR,

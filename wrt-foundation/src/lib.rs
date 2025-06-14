@@ -164,15 +164,49 @@ pub mod verification;
 #[cfg(any(doc, kani))]
 pub mod verify;
 
-// New foundation modules for Agent A deliverables
+// Modern Memory Management System
+/// Generic memory coordination system - works with any project
+pub mod memory_coordinator;
+/// Generic RAII memory guard - automatic cleanup
+pub mod generic_memory_guard;
+/// Generic provider factory - budget-aware allocation
+pub mod generic_provider_factory;
+/// WRT-specific memory system implementation
+pub mod wrt_memory_system;
+/// Compile-time budget verification system
+pub mod budget_verification;
+/// Modern memory initialization system - zero-config setup
+pub mod memory_init;
+/// Compile-time memory enforcement system - prevents bypass
+pub mod enforcement;
+/// Hierarchical budget system for complex allocations
+pub mod hierarchical_budgets;
+/// Formal verification with KANI - mathematical proofs
+pub mod formal_verification;
+/// Zero-configuration convenience macros
+pub mod macros;
+/// Memory system monitoring and telemetry
+pub mod monitoring;
+
+// Clean Architecture - Provider-Free Types
+/// Clean type definitions without provider parameters
+pub mod clean_types;
+/// Type factory pattern for allocation boundary management
+pub mod type_factory;
+
+// WRT Compile-Time Allocator System
+/// Revolutionary compile-time memory allocation system with A+ safety compliance
+pub mod allocator;
+
+// Legacy Support & Compatibility
+/// Budget-aware provider factory for global memory coordination
+pub mod budget_aware_provider;
+/// Budget provider compatibility layer
+pub mod budget_provider;
+
+// Non-Memory Foundation Modules
 /// Unified type system with platform-configurable bounded collections (simplified)
 pub mod unified_types_simple;
-/// Memory provider hierarchy for predictable allocation behavior
-pub mod memory_system;
-/// Global memory configuration and platform-aware allocation system
-pub mod global_memory_config;
-/// Budget-aware type aliases for different crates
-pub mod budget_types;
 /// ASIL-aware safety primitives for safety-critical applications
 pub mod safety_system;
 /// ASIL-tagged testing framework for safety verification
@@ -198,12 +232,13 @@ pub mod component_value_store_builder;
 #[cfg(feature = "platform-memory")]
 /// Linear memory implementation using PageAllocator.
 pub mod linear_memory;
-#[cfg(feature = "platform-memory")]
-/// Memory builder patterns for platform-backed memory types
-pub mod memory_builder;
-#[cfg(feature = "platform-memory")]
-/// Runtime memory module
-pub mod runtime_memory;
+// Memory system modules removed - now using clean architecture
+// #[cfg(feature = "platform-memory")]
+// /// Memory builder patterns for platform-backed memory types
+// pub mod memory_builder;
+// #[cfg(feature = "platform-memory")]
+// /// Runtime memory module
+// pub mod runtime_memory;
 
 // Binary std/no_std choice
 #[cfg(not(feature = "std"))]
@@ -219,7 +254,7 @@ pub use bounded::{BoundedStack, BoundedString, BoundedVec, CapacityError, WasmNa
 pub use bounded_collections::BoundedBitSet;
 pub use bounded_collections::{BoundedDeque, BoundedMap, BoundedQueue, BoundedSet};
 pub use builder::{
-    BoundedBuilder, MemoryBuilder, NoStdProviderBuilder, ResourceBuilder, ResourceItemBuilder,
+    BoundedBuilder, MemoryBuilder, ResourceBuilder, ResourceItemBuilder,
     ResourceTypeBuilder, StringBuilder,
 };
 pub use builtin::BuiltinType;
@@ -242,9 +277,9 @@ pub use operations::{
     reset_global_operations, Summary as OperationSummary, Tracking as OperationTracking,
     Type as OperationType,
 };
-// Platform-specific re-exports
-#[cfg(feature = "platform-memory")]
-pub use runtime_memory::LinearMemory;
+// Platform-specific re-exports removed - clean architecture
+// #[cfg(feature = "platform-memory")]
+// pub use runtime_memory::LinearMemory;
 pub use safe_memory::{
     NoStdProvider, Provider as MemoryProvider, SafeMemoryHandler, Slice as SafeSlice,
     SliceMut as SafeSliceMut, Stats as MemoryStats,
@@ -278,35 +313,68 @@ pub use unified_types_simple::{
     PlatformCapacities, UnifiedTypes,
 };
 
-// Re-export memory system types
-pub use memory_system::{
-    UnifiedMemoryProvider, ConfigurableProvider, SmallProvider, MediumProvider, LargeProvider,
-    NoStdProviderWrapper, MemoryProviderFactory,
-};
+// Re-export modern memory system types
+pub use wrt_memory_system::{WrtProviderFactory, WRT_MEMORY_COORDINATOR};
+pub use memory_coordinator::{GenericMemoryCoordinator, CrateIdentifier, AllocationId};
+pub use generic_memory_guard::{GenericMemoryGuard, ManagedMemoryProvider, MemoryCoordinator};
+pub use budget_verification::{CRATE_BUDGETS, TOTAL_MEMORY_BUDGET};
+pub use memory_init::MemoryInitializer;
+pub use enforcement::{MemoryManaged, EnforcedAllocation, AllocationToken};
 
-// Re-export budget types for convenient access
-pub use budget_types::{
-    RuntimeVec, RuntimeString, RuntimeMap,
-    FoundationVec, FoundationString, FoundationMap,
-    FormatVec, FormatString, FormatMap,
-    ComponentVec, ComponentString, ComponentMap,
-    DecoderVec, DecoderString,
-    InstructionsVec, InstructionsString,
-};
-
-#[cfg(feature = "std")]
-pub use memory_system::UnifiedStdProvider;
+// Re-export budget provider types
+pub use budget_provider::BudgetProvider;
 
 // Re-export safety system types
 pub use safety_system::{
     // Traditional ASIL types
-    AsilLevel, SafetyContext, SafetyGuard, SafeMemoryAllocation,
+    AsilLevel, SafetyContext, SafetyGuard, SafeMemoryAllocation, SafetyLevel,
     // Universal safety system types
     SafetyStandard, SafetyStandardType, SafetyStandardConversion,
     UniversalSafetyContext, SeverityScore, SafetyError,
     // Additional safety standard levels
     DalLevel, SilLevel, MedicalClass, RailwaySil, AgricultureLevel,
 };
+
+// Re-export crate identifiers
+pub use budget_aware_provider::CrateId;
+
+// Re-export monitoring types
+pub use monitoring::{
+    MemoryMonitor, MemoryStatistics, SystemReport, SystemHealth,
+    convenience as monitoring_convenience,
+};
+
+// Re-export hierarchical budget types
+pub use hierarchical_budgets::{HierarchicalBudget, MemoryPriority};
+
+// Re-export clean types (provider-free) - only when allocation is available
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use clean_types::{
+    ValType as CleanValType, Value as CleanValue, FuncType as CleanFuncType,
+    MemoryType as CleanMemoryType, TableType as CleanTableType, GlobalType as CleanGlobalType,
+    ComponentType as CleanComponentType, ExternType as CleanExternType,
+    InstanceType as CleanInstanceType, ComponentTypeDefinition as CleanComponentTypeDefinition,
+    Record as CleanRecord, Field as CleanField, Tuple as CleanTuple,
+    Variant as CleanVariant, Case as CleanCase, Enum as CleanEnum,
+    Result_ as CleanResult, Flags as CleanFlags, Limits as CleanLimits, RefType as CleanRefType,
+};
+
+// Re-export type factory types - only when allocation is available
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use type_factory::{
+    TypeFactory, RuntimeTypeFactory, ComponentTypeFactory, TypeConverter,
+    RuntimeFactory8K, RuntimeFactory64K, RuntimeFactory1M,
+    ComponentFactory8K, ComponentFactory64K, ComponentFactory1M,
+    FactoryBuilder,
+};
+
+
+
+// Note: Macros exported with #[macro_export] are available at the crate root
+// create_foundation_provider!, create_runtime_provider!, create_component_provider!, get_recommended_size!
+// create_shared_foundation_provider!, create_shared_runtime_provider!, create_shared_component_provider!
+// auto_provider!, auto_shared_provider!, small_provider!, medium_provider!, large_provider!
+// monitor_operation!
 
 /// The WebAssembly binary format magic number: \0asm
 pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
@@ -364,10 +432,18 @@ mod tests {
     use crate::bounded::BoundedVec;
     use crate::safe_memory::{SafeMemoryHandler, NoStdProvider};
     use crate::traits::BoundedCapacity;
+    use crate::budget_aware_provider::CrateId;
+
+    // Helper function to initialize memory system for tests
+    fn init_test_memory_system() {
+        // Memory system is automatically initialized
+    }
 
     #[test]
     fn test_boundedvec_is_empty() {
-        let provider = NoStdProvider::new();
+        init_test_memory_system();
+        let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
+        let provider = unsafe { guard.release() };
         let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
         
         // Test is_empty
@@ -384,7 +460,9 @@ mod tests {
     #[test]
     #[cfg(feature = "std")]
     fn test_boundedvec_to_vec_std() {
-        let provider = NoStdProvider::new();
+        init_test_memory_system();
+        let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
+        let provider = unsafe { guard.release() };
         let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
         
         vec.push(1).unwrap();
@@ -398,7 +476,9 @@ mod tests {
     #[test]
     #[cfg(not(feature = "std"))]
     fn test_boundedvec_to_vec_no_std() {
-        let provider = NoStdProvider::new();
+        init_test_memory_system();
+        let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
+        let provider = unsafe { guard.release() };
         let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
         
         vec.push(1).unwrap();
@@ -414,7 +494,9 @@ mod tests {
 
     #[test]
     fn test_safe_memory_handler_to_vec() {
-        let provider = NoStdProvider::new();
+        init_test_memory_system();
+        let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
+        let provider = unsafe { guard.release() };
         let handler = SafeMemoryHandler::new(provider);
         
         // Test to_vec on empty handler
@@ -438,3 +520,5 @@ mod tests {
     // math_ops.rs, etc., should have their own detailed test suites as
     // well.
 }
+#[cfg(test)]
+mod static_memory_tests;

@@ -87,13 +87,13 @@ impl RuntimeComponentType {
     }
 }
 
-impl From<ComponentType<NoStdProvider<65536>>> for RuntimeComponentType {
-    fn from(component_type: ComponentType<NoStdProvider<65536>>) -> Self {
+impl From<ComponentType> for RuntimeComponentType {
+    fn from(component_type: ComponentType) -> Self {
         Self::new(component_type)
     }
 }
 
-impl From<RuntimeComponentType> for ComponentType<NoStdProvider<65536>> {
+impl From<RuntimeComponentType> for ComponentType {
     fn from(wrapper: RuntimeComponentType) -> Self {
         wrapper.into_inner()
     }
@@ -185,7 +185,7 @@ impl TryFrom<RuntimeComponentType> for FormatComponentType {
         let runtime_type = runtime_type.into_inner();
 
         // Convert imports
-        let imports_result: Result<Vec<(String, String, FormatExternType)>> = runtime_type
+        let imports_result: core::result::Result<Vec<(String, String, FormatExternType)>> = runtime_type
             .imports
             .into_iter()
             .map(|(namespace, name, extern_type)| {
@@ -195,7 +195,7 @@ impl TryFrom<RuntimeComponentType> for FormatComponentType {
             .collect();
 
         // Convert exports
-        let exports_result: Result<Vec<(String, FormatExternType)>> = runtime_type
+        let exports_result: core::result::Result<Vec<(String, FormatExternType)>> = runtime_type
             .exports
             .into_iter()
             .map(|(name, extern_type)| {
@@ -212,7 +212,7 @@ impl TryFrom<FormatComponentType> for RuntimeComponentType {
 
     fn try_from(format_type: FormatComponentType) -> Result<Self> {
         // Convert imports
-        let imports_result: Result<Vec<(String, String, TypesExternType)>> = format_type
+        let imports_result: core::result::Result<Vec<(String, String, TypesExternType)>> = format_type
             .imports
             .into_iter()
             .map(|(namespace, name, extern_type)| {
@@ -222,7 +222,7 @@ impl TryFrom<FormatComponentType> for RuntimeComponentType {
             .collect();
 
         // Convert exports
-        let exports_result: Result<Vec<(String, TypesExternType)>> = format_type
+        let exports_result: core::result::Result<Vec<(String, TypesExternType)>> = format_type
             .exports
             .into_iter()
             .map(|(name, extern_type)| {
@@ -248,7 +248,7 @@ impl TryFrom<RuntimeInstanceType> for FormatInstanceType {
         let runtime_type = runtime_type.into_inner();
 
         // Convert exports
-        let exports_result: Result<Vec<(String, FormatExternType)>> = runtime_type
+        let exports_result: core::result::Result<Vec<(String, FormatExternType)>> = runtime_type
             .exports
             .into_iter()
             .map(|(name, extern_type)| {
@@ -265,7 +265,7 @@ impl TryFrom<FormatInstanceType> for RuntimeInstanceType {
 
     fn try_from(format_type: FormatInstanceType) -> Result<Self> {
         // Convert exports
-        let exports_result: Result<Vec<(String, TypesExternType)>> = format_type
+        let exports_result: core::result::Result<Vec<(String, TypesExternType)>> = format_type
             .exports
             .into_iter()
             .map(|(name, extern_type)| {

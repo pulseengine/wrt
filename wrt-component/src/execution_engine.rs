@@ -27,7 +27,7 @@ use crate::{
     memory_layout::MemoryLayout,
     // resource_lifecycle::{ResourceHandle, ResourceLifecycleManager},
     string_encoding::StringEncoding,
-    types::{ValType, Value},
+    types::{ValType<NoStdProvider<65536>>, Value},
     // runtime_bridge::{ComponentRuntimeBridge, RuntimeBridgeConfig},
     WrtResult,
 };
@@ -143,7 +143,7 @@ pub struct ComponentExecutionEngine {
     #[cfg(feature = "std")]
     host_functions: Vec<Box<dyn HostFunction>>,
     #[cfg(not(any(feature = "std", )))]
-    host_functions: BoundedVec<fn(&[Value]) -> WrtResult<Value>, MAX_IMPORTS, NoStdProvider<65536>>,
+    host_functions: BoundedVec<fn(&[Value]) -> Wrtcore::result::Result<Value>, MAX_IMPORTS, NoStdProvider<65536>>,
 
     /// Current component instance
     current_instance: Option<u32>,
@@ -469,7 +469,7 @@ impl ComponentExecutionEngine {
 
     /// Convert engine values to component values (no_std version)
     #[cfg(not(any(feature = "std", )))]
-    fn convert_values_to_component(&self, values: &[Value]) -> WrtResult<BoundedVec<crate::canonical_abi::ComponentValue, 16>, NoStdProvider<65536>> {
+    fn convert_values_to_component(&self, values: &[Value]) -> Wrtcore::result::Result<BoundedVec<crate::canonical_abi::ComponentValue, 16, NoStdProvider<65536>>, NoStdProvider<65536>> {
         let mut component_values = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
         for value in values {
             let component_value = self.convert_value_to_component(value)?;
@@ -575,7 +575,7 @@ impl ComponentExecutionEngine {
         func: F,
     ) -> WrtResult<usize>
     where
-        F: Fn(&[crate::canonical_abi::ComponentValue]) -> Result<crate::canonical_abi::ComponentValue, wrt_error::Error> + Send + Sync + 'static,
+        F: Fn(&[crate::canonical_abi::ComponentValue]) -> core::result::Result<crate::canonical_abi::ComponentValue, wrt_error::Error> + Send + Sync + 'static,
     {
         use crate::canonical_abi::ComponentType;
         
@@ -600,7 +600,7 @@ impl ComponentExecutionEngine {
     pub fn register_runtime_host_function(
         &mut self,
         name: &str,
-        func: fn(&[crate::canonical_abi::ComponentValue]) -> Result<crate::canonical_abi::ComponentValue, wrt_error::Error>,
+        func: fn(&[crate::canonical_abi::ComponentValue]) -> core::result::Result<crate::canonical_abi::ComponentValue, wrt_error::Error>,
     ) -> WrtResult<usize> {
         use crate::canonical_abi::ComponentType;
         

@@ -3,18 +3,24 @@
 //! This module provides bounded alternatives for component collections
 //! to ensure static memory allocation throughout the component model.
 
-#![cfg_attr(not(feature = "std"), no_std)]
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
-    no_std_hashmap::BoundedHashMap,
+    managed_alloc,
+    safe_memory::NoStdProvider,
     budget_provider::BudgetProvider,
-    budget_aware_provider::{BudgetAwareProviderFactory, CrateId},
+    budget_aware_provider::CrateId,
     WrtResult,
 };
 
+#[cfg(not(feature = "std"))]
+use wrt_foundation::bounded_collections::BoundedMap as BoundedHashMap;
+
+#[cfg(feature = "std")]
+use wrt_foundation::bounded_collections::BoundedMap as BoundedHashMap;
+
 /// Budget-aware memory provider for component model (128KB)
-pub type ComponentProvider = BudgetProvider<131072>;
+pub type ComponentProvider = NoStdProvider<131072>;
 
 /// Maximum number of component instances
 pub const MAX_COMPONENT_INSTANCES: usize = 256;
@@ -110,6 +116,15 @@ pub type BoundedComponentName = BoundedString<MAX_COMPONENT_NAME_LEN, ComponentP
 pub type BoundedExportName = BoundedString<MAX_EXPORT_NAME_LEN, ComponentProvider>;
 
 /// Bounded map for exports
+#[cfg(not(feature = "std"))]
+pub type BoundedExportMap<V> = BoundedHashMap<
+    BoundedExportName,
+    V,
+    MAX_COMPONENT_EXPORTS,
+    ComponentProvider
+>;
+
+#[cfg(feature = "std")]
 pub type BoundedExportMap<V> = BoundedHashMap<
     BoundedExportName,
     V,
@@ -118,6 +133,15 @@ pub type BoundedExportMap<V> = BoundedHashMap<
 >;
 
 /// Bounded map for imports
+#[cfg(not(feature = "std"))]
+pub type BoundedImportMap<V> = BoundedHashMap<
+    BoundedExportName,
+    V,
+    MAX_COMPONENT_IMPORTS,
+    ComponentProvider
+>;
+
+#[cfg(feature = "std")]
 pub type BoundedImportMap<V> = BoundedHashMap<
     BoundedExportName,
     V,
@@ -126,6 +150,15 @@ pub type BoundedImportMap<V> = BoundedHashMap<
 >;
 
 /// Bounded map for type definitions
+#[cfg(not(feature = "std"))]
+pub type BoundedTypeMap<V> = BoundedHashMap<
+    u32, // Type index
+    V,
+    MAX_TYPE_DEFINITIONS,
+    ComponentProvider
+>;
+
+#[cfg(feature = "std")]
 pub type BoundedTypeMap<V> = BoundedHashMap<
     u32, // Type index
     V,
@@ -134,6 +167,15 @@ pub type BoundedTypeMap<V> = BoundedHashMap<
 >;
 
 /// Bounded map for resource types
+#[cfg(not(feature = "std"))]
+pub type BoundedResourceTypeMap<V> = BoundedHashMap<
+    u32, // Resource type ID
+    V,
+    MAX_RESOURCE_TYPES,
+    ComponentProvider
+>;
+
+#[cfg(feature = "std")]
 pub type BoundedResourceTypeMap<V> = BoundedHashMap<
     u32, // Resource type ID
     V,
@@ -146,90 +188,166 @@ pub type BoundedPostReturnVec<T> = BoundedVec<T, MAX_POST_RETURN_CALLBACKS, Comp
 
 /// Create a new bounded component vector
 pub fn new_component_vec<T>() -> WrtResult<BoundedComponentVec<T>> {
-    let provider = ComponentProvider::new(CrateId::Component)?;
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+
+    let provider = unsafe { guard.release() };
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded export vector
 pub fn new_export_vec<T>() -> WrtResult<BoundedExportVec<T>> {
-    let provider = ComponentProvider::new(CrateId::Component)?;
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+
+    let provider = unsafe { guard.release() };
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded import vector
 pub fn new_import_vec<T>() -> WrtResult<BoundedImportVec<T>> {
-    let provider = ComponentProvider::new(CrateId::Component)?;
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+
+    let provider = unsafe { guard.release() };
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded resource vector
 pub fn new_resource_vec<T>() -> WrtResult<BoundedResourceVec<T>> {
-    let provider = ComponentProvider::new(CrateId::Component)?;
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+
+    let provider = unsafe { guard.release() };
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded call stack
 pub fn new_call_stack<T>() -> WrtResult<BoundedCallStack<T>> {
-    let provider = ComponentProvider::new(CrateId::Component)?;
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+
+    let provider = unsafe { guard.release() };
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded operand stack
 pub fn new_operand_stack<T>() -> WrtResult<BoundedOperandStack<T>> {
-    let provider = ComponentProvider::new(CrateId::Component)?;
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+
+    let provider = unsafe { guard.release() };
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded locals vector
 pub fn new_locals_vec<T>() -> WrtResult<BoundedLocalsVec<T>> {
-    let provider = ComponentProvider::new(CrateId::Component)?;
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+
+    let provider = unsafe { guard.release() };
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded component name
 pub fn new_component_name() -> WrtResult<BoundedComponentName> {
-    let provider = ComponentProvider::new(CrateId::Component)?;
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+
+    let provider = unsafe { guard.release() };
     Ok(BoundedString::new(provider))
 }
 
 /// Create a bounded component name from str
 pub fn bounded_component_name_from_str(s: &str) -> WrtResult<BoundedComponentName> {
-    let provider = ComponentProvider::new(CrateId::Component)?;
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+
+    let provider = unsafe { guard.release() };
     BoundedString::from_str(s, provider)
 }
 
 /// Create a new bounded export name
 pub fn new_export_name() -> WrtResult<BoundedExportName> {
-    let provider = ComponentProvider::new(CrateId::Component)?;
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+
+    let provider = unsafe { guard.release() };
     Ok(BoundedString::new(provider))
 }
 
 /// Create a bounded export name from str
 pub fn bounded_export_name_from_str(s: &str) -> WrtResult<BoundedExportName> {
-    let provider = ComponentProvider::new(CrateId::Component)?;
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+
+    let provider = unsafe { guard.release() };
     BoundedString::from_str(s, provider)
 }
 
 /// Create a new bounded export map
+#[cfg(not(feature = "std"))]
 pub fn new_export_map<V>() -> WrtResult<BoundedExportMap<V>> {
-    let provider = ComponentProvider::new(CrateId::Component)?;
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedHashMap::new(provider)
+}
+
+#[cfg(feature = "std")]
+pub fn new_export_map<V>() -> WrtResult<BoundedExportMap<V>>
+where
+    BoundedExportName: core::hash::Hash + Eq,
+    V: Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+    let provider = unsafe { guard.release() };
     BoundedHashMap::new(provider)
 }
 
 /// Create a new bounded import map
+#[cfg(not(feature = "std"))]
 pub fn new_import_map<V>() -> WrtResult<BoundedImportMap<V>> {
-    let provider = ComponentProvider::new(CrateId::Component)?;
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedHashMap::new(provider)
+}
+
+#[cfg(feature = "std")]
+pub fn new_import_map<V>() -> WrtResult<BoundedImportMap<V>>
+where
+    BoundedExportName: core::hash::Hash + Eq,
+    V: Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+    let provider = unsafe { guard.release() };
     BoundedHashMap::new(provider)
 }
 
 /// Create a new bounded type map
+#[cfg(not(feature = "std"))]
 pub fn new_type_map<V>() -> WrtResult<BoundedTypeMap<V>> {
-    let provider = ComponentProvider::new(CrateId::Component)?;
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedHashMap::new(provider)
+}
+
+#[cfg(feature = "std")]
+pub fn new_type_map<V>() -> WrtResult<BoundedTypeMap<V>>
+where
+    V: Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+    let provider = unsafe { guard.release() };
     BoundedHashMap::new(provider)
 }
 
 /// Create a new bounded resource type map
+#[cfg(not(feature = "std"))]
 pub fn new_resource_type_map<V>() -> WrtResult<BoundedResourceTypeMap<V>> {
-    let provider = ComponentProvider::new(CrateId::Component)?;
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedHashMap::new(provider)
+}
+
+#[cfg(feature = "std")]
+pub fn new_resource_type_map<V>() -> WrtResult<BoundedResourceTypeMap<V>>
+where
+    V: Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Component)?;
+    let provider = unsafe { guard.release() };
     BoundedHashMap::new(provider)
 }

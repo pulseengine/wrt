@@ -10,6 +10,9 @@ use crate::prelude::{BoundedCapacity, Debug, Eq, PartialEq};
 use crate::branch_prediction::{
     BranchLikelihood, ModuleBranchPredictor, PredictiveExecutionContext,
 };
+use crate::bounded_runtime_infra::{
+    BoundedInterpreterOptMap, RuntimeProvider, new_interpreter_opt_map
+};
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::types::Instruction;
 
@@ -85,11 +88,8 @@ impl ExecutionPath {
 /// Instruction prefetch cache for predicted execution paths
 #[derive(Debug)]
 pub struct InstructionPrefetchCache {
-    /// Cached instructions for quick access
-    #[cfg(feature = "std")]
-    cache: alloc::collections::BTreeMap<u32, crate::prelude::Instruction>,
-    #[cfg(not(feature = "std"))]
-    cache: wrt_foundation::BoundedVec<(u32, crate::prelude::Instruction), 64, wrt_foundation::NoStdProvider<1024>>,
+    /// Cached instructions for quick access using bounded collections
+    cache: BoundedInterpreterOptMap<crate::prelude::Instruction>,
     /// Cache hit statistics
     pub cache_hits: u64,
     /// Cache miss statistics
@@ -100,10 +100,7 @@ impl InstructionPrefetchCache {
     /// Create new prefetch cache
     #[must_use] pub fn new() -> Self {
         Self {
-            #[cfg(feature = "std")]
-            cache: alloc::collections::BTreeMap::new(),
-            #[cfg(not(feature = "std"))]
-            cache: wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::<1024>::default()).unwrap(),
+            cache: new_interpreter_opt_map(),
             cache_hits: 0,
             cache_misses: 0,
         }
@@ -111,48 +108,15 @@ impl InstructionPrefetchCache {
     
     /// Prefetch instruction at offset
     pub fn prefetch(&mut self, offset: u32, instruction: crate::prelude::Instruction) -> Result<()> {
-        #[cfg(feature = "std")]
-        {
-            self.cache.insert(offset, instruction);
-            Ok(())
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            // Remove oldest entry if cache is full
-            if self.cache.len() >= 64 {
-                self.cache.remove(0);
-            }
-            self.cache.push((offset, instruction)).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Prefetch cache full")
-            })
-        }
+        self.cache.insert(offset, instruction)
     }
     
     /// Get cached instruction if available
     pub fn get_cached(&mut self, offset: u32) -> Option<crate::prelude::Instruction> {
-        #[cfg(feature = "std")]
-        {
-            if let Some(instruction) = self.cache.get(&offset) {
-                self.cache_hits += 1;
-                Some(instruction.clone())
-            } else {
-                self.cache_misses += 1;
-                None
-            }
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            for i in 0..self.cache.len() {
-                if let Ok((cached_offset, _)) = self.cache.get(i) {
-                    if cached_offset == offset {
-                        self.cache_hits += 1;
-                        if let Ok((_, instruction)) = self.cache.get(i) {
-                            // Return owned instruction
-                            return Some(instruction);
-                        }
-                    }
-                }
-            }
+        if let Ok(Some(instruction)) = self.cache.get(&offset) {
+            self.cache_hits += 1;
+            Some(instruction.clone())
+        } else {
             self.cache_misses += 1;
             None
         }

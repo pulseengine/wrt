@@ -4,6 +4,8 @@
 
 #![warn(clippy::missing_panics_doc)]
 
+// Example modules removed - replaced with new A+ memory system demonstrations
+
 use std::cell::{Cell, RefCell};
 
 use wit_bindgen::generate;

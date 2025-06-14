@@ -2,7 +2,7 @@ use crate::{
     canonical_options::CanonicalOptions,
     execution_engine::{ComponentExecutionEngine, ExecutionContext, ExecutionState},
     post_return::{CleanupTask, CleanupTaskType, PostReturnRegistry},
-    ComponentInstanceId, ResourceHandle, ValType,
+    ComponentInstanceId, ResourceHandle, ValType<NoStdProvider<65536>>,
 };
 use core::{fmt, time::Duration};
 use wrt_foundation::{
@@ -44,7 +44,7 @@ impl fmt::Display for StartFunctionError {
 #[cfg(feature = "std")]
 impl std::error::Error for StartFunctionError {}
 
-pub type StartFunctionResult<T> = Result<T, StartFunctionError>;
+pub type StartFunctioncore::result::Result<T> = Result<T, StartFunctionError>;
 
 #[derive(Debug, Clone)]
 pub struct StartFunctionDescriptor {
@@ -60,7 +60,7 @@ pub struct StartFunctionDescriptor {
 #[derive(Debug, Clone)]
 pub struct StartFunctionParam {
     pub name: String,
-    pub param_type: ValType,
+    pub param_type: ValType<NoStdProvider<65536>>,
     pub required: bool,
     pub default_value: Option<ComponentValue>,
 }
@@ -240,7 +240,7 @@ impl StartFunctionValidator {
     pub fn validate_all_pending(
         &mut self,
     ) -> StartFunctionResult<
-        BoundedVec<(ComponentInstanceId, ValidationState), MAX_START_FUNCTION_VALIDATIONS>,
+        BoundedVec<(ComponentInstanceId, ValidationState), MAX_START_FUNCTION_VALIDATIONS, NoStdProvider<65536>>,
     > {
         let mut results = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
 
@@ -425,7 +425,7 @@ impl StartFunctionValidator {
     fn prepare_arguments(
         &self,
         descriptor: &StartFunctionDescriptor,
-    ) -> StartFunctionResult<BoundedVec<ComponentValue, MAX_START_FUNCTION_PARAMS>, NoStdProvider<65536>> {
+    ) -> StartFunctioncore::result::Result<BoundedVec<ComponentValue, MAX_START_FUNCTION_PARAMS, NoStdProvider<65536>>, NoStdProvider<65536>> {
         let mut arguments = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
 
         for param in descriptor.parameters.iter() {
@@ -481,7 +481,7 @@ impl StartFunctionValidator {
     fn analyze_side_effects(
         &self,
         execution_context: &ExecutionContext,
-    ) -> StartFunctionResult<BoundedVec<SideEffect, 32>, NoStdProvider<65536>> {
+    ) -> StartFunctioncore::result::Result<BoundedVec<SideEffect, 32, NoStdProvider<65536>>, NoStdProvider<65536>> {
         let mut side_effects = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
 
         // Binary std/no_std choice
@@ -564,14 +564,14 @@ impl StartFunctionValidator {
         true
     }
 
-    fn get_default_value_for_type(&self, val_type: &ValType) -> ComponentValue {
+    fn get_default_value_for_type(&self, val_type: &ValType<NoStdProvider<65536>>) -> ComponentValue {
         match val_type {
-            ValType::I32 => ComponentValue::I32(0),
-            ValType::I64 => ComponentValue::I64(0),
-            ValType::F32 => ComponentValue::F32(0.0),
-            ValType::F64 => ComponentValue::F64(0.0),
-            ValType::String => ComponentValue::String(String::new()),
-            ValType::Bool => ComponentValue::Bool(false),
+            ValType<NoStdProvider<65536>>::I32 => ComponentValue::I32(0),
+            ValType<NoStdProvider<65536>>::I64 => ComponentValue::I64(0),
+            ValType<NoStdProvider<65536>>::F32 => ComponentValue::F32(0.0),
+            ValType<NoStdProvider<65536>>::F64 => ComponentValue::F64(0.0),
+            ValType<NoStdProvider<65536>>::String => ComponentValue::String(String::new()),
+            ValType<NoStdProvider<65536>>::Bool => ComponentValue::Bool(false),
             _ => ComponentValue::I32(0), // Default fallback
         }
     }
@@ -619,7 +619,7 @@ pub fn create_start_function_descriptor(name: &str) -> StartFunctionDescriptor {
     }
 }
 
-pub fn create_start_function_param(name: &str, param_type: ValType) -> StartFunctionParam {
+pub fn create_start_function_param(name: &str, param_type: ValType<NoStdProvider<65536>>) -> StartFunctionParam {
     StartFunctionParam { name: name.to_string(), param_type, required: false, default_value: None }
 }
 
@@ -644,9 +644,9 @@ mod tests {
 
     #[test]
     fn test_start_function_param_creation() {
-        let param = create_start_function_param("argc", ValType::I32);
+        let param = create_start_function_param("argc", ValType<NoStdProvider<65536>>::I32);
         assert_eq!(param.name, "argc");
-        assert_eq!(param.param_type, ValType::I32);
+        assert_eq!(param.param_type, ValType<NoStdProvider<65536>>::I32);
         assert!(!param.required);
         assert!(param.default_value.is_none());
     }

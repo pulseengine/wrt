@@ -16,7 +16,7 @@ use wrt_foundation::{
 use crate::{
     generative_types::GenerativeTypeRegistry,
     type_bounds::{RelationKind, TypeBoundsChecker},
-    types::{ComponentError, ComponentInstanceId, TypeId, ValType},
+    types::{ComponentError, ComponentInstanceId, TypeId, ValType<NoStdProvider<65536>>},
 };
 
 /// Import resolution result
@@ -55,7 +55,7 @@ pub enum ImportValue {
     /// Instance import
     Instance { instance_id: ComponentInstanceId },
     /// Value import
-    Value { val_type: ValType, value: ComponentValue },
+    Value { val_type: ValType<NoStdProvider<65536>>, value: ComponentValue },
 }
 
 /// Export value types
@@ -72,7 +72,7 @@ pub enum ExportValue {
     /// Instance export
     Instance { instance_id: ComponentInstanceId },
     /// Value export
-    Value { val_type: ValType, value: ComponentValue },
+    Value { val_type: ValType<NoStdProvider<65536>>, value: ComponentValue },
 }
 
 /// Component value for imports/exports
@@ -106,7 +106,7 @@ pub enum ComponentValue {
     /// Option value
     Option(Option<Box<ComponentValue>>),
     /// Result value
-    Result(Result<Box<ComponentValue>, Box<ComponentValue>>),
+    Result(core::result::Result<Box<ComponentValue>, Box<ComponentValue>>),
 }
 
 /// Component resolver for import/export resolution
@@ -138,7 +138,7 @@ impl ComponentResolver {
         instance_id: ComponentInstanceId,
         import_name: BoundedString<64, NoStdProvider<65536>>,
         provided_value: ImportValue,
-    ) -> Result<ResolvedImport, ComponentError> {
+    ) -> core::result::Result<ResolvedImport, ComponentError> {
         // Check cache first
         let cache_key = (instance_id, import_name.clone());
         if let Some(cached) = self.import_cache.get(&cache_key) {
@@ -160,7 +160,7 @@ impl ComponentResolver {
         instance_id: ComponentInstanceId,
         export_name: BoundedString<64, NoStdProvider<65536>>,
         export_value: ExportValue,
-    ) -> Result<ResolvedExport, ComponentError> {
+    ) -> core::result::Result<ResolvedExport, ComponentError> {
         // Check cache first
         let cache_key = (instance_id, export_name.clone());
         if let Some(cached) = self.export_cache.get(&cache_key) {
@@ -181,7 +181,7 @@ impl ComponentResolver {
         &mut self,
         import: &ResolvedImport,
         export: &ResolvedExport,
-    ) -> Result<bool, ComponentError> {
+    ) -> core::result::Result<bool, ComponentError> {
         match (&import.value, &export.value) {
             (
                 ImportValue::Function { type_id: import_type, .. },
@@ -222,7 +222,7 @@ impl ComponentResolver {
         &mut self,
         import_type: TypeId,
         export_type: TypeId,
-    ) -> Result<bool, ComponentError> {
+    ) -> core::result::Result<bool, ComponentError> {
         // Check if export type is a subtype of import type
         let result = self.bounds_checker.check_type_bound(
             export_type,
@@ -233,27 +233,27 @@ impl ComponentResolver {
         Ok(result == crate::type_bounds::RelationResult::Satisfied)
     }
 
-    /// Check if two ValTypes are compatible
-    fn are_types_compatible(&self, import_type: &ValType, export_type: &ValType) -> bool {
+    /// Check if two ValType<NoStdProvider<65536>>s are compatible
+    fn are_types_compatible(&self, import_type: &ValType<NoStdProvider<65536>>, export_type: &ValType<NoStdProvider<65536>>) -> bool {
         match (import_type, export_type) {
             // Exact matches
-            (ValType::Bool, ValType::Bool) => true,
-            (ValType::U8, ValType::U8) => true,
-            (ValType::U16, ValType::U16) => true,
-            (ValType::U32, ValType::U32) => true,
-            (ValType::U64, ValType::U64) => true,
-            (ValType::S8, ValType::S8) => true,
-            (ValType::S16, ValType::S16) => true,
-            (ValType::S32, ValType::S32) => true,
-            (ValType::S64, ValType::S64) => true,
-            (ValType::F32, ValType::F32) => true,
-            (ValType::F64, ValType::F64) => true,
-            (ValType::Char, ValType::Char) => true,
-            (ValType::String, ValType::String) => true,
+            (ValType<NoStdProvider<65536>>::Bool, ValType<NoStdProvider<65536>>::Bool) => true,
+            (ValType<NoStdProvider<65536>>::U8, ValType<NoStdProvider<65536>>::U8) => true,
+            (ValType<NoStdProvider<65536>>::U16, ValType<NoStdProvider<65536>>::U16) => true,
+            (ValType<NoStdProvider<65536>>::U32, ValType<NoStdProvider<65536>>::U32) => true,
+            (ValType<NoStdProvider<65536>>::U64, ValType<NoStdProvider<65536>>::U64) => true,
+            (ValType<NoStdProvider<65536>>::S8, ValType<NoStdProvider<65536>>::S8) => true,
+            (ValType<NoStdProvider<65536>>::S16, ValType<NoStdProvider<65536>>::S16) => true,
+            (ValType<NoStdProvider<65536>>::S32, ValType<NoStdProvider<65536>>::S32) => true,
+            (ValType<NoStdProvider<65536>>::S64, ValType<NoStdProvider<65536>>::S64) => true,
+            (ValType<NoStdProvider<65536>>::F32, ValType<NoStdProvider<65536>>::F32) => true,
+            (ValType<NoStdProvider<65536>>::F64, ValType<NoStdProvider<65536>>::F64) => true,
+            (ValType<NoStdProvider<65536>>::Char, ValType<NoStdProvider<65536>>::Char) => true,
+            (ValType<NoStdProvider<65536>>::String, ValType<NoStdProvider<65536>>::String) => true,
 
             // Structural types need deep comparison
-            (ValType::List(t1), ValType::List(t2)) => self.are_types_compatible(t1, t2),
-            (ValType::Option(t1), ValType::Option(t2)) => self.are_types_compatible(t1, t2),
+            (ValType<NoStdProvider<65536>>::List(t1), ValType<NoStdProvider<65536>>::List(t2)) => self.are_types_compatible(t1, t2),
+            (ValType<NoStdProvider<65536>>::Option(t1), ValType<NoStdProvider<65536>>::Option(t2)) => self.are_types_compatible(t1, t2),
 
             // TODO: Add more structural type comparisons
             _ => false,
@@ -261,7 +261,7 @@ impl ComponentResolver {
     }
 
     /// Get the type of an import value
-    fn get_import_type(&self, import: &ImportValue) -> Result<Option<ValType<NoStdProvider<65536>>>, ComponentError> {
+    fn get_import_type(&self, import: &ImportValue) -> core::result::Result<Option<ValType<NoStdProvider<65536>>>, ComponentError> {
         match import {
             ImportValue::Function { .. } => Ok(None), // Function types are handled separately
             ImportValue::Global { .. } => Ok(None),   // Global types are handled separately
@@ -273,7 +273,7 @@ impl ComponentResolver {
     }
 
     /// Get the type of an export value
-    fn get_export_type(&self, export: &ExportValue) -> Result<Option<ValType<NoStdProvider<65536>>>, ComponentError> {
+    fn get_export_type(&self, export: &ExportValue) -> core::result::Result<Option<ValType<NoStdProvider<65536>>>, ComponentError> {
         match export {
             ExportValue::Function { .. } => Ok(None), // Function types are handled separately
             ExportValue::Global { .. } => Ok(None),   // Global types are handled separately
@@ -335,7 +335,7 @@ mod tests {
         let import_name = BoundedString::from_str("test_import").unwrap();
 
         let import_value =
-            ImportValue::Value { val_type: ValType::U32, value: ComponentValue::U32(42) };
+            ImportValue::Value { val_type: ValType<NoStdProvider<65536>>::U32, value: ComponentValue::U32(42) };
 
         let result = resolver.resolve_import(instance_id, import_name.clone(), import_value);
         assert!(result.is_ok());
@@ -351,7 +351,7 @@ mod tests {
         let export_name = BoundedString::from_str("test_export").unwrap();
 
         let export_value = ExportValue::Value {
-            val_type: ValType::String,
+            val_type: ValType<NoStdProvider<65536>>::String,
             value: ComponentValue::String(BoundedString::from_str("hello").unwrap()),
         };
 
@@ -369,14 +369,14 @@ mod tests {
         // Create matching import and export
         let import = ResolvedImport {
             name: BoundedString::from_str("test").unwrap(),
-            value: ImportValue::Value { val_type: ValType::U32, value: ComponentValue::U32(0) },
-            val_type: Some(ValType::U32),
+            value: ImportValue::Value { val_type: ValType<NoStdProvider<65536>>::U32, value: ComponentValue::U32(0) },
+            val_type: Some(ValType<NoStdProvider<65536>>::U32),
         };
 
         let export = ResolvedExport {
             name: BoundedString::from_str("test").unwrap(),
-            value: ExportValue::Value { val_type: ValType::U32, value: ComponentValue::U32(42) },
-            val_type: Some(ValType::U32),
+            value: ExportValue::Value { val_type: ValType<NoStdProvider<65536>>::U32, value: ComponentValue::U32(42) },
+            val_type: Some(ValType<NoStdProvider<65536>>::U32),
         };
 
         let result = resolver.can_satisfy_import(&import, &export);
@@ -389,13 +389,13 @@ mod tests {
         let resolver = ComponentResolver::new();
 
         // Test primitive type compatibility
-        assert!(resolver.are_types_compatible(&ValType::Bool, &ValType::Bool));
-        assert!(resolver.are_types_compatible(&ValType::U32, &ValType::U32));
-        assert!(!resolver.are_types_compatible(&ValType::U32, &ValType::U64));
+        assert!(resolver.are_types_compatible(&ValType<NoStdProvider<65536>>::Bool, &ValType<NoStdProvider<65536>>::Bool));
+        assert!(resolver.are_types_compatible(&ValType<NoStdProvider<65536>>::U32, &ValType<NoStdProvider<65536>>::U32));
+        assert!(!resolver.are_types_compatible(&ValType<NoStdProvider<65536>>::U32, &ValType<NoStdProvider<65536>>::U64));
 
         // Test structural type compatibility
-        let list_u32 = ValType::List(Box::new(ValType::U32));
-        let list_u64 = ValType::List(Box::new(ValType::U64));
+        let list_u32 = ValType<NoStdProvider<65536>>::List(Box::new(ValType<NoStdProvider<65536>>::U32));
+        let list_u64 = ValType<NoStdProvider<65536>>::List(Box::new(ValType<NoStdProvider<65536>>::U64));
         assert!(resolver.are_types_compatible(&list_u32, &list_u32));
         assert!(!resolver.are_types_compatible(&list_u32, &list_u64));
     }

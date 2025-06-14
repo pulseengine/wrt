@@ -14,7 +14,6 @@
 //! WebAssembly Component Model, including `thread.spawn_ref`, `thread.spawn_indirect`,
 //! and `thread.join` operations.
 
-#![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
 
@@ -727,7 +726,7 @@ pub mod advanced_threading_helpers {
     }
 
     #[cfg(not(any(feature = "std", )))]
-    pub fn cancel_child_threads(parent_id: AdvancedThreadId) -> Result<BoundedVec<AdvancedThreadId, MAX_THREADS>, NoStdProvider<65536>> {
+    pub fn cancel_child_threads(parent_id: AdvancedThreadId) -> core::result::Result<BoundedVec<AdvancedThreadId, MAX_THREADS, NoStdProvider<65536>>, NoStdProvider<65536>> {
         let mut cancelled = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
         
         AdvancedThreadingBuiltins::with_registry_mut(|registry| {

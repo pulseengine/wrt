@@ -14,8 +14,12 @@ use std::{
 #[cfg(not(feature = "std"))]
 use alloc::{
     boxed::Box,
+    sync::Arc,
     vec::Vec,
 };
+
+#[cfg(not(feature = "std"))]
+use wrt_sync::Mutex;
 
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{bounded::{BoundedVec, BoundedString}, safe_memory::NoStdProvider};
@@ -144,7 +148,7 @@ pub trait BuiltinHandler {
     fn builtin_type(&self) -> BuiltinType;
 
     /// Execute the built-in function with the given arguments (no_std version)
-    fn execute(&self, args: &[ComponentValue]) -> Result<BoundedVec<ComponentValue, 16, NoStdProvider<65536>>>;
+    fn execute(&self, args: &[ComponentValue]) -> core::result::Result<BoundedVec<ComponentValue, 16, NoStdProvider<65536>>>;
 
     /// Clone this handler
     fn clone_handler(&self) -> Box<dyn BuiltinHandler>;

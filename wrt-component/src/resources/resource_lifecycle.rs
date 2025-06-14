@@ -85,7 +85,7 @@ pub struct ResourceMetadata {
     #[cfg(feature = "std")]
     pub user_data: Option<Vec<u8>>,
     #[cfg(not(feature = "std"))]
-    pub user_data: Option<BoundedVec<u8, 256>, NoStdProvider<65536>>,
+    pub user_data: Option<BoundedVec<u8, 256, NoStdProvider<65536>>, NoStdProvider<65536>>,
 }
 
 /// Resource lifecycle manager

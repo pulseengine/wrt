@@ -265,7 +265,7 @@ impl ResourceManager {
         &mut self,
         type_id: ResourceTypeId,
         data: ResourceData,
-    ) -> Result<ResourceHandle, ResourceError> {
+    ) -> core::result::Result<ResourceHandle, ResourceError> {
         if self.stats.active_resources >= self.config.max_resources as u32 {
             return Err(ResourceError::LimitExceeded);
         }
@@ -283,7 +283,7 @@ impl ResourceManager {
     }
 
     /// Destroy a resource
-    pub fn destroy_resource(&mut self, handle: ResourceHandle) -> Result<(), ResourceError> {
+    pub fn destroy_resource(&mut self, handle: ResourceHandle) -> core::result::Result<(), ResourceError> {
         if !handle.is_valid() {
             return Err(ResourceError::InvalidHandle);
         }
@@ -334,7 +334,7 @@ impl ResourceTable {
     }
 
     /// Get a resource by handle
-    pub fn get(&mut self, handle: ResourceHandle) -> Result<Option<&Resource>, ResourceError> {
+    pub fn get(&mut self, handle: ResourceHandle) -> core::result::Result<Option<&Resource>, ResourceError> {
         self.stats.total_lookups += 1;
         
         if !handle.is_valid() {
@@ -347,7 +347,7 @@ impl ResourceTable {
     }
 
     /// Insert a resource into the table
-    pub fn insert(&mut self, resource: Resource) -> Result<(), ResourceError> {
+    pub fn insert(&mut self, resource: Resource) -> core::result::Result<(), ResourceError> {
         if self.stats.active_entries >= self.max_size as u32 {
             return Err(ResourceError::LimitExceeded);
         }
@@ -359,7 +359,7 @@ impl ResourceTable {
     }
 
     /// Remove a resource from the table
-    pub fn remove(&mut self, handle: ResourceHandle) -> Result<Option<Resource>, ResourceError> {
+    pub fn remove(&mut self, handle: ResourceHandle) -> core::result::Result<Option<Resource>, ResourceError> {
         if !handle.is_valid() {
             return Err(ResourceError::InvalidHandle);
         }
@@ -373,7 +373,7 @@ impl ResourceTable {
 }
 
 /// Helper function to create resource data from bytes
-pub fn create_resource_data_bytes(data: &[u8]) -> Result<ResourceData, ResourceError> {
+pub fn create_resource_data_bytes(data: &[u8]) -> core::result::Result<ResourceData, ResourceError> {
     let mut vec = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
     for &byte in data {
         vec.push(byte).map_err(|_| ResourceError::LimitExceeded)?;
@@ -393,7 +393,7 @@ pub fn create_resource_data_custom<T: std::any::Any + Send + Sync>(data: T) -> R
 }
 
 /// Helper function to create a resource type
-pub fn create_resource_type(name: &str) -> Result<ResourceTypeMetadata, ResourceError> {
+pub fn create_resource_type(name: &str) -> core::result::Result<ResourceTypeMetadata, ResourceError> {
     let mut name_vec = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
     for &byte in name.as_bytes() {
         name_vec.push(byte).map_err(|_| ResourceError::LimitExceeded)?;

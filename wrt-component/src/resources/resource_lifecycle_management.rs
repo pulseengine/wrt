@@ -1,5 +1,7 @@
 //! Resource Lifecycle Management for WebAssembly Component Model
 //!
+//! SW-REQ-ID: REQ_CMP_020 - Component Resource Lifecycle Management
+//!
 //! This module implements comprehensive resource lifecycle management with
 //! drop handlers, lifetime validation, and automatic cleanup for the Component Model.
 
@@ -18,7 +20,7 @@ use wrt_foundation::{
 
 use crate::{
     async_types::{StreamHandle, FutureHandle},
-    types::{ValType, Value},
+    types::{ValType<NoStdProvider<65536>>, Value},
     WrtResult,
 };
 
@@ -614,7 +616,7 @@ impl ResourceLifecycleManager {
     
     /// Check for resource leaks (no_std version)
     #[cfg(not(any(feature = "std", )))]
-    pub fn check_for_leaks(&mut self) -> Result<BoundedVec<ResourceId, 64>, NoStdProvider<65536>> {
+    pub fn check_for_leaks(&mut self) -> core::result::Result<BoundedVec<ResourceId, 64, NoStdProvider<65536>>, NoStdProvider<65536>> {
         if !self.policies.leak_detection {
             return Ok(BoundedVec::new(NoStdProvider::<65536>::default()).unwrap());
         }

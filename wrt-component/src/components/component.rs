@@ -252,7 +252,7 @@ impl RuntimeInstance {
         // Look up the function in our registered functions
         let function = self.functions.get(name).ok_or_else(|| {
             Error::new(
-                ErrorCategory::Function,
+                ErrorCategory::Runtime,
                 codes::FUNCTION_NOT_FOUND,
                 "Component not found",
             )
@@ -361,8 +361,8 @@ struct ModuleInstance {
     // Implementation details would go here
 }
 
-/// Helper function to convert FormatValType to ValueType
-fn convert_to_valuetype(val_type_pair: &(String, FormatValType)) -> ValueType {
+/// Helper function to convert FormatValType<NoStdProvider<65536>> to ValueType
+fn convert_to_valuetype(val_type_pair: &(String, FormatValType<NoStdProvider<65536>>)) -> ValueType {
     format_val_type_to_value_type(&val_type_pair.1).expect("Failed to convert format value type")
 }
 
@@ -946,7 +946,7 @@ pub fn value_to_component_value(value: &wrt_intercept::Value) -> wrt_foundation:
 
 /// Convert parameter to value type
 pub fn convert_param_to_value_type(
-    param: &wrt_format::component::ValType,
+    param: &wrt_format::component::ValType<NoStdProvider<65536>>,
 ) -> wrt_foundation::types::ValueType {
     crate::type_conversion::format_val_type_to_value_type(param)
         .unwrap_or(wrt_foundation::types::ValueType::I32)
@@ -1009,7 +1009,7 @@ mod tests {
         assert!(result.is_err());
         match result {
             Err(e) => {
-                assert_eq!(e.category(), ErrorCategory::Function);
+                assert_eq!(e.category(), ErrorCategory::Runtime);
                 assert!(e.to_string().contains("not found"));
             }
             _ => panic!("Expected an error"),

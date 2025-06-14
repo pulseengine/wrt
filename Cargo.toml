@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    # "wrt-safety",    # TODO: Create wrt-safety crate
     "wrt",
     "wrtd",
     "xtask",
@@ -40,11 +39,10 @@ wit-bindgen = "0.41.0"
 dagger-sdk = { version = "0.18.9", features = ["codegen"] }
 
 # Internal crate versions
-# wrt-safety = { path = "wrt-safety", version = "0.2.0", default-features = false }
 wrt = { path = "wrt", version = "0.2.0", default-features = false }
 wrt-error = { path = "wrt-error", version = "0.2.0", default-features = false }
 wrt-error-ng = { path = "wrt-error-ng", version = "0.2.0", default-features = false }
-wrt-sync = { path = "wrt-sync", version = "0.2.0", default-features = false }
+wrt-sync = { path = "wrt-sync", version = "0.2.0", default-features = false, features = ["disable-panic-handler"] }
 wrt-format = { path = "wrt-format", version = "0.2.0", default-features = false }
 wrt-foundation = { path = "wrt-foundation", version = "0.2.0", default-features = false }
 wrt-decoder = { path = "wrt-decoder", version = "0.2.0", default-features = false, features = ["std"] }
@@ -58,8 +56,9 @@ wrt-helper = { path = "wrt-helper", version = "0.2.0", default-features = false 
 wrt-intercept = { path = "wrt-intercept", version = "0.2.0", default-features = false }
 wrt-test-registry = { path = "wrt-test-registry", version = "0.2.0", default-features = false }
 wrt-math = { path = "wrt-math", version = "0.2.0", default-features = false }
-wrt-platform = { path = "wrt-platform", version = "0.2.0", default-features = false }
+wrt-platform = { path = "wrt-platform", version = "0.2.0", default-features = false, features = ["disable-panic-handler"] }
 wrt-panic = { path = "wrt-panic", version = "0.2.0", default-features = false }
+wrt-wasi = { path = "wrt-wasi", version = "0.2.0", default-features = false }
 wrt-verification-tool = { path = "wrt-verification-tool", version = "0.2.0", default-features = false }
 
 [workspace.lints.rust]
@@ -69,6 +68,15 @@ unused_variables = "allow"
 unused_mut = "allow"
 unused_macros = "allow"
 missing_docs = "allow"
+
+[workspace.lints.clippy]
+# Static memory enforcement - prevent dynamic allocation violations
+std_instead_of_core = "deny"
+std_instead_of_alloc = "deny"
+# Warn about allocations that could be bounded
+vec_init_then_push = "warn"
+# Performance and safety
+unnecessary_box_returns = "warn"
 
 # Workspace-level profiles inherit by members unless overridden.
 # Setting panic=abort for production profiles (dev/release) for safety and deterministic behavior.

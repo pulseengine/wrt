@@ -28,6 +28,10 @@ safety = []
 # Enable default memory provider functionality
 default-provider = ["std"]
 # Feature for formal verification, requires nightly for full functionality
+# Budget enforcement - compile-time checking for memory budget bypasses
+budget-enforcement = []
+# WRT compile-time allocator system
+wrt-allocator = ["std"]
 kani = ["dep:kani-verifier"]
 
 # Feature for platform-backed linear memory
@@ -55,7 +59,7 @@ disable-panic-handler = []
 [dependencies]
 wrt-error = { workspace = true, default-features = false }
 wrt-sync = { workspace = true, default-features = false } # Make alloc conditional via features
-wrt-platform = { workspace = true, default-features = false, optional = true, features = ["disable-panic-handler"] }
+wrt-platform = { workspace = true, optional = true, features = ["disable-panic-handler"] }
 
 # Only include hashbrown when explicitly requested with alloc feature
 hashbrown = { version = "0.15", optional = true } # For no_std with alloc

@@ -54,7 +54,7 @@ pub struct PostReturnRegistry {
     #[cfg(feature = "std")]
     functions: BTreeMap<ComponentInstanceId, PostReturnFunction>,
     #[cfg(not(any(feature = "std", )))]
-    functions: BoundedVec<(ComponentInstanceId, PostReturnFunction), MAX_CLEANUP_TASKS_NO_STD>,
+    functions: BoundedVec<(ComponentInstanceId, PostReturnFunction), MAX_CLEANUP_TASKS_NO_STD, NoStdProvider<65536>>,
     
     /// Cleanup tasks waiting to be executed
     #[cfg(feature = "std")]
@@ -224,7 +224,7 @@ pub struct PostReturnContext {
     #[cfg(feature = "std")]
     pub custom_handlers: BTreeMap<String, Box<dyn Fn(&CleanupData) -> Result<()> + Send + Sync>>,
     #[cfg(not(any(feature = "std", )))]
-    pub custom_handlers: BoundedVec<(BoundedString<64, NoStdProvider<65536>>, fn(&CleanupData) -> Result<(), NoStdProvider<65536>>), MAX_CLEANUP_HANDLERS>,
+    pub custom_handlers: BoundedVec<(BoundedString<64, NoStdProvider<65536>>, fn(&CleanupData) -> core::result::Result<(), NoStdProvider<65536>>), MAX_CLEANUP_HANDLERS>,
     /// Async canonical ABI for async cleanup
     pub async_abi: Option<Arc<AsyncCanonicalAbi>>,
     /// Component ID for this context

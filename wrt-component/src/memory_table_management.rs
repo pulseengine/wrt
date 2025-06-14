@@ -15,8 +15,8 @@ use std::{boxed::Box, vec::Vec};
 use wrt_foundation::{bounded::BoundedVec, component_value::ComponentValue, prelude::*};
 
 use crate::{
-    adapter::CoreValType,
-    types::{ValType, Value},
+    adapter::CoreValType<NoStdProvider<65536>>,
+    types::{ValType<NoStdProvider<65536>>, Value},
     WrtResult,
 };
 
@@ -159,7 +159,7 @@ pub struct ComponentTable {
     #[cfg(not(any(feature = "std", )))]
     pub elements: BoundedVec<TableElement, 65536, NoStdProvider<65536>>, // 64K elements max
     /// Element type
-    pub element_type: CoreValType,
+    pub element_type: CoreValType<NoStdProvider<65536>>,
     /// Table limits
     pub limits: TableLimits,
     /// Owner component instance
@@ -588,7 +588,7 @@ impl ComponentTableManager {
     /// Create a new table
     pub fn create_table(
         &mut self,
-        element_type: CoreValType,
+        element_type: CoreValType<NoStdProvider<65536>>,
         limits: TableLimits,
         owner: Option<u32>,
     ) -> WrtResult<u32> {
@@ -838,7 +838,7 @@ mod tests {
         let mut manager = ComponentTableManager::new();
         let limits = TableLimits { min: 10, max: Some(100) };
 
-        let table_id = manager.create_table(CoreValType::FuncRef, limits, Some(1)).unwrap();
+        let table_id = manager.create_table(CoreValType<NoStdProvider<65536>>::FuncRef, limits, Some(1)).unwrap();
         assert_eq!(table_id, 0);
         assert_eq!(manager.table_count(), 1);
     }
@@ -848,7 +848,7 @@ mod tests {
         let mut manager = ComponentTableManager::new();
         let limits = TableLimits { min: 10, max: None };
 
-        let table_id = manager.create_table(CoreValType::FuncRef, limits, Some(1)).unwrap();
+        let table_id = manager.create_table(CoreValType<NoStdProvider<65536>>::FuncRef, limits, Some(1)).unwrap();
 
         // Set element
         let element = TableElement::FuncRef(42);

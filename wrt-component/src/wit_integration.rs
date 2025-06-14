@@ -11,7 +11,7 @@ use wrt_foundation::{
 use crate::{
     async_types::{Future, FutureHandle, Stream, StreamHandle},
     generative_types::{BoundKind, GenerativeResourceType, GenerativeTypeRegistry, TypeBound},
-    types::{ComponentError, ComponentInstanceId, TypeId, ValType},
+    types::{ComponentError, ComponentInstanceId, TypeId, ValType<NoStdProvider<65536>>},
 };
 
 use wrt_format::wit_parser::{
@@ -53,21 +53,21 @@ pub struct AsyncInterfaceFunction {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedParam {
     pub name: BoundedString<32, NoStdProvider<65536>>,
-    pub val_type: ValType,
+    pub val_type: ValType<NoStdProvider<65536>>,
     pub wit_type: WitType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedResult {
     pub name: Option<BoundedString<32, NoStdProvider<65536>>>,
-    pub val_type: ValType,
+    pub val_type: ValType<NoStdProvider<65536>>,
     pub wit_type: WitType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AsyncTypedResult {
     pub name: Option<BoundedString<32, NoStdProvider<65536>>>,
-    pub val_type: ValType,
+    pub val_type: ValType<NoStdProvider<65536>>,
     pub wit_type: WitType,
     pub is_stream: bool,
     pub is_future: bool,
@@ -86,7 +86,7 @@ impl WitComponentBuilder {
         &mut self,
         source: &str,
         instance_id: ComponentInstanceId,
-    ) -> Result<ComponentInterface, ComponentError> {
+    ) -> core::result::Result<ComponentInterface, ComponentError> {
         let wit_world = self.parser.parse_world(source).map_err(|e| self.convert_parse_error(e))?;
 
         self.convert_world_to_interface(wit_world, instance_id)
@@ -96,7 +96,7 @@ impl WitComponentBuilder {
         &mut self,
         source: &str,
         instance_id: ComponentInstanceId,
-    ) -> Result<ComponentInterface, ComponentError> {
+    ) -> core::result::Result<ComponentInterface, ComponentError> {
         let wit_interface =
             self.parser.parse_interface(source).map_err(|e| self.convert_parse_error(e))?;
 
@@ -107,7 +107,7 @@ impl WitComponentBuilder {
         &mut self,
         wit_type_name: &str,
         component_type_id: TypeId,
-    ) -> Result<(), ComponentError> {
+    ) -> core::result::Result<(), ComponentError> {
         let name =
             BoundedString::from_str(wit_type_name).map_err(|_| ComponentError::TypeMismatch)?;
 
@@ -119,7 +119,7 @@ impl WitComponentBuilder {
         &mut self,
         wit_type: &WitType,
         instance_id: ComponentInstanceId,
-    ) -> Result<GenerativeResourceType, ComponentError> {
+    ) -> core::result::Result<GenerativeResourceType, ComponentError> {
         let val_type = self.parser.convert_to_valtype(wit_type)?;
 
         let base_resource_type = wrt_foundation::resource::ResourceType::Handle(
@@ -134,7 +134,7 @@ impl WitComponentBuilder {
         type1: TypeId,
         type2: TypeId,
         constraint: BoundKind,
-    ) -> Result<(), ComponentError> {
+    ) -> core::result::Result<(), ComponentError> {
         let bound = TypeBound { type_id: type1, bound_kind: constraint, target_type: type2 };
 
         self.type_registry.add_type_bound(type1, bound)
@@ -144,7 +144,7 @@ impl WitComponentBuilder {
         &mut self,
         world: WitWorld,
         instance_id: ComponentInstanceId,
-    ) -> Result<ComponentInterface, ComponentError> {
+    ) -> core::result::Result<ComponentInterface, ComponentError> {
         let mut interface = ComponentInterface {
             name: world.name,
             imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
@@ -206,7 +206,7 @@ impl WitComponentBuilder {
         &mut self,
         wit_interface: WitInterface,
         instance_id: ComponentInstanceId,
-    ) -> Result<ComponentInterface, ComponentError> {
+    ) -> core::result::Result<ComponentInterface, ComponentError> {
         let mut interface = ComponentInterface {
             name: wit_interface.name,
             imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
@@ -238,7 +238,7 @@ impl WitComponentBuilder {
         &mut self,
         wit_func: &WitFunction,
         instance_id: ComponentInstanceId,
-    ) -> Result<InterfaceFunction, ComponentError> {
+    ) -> core::result::Result<InterfaceFunction, ComponentError> {
         let mut interface_func = InterfaceFunction {
             name: wit_func.name.clone(),
             params: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
@@ -273,7 +273,7 @@ impl WitComponentBuilder {
         &mut self,
         wit_func: &WitFunction,
         instance_id: ComponentInstanceId,
-    ) -> Result<AsyncInterfaceFunction, ComponentError> {
+    ) -> core::result::Result<AsyncInterfaceFunction, ComponentError> {
         let mut async_func = AsyncInterfaceFunction {
             name: wit_func.name.clone(),
             params: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),

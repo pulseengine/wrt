@@ -124,7 +124,7 @@ impl ImportCollection {
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
-    use wrt_format::component::{ExternType, ValType};
+    use wrt_format::component::{ExternType, ValType<NoStdProvider<65536>>};
     use wrt_runtime::func::FuncType;
 
     use super::*;
@@ -137,8 +137,8 @@ mod tests {
             namespace,
             "fetch".to_string(),
             ExternType::Function {
-                params: vec![("arg".to_string(), ValType::U32)],
-                results: vec![ValType::U32],
+                params: vec![("arg".to_string(), ValType<NoStdProvider<65536>>::U32)],
+                results: vec![ValType<NoStdProvider<65536>>::U32],
             },
             ExternValue::Function(FunctionValue {
                 ty: FuncType {
@@ -157,7 +157,7 @@ mod tests {
             empty_ns,
             "print".to_string(),
             ExternType::Function {
-                params: vec![("arg".to_string(), ValType::U32)],
+                params: vec![("arg".to_string(), ValType<NoStdProvider<65536>>::U32)],
                 results: vec![],
             },
             ExternValue::Function(FunctionValue {
@@ -181,8 +181,8 @@ mod tests {
             Namespace::from_string("wasi.http"),
             "fetch".to_string(),
             ExternType::Function {
-                params: vec![("arg".to_string(), ValType::U32)],
-                results: vec![ValType::U32],
+                params: vec![("arg".to_string(), ValType<NoStdProvider<65536>>::U32)],
+                results: vec![ValType<NoStdProvider<65536>>::U32],
             },
             ExternValue::Function(FunctionValue {
                 ty: FuncType {
@@ -197,8 +197,8 @@ mod tests {
             Namespace::from_string("wasi.io"),
             "read".to_string(),
             ExternType::Function {
-                params: vec![("arg".to_string(), ValType::U32)],
-                results: vec![ValType::U32],
+                params: vec![("arg".to_string(), ValType<NoStdProvider<65536>>::U32)],
+                results: vec![ValType<NoStdProvider<65536>>::U32],
             },
             ExternValue::Function(FunctionValue {
                 ty: FuncType {

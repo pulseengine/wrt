@@ -3,20 +3,20 @@
 //! This module provides bounded alternatives for logging collections
 //! ensuring static memory allocation.
 
-#![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
-    budget_provider::BudgetProvider,
-    budget_aware_provider::{BudgetAwareProviderFactory, CrateId},
+    managed_alloc,
+    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
     WrtResult,
 };
 
 /// Budget-aware memory provider for logging (32KB)
-pub type LogProvider = BudgetProvider<32768>;
+pub type LogProvider = NoStdProvider<8192>;
 
 /// Maximum number of log entries in buffer
 pub const MAX_LOG_ENTRIES: usize = 1024;
@@ -44,12 +44,24 @@ pub type BoundedModuleName = BoundedString<MAX_MODULE_NAME_LEN, LogProvider>;
 
 /// Create a new bounded log entry vector
 pub fn new_log_entry_vec() -> WrtResult<BoundedLogEntryVec> {
-    let provider = LogProvider::new(CrateId::Logging)?;
+    let guard = managed_alloc!(8192, CrateId::Logging)?;
+    let provider = guard.provider().clone();
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded logger vector
-pub fn new_logger_vec<T>() -> WrtResult<BoundedLoggerVec<T>> {
-    let provider = LogProvider::new(CrateId::Logging)?;
+pub fn new_logger_vec<T>() -> WrtResult<BoundedLoggerVec<T>>
+where
+    T: wrt_foundation::traits::Checksummable 
+        + wrt_foundation::traits::ToBytes 
+        + wrt_foundation::traits::FromBytes 
+        + Default 
+        + Clone 
+        + PartialEq 
+        + Eq
+        + Sized,
+{
+    let guard = managed_alloc!(8192, CrateId::Logging)?;
+    let provider = guard.provider().clone();
     BoundedVec::new(provider)
 }

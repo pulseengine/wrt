@@ -23,7 +23,7 @@ use crate::{
         Waitable, WaitableSet,
     },
     task_manager::{Task, TaskContext, TaskId, TaskManager, TaskState, TaskType},
-    types::{ValType, Value},
+    types::{ValType<NoStdProvider<65536>>, Value},
     WrtResult,
 };
 
@@ -887,7 +887,7 @@ mod tests {
     #[test]
     fn test_register_stream() {
         let mut runtime = AsyncRuntime::new();
-        let stream = Stream::new(StreamHandle(1), ValType::U32);
+        let stream = Stream::new(StreamHandle(1), ValType<NoStdProvider<65536>>::U32);
         
         let handle = runtime.register_stream(stream).unwrap();
         assert_eq!(handle.0, 1);
@@ -897,7 +897,7 @@ mod tests {
     #[test]
     fn test_register_future() {
         let mut runtime = AsyncRuntime::new();
-        let future = Future::new(FutureHandle(1), ValType::String);
+        let future = Future::new(FutureHandle(1), ValType<NoStdProvider<65536>>::String);
         
         let handle = runtime.register_future(future).unwrap();
         assert_eq!(handle.0, 1);

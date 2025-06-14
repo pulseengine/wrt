@@ -27,7 +27,7 @@ use wrt_foundation::{
 
 use crate::async_::async_types::{AsyncReadResult, Future as ComponentFuture, FutureHandle, FutureState, Stream, StreamHandle, StreamState};
 use crate::threading::task_manager::{Task, TaskContext, TaskId, TaskState};
-use crate::types::{ValType, Value};
+use crate::types::{ValType<NoStdProvider<65536>>, Value};
 use wrt_error::Result as WrtResult;
 
 use wrt_error::{Error, ErrorCategory, Result};

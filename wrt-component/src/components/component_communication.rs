@@ -35,7 +35,6 @@
 //! let result = router.dispatch_call(context)?;
 //! ```
 
-#![cfg_attr(not(feature = "std"), no_std)]
 
 // Cross-environment imports
 #[cfg(feature = "std")]
@@ -43,6 +42,9 @@ use std::{vec::Vec, string::String, collections::HashMap, boxed::Box, format};
 
 #[cfg(all(not(feature = "std")))]
 use alloc::{vec::Vec, string::String, collections::BTreeMap as HashMap, boxed::Box, format};
+
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{bounded::{BoundedString, BoundedVec}, safe_memory::NoStdProvider};
 
 // Note: Using alloc for no_std instead of wrt_foundation bounded types for now
 // #[cfg(not(any(feature = "std", )))]
@@ -110,7 +112,7 @@ pub struct CallContext {
     /// Call parameters
     pub parameters: Vec<ComponentValue>,
     /// Expected return types
-    pub return_types: Vec<ComponentType<NoStdProvider<65536>>>,
+    pub return_types: Vec<ComponentType>,
     /// Resource handles passed with this call
     pub resource_handles: Vec<ResourceHandle>,
     /// Call metadata
@@ -441,7 +443,7 @@ impl CallRouter {
         if self.call_stack.current_depth >= self.config.max_call_stack_depth {
             return Err(Error::new(
                 ErrorCategory::Runtime,
-                codes::CALL_STACK_OVERFLOW,
+                codes::STACK_OVERFLOW,
                 "Call stack depth exceeded",
             ));
         }
@@ -526,7 +528,7 @@ impl CallRouter {
         target_instance: InstanceId,
         target_function: String,
         parameters: Vec<ComponentValue>,
-        return_types: Vec<ComponentType<NoStdProvider<65536>>>,
+        return_types: Vec<ComponentType>,
     ) -> Result<CallContext> {
         if parameters.len() > MAX_CALL_PARAMETERS {
             return Err(Error::new(
@@ -643,7 +645,7 @@ impl CallStack {
         if self.current_depth >= self.max_depth {
             return Err(Error::new(
                 ErrorCategory::Runtime,
-                codes::CALL_STACK_OVERFLOW,
+                codes::STACK_OVERFLOW,
                 "Call stack overflow",
             ));
         }

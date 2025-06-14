@@ -27,7 +27,7 @@ use crate::{
         CanonicalAbi, CanonicalOptions, ResourceHandle, ResourceLifecycleManager,
         ComponentRuntimeBridge, RuntimeBridgeConfig,
     },
-    types::{ValType, Value},
+    types::{ValType<NoStdProvider<65536>>, Value},
 };
 
 use wrt_foundation::WrtResult;
@@ -75,13 +75,13 @@ pub struct CoreExecutionState {
     #[cfg(feature = "std")]
     call_stack: Vec<UnifiedCallFrame>,
     #[cfg(not(feature = "std"))]
-    call_stack: BoundedVec<UnifiedCallFrame, MAX_CALL_STACK_DEPTH, NoStdProvider::<65536>>,
+    call_stack: BoundedVec<UnifiedCallFrame, MAX_CALL_STACK_DEPTH, NoStdProvider::<65536, NoStdProvider<65536>>>,
     
     /// Operand stack for value operations
     #[cfg(feature = "std")]
     operand_stack: Vec<Value>,
     #[cfg(not(feature = "std"))]
-    operand_stack: BoundedVec<Value, MAX_OPERAND_STACK_SIZE, NoStdProvider::<65536>>,
+    operand_stack: BoundedVec<Value, MAX_OPERAND_STACK_SIZE, NoStdProvider::<65536, NoStdProvider<65536>>>,
     
     /// Current execution mode
     execution_mode: ExecutionMode,
@@ -110,7 +110,7 @@ pub struct AsyncExecutionState {
     #[cfg(feature = "std")]
     executions: Vec<AsyncExecution>,
     #[cfg(not(feature = "std"))]
-    executions: BoundedVec<AsyncExecution, MAX_CONCURRENT_EXECUTIONS, NoStdProvider::<65536>>,
+    executions: BoundedVec<AsyncExecution, MAX_CONCURRENT_EXECUTIONS, NoStdProvider::<65536, NoStdProvider<65536>>>,
     
     /// Next execution ID
     next_execution_id: u64,
@@ -119,7 +119,7 @@ pub struct AsyncExecutionState {
     #[cfg(feature = "std")]
     context_pool: Vec<AsyncExecutionContext>,
     #[cfg(not(feature = "std"))]
-    context_pool: BoundedVec<AsyncExecutionContext, 16, NoStdProvider::<65536>>,
+    context_pool: BoundedVec<AsyncExecutionContext, 16, NoStdProvider::<65536, NoStdProvider<65536>>>,
 }
 
 /// CFI execution state for security protection
@@ -147,7 +147,7 @@ pub struct StacklessExecutionState {
     #[cfg(feature = "std")]
     labels: Vec<Label>,
     #[cfg(not(feature = "std"))]
-    labels: BoundedVec<Label, 128, NoStdProvider::<65536>>,
+    labels: BoundedVec<Label, 128, NoStdProvider::<65536, NoStdProvider<65536>>>,
     /// Stackless execution mode
     stackless_mode: bool,
 }
@@ -165,7 +165,7 @@ pub struct UnifiedCallFrame {
     #[cfg(feature = "std")]
     pub locals: Vec<Value>,
     #[cfg(not(feature = "std"))]
-    pub locals: BoundedVec<Value, 64, NoStdProvider::<65536>>,
+    pub locals: BoundedVec<Value, 64, NoStdProvider::<65536, NoStdProvider<65536>>>,
     /// Return address
     pub return_address: Option<usize>,
     /// Async state for this frame
@@ -315,13 +315,13 @@ pub struct WaitSet {
     #[cfg(feature = "std")]
     pub futures: Vec<FutureHandle>,
     #[cfg(not(feature = "std"))]
-    pub futures: BoundedVec<FutureHandle, 16, NoStdProvider::<65536>>,
+    pub futures: BoundedVec<FutureHandle, 16, NoStdProvider::<65536, NoStdProvider<65536>>>,
     
     /// Streams to wait for
     #[cfg(feature = "std")]
     pub streams: Vec<StreamHandle>,
     #[cfg(not(feature = "std"))]
-    pub streams: BoundedVec<StreamHandle, 16, NoStdProvider::<65536>>,
+    pub streams: BoundedVec<StreamHandle, 16, NoStdProvider::<65536, NoStdProvider<65536>>>,
 }
 
 /// Shadow stack entry for CFI protection
@@ -836,7 +836,7 @@ impl UnifiedExecutionAgent {
     }
 
     #[cfg(not(feature = "std"))]
-    fn convert_values_to_component(&self, values: &[Value]) -> WrtResult<BoundedVec<Value, 16, NoStdProvider::<65536>>> {
+    fn convert_values_to_component(&self, values: &[Value]) -> Wrtcore::result::Result<BoundedVec<Value, 16, NoStdProvider::<65536, NoStdProvider<65536>>>> {
         let mut component_values = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
         for value in values.iter().take(16) {
             component_values.push(value.clone()).map_err(|_| {

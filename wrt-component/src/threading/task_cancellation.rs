@@ -612,7 +612,7 @@ impl SubtaskManager {
     }
     
     /// Wait for any subtask to complete
-    pub fn wait_any(&self) -> Result<Option<(ExecutionId, SubtaskResult)>> {
+    pub fn wait_any(&self) -> core::result::Result<Option<(ExecutionId, SubtaskResult)>> {
         // In a real implementation, this would block until any subtask completes
         // For now, we return the first completed result
         for subtask in &self.subtasks {

@@ -4,7 +4,7 @@
 //! for the canonical ABI, ensuring proper data representation across
 //! component boundaries.
 
-use wrt_format::component::ValType;
+use wrt_format::component::ValType<NoStdProvider<65536>>;
 
 use crate::prelude::*;
 
@@ -38,49 +38,49 @@ impl MemoryLayout {
 }
 
 /// Calculate memory layout for a WebAssembly component model type
-pub fn calculate_layout(ty: &ValType) -> MemoryLayout {
+pub fn calculate_layout(ty: &ValType<NoStdProvider<65536>>) -> MemoryLayout {
     match ty {
         // Primitive types
-        ValType::Bool => MemoryLayout::new(1, 1),
-        ValType::S8 | ValType::U8 => MemoryLayout::new(1, 1),
-        ValType::S16 | ValType::U16 => MemoryLayout::new(2, 2),
-        ValType::S32 | ValType::U32 => MemoryLayout::new(4, 4),
-        ValType::S64 | ValType::U64 => MemoryLayout::new(8, 8),
-        ValType::F32 => MemoryLayout::new(4, 4),
-        ValType::F64 => MemoryLayout::new(8, 8),
-        ValType::Char => MemoryLayout::new(4, 4), // Unicode scalar value
+        ValType<NoStdProvider<65536>>::Bool => MemoryLayout::new(1, 1),
+        ValType<NoStdProvider<65536>>::S8 | ValType<NoStdProvider<65536>>::U8 => MemoryLayout::new(1, 1),
+        ValType<NoStdProvider<65536>>::S16 | ValType<NoStdProvider<65536>>::U16 => MemoryLayout::new(2, 2),
+        ValType<NoStdProvider<65536>>::S32 | ValType<NoStdProvider<65536>>::U32 => MemoryLayout::new(4, 4),
+        ValType<NoStdProvider<65536>>::S64 | ValType<NoStdProvider<65536>>::U64 => MemoryLayout::new(8, 8),
+        ValType<NoStdProvider<65536>>::F32 => MemoryLayout::new(4, 4),
+        ValType<NoStdProvider<65536>>::F64 => MemoryLayout::new(8, 8),
+        ValType<NoStdProvider<65536>>::Char => MemoryLayout::new(4, 4), // Unicode scalar value
 
         // String is represented as pointer + length
-        ValType::String => MemoryLayout::new(8, 4), // 4-byte pointer + 4-byte length
+        ValType<NoStdProvider<65536>>::String => MemoryLayout::new(8, 4), // 4-byte pointer + 4-byte length
 
         // Lists are represented as pointer + length
-        ValType::List(_) => MemoryLayout::new(8, 4), // 4-byte pointer + 4-byte length
+        ValType<NoStdProvider<65536>>::List(_) => MemoryLayout::new(8, 4), // 4-byte pointer + 4-byte length
 
         // Records require calculating layout for all fields
-        ValType::Record(fields) => calculate_record_layout(fields),
+        ValType<NoStdProvider<65536>>::Record(fields) => calculate_record_layout(fields),
 
         // Tuples are similar to records
-        ValType::Tuple(types) => calculate_tuple_layout(types),
+        ValType<NoStdProvider<65536>>::Tuple(types) => calculate_tuple_layout(types),
 
         // Variants need space for discriminant + largest payload
-        ValType::Variant(cases) => calculate_variant_layout(cases),
+        ValType<NoStdProvider<65536>>::Variant(cases) => calculate_variant_layout(cases),
 
         // Enums need space for discriminant only
-        ValType::Enum(cases) => calculate_enum_layout(cases.len()),
+        ValType<NoStdProvider<65536>>::Enum(cases) => calculate_enum_layout(cases.len()),
 
         // Options are variants with two cases (none/some)
-        ValType::Option(inner) => calculate_option_layout(inner),
+        ValType<NoStdProvider<65536>>::Option(inner) => calculate_option_layout(inner),
 
         // Results are variants with two cases (ok/err)
-        ValType::Result(ok_ty, err_ty) => {
+        ValType<NoStdProvider<65536>>::Result(ok_ty, err_ty) => {
             calculate_result_layout(ok_ty.as_deref(), err_ty.as_deref())
         }
 
         // Flags need bit storage
-        ValType::Flags(names) => calculate_flags_layout(names.len()),
+        ValType<NoStdProvider<65536>>::Flags(names) => calculate_flags_layout(names.len()),
 
         // Resources are handles (u32)
-        ValType::Own(_) | ValType::Borrow(_) => MemoryLayout::new(4, 4),
+        ValType<NoStdProvider<65536>>::Own(_) | ValType<NoStdProvider<65536>>::Borrow(_) => MemoryLayout::new(4, 4),
 
         // Other types
         _ => MemoryLayout::new(0, 1), // Unknown types have zero size
@@ -88,7 +88,7 @@ pub fn calculate_layout(ty: &ValType) -> MemoryLayout {
 }
 
 /// Calculate layout for a record type
-fn calculate_record_layout(fields: &[(String, ValType)]) -> MemoryLayout {
+fn calculate_record_layout(fields: &[(String, ValType<NoStdProvider<65536>>)]) -> MemoryLayout {
     let mut offset = 0;
     let mut max_alignment = 1;
 
@@ -110,7 +110,7 @@ fn calculate_record_layout(fields: &[(String, ValType)]) -> MemoryLayout {
 }
 
 /// Calculate layout for a tuple type
-fn calculate_tuple_layout(types: &[ValType]) -> MemoryLayout {
+fn calculate_tuple_layout(types: &[ValType<NoStdProvider<65536>>]) -> MemoryLayout {
     let mut offset = 0;
     let mut max_alignment = 1;
 
@@ -167,7 +167,7 @@ fn calculate_enum_layout(num_cases: usize) -> MemoryLayout {
 }
 
 /// Calculate layout for an option type
-fn calculate_option_layout(inner: &ValType) -> MemoryLayout {
+fn calculate_option_layout(inner: &ValType<NoStdProvider<65536>>) -> MemoryLayout {
     // Option is a variant with none (no payload) and some (with payload)
     let inner_layout = calculate_layout(inner);
 
@@ -244,7 +244,7 @@ const fn align_to(value: usize, alignment: usize) -> usize {
 }
 
 /// Calculate field offsets for a record or struct
-pub fn calculate_field_offsets(fields: &[(String, ValType)]) -> Vec<(String, usize, MemoryLayout)> {
+pub fn calculate_field_offsets(fields: &[(String, ValType<NoStdProvider<65536>>)]) -> Vec<(String, usize, MemoryLayout)> {
     let mut result = Vec::new();
     let mut offset = 0;
 
@@ -266,7 +266,7 @@ pub struct LayoutOptimizer;
 
 impl LayoutOptimizer {
     /// Reorder fields to minimize padding (largest alignment first)
-    pub fn optimize_field_order(fields: &[(String, ValType)]) -> Vec<(String, ValType)> {
+    pub fn optimize_field_order(fields: &[(String, ValType<NoStdProvider<65536>>)]) -> Vec<(String, ValType<NoStdProvider<65536>>)> {
         let mut fields_with_layout: Vec<_> = fields
             .iter()
             .map(|(name, ty)| {
@@ -379,21 +379,21 @@ mod tests {
 
     #[test]
     fn test_primitive_layouts() {
-        assert_eq!(calculate_layout(&ValType::Bool), MemoryLayout::new(1, 1));
-        assert_eq!(calculate_layout(&ValType::U8), MemoryLayout::new(1, 1));
-        assert_eq!(calculate_layout(&ValType::U16), MemoryLayout::new(2, 2));
-        assert_eq!(calculate_layout(&ValType::U32), MemoryLayout::new(4, 4));
-        assert_eq!(calculate_layout(&ValType::U64), MemoryLayout::new(8, 8));
-        assert_eq!(calculate_layout(&ValType::F32), MemoryLayout::new(4, 4));
-        assert_eq!(calculate_layout(&ValType::F64), MemoryLayout::new(8, 8));
+        assert_eq!(calculate_layout(&ValType<NoStdProvider<65536>>::Bool), MemoryLayout::new(1, 1));
+        assert_eq!(calculate_layout(&ValType<NoStdProvider<65536>>::U8), MemoryLayout::new(1, 1));
+        assert_eq!(calculate_layout(&ValType<NoStdProvider<65536>>::U16), MemoryLayout::new(2, 2));
+        assert_eq!(calculate_layout(&ValType<NoStdProvider<65536>>::U32), MemoryLayout::new(4, 4));
+        assert_eq!(calculate_layout(&ValType<NoStdProvider<65536>>::U64), MemoryLayout::new(8, 8));
+        assert_eq!(calculate_layout(&ValType<NoStdProvider<65536>>::F32), MemoryLayout::new(4, 4));
+        assert_eq!(calculate_layout(&ValType<NoStdProvider<65536>>::F64), MemoryLayout::new(8, 8));
     }
 
     #[test]
     fn test_record_layout() {
         let fields = vec![
-            ("a".to_string(), ValType::U8),
-            ("b".to_string(), ValType::U32),
-            ("c".to_string(), ValType::U16),
+            ("a".to_string(), ValType<NoStdProvider<65536>>::U8),
+            ("b".to_string(), ValType<NoStdProvider<65536>>::U32),
+            ("c".to_string(), ValType<NoStdProvider<65536>>::U16),
         ];
 
         let layout = calculate_record_layout(&fields);
@@ -423,10 +423,10 @@ mod tests {
     #[test]
     fn test_layout_optimizer() {
         let fields = vec![
-            ("a".to_string(), ValType::U8),
-            ("b".to_string(), ValType::U64),
-            ("c".to_string(), ValType::U16),
-            ("d".to_string(), ValType::U32),
+            ("a".to_string(), ValType<NoStdProvider<65536>>::U8),
+            ("b".to_string(), ValType<NoStdProvider<65536>>::U64),
+            ("c".to_string(), ValType<NoStdProvider<65536>>::U16),
+            ("d".to_string(), ValType<NoStdProvider<65536>>::U32),
         ];
 
         let optimized = LayoutOptimizer::optimize_field_order(&fields);

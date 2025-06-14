@@ -35,7 +35,6 @@
 //! abi.lower_string(&mut memory, 100, "hello")?;
 //! ```
 
-#![cfg_attr(not(feature = "std"), no_std)]
 
 // Cross-environment imports
 #[cfg(feature = "std")]
@@ -43,6 +42,9 @@ use std::{collections::HashMap, string::String, vec::Vec};
 
 #[cfg(all(not(feature = "std")))]
 use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
+
+#[cfg(not(feature = "std"))]
+use wrt_foundation::safe_memory::NoStdProvider;
 
 // Note: Using alloc for no_std instead of wrt_foundation bounded types for now
 // #[cfg(not(any(feature = "std", )))]
@@ -150,8 +152,8 @@ pub enum ComponentValue {
     Enum(String),
     /// Optional value
     Option(Option<Box<ComponentValue>>),
-    /// Result value
-    Result(Result<Option<Box<ComponentValue>>, Option<Box<ComponentValue>>>),
+    /// Result value  
+    Result(core::result::Result<Option<Box<ComponentValue>>, Option<Box<ComponentValue>>>),
     /// Flags (bitset)
     Flags(Vec<String>),
 }
@@ -653,7 +655,7 @@ impl CanonicalABI {
     pub fn lift_variant<M: CanonicalMemory>(
         &self,
         memory: &M,
-        cases: &[(String, Option<ComponentType<NoStdProvider<65536>>>)],
+        cases: &[(String, Option<ComponentType>)],
         offset: u32,
     ) -> Result<ComponentValue> {
         let discriminant = memory.read_u32_le(offset)?;
@@ -717,8 +719,8 @@ impl CanonicalABI {
     pub fn lift_result<M: CanonicalMemory>(
         &self,
         memory: &M,
-        ok_ty: &Option<Box<ComponentType<NoStdProvider<65536>>>>,
-        err_ty: &Option<Box<ComponentType<NoStdProvider<65536>>>>,
+        ok_ty: &Option<Box<ComponentType>>,
+        err_ty: &Option<Box<ComponentType>>,
         offset: u32,
     ) -> Result<ComponentValue> {
         let discriminant = memory.read_u32_le(offset)?;

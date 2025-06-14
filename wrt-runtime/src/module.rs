@@ -31,24 +31,24 @@ use wrt_format::{
 };
 
 use crate::{global::Global, memory::Memory, table::Table};
-use crate::prelude::ToString;
-use wrt_foundation::budget_types::{RuntimeVec, RuntimeString};
+use crate::prelude::{ToString, RuntimeString};
+// Use clean types for collections instead of provider-embedded ones
+#[cfg(feature = "std")]
+use std::{vec::Vec, collections::HashMap, string::String, sync::Arc};
+#[cfg(not(feature = "std"))]
+use alloc::{vec::Vec, string::String, sync::Arc};
+// HashMap is not needed with clean architecture using BoundedMap
 use wrt_foundation::bounded_collections::BoundedMap;
 use wrt_foundation::traits::{BoundedCapacity, Checksummable, ToBytes, FromBytes};
-
-#[cfg(feature = "std")]
-use std::{string::String, vec::Vec, sync::Arc};
-#[cfg(not(feature = "std"))]
-use alloc::{string::String, vec::Vec, sync::Arc};
 
 // Platform-aware type aliases to replace hardcoded NoStdProvider usage
 // Note: BoundedVec uses a different MemoryProvider trait than memory_system
 type PlatformProvider = wrt_foundation::safe_memory::NoStdProvider<8192>;  // Larger buffer for runtime
 type RuntimeProvider = wrt_foundation::safe_memory::NoStdProvider<131072>; // Runtime memory provider
-type ImportMap = BoundedMap<RuntimeString<256>, Import, 32, RuntimeProvider>;
-type ModuleImports = BoundedMap<RuntimeString<256>, ImportMap, 32, RuntimeProvider>;
-type CustomSections = BoundedMap<RuntimeString<256>, PlatformBoundedVec<u8, 4096>, 16, RuntimeProvider>;
-type ExportMap = BoundedMap<RuntimeString<256>, Export, 64, RuntimeProvider>;
+type ImportMap = BoundedMap<PlatformBoundedString<256>, Import, 32, RuntimeProvider>;
+type ModuleImports = BoundedMap<PlatformBoundedString<256>, ImportMap, 32, RuntimeProvider>;
+type CustomSections = BoundedMap<PlatformBoundedString<256>, PlatformBoundedVec<u8, 4096>, 16, RuntimeProvider>;
+type ExportMap = BoundedMap<PlatformBoundedString<256>, Export, 64, RuntimeProvider>;
 type PlatformBoundedVec<T, const N: usize> = wrt_foundation::bounded::BoundedVec<T, N, PlatformProvider>;
 type PlatformBoundedString<const N: usize> = wrt_foundation::bounded::BoundedString<N, PlatformProvider>;
 
@@ -587,11 +587,11 @@ impl Module {
                 import_def.item_name.as_str()?.to_string(),
                 extern_ty,
             )?;
-            let module_key = RuntimeString::from_str_truncate(
+            let module_key = PlatformBoundedString::from_str_truncate(
                 import_def.module_name.as_str()?,
                 RuntimeProvider::default()
             )?;
-            let name_key = RuntimeString::from_str_truncate(
+            let name_key = PlatformBoundedString::from_str_truncate(
                 import_def.item_name.as_str()?,
                 RuntimeProvider::default()
             )?;
@@ -737,7 +737,7 @@ impl Module {
                 }
             };
             let export = crate::module::Export::new(export_def.name.as_str()?.to_string(), kind, index)?;
-            let name_key = RuntimeString::from_str_truncate(
+            let name_key = PlatformBoundedString::from_str_truncate(
                 export_def.name.as_str()?,
                 RuntimeProvider::default()
             )?;
@@ -751,7 +751,7 @@ impl Module {
         // This will need to be implemented once data segments are added to the Module struct
 
         for custom_def in &wrt_module.custom_sections {
-            let name_key = RuntimeString::from_str_truncate(
+            let name_key = PlatformBoundedString::from_str_truncate(
                 custom_def.name.as_str()?,
                 RuntimeProvider::default()
             )?;
@@ -764,7 +764,7 @@ impl Module {
     /// Gets an export by name
     pub fn get_export(&self, name: &str) -> Option<Export> {
         // TODO: BoundedMap doesn't support iteration, so we'll use get with a RuntimeString key
-        let runtime_key = RuntimeString::from_str_truncate(name, RuntimeProvider::default()).ok()?;
+        let runtime_key = PlatformBoundedString::from_str_truncate(name, RuntimeProvider::default()).ok()?;
         self.exports.get(&runtime_key).ok().flatten()
     }
 
@@ -822,7 +822,7 @@ impl Module {
         let export = Export::new(name.clone(), ExportKind::Function, index)?;
         #[cfg(feature = "std")]
         {
-            let bounded_name = RuntimeString::from_str_truncate(
+            let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
                 RuntimeProvider::default()
             )?;
@@ -830,7 +830,7 @@ impl Module {
         }
         #[cfg(not(feature = "std"))]
         {
-            let bounded_name = RuntimeString::from_str_truncate(
+            let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
                 RuntimeProvider::default()
             )?;
@@ -844,7 +844,7 @@ impl Module {
         let export = Export::new(name.clone(), ExportKind::Table, index)?;
         #[cfg(feature = "std")]
         {
-            let bounded_name = RuntimeString::from_str_truncate(
+            let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
                 RuntimeProvider::default()
             )?;
@@ -852,7 +852,7 @@ impl Module {
         }
         #[cfg(not(feature = "std"))]
         {
-            let bounded_name = RuntimeString::from_str_truncate(
+            let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
                 RuntimeProvider::default()
             )?;
@@ -866,7 +866,7 @@ impl Module {
         let export = Export::new(name.clone(), ExportKind::Memory, index)?;
         #[cfg(feature = "std")]
         {
-            let bounded_name = RuntimeString::from_str_truncate(
+            let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
                 RuntimeProvider::default()
             )?;
@@ -874,7 +874,7 @@ impl Module {
         }
         #[cfg(not(feature = "std"))]
         {
-            let bounded_name = RuntimeString::from_str_truncate(
+            let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
                 RuntimeProvider::default()
             )?;
@@ -888,7 +888,7 @@ impl Module {
         let export = Export::new(name.clone(), ExportKind::Global, index)?;
         #[cfg(feature = "std")]
         {
-            let bounded_name = RuntimeString::from_str_truncate(
+            let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
                 RuntimeProvider::default()
             )?;
@@ -896,7 +896,7 @@ impl Module {
         }
         #[cfg(not(feature = "std"))]
         {
-            let bounded_name = RuntimeString::from_str_truncate(
+            let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
                 RuntimeProvider::default()
             )?;
@@ -923,7 +923,7 @@ impl Module {
         // Convert BoundedString to String - use default empty string if conversion fails
         let export_name_string = String::from("export"); // Use a placeholder name
         let runtime_export = Export::new(export_name_string, runtime_export_kind, format_export.index)?;
-        let name_key = RuntimeString::from_str_truncate(
+        let name_key = PlatformBoundedString::from_str_truncate(
             runtime_export.name.as_str().map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Invalid export name"))?,
             RuntimeProvider::default()
         )?;
@@ -980,11 +980,11 @@ impl Module {
         #[cfg(feature = "std")]
         {
             // Convert to bounded strings
-            let bounded_module = RuntimeString::from_str_truncate(
+            let bounded_module = PlatformBoundedString::from_str_truncate(
                 module_name,
                 RuntimeProvider::default()
             )?;
-            let bounded_item = RuntimeString::from_str_truncate(
+            let bounded_item = PlatformBoundedString::from_str_truncate(
                 item_name,
                 RuntimeProvider::default()
             )?;
@@ -1004,11 +1004,11 @@ impl Module {
         }
         #[cfg(not(feature = "std"))]
         {
-            let bounded_module = RuntimeString::from_str_truncate(
+            let bounded_module = PlatformBoundedString::from_str_truncate(
                 module_name,
                 RuntimeProvider::default()
             )?;
-            let bounded_item = RuntimeString::from_str_truncate(
+            let bounded_item = PlatformBoundedString::from_str_truncate(
                 item_name,
                 RuntimeProvider::default()
             )?;
@@ -1035,11 +1035,11 @@ impl Module {
         #[cfg(feature = "std")]
         {
             // Convert to bounded strings
-            let bounded_module = RuntimeString::from_str_truncate(
+            let bounded_module = PlatformBoundedString::from_str_truncate(
                 module_name,
                 RuntimeProvider::default()
             )?;
-            let bounded_item = RuntimeString::from_str_truncate(
+            let bounded_item = PlatformBoundedString::from_str_truncate(
                 item_name,
                 RuntimeProvider::default()
             )?;
@@ -1059,11 +1059,11 @@ impl Module {
         }
         #[cfg(not(feature = "std"))]
         {
-            let bounded_module = RuntimeString::from_str_truncate(
+            let bounded_module = PlatformBoundedString::from_str_truncate(
                 module_name,
                 RuntimeProvider::default()
             )?;
-            let bounded_item = RuntimeString::from_str_truncate(
+            let bounded_item = PlatformBoundedString::from_str_truncate(
                 item_name,
                 RuntimeProvider::default()
             )?;
@@ -1090,11 +1090,11 @@ impl Module {
         #[cfg(feature = "std")]
         {
             // Convert to bounded strings
-            let bounded_module = RuntimeString::from_str_truncate(
+            let bounded_module = PlatformBoundedString::from_str_truncate(
                 module_name,
                 RuntimeProvider::default()
             )?;
-            let bounded_item = RuntimeString::from_str_truncate(
+            let bounded_item = PlatformBoundedString::from_str_truncate(
                 item_name,
                 RuntimeProvider::default()
             )?;
@@ -1114,11 +1114,11 @@ impl Module {
         }
         #[cfg(not(feature = "std"))]
         {
-            let bounded_module = RuntimeString::from_str_truncate(
+            let bounded_module = PlatformBoundedString::from_str_truncate(
                 module_name,
                 RuntimeProvider::default()
             )?;
-            let bounded_item = RuntimeString::from_str_truncate(
+            let bounded_item = PlatformBoundedString::from_str_truncate(
                 item_name,
                 RuntimeProvider::default()
             )?;
@@ -1148,11 +1148,11 @@ impl Module {
             ExternType::Global(component_global_type),
         )?;
 
-        let module_key = RuntimeString::from_str_truncate(
+        let module_key = PlatformBoundedString::from_str_truncate(
             module_name,
             RuntimeProvider::default()
         )?;
-        let item_key = RuntimeString::from_str_truncate(
+        let item_key = PlatformBoundedString::from_str_truncate(
             item_name,
             RuntimeProvider::default()
         )?;
@@ -1210,7 +1210,7 @@ impl Module {
         }
 
         let export = Export::new(name.to_string(), ExportKind::Function, index)?;
-        let bounded_name = RuntimeString::from_str_truncate(
+        let bounded_name = PlatformBoundedString::from_str_truncate(
             name,
             RuntimeProvider::default()
         )?;
@@ -1228,7 +1228,7 @@ impl Module {
 
         let export = Export::new(name.to_string(), ExportKind::Table, index)?;
 
-        let bounded_name = RuntimeString::from_str_truncate(
+        let bounded_name = PlatformBoundedString::from_str_truncate(
             name,
             RuntimeProvider::default()
         )?;
@@ -1246,7 +1246,7 @@ impl Module {
 
         let export = Export::new(name.to_string(), ExportKind::Memory, index)?;
 
-        let bounded_name = RuntimeString::from_str_truncate(
+        let bounded_name = PlatformBoundedString::from_str_truncate(
             name,
             RuntimeProvider::default()
         )?;
@@ -1264,7 +1264,7 @@ impl Module {
 
         let export = Export::new(name.to_string(), ExportKind::Global, index)?;
 
-        let bounded_name = RuntimeString::from_str_truncate(
+        let bounded_name = PlatformBoundedString::from_str_truncate(
             name,
             RuntimeProvider::default()
         )?;
@@ -1367,7 +1367,7 @@ impl Module {
 
     /// Add a custom section to the module
     pub fn add_custom_section(&mut self, name: &str, data: Vec<u8>) -> Result<()> {
-        let name_key = RuntimeString::from_str_truncate(name, RuntimeProvider::default())?;
+        let name_key = PlatformBoundedString::from_str_truncate(name, RuntimeProvider::default())?;
         let mut bounded_data = PlatformBoundedVec::<u8, 4096>::new(PlatformProvider::default())?;
         for byte in data {
             bounded_data.push(byte)?;
@@ -1416,11 +1416,11 @@ impl Module {
         #[cfg(feature = "std")]
         {
             // Convert to bounded strings
-            let bounded_module = RuntimeString::from_str_truncate(
+            let bounded_module = PlatformBoundedString::from_str_truncate(
                 module_name,
                 RuntimeProvider::default()
             )?;
-            let bounded_item = RuntimeString::from_str_truncate(
+            let bounded_item = PlatformBoundedString::from_str_truncate(
                 item_name,
                 RuntimeProvider::default()
             )?;
@@ -1440,11 +1440,11 @@ impl Module {
         }
         #[cfg(not(feature = "std"))]
         {
-            let bounded_module = RuntimeString::from_str_truncate(
+            let bounded_module = PlatformBoundedString::from_str_truncate(
                 module_name,
                 RuntimeProvider::default()
             )?;
-            let bounded_item = RuntimeString::from_str_truncate(
+            let bounded_item = PlatformBoundedString::from_str_truncate(
                 item_name,
                 RuntimeProvider::default()
             )?;
@@ -1472,7 +1472,7 @@ impl Module {
             }
         };
         let runtime_export = crate::module::Export::new(name.clone(), kind, index)?;
-        let name_key = RuntimeString::from_str_truncate(&name, RuntimeProvider::default())?;
+        let name_key = PlatformBoundedString::from_str_truncate(&name, RuntimeProvider::default())?;
         self.exports.insert(name_key, runtime_export)?;
         Ok(())
     }
@@ -1537,7 +1537,7 @@ impl Module {
 
     /// Add a custom section to the module
     pub fn add_custom_section_runtime(&mut self, section: WrtCustomSection<PlatformProvider>) -> Result<()> {
-        let name_key = RuntimeString::from_str_truncate(
+        let name_key = PlatformBoundedString::from_str_truncate(
             section.name.as_str()?,
             RuntimeProvider::default()
         )?;
@@ -1609,11 +1609,7 @@ pub enum ImportedItem {
 }
 
 
-// Ensure ExternType is available
-#[cfg(feature = "std")]
-use std::{collections::HashMap}; // For std types
-#[cfg(not(feature = "std"))]
-use crate::prelude::HashMap; // Use HashMap from prelude which handles no_std
+// HashMap is already imported above, no need to re-import
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::component::ExternType; // For error handling

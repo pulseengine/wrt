@@ -7,7 +7,7 @@ use crate::{
 // Placeholder types
 pub type ComponentInstanceId = u32;
 pub type ResourceHandle = u32;
-pub type ValType = u32;
+pub type ValType<NoStdProvider<65536>> = u32;
 use core::{
     fmt,
     sync::atomic::{AtomicBool, AtomicU32, Ordering},
@@ -56,7 +56,7 @@ impl fmt::Display for VirtualizationError {
 #[cfg(feature = "std")]
 impl std::error::Error for VirtualizationError {}
 
-pub type VirtualizationResult<T> = Result<T, VirtualizationError>;
+pub type Virtualizationcore::result::Result<T> = Result<T, VirtualizationError>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Capability {
@@ -106,7 +106,7 @@ pub struct VirtualComponent {
 #[derive(Debug, Clone)]
 pub struct VirtualImport {
     pub name: String,
-    pub val_type: ValType,
+    pub val_type: ValType<NoStdProvider<65536>>,
     pub required: bool,
     pub virtual_source: Option<VirtualSource>,
     pub capability_required: Option<Capability>,
@@ -115,7 +115,7 @@ pub struct VirtualImport {
 #[derive(Debug, Clone)]
 pub struct VirtualExport {
     pub name: String,
-    pub val_type: ValType,
+    pub val_type: ValType<NoStdProvider<65536>>,
     pub visibility: ExportVisibility,
     pub capability_required: Option<Capability>,
 }
@@ -197,7 +197,7 @@ pub struct VirtualizationManager {
 #[derive(Debug, Clone)]
 pub struct HostExport {
     pub name: String,
-    pub val_type: ValType,
+    pub val_type: ValType<NoStdProvider<65536>>,
     pub handler: HostExportHandler,
     pub required_capability: Option<Capability>,
 }

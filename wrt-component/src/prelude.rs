@@ -23,7 +23,7 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 pub use alloc::{
     boxed::Box,
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
     format,
     string::{String, ToString},
     sync::Arc,
@@ -81,7 +81,7 @@ pub use wrt_decoder::decoder_no_alloc;
 // Re-export from wrt-error
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 // Re-export from wrt-format
-pub use wrt_format::component::ValType as FormatValType;
+pub use wrt_format::component::ValType<NoStdProvider<65536>> as FormatValType<NoStdProvider<65536>>;
 // Import component builders and resource builders with proper feature gates
 #[cfg(feature = "std")]
 pub use wrt_foundation::builder::ResourceItemBuilder;
@@ -94,14 +94,14 @@ pub use wrt_foundation::component_builder::{
 pub use wrt_foundation::bounded::{BoundedString, BoundedVec};
 // Re-export component_value for both std and no_std
 #[cfg(feature = "std")]
-pub use wrt_foundation::component_value::{ComponentValue, ValType};
+pub use wrt_foundation::component_value::{ComponentValue, ValType<NoStdProvider<65536>>};
 
 #[cfg(not(feature = "std"))]
-pub use wrt_foundation::component_value::ValType;
+pub use wrt_foundation::component_value::ValType<NoStdProvider<65536>>;
 
 // Unified type aliases for std/no_std compatibility
 #[cfg(not(feature = "std"))]
-pub type ComponentVec<T> = wrt_foundation::bounded::BoundedVec<T, 64, wrt_foundation::safe_memory::NoStdProvider<8192>>;
+pub type ComponentVec<T> = wrt_foundation::bounded::BoundedVec<T, 64, wrt_foundation::safe_memory::NoStdProvider<8192, NoStdProvider<65536>>>;
 
 #[cfg(feature = "std")]
 pub type ComponentVec<T> = Vec<T>;

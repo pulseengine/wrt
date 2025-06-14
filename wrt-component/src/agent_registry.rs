@@ -35,13 +35,13 @@ pub struct AgentRegistry {
     #[cfg(feature = "std")]
     unified_agents: HashMap<AgentId, Box<UnifiedExecutionAgent>>,
     #[cfg(not(feature = "std"))]
-    unified_agents: BoundedVec<(AgentId, UnifiedExecutionAgent), MAX_AGENTS, NoStdProvider::<65536>>,
+    unified_agents: BoundedVec<(AgentId, UnifiedExecutionAgent), MAX_AGENTS, NoStdProvider::<65536, NoStdProvider<65536>>>,
     
     /// Legacy agents (deprecated)
     #[cfg(feature = "std")]
     legacy_agents: HashMap<AgentId, Box<dyn LegacyExecutionAgent>>,
     #[cfg(not(feature = "std"))]
-    legacy_agents: BoundedVec<(AgentId, LegacyAgentType), 16, NoStdProvider::<65536>>,
+    legacy_agents: BoundedVec<(AgentId, LegacyAgentType), 16, NoStdProvider::<65536, NoStdProvider<65536>>>,
     
     /// Next agent ID
     next_agent_id: u32,
@@ -77,7 +77,7 @@ pub struct MigrationStatus {
     #[cfg(feature = "std")]
     pub pending_migrations: Vec<AgentId>,
     #[cfg(not(feature = "std"))]
-    pub pending_migrations: BoundedVec<AgentId, MAX_AGENTS, NoStdProvider::<65536>>,
+    pub pending_migrations: BoundedVec<AgentId, MAX_AGENTS, NoStdProvider::<65536, NoStdProvider<65536>>>,
     
     /// Completed migrations
     pub completed_migrations: u32,
@@ -86,7 +86,7 @@ pub struct MigrationStatus {
     #[cfg(feature = "std")]
     pub warnings: Vec<MigrationWarning>,
     #[cfg(not(feature = "std"))]
-    pub warnings: BoundedVec<MigrationWarning, 16, NoStdProvider::<65536>>,
+    pub warnings: BoundedVec<MigrationWarning, 16, NoStdProvider::<65536, NoStdProvider<65536>>>,
 }
 
 /// Migration warning information
@@ -595,7 +595,7 @@ impl AgentRegistry {
         #[cfg(feature = "std")]
         let legacy_ids: Vec<AgentId> = self.legacy_agents.keys().copied().collect();
         #[cfg(not(feature = "std"))]
-        let legacy_ids: BoundedVec<AgentId, MAX_AGENTS, NoStdProvider::<65536>> = {
+        let legacy_ids: BoundedVec<AgentId, MAX_AGENTS, NoStdProvider::<65536, NoStdProvider<65536>>> = {
             let mut ids = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
             for (id, _) in &self.legacy_agents {
                 let _ = ids.push(*id);

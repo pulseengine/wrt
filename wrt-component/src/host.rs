@@ -82,7 +82,7 @@ impl Host {
 
 #[cfg(test)]
 mod tests {
-    use wrt_format::component::ValType;
+    use wrt_format::component::ValType<NoStdProvider<65536>>;
 
     use super::*;
 
@@ -91,8 +91,8 @@ mod tests {
         let mut host = Host::new();
 
         let func_type = ExternType::Function {
-            params: vec![("a".to_string(), ValType::S32), ("b".to_string(), ValType::S32)],
-            results: vec![ValType::S32],
+            params: vec![("a".to_string(), ValType<NoStdProvider<65536>>::S32), ("b".to_string(), ValType<NoStdProvider<65536>>::S32)],
+            results: vec![ValType<NoStdProvider<65536>>::S32],
         };
 
         let function = HostFunction {

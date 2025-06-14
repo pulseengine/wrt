@@ -3,18 +3,21 @@
 //! This module provides bounded alternatives for runtime collections
 //! to ensure static memory allocation throughout the runtime execution.
 
-#![cfg_attr(not(feature = "std"), no_std)]
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
-    no_std_hashmap::BoundedHashMap,
+    managed_alloc,
+    bounded_collections::BoundedMap,
+    safe_memory::NoStdProvider,
     budget_provider::BudgetProvider,
-    budget_aware_provider::{BudgetAwareProviderFactory, CrateId},
+    budget_aware_provider::CrateId,
+    traits::{Checksummable, ToBytes, FromBytes},
     WrtResult,
 };
+use wrt_error::{Error, ErrorCategory, codes};
 
 /// Budget-aware memory provider for runtime (256KB)
-pub type RuntimeProvider = BudgetProvider<262144>;
+pub type RuntimeProvider = NoStdProvider<131072>;
 
 /// Maximum number of runtime instances
 pub const MAX_RUNTIME_INSTANCES: usize = 64;
@@ -131,7 +134,7 @@ pub type BoundedFunctionName = BoundedString<MAX_FUNCTION_NAME_LEN, RuntimeProvi
 pub type BoundedImportExportName = BoundedString<MAX_IMPORT_EXPORT_NAME_LEN, RuntimeProvider>;
 
 /// Bounded map for branch predictions
-pub type BoundedBranchPredictionMap<V> = BoundedHashMap<
+pub type BoundedBranchPredictionMap<V> = BoundedMap<
     u32, // PC address
     V,
     MAX_BRANCH_PREDICTIONS,
@@ -139,7 +142,7 @@ pub type BoundedBranchPredictionMap<V> = BoundedHashMap<
 >;
 
 /// Bounded map for function predictors
-pub type BoundedFunctionPredictorMap<V> = BoundedHashMap<
+pub type BoundedFunctionPredictorMap<V> = BoundedMap<
     u32, // Function index
     V,
     MAX_FUNCTION_PREDICTORS,
@@ -147,7 +150,7 @@ pub type BoundedFunctionPredictorMap<V> = BoundedHashMap<
 >;
 
 /// Bounded map for interpreter optimizations
-pub type BoundedInterpreterOptMap<V> = BoundedHashMap<
+pub type BoundedInterpreterOptMap<V> = BoundedMap<
     u32, // Instruction index
     V,
     MAX_INTERPRETER_OPTIMIZATIONS,
@@ -155,7 +158,7 @@ pub type BoundedInterpreterOptMap<V> = BoundedHashMap<
 >;
 
 /// Bounded map for atomic operations
-pub type BoundedAtomicOpMap<V> = BoundedHashMap<
+pub type BoundedAtomicOpMap<V> = BoundedMap<
     u64, // Memory address
     V,
     MAX_ATOMIC_OPERATIONS,
@@ -163,7 +166,7 @@ pub type BoundedAtomicOpMap<V> = BoundedHashMap<
 >;
 
 /// Bounded map for modules
-pub type BoundedModuleMap<V> = BoundedHashMap<
+pub type BoundedModuleMap<V> = BoundedMap<
     BoundedModuleName,
     V,
     MAX_MODULES_PER_RUNTIME,
@@ -171,7 +174,7 @@ pub type BoundedModuleMap<V> = BoundedHashMap<
 >;
 
 /// Bounded map for imports
-pub type BoundedImportMap<V> = BoundedHashMap<
+pub type BoundedImportMap<V> = BoundedMap<
     BoundedImportExportName,
     V,
     MAX_IMPORTS_PER_MODULE,
@@ -179,7 +182,7 @@ pub type BoundedImportMap<V> = BoundedHashMap<
 >;
 
 /// Bounded map for exports
-pub type BoundedExportMap<V> = BoundedHashMap<
+pub type BoundedExportMap<V> = BoundedMap<
     BoundedImportExportName,
     V,
     MAX_EXPORTS_PER_MODULE,
@@ -187,7 +190,7 @@ pub type BoundedExportMap<V> = BoundedHashMap<
 >;
 
 /// Bounded map for thread management
-pub type BoundedThreadMap<V> = BoundedHashMap<
+pub type BoundedThreadMap<V> = BoundedMap<
     u32, // Thread ID
     V,
     MAX_MANAGED_THREADS,
@@ -195,139 +198,220 @@ pub type BoundedThreadMap<V> = BoundedHashMap<
 >;
 
 /// Create a new bounded runtime vector
-pub fn new_runtime_vec<T>() -> WrtResult<BoundedRuntimeVec<T>> {
-    let provider = RuntimeProvider::new(CrateId::Runtime)?;
+pub fn new_runtime_vec<T>() -> WrtResult<BoundedRuntimeVec<T>> 
+where
+    T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded module vector
-pub fn new_module_vec<T>() -> BoundedModuleVec<T> {
-    BoundedVec::new(RuntimeProvider::new(CrateId::Runtime)?).unwrap_or_else(|_| {
-        panic!("Failed to create bounded module vector");
-    })
+pub fn new_module_vec<T>() -> WrtResult<BoundedModuleVec<T>> 
+where
+    T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedVec::new(provider)
 }
 
 /// Create a new bounded function vector
-pub fn new_function_vec<T>() -> BoundedFunctionVec<T> {
-    BoundedVec::new(RuntimeProvider::new(CrateId::Runtime)?).unwrap_or_else(|_| {
-        panic!("Failed to create bounded function vector");
-    })
+pub fn new_function_vec<T>() -> WrtResult<BoundedFunctionVec<T>> 
+where
+    T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedVec::new(provider)
 }
 
 /// Create a new bounded memory vector
-pub fn new_memory_vec<T>() -> BoundedMemoryVec<T> {
-    BoundedVec::new(RuntimeProvider::new(CrateId::Runtime)?).unwrap_or_else(|_| {
-        panic!("Failed to create bounded memory vector");
-    })
+pub fn new_memory_vec<T>() -> WrtResult<BoundedMemoryVec<T>> 
+where
+    T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedVec::new(provider)
 }
 
 /// Create a new bounded table vector
-pub fn new_table_vec<T>() -> BoundedTableVec<T> {
-    BoundedVec::new(RuntimeProvider::new(CrateId::Runtime)?).unwrap_or_else(|_| {
-        panic!("Failed to create bounded table vector");
-    })
+pub fn new_table_vec<T>() -> WrtResult<BoundedTableVec<T>> 
+where
+    T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedVec::new(provider)
 }
 
 /// Create a new bounded global vector
-pub fn new_global_vec<T>() -> BoundedGlobalVec<T> {
-    BoundedVec::new(RuntimeProvider::new(CrateId::Runtime)?).unwrap_or_else(|_| {
-        panic!("Failed to create bounded global vector");
-    })
+pub fn new_global_vec<T>() -> WrtResult<BoundedGlobalVec<T>> 
+where
+    T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedVec::new(provider)
 }
 
 /// Create a new bounded thread vector
-pub fn new_thread_vec<T>() -> BoundedThreadVec<T> {
-    BoundedVec::new(RuntimeProvider::new(CrateId::Runtime)?).unwrap_or_else(|_| {
-        panic!("Failed to create bounded thread vector");
-    })
+pub fn new_thread_vec<T>() -> WrtResult<BoundedThreadVec<T>> 
+where
+    T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedVec::new(provider)
 }
 
 /// Create a new bounded call stack vector
-pub fn new_call_stack_vec<T>() -> BoundedCallStackVec<T> {
-    BoundedVec::new(RuntimeProvider::new(CrateId::Runtime)?).unwrap_or_else(|_| {
-        panic!("Failed to create bounded call stack vector");
-    })
+pub fn new_call_stack_vec<T>() -> WrtResult<BoundedCallStackVec<T>> 
+where
+    T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedVec::new(provider)
 }
 
 /// Create a new bounded execution context vector
-pub fn new_execution_context_vec<T>() -> BoundedExecutionContextVec<T> {
-    BoundedVec::new(RuntimeProvider::new(CrateId::Runtime)?).unwrap_or_else(|_| {
-        panic!("Failed to create bounded execution context vector");
-    })
+pub fn new_execution_context_vec<T>() -> WrtResult<BoundedExecutionContextVec<T>> 
+where
+    T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedVec::new(provider)
 }
 
 /// Create a new bounded module name
-pub fn new_module_name() -> BoundedModuleName {
-    BoundedString::new(RuntimeProvider::new(CrateId::Runtime)?)
+pub fn new_module_name() -> WrtResult<BoundedModuleName> {
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedString::from_str("", provider).map_err(|e| Error::new(ErrorCategory::Memory, codes::SERIALIZATION_ERROR, "Failed to create bounded string"))
 }
 
 /// Create a bounded module name from str
-pub fn bounded_module_name_from_str(s: &str) -> wrt_error::Result<BoundedModuleName> {
-    BoundedString::from_str(s, RuntimeProvider::new(CrateId::Runtime)?)
+pub fn bounded_module_name_from_str(s: &str) -> WrtResult<BoundedModuleName> {
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedString::from_str(s, provider).map_err(|e| Error::new(ErrorCategory::Memory, codes::SERIALIZATION_ERROR, "Failed to create bounded string"))
 }
 
 /// Create a new bounded function name
-pub fn new_function_name() -> BoundedFunctionName {
-    BoundedString::new(RuntimeProvider::new(CrateId::Runtime)?)
+pub fn new_function_name() -> WrtResult<BoundedFunctionName> {
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedString::from_str("", provider).map_err(|e| Error::new(ErrorCategory::Memory, codes::SERIALIZATION_ERROR, "Failed to create bounded string"))
 }
 
 /// Create a bounded function name from str
-pub fn bounded_function_name_from_str(s: &str) -> wrt_error::Result<BoundedFunctionName> {
-    BoundedString::from_str(s, RuntimeProvider::new(CrateId::Runtime)?)
+pub fn bounded_function_name_from_str(s: &str) -> WrtResult<BoundedFunctionName> {
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedString::from_str(s, provider).map_err(|e| Error::new(ErrorCategory::Memory, codes::SERIALIZATION_ERROR, "Failed to create bounded string"))
 }
 
 /// Create a new bounded branch prediction map
-pub fn new_branch_prediction_map<V>() -> BoundedBranchPredictionMap<V> {
-    BoundedHashMap::new(RuntimeProvider::new(CrateId::Runtime)?).unwrap_or_else(|_| {
-        panic!("Failed to create bounded branch prediction map");
-    })
+pub fn new_branch_prediction_map<V>() -> WrtResult<BoundedBranchPredictionMap<V>> 
+where
+    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedMap::new(provider)
 }
 
 /// Create a new bounded function predictor map
-pub fn new_function_predictor_map<V>() -> BoundedFunctionPredictorMap<V> {
-    BoundedHashMap::new(RuntimeProvider::new(CrateId::Runtime)?).unwrap_or_else(|_| {
-        panic!("Failed to create bounded function predictor map");
-    })
+pub fn new_function_predictor_map<V>() -> WrtResult<BoundedFunctionPredictorMap<V>> 
+where
+    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedMap::new(provider)
 }
 
 /// Create a new bounded interpreter optimization map
-pub fn new_interpreter_opt_map<V>() -> BoundedInterpreterOptMap<V> {
-    BoundedHashMap::new(RuntimeProvider::new(CrateId::Runtime)?).unwrap_or_else(|_| {
-        panic!("Failed to create bounded interpreter optimization map");
-    })
+pub fn new_interpreter_opt_map<V>() -> WrtResult<BoundedInterpreterOptMap<V>> 
+where
+    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedMap::new(provider)
 }
 
 /// Create a new bounded atomic operation map
-pub fn new_atomic_op_map<V>() -> BoundedAtomicOpMap<V> {
-    BoundedHashMap::new(RuntimeProvider::new(CrateId::Runtime)?).unwrap_or_else(|_| {
-        panic!("Failed to create bounded atomic operation map");
-    })
+pub fn new_atomic_op_map<V>() -> WrtResult<BoundedAtomicOpMap<V>> 
+where
+    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedMap::new(provider)
 }
 
 /// Create a new bounded module map
-pub fn new_module_map<V>() -> BoundedModuleMap<V> {
-    BoundedHashMap::new(RuntimeProvider::new(CrateId::Runtime)?).unwrap_or_else(|_| {
-        panic!("Failed to create bounded module map");
-    })
+pub fn new_module_map<V>() -> WrtResult<BoundedModuleMap<V>> 
+where
+    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedMap::new(provider)
 }
 
 /// Create a new bounded import map
-pub fn new_import_map<V>() -> BoundedImportMap<V> {
-    BoundedHashMap::new(RuntimeProvider::new(CrateId::Runtime)?).unwrap_or_else(|_| {
-        panic!("Failed to create bounded import map");
-    })
+pub fn new_import_map<V>() -> WrtResult<BoundedImportMap<V>> 
+where
+    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedMap::new(provider)
 }
 
 /// Create a new bounded export map
-pub fn new_export_map<V>() -> BoundedExportMap<V> {
-    BoundedHashMap::new(RuntimeProvider::new(CrateId::Runtime)?).unwrap_or_else(|_| {
-        panic!("Failed to create bounded export map");
-    })
+pub fn new_export_map<V>() -> WrtResult<BoundedExportMap<V>> 
+where
+    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedMap::new(provider)
 }
 
 /// Create a new bounded thread map
-pub fn new_thread_map<V>() -> BoundedThreadMap<V> {
-    BoundedHashMap::new(RuntimeProvider::new(CrateId::Runtime)?).unwrap_or_else(|_| {
-        panic!("Failed to create bounded thread map");
-    })
+pub fn new_thread_map<V>() -> WrtResult<BoundedThreadMap<V>> 
+where
+    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+{
+    let guard = managed_alloc!(131072, CrateId::Runtime)?;
+
+    let provider = unsafe { guard.release() };
+    BoundedMap::new(provider)
 }

@@ -35,14 +35,19 @@
 //! let instance = linker.instantiate("calculator", &calc_component_binary)?;
 //! ```
 
-#![cfg_attr(not(feature = "std"), no_std)]
 
 // Cross-environment imports
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::HashMap, format, string::String, vec::Vec};
 
 #[cfg(not(feature = "std"))]
-use wrt_foundation::{bounded::{BoundedString as String, BoundedVec as Vec}, safe_memory::NoStdProvider};
+use wrt_foundation::{bounded::{BoundedString, BoundedVec}, safe_memory::NoStdProvider};
+
+#[cfg(not(feature = "std"))]
+type String = BoundedString<256, NoStdProvider<65536>>;
+
+#[cfg(not(feature = "std"))]
+type Vec<T> = BoundedVec<T, 64, NoStdProvider<65536>>;
 
 // Enable vec! and format! macros for no_std
 #[cfg(not(feature = "std"))]
@@ -513,7 +518,7 @@ impl ComponentInstance {
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
-                    codes::INSTANCE_NOT_FOUND,
+                    codes::VALIDATION_EXPORT_NOT_FOUND,
                     "Instance table not found",
                 ))
             }
@@ -756,8 +761,8 @@ impl std::error::Error for InstantiationError {}
 /// Create a function signature
 pub fn create_function_signature(
     name: String,
-    params: Vec<ComponentType<NoStdProvider<65536>>>,
-    returns: Vec<ComponentType<NoStdProvider<65536>>>,
+    params: Vec<ComponentType>,
+    returns: Vec<ComponentType>,
 ) -> FunctionSignature {
     FunctionSignature { name, params, returns }
 }
