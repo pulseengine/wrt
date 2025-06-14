@@ -209,10 +209,14 @@ impl core::str::FromStr for ResourceRepresentation {
                 #[cfg(feature = "std")]
                 {
                     use crate::budget_aware_provider::CrateId;
-                    use crate::wrt_memory_system::WrtProviderFactory;
+                    use crate::managed_alloc;
+                    
+                    let guard = managed_alloc!(4096, CrateId::Foundation)?;
+                    #[allow(unsafe_code)]
+                    let provider = unsafe { guard.release() };
                     
                     Ok(ResourceRepresentation::Record(
-                        BoundedVec::new(WrtProviderFactory::create_provider(CrateId::Foundation)?).map_err(|_e| {
+                        BoundedVec::new(provider).map_err(|_e| {
                             wrt_error::Error::new(
                                 wrt_error::ErrorCategory::Memory,
                                 wrt_error::codes::MEMORY_ALLOCATION_ERROR,
@@ -230,10 +234,14 @@ impl core::str::FromStr for ResourceRepresentation {
                 #[cfg(feature = "std")]
                 {
                     use crate::budget_aware_provider::CrateId;
-                    use crate::wrt_memory_system::WrtProviderFactory;
+                    use crate::managed_alloc;
+                    
+                    let guard = managed_alloc!(4096, CrateId::Foundation)?;
+                    #[allow(unsafe_code)]
+                    let provider = unsafe { guard.release() };
                     
                     Ok(ResourceRepresentation::Aggregate(
-                        BoundedVec::new(WrtProviderFactory::create_provider(CrateId::Foundation)?).map_err(|_e| {
+                        BoundedVec::new(provider).map_err(|_e| {
                             wrt_error::Error::new(
                                 wrt_error::ErrorCategory::Memory,
                                 wrt_error::codes::MEMORY_ALLOCATION_ERROR,

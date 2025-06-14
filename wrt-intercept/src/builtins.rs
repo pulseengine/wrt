@@ -5,6 +5,7 @@
 
 
 use crate::prelude::{BuiltinType, Debug, str};
+use wrt_error::Error;
 
 #[cfg(feature = "std")]
 use wrt_foundation::values::Value;
