@@ -3,7 +3,6 @@
 //! Provides verification capabilities that integrate with CLI args, environment variables,
 //! configuration files, and container discovery.
 
-#![cfg_attr(not(feature = "std"), no_std)]
 
 use wrt_error::{Error, ErrorCategory, codes};
 

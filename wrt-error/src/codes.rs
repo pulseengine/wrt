@@ -202,7 +202,7 @@ pub const TYPE_SYSTEM_INIT_ERROR: u16 = 8002;
 /// Memory provider creation error
 pub const MEMORY_PROVIDER_CREATION_ERROR: u16 = 8003;
 
-// Memory system error codes (9000-9999) 
+// Memory system error codes (9000-9999)
 /// Memory allocation failed error
 pub const MEMORY_ALLOCATION_FAILED: u16 = 9000;
 /// Memory deallocation failed error  
@@ -231,6 +231,8 @@ pub const BOUNDED_COLLECTION_UTF8_ERROR: u16 = 10004;
 pub const BOUNDED_COLLECTION_ITEM_TOO_LARGE: u16 = 10005;
 /// Bounded collection verification error
 pub const BOUNDED_COLLECTION_VERIFICATION_ERROR: u16 = 10006;
+/// Deprecated API usage error
+pub const DEPRECATED_API: u16 = 10007;
 
 // Additional error codes for existing categories
 /// Invalid value error (general)
@@ -260,7 +262,7 @@ pub const RESOURCE_TYPE_LIMIT_EXCEEDED: u16 = 12002;
 /// Component memory budget exceeded error
 pub const COMPONENT_MEMORY_BUDGET_EXCEEDED: u16 = 12003;
 
-// Platform error codes (13000-13999) - Agent B stubs  
+// Platform error codes (13000-13999) - Agent B stubs
 /// Platform detection failed error
 pub const PLATFORM_DETECTION_FAILED: u16 = 13000;
 /// Platform limits discovery failed error

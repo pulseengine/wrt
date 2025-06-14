@@ -89,89 +89,80 @@ impl Error {
     pub const fn new(category: ErrorCategory, code: u16, message: &'static str) -> Self {
         Self { category, code, message }
     }
-    
+
     // Agent C constant error instances
     /// WIT input too large error
     pub const WIT_INPUT_TOO_LARGE: Self = Self::new(
-        ErrorCategory::Parse, 
-        codes::WIT_INPUT_TOO_LARGE, 
-        "WIT input too large for parser buffer"
+        ErrorCategory::Parse,
+        codes::WIT_INPUT_TOO_LARGE,
+        "WIT input too large for parser buffer",
     );
-    
+
     /// WIT world limit exceeded error
     pub const WIT_WORLD_LIMIT_EXCEEDED: Self = Self::new(
-        ErrorCategory::Parse, 
-        codes::WIT_WORLD_LIMIT_EXCEEDED, 
-        "Too many WIT worlds for parser limits"
+        ErrorCategory::Parse,
+        codes::WIT_WORLD_LIMIT_EXCEEDED,
+        "Too many WIT worlds for parser limits",
     );
-    
+
     /// WIT interface limit exceeded error
     pub const WIT_INTERFACE_LIMIT_EXCEEDED: Self = Self::new(
-        ErrorCategory::Parse, 
-        codes::WIT_INTERFACE_LIMIT_EXCEEDED, 
-        "Too many WIT interfaces for parser limits"
+        ErrorCategory::Parse,
+        codes::WIT_INTERFACE_LIMIT_EXCEEDED,
+        "Too many WIT interfaces for parser limits",
     );
-    
+
     /// No WIT definitions found error
     pub const NO_WIT_DEFINITIONS_FOUND: Self = Self::new(
-        ErrorCategory::Parse, 
-        codes::NO_WIT_DEFINITIONS_FOUND, 
-        "No WIT worlds or interfaces found in input"
+        ErrorCategory::Parse,
+        codes::NO_WIT_DEFINITIONS_FOUND,
+        "No WIT worlds or interfaces found in input",
     );
-    
+
     /// Insufficient memory error
     pub const INSUFFICIENT_MEMORY: Self = Self::new(
-        ErrorCategory::Resource, 
-        codes::INSUFFICIENT_MEMORY, 
-        "Insufficient memory for operation"
+        ErrorCategory::Resource,
+        codes::INSUFFICIENT_MEMORY,
+        "Insufficient memory for operation",
     );
-    
+
     /// Out of memory error
-    pub const OUT_OF_MEMORY: Self = Self::new(
-        ErrorCategory::Resource, 
-        codes::OUT_OF_MEMORY, 
-        "Out of memory"
-    );
-    
+    pub const OUT_OF_MEMORY: Self =
+        Self::new(ErrorCategory::Resource, codes::OUT_OF_MEMORY, "Out of memory");
+
     /// Too many components error
     pub const TOO_MANY_COMPONENTS: Self = Self::new(
-        ErrorCategory::Component, 
-        codes::TOO_MANY_COMPONENTS, 
-        "Too many components instantiated"
+        ErrorCategory::Component,
+        codes::TOO_MANY_COMPONENTS,
+        "Too many components instantiated",
     );
-    
+
     /// Component not found error
-    pub const COMPONENT_NOT_FOUND: Self = Self::new(
-        ErrorCategory::Component, 
-        codes::COMPONENT_NOT_FOUND, 
-        "Component not found"
-    );
-    
+    pub const COMPONENT_NOT_FOUND: Self =
+        Self::new(ErrorCategory::Component, codes::COMPONENT_NOT_FOUND, "Component not found");
+
     /// Stack overflow error
-    pub const STACK_OVERFLOW: Self = Self::new(
-        ErrorCategory::Runtime, 
-        codes::STACK_OVERFLOW, 
-        "Stack overflow"
-    );
-    
+    pub const STACK_OVERFLOW: Self =
+        Self::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow");
+
     /// Create a component error with dynamic context (using static fallback)
     #[must_use]
     pub const fn component_error(_message: &'static str) -> Self {
         Self::new(ErrorCategory::Component, codes::COMPONENT_ERROR, "Component error")
     }
-    
+
     /// Create a WIT parse error with dynamic message (using static fallback)
     #[must_use]
     pub const fn wit_parse_error(_message: &'static str) -> Self {
         Self::new(ErrorCategory::Parse, codes::WIT_PARSE_ERROR, "WIT parse error")
     }
-    
+
     /// Create an invalid input error with dynamic message (using static fallback)
     #[must_use]
     pub const fn invalid_input(_message: &'static str) -> Self {
         Self::new(ErrorCategory::Validation, codes::INVALID_INPUT, "Invalid input")
     }
-    
+
     /// Create an unsupported error with dynamic message (using static fallback)
     #[must_use]
     pub const fn unsupported(_message: &'static str) -> Self {
@@ -270,7 +261,6 @@ impl Error {
         Self::new(ErrorCategory::Core, codes::EXECUTION_ERROR, message)
     }
 
-
     /// Create a parse error
     #[must_use]
     pub const fn parse_error(message: &'static str) -> Self {
@@ -324,60 +314,57 @@ impl Error {
     pub const fn new_static(category: ErrorCategory, code: u16, message: &'static str) -> Self {
         Self::new(category, code, message)
     }
-    
+
     // Agent C Component Model error factory methods
-    
+
     /// Create a WIT input too large error
     #[must_use]
     pub const fn wit_input_too_large(message: &'static str) -> Self {
         Self::new(ErrorCategory::Parse, codes::WIT_INPUT_TOO_LARGE, message)
     }
-    
+
     /// Create a WIT world limit exceeded error
     #[must_use]
     pub const fn wit_world_limit_exceeded(message: &'static str) -> Self {
         Self::new(ErrorCategory::Parse, codes::WIT_WORLD_LIMIT_EXCEEDED, message)
     }
-    
+
     /// Create a WIT interface limit exceeded error
     #[must_use]
     pub const fn wit_interface_limit_exceeded(message: &'static str) -> Self {
         Self::new(ErrorCategory::Parse, codes::WIT_INTERFACE_LIMIT_EXCEEDED, message)
     }
-    
+
     /// Create a no WIT definitions found error
     #[must_use]
     pub const fn no_wit_definitions_found(message: &'static str) -> Self {
         Self::new(ErrorCategory::Parse, codes::NO_WIT_DEFINITIONS_FOUND, message)
     }
-    
-    
+
     /// Create an insufficient memory error
     #[must_use]
     pub const fn insufficient_memory(message: &'static str) -> Self {
         Self::new(ErrorCategory::Resource, codes::INSUFFICIENT_MEMORY, message)
     }
-    
+
     /// Create an out of memory error
     #[must_use]
     pub const fn out_of_memory(message: &'static str) -> Self {
         Self::new(ErrorCategory::Resource, codes::OUT_OF_MEMORY, message)
     }
-    
+
     /// Create a too many components error
     #[must_use]
     pub const fn too_many_components(message: &'static str) -> Self {
         Self::new(ErrorCategory::Component, codes::TOO_MANY_COMPONENTS, message)
     }
-    
+
     /// Create a component not found error
     #[must_use]
     pub const fn component_not_found(message: &'static str) -> Self {
         Self::new(ErrorCategory::Component, codes::COMPONENT_NOT_FOUND, message)
     }
-    
-    
-    
+
     /// Create a component error with context
     #[must_use]
     pub const fn component_error_context(message: &'static str) -> Self {
@@ -546,7 +533,7 @@ pub mod codes {
     pub const SIMD_OPERATION_ERROR: u16 = 1103;
     /// Error code for a tail call error.
     pub const TAIL_CALL_ERROR: u16 = 1104;
-    
+
     // Component Model WIT parsing errors (Agent C) (1200-1299)
     /// Error code for WIT input too large.
     pub const WIT_INPUT_TOO_LARGE: u16 = 1200;
@@ -558,7 +545,7 @@ pub mod codes {
     pub const NO_WIT_DEFINITIONS_FOUND: u16 = 1203;
     /// Error code for WIT parse error.
     pub const WIT_PARSE_ERROR: u16 = 1204;
-    
+
     // Component runtime errors (Agent C) (3100-3199)
     /// Error code for insufficient memory.
     pub const INSUFFICIENT_MEMORY: u16 = 3100;

@@ -68,9 +68,37 @@ extern crate std;
 
 use core::sync::atomic::{AtomicU8, AtomicU32, Ordering};
 
-// Re-export foundation types for user convenience
-pub use wrt_foundation::safety_system::{AsilLevel, SafetyStandard, UniversalSafetyContext};
-pub use wrt_foundation::safe_memory::{MemoryProvider, NoStdProvider};
+/// ASIL (Automotive Safety Integrity Level) as defined by ISO 26262
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u8)]
+pub enum AsilLevel {
+    /// Quality Management (no safety requirements)
+    QM = 0,
+    /// ASIL-A (lowest safety integrity level)
+    AsilA = 1,
+    /// ASIL-B (medium-low safety integrity level)
+    AsilB = 2,
+    /// ASIL-C (medium-high safety integrity level)
+    AsilC = 3,
+    /// ASIL-D (highest safety integrity level)
+    AsilD = 4,
+}
+
+/// Simple memory provider trait for panic handler usage
+pub trait MemoryProvider {
+    /// Get the capacity of this memory provider
+    fn capacity(&self) -> usize;
+}
+
+/// No-std memory provider for panic handler
+#[derive(Debug, Clone, Default)]
+pub struct NoStdProvider<const N: usize>;
+
+impl<const N: usize> MemoryProvider for NoStdProvider<N> {
+    fn capacity(&self) -> usize {
+        N
+    }
+}
 
 /// Panic information magic number for debugger recognition
 pub const PANIC_MAGIC: u32 = 0xDEADBEEF;

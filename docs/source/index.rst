@@ -200,7 +200,6 @@ Reference Documentation
    wrt-host/lib
    wrt-instructions/lib
    wrt-logging/lib
-   wrt-safety/lib
    api/index
 
 .. toctree::
