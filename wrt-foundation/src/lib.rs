@@ -191,6 +191,9 @@ pub mod monitoring;
 // Clean Architecture - Provider-Free Types
 /// Clean type definitions without provider parameters
 pub mod clean_types;
+pub mod clean_core_types;
+/// Safe allocation API without unsafe code
+pub mod safe_allocation;
 /// Type factory pattern for allocation boundary management
 pub mod type_factory;
 
