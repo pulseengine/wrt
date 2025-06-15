@@ -986,15 +986,7 @@ impl SimpleArgs {
 /// Main entry point
 #[cfg(feature = "std")]
 fn main() -> Result<()> {
-    // Initialize global memory system first (only if wrt-foundation is available)
-    #[cfg(feature = "std")]
-    wrt_foundation::memory_init::init_wrt_memory()
-        .map_err(|_e| wrt_error::Error::new(
-            wrt_error::ErrorCategory::Runtime,
-            wrt_error::codes::RUNTIME_ERROR,
-            "Failed to initialize memory system"
-        ))?;
-
+    // Parse arguments first to check for --help
     let args = SimpleArgs::parse()?;
     
     println!("WebAssembly Runtime Daemon (wrtd)");
@@ -1003,7 +995,7 @@ fn main() -> Result<()> {
     // Create configuration from arguments
     let mut config = WrtdConfig::default();
     config.module_path = args.module_path;
-    if let Some(function_name) = args.function_name {
+    if let Some(_function_name) = args.function_name {
         // For now, we'll just use "start" as default since we need static lifetime
         config.function_name = Some("start");
     }
@@ -1118,10 +1110,11 @@ fn main() -> Result<()> {
     }
 
     // Complete memory system initialization
-    #[cfg(feature = "std")]
-    if let Err(e) = wrt_foundation::memory_init::init_wrt_memory() {
-        eprintln!("Warning: Failed to complete memory system: {}", e);
-    }
+    // TODO: Memory init temporarily disabled due to hanging issue
+    // #[cfg(feature = "std")]
+    // if let Err(e) = wrt_foundation::memory_init::init_wrt_memory() {
+    //     eprintln!("Warning: Failed to complete memory system: {}", e);
+    // }
     
     Ok(())
 }
