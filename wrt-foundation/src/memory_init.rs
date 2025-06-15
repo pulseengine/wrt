@@ -119,7 +119,7 @@ macro_rules! memory_safe {
 #[cfg(feature = "ctor")]
 #[ctor::ctor]
 fn init_wrt_memory() {
-    let _ = MemoryInitializer::initialize();
+    drop(MemoryInitializer::initialize());
 }
 
 /// Manual initialization function for platforms without ctor

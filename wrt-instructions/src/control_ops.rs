@@ -49,7 +49,7 @@
 
 // Remove unused imports
 
-use crate::prelude::{BlockType, BoundedCapacity, BoundedVec, Debug, Error, ErrorCategory, PartialEq, PureInstruction, Result, Value, codes, str};
+use crate::prelude::{BlockType, Debug, Error, ErrorCategory, PartialEq, PureInstruction, Result, Value, codes, str, BoundedCapacity, BoundedVec};
 // use crate::validation::{Validate, ValidationContext}; // Currently unused
 
 
@@ -79,7 +79,7 @@ pub enum Block {
 }
 
 /// Represents a pure control flow operation for WebAssembly.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ControlOp {
     /// A basic block of instructions with a label that can be branched to
     Block(ControlBlockType),

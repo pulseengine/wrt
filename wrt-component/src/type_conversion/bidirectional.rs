@@ -10,14 +10,14 @@
 //! use wrt_component::type_conversion::bidirectional::{
 //!     format_to_runtime_extern_type, runtime_to_format_extern_type
 //! };
-//! use wrt_format::component::ValType<NoStdProvider<65536>> as FormatValType<NoStdProvider<65536>>;
+//! use wrt_format::component::ValType as FormatValType;
 //! use wrt_format::component::ExternType as FormatExternType;
 //! use wrt_foundation::ExternType as RuntimeExternType;
 //!
 //! // Convert a format function type to a runtime function type
 //! let format_func = FormatExternType::Function {
-//!     params: vec![("arg".to_string(), FormatValType<NoStdProvider<65536>>::S32)],
-//!     results: vec![FormatValType<NoStdProvider<65536>>::S32],
+//!     params: vec![("arg".to_string(), FormatValType::S32)],
+//!     results: vec![FormatValType::S32],
 //! };
 //!
 //! let runtime_func = format_to_runtime_extern_type(&format_func).unwrap();
@@ -30,11 +30,11 @@
 use wrt_error::kinds::{InvalidArgumentError, NotImplementedError};
 use wrt_format::component::{
     ComponentTypeDefinition, ConstValue as FormatConstValue, ExternType as FormatExternType,
-    FormatResourceOperation, ResourceRepresentation, ValType<NoStdProvider<65536>> as FormatValType<NoStdProvider<65536>>,
+    FormatResourceOperation, ResourceRepresentation, ValType as FormatValType,
 };
 use wrt_foundation::{
     component::{ComponentType, FuncType as TypesFuncType, InstanceType},
-    component_value::{ComponentValue, ValType<NoStdProvider<65536>> as TypesValType<NoStdProvider<65536>>},
+    component_value::{ComponentValue, ValType as TypesValType},
     resource::{ResourceOperation, ResourceType},
     types::ValueType,
     values::Value,
@@ -45,13 +45,13 @@ use crate::prelude::*;
 
 // Helper functions to handle type conversions with correct parameters
 
-// Special helper functions for FormatValType<NoStdProvider<65536>> to ValueType conversion
-fn convert_format_valtype_to_valuetype(format_val_type: &FormatValType<NoStdProvider<65536>>) -> Result<ValueType> {
+// Special helper functions for FormatValType to ValueType conversion
+fn convert_format_valtype_to_valuetype(format_val_type: &FormatValType) -> Result<ValueType> {
     match format_val_type {
-        FormatValType<NoStdProvider<65536>>::S32 => Ok(ValueType::I32),
-        FormatValType<NoStdProvider<65536>>::S64 => Ok(ValueType::I64),
-        FormatValType<NoStdProvider<65536>>::F32 => Ok(ValueType::F32),
-        FormatValType<NoStdProvider<65536>>::F64 => Ok(ValueType::F64),
+        FormatValType::S32 => Ok(ValueType::I32),
+        FormatValType::S64 => Ok(ValueType::I64),
+        FormatValType::F32 => Ok(ValueType::F32),
+        FormatValType::F64 => Ok(ValueType::F64),
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::NOT_IMPLEMENTED,
@@ -60,13 +60,13 @@ fn convert_format_valtype_to_valuetype(format_val_type: &FormatValType<NoStdProv
     }
 }
 
-// Variant that accepts ValType<NoStdProvider<65536>> (TypesValType<NoStdProvider<65536>>) for use at call sites
-fn convert_types_valtype_to_valuetype(val_type: &TypesValType<NoStdProvider<65536>>) -> Result<ValueType> {
+// Variant that accepts ValType (TypesValType) for use at call sites
+fn convert_types_valtype_to_valuetype(val_type: &TypesValType) -> Result<ValueType> {
     match val_type {
-        TypesValType<NoStdProvider<65536>>::S32 => Ok(ValueType::I32),
-        TypesValType<NoStdProvider<65536>>::S64 => Ok(ValueType::I64),
-        TypesValType<NoStdProvider<65536>>::F32 => Ok(ValueType::F32),
-        TypesValType<NoStdProvider<65536>>::F64 => Ok(ValueType::F64),
+        TypesValType::S32 => Ok(ValueType::I32),
+        TypesValType::S64 => Ok(ValueType::I64),
+        TypesValType::F32 => Ok(ValueType::F32),
+        TypesValType::F64 => Ok(ValueType::F64),
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::NOT_IMPLEMENTED,
@@ -75,61 +75,61 @@ fn convert_types_valtype_to_valuetype(val_type: &TypesValType<NoStdProvider<6553
     }
 }
 
-// Special helper function for FormatValType<NoStdProvider<65536>> to TypesValType<NoStdProvider<65536>> conversion
-fn convert_format_to_types_valtype(format_val_type: &FormatValType<NoStdProvider<65536>>) -> TypesValType<NoStdProvider<65536>> {
+// Special helper function for FormatValType to TypesValType conversion
+fn convert_format_to_types_valtype(format_val_type: &FormatValType) -> TypesValType {
     match format_val_type {
-        FormatValType<NoStdProvider<65536>>::Bool => TypesValType<NoStdProvider<65536>>::Bool,
-        FormatValType<NoStdProvider<65536>>::S8 => TypesValType<NoStdProvider<65536>>::S8,
-        FormatValType<NoStdProvider<65536>>::U8 => TypesValType<NoStdProvider<65536>>::U8,
-        FormatValType<NoStdProvider<65536>>::S16 => TypesValType<NoStdProvider<65536>>::S16,
-        FormatValType<NoStdProvider<65536>>::U16 => TypesValType<NoStdProvider<65536>>::U16,
-        FormatValType<NoStdProvider<65536>>::S32 => TypesValType<NoStdProvider<65536>>::S32,
-        FormatValType<NoStdProvider<65536>>::U32 => TypesValType<NoStdProvider<65536>>::U32,
-        FormatValType<NoStdProvider<65536>>::S64 => TypesValType<NoStdProvider<65536>>::S64,
-        FormatValType<NoStdProvider<65536>>::U64 => TypesValType<NoStdProvider<65536>>::U64,
-        FormatValType<NoStdProvider<65536>>::F32 => TypesValType<NoStdProvider<65536>>::F32,
-        FormatValType<NoStdProvider<65536>>::F64 => TypesValType<NoStdProvider<65536>>::F64,
-        FormatValType<NoStdProvider<65536>>::Char => TypesValType<NoStdProvider<65536>>::Char,
-        FormatValType<NoStdProvider<65536>>::String => TypesValType<NoStdProvider<65536>>::String,
-        FormatValType<NoStdProvider<65536>>::Ref(idx) => TypesValType<NoStdProvider<65536>>::Ref(*idx),
-        FormatValType<NoStdProvider<65536>>::Own(idx) => TypesValType<NoStdProvider<65536>>::Own(*idx),
-        FormatValType<NoStdProvider<65536>>::Borrow(idx) => TypesValType<NoStdProvider<65536>>::Borrow(*idx),
-        _ => TypesValType<NoStdProvider<65536>>::Void, // Default fallback
+        FormatValType::Bool => TypesValType::Bool,
+        FormatValType::S8 => TypesValType::S8,
+        FormatValType::U8 => TypesValType::U8,
+        FormatValType::S16 => TypesValType::S16,
+        FormatValType::U16 => TypesValType::U16,
+        FormatValType::S32 => TypesValType::S32,
+        FormatValType::U32 => TypesValType::U32,
+        FormatValType::S64 => TypesValType::S64,
+        FormatValType::U64 => TypesValType::U64,
+        FormatValType::F32 => TypesValType::F32,
+        FormatValType::F64 => TypesValType::F64,
+        FormatValType::Char => TypesValType::Char,
+        FormatValType::String => TypesValType::String,
+        FormatValType::Ref(idx) => TypesValType::Ref(*idx),
+        FormatValType::Own(idx) => TypesValType::Own(*idx),
+        FormatValType::Borrow(idx) => TypesValType::Borrow(*idx),
+        _ => TypesValType::Void, // Default fallback
     }
 }
 
-// Variant that takes a ValType<NoStdProvider<65536>> directly for use at call sites
-fn convert_types_valtype_identity(val_type: &TypesValType<NoStdProvider<65536>>) -> TypesValType<NoStdProvider<65536>> {
+// Variant that takes a ValType directly for use at call sites
+fn convert_types_valtype_identity(val_type: &TypesValType) -> TypesValType {
     val_type.clone()
 }
 
-// Special helper function for TypesValType<NoStdProvider<65536>> to FormatValType<NoStdProvider<65536>> conversion
-fn convert_types_to_format_valtype(types_val_type: &TypesValType<NoStdProvider<65536>>) -> FormatValType<NoStdProvider<65536>> {
+// Special helper function for TypesValType to FormatValType conversion
+fn convert_types_to_format_valtype(types_val_type: &TypesValType) -> FormatValType {
     match types_val_type {
-        TypesValType<NoStdProvider<65536>>::Bool => FormatValType<NoStdProvider<65536>>::Bool,
-        TypesValType<NoStdProvider<65536>>::S8 => FormatValType<NoStdProvider<65536>>::S8,
-        TypesValType<NoStdProvider<65536>>::U8 => FormatValType<NoStdProvider<65536>>::U8,
-        TypesValType<NoStdProvider<65536>>::S16 => FormatValType<NoStdProvider<65536>>::S16,
-        TypesValType<NoStdProvider<65536>>::U16 => FormatValType<NoStdProvider<65536>>::U16,
-        TypesValType<NoStdProvider<65536>>::S32 => FormatValType<NoStdProvider<65536>>::S32,
-        TypesValType<NoStdProvider<65536>>::U32 => FormatValType<NoStdProvider<65536>>::U32,
-        TypesValType<NoStdProvider<65536>>::S64 => FormatValType<NoStdProvider<65536>>::S64,
-        TypesValType<NoStdProvider<65536>>::U64 => FormatValType<NoStdProvider<65536>>::U64,
-        TypesValType<NoStdProvider<65536>>::F32 => FormatValType<NoStdProvider<65536>>::F32,
-        TypesValType<NoStdProvider<65536>>::F64 => FormatValType<NoStdProvider<65536>>::F64,
-        TypesValType<NoStdProvider<65536>>::Char => FormatValType<NoStdProvider<65536>>::Char,
-        TypesValType<NoStdProvider<65536>>::String => FormatValType<NoStdProvider<65536>>::String,
-        TypesValType<NoStdProvider<65536>>::Ref(idx) => FormatValType<NoStdProvider<65536>>::Ref(*idx),
-        TypesValType<NoStdProvider<65536>>::Own(idx) => FormatValType<NoStdProvider<65536>>::Own(*idx),
-        TypesValType<NoStdProvider<65536>>::Borrow(idx) => FormatValType<NoStdProvider<65536>>::Borrow(*idx),
-        _ => FormatValType<NoStdProvider<65536>>::Bool, // Default fallback
+        TypesValType::Bool => FormatValType::Bool,
+        TypesValType::S8 => FormatValType::S8,
+        TypesValType::U8 => FormatValType::U8,
+        TypesValType::S16 => FormatValType::S16,
+        TypesValType::U16 => FormatValType::U16,
+        TypesValType::S32 => FormatValType::S32,
+        TypesValType::U32 => FormatValType::U32,
+        TypesValType::S64 => FormatValType::S64,
+        TypesValType::U64 => FormatValType::U64,
+        TypesValType::F32 => FormatValType::F32,
+        TypesValType::F64 => FormatValType::F64,
+        TypesValType::Char => FormatValType::Char,
+        TypesValType::String => FormatValType::String,
+        TypesValType::Ref(idx) => FormatValType::Ref(*idx),
+        TypesValType::Own(idx) => FormatValType::Own(*idx),
+        TypesValType::Borrow(idx) => FormatValType::Borrow(*idx),
+        _ => FormatValType::Bool, // Default fallback
     }
 }
 
 /// Convert a ValueType to a FormatValType
 ///
 /// This function converts from wrt_foundation::types::ValueType to
-/// wrt_format::component::ValType<NoStdProvider<65536>> directly.
+/// wrt_format::component::ValType directly.
 ///
 /// # Arguments
 ///
@@ -148,14 +148,14 @@ fn convert_types_to_format_valtype(types_val_type: &TypesValType<NoStdProvider<6
 ///
 /// let i32_type = ValueType::I32;
 /// let format_type = value_type_to_format_val_type(&i32_type).unwrap();
-/// assert!(matches!(format_type, wrt_format::component::ValType<NoStdProvider<65536>>::S32));
+/// assert!(matches!(format_type, wrt_format::component::ValType::S32));
 /// ```
-pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatValType<NoStdProvider<65536>>> {
+pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatValType> {
     match value_type {
-        ValueType::I32 => Ok(FormatValType<NoStdProvider<65536>>::S32),
-        ValueType::I64 => Ok(FormatValType<NoStdProvider<65536>>::S64),
-        ValueType::F32 => Ok(FormatValType<NoStdProvider<65536>>::F32),
-        ValueType::F64 => Ok(FormatValType<NoStdProvider<65536>>::F64),
+        ValueType::I32 => Ok(FormatValType::S32),
+        ValueType::I64 => Ok(FormatValType::S64),
+        ValueType::F32 => Ok(FormatValType::F32),
+        ValueType::F64 => Ok(FormatValType::F64),
         ValueType::FuncRef => Err(Error::new(
             ErrorCategory::Type,
             codes::NOT_IMPLEMENTED,
@@ -173,7 +173,7 @@ pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatVal
     }
 }
 
-/// Convert FormatValType<NoStdProvider<65536>> to ValueType
+/// Convert FormatValType to ValueType
 ///
 /// Converts a component model value type to a core WebAssembly value type.
 ///
@@ -190,17 +190,17 @@ pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatVal
 ///
 /// ```
 /// use wrt_component::type_conversion::bidirectional::format_val_type_to_value_type;
-/// use wrt_format::component::ValType<NoStdProvider<65536>>;
+/// use wrt_format::component::ValType;
 ///
-/// let s32_type = ValType<NoStdProvider<65536>>::S32;
+/// let s32_type = ValType::S32;
 /// let core_type = format_val_type_to_value_type(&s32_type).unwrap();
 /// assert!(matches!(core_type, wrt_foundation::types::ValueType::I32));
 /// ```
-pub fn format_val_type_to_value_type(format_val_type: &FormatValType<NoStdProvider<65536>>) -> Result<ValueType> {
+pub fn format_val_type_to_value_type(format_val_type: &FormatValType) -> Result<ValueType> {
     convert_format_valtype_to_valuetype(format_val_type)
 }
 
-/// Convert TypesValType<NoStdProvider<65536>> to ValueType
+/// Convert TypesValType to ValueType
 ///
 /// Converts a runtime component value type to a core WebAssembly value type.
 ///
@@ -217,13 +217,13 @@ pub fn format_val_type_to_value_type(format_val_type: &FormatValType<NoStdProvid
 ///
 /// ```
 /// use wrt_component::type_conversion::bidirectional::types_valtype_to_valuetype;
-/// use wrt_foundation::component_value::ValType<NoStdProvider<65536>>;
+/// use wrt_foundation::component_value::ValType;
 ///
-/// let s32_type = ValType<NoStdProvider<65536>>::S32;
+/// let s32_type = ValType::S32;
 /// let core_type = types_valtype_to_valuetype(&s32_type).unwrap();
 /// assert!(matches!(core_type, wrt_foundation::types::ValueType::I32));
 /// ```
-pub fn types_valtype_to_valuetype(types_val_type: &TypesValType<NoStdProvider<65536>>) -> Result<ValueType> {
+pub fn types_valtype_to_valuetype(types_val_type: &TypesValType) -> Result<ValueType> {
     convert_types_valtype_to_valuetype(types_val_type)
 }
 
@@ -247,20 +247,20 @@ pub fn types_valtype_to_valuetype(types_val_type: &TypesValType<NoStdProvider<65
 ///
 /// let i32_type = ValueType::I32;
 /// let runtime_type = value_type_to_types_valtype(&i32_type);
-/// assert!(matches!(runtime_type, wrt_foundation::component_value::ValType<NoStdProvider<65536>>::S32));
+/// assert!(matches!(runtime_type, wrt_foundation::component_value::ValType::S32));
 /// ```
-pub fn value_type_to_types_valtype(value_type: &ValueType) -> TypesValType<NoStdProvider<65536>> {
+pub fn value_type_to_types_valtype(value_type: &ValueType) -> TypesValType {
     match value_type {
-        ValueType::I32 => TypesValType<NoStdProvider<65536>>::S32,
-        ValueType::I64 => TypesValType<NoStdProvider<65536>>::S64,
-        ValueType::F32 => TypesValType<NoStdProvider<65536>>::F32,
-        ValueType::F64 => TypesValType<NoStdProvider<65536>>::F64,
-        ValueType::FuncRef => TypesValType<NoStdProvider<65536>>::Own(0), // Default to resource type 0
-        ValueType::ExternRef => TypesValType<NoStdProvider<65536>>::Ref(0), // Default to type index 0
+        ValueType::I32 => TypesValType::S32,
+        ValueType::I64 => TypesValType::S64,
+        ValueType::F32 => TypesValType::F32,
+        ValueType::F64 => TypesValType::F64,
+        ValueType::FuncRef => TypesValType::Own(0), // Default to resource type 0
+        ValueType::ExternRef => TypesValType::Ref(0), // Default to type index 0
     }
 }
 
-/// Convert FormatValType<NoStdProvider<65536>> to TypesValType
+/// Convert FormatValType to TypesValType
 ///
 /// Comprehensive conversion from format value type to runtime component value
 /// type.
@@ -277,33 +277,33 @@ pub fn value_type_to_types_valtype(value_type: &ValueType) -> TypesValType<NoStd
 ///
 /// ```
 /// use wrt_component::type_conversion::bidirectional::format_valtype_to_types_valtype;
-/// use wrt_format::component::ValType<NoStdProvider<65536>>;
+/// use wrt_format::component::ValType;
 ///
-/// let string_type = ValType<NoStdProvider<65536>>::String;
+/// let string_type = ValType::String;
 /// let runtime_type = format_valtype_to_types_valtype(&string_type);
-/// assert!(matches!(runtime_type, wrt_foundation::component_value::ValType<NoStdProvider<65536>>::String));
+/// assert!(matches!(runtime_type, wrt_foundation::component_value::ValType::String));
 /// ```
-pub fn format_valtype_to_types_valtype(format_val_type: &FormatValType<NoStdProvider<65536>>) -> TypesValType<NoStdProvider<65536>> {
+pub fn format_valtype_to_types_valtype(format_val_type: &FormatValType) -> TypesValType {
     convert_format_to_types_valtype(format_val_type)
 }
 
-/// Format type to types ValType<NoStdProvider<65536>> helper function
+/// Format type to types ValType helper function
 ///
 /// This is a public entry point for the helper function to ensure
 /// compatibility.
 ///
 /// # Arguments
 ///
-/// * `val_type` - The ValType<NoStdProvider<65536>> to convert
+/// * `val_type` - The ValType to convert
 ///
 /// # Returns
 ///
 /// The corresponding TypesValType
-pub fn format_to_types_valtype(val_type: &TypesValType<NoStdProvider<65536>>) -> TypesValType<NoStdProvider<65536>> {
+pub fn format_to_types_valtype(val_type: &TypesValType) -> TypesValType {
     convert_types_valtype_identity(val_type)
 }
 
-/// Convert TypesValType<NoStdProvider<65536>> to FormatValType
+/// Convert TypesValType to FormatValType
 ///
 /// Comprehensive conversion from runtime component value type to format value
 /// type.
@@ -320,36 +320,36 @@ pub fn format_to_types_valtype(val_type: &TypesValType<NoStdProvider<65536>>) ->
 ///
 /// ```
 /// use wrt_component::type_conversion::bidirectional::types_valtype_to_format_valtype;
-/// use wrt_foundation::component_value::ValType<NoStdProvider<65536>>;
+/// use wrt_foundation::component_value::ValType;
 ///
-/// let string_type = ValType<NoStdProvider<65536>>::String;
+/// let string_type = ValType::String;
 /// let format_type = types_valtype_to_format_valtype(&string_type);
-/// assert!(matches!(format_type, wrt_format::component::ValType<NoStdProvider<65536>>::String));
+/// assert!(matches!(format_type, wrt_format::component::ValType::String));
 /// ```
-pub fn types_valtype_to_format_valtype(types_val_type: &TypesValType<NoStdProvider<65536>>) -> FormatValType<NoStdProvider<65536>> {
+pub fn types_valtype_to_format_valtype(types_val_type: &TypesValType) -> FormatValType {
     match types_val_type {
-        TypesValType<NoStdProvider<65536>>::Bool => FormatValType<NoStdProvider<65536>>::Bool,
-        TypesValType<NoStdProvider<65536>>::S8 => FormatValType<NoStdProvider<65536>>::S8,
-        TypesValType<NoStdProvider<65536>>::U8 => FormatValType<NoStdProvider<65536>>::U8,
-        TypesValType<NoStdProvider<65536>>::S16 => FormatValType<NoStdProvider<65536>>::S16,
-        TypesValType<NoStdProvider<65536>>::U16 => FormatValType<NoStdProvider<65536>>::U16,
-        TypesValType<NoStdProvider<65536>>::S32 => FormatValType<NoStdProvider<65536>>::S32,
-        TypesValType<NoStdProvider<65536>>::U32 => FormatValType<NoStdProvider<65536>>::U32,
-        TypesValType<NoStdProvider<65536>>::S64 => FormatValType<NoStdProvider<65536>>::S64,
-        TypesValType<NoStdProvider<65536>>::U64 => FormatValType<NoStdProvider<65536>>::U64,
-        TypesValType<NoStdProvider<65536>>::F32 => FormatValType<NoStdProvider<65536>>::F32,
-        TypesValType<NoStdProvider<65536>>::F64 => FormatValType<NoStdProvider<65536>>::F64,
-        TypesValType<NoStdProvider<65536>>::Char => FormatValType<NoStdProvider<65536>>::Char,
-        TypesValType<NoStdProvider<65536>>::String => FormatValType<NoStdProvider<65536>>::String,
-        TypesValType<NoStdProvider<65536>>::Ref(idx) => FormatValType<NoStdProvider<65536>>::Ref(*idx),
-        TypesValType<NoStdProvider<65536>>::Record(fields) => {
+        TypesValType::Bool => FormatValType::Bool,
+        TypesValType::S8 => FormatValType::S8,
+        TypesValType::U8 => FormatValType::U8,
+        TypesValType::S16 => FormatValType::S16,
+        TypesValType::U16 => FormatValType::U16,
+        TypesValType::S32 => FormatValType::S32,
+        TypesValType::U32 => FormatValType::U32,
+        TypesValType::S64 => FormatValType::S64,
+        TypesValType::U64 => FormatValType::U64,
+        TypesValType::F32 => FormatValType::F32,
+        TypesValType::F64 => FormatValType::F64,
+        TypesValType::Char => FormatValType::Char,
+        TypesValType::String => FormatValType::String,
+        TypesValType::Ref(idx) => FormatValType::Ref(*idx),
+        TypesValType::Record(fields) => {
             let converted_fields = fields
                 .iter()
                 .map(|(name, val_type)| (name.clone(), types_valtype_to_format_valtype(val_type)))
                 .collect();
-            FormatValType<NoStdProvider<65536>>::Record(converted_fields)
+            FormatValType::Record(converted_fields)
         }
-        TypesValType<NoStdProvider<65536>>::Variant(cases) => {
+        TypesValType::Variant(cases) => {
             let converted_cases = cases
                 .iter()
                 .map(|(name, opt_type)| {
@@ -359,37 +359,37 @@ pub fn types_valtype_to_format_valtype(types_val_type: &TypesValType<NoStdProvid
                     )
                 })
                 .collect();
-            FormatValType<NoStdProvider<65536>>::Variant(converted_cases)
+            FormatValType::Variant(converted_cases)
         }
-        TypesValType<NoStdProvider<65536>>::List(elem_type) => {
-            FormatValType<NoStdProvider<65536>>::List(Box::new(types_valtype_to_format_valtype(elem_type)))
+        TypesValType::List(elem_type) => {
+            FormatValType::List(Box::new(types_valtype_to_format_valtype(elem_type)))
         }
-        TypesValType<NoStdProvider<65536>>::FixedList(elem_type, size) => {
-            FormatValType<NoStdProvider<65536>>::FixedList(Box::new(types_valtype_to_format_valtype(elem_type)), *size)
+        TypesValType::FixedList(elem_type, size) => {
+            FormatValType::FixedList(Box::new(types_valtype_to_format_valtype(elem_type)), *size)
         }
-        TypesValType<NoStdProvider<65536>>::Tuple(types) => {
+        TypesValType::Tuple(types) => {
             let converted_types =
                 types.iter().map(|val_type| types_valtype_to_format_valtype(val_type)).collect();
-            FormatValType<NoStdProvider<65536>>::Tuple(converted_types)
+            FormatValType::Tuple(converted_types)
         }
-        TypesValType<NoStdProvider<65536>>::Flags(names) => FormatValType<NoStdProvider<65536>>::Flags(names.clone()),
-        TypesValType<NoStdProvider<65536>>::Enum(variants) => FormatValType<NoStdProvider<65536>>::Enum(variants.clone()),
-        TypesValType<NoStdProvider<65536>>::Option(inner_type) => {
-            FormatValType<NoStdProvider<65536>>::Option(Box::new(types_valtype_to_format_valtype(inner_type)))
+        TypesValType::Flags(names) => FormatValType::Flags(names.clone()),
+        TypesValType::Enum(variants) => FormatValType::Enum(variants.clone()),
+        TypesValType::Option(inner_type) => {
+            FormatValType::Option(Box::new(types_valtype_to_format_valtype(inner_type)))
         }
-        TypesValType<NoStdProvider<65536>>::Result(result_type) => {
-            FormatValType<NoStdProvider<65536>>::Result(Box::new(types_valtype_to_format_valtype(result_type)))
+        TypesValType::Result(result_type) => {
+            FormatValType::Result(Box::new(types_valtype_to_format_valtype(result_type)))
         }
-        TypesValType<NoStdProvider<65536>>::Own(idx) => FormatValType<NoStdProvider<65536>>::Own(*idx),
-        TypesValType<NoStdProvider<65536>>::Borrow(idx) => FormatValType<NoStdProvider<65536>>::Borrow(*idx),
-        TypesValType<NoStdProvider<65536>>::Void => {
+        TypesValType::Own(idx) => FormatValType::Own(*idx),
+        TypesValType::Borrow(idx) => FormatValType::Borrow(*idx),
+        TypesValType::Void => {
             // Map void to a default type (this is a simplification)
-            FormatValType<NoStdProvider<65536>>::Bool
+            FormatValType::Bool
         }
-        TypesValType<NoStdProvider<65536>>::ErrorContext => FormatValType<NoStdProvider<65536>>::ErrorContext,
-        TypesValType<NoStdProvider<65536>>::Result { ok: _, err: _ } => {
-            // Map to FormatValType<NoStdProvider<65536>>::Result with a placeholder type
-            FormatValType<NoStdProvider<65536>>::Result(Box::new(FormatValType<NoStdProvider<65536>>::Unit))
+        TypesValType::ErrorContext => FormatValType::ErrorContext,
+        TypesValType::Result { ok: _, err: _ } => {
+            // Map to FormatValType::Result with a placeholder type
+            FormatValType::Result(Box::new(FormatValType::Unit))
         } // All enums handled above
     }
 }
@@ -412,11 +412,11 @@ pub fn types_valtype_to_format_valtype(types_val_type: &TypesValType<NoStdProvid
 /// ```
 /// use wrt_component::type_conversion::bidirectional::format_to_runtime_extern_type;
 /// use wrt_format::component::ExternType as FormatExternType;
-/// use wrt_format::component::ValType<NoStdProvider<65536>> as FormatValType<NoStdProvider<65536>>;
+/// use wrt_format::component::ValType as FormatValType;
 ///
 /// let format_func = FormatExternType::Function {
-///     params: vec![("param".to_string(), FormatValType<NoStdProvider<65536>>::S32)],
-///     results: vec![FormatValType<NoStdProvider<65536>>::S32],
+///     params: vec![("param".to_string(), FormatValType::S32)],
+///     results: vec![FormatValType::S32],
 /// };
 ///
 /// let runtime_func = format_to_runtime_extern_type(&format_func).unwrap();
@@ -601,9 +601,9 @@ pub fn runtime_to_format_extern_type(
             // Note: Since FormatExternType doesn't have a direct Resource variant,
             // we map it to a Value type with the appropriate representation
             let val_type = match resource_type.rep_type {
-                ValueType::I32 => FormatValType<NoStdProvider<65536>>::Own(0), // Use type index 0 as default
-                ValueType::I64 => FormatValType<NoStdProvider<65536>>::Own(1), // Use type index 1 as default
-                _ => FormatValType<NoStdProvider<65536>>::Own(0),              // Default to type index 0
+                ValueType::I32 => FormatValType::Own(0), // Use type index 0 as default
+                ValueType::I64 => FormatValType::Own(1), // Use type index 1 as default
+                _ => FormatValType::Own(0),              // Default to type index 0
             };
 
             Ok(FormatExternType::Value(convert_types_to_format_valtype(&val_type)))
@@ -611,7 +611,7 @@ pub fn runtime_to_format_extern_type(
     }
 }
 
-/// Convert the format ValType<NoStdProvider<65536>> to the common ValueType used in the runtime
+/// Convert the format ValType to the common ValueType used in the runtime
 ///
 /// # Arguments
 ///
@@ -621,12 +621,12 @@ pub fn runtime_to_format_extern_type(
 ///
 /// Result containing the converted core value type, or an error if
 /// conversion is not possible
-pub fn format_to_common_val_type(val_type: &FormatValType<NoStdProvider<65536>>) -> Result<ValueType> {
+pub fn format_to_common_val_type(val_type: &FormatValType) -> Result<ValueType> {
     match val_type {
-        FormatValType<NoStdProvider<65536>>::S32 => Ok(ValueType::I32),
-        FormatValType<NoStdProvider<65536>>::S64 => Ok(ValueType::I64),
-        FormatValType<NoStdProvider<65536>>::F32 => Ok(ValueType::F32),
-        FormatValType<NoStdProvider<65536>>::F64 => Ok(ValueType::F64),
+        FormatValType::S32 => Ok(ValueType::I32),
+        FormatValType::S64 => Ok(ValueType::I64),
+        FormatValType::F32 => Ok(ValueType::F32),
+        FormatValType::F64 => Ok(ValueType::F64),
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::NOT_IMPLEMENTED,
@@ -645,12 +645,12 @@ pub fn format_to_common_val_type(val_type: &FormatValType<NoStdProvider<65536>>)
 ///
 /// Result containing the converted format value type, or an error if
 /// conversion is not possible
-pub fn common_to_format_val_type(value_type: &ValueType) -> Result<FormatValType<NoStdProvider<65536>>> {
+pub fn common_to_format_val_type(value_type: &ValueType) -> Result<FormatValType> {
     match value_type {
-        ValueType::I32 => Ok(FormatValType<NoStdProvider<65536>>::S32),
-        ValueType::I64 => Ok(FormatValType<NoStdProvider<65536>>::S64),
-        ValueType::F32 => Ok(FormatValType<NoStdProvider<65536>>::F32),
-        ValueType::F64 => Ok(FormatValType<NoStdProvider<65536>>::F64),
+        ValueType::I32 => Ok(FormatValType::S32),
+        ValueType::I64 => Ok(FormatValType::S64),
+        ValueType::F32 => Ok(FormatValType::F32),
+        ValueType::F64 => Ok(FormatValType::F64),
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::NOT_IMPLEMENTED,
@@ -706,14 +706,14 @@ impl IntoFormatType<FormatExternType> for TypesExternType {
     }
 }
 
-impl IntoRuntimeType<TypesValType<NoStdProvider<65536>>> for FormatValType<NoStdProvider<65536>> {
-    fn into_runtime_type(self) -> Result<TypesValType<NoStdProvider<65536>>> {
+impl IntoRuntimeType<TypesValType> for FormatValType {
+    fn into_runtime_type(self) -> Result<TypesValType> {
         Ok(format_valtype_to_types_valtype(&self))
     }
 }
 
-impl IntoFormatType<FormatValType<NoStdProvider<65536>>> for TypesValType<NoStdProvider<65536>> {
-    fn into_format_type(self) -> Result<FormatValType<NoStdProvider<65536>>> {
+impl IntoFormatType<FormatValType> for TypesValType {
+    fn into_format_type(self) -> Result<FormatValType> {
         Ok(types_valtype_to_format_valtype(&self))
     }
 }
@@ -1038,7 +1038,7 @@ pub fn complete_format_to_types_extern_type(
             // each parameter
             let mut param_types = Vec::new();
             for (_, format_val_type) in params {
-                // First convert to TypesValType<NoStdProvider<65536>>, then to ValueType if needed
+                // First convert to TypesValType, then to ValueType if needed
                 let types_val_type = convert_format_to_types_valtype(format_val_type);
                 match convert_format_valtype_to_valuetype(format_val_type) {
                     Ok(value_type) => param_types.push(value_type),
@@ -1059,7 +1059,7 @@ pub fn complete_format_to_types_extern_type(
             // result
             let mut result_types = Vec::new();
             for format_val_type in results {
-                // First convert to TypesValType<NoStdProvider<65536>>, then to ValueType if needed
+                // First convert to TypesValType, then to ValueType if needed
                 let types_val_type = convert_format_to_types_valtype(format_val_type);
                 match convert_format_valtype_to_valuetype(format_val_type) {
                     Ok(value_type) => result_types.push(value_type),
@@ -1084,7 +1084,7 @@ pub fn complete_format_to_types_extern_type(
         }
         FormatExternType::Value(format_val_type) => {
             // Value types typically map to globals in the runtime
-            // First convert to TypesValType<NoStdProvider<65536>>, then to ValueType if needed
+            // First convert to TypesValType, then to ValueType if needed
             let types_val_type = convert_format_to_types_valtype(format_val_type);
             let value_type = match convert_format_valtype_to_valuetype(format_val_type) {
                 Ok(vt) => vt,

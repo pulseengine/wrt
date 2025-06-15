@@ -12,43 +12,43 @@ use wrt_foundation::{
     traits::{ReadStream, WriteStream},
     values::Value,
 };
+use crate::bounded_component_infra::ComponentProvider;
 
 // Define type aliases with the component memory provider
-type ComponentMemoryProvider = NoStdProvider<32768>; // 32KB for component
+type ComponentMemoryProvider = ComponentProvider; // Use the shared provider
 type ComponentValType = TypesValType<ComponentMemoryProvider>;
 type ComponentComponentValue = ComponentValue<ComponentMemoryProvider>;
 
 use crate::{
     memory_layout::{calculate_layout, MemoryLayout},
-    prelude::*,
 };
 
-// Use ComponentValType<NoStdProvider<65536>> for the canonical ValType
+// Use ComponentValType for the canonical ValType
 type CanonicalValType = ComponentValType;
 
 /// Convert from CanonicalValType to wrt_format::component::ValType
-pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> FormatValType<NoStdProvider<65536>> {
+pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> FormatValType {
     match common_type {
-        CanonicalValType::Bool => FormatValType<NoStdProvider<65536>>::Bool,
-        CanonicalValType::S8 => FormatValType<NoStdProvider<65536>>::S8,
-        CanonicalValType::U8 => FormatValType<NoStdProvider<65536>>::U8,
-        CanonicalValType::S16 => FormatValType<NoStdProvider<65536>>::S16,
-        CanonicalValType::U16 => FormatValType<NoStdProvider<65536>>::U16,
-        CanonicalValType::S32 => FormatValType<NoStdProvider<65536>>::S32,
-        CanonicalValType::U32 => FormatValType<NoStdProvider<65536>>::U32,
-        CanonicalValType::S64 => FormatValType<NoStdProvider<65536>>::S64,
-        CanonicalValType::U64 => FormatValType<NoStdProvider<65536>>::U64,
-        CanonicalValType::F32 => FormatValType<NoStdProvider<65536>>::F32,
-        CanonicalValType::F64 => FormatValType<NoStdProvider<65536>>::F64,
-        CanonicalValType::Char => FormatValType<NoStdProvider<65536>>::Char,
-        CanonicalValType::String => FormatValType<NoStdProvider<65536>>::String,
-        CanonicalValType::Ref(idx) => FormatValType<NoStdProvider<65536>>::Ref(*idx),
+        CanonicalValType::Bool => FormatValType::Bool,
+        CanonicalValType::S8 => FormatValType::S8,
+        CanonicalValType::U8 => FormatValType::U8,
+        CanonicalValType::S16 => FormatValType::S16,
+        CanonicalValType::U16 => FormatValType::U16,
+        CanonicalValType::S32 => FormatValType::S32,
+        CanonicalValType::U32 => FormatValType::U32,
+        CanonicalValType::S64 => FormatValType::S64,
+        CanonicalValType::U64 => FormatValType::U64,
+        CanonicalValType::F32 => FormatValType::F32,
+        CanonicalValType::F64 => FormatValType::F64,
+        CanonicalValType::Char => FormatValType::Char,
+        CanonicalValType::String => FormatValType::String,
+        CanonicalValType::Ref(idx) => FormatValType::Ref(*idx),
         CanonicalValType::Record(fields) => {
             let converted_fields = fields
                 .iter()
                 .map(|(name, val_type)| (name.clone(), convert_common_to_format_valtype(val_type)))
                 .collect();
-            FormatValType<NoStdProvider<65536>>::Record(converted_fields)
+            FormatValType::Record(converted_fields)
         }
         CanonicalValType::Variant(cases) => {
             let converted_cases = cases
@@ -62,67 +62,67 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> Forma
                     )
                 })
                 .collect();
-            FormatValType<NoStdProvider<65536>>::Variant(converted_cases)
+            FormatValType::Variant(converted_cases)
         }
         CanonicalValType::List(elem_type) => {
-            FormatValType<NoStdProvider<65536>>::List(Box::new(convert_common_to_format_valtype(elem_type)))
+            FormatValType::List(Box::new(convert_common_to_format_valtype(elem_type)))
         }
         CanonicalValType::Tuple(types) => {
             let converted_types =
                 types.iter().map(|val_type| convert_common_to_format_valtype(val_type)).collect();
-            FormatValType<NoStdProvider<65536>>::Tuple(converted_types)
+            FormatValType::Tuple(converted_types)
         }
-        CanonicalValType::Flags(names) => FormatValType<NoStdProvider<65536>>::Flags(names.clone()),
-        CanonicalValType::Enum(variants) => FormatValType<NoStdProvider<65536>>::Enum(variants.clone()),
+        CanonicalValType::Flags(names) => FormatValType::Flags(names.clone()),
+        CanonicalValType::Enum(variants) => FormatValType::Enum(variants.clone()),
         CanonicalValType::Option(inner_type) => {
-            FormatValType<NoStdProvider<65536>>::Option(Box::new(convert_common_to_format_valtype(inner_type)))
+            FormatValType::Option(Box::new(convert_common_to_format_valtype(inner_type)))
         }
         CanonicalValType::Result(result_type) => {
-            FormatValType<NoStdProvider<65536>>::Result(Box::new(convert_common_to_format_valtype(result_type)))
+            FormatValType::Result(Box::new(convert_common_to_format_valtype(result_type)))
         }
-        CanonicalValType::Own(idx) => FormatValType<NoStdProvider<65536>>::Own(*idx),
-        CanonicalValType::Borrow(idx) => FormatValType<NoStdProvider<65536>>::Borrow(*idx),
+        CanonicalValType::Own(idx) => FormatValType::Own(*idx),
+        CanonicalValType::Borrow(idx) => FormatValType::Borrow(*idx),
         CanonicalValType::FixedList(elem_type, size) => {
-            FormatValType<NoStdProvider<65536>>::FixedList(Box::new(convert_common_to_format_valtype(elem_type)), *size)
+            FormatValType::FixedList(Box::new(convert_common_to_format_valtype(elem_type)), *size)
         }
         CanonicalValType::Void => {
             // Void doesn't have a direct mapping, convert to a unit tuple
-            FormatValType<NoStdProvider<65536>>::Tuple(Vec::new())
+            FormatValType::Tuple(Vec::new())
         }
-        CanonicalValType::ErrorContext => FormatValType<NoStdProvider<65536>>::ErrorContext,
+        CanonicalValType::ErrorContext => FormatValType::ErrorContext,
         CanonicalValType::Result { ok: _, err: _ } => {
-            // For FormatValType<NoStdProvider<65536>>, we create a Result with a generic type placeholder
-            // Since FormatValType<NoStdProvider<65536>>::Result requires a concrete type, we'll use a default
-            FormatValType<NoStdProvider<65536>>::Result(Box::new(FormatValType<NoStdProvider<65536>>::Unit))
+            // For FormatValType, we create a Result with a generic type placeholder
+            // Since FormatValType::Result requires a concrete type, we'll use a default
+            FormatValType::Result(Box::new(FormatValType::Unit))
         }
     }
 }
 
-/// Convert from wrt_format::component::ValType<NoStdProvider<65536>> to CanonicalValType
-pub fn convert_format_to_common_valtype(format_type: &FormatValType<NoStdProvider<65536>>) -> CanonicalValType {
+/// Convert from wrt_format::component::ValType to CanonicalValType
+pub fn convert_format_to_common_valtype(format_type: &FormatValType) -> CanonicalValType {
     match format_type {
-        FormatValType<NoStdProvider<65536>>::Bool => CanonicalValType::Bool,
-        FormatValType<NoStdProvider<65536>>::S8 => CanonicalValType::S8,
-        FormatValType<NoStdProvider<65536>>::U8 => CanonicalValType::U8,
-        FormatValType<NoStdProvider<65536>>::S16 => CanonicalValType::S16,
-        FormatValType<NoStdProvider<65536>>::U16 => CanonicalValType::U16,
-        FormatValType<NoStdProvider<65536>>::S32 => CanonicalValType::S32,
-        FormatValType<NoStdProvider<65536>>::U32 => CanonicalValType::U32,
-        FormatValType<NoStdProvider<65536>>::S64 => CanonicalValType::S64,
-        FormatValType<NoStdProvider<65536>>::U64 => CanonicalValType::U64,
-        FormatValType<NoStdProvider<65536>>::F32 => CanonicalValType::F32,
-        FormatValType<NoStdProvider<65536>>::F64 => CanonicalValType::F64,
-        FormatValType<NoStdProvider<65536>>::Char => CanonicalValType::Char,
-        FormatValType<NoStdProvider<65536>>::String => CanonicalValType::String,
-        FormatValType<NoStdProvider<65536>>::Ref(idx) => CanonicalValType::Ref(*idx),
-        FormatValType<NoStdProvider<65536>>::Record(fields) => {
+        FormatValType::Bool => CanonicalValType::Bool,
+        FormatValType::S8 => CanonicalValType::S8,
+        FormatValType::U8 => CanonicalValType::U8,
+        FormatValType::S16 => CanonicalValType::S16,
+        FormatValType::U16 => CanonicalValType::U16,
+        FormatValType::S32 => CanonicalValType::S32,
+        FormatValType::U32 => CanonicalValType::U32,
+        FormatValType::S64 => CanonicalValType::S64,
+        FormatValType::U64 => CanonicalValType::U64,
+        FormatValType::F32 => CanonicalValType::F32,
+        FormatValType::F64 => CanonicalValType::F64,
+        FormatValType::Char => CanonicalValType::Char,
+        FormatValType::String => CanonicalValType::String,
+        FormatValType::Ref(idx) => CanonicalValType::Ref(*idx),
+        FormatValType::Record(fields) => {
             let converted_fields = fields
                 .iter()
                 .map(|(name, val_type)| (name.clone(), convert_format_to_common_valtype(val_type)))
                 .collect();
             CanonicalValType::Record(converted_fields)
         }
-        FormatValType<NoStdProvider<65536>>::Variant(cases) => {
+        FormatValType::Variant(cases) => {
             let converted_cases = cases
                 .iter()
                 .map(|(name, opt_type)| {
@@ -136,34 +136,34 @@ pub fn convert_format_to_common_valtype(format_type: &FormatValType<NoStdProvide
                 .collect();
             CanonicalValType::Variant(converted_cases)
         }
-        FormatValType<NoStdProvider<65536>>::List(elem_type) => {
+        FormatValType::List(elem_type) => {
             CanonicalValType::List(Box::new(convert_format_to_common_valtype(elem_type)))
         }
-        FormatValType<NoStdProvider<65536>>::Tuple(types) => {
+        FormatValType::Tuple(types) => {
             let converted_types =
                 types.iter().map(|val_type| convert_format_to_common_valtype(val_type)).collect();
             CanonicalValType::Tuple(converted_types)
         }
-        FormatValType<NoStdProvider<65536>>::Flags(names) => CanonicalValType::Flags(names.clone()),
-        FormatValType<NoStdProvider<65536>>::Enum(variants) => CanonicalValType::Enum(variants.clone()),
-        FormatValType<NoStdProvider<65536>>::Option(inner_type) => {
+        FormatValType::Flags(names) => CanonicalValType::Flags(names.clone()),
+        FormatValType::Enum(variants) => CanonicalValType::Enum(variants.clone()),
+        FormatValType::Option(inner_type) => {
             CanonicalValType::Option(Box::new(convert_format_to_common_valtype(inner_type)))
         }
-        FormatValType<NoStdProvider<65536>>::Result(result_type) => {
+        FormatValType::Result(result_type) => {
             // Convert to CanonicalValType::Result with both ok and err as None for now
-            // This is a simplified mapping since FormatValType<NoStdProvider<65536>>::Result doesn't distinguish ok/err
+            // This is a simplified mapping since FormatValType::Result doesn't distinguish ok/err
             CanonicalValType::Result { 
                 ok: Some(Box::new(CanonicalValType::Ref(0))), // Placeholder reference
                 err: None 
             }
         }
-        FormatValType<NoStdProvider<65536>>::Own(idx) => CanonicalValType::Own(*idx),
-        FormatValType<NoStdProvider<65536>>::Borrow(idx) => CanonicalValType::Borrow(*idx),
-        FormatValType<NoStdProvider<65536>>::FixedList(elem_type, size) => CanonicalValType::FixedList(
+        FormatValType::Own(idx) => CanonicalValType::Own(*idx),
+        FormatValType::Borrow(idx) => CanonicalValType::Borrow(*idx),
+        FormatValType::FixedList(elem_type, size) => CanonicalValType::FixedList(
             Box::new(convert_format_to_common_valtype(elem_type)),
             *size,
         ),
-        FormatValType<NoStdProvider<65536>>::ErrorContext => CanonicalValType::ErrorContext,
+        FormatValType::ErrorContext => CanonicalValType::ErrorContext,
         // Map any unhandled types to Void
         _ => CanonicalValType::Void,
     }
@@ -578,11 +578,11 @@ pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvid
 // Simplified deserialization function
 pub fn deserialize_component_value(
     data: &[u8],
-    format_type: &FormatValType<NoStdProvider<65536>>,
+    format_type: &FormatValType,
 ) -> Result<ComponentComponentValue> {
     let mut offset = 0;
     match format_type {
-        FormatValType<NoStdProvider<65536>>::Bool => {
+        FormatValType::Bool => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -593,7 +593,7 @@ pub fn deserialize_component_value(
             let value = data[offset] != 0;
             Ok(ComponentComponentValue::Bool(value))
         }
-        FormatValType<NoStdProvider<65536>>::S8 => {
+        FormatValType::S8 => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -604,7 +604,7 @@ pub fn deserialize_component_value(
             let value = data[offset] as i8;
             Ok(ComponentComponentValue::S8(value))
         }
-        FormatValType<NoStdProvider<65536>>::U8 => {
+        FormatValType::U8 => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -615,7 +615,7 @@ pub fn deserialize_component_value(
             let value = data[offset];
             Ok(ComponentComponentValue::U8(value))
         }
-        FormatValType<NoStdProvider<65536>>::S16 => {
+        FormatValType::S16 => {
             if offset + 2 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -626,7 +626,7 @@ pub fn deserialize_component_value(
             let value = i16::from_le_bytes([data[offset], data[offset + 1]]);
             Ok(ComponentComponentValue::S16(value))
         }
-        FormatValType<NoStdProvider<65536>>::U16 => {
+        FormatValType::U16 => {
             if offset + 2 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -637,7 +637,7 @@ pub fn deserialize_component_value(
             let value = u16::from_le_bytes([data[offset], data[offset + 1]]);
             Ok(ComponentComponentValue::U16(value))
         }
-        FormatValType<NoStdProvider<65536>>::S32 => {
+        FormatValType::S32 => {
             if offset + 4 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -653,7 +653,7 @@ pub fn deserialize_component_value(
             ]);
             Ok(ComponentComponentValue::S32(value))
         }
-        FormatValType<NoStdProvider<65536>>::U32 => {
+        FormatValType::U32 => {
             if offset + 4 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -669,7 +669,7 @@ pub fn deserialize_component_value(
             ]);
             Ok(ComponentComponentValue::U32(value))
         }
-        FormatValType<NoStdProvider<65536>>::S64 => {
+        FormatValType::S64 => {
             if offset + 8 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -689,7 +689,7 @@ pub fn deserialize_component_value(
             ]);
             Ok(ComponentComponentValue::S64(value))
         }
-        FormatValType<NoStdProvider<65536>>::U64 => {
+        FormatValType::U64 => {
             if offset + 8 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -709,7 +709,7 @@ pub fn deserialize_component_value(
             ]);
             Ok(ComponentComponentValue::U64(value))
         }
-        FormatValType<NoStdProvider<65536>>::F32 => {
+        FormatValType::F32 => {
             if offset + 4 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -725,7 +725,7 @@ pub fn deserialize_component_value(
             ]));
             Ok(ComponentComponentValue::F32(value))
         }
-        FormatValType<NoStdProvider<65536>>::F64 => {
+        FormatValType::F64 => {
             if offset + 8 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -745,7 +745,7 @@ pub fn deserialize_component_value(
             ]));
             Ok(ComponentComponentValue::F64(value))
         }
-        FormatValType<NoStdProvider<65536>>::Char => {
+        FormatValType::Char => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -756,7 +756,7 @@ pub fn deserialize_component_value(
             let value = data[offset] as char;
             Ok(ComponentComponentValue::Char(value))
         }
-        FormatValType<NoStdProvider<65536>>::String => {
+        FormatValType::String => {
             if offset + 4 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -788,7 +788,7 @@ pub fn deserialize_component_value(
                 })?;
             Ok(ComponentComponentValue::String(value))
         }
-        FormatValType<NoStdProvider<65536>>::List(elem_type) => {
+        FormatValType::List(elem_type) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -818,7 +818,7 @@ pub fn deserialize_component_value(
             }
             Ok(ComponentComponentValue::List(values))
         }
-        FormatValType<NoStdProvider<65536>>::Record(fields) => {
+        FormatValType::Record(fields) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -834,7 +834,7 @@ pub fn deserialize_component_value(
             }
             Ok(ComponentComponentValue::Record(values))
         }
-        FormatValType<NoStdProvider<65536>>::Tuple(types) => {
+        FormatValType::Tuple(types) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -850,7 +850,7 @@ pub fn deserialize_component_value(
             }
             Ok(ComponentComponentValue::Tuple(values))
         }
-        FormatValType<NoStdProvider<65536>>::Variant(cases) => {
+        FormatValType::Variant(cases) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -915,7 +915,7 @@ pub fn deserialize_component_value(
                 }
             }
         }
-        FormatValType<NoStdProvider<65536>>::Enum(variants) => {
+        FormatValType::Enum(variants) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -941,7 +941,7 @@ pub fn deserialize_component_value(
             // No need to update offset anymore as we return immediately
             Ok(ComponentComponentValue::Enum(variants[value as usize].clone()))
         }
-        FormatValType<NoStdProvider<65536>>::Option(inner_type) => {
+        FormatValType::Option(inner_type) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -958,7 +958,7 @@ pub fn deserialize_component_value(
                 Ok(ComponentComponentValue::Option(None))
             }
         }
-        FormatValType<NoStdProvider<65536>>::Result(result_type) => {
+        FormatValType::Result(result_type) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -976,7 +976,7 @@ pub fn deserialize_component_value(
                 Ok(ComponentComponentValue::Result(Err(Box::new(ComponentComponentValue::Void))))
             }
         }
-        FormatValType<NoStdProvider<65536>>::Own(idx) => {
+        FormatValType::Own(idx) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -988,7 +988,7 @@ pub fn deserialize_component_value(
             // No need to update offset anymore as we return immediately
             Ok(ComponentComponentValue::Handle(value))
         }
-        FormatValType<NoStdProvider<65536>>::Borrow(idx) => {
+        FormatValType::Borrow(idx) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -1000,7 +1000,7 @@ pub fn deserialize_component_value(
             // No need to update offset anymore as we return immediately
             Ok(ComponentComponentValue::Borrow(value))
         }
-        FormatValType<NoStdProvider<65536>>::Flags(names) => {
+        FormatValType::Flags(names) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -1023,7 +1023,7 @@ pub fn deserialize_component_value(
 
             Ok(ComponentComponentValue::Flags(flags))
         }
-        FormatValType<NoStdProvider<65536>>::FixedList(elem_type, size) => {
+        FormatValType::FixedList(elem_type, size) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -1053,7 +1053,7 @@ pub fn deserialize_component_value(
             }
             Ok(ComponentComponentValue::FixedList(values, *size))
         }
-        FormatValType<NoStdProvider<65536>>::ErrorContext => {
+        FormatValType::ErrorContext => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -1078,55 +1078,55 @@ pub fn deserialize_component_value(
 /// Deserialize a component value using the ReadStream interface
 pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvider>(
     reader: &mut ReadStream<'a>,
-    format_type: &FormatValType<NoStdProvider<65536>>,
+    format_type: &FormatValType,
     provider: &P,
 ) -> Result<ComponentComponentValue> {
     match format_type {
-        FormatValType<NoStdProvider<65536>>::Bool => {
+        FormatValType::Bool => {
             let value = reader.read_bool()?;
             Ok(ComponentComponentValue::Bool(value))
         }
-        FormatValType<NoStdProvider<65536>>::S8 => {
+        FormatValType::S8 => {
             let value = reader.read_i8()?;
             Ok(ComponentComponentValue::S8(value))
         }
-        FormatValType<NoStdProvider<65536>>::U8 => {
+        FormatValType::U8 => {
             let value = reader.read_u8()?;
             Ok(ComponentComponentValue::U8(value))
         }
-        FormatValType<NoStdProvider<65536>>::S16 => {
+        FormatValType::S16 => {
             let value = reader.read_i16_le()?;
             Ok(ComponentComponentValue::S16(value))
         }
-        FormatValType<NoStdProvider<65536>>::U16 => {
+        FormatValType::U16 => {
             let value = reader.read_u16_le()?;
             Ok(ComponentComponentValue::U16(value))
         }
-        FormatValType<NoStdProvider<65536>>::S32 => {
+        FormatValType::S32 => {
             let value = reader.read_i32_le()?;
             Ok(ComponentComponentValue::S32(value))
         }
-        FormatValType<NoStdProvider<65536>>::U32 => {
+        FormatValType::U32 => {
             let value = reader.read_u32_le()?;
             Ok(ComponentComponentValue::U32(value))
         }
-        FormatValType<NoStdProvider<65536>>::S64 => {
+        FormatValType::S64 => {
             let value = reader.read_i64_le()?;
             Ok(ComponentComponentValue::S64(value))
         }
-        FormatValType<NoStdProvider<65536>>::U64 => {
+        FormatValType::U64 => {
             let value = reader.read_u64_le()?;
             Ok(ComponentComponentValue::U64(value))
         }
-        FormatValType<NoStdProvider<65536>>::F32 => {
+        FormatValType::F32 => {
             let value = reader.read_f32_le()?;
             Ok(ComponentComponentValue::F32(value))
         }
-        FormatValType<NoStdProvider<65536>>::F64 => {
+        FormatValType::F64 => {
             let value = reader.read_f64_le()?;
             Ok(ComponentComponentValue::F64(value))
         }
-        FormatValType<NoStdProvider<65536>>::Char => {
+        FormatValType::Char => {
             let value_u32 = reader.read_u32_le()?;
             let value = char::from_u32(value_u32).ok_or_else(|| {
                 Error::new(
@@ -1137,7 +1137,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
             })?;
             Ok(ComponentComponentValue::Char(value))
         }
-        FormatValType<NoStdProvider<65536>>::String => {
+        FormatValType::String => {
             // Read the string length
             let len = reader.read_u32_le()? as usize;
 
@@ -1156,7 +1156,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             Ok(ComponentComponentValue::String(value))
         }
-        FormatValType<NoStdProvider<65536>>::List(elem_type) => {
+        FormatValType::List(elem_type) => {
             // Read the number of items
             let count = reader.read_u32_le()? as usize;
 
@@ -1169,7 +1169,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             Ok(ComponentComponentValue::List(items))
         }
-        FormatValType<NoStdProvider<65536>>::Record(fields) => {
+        FormatValType::Record(fields) => {
             // Read the number of fields
             let count = reader.read_u32_le()? as usize;
 
@@ -1205,7 +1205,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             Ok(ComponentComponentValue::Record(values))
         }
-        FormatValType<NoStdProvider<65536>>::Tuple(types) => {
+        FormatValType::Tuple(types) => {
             // Read the number of items
             let count = reader.read_u32_le()? as usize;
 
@@ -1226,7 +1226,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             Ok(ComponentComponentValue::Tuple(items))
         }
-        FormatValType<NoStdProvider<65536>>::Variant(cases) => {
+        FormatValType::Variant(cases) => {
             // Read the case name length
             let name_len = reader.read_u32_le()? as usize;
 
@@ -1272,7 +1272,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 Ok(ComponentComponentValue::Variant(case_name, None))
             }
         }
-        FormatValType<NoStdProvider<65536>>::Enum(variants) => {
+        FormatValType::Enum(variants) => {
             // Read the variant name length
             let name_len = reader.read_u32_le()? as usize;
 
@@ -1298,7 +1298,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             Ok(ComponentComponentValue::Enum(variant_name))
         }
-        FormatValType<NoStdProvider<65536>>::Option(inner_type) => {
+        FormatValType::Option(inner_type) => {
             // Read presence flag
             let has_value = reader.read_bool()?;
 
@@ -1309,7 +1309,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 Ok(ComponentComponentValue::Option(None))
             }
         }
-        FormatValType<NoStdProvider<65536>>::Result(result_type) => {
+        FormatValType::Result(result_type) => {
             // Read success flag
             let is_ok = reader.read_bool()?;
 
@@ -1321,15 +1321,15 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 Ok(ComponentComponentValue::Result(Err(Box::new(ComponentComponentValue::Void))))
             }
         }
-        FormatValType<NoStdProvider<65536>>::Own(idx) => {
+        FormatValType::Own(idx) => {
             let value = reader.read_u32_le()?;
             Ok(ComponentComponentValue::Handle(value))
         }
-        FormatValType<NoStdProvider<65536>>::Borrow(idx) => {
+        FormatValType::Borrow(idx) => {
             let value = reader.read_u32_le()?;
             Ok(ComponentComponentValue::Borrow(value))
         }
-        FormatValType<NoStdProvider<65536>>::Flags(names) => {
+        FormatValType::Flags(names) => {
             // Read the number of flags
             let count = reader.read_u32_le()? as usize;
 
@@ -1368,7 +1368,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             Ok(ComponentComponentValue::Flags(flags))
         }
-        FormatValType<NoStdProvider<65536>>::FixedList(elem_type, size) => {
+        FormatValType::FixedList(elem_type, size) => {
             // Read the number of items
             let count = reader.read_u32_le()? as usize;
 
@@ -1392,7 +1392,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             Ok(ComponentComponentValue::FixedList(items, *size))
         }
-        FormatValType<NoStdProvider<65536>>::ErrorContext => {
+        FormatValType::ErrorContext => {
             // Read the number of context items
             let count = reader.read_u32_le()? as usize;
 
@@ -1415,7 +1415,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             Ok(ComponentComponentValue::ErrorContext(items))
         }
-        FormatValType<NoStdProvider<65536>>::Void => {
+        FormatValType::Void => {
             // Just read a marker byte
             let _ = reader.read_u8()?;
             Ok(ComponentComponentValue::Void)
@@ -1472,7 +1472,7 @@ pub fn serialize_component_values_with_stream<'a, P: wrt_foundation::MemoryProvi
 /// Deserialize multiple component values
 pub fn deserialize_component_values(
     data: &[u8],
-    types: &[FormatValType<NoStdProvider<65536>>],
+    types: &[FormatValType],
 ) -> Result<Vec<ComponentComponentValue>> {
     // Need at least 4 bytes for the count
     if data.len() < 4 {
@@ -1542,7 +1542,7 @@ pub fn deserialize_component_values(
 /// Deserialize multiple component values using a ReadStream
 pub fn deserialize_component_values_with_stream<'a, P: wrt_foundation::MemoryProvider>(
     reader: &mut ReadStream<'a>,
-    types: &[FormatValType<NoStdProvider<65536>>],
+    types: &[FormatValType],
     provider: &P,
 ) -> Result<Vec<ComponentComponentValue>> {
     // Read the count
@@ -1568,7 +1568,7 @@ pub fn deserialize_component_values_with_stream<'a, P: wrt_foundation::MemoryPro
 }
 
 // Core value conversion functions
-pub fn core_to_component_value(value: &Value, ty: &FormatValType<NoStdProvider<65536>>) -> Result<ComponentComponentValue> {
+pub fn core_to_component_value(value: &Value, ty: &FormatValType<ComponentProvider>) -> crate::WrtResult<ComponentComponentValue> {
     use crate::type_conversion::{
         core_value_to_types_componentvalue, format_valtype_to_types_valtype,
     };
@@ -1582,21 +1582,21 @@ pub fn core_to_component_value(value: &Value, ty: &FormatValType<NoStdProvider<6
     // Check if the types match or provide a conversion error
     match (&component_value, &types_val_type) {
         // Basic type checking for primitive types
-        (ComponentComponentValue::S32(_), ComponentValType<NoStdProvider<65536>>::S32)
-        | (ComponentComponentValue::S64(_), ComponentValType<NoStdProvider<65536>>::S64)
-        | (ComponentComponentValue::F32(_), ComponentValType<NoStdProvider<65536>>::F32)
-        | (ComponentComponentValue::F64(_), ComponentValType<NoStdProvider<65536>>::F64) => Ok(component_value),
+        (ComponentComponentValue::S32(_), ComponentValType::S32)
+        | (ComponentComponentValue::S64(_), ComponentValType::S64)
+        | (ComponentComponentValue::F32(_), ComponentValType::F32)
+        | (ComponentComponentValue::F64(_), ComponentValType::F64) => Ok(component_value),
 
         // Handle boolean conversion from i32
-        (ComponentComponentValue::S32(v), ComponentValType<NoStdProvider<65536>>::Bool) => Ok(ComponentComponentValue::Bool(*v != 0)),
+        (ComponentComponentValue::S32(v), ComponentValType::Bool) => Ok(ComponentComponentValue::Bool(*v != 0)),
 
         // Other integer width conversions
-        (ComponentComponentValue::S32(v), ComponentValType<NoStdProvider<65536>>::S8) => Ok(ComponentComponentValue::S8(*v as i8)),
-        (ComponentComponentValue::S32(v), ComponentValType<NoStdProvider<65536>>::U8) => Ok(ComponentComponentValue::U8(*v as u8)),
-        (ComponentComponentValue::S32(v), ComponentValType<NoStdProvider<65536>>::S16) => Ok(ComponentComponentValue::S16(*v as i16)),
-        (ComponentComponentValue::S32(v), ComponentValType<NoStdProvider<65536>>::U16) => Ok(ComponentComponentValue::U16(*v as u16)),
-        (ComponentComponentValue::S32(v), ComponentValType<NoStdProvider<65536>>::U32) => Ok(ComponentComponentValue::U32(*v as u32)),
-        (ComponentComponentValue::S64(v), ComponentValType<NoStdProvider<65536>>::U64) => Ok(ComponentComponentValue::U64(*v as u64)),
+        (ComponentComponentValue::S32(v), ComponentValType::S8) => Ok(ComponentComponentValue::S8(*v as i8)),
+        (ComponentComponentValue::S32(v), ComponentValType::U8) => Ok(ComponentComponentValue::U8(*v as u8)),
+        (ComponentComponentValue::S32(v), ComponentValType::S16) => Ok(ComponentComponentValue::S16(*v as i16)),
+        (ComponentComponentValue::S32(v), ComponentValType::U16) => Ok(ComponentComponentValue::U16(*v as u16)),
+        (ComponentComponentValue::S32(v), ComponentValType::U32) => Ok(ComponentComponentValue::U32(*v as u32)),
+        (ComponentComponentValue::S64(v), ComponentValType::U64) => Ok(ComponentComponentValue::U64(*v as u64)),
 
         // Error for type mismatch
         _ => Err(Error::new(
@@ -1610,7 +1610,7 @@ pub fn core_to_component_value(value: &Value, ty: &FormatValType<NoStdProvider<6
     }
 }
 
-pub fn component_to_core_value(value: &ComponentComponentValue) -> Result<Value> {
+pub fn component_to_core_value(value: &ComponentComponentValue) -> crate::WrtResult<Value> {
     use crate::type_conversion::types_componentvalue_to_core_value;
 
     // Use the centralized conversion function
@@ -1618,34 +1618,34 @@ pub fn component_to_core_value(value: &ComponentComponentValue) -> Result<Value>
 }
 
 // Size calculation for component values
-pub fn size_in_bytes(ty: &FormatValType<NoStdProvider<65536>>) -> usize {
+pub fn size_in_bytes(ty: &FormatValType<ComponentProvider>) -> usize {
     match ty {
-        FormatValType<NoStdProvider<65536>>::Bool => 1,
-        FormatValType<NoStdProvider<65536>>::S8 => 1,
-        FormatValType<NoStdProvider<65536>>::U8 => 1,
-        FormatValType<NoStdProvider<65536>>::S16 => 2,
-        FormatValType<NoStdProvider<65536>>::U16 => 2,
-        FormatValType<NoStdProvider<65536>>::S32 => 4,
-        FormatValType<NoStdProvider<65536>>::U32 => 4,
-        FormatValType<NoStdProvider<65536>>::S64 => 8,
-        FormatValType<NoStdProvider<65536>>::U64 => 8,
-        FormatValType<NoStdProvider<65536>>::F32 => 4,
-        FormatValType<NoStdProvider<65536>>::F64 => 8,
-        FormatValType<NoStdProvider<65536>>::Char => 4,
-        FormatValType<NoStdProvider<65536>>::String => 8, // Pointer size
-        FormatValType<NoStdProvider<65536>>::Ref(_) => 4,
-        FormatValType<NoStdProvider<65536>>::Record(_) => 8,
-        FormatValType<NoStdProvider<65536>>::Variant(_) => 8,
-        FormatValType<NoStdProvider<65536>>::List(_) => 8,
-        FormatValType<NoStdProvider<65536>>::Tuple(_) => 8,
-        FormatValType<NoStdProvider<65536>>::Flags(_) => 8,
-        FormatValType<NoStdProvider<65536>>::Enum(_) => 4,
-        FormatValType<NoStdProvider<65536>>::Option(_) => 8,
-        FormatValType<NoStdProvider<65536>>::Result(_) => 8,
-        FormatValType<NoStdProvider<65536>>::Own(_) => 4,
-        FormatValType<NoStdProvider<65536>>::Borrow(_) => 4,
-        FormatValType<NoStdProvider<65536>>::FixedList(_, _) => 8,
-        FormatValType<NoStdProvider<65536>>::ErrorContext => 4,
+        FormatValType::Bool => 1,
+        FormatValType::S8 => 1,
+        FormatValType::U8 => 1,
+        FormatValType::S16 => 2,
+        FormatValType::U16 => 2,
+        FormatValType::S32 => 4,
+        FormatValType::U32 => 4,
+        FormatValType::S64 => 8,
+        FormatValType::U64 => 8,
+        FormatValType::F32 => 4,
+        FormatValType::F64 => 8,
+        FormatValType::Char => 4,
+        FormatValType::String => 8, // Pointer size
+        FormatValType::Ref(_) => 4,
+        FormatValType::Record(_) => 8,
+        FormatValType::Variant(_) => 8,
+        FormatValType::List(_) => 8,
+        FormatValType::Tuple(_) => 8,
+        FormatValType::Flags(_) => 8,
+        FormatValType::Enum(_) => 4,
+        FormatValType::Option(_) => 8,
+        FormatValType::Result(_) => 8,
+        FormatValType::Own(_) => 4,
+        FormatValType::Borrow(_) => 4,
+        FormatValType::FixedList(_, _) => 8,
+        FormatValType::ErrorContext => 4,
         // Default size for any unhandled types
         _ => 4,
     }
@@ -1700,7 +1700,7 @@ mod tests {
         let mut reader = ReadStream::new(slice);
 
         // Deserialize using stream
-        let format_type = FormatValType<NoStdProvider<65536>>::Bool;
+        let format_type = FormatValType::Bool;
         let decoded =
             deserialize_component_value_with_stream(&mut reader, &format_type, &handler).unwrap();
 
@@ -1736,7 +1736,7 @@ mod tests {
         let mut reader = ReadStream::new(slice);
 
         // Prepare format types
-        let format_types = vec![FormatValType<NoStdProvider<65536>>::Bool, FormatValType<NoStdProvider<65536>>::S32, FormatValType<NoStdProvider<65536>>::String];
+        let format_types = vec![FormatValType::Bool, FormatValType::S32, FormatValType::String];
 
         // Deserialize using stream
         let decoded =

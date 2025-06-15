@@ -106,6 +106,8 @@ use wrt_foundation::safe_memory::{
     MemoryProvider, SafeMemoryHandler, SafeSlice, SliceMut as SafeSliceMut,
 };
 use wrt_foundation::MemoryStats;
+use wrt_foundation::budget_aware_provider::CrateId;
+use wrt_foundation::wrt_memory_system::WrtProviderFactory;
 
 #[cfg(not(feature = "std"))]
 use wrt_sync::WrtRwLock as RwLock;
@@ -114,6 +116,7 @@ use wrt_sync::WrtRwLock as RwLock;
 // Temporarily disabled - memory_adapter module is disabled
 // use crate::memory_adapter::StdMemoryProvider;
 use crate::prelude::{Arc, BoundedCapacity, CoreMemoryType, Debug, Eq, Error, ErrorCategory, Ord, PartialEq, Result, TryFrom, VerificationLevel, codes, str};
+use wrt_foundation::types::MemoryType;
 #[cfg(not(feature = "std"))]
 use crate::prelude::vec_with_capacity;
 
@@ -134,10 +137,20 @@ pub const PAGE_SIZE: usize = 65536;
 pub const MAX_PAGES: u32 = 65536;
 
 /// The maximum memory size in bytes (4GB)
-const MAX_MEMORY_BYTES: usize = 4 * 1024 * 1024 * 1024;
+// Unused constant
+// const MAX_MEMORY_BYTES: usize = 4 * 1024 * 1024 * 1024;
+
+/// Convert MemoryType to CoreMemoryType
+fn to_core_memory_type(memory_type: &MemoryType) -> CoreMemoryType {
+    CoreMemoryType {
+        limits: memory_type.limits,
+        shared: memory_type.shared,
+    }
+}
 
 /// Memory size error code (must be u16 to match `Error::new`)
-const MEMORY_SIZE_TOO_LARGE: u16 = 4001;
+// Unused constant
+// const MEMORY_SIZE_TOO_LARGE: u16 = 4001;
 /// Invalid offset error code
 const INVALID_OFFSET: u16 = 4002;
 /// Size too large error code  
@@ -179,7 +192,7 @@ fn usize_to_wasm_u32(size: usize) -> Result<u32> {
 
 /// Memory metrics for tracking usage and safety
 #[derive(Debug)]
-struct MemoryMetrics {
+pub struct MemoryMetrics {
     /// Peak memory usage in bytes
     #[cfg(feature = "std")]
     peak_usage: AtomicUsize,
@@ -371,7 +384,7 @@ impl Default for Memory {
             limits: Limits { min: 1, max: Some(1) },
             shared: false,
         };
-        Self::new(memory_type).unwrap()
+        Self::new(to_core_memory_type(&memory_type)).unwrap()
     }
 }
 
@@ -418,7 +431,7 @@ impl wrt_foundation::traits::FromBytes for Memory {
             limits: Limits { min, max: if max == 0 { None } else { Some(max) } },
             shared: false,
         };
-        Self::new(memory_type)
+        Self::new(to_core_memory_type(&memory_type))
     }
 }
 
@@ -1219,8 +1232,8 @@ impl Memory {
         dst_data[dst_addr..dst_addr + size].copy_from_slice(temp_buf.as_slice());
 
         // Update destination memory
-        self.data.clear();
-        self.data.add_data(&dst_data);
+        self.data.clear()?;
+        self.data.add_data(&dst_data)?;
 
         // Update peak memory usage
         self.update_peak_memory();
@@ -1315,8 +1328,8 @@ impl Memory {
                 }
             }
             // Replace data (simplified - in production would need better approach)
-            self.data.clear();
-            self.data.add_data(current_data.as_slice());
+            self.data.clear()?;
+            self.data.add_data(current_data.as_slice())?;
 
             current_dst += chunk_size;
             remaining -= chunk_size;
@@ -1424,8 +1437,8 @@ impl Memory {
                 }
             }
             // Replace data (simplified approach)
-            self.data.clear();
-            self.data.add_data(current_data.as_slice());
+            self.data.clear()?;
+            self.data.add_data(current_data.as_slice())?;
 
             // Update for next chunk
             src_offset += chunk_size;
@@ -2091,9 +2104,11 @@ impl MemoryProvider for Memory {
 
     #[cfg(feature = "std")]
     fn get_allocator(&self) -> &Self::Allocator {
-        // Can't return reference to temporary, use lazy static approach
+        // Use default provider for static allocation
         use std::sync::LazyLock;
-        static ALLOCATOR: LazyLock<LargeMemoryProvider> = LazyLock::new(|| LargeMemoryProvider::new());
+        static ALLOCATOR: LazyLock<LargeMemoryProvider> = LazyLock::new(|| {
+            LargeMemoryProvider::default()
+        });
         &ALLOCATOR
     }
     

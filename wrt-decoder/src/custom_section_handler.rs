@@ -15,7 +15,7 @@ use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::allocator::{WrtHashMap, CrateId};
 
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{HashMap};
 
 #[cfg(not(feature = "std"))]
 use alloc::collections::BTreeMap;

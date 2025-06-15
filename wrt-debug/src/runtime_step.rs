@@ -1,10 +1,10 @@
 #![cfg(feature = "runtime-stepping")]
 
-use wrt_foundation::{
+use wrt_foundation::{{
     bounded::{BoundedStack, BoundedVec, MAX_DWARF_FILE_TABLE},
     managed_alloc, CrateId,
     NoStdProvider,
-};
+}, safe_managed_alloc};
 
 use crate::bounded_debug_infra;
 /// Runtime stepping logic implementation
@@ -67,7 +67,7 @@ impl StepController {
             mode: StepMode::None,
             target_line: None,
             target_file: None,
-            call_stack: BoundedStack::new(managed_alloc!(32768, CrateId::Debug).unwrap().provider().clone()).unwrap(),
+            call_stack: BoundedStack::new(safe_managed_alloc!(32768, CrateId::Debug).unwrap().provider().clone()).unwrap(),
             step_over_depth: 0,
             previous_pc: 0,
             previous_line: None,
@@ -271,7 +271,7 @@ impl SteppingDebugger {
     pub fn new() -> Self {
         Self { 
             controller: StepController::new(), 
-            line_cache: BoundedVec::new(managed_alloc!(32768, CrateId::Debug).unwrap().provider().clone()).unwrap() 
+            line_cache: BoundedVec::new(safe_managed_alloc!(32768, CrateId::Debug).unwrap().provider().clone()).unwrap() 
         }
     }
 

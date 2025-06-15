@@ -28,11 +28,21 @@ use crate::bounded::BoundedVec;
 #[cfg(not(feature = "std"))]
 use crate::safe_memory::NoStdProvider;
 
+// For no_std environments, use simple arrays or bounded collections
+#[cfg(not(feature = "std"))]
+const MAX_TESTS_NO_STD: usize = 64;
+
 // For no_std without alloc, use simple arrays
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-const MAX_TESTS_NO_STD: usize = 64;
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 type TestRegistry = [Option<AsilTestMetadata>; MAX_TESTS_NO_STD];
+
+// For no_std with alloc, use regular Vec (simpler than BoundedVec for this use case)
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+type TestRegistry = Vec<AsilTestMetadata>;
+
+// Add missing import for alloc case
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::vec::Vec;
 
 /// Test metadata for ASIL categorization
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -45,6 +55,17 @@ pub struct AsilTestMetadata {
     pub category: TestCategory,
     /// Description of what this test validates
     pub description: &'static str,
+}
+
+impl crate::traits::Checksummable for AsilTestMetadata {
+    fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
+        // Include ASIL level in checksum (as discriminant)
+        (self.asil_level as u8).update_checksum(checksum);
+        // Include string contents (not pointers) for stable checksums
+        checksum.update_slice(self.requirement_id.as_bytes());
+        (self.category as u8).update_checksum(checksum);
+        checksum.update_slice(self.description.as_bytes());
+    }
 }
 
 /// Categories of safety tests
@@ -72,21 +93,35 @@ pub enum TestCategory {
 #[cfg(feature = "std")]
 static TEST_REGISTRY: Mutex<Option<Vec<AsilTestMetadata>>> = Mutex::new(None);
 
-// No alloc feature in wrt-foundation, so this path is not used
+// Static registry for alloc case (no_std + alloc)
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+static mut TEST_REGISTRY: Option<TestRegistry> = None;
 
-#[cfg(not(feature = "std"))]
+// Static registry for no-alloc case (no_std + no_alloc)
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 static mut TEST_REGISTRY: Option<TestRegistry> = None;
 
 // Initialization synchronization (only needed for non-std environments)
 #[cfg(not(feature = "std"))]
 static REGISTRY_INIT: AtomicBool = AtomicBool::new(false);
 
-/// Initialize the test registry (only needed for non-std environments)
-#[cfg(not(feature = "std"))]
+/// Initialize the test registry (no_std + no_alloc version)
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 fn init_test_registry() {
     if !REGISTRY_INIT.swap(true, Ordering::AcqRel) {
         unsafe {
             TEST_REGISTRY = Some([None; MAX_TESTS_NO_STD]);
+        }
+    }
+}
+
+/// Initialize the test registry (no_std + alloc version)
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+fn init_test_registry() {
+    if !REGISTRY_INIT.swap(true, Ordering::AcqRel) {
+        unsafe {
+            // Initialize with regular Vec
+            TEST_REGISTRY = Some(Vec::new());
         }
     }
 }

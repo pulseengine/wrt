@@ -128,23 +128,11 @@ impl ModuleInstance {
             Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH, "Type index not found")
         })?;
 
-        // Convert from module's PlatformProvider (8192) to runtime's DefaultProvider (65536)
-        // Since FuncType has a provider parameter, we need to construct a new one with the correct provider
-        let default_provider = DefaultProvider::default();
-        let mut converted_params = wrt_foundation::bounded::BoundedVec::new(default_provider.clone())?;
-        for param in &ty.params {
-            converted_params.push(param)?;
-        }
-        let mut converted_results = wrt_foundation::bounded::BoundedVec::new(default_provider.clone())?;
-        for result in &ty.results {
-            converted_results.push(result)?;
-        }
-        let converted_ty = wrt_foundation::types::FuncType {
-            params: converted_params,
-            results: converted_results,
-        };
-
-        Ok(converted_ty)
+        // Convert from provider-aware FuncType to clean CoreFuncType
+        Ok(wrt_foundation::clean_core_types::CoreFuncType {
+            params: ty.params.iter().collect(),
+            results: ty.results.iter().collect(),
+        })
     }
 
     /// Add a memory to this instance

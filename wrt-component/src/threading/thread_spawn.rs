@@ -5,9 +5,9 @@ use crate::{
     virtualization::{Capability, ResourceUsage, VirtualizationManager},
 };
 // Placeholder types
-pub type ComponentInstanceId = u32;
+pub use crate::types::ComponentInstanceId;
 pub type ResourceHandle = u32;
-pub type ValType<NoStdProvider<65536>> = u32;
+pub type ValType = u32;
 use core::{
     fmt,
     sync::atomic::{AtomicBool, AtomicU32, Ordering},
@@ -57,7 +57,7 @@ impl fmt::Display for ThreadSpawnError {
 #[cfg(feature = "std")]
 impl std::error::Error for ThreadSpawnError {}
 
-pub type ThreadSpawncore::result::Result<T> = Result<T, ThreadSpawnError>;
+pub type ThreadSpawnResult<T> = Result<T, ThreadSpawnError>;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ThreadId(u32);
@@ -118,7 +118,7 @@ pub struct ThreadSpawnRequest {
     pub function_name: String,
     pub arguments: BoundedVec<ComponentValue, 16, NoStdProvider<65536>>,
     pub configuration: ThreadConfiguration,
-    pub return_type: Option<ValType<NoStdProvider<65536>>,
+    pub return_type: Option<ValType>,
 }
 
 pub struct ComponentThreadManager {
@@ -492,7 +492,7 @@ impl ComponentThreadManager {
         component_id: ComponentInstanceId,
         function_name: &str,
         arguments: &[ComponentValue],
-        return_type: &Option<ValType<NoStdProvider<65536>>,
+        return_type: &Option<ValType>,
     ) -> ThreadResult {
         match Self::call_component_function(component_id, function_name, arguments) {
             Ok(result) => ThreadResult::Success(result),
@@ -629,7 +629,7 @@ mod tests {
             function_name: "test_function".to_string(),
             arguments: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
             configuration: ThreadConfiguration::default(),
-            return_type: Some(ValType<NoStdProvider<65536>>::I32),
+            return_type: Some(ValType::I32),
         };
 
         let handle = manager.spawn_thread(request).unwrap();

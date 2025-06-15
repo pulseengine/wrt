@@ -22,29 +22,6 @@ mod std_parsing {
         String::from_utf8(bytes.to_vec()).unwrap_or_else(|_| String::new())
     }
 
-    // Define a macro for conditionally selecting format based on environment
-    #[cfg(feature = "std")]
-    macro_rules! env_format {
-    ($($arg:tt)*) => {
-        format!($($arg)*)
-    };
-}
-
-    #[cfg(all(not(feature = "std")))]
-    macro_rules! env_format {
-    ($($arg:tt)*) => {
-        alloc::format!($($arg)*)
-    };
-}
-
-    #[cfg(not(any(feature = "std",)))]
-    macro_rules! env_format {
-        ($($arg:tt)*) => {
-            // For environments without formatting capabilities,
-            // create a static string (this is not ideal but provides a fallback)
-            "format error (no formatting available in this environment)"
-        };
-    }
 
     // Define a helper function for converting format strings to String
     fn format_to_string(message: &str, value: impl core::fmt::Display) -> String {
@@ -543,7 +520,7 @@ mod std_parsing {
             // Parse the component binary using the decoder
             match crate::component::decode_component(component_bytes) {
                 Ok(component) => components.push(component),
-                Err(e) => {
+                Err(_e) => {
                     return Err(Error::from(kinds::ParseError("Failed to parse nested component")));
                 }
             }
@@ -1168,7 +1145,7 @@ mod std_parsing {
                 // Read field vector
                 let (field_count, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
                     Ok(result) => result,
-                    Err(e) => {
+                    Err(_e) => {
                         return Err(Error::from(kinds::ParseError(
                             "Failed to read field count in resource record representation",
                         )))
@@ -1177,11 +1154,11 @@ mod std_parsing {
                 offset += bytes_read;
 
                 let mut fields = Vec::with_capacity(field_count as usize);
-                for i in 0..field_count {
+                for _i in 0..field_count {
                     // Read field name
                     let (name_bytes, bytes_read) = match binary::read_string(bytes, offset) {
                         Ok(result) => result,
-                        Err(e) => {
+                        Err(_e) => {
                             return Err(Error::from(kinds::ParseError(
                                 "Failed to read field name in resource record representation",
                             )))
@@ -1197,7 +1174,7 @@ mod std_parsing {
                 #[cfg(feature = "std")]
                 let bounded_fields = {
                     use wrt_foundation::{
-                        resource::MAX_RESOURCE_FIELDS, resource::MAX_RESOURCE_FIELD_NAME_LEN,
+                        resource::MAX_RESOURCE_FIELD_NAME_LEN,
                         BoundedString, BoundedVec, NoStdProvider,
                     };
                     let provider = NoStdProvider::<4096>::default();
@@ -1241,7 +1218,7 @@ mod std_parsing {
                 // Read type indices
                 let (index_count, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
                     Ok(result) => result,
-                    Err(e) => {
+                    Err(_e) => {
                         return Err(Error::from(kinds::ParseError(
                             "Failed to read index count in resource aggregate representation",
                         )))
@@ -1250,12 +1227,12 @@ mod std_parsing {
                 offset += bytes_read;
 
                 let mut indices = Vec::with_capacity(index_count as usize);
-                for i in 0..index_count {
+                for _i in 0..index_count {
                     // Read type index
                     let (idx, bytes_read) =
                         match binary::read_leb128_u32(bytes, offset) {
                             Ok(result) => result,
-                            Err(e) => return Err(Error::parse_error(
+                            Err(_e) => return Err(Error::parse_error(
                                 "Failed to read type index in resource aggregate representation",
                             )),
                         };
@@ -1267,7 +1244,7 @@ mod std_parsing {
                 #[cfg(feature = "std")]
                 let repr = {
                     use wrt_foundation::{
-                        resource::MAX_RESOURCE_AGGREGATE_IDS, BoundedVec, NoStdProvider,
+                        BoundedVec, NoStdProvider,
                     };
                     let provider = NoStdProvider::<4096>::default();
                     let mut bounded_indices = BoundedVec::new(provider)?;
@@ -1602,7 +1579,7 @@ mod std_parsing {
             }
             0x68 => {
                 // Result type (err only)
-                let (err_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+                let (_err_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                 offset += bytes_read;
                 // TODO: Fix FormatValType enum to support ResultErr variant
                 // Ok((wrt_format::component::FormatValType::ResultErr(Box::new(err_type)), offset))
@@ -1614,9 +1591,9 @@ mod std_parsing {
             }
             0x67 => {
                 // Result type (ok and err)
-                let (ok_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+                let (_ok_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                 offset += bytes_read;
-                let (err_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+                let (_err_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                 offset += bytes_read;
                 // TODO: Fix FormatValType enum to support ResultBoth variant
                 // Ok((
@@ -2437,7 +2414,6 @@ mod std_parsing {
 
 // Re-export std functions when std is available
 #[cfg(feature = "std")]
-pub use std_parsing::*;
 
 // No_std implementation with bounded alternatives following functional safety guidelines
 #[cfg(not(feature = "std"))]
@@ -2634,6 +2610,7 @@ mod no_std_parsing {
     }
 }
 
+// Re-export std functions when std feature is enabled
 #[cfg(feature = "std")]
 pub use std_parsing::*;
 

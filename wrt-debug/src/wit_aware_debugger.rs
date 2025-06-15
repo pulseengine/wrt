@@ -9,7 +9,7 @@ use std::{boxed::Box, collections::BTreeMap, format, vec::Vec};
 use alloc::{boxed::Box, collections::BTreeMap, format, vec::Vec};
 
 use crate::bounded_debug_infra;
-use wrt_foundation::{managed_alloc, CrateId};
+use wrt_foundation::{safe_managed_alloc, CrateId};
 
 use wrt_foundation::{prelude::*, BoundedString, NoStdProvider};
 
@@ -403,7 +403,7 @@ impl WitAwareDebugger for WitDebugger {
             if span.start >= type_span.start && span.end <= type_span.end {
                 // Found a containing type definition
                 let metadata = self.types.get(type_id)?;
-                let guard = managed_alloc!(8192, CrateId::Debug)?;
+                let guard = safe_managed_alloc!(8192, CrateId::Debug)?;
                 let provider = guard.provider().clone();
 
                 return Some(WitTypeInfo {
@@ -489,7 +489,7 @@ mod tests {
     #[test]
     fn test_component_metadata() {
         let mut debugger = WitDebugger::new();
-        let guard = managed_alloc!(8192, CrateId::Debug)?;
+        let guard = safe_managed_alloc!(8192, CrateId::Debug)?;
         let provider = guard.provider().clone();
 
         let metadata = ComponentMetadata {
@@ -513,7 +513,7 @@ mod tests {
     #[test]
     fn test_function_metadata() {
         let mut debugger = WitDebugger::new();
-        let guard = managed_alloc!(8192, CrateId::Debug)?;
+        let guard = safe_managed_alloc!(8192, CrateId::Debug)?;
         let provider = guard.provider().clone();
 
         let metadata = FunctionMetadata {

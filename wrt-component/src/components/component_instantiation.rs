@@ -182,21 +182,12 @@ pub enum ImportType {
     Type(ComponentType),
 }
 
-/// Component instance implementation
+/// Component instance implementation (alias to canonical definition)
+pub use crate::types::ComponentInstance;
+
+/// Local instance implementation details
 #[derive(Debug)]
-pub struct ComponentInstance {
-    /// Unique instance identifier
-    pub id: InstanceId,
-    /// Instance name
-    pub name: String,
-    /// Current instance state
-    pub state: InstanceState,
-    /// Instance configuration
-    pub config: InstanceConfig,
-    /// Component exports
-    pub exports: BoundedVec<ComponentExport, 64, NoStdProvider<65536>>,
-    /// Component imports (resolved)
-    pub imports: BoundedVec<ResolvedImport, 64, NoStdProvider<65536>>,
+pub struct ComponentInstanceImpl {
     /// Instance memory
     pub memory: Option<ComponentMemory>,
     /// Canonical ABI for value conversion
@@ -207,8 +198,6 @@ pub struct ComponentInstance {
     metadata: InstanceMetadata,
     /// Resource manager for this instance
     resource_manager: Option<ComponentResourceManager>,
-    // /// Call context manager for cross-component calls
-    // call_context_manager: Option<CallContextManager>,
 }
 
 /// Resolved import with actual provider

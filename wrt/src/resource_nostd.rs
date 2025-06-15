@@ -12,14 +12,14 @@ use std::boxed::Box;
 use alloc::boxed::Box;
 
 use wrt_error::{codes, Error, Result};
-use wrt_foundation::{
+use wrt_foundation::{{
     bounded::{BoundedStack, BoundedString, BoundedVec, WasmName},
     resource::{ResourceId, ResourceItem, ResourceType},
     verification::VerificationLevel,
     MemoryProvider,
     managed_alloc,
     budget_aware_provider::CrateId,
-};
+}, safe_managed_alloc};
 
 // Constants for bounded collection limits
 const MAX_RESOURCE_COUNT: usize = 256;
@@ -212,7 +212,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
 /// Returns the table wrapped in a Box<dyn Any> to hide the provider type
 pub fn create_default_resource_table() -> Result<Box<dyn core::any::Any>> {
     // Use managed allocation to get a provider
-    let guard = managed_alloc!(1024, CrateId::Runtime).map_err(|_e| Error::new(
+    let guard = safe_managed_alloc!(1024, CrateId::Runtime).map_err(|_e| Error::new(
         wrt_error::ErrorCategory::Resource,
         codes::MEMORY_OUT_OF_BOUNDS,
         "Failed to allocate memory for resource table"
@@ -233,7 +233,7 @@ mod tests {
     #[test]
     fn test_bounded_resource_table() {
         // Use managed allocation
-        let guard = managed_alloc!(1024, CrateId::Runtime).expect("Failed to allocate memory");
+        let guard = safe_managed_alloc!(1024, CrateId::Runtime).expect("Failed to allocate memory");
         let provider = guard.provider().clone();
         
         let mut table = BoundedResourceTable::new(provider.clone(), VerificationLevel::Standard)

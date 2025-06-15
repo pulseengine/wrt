@@ -265,13 +265,13 @@ impl<T: Provider> AtomicMemoryExt for T {}
 mod tests {
     use super::*;
     use crate::safe_memory::NoStdProvider;
-use wrt_foundation::managed_alloc;
+    use crate::safe_managed_alloc;
 
     // Basic test of atomic write operation
     #[test]
     fn test_atomic_write() {
         // Create a NoStdProvider with a buffer of 1024 bytes
-        let guard = managed_alloc!(1024, CrateId::Foundation)?;
+        let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
         let provider = unsafe { guard.release() };
 
@@ -303,7 +303,7 @@ use wrt_foundation::managed_alloc;
     #[test]
     fn test_checksum_integrity() {
         // Create a NoStdProvider with a buffer of 1024 bytes
-        let guard = managed_alloc!(1024, CrateId::Foundation)?;
+        let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
         let provider = unsafe { guard.release() };
 
@@ -334,7 +334,7 @@ use wrt_foundation::managed_alloc;
     #[test]
     fn test_atomic_copy_within() {
         // Create a NoStdProvider with a buffer of 1024 bytes
-        let guard = managed_alloc!(1024, CrateId::Foundation)?;
+        let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
         let provider = unsafe { guard.release() };
 

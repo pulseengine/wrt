@@ -22,7 +22,7 @@ use crate::{
         StreamHandle, Waitable, WaitableSet,
     },
     resource_lifecycle::ResourceLifecycleManager,
-    types::{ValType<NoStdProvider<65536>>, Value},
+    types::{ValType, Value},
     WrtResult,
 };
 

@@ -142,6 +142,7 @@ where
         }
         
         // Return allocation to coordinator
+        // Intentionally ignore errors in Drop to avoid panic
         let _ = self.coordinator.return_allocation(
             self.crate_id,
             self.allocation_id,

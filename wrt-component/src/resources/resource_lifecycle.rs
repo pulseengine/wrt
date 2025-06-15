@@ -12,7 +12,6 @@ use std::collections::HashMap;
 #[cfg(not(feature = "std"))]
 // HashMap disabled for no_std
 
-use crate::prelude::*;
 
 /// Maximum number of active resources in pure no_std environments
 #[cfg(not(feature = "std"))]

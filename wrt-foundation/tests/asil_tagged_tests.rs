@@ -9,7 +9,7 @@ use wrt_foundation::{
     BoundedVec, BoundedDeque, SafeSlice, SafeMemoryHandler,
     VerificationLevel,
     asil_test, asil_d_test, asil_c_test, memory_safety_test, resource_safety_test,
-};
+, safe_managed_alloc};
 
 // Example ASIL-D tests for highest safety integrity
 asil_d_test! {
@@ -19,7 +19,7 @@ asil_d_test! {
     description: "Verify memory bounds checking prevents buffer overflows (ASIL-D)",
     test: {
         // Create a bounded vector with strict capacity
-        let guard = managed_alloc!(64, CrateId::Foundation)?;
+        let guard = safe_managed_alloc!(64, CrateId::Foundation)?;
 
         let provider = unsafe { guard.release() };
         let mut vec = BoundedVec::<u32, 4, _>::new(provider).unwrap();
@@ -74,7 +74,7 @@ asil_c_test! {
     category: TestCategory::Resource,
     description: "Verify graceful handling of resource exhaustion (ASIL-C)",
     test: {
-        let guard = managed_alloc!(32, CrateId::Foundation)?;
+        let guard = safe_managed_alloc!(32, CrateId::Foundation)?;
 
         let provider = unsafe { guard.release() };
         let mut deque = BoundedDeque::<u64, 2, _>::new(provider).unwrap();
@@ -140,7 +140,7 @@ resource_safety_test! {
     test: {
         use wrt_foundation::SafeStack;
         
-        let guard = managed_alloc!(128, CrateId::Foundation)?;
+        let guard = safe_managed_alloc!(128, CrateId::Foundation)?;
 
         
         let provider = unsafe { guard.release() };
@@ -199,7 +199,7 @@ asil_test! {
         // This test would verify that multiple safety systems work together
         // For example: memory safety + resource limits + verification
         
-        let guard = managed_alloc!(256, CrateId::Foundation)?;
+        let guard = safe_managed_alloc!(256, CrateId::Foundation)?;
 
         
         let provider = unsafe { guard.release() };

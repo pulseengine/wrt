@@ -68,13 +68,13 @@ macro_rules! format {
 #[macro_export]
 macro_rules! vec {
     () => {{
-        use wrt_foundation::{managed_alloc, budget_aware_provider::CrateId};
-        let guard = managed_alloc!(1024, CrateId::Runtime).unwrap();
+        use wrt_foundation::safe_managed_alloc, budget_aware_provider::CrateId};
+        let guard = safe_managed_alloc!(1024, CrateId::Runtime).unwrap();
         wrt_foundation::bounded::BoundedVec::new(guard.provider().clone()).unwrap()
     }};
     ($($x:expr),*) => {{
-        use wrt_foundation::{managed_alloc, budget_aware_provider::CrateId};
-        let guard = managed_alloc!(1024, CrateId::Runtime).unwrap();
+        use wrt_foundation::safe_managed_alloc, budget_aware_provider::CrateId};
+        let guard = safe_managed_alloc!(1024, CrateId::Runtime).unwrap();
         let mut v = wrt_foundation::bounded::BoundedVec::new(guard.provider().clone()).unwrap();
         $(v.push($x).unwrap();)*
         v

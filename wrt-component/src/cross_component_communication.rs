@@ -42,8 +42,6 @@
 use wrt_foundation::allocator::{WrtHashMap as HashMap, WrtVec as Vec, CrateId};
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
 use std::{vec::Vec, string::String, collections::HashMap, boxed::Box, format, sync::Arc};
-#[cfg(feature = "std")]
-use std::{string::String, boxed::Box, format, sync::Arc};
 
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{BoundedVec as Vec, BoundedString as String, safe_memory::NoStdProvider};
@@ -60,7 +58,7 @@ type Arc<T> = wrt_foundation::SafeArc<T, NoStdProvider<65536>>;
 
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_intercept::{LinkInterceptorStrategy, ResourceCanonicalOperation};
-use wrt_foundation::{ComponentValue, ValType<NoStdProvider<65536>>};
+use wrt_foundation::{ComponentValue, ValType};
 
 // Import our communication system components
 use crate::component_communication::{

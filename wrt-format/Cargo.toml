@@ -28,10 +28,13 @@ default = []
 std = ["wrt-foundation/std", "wrt-foundation/wrt-allocator"]
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
+
+# Allocation support for no_std environments
+alloc = ["wrt-foundation/alloc"]
 optimize = ["wrt-foundation/optimize"]
-safety = ["wrt-foundation/safety"]
+safety-asil-b = ["wrt-foundation/safety-asil-b"]
 # Safety-critical features for ASIL-C compliance
-safety-critical = ["wrt-foundation/wrt-allocator"]
+safety-asil-c = ["wrt-foundation/wrt-allocator"]
 # The 'kani' feature enables formal verification with the Kani verifier
 kani = ["dep:kani-verifier"]
 
@@ -72,9 +75,10 @@ lsp = ["std"]
 wit-parsing = []
 
 # Disable panic handler for library builds to avoid conflicts
-disable-panic-handler = ["wrt-foundation/disable-panic-handler"]
 
 # Config for linting
+safety-asil-d = ["safety-asil-c"]
+
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }
 # Rule 1

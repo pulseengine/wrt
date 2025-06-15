@@ -13,7 +13,7 @@ use alloc::{collections::BTreeMap, vec::Vec, boxed::Box};
 use wrt_foundation::{
     BoundedString, BoundedVec, NoStdProvider,
     prelude::*,
-};
+, safe_managed_alloc};
 use wrt_error::{Error, Result};
 
 // Import debug types for this module
@@ -185,7 +185,7 @@ impl WrtRuntimeState {
     pub fn new() -> Self {
         // TODO: Specify appropriate size for this allocation
 
-        let guard = managed_alloc!(8192, CrateId::Runtime)?;
+        let guard = safe_managed_alloc!(8192, CrateId::Runtime)?;
 
         let provider = unsafe { guard.release() };
         Self {
@@ -304,7 +304,7 @@ impl WrtDebugMemory {
     pub fn new(base_address: u32) -> Self {
         // TODO: Specify appropriate size for this allocation
 
-        let guard = managed_alloc!(8192, CrateId::Runtime)?;
+        let guard = safe_managed_alloc!(8192, CrateId::Runtime)?;
 
         let provider = unsafe { guard.release() };
         Self {
@@ -584,7 +584,7 @@ pub fn create_component_metadata(
 ) -> Result<ComponentMetadata> {
     // TODO: Specify appropriate size for this allocation
 
-    let guard = managed_alloc!(8192, CrateId::Runtime)?;
+    let guard = safe_managed_alloc!(8192, CrateId::Runtime)?;
 
     let provider = unsafe { guard.release() };
     
@@ -611,7 +611,7 @@ pub fn create_function_metadata(
 ) -> Result<FunctionMetadata> {
     // TODO: Specify appropriate size for this allocation
 
-    let guard = managed_alloc!(8192, CrateId::Runtime)?;
+    let guard = safe_managed_alloc!(8192, CrateId::Runtime)?;
 
     let provider = unsafe { guard.release() };
     
@@ -638,7 +638,7 @@ pub fn create_type_metadata(
 ) -> Result<TypeMetadata> {
     // TODO: Specify appropriate size for this allocation
 
-    let guard = managed_alloc!(8192, CrateId::Runtime)?;
+    let guard = safe_managed_alloc!(8192, CrateId::Runtime)?;
 
     let provider = unsafe { guard.release() };
     

@@ -206,12 +206,14 @@ pub struct NoStdProviderBuilder {
     verification_level: VerificationLevel,
 }
 
+#[allow(deprecated)]
 impl Default for NoStdProviderBuilder {
     fn default() -> Self {
         Self { size: 4096, verification_level: VerificationLevel::Standard }
     }
 }
 
+#[allow(deprecated)]
 impl NoStdProviderBuilder {
     /// Creates a new builder with default settings.
     pub fn new() -> Self {

@@ -20,7 +20,7 @@ use wrt_foundation::{
 
 use crate::{
     async_types::{StreamHandle, FutureHandle},
-    types::{ValType<NoStdProvider<65536>>, Value},
+    types::{ValType, Value},
     WrtResult,
 };
 

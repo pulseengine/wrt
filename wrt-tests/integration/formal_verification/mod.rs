@@ -69,6 +69,9 @@ pub mod resource_lifecycle_proofs;
 #[cfg(any(doc, kani, feature = "kani"))]
 pub mod integration_proofs;
 
+#[cfg(any(doc, kani, feature = "kani"))]
+pub mod advanced_proofs;
+
 /// Statistics for formal verification execution
 #[derive(Debug, Default, Clone)]
 pub struct VerificationStats {
@@ -118,6 +121,7 @@ impl KaniTestRunner {
         self.register_concurrency_tests()?;
         self.register_resource_lifecycle_tests()?;
         self.register_integration_tests()?;
+        self.register_advanced_tests()?;
         Ok(())
     }
     
@@ -127,6 +131,10 @@ impl KaniTestRunner {
         {
             memory_safety_proofs::register_tests(self.registry)?;
             self.stats.verified_properties += memory_safety_proofs::property_count();
+            
+            // Also register simplified memory safety tests
+            memory_safety_simple::register_tests(self.registry)?;
+            self.stats.verified_properties += memory_safety_simple::property_count();
         }
         
         #[cfg(not(any(doc, kani, feature = "kani")))]
@@ -252,6 +260,32 @@ impl KaniTestRunner {
         Ok(())
     }
     
+    /// Register advanced verification tests
+    fn register_advanced_tests(&mut self) -> TestResult {
+        #[cfg(any(doc, kani, feature = "kani"))]
+        {
+            advanced_proofs::register_tests(self.registry)?;
+            self.stats.verified_properties += advanced_proofs::property_count();
+        }
+        
+        #[cfg(not(any(doc, kani, feature = "kani")))]
+        {
+            use wrt_test_registry::register_test;
+            
+            register_test!(
+                "advanced_proofs_placeholder",
+                "formal-verification",
+                true,
+                "Placeholder for advanced verification (requires KANI feature)",
+                |_config: &TestConfig| -> TestResult {
+                    Ok(())
+                }
+            );
+        }
+        
+        Ok(())
+    }
+    
     /// Get verification statistics
     pub fn get_stats(&self) -> &VerificationStats {
         &self.stats
@@ -261,10 +295,12 @@ impl KaniTestRunner {
     #[cfg(kani)]
     pub fn run_all_proofs() {
         memory_safety_proofs::run_all_proofs();
+        memory_safety_simple::run_all_proofs();
         safety_invariants_proofs::run_all_proofs();
         concurrency_proofs::run_all_proofs();
         resource_lifecycle_proofs::run_all_proofs();
         integration_proofs::run_all_proofs();
+        advanced_proofs::run_all_proofs();
     }
 }
 

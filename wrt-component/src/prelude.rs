@@ -5,17 +5,7 @@
 //! consistency across all crates in the WRT project and simplify imports in
 //! individual modules.
 
-// Core imports for both std and no_std environments
-#[cfg(feature = "std")]
-pub use std::{
-    boxed::Box,
-    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
-    format,
-    string::{String, ToString},
-    sync::Arc,
-    vec,
-    vec::Vec,
-};
+// Core imports for std environments
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
@@ -81,7 +71,7 @@ pub use wrt_decoder::decoder_no_alloc;
 // Re-export from wrt-error
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 // Re-export from wrt-format
-pub use wrt_format::component::ValType<NoStdProvider<65536>> as FormatValType<NoStdProvider<65536>>;
+pub use wrt_format::component::ValType as FormatValType;
 // Import component builders and resource builders with proper feature gates
 #[cfg(feature = "std")]
 pub use wrt_foundation::builder::ResourceItemBuilder;
@@ -94,10 +84,10 @@ pub use wrt_foundation::component_builder::{
 pub use wrt_foundation::bounded::{BoundedString, BoundedVec};
 // Re-export component_value for both std and no_std
 #[cfg(feature = "std")]
-pub use wrt_foundation::component_value::{ComponentValue, ValType<NoStdProvider<65536>>};
+pub use wrt_foundation::component_value::{ComponentValue, ValType};
 
 #[cfg(not(feature = "std"))]
-pub use wrt_foundation::component_value::ValType<NoStdProvider<65536>>;
+pub use wrt_foundation::component_value::ValType;
 
 // Unified type aliases for std/no_std compatibility
 #[cfg(not(feature = "std"))]
@@ -120,7 +110,6 @@ pub use wrt_foundation::{
     // Verification types
     verification::VerificationLevel,
     // Memory providers
-    memory_system::{SmallProvider, LargeProvider, MediumProvider},
     safe_memory::NoStdProvider,
     // Common types
     ExternType,

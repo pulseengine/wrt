@@ -14,7 +14,6 @@ use wrt_format::binary;
 
 use super::types::ModuleInfo;
 use crate::prelude::*;
-use wrt_foundation::traits::BoundedCapacity;
 
 
 // Compatibility trait to provide as_bytes() for BoundedString

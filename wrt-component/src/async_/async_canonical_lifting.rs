@@ -18,7 +18,7 @@ use wrt_foundation::{
 
 use crate::{
     canonical_abi::canonical_options::CanonicalOptions,
-    types::{ValType<NoStdProvider<65536>>, Value},
+    types::{ValType, Value},
 };
 use wrt_error::Result as WrtResult;
 
@@ -42,24 +42,24 @@ impl Alignment {
     }
     
     /// Get alignment for a value type
-    pub fn for_val_type(val_type: &ValType<NoStdProvider<65536>>) -> Self {
+    pub fn for_val_type(val_type: &ValType) -> Self {
         match val_type {
-            ValType<NoStdProvider<65536>>::Bool | ValType<NoStdProvider<65536>>::U8 | ValType<NoStdProvider<65536>>::S8 => Self::from_bytes(1),
-            ValType<NoStdProvider<65536>>::U16 | ValType<NoStdProvider<65536>>::S16 => Self::from_bytes(2),
-            ValType<NoStdProvider<65536>>::U32 | ValType<NoStdProvider<65536>>::S32 | ValType<NoStdProvider<65536>>::F32 | ValType<NoStdProvider<65536>>::Char => Self::from_bytes(4),
-            ValType<NoStdProvider<65536>>::U64 | ValType<NoStdProvider<65536>>::S64 | ValType<NoStdProvider<65536>>::F64 => Self::from_bytes(8),
-            ValType<NoStdProvider<65536>>::String => Self::from_bytes(4), // Pointer alignment
-            ValType<NoStdProvider<65536>>::List(_) => Self::from_bytes(4), // Pointer alignment
-            ValType<NoStdProvider<65536>>::Record(_) => Self::from_bytes(4), // Maximum member alignment
-            ValType<NoStdProvider<65536>>::Variant(_) => Self::from_bytes(4), // Discriminant alignment
-            ValType<NoStdProvider<65536>>::Tuple(_) => Self::from_bytes(4), // Maximum member alignment
-            ValType<NoStdProvider<65536>>::Option(_) => Self::from_bytes(4), // Discriminant alignment
-            ValType<NoStdProvider<65536>>::Result { .. } => Self::from_bytes(4), // Discriminant alignment
-            ValType<NoStdProvider<65536>>::Flags(_) => Self::from_bytes(4), // u32 representation
-            ValType<NoStdProvider<65536>>::Enum(_) => Self::from_bytes(4), // u32 representation
-            ValType<NoStdProvider<65536>>::Stream(_) => Self::from_bytes(4), // Handle alignment
-            ValType<NoStdProvider<65536>>::Future(_) => Self::from_bytes(4), // Handle alignment
-            ValType<NoStdProvider<65536>>::Own(_) | ValType<NoStdProvider<65536>>::Borrow(_) => Self::from_bytes(4), // Handle alignment
+            ValType::Bool | ValType::U8 | ValType::S8 => Self::from_bytes(1),
+            ValType::U16 | ValType::S16 => Self::from_bytes(2),
+            ValType::U32 | ValType::S32 | ValType::F32 | ValType::Char => Self::from_bytes(4),
+            ValType::U64 | ValType::S64 | ValType::F64 => Self::from_bytes(8),
+            ValType::String => Self::from_bytes(4), // Pointer alignment
+            ValType::List(_) => Self::from_bytes(4), // Pointer alignment
+            ValType::Record(_) => Self::from_bytes(4), // Maximum member alignment
+            ValType::Variant(_) => Self::from_bytes(4), // Discriminant alignment
+            ValType::Tuple(_) => Self::from_bytes(4), // Maximum member alignment
+            ValType::Option(_) => Self::from_bytes(4), // Discriminant alignment
+            ValType::Result { .. } => Self::from_bytes(4), // Discriminant alignment
+            ValType::Flags(_) => Self::from_bytes(4), // u32 representation
+            ValType::Enum(_) => Self::from_bytes(4), // u32 representation
+            ValType::Stream(_) => Self::from_bytes(4), // Handle alignment
+            ValType::Future(_) => Self::from_bytes(4), // Handle alignment
+            ValType::Own(_) | ValType::Borrow(_) => Self::from_bytes(4), // Handle alignment
         }
     }
     
@@ -341,33 +341,33 @@ impl<'a> AsyncCanonicalDecoder<'a> {
     }
     
     /// Decode a value according to canonical ABI
-    pub fn decode_value(&mut self, val_type: &ValType<NoStdProvider<65536>>, options: &CanonicalOptions) -> Result<Value> {
+    pub fn decode_value(&mut self, val_type: &ValType, options: &CanonicalOptions) -> Result<Value> {
         match val_type {
-            ValType<NoStdProvider<65536>>::Bool => Ok(Value::Bool(self.decode_bool()?)),
-            ValType<NoStdProvider<65536>>::U8 => Ok(Value::U8(self.decode_u8()?)),
-            ValType<NoStdProvider<65536>>::S8 => Ok(Value::S8(self.decode_s8()?)),
-            ValType<NoStdProvider<65536>>::U16 => Ok(Value::U16(self.decode_u16()?)),
-            ValType<NoStdProvider<65536>>::S16 => Ok(Value::S16(self.decode_s16()?)),
-            ValType<NoStdProvider<65536>>::U32 => Ok(Value::U32(self.decode_u32()?)),
-            ValType<NoStdProvider<65536>>::S32 => Ok(Value::S32(self.decode_s32()?)),
-            ValType<NoStdProvider<65536>>::U64 => Ok(Value::U64(self.decode_u64()?)),
-            ValType<NoStdProvider<65536>>::S64 => Ok(Value::S64(self.decode_s64()?)),
-            ValType<NoStdProvider<65536>>::F32 => Ok(Value::F32(self.decode_f32()?)),
-            ValType<NoStdProvider<65536>>::F64 => Ok(Value::F64(self.decode_f64()?)),
-            ValType<NoStdProvider<65536>>::Char => Ok(Value::Char(self.decode_char()?)),
-            ValType<NoStdProvider<65536>>::String => Ok(Value::String(self.decode_string(options)?)),
-            ValType<NoStdProvider<65536>>::List(elem_type) => Ok(Value::List(self.decode_list(elem_type, options)?)),
-            ValType<NoStdProvider<65536>>::Record(fields) => Ok(Value::Record(self.decode_record(fields, options)?)),
-            ValType<NoStdProvider<65536>>::Variant(cases) => self.decode_variant(cases, options),
-            ValType<NoStdProvider<65536>>::Tuple(types) => Ok(Value::Tuple(self.decode_tuple(types, options)?)),
-            ValType<NoStdProvider<65536>>::Option(inner) => Ok(Value::Option(self.decode_option(inner, options)?)),
-            ValType<NoStdProvider<65536>>::Result { ok, err } => Ok(Value::Result(self.decode_result(ok, err, options)?)),
-            ValType<NoStdProvider<65536>>::Flags(names) => Ok(Value::Flags(self.decode_flags(names.len())?)),
-            ValType<NoStdProvider<65536>>::Enum(_) => Ok(Value::Enum(self.decode_enum()?)),
-            ValType<NoStdProvider<65536>>::Stream(elem_type) => Ok(Value::Stream(self.decode_stream()?)),
-            ValType<NoStdProvider<65536>>::Future(elem_type) => Ok(Value::Future(self.decode_future()?)),
-            ValType<NoStdProvider<65536>>::Own(_) => Ok(Value::Own(self.decode_own()?)),
-            ValType<NoStdProvider<65536>>::Borrow(_) => Ok(Value::Borrow(self.decode_borrow()?)),
+            ValType::Bool => Ok(Value::Bool(self.decode_bool()?)),
+            ValType::U8 => Ok(Value::U8(self.decode_u8()?)),
+            ValType::S8 => Ok(Value::S8(self.decode_s8()?)),
+            ValType::U16 => Ok(Value::U16(self.decode_u16()?)),
+            ValType::S16 => Ok(Value::S16(self.decode_s16()?)),
+            ValType::U32 => Ok(Value::U32(self.decode_u32()?)),
+            ValType::S32 => Ok(Value::S32(self.decode_s32()?)),
+            ValType::U64 => Ok(Value::U64(self.decode_u64()?)),
+            ValType::S64 => Ok(Value::S64(self.decode_s64()?)),
+            ValType::F32 => Ok(Value::F32(self.decode_f32()?)),
+            ValType::F64 => Ok(Value::F64(self.decode_f64()?)),
+            ValType::Char => Ok(Value::Char(self.decode_char()?)),
+            ValType::String => Ok(Value::String(self.decode_string(options)?)),
+            ValType::List(elem_type) => Ok(Value::List(self.decode_list(elem_type, options)?)),
+            ValType::Record(fields) => Ok(Value::Record(self.decode_record(fields, options)?)),
+            ValType::Variant(cases) => self.decode_variant(cases, options),
+            ValType::Tuple(types) => Ok(Value::Tuple(self.decode_tuple(types, options)?)),
+            ValType::Option(inner) => Ok(Value::Option(self.decode_option(inner, options)?)),
+            ValType::Result { ok, err } => Ok(Value::Result(self.decode_result(ok, err, options)?)),
+            ValType::Flags(names) => Ok(Value::Flags(self.decode_flags(names.len())?)),
+            ValType::Enum(_) => Ok(Value::Enum(self.decode_enum()?)),
+            ValType::Stream(elem_type) => Ok(Value::Stream(self.decode_stream()?)),
+            ValType::Future(elem_type) => Ok(Value::Future(self.decode_future()?)),
+            ValType::Own(_) => Ok(Value::Own(self.decode_own()?)),
+            ValType::Borrow(_) => Ok(Value::Borrow(self.decode_borrow()?)),
         }
     }
     
@@ -453,14 +453,14 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         Ok(String::from("decoded_string"))
     }
     
-    fn decode_list(&mut self, elem_type: &ValType<NoStdProvider<65536>>, options: &CanonicalOptions) -> Result<Vec<Value>> {
+    fn decode_list(&mut self, elem_type: &ValType, options: &CanonicalOptions) -> Result<Vec<Value>> {
         let _len = self.decode_u32()?;
         let _ptr = self.decode_u32()?;
         // In real implementation, would read from linear memory
         Ok(Vec::new())
     }
     
-    fn decode_record(&mut self, fields: &[(String, ValType<NoStdProvider<65536>>)], options: &CanonicalOptions) -> core::result::Result<Vec<(String, Value)>> {
+    fn decode_record(&mut self, fields: &[(String, ValType)], options: &CanonicalOptions) -> core::result::Result<Vec<(String, Value)>> {
         let mut result = Vec::new();
         for (name, field_type) in fields {
             let value = self.decode_value(field_type, options)?;
@@ -469,7 +469,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         Ok(result)
     }
     
-    fn decode_variant(&mut self, cases: &[(String, Option<ValType<NoStdProvider<65536>>)], options: &CanonicalOptions) -> Result<Value> {
+    fn decode_variant(&mut self, cases: &[(String, Option<ValType)], options: &CanonicalOptions) -> Result<Value> {
         let tag = self.decode_u32()?;
         
         if let Some((_, case_type)) = cases.get(tag as usize) {
@@ -488,7 +488,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         }
     }
     
-    fn decode_tuple(&mut self, types: &[ValType<NoStdProvider<65536>>], options: &CanonicalOptions) -> Result<Vec<Value>> {
+    fn decode_tuple(&mut self, types: &[ValType], options: &CanonicalOptions) -> Result<Vec<Value>> {
         let mut values = Vec::new();
         for val_type in types {
             values.push(self.decode_value(val_type, options)?);
@@ -496,7 +496,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         Ok(values)
     }
     
-    fn decode_option(&mut self, inner: &ValType<NoStdProvider<65536>>, options: &CanonicalOptions) -> Result<Option<Box<Value>>> {
+    fn decode_option(&mut self, inner: &ValType, options: &CanonicalOptions) -> Result<Option<Box<Value>>> {
         let discriminant = self.decode_u32()?;
         match discriminant {
             0 => Ok(None),
@@ -509,7 +509,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         }
     }
     
-    fn decode_result(&mut self, ok_type: &ValType<NoStdProvider<65536>>, err_type: &ValType<NoStdProvider<65536>>, options: &CanonicalOptions) -> core::result::Result<Result<Box<Value>, Box<Value>>> {
+    fn decode_result(&mut self, ok_type: &ValType, err_type: &ValType, options: &CanonicalOptions) -> core::result::Result<Result<Box<Value>, Box<Value>>> {
         let discriminant = self.decode_u32()?;
         match discriminant {
             0 => Ok(Ok(Box::new(self.decode_value(ok_type, options)?))),
@@ -599,7 +599,7 @@ impl Default for AsyncCanonicalEncoder {
 /// Perform async canonical lifting
 pub fn async_canonical_lift(
     bytes: &[u8],
-    target_types: &[ValType<NoStdProvider<65536>>],
+    target_types: &[ValType],
     options: &CanonicalOptions,
 ) -> Result<Vec<Value>> {
     let mut decoder = AsyncCanonicalDecoder::new(bytes);
@@ -648,13 +648,13 @@ mod tests {
         // Test u32
         let values = vec![Value::U32(42)];
         let encoded = async_canonical_lower(&values, &options).unwrap();
-        let decoded = async_canonical_lift(&encoded, &[ValType<NoStdProvider<65536>>::U32], &options).unwrap();
+        let decoded = async_canonical_lift(&encoded, &[ValType::U32], &options).unwrap();
         assert_eq!(values, decoded);
         
         // Test bool
         let values = vec![Value::Bool(true)];
         let encoded = async_canonical_lower(&values, &options).unwrap();
-        let decoded = async_canonical_lift(&encoded, &[ValType<NoStdProvider<65536>>::Bool], &options).unwrap();
+        let decoded = async_canonical_lift(&encoded, &[ValType::Bool], &options).unwrap();
         assert_eq!(values, decoded);
     }
     
@@ -671,7 +671,7 @@ mod tests {
         let encoded = async_canonical_lower(&values, &options).unwrap();
         let decoded = async_canonical_lift(
             &encoded,
-            &[ValType<NoStdProvider<65536>>::Tuple(vec![ValType<NoStdProvider<65536>>::U32, ValType<NoStdProvider<65536>>::Bool, ValType<NoStdProvider<65536>>::S8])],
+            &[ValType::Tuple(vec![ValType::U32, ValType::Bool, ValType::S8])],
             &options,
         ).unwrap();
         
@@ -687,7 +687,7 @@ mod tests {
         let encoded = async_canonical_lower(&values, &options).unwrap();
         let decoded = async_canonical_lift(
             &encoded,
-            &[ValType<NoStdProvider<65536>>::Option(Box::new(ValType<NoStdProvider<65536>>::U32))],
+            &[ValType::Option(Box::new(ValType::U32))],
             &options,
         ).unwrap();
         assert_eq!(values, decoded);
@@ -697,7 +697,7 @@ mod tests {
         let encoded = async_canonical_lower(&values, &options).unwrap();
         let decoded = async_canonical_lift(
             &encoded,
-            &[ValType<NoStdProvider<65536>>::Option(Box::new(ValType<NoStdProvider<65536>>::U32))],
+            &[ValType::Option(Box::new(ValType::U32))],
             &options,
         ).unwrap();
         assert_eq!(values, decoded);
@@ -712,9 +712,9 @@ mod tests {
         let encoded = async_canonical_lower(&values, &options).unwrap();
         let decoded = async_canonical_lift(
             &encoded,
-            &[ValType<NoStdProvider<65536>>::Result {
-                ok: Box::new(ValType<NoStdProvider<65536>>::U32),
-                err: Box::new(ValType<NoStdProvider<65536>>::String),
+            &[ValType::Result {
+                ok: Box::new(ValType::U32),
+                err: Box::new(ValType::String),
             }],
             &options,
         ).unwrap();
@@ -730,7 +730,7 @@ mod tests {
         let encoded = async_canonical_lower(&values, &options).unwrap();
         let decoded = async_canonical_lift(
             &encoded,
-            &[ValType<NoStdProvider<65536>>::Stream(Box::new(ValType<NoStdProvider<65536>>::U32))],
+            &[ValType::Stream(Box::new(ValType::U32))],
             &options,
         ).unwrap();
         assert_eq!(values, decoded);
@@ -740,7 +740,7 @@ mod tests {
         let encoded = async_canonical_lower(&values, &options).unwrap();
         let decoded = async_canonical_lift(
             &encoded,
-            &[ValType<NoStdProvider<65536>>::Future(Box::new(ValType<NoStdProvider<65536>>::String))],
+            &[ValType::Future(Box::new(ValType::String))],
             &options,
         ).unwrap();
         assert_eq!(values, decoded);

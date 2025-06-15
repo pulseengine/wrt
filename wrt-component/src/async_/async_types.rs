@@ -24,7 +24,7 @@ use wrt_foundation::component_value::ComponentValue;
 // For no_std, use a simpler ComponentValue representation
 use crate::types::Value as ComponentValue;
 
-use crate::types::{ValType<NoStdProvider<65536>>, Value};
+use crate::types::{ValType, Value};
 use wrt_error::Result as WrtResult;
 
 /// Maximum number of pending values in a stream for no_std environments
@@ -51,7 +51,7 @@ pub struct Stream<T> {
     /// Stream handle
     pub handle: StreamHandle,
     /// Element type
-    pub element_type: ValType<NoStdProvider<65536>>,
+    pub element_type: ValType,
     /// Stream state
     pub state: StreamState,
     /// Buffered values
@@ -71,7 +71,7 @@ pub struct Future<T> {
     /// Future handle
     pub handle: FutureHandle,
     /// Value type
-    pub value_type: ValType<NoStdProvider<65536>>,
+    pub value_type: ValType,
     /// Future state
     pub state: FutureState,
     /// Stored value (once available)
@@ -195,7 +195,7 @@ pub struct WaitableSet {
 
 impl<T> Stream<T> {
     /// Create a new stream
-    pub fn new(handle: StreamHandle, element_type: ValType<NoStdProvider<65536>>) -> Self {
+    pub fn new(handle: StreamHandle, element_type: ValType) -> Self {
         Self {
             handle,
             element_type,
@@ -238,7 +238,7 @@ impl<T> Stream<T> {
 
 impl<T> Future<T> {
     /// Create a new future
-    pub fn new(handle: FutureHandle, value_type: ValType<NoStdProvider<65536>>) -> Self {
+    pub fn new(handle: FutureHandle, value_type: ValType) -> Self {
         Self {
             handle,
             value_type,
@@ -480,7 +480,7 @@ mod tests {
 
     #[test]
     fn test_stream_lifecycle() {
-        let mut stream: Stream<Value> = Stream::new(StreamHandle(1), ValType<NoStdProvider<65536>>::U32);
+        let mut stream: Stream<Value> = Stream::new(StreamHandle(1), ValType::U32);
 
         assert!(stream.is_writable());
         assert!(!stream.is_readable()); // Empty buffer
@@ -497,7 +497,7 @@ mod tests {
 
     #[test]
     fn test_future_lifecycle() {
-        let mut future: Future<Value> = Future::new(FutureHandle(1), ValType<NoStdProvider<65536>>::String);
+        let mut future: Future<Value> = Future::new(FutureHandle(1), ValType::String);
 
         assert!(future.is_writable());
         assert!(!future.is_readable());
@@ -510,7 +510,7 @@ mod tests {
 
     #[test]
     fn test_future_cancel() {
-        let mut future: Future<Value> = Future::new(FutureHandle(2), ValType<NoStdProvider<65536>>::Bool);
+        let mut future: Future<Value> = Future::new(FutureHandle(2), ValType::Bool);
 
         future.cancel();
         assert_eq!(future.state, FutureState::Cancelled);

@@ -214,6 +214,7 @@ impl PlatformRandom {
     
     /// Fallback implementation for other platforms
     #[cfg(feature = "std")]
+    #[allow(dead_code)]
     fn fallback_random(buffer: &mut [u8]) -> Result<()> {
         // Try to use /dev/urandom if available
         use std::fs::File;
@@ -239,12 +240,12 @@ impl PlatformRandom {
     pub fn get_secure_bytes(buffer: &mut [u8]) -> Result<()> {
         // In no_std environments, we need platform-specific implementations
         
-        #[cfg(target_os = "tock")]
+        #[cfg(feature = "platform-tock")]
         {
             Self::tock_random(buffer)
         }
         
-        #[cfg(not(target_os = "tock"))]
+        #[cfg(not(feature = "platform-tock"))]
         {
             Err(Error::new(
                 ErrorCategory::System,
@@ -255,7 +256,7 @@ impl PlatformRandom {
     }
     
     /// Tock OS random implementation
-    #[cfg(all(not(feature = "std"), target_os = "tock"))]
+    #[cfg(all(not(feature = "std"), feature = "platform-tock"))]
     fn tock_random(buffer: &mut [u8]) -> Result<()> {
         // Tock provides a random syscall
         extern "C" {

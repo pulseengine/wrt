@@ -16,6 +16,7 @@ extern crate alloc;
 use crate::prelude::{BoundedVec, Debug, Eq, PartialEq};
 use crate::thread_manager::{ThreadId, ThreadState};
 use wrt_error::{Error, ErrorCategory, Result, codes};
+#[cfg(feature = "std")]
 use wrt_platform::sync::{Mutex, Condvar};
 #[cfg(feature = "std")]
 use std::{sync::Arc, time::{Duration, Instant}};
@@ -25,8 +26,8 @@ use alloc::sync::Arc;
 use crate::bounded_runtime_infra::{
     BoundedWaitQueueVec, RuntimeProvider, new_thread_vec
 };
-#[cfg(all(not(feature = "std"), not(feature = "std")))]
-use wrt_foundation::{bounded::BoundedVec, traits::BoundedCapacity};
+#[cfg(not(feature = "std"))]
+use wrt_foundation::traits::BoundedCapacity;
 #[cfg(not(feature = "std"))]
 use wrt_platform::sync::Duration;
 

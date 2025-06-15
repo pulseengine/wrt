@@ -70,10 +70,8 @@ use wrt_runtime::Module;
 use wrt_host::CallbackRegistry;
 #[cfg(feature = "wasi")]
 use wrt_wasi::{
-    WasiCapabilities, 
-    preview1::CompletePreview1Provider,
-    preview2::ComponentModelProvider,
-    host_provider::WasiHostProvider,
+    WasiCapabilities, WasiHostProvider,
+    ComponentModelProvider,
 };
 
 // Component model support
@@ -151,7 +149,7 @@ impl Default for WrtdConfig {
             #[cfg(feature = "wasi")]
             enable_wasi: false,
             #[cfg(feature = "wasi")]
-            wasi_version: WasiVersion::Preview1,
+            wasi_version: WasiVersion::Preview2,
             #[cfg(feature = "wasi")]
             wasi_capabilities: None,
             #[cfg(feature = "wasi")]
@@ -171,8 +169,6 @@ impl Default for WrtdConfig {
 /// WASI version selection
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WasiVersion {
-    /// WASI Preview 1 (snapshot_preview1)
-    Preview1,
     /// WASI Preview 2 (component model)
     Preview2,
 }
@@ -186,6 +182,7 @@ pub struct MemoryProfiler {
 }
 
 impl MemoryProfiler {
+    /// Creates a new memory profiler instance
     pub fn new() -> Result<Self> {
         Ok(Self {
             enabled: true,
@@ -194,6 +191,7 @@ impl MemoryProfiler {
         })
     }
     
+    /// Records a memory allocation of the given size
     pub fn record_allocation(&mut self, size: usize) {
         if self.enabled {
             self.current_usage += size;
@@ -203,16 +201,19 @@ impl MemoryProfiler {
         }
     }
     
+    /// Records a memory deallocation of the given size
     pub fn record_deallocation(&mut self, size: usize) {
         if self.enabled && self.current_usage >= size {
             self.current_usage -= size;
         }
     }
     
+    /// Returns the peak memory usage recorded
     pub fn peak_usage(&self) -> usize {
         self.peak_usage
     }
     
+    /// Returns the current memory usage
     pub fn current_usage(&self) -> usize {
         self.current_usage
     }
@@ -379,28 +380,8 @@ impl WrtdEngine {
             capabilities.environment.args_access = true;
         }
         
-        // Create appropriate WASI provider based on version
+        // Create WASI Preview2 provider
         let provider: Box<dyn WasiHostProvider> = match self.config.wasi_version {
-            WasiVersion::Preview1 => {
-                let mut provider = CompletePreview1Provider::new(capabilities)
-                    .map_err(|_| Error::new(
-                        ErrorCategory::Runtime,
-                        codes::RUNTIME_ERROR,
-                        "Failed to create WASI Preview 1 provider"
-                    ))?;
-                
-                // Set custom args if provided
-                if !self.config.wasi_args.is_empty() {
-                    provider.set_args(&self.config.wasi_args)
-                        .map_err(|_| Error::new(
-                            ErrorCategory::Runtime,
-                            codes::RUNTIME_ERROR,
-                            "Failed to set WASI args"
-                        ))?;
-                }
-                
-                Box::new(provider)
-            }
             WasiVersion::Preview2 => {
                 let provider = ComponentModelProvider::new(capabilities)
                     .map_err(|_| Error::new(
@@ -884,7 +865,7 @@ impl SimpleArgs {
                     #[cfg(feature = "wasi")]
                     {
                         println!("  --wasi               Enable WASI support");
-                        println!("  --wasi-version <v>   WASI version (preview1|preview2)");
+                        println!("  --wasi-version <v>   WASI version (preview2)");
                         println!("  --wasi-fs <path>     Allow filesystem access to path");
                         println!("  --wasi-env <var>     Expose environment variable to WASI");
                         println!("  --wasi-arg <arg>     Pass argument to WASI program");
@@ -933,7 +914,6 @@ impl SimpleArgs {
                     i += 1;
                     if i < args.len() {
                         result.wasi_version = match args[i].as_str() {
-                            "preview1" => Some(WasiVersion::Preview1),
                             "preview2" => Some(WasiVersion::Preview2),
                             _ => None,
                         };

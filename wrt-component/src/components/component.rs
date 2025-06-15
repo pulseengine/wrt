@@ -15,6 +15,7 @@ use wrt_foundation::resource::ResourceOperation as FormatResourceOperation;
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 #[cfg(not(feature = "std"))]
+use alloc::format;
 use wrt_foundation::{bounded::BoundedVec, safe_memory::NoStdProvider};
 
 // Simple HashMap substitute for no_std using BoundedVec
@@ -76,7 +77,6 @@ use crate::type_conversion::bidirectional::{
     convert_format_to_types_valtype, convert_format_valtype_to_valuetype,
     convert_types_to_format_valtype, extern_type_to_func_type,
 };
-use crate::{debug_println, prelude::*};
 
 // Define type aliases for missing types
 type ComponentDecoder = fn(&[u8]) -> wrt_error::Result<wrt_format::component::Component>;
@@ -142,6 +142,10 @@ impl Default for WrtComponentType {
 
 /// Represents a component instance
 #[derive(Debug)]
+// Type aliases for compatibility
+pub type ComponentInstance = RuntimeInstance;
+pub type ComponentType = WrtComponentType;
+
 pub struct Component {
     /// Component type
     pub(crate) component_type: WrtComponentType,
@@ -361,8 +365,8 @@ struct ModuleInstance {
     // Implementation details would go here
 }
 
-/// Helper function to convert FormatValType<NoStdProvider<65536>> to ValueType
-fn convert_to_valuetype(val_type_pair: &(String, FormatValType<NoStdProvider<65536>>)) -> ValueType {
+/// Helper function to convert FormatValType to ValueType
+fn convert_to_valuetype(val_type_pair: &(String, FormatValType)) -> ValueType {
     format_val_type_to_value_type(&val_type_pair.1).expect("Failed to convert format value type")
 }
 
@@ -946,7 +950,7 @@ pub fn value_to_component_value(value: &wrt_intercept::Value) -> wrt_foundation:
 
 /// Convert parameter to value type
 pub fn convert_param_to_value_type(
-    param: &wrt_format::component::ValType<NoStdProvider<65536>>,
+    param: &wrt_format::component::ValType,
 ) -> wrt_foundation::types::ValueType {
     crate::type_conversion::format_val_type_to_value_type(param)
         .unwrap_or(wrt_foundation::types::ValueType::I32)

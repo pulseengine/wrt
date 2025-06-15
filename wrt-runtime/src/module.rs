@@ -538,7 +538,7 @@ impl Module {
         runtime_module.start = wrt_module.start_func;
 
         for type_def in &wrt_module.types {
-            runtime_module.types.push(type_def.clone());
+            runtime_module.types.push(type_def.clone())?;
         }
 
         for import_def in &wrt_module.imports {
@@ -653,18 +653,18 @@ impl Module {
                 type_idx,
                 locals: runtime_locals,
                 body: runtime_body,
-            });
+            })?;
         }
 
         for table_def in &wrt_module.tables {
             // For now, runtime tables are created empty and populated by element segments
             // or host. This assumes runtime::table::Table::new can take
             // WrtTableType.
-            runtime_module.tables.push(TableWrapper::new(Table::new(table_def.clone())?));
+            runtime_module.tables.push(TableWrapper::new(Table::new(table_def.clone())?))?;
         }
 
         for memory_def in &wrt_module.memories {
-            runtime_module.memories.push(MemoryWrapper::new(Memory::new(to_core_memory_type(memory_def))?));
+            runtime_module.memories.push(MemoryWrapper::new(Memory::new(to_core_memory_type(memory_def))?))?;
         }
 
         for global_def in &wrt_module.globals {
@@ -711,7 +711,7 @@ impl Module {
                 global_def.value_type,
                 global_def.mutable,
                 default_value,
-            )?));
+            )?))?;
         }
 
         for export_def in &wrt_module.exports {
@@ -958,7 +958,7 @@ impl Module {
 
     /// Add a function type to the module
     pub fn add_type(&mut self, ty: WrtFuncType<PlatformProvider>) -> Result<()> {
-        self.types.push(ty);
+        self.types.push(ty)?;
         Ok(())
     }
 
@@ -1187,26 +1187,26 @@ impl Module {
             body: WrtExpr::default() 
         };
 
-        self.functions.push(function);
+        self.functions.push(function)?;
         Ok(())
     }
 
     /// Add a table to the module
     pub fn add_table(&mut self, table_type: WrtTableType) -> Result<()> {
-        self.tables.push(TableWrapper::new(Table::new(table_type)?));
+        self.tables.push(TableWrapper::new(Table::new(table_type)?))?;
         Ok(())
     }
 
     /// Add a memory to the module
     pub fn add_memory(&mut self, memory_type: WrtMemoryType) -> Result<()> {
-        self.memories.push(MemoryWrapper::new(Memory::new(to_core_memory_type(memory_type))?));
+        self.memories.push(MemoryWrapper::new(Memory::new(to_core_memory_type(memory_type))?))?;
         Ok(())
     }
 
     /// Add a global to the module
     pub fn add_global(&mut self, global_type: WrtGlobalType, init: WrtValue) -> Result<()> {
         let global = Global::new(global_type.value_type, global_type.mutable, init)?;
-        self.globals.push(GlobalWrapper::new(global));
+        self.globals.push(GlobalWrapper::new(global))?;
         Ok(())
     }
 
@@ -1313,7 +1313,7 @@ impl Module {
             items,
         };
 
-        self.elements.push(runtime_element);
+        self.elements.push(runtime_element)?;
         Ok(())
     }
 
@@ -1342,7 +1342,7 @@ impl Module {
         
         let func_entry = Function { type_idx, locals: bounded_locals, body };
         if func_idx as usize == self.functions.len() {
-            self.functions.push(func_entry);
+            self.functions.push(func_entry)?;
         } else {
             let _ = self.functions.set(func_idx as usize, func_entry).map_err(|_| Error::new(
                 ErrorCategory::Runtime,
@@ -1370,7 +1370,7 @@ impl Module {
             init: init_4096,
         };
 
-        self.data.push(runtime_data);
+        self.data.push(runtime_data)?;
         Ok(())
     }
 
@@ -1512,7 +1512,7 @@ impl Module {
             offset_expr: None, // Element segment doesn't have direct offset_expr field
             element_type: element_segment.element_type,
             items: items_resolved,
-        });
+        })?;
         Ok(())
     }
 
@@ -1540,7 +1540,7 @@ impl Module {
             memory_idx: Some(data_segment.memory_idx),
             offset_expr: None, // Simplified for now
             init: runtime_init,
-        });
+        })?;
         Ok(())
     }
 

@@ -1,6 +1,6 @@
 //! Type aliases for `no_std` compatibility
 
-use crate::prelude::{BoundedStack, BoundedVec, Debug, Eq, PartialEq, Value};
+use crate::prelude::{Debug, Eq, PartialEq, Value, BoundedVec, BoundedStack};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::safe_memory::NoStdProvider;
 
@@ -193,14 +193,14 @@ macro_rules! make_vec {
 #[macro_export]
 macro_rules! make_vec {
     () => {{
-        use wrt_foundation::{managed_alloc, budget_aware_provider::CrateId};
-        let guard = managed_alloc!(65536, CrateId::Instructions).unwrap();
+        use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
+        let guard = safe_managed_alloc!(65536, CrateId::Instructions).unwrap();
         let provider = unsafe { guard.release() };
         BoundedVec::new(provider).unwrap()
     }};
     ($($elem:expr),*) => {{
-        use wrt_foundation::{managed_alloc, budget_aware_provider::CrateId};
-        let guard = managed_alloc!(65536, CrateId::Instructions).unwrap();
+        use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
+        let guard = safe_managed_alloc!(65536, CrateId::Instructions).unwrap();
         let provider = unsafe { guard.release() };
         let mut v = BoundedVec::new(provider).unwrap();
         $(v.push($elem).unwrap();)*

@@ -8,7 +8,7 @@ use crate::{
         Future as WasmFuture, FutureHandle, FutureState, Stream as WasmStream, StreamHandle,
     },
     task_manager::{TaskId, TaskManager, TaskState},
-    ComponentInstanceId, ValType<NoStdProvider<65536>>,
+    ComponentInstanceId, ValType,
 };
 use core::{
     pin::Pin,
@@ -195,7 +195,7 @@ mod tests {
 
         // Create a Component Model future - no Rust Future trait needed!
         let future_handle = FutureHandle(1);
-        let mut wasm_future = WasmFuture::<i32>::new(future_handle, ValType<NoStdProvider<65536>>::I32);
+        let mut wasm_future = WasmFuture::<i32>::new(future_handle, ValType::I32);
 
         // Poll it manually
         let result = poll_future(&mut wasm_future, &mut task_manager);
@@ -215,7 +215,7 @@ mod tests {
 
         // Create a Component Model stream - no Rust Stream trait needed!
         let stream_handle = StreamHandle(1);
-        let mut wasm_stream = WasmStream::<String>::new(stream_handle, ValType<NoStdProvider<65536>>::String);
+        let mut wasm_stream = WasmStream::<String>::new(stream_handle, ValType::String);
 
         // Add some values
         #[cfg(feature = "std")]

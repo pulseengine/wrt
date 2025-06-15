@@ -14,17 +14,24 @@
 extern crate alloc;
 
 use wrt_component::bounded_component_infra::*;
-use wrt_foundation::{
+use wrt_foundation::{{
     bounded::{BoundedVec, BoundedString},
     managed_alloc,
     safe_memory::NoStdProvider,
     budget_provider::BudgetProvider,
     budget_aware_provider::CrateId,
     WrtError, WrtResult,
-};
+}, safe_managed_alloc};
 
 #[cfg(not(feature = "std"))]
-use wrt_foundation::bounded_collections::BoundedMap as BoundedHashMap;
+use wrt_foundation::{{
+    bounded::{BoundedVec, BoundedString},
+    managed_alloc,
+    safe_memory::NoStdProvider,
+    budget_provider::BudgetProvider,
+    budget_aware_provider::CrateId,
+    WrtError, WrtResult,
+}, safe_managed_alloc};
 
 #[cfg(test)]
 mod memory_budget_tests {
@@ -397,7 +404,7 @@ mod safety_critical_budget_tests {
         assert!(vec_result.is_ok());
         
         // Verify managed allocation is used
-        let guard_result = managed_alloc!(1024, CrateId::Component);
+        let guard_result = safe_managed_alloc!(1024, CrateId::Component);
         match guard_result {
             Ok(guard) => {
                 // Guard ensures memory is tracked

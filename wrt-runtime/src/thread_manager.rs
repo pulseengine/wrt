@@ -213,7 +213,7 @@ impl ThreadExecutionContext {
             info,
             handle: None,
             local_memory: None,
-            local_globals: new_thread_vec(),
+            local_globals: new_thread_vec()?,
             stats: ThreadExecutionStats::new(),
         })
     }
@@ -397,10 +397,19 @@ impl ThreadManager {
         }
         
         // Create thread spawn options
+        let thread_priority = match context.info.priority {
+            0..=20 => wrt_platform::threading::ThreadPriority::Idle,
+            21..=40 => wrt_platform::threading::ThreadPriority::Low,
+            41..=60 => wrt_platform::threading::ThreadPriority::Normal,
+            61..=80 => wrt_platform::threading::ThreadPriority::High,
+            81..=100 => wrt_platform::threading::ThreadPriority::Realtime,
+            _ => wrt_platform::threading::ThreadPriority::Normal, // fallback
+        };
+        
         let spawn_options = ThreadSpawnOptions {
             stack_size: Some(context.info.stack_size),
-            priority: Some(i32::from(context.info.priority)),
-            name: Some("wasm-thread"),
+            priority: Some(thread_priority),
+            name: Some("wasm-thread".to_string()),
         };
         
         // Spawn platform thread (feature-gated)
@@ -457,12 +466,12 @@ impl ThreadManager {
                 // Wait for thread completion
                 let result = if let Some(timeout) = timeout_ms {
                     let duration = core::time::Duration::from_millis(timeout);
-                    handle.join_timeout(duration)
+                    handle.join_timeout(duration).map(|opt| opt.unwrap_or_default())
                 } else {
                     handle.join()
                 };
                 
-                if let Ok(()) = result {
+                if let Ok(_result_data) = result {
                     context.update_state(ThreadState::Completed);
                 } else {
                     context.update_state(ThreadState::Failed);
@@ -493,9 +502,14 @@ impl ThreadManager {
     #[cfg(feature = "std")]
     pub fn get_active_threads(&self) -> Vec<ThreadId> {
         self.threads.iter()
-            .filter_map(|(id, context)| {
-                if context.info.is_active() {
-                    Some(*id)
+            .enumerate()
+            .filter_map(|(index, context_opt)| {
+                if let Some(context) = context_opt {
+                    if context.info.is_active() {
+                        Some(context.info.thread_id)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }

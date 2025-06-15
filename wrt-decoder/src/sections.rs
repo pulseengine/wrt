@@ -8,10 +8,7 @@
 
 use wrt_error::{errors::codes, Error, ErrorCategory, ErrorSource, Result};
 use wrt_format::{
-    binary::{self, read_leb128_i32, read_leb128_i64},
-    module::{
-        Data, DataMode, Element, Export, ExportKind, Global, Import as FormatImport, ImportDesc, Memory, Table,
-    },
+    binary::{self},
     types::ValueType as FormatValueType,
 };
 
@@ -33,17 +30,15 @@ use wrt_format::{
 };
 
 use crate::memory_optimized::{
-    check_bounds_u32, parse_string_inplace, safe_usize_conversion, validate_utf8_slice,
-    StreamingCollectionParser,
+    check_bounds_u32, safe_usize_conversion,
 };
 use crate::optimized_string::parse_utf8_string_inplace;
-use crate::prelude::{format, String, Vec};
-use wrt_foundation::safe_memory::SafeSlice;
+use crate::prelude::{Vec};
 
 // Helper functions for missing imports
 fn parse_element_segment(
-    bytes: &[u8],
-    offset: usize,
+    _bytes: &[u8],
+    _offset: usize,
 ) -> Result<(wrt_format::module::Element, usize)> {
     // Simplified element segment parsing - would need full implementation
     Err(Error::new(
@@ -53,7 +48,7 @@ fn parse_element_segment(
     ))
 }
 
-fn parse_data(bytes: &[u8], offset: usize) -> Result<(wrt_format::module::Data, usize)> {
+fn parse_data(_bytes: &[u8], _offset: usize) -> Result<(wrt_format::module::Data, usize)> {
     // Simplified data segment parsing - would need full implementation
     Err(Error::new(
         ErrorCategory::Parse,
@@ -375,7 +370,7 @@ pub mod parsers {
         offset += 1;
 
         let element_type =
-            wrt_format::conversion::parse_value_type(element_type_byte).map_err(|e| {
+            wrt_format::conversion::parse_value_type(element_type_byte).map_err(|_e| {
                 Error::new(
                     ErrorCategory::Parse,
                     codes::INVALID_TYPE,
@@ -469,7 +464,7 @@ pub mod parsers {
         let mutability_byte = bytes[offset];
         offset += 1;
 
-        let value_type = wrt_format::conversion::parse_value_type(val_type_byte).map_err(|e| {
+        let value_type = wrt_format::conversion::parse_value_type(val_type_byte).map_err(|_e| {
             Error::new(
                 ErrorCategory::Parse,
                 codes::INVALID_TYPE,
@@ -551,7 +546,7 @@ pub mod parsers {
             let init_expr_bytes = &bytes[init_expr_start..end_idx + 1]; // Slice includes the END opcode
             offset = end_idx + 1; // Update main offset to after the init_expr
 
-            let format_global = wrt_format::module::Global {
+            let _format_global = wrt_format::module::Global {
                 global_type: format_global_type,
                 init: init_expr_bytes.to_vec(),
             };

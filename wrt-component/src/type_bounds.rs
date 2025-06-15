@@ -23,7 +23,7 @@ use crate::types::Value as ComponentValue;
 
 use crate::{
     generative_types::{BoundKind, TypeBound},
-    types::{ComponentError, TypeId, ValType<NoStdProvider<65536>>},
+    types::{ComponentError, TypeId, ValType},
 };
 
 #[derive(Debug, Clone, PartialEq)]

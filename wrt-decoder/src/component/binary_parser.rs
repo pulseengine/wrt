@@ -11,12 +11,10 @@
 #[cfg(feature = "std")]
 mod component_binary_parser {
     // Environment-specific imports with conditional compilation
-    use std::{format, vec::Vec};
 
     use core::fmt;
     use wrt_error::{codes, Error, ErrorCategory, Result};
-    use wrt_format::{binary, component::Component};
-    use wrt_foundation::traits::Validatable;
+    use wrt_format::{component::Component};
 
     // Import ValidationLevel from foundation if available, otherwise define locally
     pub use wrt_foundation::VerificationLevel as ValidationLevel;
@@ -282,7 +280,7 @@ mod component_binary_parser {
                 .ok_or_else(|| Error::parse_error("Unknown component section ID"))?;
 
             // Read section size (LEB128)
-            let (section_size, size_bytes) = self.read_leb128_u32(bytes)?;
+            let (section_size, _size_bytes) = self.read_leb128_u32(bytes)?;
 
             // Validate section size
             if self.offset + section_size as usize > self.size {

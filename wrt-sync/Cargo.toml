@@ -34,14 +34,20 @@ default = [] # No features enabled by default, ensuring no_std without alloc
 # Binary choice: std OR no_std (no alloc middle ground)
 std = ["dep:parking_lot"]
 no_std = []
+
+# Allocation support for no_std environments
+alloc = []
 # Disable panic handler for library builds to avoid conflicts
-disable-panic-handler = []
 
 # Feature for Kani verification (optional)
 kani = ["dep:kani-verifier"]
 
 # Potentially a feature for platform-specific futex support via wrt-platform
 # platform-futex = ["wrt-platform"] # Assuming wrt-platform is a dependency
+safety-asil-b = []
+safety-asil-c = ["safety-asil-b"]
+safety-asil-d = ["safety-asil-c"]
+
 
 [lints.rust]
 unsafe_code = "allow"

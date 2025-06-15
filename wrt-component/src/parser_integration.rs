@@ -21,7 +21,7 @@ use crate::{
     component::Component,
     execution_engine::ComponentExecutionEngine,
     instantiation::{ImportValues, InstantiationContext},
-    types::{ComponentInstance, ValType<NoStdProvider<65536>>, Value},
+    types::{ComponentInstance, ValType, Value},
     WrtResult,
 };
 

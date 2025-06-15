@@ -8,7 +8,6 @@
 //! sections in WebAssembly Component Model binaries.
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_foundation::NoStdProvider;
 
 #[cfg(feature = "std")]
 use wrt_format::component::Sort;

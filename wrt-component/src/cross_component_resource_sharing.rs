@@ -67,7 +67,7 @@ impl fmt::Display for ResourceSharingError {
 #[cfg(feature = "std")]
 impl std::error::Error for ResourceSharingError {}
 
-pub type ResourceSharingcore::result::Result<T> = Result<T, ResourceSharingError>;
+pub type ResourceSharingResult<T> = Result<T, ResourceSharingError>;
 
 #[derive(Debug, Clone)]
 pub struct SharingAgreement {

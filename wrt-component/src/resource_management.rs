@@ -4,7 +4,6 @@
 //! Component Model, including resource handles, lifecycle management, and
 //! resource tables.
 
-use crate::prelude::*;
 use wrt_foundation::bounded::BoundedVec;
 
 /// Invalid resource handle constant

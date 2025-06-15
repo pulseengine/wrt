@@ -15,7 +15,7 @@ use std::{collections::HashMap, vec::Vec};
 #[cfg(feature = "std")]
 use wrt_format::component::{
     Alias, AliasTarget, Canon, CanonOperation, Component, ComponentType, ComponentTypeDefinition,
-    Export, ExternType, Import, Instance, Sort, ValType,
+    Export, ExternType, Import, Instance, Sort,
 };
 
 // Import component model types from crate

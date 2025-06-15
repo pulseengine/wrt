@@ -1,8 +1,13 @@
+/// Type Conversion Registry
+///
+/// This module implements a central registry for type conversions between
+/// different representations across the WebAssembly Runtime.
+
 #[cfg(feature = "std")]
 use std::{
     any::{Any, TypeId},
     boxed::Box,
-    collections::BTreeMap as HashMap,
+    collections::HashMap,
     fmt,
     marker::PhantomData,
     sync::Arc,
@@ -19,20 +24,6 @@ use core::{
     any::{Any, TypeId},
     fmt,
     marker::PhantomData,
-};
-/// Type Conversion Registry
-///
-/// This module implements a central registry for type conversions between
-/// different representations across the WebAssembly Runtime.
-
-#[cfg(feature = "std")]
-use std::{
-    any::{Any, TypeId},
-    boxed::Box,
-    collections::HashMap,
-    fmt,
-    marker::PhantomData,
-    sync::Arc,
 };
 
 /// Error type for conversion operations

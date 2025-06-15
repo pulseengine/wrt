@@ -26,7 +26,7 @@ use wrt_foundation::{
 use crate::async_::async_types::{StreamHandle, FutureHandle, ErrorContextHandle};
 use crate::types::{Value};
 // Note: ComponentInstanceId and TypeId may not exist - using placeholders
-pub type ComponentInstanceId = u32;
+pub use crate::types::ComponentInstanceId;
 pub type TypeId = u32;
 
 use wrt_error::{Error, ErrorCategory, Result};

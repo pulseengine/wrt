@@ -9,7 +9,7 @@
 //! interceptors, and other configuration options.
 
 // Use the prelude for consistent imports
-use crate::prelude::{Any, BuiltinType, CallbackRegistry, CallbackType, Error, HashSet, HostFunctionHandler, Result, Value, str, managed_alloc};
+use crate::prelude::{Any, BuiltinType, CallbackRegistry, CallbackType, Error, HashSet, HostFunctionHandler, Result, Value, str};
 
 #[cfg(feature = "std")]
 use crate::prelude::{Arc, BuiltinHost, BuiltinInterceptor, LinkInterceptor};
@@ -86,9 +86,9 @@ impl Default for HostBuilder {
         #[cfg(not(feature = "std"))]
         {
             // TODO: Specify appropriate size for this allocation
-            use wrt_foundation::{managed_alloc, CrateId};
+            use wrt_foundation::{safe_managed_alloc, CrateId};
             
-            let guard = managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).unwrap_or_else(|_| panic!("Failed to allocate memory for HostBuilder"));
+            let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).unwrap_or_else(|_| panic!("Failed to allocate memory for HostBuilder"));
             Self {
                 registry: CallbackRegistry::new(),
                 required_builtins: wrt_foundation::BoundedSet::new(guard.provider().clone()).unwrap_or_else(|_| panic!("Failed to create builtins set")),
@@ -182,8 +182,8 @@ impl HostBuilder {
             let args: ValueVec = Vec::new();
             #[cfg(not(feature = "std"))]
             let args: ValueVec = {
-                use wrt_foundation::{managed_alloc, CrateId};
-                let guard = managed_alloc!(65536, CrateId::Host).unwrap();
+                use wrt_foundation::{safe_managed_alloc, CrateId};
+                let guard = safe_managed_alloc!(65536, CrateId::Host).unwrap();
                 ValueVec::new(guard.provider().clone()).unwrap()
             };
             handler(target, args)
@@ -314,8 +314,8 @@ impl HostBuilder {
             let args: ValueVec = Vec::new();
             #[cfg(not(feature = "std"))]
             let args: ValueVec = {
-                use wrt_foundation::{managed_alloc, CrateId};
-                let guard = managed_alloc!(65536, CrateId::Host).unwrap();
+                use wrt_foundation::{safe_managed_alloc, CrateId};
+                let guard = safe_managed_alloc!(65536, CrateId::Host).unwrap();
                 ValueVec::new(guard.provider().clone()).unwrap()
             };
             handler(target, args)

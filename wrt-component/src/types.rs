@@ -14,7 +14,7 @@ use std::{string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::string::String;
 
-use wrt_foundation::{bounded::BoundedVec, prelude::*, traits::{Checksummable, ToBytes, FromBytes}};
+use wrt_foundation::{bounded::{BoundedVec, BoundedString}, prelude::*, traits::{Checksummable, ToBytes, FromBytes}};
 
 use crate::{
     components::component::Component,
@@ -33,7 +33,13 @@ pub struct StreamHandle(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FutureHandle(pub u32);
 
-/// Represents an instantiated component
+/// Canonical ComponentInstance definition for ASIL-D type safety
+/// 
+/// This is the single source of truth for ComponentInstance across the codebase
+/// to ensure type consistency and prevent safety violations.
+///
+/// SW-REQ-ID: REQ_TYPE_001 - Unified type definitions
+/// SW-REQ-ID: REQ_SAFETY_002 - Type safety enforcement
 #[derive(Debug, Clone)]
 pub struct ComponentInstance {
     /// Unique instance ID
@@ -46,28 +52,28 @@ pub struct ComponentInstance {
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub imports: Vec<ResolvedImport>,
     #[cfg(not(any(feature = "std", )))]
-    pub imports: BoundedVec<ResolvedImport, 256, wrt_foundation::safe_memory::NoStdProvider<65536>>,
+    pub imports: BoundedVec<ResolvedImport, 256, crate::bounded_component_infra::ComponentProvider>,
     /// Resolved exports from this instance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     pub exports: WrtVec<ResolvedExport, {CrateId::Component as u8}, 256>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub exports: Vec<ResolvedExport>,
     #[cfg(not(any(feature = "std", )))]
-    pub exports: BoundedVec<ResolvedExport, 256, wrt_foundation::safe_memory::NoStdProvider<65536>>,
+    pub exports: BoundedVec<ResolvedExport, 256, crate::bounded_component_infra::ComponentProvider>,
     /// Resource tables for this instance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     pub resource_tables: WrtVec<ResourceTable, {CrateId::Component as u8}, 16>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub resource_tables: Vec<ResourceTable>,
     #[cfg(not(any(feature = "std", )))]
-    pub resource_tables: BoundedVec<ResourceTable, 16, wrt_foundation::safe_memory::NoStdProvider<65536>>,
+    pub resource_tables: BoundedVec<ResourceTable, 16, crate::bounded_component_infra::ComponentProvider>,
     /// Module instances embedded in this component
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     pub module_instances: WrtVec<ModuleInstance, {CrateId::Component as u8}, 64>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub module_instances: Vec<ModuleInstance>,
     #[cfg(not(any(feature = "std", )))]
-    pub module_instances: BoundedVec<ModuleInstance, 64, wrt_foundation::safe_memory::NoStdProvider<65536>>,
+    pub module_instances: BoundedVec<ModuleInstance, 64, crate::bounded_component_infra::ComponentProvider>,
 }
 
 /// State of a component instance
@@ -93,7 +99,7 @@ impl Default for ComponentInstanceState {
 
 /// Component model value type
 #[derive(Debug, Clone, PartialEq)]
-pub enum ValType<NoStdProvider<65536>> {
+pub enum ValType {
     /// Boolean type
     Bool,
     /// Signed 8-bit integer
@@ -121,7 +127,7 @@ pub enum ValType<NoStdProvider<65536>> {
     /// String type
     String,
     /// List type with element type
-    List(Box<ValType<NoStdProvider<65536>>>),
+    List(Box<ValType>),
     /// Record type with named fields
     Record(Record),
     /// Tuple type with element types
@@ -131,7 +137,7 @@ pub enum ValType<NoStdProvider<65536>> {
     /// Enum type with cases
     Enum(Enum),
     /// Option type with payload
-    Option(Box<ValType<NoStdProvider<65536>>>),
+    Option(Box<ValType>),
     /// Result type with ok/error types
     Result(Result_),
     /// Flags type with bitfields
@@ -141,9 +147,9 @@ pub enum ValType<NoStdProvider<65536>> {
     /// Borrowed resource
     Borrow(u32),
     /// Stream type with element type
-    Stream(Box<ValType<NoStdProvider<65536>>>),
+    Stream(Box<ValType>),
     /// Future type with value type
-    Future(Box<ValType<NoStdProvider<65536>>>),
+    Future(Box<ValType>),
 }
 
 /// Record type definition
@@ -152,7 +158,7 @@ pub struct Record {
     #[cfg(feature = "std")]
     pub fields: Vec<Field>,
     #[cfg(not(any(feature = "std", )))]
-    pub fields: BoundedVec<Field, 64, wrt_foundation::safe_memory::NoStdProvider<65536>>,
+    pub fields: BoundedVec<Field, 64, crate::bounded_component_infra::ComponentProvider>,
 }
 
 /// Field in a record
@@ -161,17 +167,17 @@ pub struct Field {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<65536>>,
-    pub ty: ValType<NoStdProvider<65536>>,
+    pub name: BoundedString<64, crate::bounded_component_infra::ComponentProvider>,
+    pub ty: ValType,
 }
 
 /// Tuple type definition
 #[derive(Debug, Clone, PartialEq)]
 pub struct Tuple {
     #[cfg(feature = "std")]
-    pub types: Vec<ValType<NoStdProvider<65536>>>,
+    pub types: Vec<ValType>,
     #[cfg(not(any(feature = "std", )))]
-    pub types: BoundedVec<ValType<NoStdProvider<65536>>, 32, wrt_foundation::safe_memory::NoStdProvider<65536>>,
+    pub types: BoundedVec<ValType, 32, crate::bounded_component_infra::ComponentProvider>,
 }
 
 /// Variant type definition
@@ -180,7 +186,7 @@ pub struct Variant {
     #[cfg(feature = "std")]
     pub cases: Vec<Case>,
     #[cfg(not(any(feature = "std", )))]
-    pub cases: BoundedVec<Case, 64, wrt_foundation::safe_memory::NoStdProvider<65536>>,
+    pub cases: BoundedVec<Case, 64, crate::bounded_component_infra::ComponentProvider>,
 }
 
 /// Case in a variant
@@ -189,8 +195,8 @@ pub struct Case {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<65536>>,
-    pub ty: Option<ValType<NoStdProvider<65536>>>,
+    pub name: BoundedString<64, crate::bounded_component_infra::ComponentProvider>,
+    pub ty: Option<ValType>,
     pub refines: Option<u32>,
 }
 
@@ -200,14 +206,14 @@ pub struct Enum {
     #[cfg(feature = "std")]
     pub cases: Vec<String>,
     #[cfg(not(any(feature = "std", )))]
-    pub cases: BoundedVec<BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<65536>>, 64, wrt_foundation::safe_memory::NoStdProvider<65536>>,
+    pub cases: BoundedVec<BoundedString<64, crate::bounded_component_infra::ComponentProvider>, 64, crate::bounded_component_infra::ComponentProvider>,
 }
 
 /// Result type definition (renamed to avoid conflict with std::result::Result)
 #[derive(Debug, Clone, PartialEq)]
 pub struct Result_ {
-    pub ok: Option<Box<ValType<NoStdProvider<65536>>>>,
-    pub err: Option<Box<ValType<NoStdProvider<65536>>>>,
+    pub ok: Option<Box<ValType>>,
+    pub err: Option<Box<ValType>>,
 }
 
 /// Flags type definition
@@ -216,7 +222,7 @@ pub struct Flags {
     #[cfg(feature = "std")]
     pub labels: Vec<String>,
     #[cfg(not(any(feature = "std", )))]
-    pub labels: BoundedVec<BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<65536>>, 64, wrt_foundation::safe_memory::NoStdProvider<65536>>,
+    pub labels: BoundedVec<BoundedString<64, crate::bounded_component_infra::ComponentProvider>, 64, crate::bounded_component_infra::ComponentProvider>,
 }
 
 /// Component model value
@@ -247,22 +253,22 @@ pub enum Value {
     /// Character value
     Char(char),
     /// String value
-    String(BoundedString<1024, wrt_foundation::safe_memory::NoStdProvider<65536>>),
+    String(BoundedString<1024, crate::bounded_component_infra::ComponentProvider>),
     /// List value
     #[cfg(feature = "std")]
     List(Vec<Value>),
     #[cfg(not(any(feature = "std", )))]
-    List(BoundedVec<Value, 256, wrt_foundation::safe_memory::NoStdProvider<65536>>),
+    List(BoundedVec<Value, 256, crate::bounded_component_infra::ComponentProvider>),
     /// Record value
     #[cfg(feature = "std")]
     Record(Vec<Value>),
     #[cfg(not(any(feature = "std", )))]
-    Record(BoundedVec<Value, 64, wrt_foundation::safe_memory::NoStdProvider<65536>>),
+    Record(BoundedVec<Value, 64, crate::bounded_component_infra::ComponentProvider>),
     /// Tuple value
     #[cfg(feature = "std")]
     Tuple(Vec<Value>),
     #[cfg(not(any(feature = "std", )))]
-    Tuple(BoundedVec<Value, 32, wrt_foundation::safe_memory::NoStdProvider<65536>>),
+    Tuple(BoundedVec<Value, 32, crate::bounded_component_infra::ComponentProvider>),
     /// Variant value
     Variant { discriminant: u32, value: Option<Box<Value>> },
     /// Enum value
@@ -572,8 +578,73 @@ macro_rules! impl_basic_traits {
     };
 }
 
+// Default implementations for complex types
+impl Default for ValType {
+    fn default() -> Self {
+        ValType::Bool
+    }
+}
+
+impl Default for Record {
+    fn default() -> Self {
+        Self {
+            #[cfg(feature = "std")]
+            fields: Vec::new(),
+            #[cfg(not(any(feature = "std", )))]
+            fields: BoundedVec::new(crate::bounded_component_infra::ComponentProvider::default()).unwrap(),
+        }
+    }
+}
+
+impl Default for Field {
+    fn default() -> Self {
+        Self {
+            #[cfg(feature = "std")]
+            name: String::new(),
+            #[cfg(not(any(feature = "std", )))]
+            name: BoundedString::new(crate::bounded_component_infra::ComponentProvider::default()),
+            ty: ValType::default(),
+        }
+    }
+}
+
+impl Default for Tuple {
+    fn default() -> Self {
+        Self {
+            #[cfg(feature = "std")]
+            types: Vec::new(),
+            #[cfg(not(any(feature = "std", )))]
+            types: BoundedVec::new(crate::bounded_component_infra::ComponentProvider::default()).unwrap(),
+        }
+    }
+}
+
+impl Default for Variant {
+    fn default() -> Self {
+        Self {
+            #[cfg(feature = "std")]
+            cases: Vec::new(),
+            #[cfg(not(any(feature = "std", )))]
+            cases: BoundedVec::new(crate::bounded_component_infra::ComponentProvider::default()).unwrap(),
+        }
+    }
+}
+
+impl Default for Case {
+    fn default() -> Self {
+        Self {
+            #[cfg(feature = "std")]
+            name: String::new(),
+            #[cfg(not(any(feature = "std", )))]
+            name: BoundedString::new(crate::bounded_component_infra::ComponentProvider::default()),
+            ty: None,
+            refines: None,
+        }
+    }
+}
+
 // Apply macro to all complex types
-impl_basic_traits!(ValType<NoStdProvider<65536>>, ValType<NoStdProvider<65536>>::default());
+impl_basic_traits!(ValType, ValType::default());
 impl_basic_traits!(Record, Record::default());
 impl_basic_traits!(Field, Field::default());
 impl_basic_traits!(Tuple, Tuple::default());

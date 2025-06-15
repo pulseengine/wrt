@@ -20,7 +20,7 @@ use crate::{
     canonical::CanonicalAbi,
     execution_engine::{ComponentExecutionEngine, HostFunction},
     resource_lifecycle::ResourceLifecycleManager,
-    types::{ComponentInstance, ValType<NoStdProvider<65536>>, Value},
+    types::{ComponentInstance, ValType, Value},
     WrtResult,
 };
 

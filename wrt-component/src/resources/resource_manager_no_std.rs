@@ -12,7 +12,6 @@ use alloc::{boxed::Box, string::String, sync::Arc};
 use std::sync::Arc;
 
 use super::{MemoryStrategy, Resource, ResourceArena, ResourceTable, VerificationLevel};
-use crate::prelude::*;
 
 /// Unique identifier for a resource
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

@@ -27,7 +27,7 @@ use crate::{
         CanonicalAbi, CanonicalOptions, ResourceHandle, ResourceLifecycleManager,
         ComponentRuntimeBridge, RuntimeBridgeConfig,
     },
-    types::{ValType<NoStdProvider<65536>>, Value},
+    types::{ValType, Value},
 };
 
 use wrt_foundation::WrtResult;

@@ -29,16 +29,16 @@ default = []
 std = ["wrt-foundation/std", "wrt-sync/std", "log"]
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
+
+# Allocation support for no_std environments
+alloc = ["wrt-foundation/alloc"]
 optimize = ["wrt-foundation/optimize"]
-safety = ["wrt-foundation/safety", "std"]
+safety-asil-b = ["wrt-foundation/safety-asil-b", "std"]
 kani = ["dep:kani-verifier"]
 
-# Disable panic handler for library builds to avoid conflicts
-disable-panic-handler = [
-    "wrt-error/disable-panic-handler",
-    "wrt-foundation/disable-panic-handler",
-    "wrt-sync/disable-panic-handler"
-]
+safety-asil-c = ["safety-asil-b"]
+safety-asil-d = ["safety-asil-c"]
+
 
 [lints]
 rust.unexpected_cfgs = { level = "allow", check-cfg = ['cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }

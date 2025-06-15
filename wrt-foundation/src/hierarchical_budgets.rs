@@ -331,6 +331,7 @@ impl<const N: usize> Drop for HierarchicalGuard<N> {
         #[allow(unsafe_code)] // Safe: pointer is valid during guard lifetime, null check performed
         unsafe {
             if !self.budget.is_null() {
+                // Intentionally ignore errors in Drop to avoid panic
                 let _ = (*self.budget).deallocate(self.sub_budget_idx, N);
             }
         }

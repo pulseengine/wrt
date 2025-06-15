@@ -20,12 +20,12 @@ fn test_source_span() {
 #[test]
 fn test_identifier() {
     use wrt_format::wit_parser::WitBoundedString;
-    use wrt_foundation::NoStdProvider;
+    use wrt_foundation::{NoStdProvider, safe_managed_alloc};
     
     // TODO: Specify appropriate size for this allocation
 
     
-    let guard = managed_alloc!(8192, CrateId::Format)?;
+    let guard = safe_managed_alloc!(8192, CrateId::Format)?;
 
     
     let provider = unsafe { guard.release() };
@@ -77,12 +77,12 @@ fn test_type_expr() {
     
     // Test that we can create a named type
     use wrt_format::wit_parser::WitBoundedString;
-    use wrt_foundation::NoStdProvider;
+    use wrt_foundation::{NoStdProvider, safe_managed_alloc};
     
     // TODO: Specify appropriate size for this allocation
 
     
-    let guard = managed_alloc!(8192, CrateId::Format)?;
+    let guard = safe_managed_alloc!(8192, CrateId::Format)?;
 
     
     let provider = unsafe { guard.release() };

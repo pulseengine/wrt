@@ -59,7 +59,7 @@
 //! assert_eq!(result, Value::I32(42));
 //! ```
 
-use crate::prelude::{BoundedCapacity, Debug, Error, PartialEq, PureInstruction, Result, Value, ValueType};
+use crate::prelude::{Debug, Error, PartialEq, PureInstruction, Result, Value, ValueType, BoundedCapacity};
 use crate::validation::{Validate, ValidationContext, validate_memory_op};
 
 

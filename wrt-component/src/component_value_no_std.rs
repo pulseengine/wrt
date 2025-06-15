@@ -8,26 +8,26 @@
 //! This module provides implementations for Component Model value types
 //! in a no_std environment, using bounded collections for safety.
 
-use wrt_format::component::ValType<NoStdProvider<65536>> as FormatValType<NoStdProvider<65536>>;
+use wrt_format::component::ValType as FormatValType;
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_COMPONENT_TYPES},
-    // component_value::{ComponentValue, ValType<NoStdProvider<65536>> as TypesValType<NoStdProvider<65536>>, ValType<NoStdProvider<65536>>Ref}, // Commented out - std only
+    // component_value::{ComponentValue, ValType as TypesValType, ValTypeRef}, // Commented out - std only
     traits::{ReadStream, WriteStream},
     values::Value,
 };
 
 // Temporary no_std compatible types until component_value is available in no_std
 pub type ComponentValue = Value; // Use Value instead of ComponentValue for no_std
-pub type ValType<NoStdProvider<65536>>Ref = u32;
-type TypesValType<NoStdProvider<65536>> = crate::types::ValType<NoStdProvider<65536>>;
+pub type ValTypeRef = u32;
+type TypesValType = crate::types::ValType;
 
 use crate::prelude::*;
 
 // Maximum size for serialized component values
 pub const MAX_SERIALIZED_VALUE_SIZE: usize = 4096;
 
-// Use TypesValType<NoStdProvider<65536>> for the canonical ValType
-type CanonicalValType<NoStdProvider<65536>> = TypesValType<NoStdProvider<65536>>;
+// Use TypesValType for the canonical ValType
+type CanonicalValType = TypesValType;
 
 /// Serialize a ComponentValue to a bounded buffer in a no_std environment
 pub fn serialize_component_value_no_std(
@@ -527,29 +527,29 @@ pub fn serialize_component_value_no_std(
     Ok(buffer)
 }
 
-/// Convert ValType<NoStdProvider<65536>> from wrt_foundation to FormatValType<NoStdProvider<65536>> from wrt_format
+/// Convert ValType from wrt_foundation to FormatValType from wrt_format
 /// This function is adapted for no_std environments
 pub fn convert_valtype_to_format<P: MemoryProvider + Default + Clone + PartialEq + Eq>(
     val_type: &TypesValType<P>,
-) -> Result<FormatValType<NoStdProvider<65536>> {
+) -> Result<FormatValType {
     match val_type {
-        TypesValType<NoStdProvider<65536>>::Bool => Ok(FormatValType<NoStdProvider<65536>>::Bool),
-        TypesValType<NoStdProvider<65536>>::S8 => Ok(FormatValType<NoStdProvider<65536>>::S8),
-        TypesValType<NoStdProvider<65536>>::U8 => Ok(FormatValType<NoStdProvider<65536>>::U8),
-        TypesValType<NoStdProvider<65536>>::S16 => Ok(FormatValType<NoStdProvider<65536>>::S16),
-        TypesValType<NoStdProvider<65536>>::U16 => Ok(FormatValType<NoStdProvider<65536>>::U16),
-        TypesValType<NoStdProvider<65536>>::S32 => Ok(FormatValType<NoStdProvider<65536>>::S32),
-        TypesValType<NoStdProvider<65536>>::U32 => Ok(FormatValType<NoStdProvider<65536>>::U32),
-        TypesValType<NoStdProvider<65536>>::S64 => Ok(FormatValType<NoStdProvider<65536>>::S64),
-        TypesValType<NoStdProvider<65536>>::U64 => Ok(FormatValType<NoStdProvider<65536>>::U64),
-        TypesValType<NoStdProvider<65536>>::F32 => Ok(FormatValType<NoStdProvider<65536>>::F32),
-        TypesValType<NoStdProvider<65536>>::F64 => Ok(FormatValType<NoStdProvider<65536>>::F64),
-        TypesValType<NoStdProvider<65536>>::Char => Ok(FormatValType<NoStdProvider<65536>>::Char),
-        TypesValType<NoStdProvider<65536>>::String => Ok(FormatValType<NoStdProvider<65536>>::String),
-        TypesValType<NoStdProvider<65536>>::Ref(idx) => Ok(FormatValType<NoStdProvider<65536>>::Ref(*idx)),
+        TypesValType::Bool => Ok(FormatValType::Bool),
+        TypesValType::S8 => Ok(FormatValType::S8),
+        TypesValType::U8 => Ok(FormatValType::U8),
+        TypesValType::S16 => Ok(FormatValType::S16),
+        TypesValType::U16 => Ok(FormatValType::U16),
+        TypesValType::S32 => Ok(FormatValType::S32),
+        TypesValType::U32 => Ok(FormatValType::U32),
+        TypesValType::S64 => Ok(FormatValType::S64),
+        TypesValType::U64 => Ok(FormatValType::U64),
+        TypesValType::F32 => Ok(FormatValType::F32),
+        TypesValType::F64 => Ok(FormatValType::F64),
+        TypesValType::Char => Ok(FormatValType::Char),
+        TypesValType::String => Ok(FormatValType::String),
+        TypesValType::Ref(idx) => Ok(FormatValType::Ref(*idx)),
         // Complex types like Record, Variant, List, etc. are not fully implemented
         // for no_std but would follow the same pattern, converting each nested type
-        TypesValType<NoStdProvider<65536>>::Void => Ok(FormatValType<NoStdProvider<65536>>::Tuple(Vec::new())),
+        TypesValType::Void => Ok(FormatValType::Tuple(Vec::new())),
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::TYPE_CONVERSION_ERROR,
@@ -558,26 +558,26 @@ pub fn convert_valtype_to_format<P: MemoryProvider + Default + Clone + PartialEq
     }
 }
 
-/// Convert FormatValType<NoStdProvider<65536>> from wrt_format to ValType<NoStdProvider<65536>> from wrt_foundation
+/// Convert FormatValType from wrt_format to ValType from wrt_foundation
 /// This function is adapted for no_std environments
 pub fn convert_format_to_valtype<P: MemoryProvider + Default + Clone + PartialEq + Eq>(
-    format_type: &FormatValType<NoStdProvider<65536>>,
+    format_type: &FormatValType,
 ) -> Result<TypesValType<P>> {
     match format_type {
-        FormatValType<NoStdProvider<65536>>::Bool => Ok(TypesValType<NoStdProvider<65536>>::Bool),
-        FormatValType<NoStdProvider<65536>>::S8 => Ok(TypesValType<NoStdProvider<65536>>::S8),
-        FormatValType<NoStdProvider<65536>>::U8 => Ok(TypesValType<NoStdProvider<65536>>::U8),
-        FormatValType<NoStdProvider<65536>>::S16 => Ok(TypesValType<NoStdProvider<65536>>::S16),
-        FormatValType<NoStdProvider<65536>>::U16 => Ok(TypesValType<NoStdProvider<65536>>::U16),
-        FormatValType<NoStdProvider<65536>>::S32 => Ok(TypesValType<NoStdProvider<65536>>::S32),
-        FormatValType<NoStdProvider<65536>>::U32 => Ok(TypesValType<NoStdProvider<65536>>::U32),
-        FormatValType<NoStdProvider<65536>>::S64 => Ok(TypesValType<NoStdProvider<65536>>::S64),
-        FormatValType<NoStdProvider<65536>>::U64 => Ok(TypesValType<NoStdProvider<65536>>::U64),
-        FormatValType<NoStdProvider<65536>>::F32 => Ok(TypesValType<NoStdProvider<65536>>::F32),
-        FormatValType<NoStdProvider<65536>>::F64 => Ok(TypesValType<NoStdProvider<65536>>::F64),
-        FormatValType<NoStdProvider<65536>>::Char => Ok(TypesValType<NoStdProvider<65536>>::Char),
-        FormatValType<NoStdProvider<65536>>::String => Ok(TypesValType<NoStdProvider<65536>>::String),
-        FormatValType<NoStdProvider<65536>>::Ref(idx) => Ok(TypesValType<NoStdProvider<65536>>::Ref(*idx)),
+        FormatValType::Bool => Ok(TypesValType::Bool),
+        FormatValType::S8 => Ok(TypesValType::S8),
+        FormatValType::U8 => Ok(TypesValType::U8),
+        FormatValType::S16 => Ok(TypesValType::S16),
+        FormatValType::U16 => Ok(TypesValType::U16),
+        FormatValType::S32 => Ok(TypesValType::S32),
+        FormatValType::U32 => Ok(TypesValType::U32),
+        FormatValType::S64 => Ok(TypesValType::S64),
+        FormatValType::U64 => Ok(TypesValType::U64),
+        FormatValType::F32 => Ok(TypesValType::F32),
+        FormatValType::F64 => Ok(TypesValType::F64),
+        FormatValType::Char => Ok(TypesValType::Char),
+        FormatValType::String => Ok(TypesValType::String),
+        FormatValType::Ref(idx) => Ok(TypesValType::Ref(*idx)),
         // Complex types like Record, Variant, List, etc. are not fully implemented
         // for no_std but would follow the same pattern, converting each nested type
         _ => Err(Error::new(
@@ -615,12 +615,12 @@ mod tests {
         use wrt_foundation::safe_memory::NoStdProvider<65536>;
 
         // Test bool conversion
-        let bool_type = TypesValType<NoStdProvider<65536>>::<NoStdProvider::<65536>>::Bool;
+        let bool_type = TypesValType::<NoStdProvider::<65536>>::Bool;
         let format_type = convert_valtype_to_format(&bool_type).unwrap();
-        assert!(matches!(format_type, FormatValType<NoStdProvider<65536>>::Bool));
+        assert!(matches!(format_type, FormatValType::Bool));
 
         let converted_back =
             convert_format_to_valtype::<NoStdProvider::<65536>>(&format_type).unwrap();
-        assert!(matches!(converted_back, TypesValType<NoStdProvider<65536>>::Bool));
+        assert!(matches!(converted_back, TypesValType::Bool));
     }
 }

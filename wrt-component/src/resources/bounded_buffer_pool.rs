@@ -7,7 +7,6 @@ use wrt_foundation::bounded::BoundedVec;
 use wrt_foundation::budget_aware_provider::CrateId;
 use wrt_foundation::wrt_memory_system::WrtProviderFactory;
 
-use crate::prelude::*;
 
 /// Maximum number of buffer size classes
 pub const MAX_BUFFER_SIZE_CLASSES: usize = 8;

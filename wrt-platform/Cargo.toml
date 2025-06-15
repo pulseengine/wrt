@@ -21,6 +21,9 @@ readme = "README.md"
 keywords = ["webassembly", "wasm", "runtime", "platform", "memory", "sync"]
 categories = ["wasm", "os"]
 
+[lints]
+workspace = true
+
 [dependencies]
 wrt-error = { workspace = true } # Assuming wrt-error is in workspace.dependencies
 wrt-sync = { workspace = true } # Add wrt-sync for synchronization primitives
@@ -45,6 +48,9 @@ no_std = []
 # Feature for threading support (requires std)
 threading = ["std"] # , "wrt-foundation"]
 
+# Test utilities (for testing random number generation, etc.)
+test-utils = []
+
 # libc dependency removed - using direct syscalls instead
 
 # Platform-specific features
@@ -52,26 +58,25 @@ platform-macos = [] # platform-macos no longer activates alloc by default
 platform-linux = [] # Linux support with direct syscalls
 linux-mte = [] # Enhanced ARM64 MTE support for Linux
 platform-qnx = [] # QNX Neutrino RTOS support
-platform-zephyr = [] # Zephyr RTOS support
 platform-tock = [] # Tock OS support
+platform-zephyr = [] # Zephyr RTOS support
 platform-vxworks = [] # VxWorks RTOS support (LKM and RTP)
 # platform-baremetal = []
 # arm-hardening = [] # If any platform code depends on this
 helper-mode = [] # Added for C-ABI runtime
-disable-panic-handler = ["wrt-error/disable-panic-handler", "wrt-sync/disable-panic-handler"] # Disable panic handler for library builds
 enable-panic-handler = ["dep:wrt-panic", "wrt-panic/default-panic-handler"] # Enable basic panic handler for standalone no_std builds
 dev-panic-handler = ["dep:wrt-panic", "wrt-panic/dev", "wrt-panic/default-panic-handler"] # Development panic handler with debugging
 asil-b-panic-handler = ["dep:wrt-panic", "wrt-panic/asil-b", "wrt-panic/default-panic-handler"] # ASIL-B compliant panic handler
 asil-d-panic-handler = ["dep:wrt-panic", "wrt-panic/asil-d", "wrt-panic/default-panic-handler"] # ASIL-D compliant panic handler
+safety-asil-b = []
+safety-asil-c = ["safety-asil-b"]
+safety-asil-d = ["safety-asil-c"]
+kani = []
+
 
 [lib]
 crate-type = ["rlib", "staticlib"] # staticlib for C ABI helper if needed later
 
 [[bench]]
 name = "cfi_performance_benchmarks"
-harness = false
-
-[lints.rust]
-unsafe_code = "allow"
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)', 'cfg(target_feature, values("shstk", "pku"))'] }
-# Add other lints as needed, consistent with workspace 
+harness = false 

@@ -17,7 +17,7 @@ use wrt_foundation::allocator::{WrtHashMap as HashMap, WrtVec, CrateId};
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
 use std::collections::HashMap;
 #[cfg(not(feature = "std"))]
-use alloc::{sync::Arc, collections::BTreeMap as HashMap};
+use alloc::{sync::Arc, collections::BTreeMap as HashMap, format};
 
 #[cfg(feature = "std")]
 use std::sync::{Arc, Mutex, RwLock};
@@ -32,7 +32,6 @@ use crate::resources::bounded_buffer_pool::BoundedBufferPool;
 
 use crate::{
     memory_layout::{calculate_layout, MemoryLayout},
-    prelude::*,
     resource_management::ResourceTable,
     resources::{MemoryStrategy, VerificationLevel},
     string_encoding::{
@@ -134,7 +133,7 @@ impl CanonicalABI {
     /// Lift a value from the WebAssembly memory into a Value
     pub fn lift(
         &self,
-        ty: &ValType<NoStdProvider<65536>>,
+        ty: &ValType,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
@@ -204,13 +203,13 @@ impl CanonicalABI {
 
     fn lift_value(
         &self,
-        ty: &ValType<NoStdProvider<65536>>,
+        ty: &ValType,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
     ) -> Result<wrt_foundation::values::Value> {
         match ty {
-            ValType<NoStdProvider<65536>>::Bool => {
+            ValType::Bool => {
                 // Boolean values are stored as i32 (0=false, non-zero=true)
                 let value = self.lift_s32(addr, memory_bytes)?;
                 if let Some(v) = value.as_i32() {
@@ -222,36 +221,36 @@ impl CanonicalABI {
                     "Expected i32 for bool".to_string(),
                 ))
             }
-            ValType<NoStdProvider<65536>>::S8 => self.lift_s8(addr, memory_bytes),
-            ValType<NoStdProvider<65536>>::U8 => self.lift_u8(addr, memory_bytes),
-            ValType<NoStdProvider<65536>>::S16 => self.lift_s16(addr, memory_bytes),
-            ValType<NoStdProvider<65536>>::U16 => self.lift_u16(addr, memory_bytes),
-            ValType<NoStdProvider<65536>>::S32 => self.lift_s32(addr, memory_bytes),
-            ValType<NoStdProvider<65536>>::U32 => self.lift_u32(addr, memory_bytes),
-            ValType<NoStdProvider<65536>>::S64 => self.lift_s64(addr, memory_bytes),
-            ValType<NoStdProvider<65536>>::U64 => self.lift_u64(addr, memory_bytes),
-            ValType<NoStdProvider<65536>>::F32 => self.lift_f32(addr, memory_bytes),
-            ValType<NoStdProvider<65536>>::F64 => self.lift_f64(addr, memory_bytes),
-            ValType<NoStdProvider<65536>>::Char => self.lift_char(addr, memory_bytes),
-            ValType<NoStdProvider<65536>>::String => self.lift_string(addr, memory_bytes),
-            ValType<NoStdProvider<65536>>::List(inner_ty) => self.lift_list(inner_ty, addr, resource_table, memory_bytes),
-            ValType<NoStdProvider<65536>>::Record(fields) => self.lift_record(fields, addr, resource_table, memory_bytes),
-            ValType<NoStdProvider<65536>>::Tuple(types) => self.lift_tuple(types, addr, resource_table, memory_bytes),
-            ValType<NoStdProvider<65536>>::Variant(cases) => self.lift_variant(cases, addr, resource_table, memory_bytes),
-            ValType<NoStdProvider<65536>>::Enum(cases) => self.lift_enum(cases, addr, memory_bytes),
-            ValType<NoStdProvider<65536>>::Option(inner_ty) => {
+            ValType::S8 => self.lift_s8(addr, memory_bytes),
+            ValType::U8 => self.lift_u8(addr, memory_bytes),
+            ValType::S16 => self.lift_s16(addr, memory_bytes),
+            ValType::U16 => self.lift_u16(addr, memory_bytes),
+            ValType::S32 => self.lift_s32(addr, memory_bytes),
+            ValType::U32 => self.lift_u32(addr, memory_bytes),
+            ValType::S64 => self.lift_s64(addr, memory_bytes),
+            ValType::U64 => self.lift_u64(addr, memory_bytes),
+            ValType::F32 => self.lift_f32(addr, memory_bytes),
+            ValType::F64 => self.lift_f64(addr, memory_bytes),
+            ValType::Char => self.lift_char(addr, memory_bytes),
+            ValType::String => self.lift_string(addr, memory_bytes),
+            ValType::List(inner_ty) => self.lift_list(inner_ty, addr, resource_table, memory_bytes),
+            ValType::Record(fields) => self.lift_record(fields, addr, resource_table, memory_bytes),
+            ValType::Tuple(types) => self.lift_tuple(types, addr, resource_table, memory_bytes),
+            ValType::Variant(cases) => self.lift_variant(cases, addr, resource_table, memory_bytes),
+            ValType::Enum(cases) => self.lift_enum(cases, addr, memory_bytes),
+            ValType::Option(inner_ty) => {
                 self.lift_option(inner_ty, addr, resource_table, memory_bytes)
             }
-            ValType<NoStdProvider<65536>>::Result(ok_ty, err_ty) => self.lift_result(
+            ValType::Result(ok_ty, err_ty) => self.lift_result(
                 ok_ty.as_ref(),
                 err_ty.as_ref(),
                 addr,
                 resource_table,
                 memory_bytes,
             ),
-            ValType<NoStdProvider<65536>>::Flags(names) => self.lift_flags(names, addr, memory_bytes),
-            ValType<NoStdProvider<65536>>::Own(_) => self.lift_resource(addr, resource_table, memory_bytes),
-            ValType<NoStdProvider<65536>>::Borrow(_) => self.lift_borrow(addr, resource_table, memory_bytes),
+            ValType::Flags(names) => self.lift_flags(names, addr, memory_bytes),
+            ValType::Own(_) => self.lift_resource(addr, resource_table, memory_bytes),
+            ValType::Borrow(_) => self.lift_borrow(addr, resource_table, memory_bytes),
             _ => Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::NOT_IMPLEMENTED,
@@ -262,7 +261,7 @@ impl CanonicalABI {
 
     fn lift_tuple(
         &self,
-        types: &[ValType<NoStdProvider<65536>>],
+        types: &[ValType],
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
@@ -324,7 +323,7 @@ impl CanonicalABI {
 
     fn lift_fixed_list(
         &self,
-        inner_ty: &ValType<NoStdProvider<65536>>,
+        inner_ty: &ValType,
         size: u32,
         addr: u32,
         resource_table: &ResourceTable,
@@ -547,7 +546,7 @@ impl CanonicalABI {
     // Complex type lifting operations
     fn lift_list(
         &self,
-        inner_ty: &Box<ValType<NoStdProvider<65536>>>,
+        inner_ty: &Box<ValType>,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
@@ -621,7 +620,7 @@ impl CanonicalABI {
 
     fn lift_record(
         &self,
-        fields: &Vec<(String, ValType<NoStdProvider<65536>>)>,
+        fields: &Vec<(String, ValType)>,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
@@ -655,7 +654,7 @@ impl CanonicalABI {
 
     fn lift_variant(
         &self,
-        cases: &[(String, Option<ValType<NoStdProvider<65536>>>)],
+        cases: &[(String, Option<ValType>)],
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
@@ -728,7 +727,7 @@ impl CanonicalABI {
 
     fn lift_option(
         &self,
-        inner_ty: &Box<ValType<NoStdProvider<65536>>>,
+        inner_ty: &Box<ValType>,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
@@ -758,8 +757,8 @@ impl CanonicalABI {
 
     fn lift_result(
         &self,
-        ok_ty: Option<&Box<ValType<NoStdProvider<65536>>>>,
-        err_ty: Option<&Box<ValType<NoStdProvider<65536>>>>,
+        ok_ty: Option<&Box<ValType>>,
+        err_ty: Option<&Box<ValType>>,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
@@ -927,7 +926,7 @@ impl CanonicalABI {
     fn lower_list(
         &self,
         values: &[Box<wrt_foundation::values::Value>],
-        inner_ty: &ValType<NoStdProvider<65536>>,
+        inner_ty: &ValType,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &mut [u8],
@@ -976,13 +975,13 @@ impl CanonicalABI {
     fn lower_value(
         &self,
         value: &wrt_foundation::values::Value,
-        ty: &ValType<NoStdProvider<65536>>,
+        ty: &ValType,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &mut [u8],
     ) -> Result<()> {
         match ty {
-            ValType<NoStdProvider<65536>>::Bool => {
+            ValType::Bool => {
                 if let Some(b) = value.as_bool() {
                     self.lower_bool(b, addr, memory_bytes)
                 } else if let Some(i) = value.as_i32() {
@@ -995,7 +994,7 @@ impl CanonicalABI {
                     ))
                 }
             }
-            ValType<NoStdProvider<65536>>::S8 => {
+            ValType::S8 => {
                 if let Some(v) = value.as_i8() {
                     self.lower_s8(v, addr, memory_bytes)
                 } else if let Some(i) = value.as_i32() {
@@ -1008,7 +1007,7 @@ impl CanonicalABI {
                     ))
                 }
             }
-            ValType<NoStdProvider<65536>>::U8 => {
+            ValType::U8 => {
                 if let Some(v) = value.as_u8() {
                     self.lower_u8(v, addr, memory_bytes)
                 } else if let Some(i) = value.as_i32() {
@@ -1021,7 +1020,7 @@ impl CanonicalABI {
                     ))
                 }
             }
-            ValType<NoStdProvider<65536>>::S16 => {
+            ValType::S16 => {
                 if let Some(v) = value.as_i16() {
                     self.lower_s16(v, addr, memory_bytes)
                 } else if let Some(i) = value.as_i32() {
@@ -1034,7 +1033,7 @@ impl CanonicalABI {
                     ))
                 }
             }
-            ValType<NoStdProvider<65536>>::U16 => {
+            ValType::U16 => {
                 if let Some(v) = value.as_u16() {
                     self.lower_u16(v, addr, memory_bytes)
                 } else if let Some(i) = value.as_i32() {
@@ -1047,7 +1046,7 @@ impl CanonicalABI {
                     ))
                 }
             }
-            ValType<NoStdProvider<65536>>::S32 | ValType<NoStdProvider<65536>>::U32 => {
+            ValType::S32 | ValType::U32 => {
                 if let Some(v) = value.as_i32() {
                     self.lower_s32(v, addr, memory_bytes)
                 } else if let Some(v) = value.as_u32() {
@@ -1060,7 +1059,7 @@ impl CanonicalABI {
                     ))
                 }
             }
-            ValType<NoStdProvider<65536>>::S64 | ValType<NoStdProvider<65536>>::U64 => {
+            ValType::S64 | ValType::U64 => {
                 if let Some(v) = value.as_i64() {
                     self.lower_s64(v, addr, memory_bytes)
                 } else if let Some(v) = value.as_u64() {
@@ -1073,7 +1072,7 @@ impl CanonicalABI {
                     ))
                 }
             }
-            ValType<NoStdProvider<65536>>::F32 => {
+            ValType::F32 => {
                 if let Some(v) = value.as_f32() {
                     self.lower_f32(v, addr, memory_bytes)
                 } else {
@@ -1084,7 +1083,7 @@ impl CanonicalABI {
                     ))
                 }
             }
-            ValType<NoStdProvider<65536>>::F64 => {
+            ValType::F64 => {
                 if let Some(v) = value.as_f64() {
                     self.lower_f64(v, addr, memory_bytes)
                 } else {
@@ -1095,7 +1094,7 @@ impl CanonicalABI {
                     ))
                 }
             }
-            ValType<NoStdProvider<65536>>::Char => {
+            ValType::Char => {
                 if let Some(c) = value.as_char() {
                     self.lower_char(c, addr, memory_bytes)
                 } else {
@@ -1106,7 +1105,7 @@ impl CanonicalABI {
                     ))
                 }
             }
-            ValType<NoStdProvider<65536>>::String => {
+            ValType::String => {
                 if let Some(s) = value.as_str() {
                     self.lower_string(s, addr, memory_bytes)
                 } else {
@@ -1117,7 +1116,7 @@ impl CanonicalABI {
                     ))
                 }
             }
-            ValType<NoStdProvider<65536>>::List(inner_ty) => {
+            ValType::List(inner_ty) => {
                 if let Some(list) = value.as_list() {
                     self.lower_list(list, inner_ty, addr, resource_table, memory_bytes)
                 } else {
@@ -1139,7 +1138,7 @@ impl CanonicalABI {
     fn lower_record(
         &self,
         record_fields: &HashMap<String, Box<wrt_foundation::values::Value>>,
-        field_types: &[(String, ValType<NoStdProvider<65536>>)],
+        field_types: &[(String, ValType)],
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &mut [u8],
@@ -1433,14 +1432,14 @@ mod tests {
 /// Result containing the converted Value
 pub fn convert_value_for_canonical_abi(
     value: &wrt_foundation::values::Value,
-    target_type: &wrt_format::component::ValType<NoStdProvider<65536>>,
+    target_type: &wrt_format::component::ValType,
 ) -> Result<wrt_foundation::values::Value> {
-    // First convert the format ValType<NoStdProvider<65536>> to a component-friendly ValType
+    // First convert the format ValType to a component-friendly ValType
     let component_type = crate::values::convert_format_to_common_valtype(target_type);
 
     // Now convert the value based on the component type
     match &component_type {
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::Bool => {
+        wrt_foundation::component_value::ValType::Bool => {
             if let Some(b) = value.as_bool() {
                 Ok(wrt_foundation::values::Value::Bool(b))
             } else {
@@ -1451,7 +1450,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::S8 => {
+        wrt_foundation::component_value::ValType::S8 => {
             if let Some(v) = value.as_i8() {
                 Ok(wrt_foundation::values::Value::S8(v))
             } else if let Some(i) = value.as_i32() {
@@ -1472,7 +1471,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::U8 => {
+        wrt_foundation::component_value::ValType::U8 => {
             if let Some(v) = value.as_u8() {
                 Ok(wrt_foundation::values::Value::U8(v))
             } else if let Some(i) = value.as_i32() {
@@ -1493,7 +1492,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::S16 => {
+        wrt_foundation::component_value::ValType::S16 => {
             if let Some(v) = value.as_i16() {
                 Ok(wrt_foundation::values::Value::S16(v))
             } else if let Some(i) = value.as_i32() {
@@ -1514,7 +1513,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::U16 => {
+        wrt_foundation::component_value::ValType::U16 => {
             if let Some(v) = value.as_u16() {
                 Ok(wrt_foundation::values::Value::U16(v))
             } else if let Some(i) = value.as_i32() {
@@ -1535,7 +1534,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::S32 => {
+        wrt_foundation::component_value::ValType::S32 => {
             if let Some(v) = value.as_i32() {
                 Ok(wrt_foundation::values::Value::S32(v))
             } else if let Some(v) = value.as_i64() {
@@ -1556,7 +1555,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::U32 => {
+        wrt_foundation::component_value::ValType::U32 => {
             if let Some(v) = value.as_u32() {
                 Ok(wrt_foundation::values::Value::U32(v))
             } else if let Some(i) = value.as_i64() {
@@ -1577,7 +1576,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::S64 => {
+        wrt_foundation::component_value::ValType::S64 => {
             if let Some(v) = value.as_i64() {
                 Ok(wrt_foundation::values::Value::S64(v))
             } else if let Some(v) = value.as_i32() {
@@ -1590,7 +1589,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::U64 => {
+        wrt_foundation::component_value::ValType::U64 => {
             if let Some(v) = value.as_u64() {
                 Ok(wrt_foundation::values::Value::U64(v))
             } else if let Some(i) = value.as_i64() {
@@ -1611,7 +1610,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::F32 => {
+        wrt_foundation::component_value::ValType::F32 => {
             if let Some(v) = value.as_f32() {
                 Ok(wrt_foundation::values::Value::F32(v))
             } else if let Some(v) = value.as_f64() {
@@ -1628,7 +1627,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::F64 => {
+        wrt_foundation::component_value::ValType::F64 => {
             if let Some(v) = value.as_f64() {
                 Ok(wrt_foundation::values::Value::F64(v))
             } else if let Some(v) = value.as_f32() {
@@ -1645,7 +1644,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::Char => {
+        wrt_foundation::component_value::ValType::Char => {
             if let Some(c) = value.as_char() {
                 Ok(wrt_foundation::values::Value::Char(c))
             } else if let Some(i) = value.as_i32() {
@@ -1669,7 +1668,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::String => {
+        wrt_foundation::component_value::ValType::String => {
             if let Some(s) = value.as_str() {
                 Ok(wrt_foundation::values::Value::String(s.to_string()))
             } else {
@@ -1680,7 +1679,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::List(inner_type) => {
+        wrt_foundation::component_value::ValType::List(inner_type) => {
             if let Some(list) = value.as_list() {
                 #[cfg(feature = "safety-critical")]
                 let mut converted_list: WrtVec<Value, {CrateId::Component as u8}, 1024> = WrtVec::new();
@@ -1705,7 +1704,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::Record(fields) => {
+        wrt_foundation::component_value::ValType::Record(fields) => {
             if let Some(record) = value.as_record() {
                 #[cfg(feature = "safety-critical")]
                 let mut converted_record: WrtHashMap<String, Value, {CrateId::Component as u8}, 64> = WrtHashMap::new();
@@ -1739,7 +1738,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::Tuple(types) => {
+        wrt_foundation::component_value::ValType::Tuple(types) => {
             if let Some(tuple) = value.as_tuple() {
                 if tuple.len() != types.len() {
                     return Err(Error::new(
@@ -1775,7 +1774,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::Flags(names) => {
+        wrt_foundation::component_value::ValType::Flags(names) => {
             if let Some(flags) = value.as_flags() {
                 // Verify all required flags are present
                 for name in names {
@@ -1828,7 +1827,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::Variant(cases) => {
+        wrt_foundation::component_value::ValType::Variant(cases) => {
             if let Some((discriminant, payload)) = value.as_variant() {
                 if discriminant < cases.len() as u32 {
                     Ok(wrt_foundation::values::Value::Variant(discriminant, payload.map(Box::new)))
@@ -1850,7 +1849,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType<NoStdProvider<65536>>::Void => Ok(wrt_foundation::values::Value::Void),
+        wrt_foundation::component_value::ValType::Void => Ok(wrt_foundation::values::Value::Void),
         // All types are now handled
         _ => Ok(value.clone()),
     }
@@ -1896,10 +1895,10 @@ fn get_float_value(value: &wrt_foundation::values::Value) -> Result<f64> {
 /// Convert a value to the appropriate type for use in the canonical ABI
 pub fn convert_value_for_type(
     value: &wrt_foundation::values::Value,
-    ty: &ValType<NoStdProvider<65536>>,
+    ty: &ValType,
 ) -> Result<wrt_foundation::values::Value> {
     match ty {
-        ValType<NoStdProvider<65536>>::Bool => {
+        ValType::Bool => {
             if let Some(val) = value.as_bool() {
                 Ok(wrt_foundation::values::Value::I32(if val { 1 } else { 0 }))
             } else if let Ok(num) = get_number_value(value) {
@@ -1912,7 +1911,7 @@ pub fn convert_value_for_type(
                 ))
             }
         }
-        ValType<NoStdProvider<65536>>::S8 | ValType<NoStdProvider<65536>>::U8 | ValType<NoStdProvider<65536>>::S16 | ValType<NoStdProvider<65536>>::U16 | ValType<NoStdProvider<65536>>::S32 | ValType<NoStdProvider<65536>>::U32 => {
+        ValType::S8 | ValType::U8 | ValType::S16 | ValType::U16 | ValType::S32 | ValType::U32 => {
             if let Some(v) = value.as_i32() {
                 Ok(wrt_foundation::values::Value::I32(v))
             } else if let Some(v) = value.as_i64() {
@@ -1953,7 +1952,7 @@ pub fn convert_value_for_type(
                 ))
             }
         }
-        ValType<NoStdProvider<65536>>::S64 | ValType<NoStdProvider<65536>>::U64 => {
+        ValType::S64 | ValType::U64 => {
             if let Some(v) = value.as_i64() {
                 Ok(wrt_foundation::values::Value::I64(v))
             } else if let Some(v) = value.as_i32() {
@@ -1986,7 +1985,7 @@ pub fn convert_value_for_type(
                 ))
             }
         }
-        ValType<NoStdProvider<65536>>::F32 => {
+        ValType::F32 => {
             if let Some(v) = value.as_f32() {
                 Ok(wrt_foundation::values::Value::F32(v))
             } else if let Some(v) = value.as_f64() {
@@ -2004,7 +2003,7 @@ pub fn convert_value_for_type(
                 ))
             }
         }
-        ValType<NoStdProvider<65536>>::F64 => {
+        ValType::F64 => {
             if let Some(v) = value.as_f64() {
                 Ok(wrt_foundation::values::Value::F64(v))
             } else if let Some(v) = value.as_f32() {

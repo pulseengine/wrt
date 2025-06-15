@@ -653,7 +653,7 @@ impl CfiExecutionEngine {
         let mut violations_detected = false;
         let mut metrics_landing_pads_validated = 0;
         
-        self.cfi_context.landing_pad_expectations.retain(|expectation| {
+        let _ = self.cfi_context.landing_pad_expectations.retain(|expectation| {
             let matches_location = expectation.function_index == current_location.0
                 && expectation.instruction_offset == current_location.1;
 

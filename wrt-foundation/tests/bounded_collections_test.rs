@@ -7,7 +7,7 @@ use wrt_foundation::{
     BoundedBitSet, BoundedBuilder, BoundedDeque, BoundedMap, BoundedQueue, BoundedSet,
     MemoryBuilder, NoStdProvider, StringBuilder, WrtProviderFactory, budget_aware_provider::CrateId,
     VerificationLevel, traits::BoundedCapacity,
-};
+, safe_managed_alloc};
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
@@ -19,7 +19,7 @@ use std::string::String;
 
 #[test]
 fn test_bounded_queue_operations() {
-    let guard = managed_alloc!(1024, CrateId::Foundation)?;
+    let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
     let provider = unsafe { guard.release() };
     let mut queue = BoundedQueue::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
@@ -94,7 +94,7 @@ fn test_bounded_queue_operations() {
 
 #[test]
 fn test_bounded_map_operations() {
-    let guard = managed_alloc!(1024, CrateId::Foundation)?;
+    let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
     let provider = unsafe { guard.release() };
     let mut map = BoundedMap::<u32, String, 5, NoStdProvider<1024>>::new(provider).unwrap();

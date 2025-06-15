@@ -17,7 +17,6 @@ use wrt_foundation::prelude::*;
 use crate::{
     canonical_abi::canonical_realloc::{ReallocManager, StringEncoding, ComponentInstanceId},
     memory_layout::MemoryLayout,
-    prelude::*,
 };
 
 // Type alias for compatibility

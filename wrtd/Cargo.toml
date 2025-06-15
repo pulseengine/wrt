@@ -27,6 +27,10 @@ wrt = { workspace = true, default-features = false, optional = true }
 wrt-runtime = { workspace = true, default-features = false, optional = true }
 wrt-platform = { workspace = true, default-features = false, optional = true }
 wrt-host = { workspace = true, default-features = false, optional = true }
+wrt-component = { workspace = true, default-features = false, optional = true }
+
+# WASI support
+wrt-wasi = { path = "../wrt-wasi", default-features = false, optional = true }
 
 # Global allocator for no_std mode
 linked_list_allocator = { version = "0.10", optional = true }
@@ -44,10 +48,21 @@ std = [
 ]
 
 # Enable actual WRT execution (vs demo mode)
-wrt-execution = ["std", "dep:wrt", "dep:wrt-runtime", "dep:wrt-platform", "dep:wrt-host"]
+wrt-execution = ["std", "dep:wrt", "dep:wrt-runtime", "dep:wrt-platform", "dep:wrt-host", "dep:wrt-component"]
+
+# WASI support features
+wasi = ["wrt-execution", "dep:wrt-wasi", "wrt-wasi/preview2"]
+wasi-filesystem = ["wasi", "wrt-wasi/wasi-filesystem"]
+wasi-cli = ["wasi", "wrt-wasi/wasi-cli"]
+wasi-clocks = ["wasi", "wrt-wasi/wasi-clocks"]
+wasi-io = ["wasi", "wrt-wasi/wasi-io"]
+wasi-random = ["wasi", "wrt-wasi/wasi-random"]
+
+# Component model support
+component-model = ["wrt-execution", "wrt-component/component-model-all", "wrt-wasi/component-model"]
 
 # Safety-critical features for ASIL-C compliance
-safety-critical = ["std", "wrt-foundation/wrt-allocator", "wrt/safety-critical"]
+safety-asil-c = ["std", "wrt-foundation/wrt-allocator", "wrt/safety-asil-c"]
 
 # Panic handler for no_std builds - ASIL-D compliant by default
 enable-panic-handler = ["wrt-panic/default-panic-handler", "wrt-panic/asil-d", "dep:linked_list_allocator"]
@@ -57,6 +72,9 @@ asil-b-panic = ["wrt-panic/default-panic-handler", "wrt-panic/asil-b", "dep:link
 
 # Development panic handler (enhanced debugging)
 dev-panic = ["wrt-panic/default-panic-handler", "wrt-panic/dev", "dep:linked_list_allocator"]
+safety-asil-b = []
+safety-asil-d = ["safety-asil-c"]
+
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }

@@ -19,6 +19,9 @@ std = ["wrt-error/std", "wrt-format/std", "wrt-foundation/std"]
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
 
+# Allocation support for no_std environments
+alloc = ["wrt-foundation/alloc", "wrt-format/alloc"]
+
 # Static debug features (no runtime needed)
 line-info = []              # Line number information support (.debug_line)
 debug-info = ["abbrev"]     # Full debug info parsing (.debug_info)
@@ -46,7 +49,11 @@ production = ["static-debug"]  # Error reporting only
 full-debug = ["static-debug", "runtime-debug", "wit-integration"]  # Everything
 
 # Disable panic handler for library builds to avoid conflicts
-disable-panic-handler = []
+safety-asil-b = []
+safety-asil-c = ["safety-asil-b"]
+safety-asil-d = ["safety-asil-c"]
+kani = []
+
 
 [lib]
 name = "wrt_debug"

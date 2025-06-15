@@ -9,6 +9,8 @@ extern crate alloc;
 
 use crate::{export::Export, prelude::*};
 use wrt_foundation::bounded::{BoundedMap, BoundedString};
+use wrt_foundation::budget_aware_provider::CrateId;
+use wrt_foundation::wrt_memory_system::WrtProviderFactory;
 
 /// Maximum number of exports in a component
 const MAX_EXPORTS: usize = 512;
@@ -197,7 +199,8 @@ impl SafeExportMap {
 
     /// Get all export names
     pub fn names(&self) -> Result<BoundedVec<String, MAX_EXPORTS, wrt_foundation::safe_memory::NoStdProvider<4096>>> {
-        let provider = wrt_foundation::safe_memory::NoStdProvider::<4096>::new();
+        let guard = WrtProviderFactory::create_provider::<4096>(CrateId::Component)?;
+        let provider = unsafe { guard.release() };
         let mut names = BoundedVec::new(provider)?;
         for i in 0..self.exports.len() {
             if let Ok((name, _)) = self.exports.get(i) {
@@ -209,7 +212,8 @@ impl SafeExportMap {
 
     /// Get all exports as bounded collection of (name, export) pairs
     pub fn get_all(&self) -> Result<BoundedVec<(String, Arc<Export>), MAX_EXPORTS, wrt_foundation::safe_memory::NoStdProvider<4096>>> {
-        let provider = wrt_foundation::safe_memory::NoStdProvider::<4096>::new();
+        let guard = WrtProviderFactory::create_provider::<4096>(CrateId::Component)?;
+        let provider = unsafe { guard.release() };
         let mut pairs = BoundedVec::new(provider)?;
         let items = self.exports.to_vec()?;
         for item in items {

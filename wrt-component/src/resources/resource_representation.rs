@@ -19,7 +19,7 @@ use wrt_foundation::{
 use crate::{
     borrowed_handles::{OwnHandle, BorrowHandle, HandleLifetimeTracker},
     resource_lifecycle_management::{ResourceId, ComponentId, ResourceType},
-    types::{ValType<NoStdProvider<65536>>, Value},
+    types::{ValType, Value},
     WrtResult,
 };
 

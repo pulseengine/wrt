@@ -6,8 +6,8 @@ use wrt_foundation::*;
 
 #[test]
 fn test_zero_configuration_usage() {
-    // Test the managed_alloc! macro - crown jewel of A+ usability
-    let guard = managed_alloc!(1024, CrateId::Foundation).unwrap();
+    // Test the safe_managed_alloc! macro - crown jewel of A+ usability
+    let guard = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     let provider = guard.provider();
     
     // Verify provider works
@@ -76,9 +76,9 @@ fn test_monitoring_and_telemetry() {
     monitoring::MEMORY_MONITOR.reset();
     
     // Perform several allocations
-    let _guard1 = managed_alloc!(1024, CrateId::Foundation).unwrap();
-    let _guard2 = managed_alloc!(2048, CrateId::Component).unwrap();
-    let _guard3 = managed_alloc!(512, CrateId::Runtime).unwrap();
+    let _guard1 = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
+    let _guard2 = safe_managed_alloc!(2048, CrateId::Component).unwrap();
+    let _guard3 = safe_managed_alloc!(512, CrateId::Runtime).unwrap();
     
     // Check monitoring captured the allocations
     let stats = monitoring::convenience::global_stats();
@@ -110,8 +110,8 @@ fn test_raii_automatic_cleanup() {
     
     // Create and drop allocations
     {
-        let _guard1 = managed_alloc!(1024, CrateId::Foundation).unwrap();
-        let _guard2 = managed_alloc!(2048, CrateId::Component).unwrap();
+        let _guard1 = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
+        let _guard2 = safe_managed_alloc!(2048, CrateId::Component).unwrap();
         
         // Verify allocations recorded
         let stats = monitoring::convenience::global_stats();
@@ -142,7 +142,7 @@ fn test_budget_enforcement() {
     let initial_allocation = coordinator.get_crate_allocation(CrateId::Foundation);
     
     // Make an allocation
-    let _guard = managed_alloc!(1024, CrateId::Foundation).unwrap();
+    let _guard = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     
     // Verify allocation was tracked
     let new_allocation = coordinator.get_crate_allocation(CrateId::Foundation);
@@ -152,9 +152,9 @@ fn test_budget_enforcement() {
 #[test]
 fn test_cross_crate_compatibility() {
     // Test that the system works across different simulated "crates"
-    let foundation_guard = managed_alloc!(1024, CrateId::Foundation).unwrap();
-    let component_guard = managed_alloc!(2048, CrateId::Component).unwrap();
-    let runtime_guard = managed_alloc!(512, CrateId::Runtime).unwrap();
+    let foundation_guard = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
+    let component_guard = safe_managed_alloc!(2048, CrateId::Component).unwrap();
+    let runtime_guard = safe_managed_alloc!(512, CrateId::Runtime).unwrap();
     
     // Verify all allocations work independently
     assert_eq!(foundation_guard.provider().size(), 1024);
@@ -210,7 +210,7 @@ fn test_system_report_generation() {
     
     // Generate some activity
     let _guards = (0..5).map(|_| {
-        managed_alloc!(1024, CrateId::Foundation).unwrap()
+        safe_managed_alloc!(1024, CrateId::Foundation).unwrap()
     }).collect::<Vec<_>>();
     
     // Generate system report
@@ -243,11 +243,11 @@ fn test_error_handling_and_recovery() {
     use wrt_foundation::ErrorCategory;
     
     // This should work
-    let guard = managed_alloc!(1024, CrateId::Foundation).unwrap();
+    let guard = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     assert_eq!(guard.provider().size(), 1024);
     
     // Test error propagation
-    let result = managed_alloc!(0, CrateId::Foundation);
+    let result = safe_managed_alloc!(0, CrateId::Foundation);
     match result {
         Ok(_) => {
             // Zero-size allocation might be allowed
@@ -265,14 +265,14 @@ fn test_memory_safety_properties() {
     
     // 1. No double-free (RAII prevents this)
     {
-        let guard = managed_alloc!(1024, CrateId::Foundation).unwrap();
+        let guard = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
         let _provider = guard.provider();
         // guard.drop() is called automatically - no double free possible
     }
     
     // 2. No use-after-free (compile-time prevention)
     let provider = {
-        let guard = managed_alloc!(1024, CrateId::Foundation).unwrap();
+        let guard = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
         guard.provider().clone() // Provider is cloned, so it remains valid
     };
     
@@ -280,7 +280,7 @@ fn test_memory_safety_properties() {
     assert_eq!(provider.size(), 1024);
     
     // 3. No buffer overruns (bounded collections prevent this)
-    let guard = managed_alloc!(1024, CrateId::Foundation).unwrap();
+    let guard = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     let provider = guard.provider();
     let mut vec = BoundedVec::<u8, 10, _>::new(provider.clone()).unwrap();
     
@@ -300,18 +300,18 @@ fn test_stress_allocation_patterns() {
     
     // Pattern 1: Many small allocations
     let small_guards: Vec<_> = (0..100).map(|_| {
-        managed_alloc!(64, CrateId::Foundation).unwrap()
+        safe_managed_alloc!(64, CrateId::Foundation).unwrap()
     }).collect();
     
     // Pattern 2: Few large allocations  
     let large_guards: Vec<_> = (0..10).map(|_| {
-        managed_alloc!(4096, CrateId::Component).unwrap()
+        safe_managed_alloc!(4096, CrateId::Component).unwrap()
     }).collect();
     
     // Pattern 3: Mixed sizes
     let mixed_guards: Vec<_> = (0..50).map(|i| {
         let size = if i % 2 == 0 { 128 } else { 256 };
-        managed_alloc!(size, CrateId::Runtime).unwrap()
+        safe_managed_alloc!(size, CrateId::Runtime).unwrap()
     }).collect();
     
     // Verify all allocations are tracked

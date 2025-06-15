@@ -7,16 +7,17 @@
 
 /// Zero-configuration memory allocation macro
 /// 
+/// **DEPRECATED**: Use `safe_managed_alloc!` instead for better safety guarantees.
+/// 
 /// This macro provides the simplest possible interface for budget-aware memory allocation.
 /// 
 /// # Examples
 /// 
 /// ```rust
-/// use wrt_foundation::{managed_alloc, CrateId};
+/// use wrt_foundation::{safe_managed_alloc, CrateId};
 /// 
 /// // Simple allocation with automatic cleanup
-/// let guard = managed_alloc!(1024, CrateId::Component)?;
-/// let provider = guard.provider();
+/// let provider = safe_managed_alloc!(1024, CrateId::Component)?;
 /// 
 /// // Use provider for bounded collections
 /// let mut vec = BoundedVec::new(provider)?;
@@ -32,11 +33,16 @@
 /// - Runtime budget enforcement
 /// - Automatic cleanup via RAII
 /// - Impossible to bypass the memory system
+/// 
+/// # Migration
+/// 
+/// Replace `safe_managed_alloc!(size, crate_id)` with `safe_managed_alloc!(size, crate_id)?`
+#[deprecated(since = "0.1.0", note = "Use `safe_managed_alloc!` instead for better safety guarantees")]
 #[macro_export]
 macro_rules! managed_alloc {
     ($size:expr, $crate_id:expr) => {{
         // Ensure memory system is initialized (ignore errors for convenience)
-        let _ = $crate::memory_init::MemoryInitializer::initialize();
+        drop($crate::memory_init::MemoryInitializer::initialize());
         
         // Create allocation through factory with explicit size
         $crate::wrt_memory_system::WrtProviderFactory::create_provider::<$size>($crate_id)
@@ -45,7 +51,7 @@ macro_rules! managed_alloc {
 
 /// Create a memory provider with specific size and crate
 /// 
-/// This is a more explicit version of `managed_alloc!` for when you need
+/// This is a more explicit version of `safe_managed_alloc!` for when you need
 /// to specify the exact provider type.
 /// 
 /// # Examples
@@ -59,7 +65,7 @@ macro_rules! managed_alloc {
 #[macro_export]
 macro_rules! create_provider {
     ($provider_type:ty, $crate_id:expr) => {{
-        let _ = $crate::memory_init::MemoryInitializer::initialize();
+        drop($crate::memory_init::MemoryInitializer::initialize());
         $crate::wrt_memory_system::WrtProviderFactory::create_typed_provider::<$provider_type>($crate_id)
     }};
 }
@@ -156,19 +162,19 @@ macro_rules! allocation_token {
 #[macro_export]
 macro_rules! auto_provider {
     ($crate_id:expr, typical_usage: "bounded_collections") => {{
-        $crate::managed_alloc!(4096, $crate_id)
+        $crate::safe_managed_alloc!(4096, $crate_id)
     }};
     ($crate_id:expr, typical_usage: "string_processing") => {{
-        $crate::managed_alloc!(8192, $crate_id)
+        $crate::safe_managed_alloc!(8192, $crate_id)
     }};
     ($crate_id:expr, typical_usage: "temporary_buffers") => {{
-        $crate::managed_alloc!(2048, $crate_id)
+        $crate::safe_managed_alloc!(2048, $crate_id)
     }};
     ($crate_id:expr, typical_usage: "large_data") => {{
-        $crate::managed_alloc!(16384, $crate_id)
+        $crate::safe_managed_alloc!(16384, $crate_id)
     }};
     ($crate_id:expr) => {{
-        $crate::managed_alloc!(4096, $crate_id)
+        $crate::safe_managed_alloc!(4096, $crate_id)
     }};
 }
 
@@ -191,7 +197,7 @@ macro_rules! debug_alloc {
         // Log allocation for debugging
         $crate::debug_println!("Allocating {} bytes for {} in {}", $size, $purpose, $crate_id.name());
         
-        let guard = $crate::managed_alloc!($size, $crate_id)?;
+        let guard = $crate::safe_managed_alloc!($size, $crate_id)?;
         
         // Track allocation in debug mode
         $crate::monitoring::debug_track_allocation($crate_id, $size, $purpose);
@@ -205,7 +211,7 @@ macro_rules! debug_alloc {
 #[macro_export]
 macro_rules! debug_alloc {
     ($size:expr, $crate_id:expr, $purpose:literal) => {{
-        $crate::managed_alloc!($size, $crate_id)
+        $crate::safe_managed_alloc!($size, $crate_id)
     }};
 }
 

@@ -10,7 +10,7 @@
 #[cfg(feature = "std")]
 mod component_val_type {
     use wrt_error::{codes, Error, ErrorCategory, Result};
-    use wrt_format::{binary, component::FormatValType};
+    use wrt_format::{component::FormatValType};
 
     use crate::prelude::*;
 

@@ -102,7 +102,7 @@ impl PlatformTime {
             static INIT: std::sync::Once = std::sync::Once::new();
             
             INIT.call_once(|| {
-                mach_timebase_info(&mut TIMEBASE);
+                mach_timebase_info(&raw mut TIMEBASE);
             });
             
             let ticks = mach_absolute_time();

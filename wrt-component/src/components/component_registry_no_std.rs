@@ -10,7 +10,7 @@
 
 use wrt_foundation::bounded::{BoundedVec, MAX_COMPONENT_TYPES};
 
-use crate::{components::component_no_std::Component, prelude::*};
+use crate::{components::component_no_std::Component};
 
 /// Maximum number of components allowed in the registry
 pub const MAX_COMPONENTS: usize = 32;

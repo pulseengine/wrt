@@ -384,14 +384,16 @@ pub struct ThreadSyncState {
 impl ThreadSyncState {
     fn new() -> Result<Self> {
         Ok(Self {
-            sync_operations: new_thread_map(),
+            sync_operations: new_thread_map()?,
         })
     }
     
     fn record_sync_operation(&mut self, thread_id: ThreadId) -> Result<()> {
         #[cfg(feature = "std")]
         {
-            *self.sync_operations.entry(thread_id).or_insert(0) += 1;
+            // BoundedMap entry API returns the value, not a mutable reference
+            let current = self.sync_operations.get(&thread_id)?.unwrap_or(0);
+            self.sync_operations.insert(thread_id, current + 1)?;
         }
         #[cfg(not(feature = "std"))]
         {

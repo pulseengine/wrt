@@ -232,7 +232,7 @@ fn test_bounded_vs_unbounded_performance() {
     for _ in 0..ITERATIONS {
         let mut vec: BoundedVec<u32, 100, TestProvider> = BoundedVec::new(provider.clone()).unwrap();
         for i in 0..50 {
-            let _ = vec.push(i);
+            drop(vec.push(i));
         }
     }
     let bounded_time = start.elapsed();

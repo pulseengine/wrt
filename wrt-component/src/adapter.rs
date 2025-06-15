@@ -30,7 +30,7 @@ use crate::types::Value as ComponentValue;
 use crate::{
     canonical_abi::CanonicalABI,
     components::Component,
-    types::{ValType<NoStdProvider<65536>>, Value},
+    types::{ValType, Value},
 };
 
 /// Maximum number of adapted functions in no_std environments
@@ -88,19 +88,19 @@ pub struct FunctionAdapter {
 pub struct CoreFunctionSignature {
     /// Parameter types (WebAssembly core types)
     #[cfg(feature = "std")]
-    pub params: Vec<CoreValType<NoStdProvider<65536>>>,
+    pub params: Vec<CoreValType>,
     #[cfg(not(any(feature = "std", )))]
-    pub params: BoundedVec<CoreValType<NoStdProvider<65536>>, 32, NoStdProvider<65536>>,
+    pub params: BoundedVec<CoreValType, 32, NoStdProvider<65536>>,
     /// Result types (WebAssembly core types)
     #[cfg(feature = "std")]
-    pub results: Vec<CoreValType<NoStdProvider<65536>>>,
+    pub results: Vec<CoreValType>,
     #[cfg(not(any(feature = "std", )))]
-    pub results: BoundedVec<CoreValType<NoStdProvider<65536>>, 8, NoStdProvider<65536>>,
+    pub results: BoundedVec<CoreValType, 8, NoStdProvider<65536>>,
 }
 
 /// WebAssembly core value types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum CoreValType<NoStdProvider<65536>> {
+pub enum CoreValType {
     #[default]
     /// 32-bit integer
     I32,
@@ -158,7 +158,7 @@ pub struct TableAdapter {
     /// Core table index
     pub core_index: u32,
     /// Element type
-    pub element_type: CoreValType<NoStdProvider<65536>>,
+    pub element_type: CoreValType,
     /// Table limits
     pub limits: TableLimits,
 }
@@ -178,7 +178,7 @@ pub struct GlobalAdapter {
     /// Core global index
     pub core_index: u32,
     /// Global type
-    pub global_type: CoreValType<NoStdProvider<65536>>,
+    pub global_type: CoreValType,
     /// Mutability
     pub mutable: bool,
 }
@@ -330,15 +330,15 @@ impl CoreModuleAdapter {
     }
 
     /// Convert core type to component type
-    fn core_type_to_component_type(&self, core_type: CoreValType<NoStdProvider<65536>>) -> ComponentType {
+    fn core_type_to_component_type(&self, core_type: CoreValType) -> ComponentType {
         match core_type {
-            CoreValType<NoStdProvider<65536>>::I32 => ComponentType::Unit, // Simplified
-            CoreValType<NoStdProvider<65536>>::I64 => ComponentType::Unit,
-            CoreValType<NoStdProvider<65536>>::F32 => ComponentType::Unit,
-            CoreValType<NoStdProvider<65536>>::F64 => ComponentType::Unit,
-            CoreValType<NoStdProvider<65536>>::V128 => ComponentType::Unit,
-            CoreValType<NoStdProvider<65536>>::FuncRef => ComponentType::Unit,
-            CoreValType<NoStdProvider<65536>>::ExternRef => ComponentType::Unit,
+            CoreValType::I32 => ComponentType::Unit, // Simplified
+            CoreValType::I64 => ComponentType::Unit,
+            CoreValType::F32 => ComponentType::Unit,
+            CoreValType::F64 => ComponentType::Unit,
+            CoreValType::V128 => ComponentType::Unit,
+            CoreValType::FuncRef => ComponentType::Unit,
+            CoreValType::ExternRef => ComponentType::Unit,
         }
     }
 
@@ -464,7 +464,7 @@ impl CoreFunctionSignature {
     }
 
     /// Add a parameter type
-    pub fn add_param(&mut self, param_type: CoreValType<NoStdProvider<65536>>) -> Result<()> {
+    pub fn add_param(&mut self, param_type: CoreValType) -> Result<()> {
         #[cfg(feature = "std")]
         {
             self.params.push(param_type);
@@ -479,7 +479,7 @@ impl CoreFunctionSignature {
     }
 
     /// Add a result type
-    pub fn add_result(&mut self, result_type: CoreValType<NoStdProvider<65536>>) -> Result<()> {
+    pub fn add_result(&mut self, result_type: CoreValType) -> Result<()> {
         #[cfg(feature = "std")]
         {
             self.results.push(result_type);
@@ -509,28 +509,28 @@ impl MemoryAdapter {
 
 impl TableAdapter {
     /// Create a new table adapter
-    pub fn new(core_index: u32, element_type: CoreValType<NoStdProvider<65536>>, min: u32, max: Option<u32>) -> Self {
+    pub fn new(core_index: u32, element_type: CoreValType, min: u32, max: Option<u32>) -> Self {
         Self { core_index, element_type, limits: TableLimits { min, max } }
     }
 }
 
 impl GlobalAdapter {
     /// Create a new global adapter
-    pub fn new(core_index: u32, global_type: CoreValType<NoStdProvider<65536>>, mutable: bool) -> Self {
+    pub fn new(core_index: u32, global_type: CoreValType, mutable: bool) -> Self {
         Self { core_index, global_type, mutable }
     }
 }
 
-impl fmt::Display for CoreValType<NoStdProvider<65536>> {
+impl fmt::Display for CoreValType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CoreValType<NoStdProvider<65536>>::I32 => write!(f, "i32"),
-            CoreValType<NoStdProvider<65536>>::I64 => write!(f, "i64"),
-            CoreValType<NoStdProvider<65536>>::F32 => write!(f, "f32"),
-            CoreValType<NoStdProvider<65536>>::F64 => write!(f, "f64"),
-            CoreValType<NoStdProvider<65536>>::V128 => write!(f, "v128"),
-            CoreValType<NoStdProvider<65536>>::FuncRef => write!(f, "funcref"),
-            CoreValType<NoStdProvider<65536>>::ExternRef => write!(f, "externref"),
+            CoreValType::I32 => write!(f, "i32"),
+            CoreValType::I64 => write!(f, "i64"),
+            CoreValType::F32 => write!(f, "f32"),
+            CoreValType::F64 => write!(f, "f64"),
+            CoreValType::V128 => write!(f, "v128"),
+            CoreValType::FuncRef => write!(f, "funcref"),
+            CoreValType::ExternRef => write!(f, "externref"),
         }
     }
 }
@@ -588,7 +588,7 @@ impl_basic_traits!(TableAdapter, TableAdapter::default());
 impl_basic_traits!(GlobalAdapter, GlobalAdapter::default());
 impl_basic_traits!(MemoryLimits, MemoryLimits::default());
 impl_basic_traits!(TableLimits, TableLimits::default());
-impl_basic_traits!(CoreValType<NoStdProvider<65536>>, CoreValType<NoStdProvider<65536>>::default());
+impl_basic_traits!(CoreValType, CoreValType::default());
 impl_basic_traits!(AdaptationMode, AdaptationMode::default());
 impl_basic_traits!(CoreFunctionSignature, CoreFunctionSignature::default());
 
@@ -615,8 +615,8 @@ mod tests {
     #[test]
     fn test_function_adapter() {
         let mut core_sig = CoreFunctionSignature::new();
-        core_sig.add_param(CoreValType<NoStdProvider<65536>>::I32).unwrap();
-        core_sig.add_result(CoreValType<NoStdProvider<65536>>::I32).unwrap();
+        core_sig.add_param(CoreValType::I32).unwrap();
+        core_sig.add_result(CoreValType::I32).unwrap();
 
         let adapter =
             FunctionAdapter::new(0, ComponentType::Unit, core_sig, AdaptationMode::Direct);
@@ -628,9 +628,9 @@ mod tests {
 
     #[test]
     fn test_core_val_type_display() {
-        assert_eq!(CoreValType<NoStdProvider<65536>>::I32.to_string(), "i32");
-        assert_eq!(CoreValType<NoStdProvider<65536>>::F64.to_string(), "f64");
-        assert_eq!(CoreValType<NoStdProvider<65536>>::FuncRef.to_string(), "funcref");
+        assert_eq!(CoreValType::I32.to_string(), "i32");
+        assert_eq!(CoreValType::F64.to_string(), "f64");
+        assert_eq!(CoreValType::FuncRef.to_string(), "funcref");
     }
 
     #[test]
@@ -651,18 +651,18 @@ mod tests {
 
     #[test]
     fn test_table_adapter() {
-        let adapter = TableAdapter::new(0, CoreValType<NoStdProvider<65536>>::FuncRef, 0, None);
+        let adapter = TableAdapter::new(0, CoreValType::FuncRef, 0, None);
         assert_eq!(adapter.core_index, 0);
-        assert_eq!(adapter.element_type, CoreValType<NoStdProvider<65536>>::FuncRef);
+        assert_eq!(adapter.element_type, CoreValType::FuncRef);
         assert_eq!(adapter.limits.min, 0);
         assert_eq!(adapter.limits.max, None);
     }
 
     #[test]
     fn test_global_adapter() {
-        let adapter = GlobalAdapter::new(0, CoreValType<NoStdProvider<65536>>::I32, true);
+        let adapter = GlobalAdapter::new(0, CoreValType::I32, true);
         assert_eq!(adapter.core_index, 0);
-        assert_eq!(adapter.global_type, CoreValType<NoStdProvider<65536>>::I32);
+        assert_eq!(adapter.global_type, CoreValType::I32);
         assert!(adapter.mutable);
     }
 }

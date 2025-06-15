@@ -6,7 +6,6 @@
 use wrt_error::kinds::{OutOfBoundsAccess, ResourceLimitExceeded};
 
 use crate::{
-    prelude::*,
     resources::{BoundedBufferPool, MemoryStrategy},
 };
 

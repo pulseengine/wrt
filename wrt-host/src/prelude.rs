@@ -125,7 +125,7 @@ pub use wrt_foundation::{
     // Verification types
     verification::VerificationLevel,
     // Memory allocation
-    managed_alloc,
+    safe_managed_alloc,
     // CrateId for budget allocation
     CrateId,
 };

@@ -51,6 +51,13 @@ pub mod builtins;
 pub mod call_context;
 pub mod canonical_abi;
 pub mod components;
+pub mod cross_component_calls;
+pub mod cross_component_communication;
+pub mod cross_component_resource_sharing;
+
+// Module aliases for compatibility with existing imports
+pub use cross_component_communication as component_communication;
+pub use components::component_instantiation;
 pub mod execution_engine;
 pub mod export;
 pub mod generative_types;
@@ -90,6 +97,10 @@ pub mod verify;
 // Essential re-exports only
 pub use builtins::{BuiltinHandler, BuiltinRegistry};
 pub use canonical_abi::canonical::CanonicalABI;
+
+// Canonical type definitions for ASIL-D compliance
+pub use types::{ComponentInstance, ComponentInstanceId, ComponentInstanceState};
+pub use components::component::{ComponentType};
 
 // Component types based on feature flags
 #[cfg(feature = "std")]

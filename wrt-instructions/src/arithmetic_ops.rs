@@ -13,7 +13,7 @@ use crate::validation::{Validate, ValidationContext, validate_arithmetic_op};
 use wrt_math as math;
 
 /// Represents a pure arithmetic operation for WebAssembly.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ArithmeticOp {
     // Integer operations (i32)
     /// Add two 32-bit integers

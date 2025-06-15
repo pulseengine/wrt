@@ -13,7 +13,7 @@
 //!
 //! The implementation works across std, `no_std+alloc`, and pure `no_std` environments.
 
-use crate::prelude::{DataSegmentOperations, Debug, MemoryOperations, PureInstruction, Validate, ValidationContext};
+use crate::prelude::{DataSegmentOperations, Debug, MemoryOperations, Validate, ValidationContext};
 use wrt_error::{Error, Result};
 use wrt_foundation::{
     types::ValueType,

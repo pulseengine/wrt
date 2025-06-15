@@ -14,12 +14,12 @@
 extern crate alloc;
 
 use wrt_component::bounded_component_infra::*;
-use wrt_foundation::{
+use wrt_foundation::{{
     bounded::{BoundedVec},
     managed_alloc,
     WrtError, WrtResult,
     budget_aware_provider::CrateId,
-};
+}, safe_managed_alloc};
 
 #[cfg(test)]
 mod feature_flag_tests {
@@ -45,7 +45,7 @@ mod feature_flag_tests {
         // When safety-critical is enabled, all allocations must be bounded
         
         // Verify we're using WRT allocator
-        let guard_result = managed_alloc!(1024, CrateId::Component);
+        let guard_result = safe_managed_alloc!(1024, CrateId::Component);
         assert!(guard_result.is_ok() || matches!(guard_result, Err(WrtError::OutOfMemory)));
         
         // Verify collections have fixed capacity

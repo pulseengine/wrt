@@ -12,11 +12,10 @@ use std::{fmt, mem};
 use wrt_foundation::allocator::{WrtHashMap, WrtVec, CrateId};
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
 use std::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
-#[cfg(feature = "std")]
-use std::{boxed::Box, string::String};
 
 use wrt_foundation::{
     bounded::BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
+    budget_aware_provider::CrateId,
 };
 
 use crate::{
@@ -26,7 +25,7 @@ use crate::{
     export::Export,
     import::Import,
     resources::resource_lifecycle::ResourceLifecycleManager,
-    types::{ValType<NoStdProvider<65536>>, Value},
+    types::{ValType, Value},
     WrtResult,
 };
 
@@ -359,16 +358,16 @@ impl Component {
         }
     }
 
-    /// Create resource tables for the instance
+    /// Create resource tables for the instance with budget enforcement
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     fn create_resource_tables(&self) -> WrtResult<WrtVec<ResourceTable, {CrateId::Component as u8}, 16>> {
         let mut tables = WrtVec::new();
 
         // Create resource tables based on component types
         // For each resource type in the component, create a table
-        for (type_id, _) in self.types.iter().enumerate() {
-            // Create a table for this resource type
-            let table = ResourceTable { type_id: type_id as u32 };
+        for _type_id in 0..self.types.len().min(16) {
+            // Create a budget-aware table for this resource type
+            let table = ResourceTable::new()?;
             tables.push(table).map_err(|_| {
                 wrt_foundation::Error::new(
                     wrt_foundation::ErrorCategory::Resource,
@@ -388,9 +387,9 @@ impl Component {
 
         // Create resource tables based on component types
         // For each resource type in the component, create a table
-        for (type_id, _) in self.types.iter().enumerate() {
-            // Create a table for this resource type
-            let table = ResourceTable { type_id: type_id as u32 };
+        for _type_id in 0..self.types.len() {
+            // Create a budget-aware table for this resource type
+            let table = ResourceTable::new()?;
             tables.push(table);
         }
 
@@ -398,12 +397,16 @@ impl Component {
     }
 
     #[cfg(not(any(feature = "std", )))]
-    fn create_resource_tables(&self) -> Wrtcore::result::Result<BoundedVec<ResourceTable, 16, NoStdProvider<65536>>, NoStdProvider<65536>> {
-        let mut tables = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
+    fn create_resource_tables(&self) -> WrtResult<BoundedVec<ResourceTable, 16, crate::bounded_component_infra::ComponentProvider>> {
+        use crate::bounded_component_infra::ComponentProvider;
+        use wrt_foundation::safe_managed_alloc;
+        
+        let provider = safe_managed_alloc!(131072, CrateId::Component)?;
+        let mut tables = BoundedVec::new(provider)?;
 
         // Create resource tables based on component types
-        for (type_id, _) in self.types.iter().enumerate() {
-            let table = ResourceTable { type_id: type_id as u32 };
+        for _type_id in 0..self.types.len().min(16) {
+            let table = ResourceTable::new()?;
             tables.push(table).map_err(|_| {
                 wrt_foundation::Error::new(
                     wrt_foundation::ErrorCategory::Resource,

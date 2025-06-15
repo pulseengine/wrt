@@ -18,11 +18,11 @@ pub use wrt_foundation::{
 
 // Platform-aware collection type aliases that adapt to target platform capabilities
 /// `BoundedHashMap` type for `no_std` environments with bounded capacity
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub type BoundedHashMap<K, V> = wrt_foundation::no_std_hashmap::BoundedHashMap<K, V, 128, wrt_foundation::NoStdProvider<1024>>;
 
 /// `BoundedHashSet` type for `no_std` environments with bounded capacity  
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub type BoundedHashSet<T> = wrt_foundation::no_std_hashmap::BoundedHashSet<T, 128, wrt_foundation::NoStdProvider<1024>>;
 
 // Platform-aware string and vector types
@@ -87,8 +87,7 @@ macro_rules! format {
 
 
 // Re-export the macros for no_std
-#[cfg(not(feature = "std"))]
-pub use crate::format;
+// Note: format macro is provided by alloc when available
 
 // Helper functions for Option<Value> conversion
 /// Convert Option<Value> to Option<i32> for `no_std` environments
@@ -254,8 +253,8 @@ pub use wrt_foundation::types::{
 pub use wrt_foundation::{
     prelude::{
         BoundedStack, BoundedVec,
-        GlobalType as CoreGlobalType, MemoryType as CoreMemoryType, ResourceType,
-        SafeMemoryHandler, SafeSlice, TableType as CoreTableType,
+        ResourceType,
+        SafeMemoryHandler, SafeSlice,
         ValueType, VerificationLevel,
     },
     safe_memory::SafeStack,
@@ -265,6 +264,7 @@ pub use wrt_foundation::{
 };
 
 // Clean type aliases without provider parameters - for public APIs
+// Component model types (for component support, not core runtime)
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use wrt_foundation::clean_types::{
     FuncType as CleanFuncType,
@@ -276,19 +276,33 @@ pub use wrt_foundation::clean_types::{
     ExternType as CleanExternType,
 };
 
-// Public type aliases using clean types
+// Clean core WebAssembly types (for runtime use)
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub type FuncType = CleanFuncType;
+pub use wrt_foundation::clean_core_types::{
+    CoreFuncType,
+    CoreMemoryType,
+    CoreTableType,
+    CoreGlobalType,
+};
+
+// Public type aliases using clean CORE types (not component types)
+/// Type alias for WebAssembly function types
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub type MemoryType = CleanMemoryType;
+pub type FuncType = CoreFuncType;
+/// Type alias for WebAssembly memory types
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub type TableType = CleanTableType;
+pub type MemoryType = CoreMemoryType;
+/// Type alias for WebAssembly table types
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub type GlobalType = CleanGlobalType;
+pub type TableType = CoreTableType;
+/// Type alias for WebAssembly global types
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub type ValType = CleanValType;
+pub type GlobalType = CoreGlobalType;
+// Note: ValType doesn't need aliasing - ValueType from core is already used
+/// Type alias for WebAssembly values
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub type Value = CleanValue;
+/// Type alias for WebAssembly external types
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub type ExternType = CleanExternType;
 
@@ -303,6 +317,7 @@ pub use wrt_foundation::types::{
 };
 
 // Default provider for legacy compatibility
+/// Default memory provider with 64KB allocation capacity
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub type DefaultProvider = wrt_foundation::NoStdProvider<65536>;
 
@@ -325,7 +340,9 @@ pub use crate::module::{TableWrapper as RuntimeTable, MemoryWrapper as RuntimeMe
 #[cfg(feature = "std")]
 pub use wrt_foundation::prelude::{ComponentValue, ValType as ComponentValType};
 // Re-export from wrt-host (for runtime host interaction items)
+#[cfg(feature = "std")]
 pub use wrt_host::prelude::CallbackRegistry as HostFunctionRegistry;
+#[cfg(feature = "std")]
 pub use wrt_host::prelude::HostFunctionHandler as HostFunction;
 pub use wrt_instructions::{
     control_ops::BranchTarget as Label, 
@@ -335,10 +352,14 @@ pub use wrt_instructions::{
 };
 
 // Temporary instruction type until unified enum is available
+/// Unified instruction type for WebAssembly operations
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Instruction {
+    /// No operation instruction
     Nop, // Unit variant for default
+    /// Arithmetic operation instruction
     Arithmetic(ArithmeticOp),
+    /// Control flow operation instruction
     Control(ControlOp),
     // Add other variants as needed
 }

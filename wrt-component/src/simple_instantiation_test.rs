@@ -15,7 +15,7 @@ use wrt_foundation::{
 #[cfg(not(feature = "std"))]
 use crate::{
     types::Value as ComponentValue,
-    types::ValType<NoStdProvider<65536>> as ComponentType,
+    types::ValType as ComponentType,
 };
 
 use crate::{
@@ -222,18 +222,18 @@ fn test_memory_layout_integration() {
     let context = InstantiationContext::new();
     
     // Test basic type layouts
-    use crate::types::ValType<NoStdProvider<65536>>;
+    use crate::types::ValType;
     use crate::memory_layout;
     
-    let bool_layout = memory_layout::calculate_layout(&ValType<NoStdProvider<65536>>::Bool);
+    let bool_layout = memory_layout::calculate_layout(&ValType::Bool);
     assert_eq!(bool_layout.size, 1);
     assert_eq!(bool_layout.align, 1);
     
-    let u32_layout = memory_layout::calculate_layout(&ValType<NoStdProvider<65536>>::U32);
+    let u32_layout = memory_layout::calculate_layout(&ValType::U32);
     assert_eq!(u32_layout.size, 4);
     assert_eq!(u32_layout.align, 4);
     
-    let u64_layout = memory_layout::calculate_layout(&ValType<NoStdProvider<65536>>::U64);
+    let u64_layout = memory_layout::calculate_layout(&ValType::U64);
     assert_eq!(u64_layout.size, 8);
     assert_eq!(u64_layout.align, 8);
 }

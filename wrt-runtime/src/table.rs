@@ -614,7 +614,7 @@ impl Table {
             self.ty.element_type,
             self.verification_level
         );
-        wrt_foundation::bounded::BoundedString::from_str(stats_text, TableProvider::default()).unwrap_or_default()
+        wrt_foundation::bounded::BoundedString::from_str(&stats_text, TableProvider::default()).unwrap_or_default()
     }
 }
 

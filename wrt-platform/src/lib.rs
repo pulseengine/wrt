@@ -19,7 +19,7 @@
 //! - `no_std` support.
 
 #![cfg_attr(not(feature = "std"), no_std)] // Rule: Enforce no_std when std feature is not enabled
-#![cfg_attr(all(not(feature = "std"), not(feature = "disable-panic-handler")), no_main)]
+#![cfg_attr(all(not(feature = "std"), not(feature = "enable-panic-handler")), no_main)]
 #![deny(missing_docs)] // Rule 9: Require documentation.
 #![deny(clippy::panic)] // Rule 3: No panic!.
 #![deny(clippy::unwrap_used)] // Rule 3: No unwrap.
@@ -81,8 +81,7 @@ extern crate wrt_panic;
         feature = "enable-panic-handler",
         feature = "dev-panic-handler",
         feature = "asil-b-panic-handler",
-        feature = "asil-d-panic-handler",
-        feature = "disable-panic-handler"
+        feature = "asil-d-panic-handler"
     ))
 ))]
 #[panic_handler]

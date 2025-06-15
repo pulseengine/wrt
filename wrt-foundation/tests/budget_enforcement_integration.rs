@@ -5,7 +5,7 @@
 
 #[cfg(test)]
 mod budget_enforcement_integration_tests {
-    use wrt_foundation::{
+    use wrt_foundation::{{
         memory_system_initializer,
         budget_aware_provider::{BudgetAwareProviderFactory, CrateId},
         budget_provider::BudgetProvider,
@@ -15,7 +15,7 @@ mod budget_enforcement_integration_tests {
         runtime_monitoring::{RuntimeMonitor, MonitoringConfig, EnforcementPolicy},
         migration::migration_provider,
         WrtResult, WrtError,
-    };
+    }, safe_managed_alloc};
     use core::mem::size_of;
 
     // Helper to initialize test environment
@@ -266,7 +266,7 @@ mod budget_enforcement_integration_tests {
         )?;
         
         // The following would fail to compile with our enforcement:
-        // let guard = managed_alloc!(1024, CrateId::Foundation)?;
+        // let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
  let bad_provider = unsafe { guard.release() }; // Deprecated!
         // let bad_vec = BoundedVec::<u32, 10, _>::new(bad_provider)?;
         
@@ -306,7 +306,17 @@ mod budget_enforcement_integration_tests {
 
     #[test]
     fn test_platform_aware_budgets() -> WrtResult<()> {
-        use wrt_foundation::platform_discovery::PlatformDiscovery;
+        use wrt_foundation::{{
+        memory_system_initializer,
+        budget_aware_provider::{BudgetAwareProviderFactory, CrateId},
+        budget_provider::BudgetProvider,
+        safe_memory::NoStdProvider,
+        bounded::{BoundedVec, BoundedString, BoundedMap},
+        memory_analysis::MemoryAnalyzer,
+        runtime_monitoring::{RuntimeMonitor, MonitoringConfig, EnforcementPolicy},
+        migration::migration_provider,
+        WrtResult, WrtError,
+    }, safe_managed_alloc};
         
         // Test with different simulated platforms
         for platform in &["embedded", "iot", "desktop"] {
@@ -362,7 +372,7 @@ mod budget_enforcement_integration_tests {
         
         // 1. Direct NoStdProvider creation should be deprecated
         #[allow(deprecated)]
-        let guard = managed_alloc!(1024, CrateId::Foundation)?;
+        let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
         let direct = unsafe { guard.release() };
         // This compiles but is deprecated

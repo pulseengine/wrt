@@ -38,7 +38,6 @@ use wrt_format::component::{ComponentTypeDefinition, ExternType as FormatExternT
 use super::bidirectional::{
     format_to_runtime_extern_type, runtime_to_format_extern_type, IntoFormatType, IntoRuntimeType,
 };
-use crate::prelude::*;
 
 /// Wrapper around wrt_foundation::component::ComponentType
 #[derive(Debug, Clone)]

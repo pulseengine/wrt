@@ -240,7 +240,6 @@ mod no_std_types {
 pub use no_std_types::*;
 
 use crate::prelude::*;
-use wrt_foundation::BoundedVec;
 
 /// Trait for component analysis capabilities
 pub trait ComponentAnalyzer {

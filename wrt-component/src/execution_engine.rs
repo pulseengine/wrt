@@ -27,7 +27,7 @@ use crate::{
     memory_layout::MemoryLayout,
     // resource_lifecycle::{ResourceHandle, ResourceLifecycleManager},
     string_encoding::StringEncoding,
-    types::{ValType<NoStdProvider<65536>>, Value},
+    types::{ValType, Value},
     // runtime_bridge::{ComponentRuntimeBridge, RuntimeBridgeConfig},
     WrtResult,
 };

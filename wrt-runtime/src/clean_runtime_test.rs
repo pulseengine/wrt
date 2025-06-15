@@ -89,7 +89,7 @@ impl CleanRuntime {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                format!("Expected {} args, got {}", function.func_type.params.len(), args.len())
+                "Argument count mismatch"
             ));
         }
 

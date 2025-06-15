@@ -214,6 +214,7 @@ pub fn initialize_panic_handler<P: MemoryProvider>(context: PanicContext<P>) -> 
 }
 
 /// Hash a string at compile time for error codes
+#[allow(dead_code)]
 const fn hash_str(s: &str) -> u32 {
     let bytes = s.as_bytes();
     let mut hash = 5381u32;
@@ -226,6 +227,7 @@ const fn hash_str(s: &str) -> u32 {
 }
 
 /// Store panic information in memory with debugger-visible pattern
+#[allow(dead_code)]
 fn store_panic_info(info: &core::panic::PanicInfo) {
     let asil_level = PANIC_ASIL_LEVEL.load(Ordering::SeqCst);
     let _memory_budget = PANIC_MEMORY_BUDGET.load(Ordering::SeqCst) as usize;

@@ -26,7 +26,6 @@ use crate::{
     export::Export,
     import::Import,
     instance_no_std::InstanceValue,
-    prelude::*,
     resources::{ResourceStrategyNoStd}, // ResourceTable not available in no_std
 };
 
@@ -1216,7 +1215,7 @@ impl Default for TableValue {
 impl Default for TableType {
     fn default() -> Self {
         Self {
-            element_type: ValType<NoStdProvider<65536>>::FuncRef,
+            element_type: ValType::FuncRef,
             limits: Limits::default(),
         }
     }
@@ -1235,14 +1234,14 @@ impl Default for GlobalValue {
 impl Default for GlobalType {
     fn default() -> Self {
         Self {
-            content: ValType<NoStdProvider<65536>>::I32,
+            content: ValType::I32,
             mutable: false,
         }
     }
 }
 
 
-impl Default for ValType<NoStdProvider<65536>> {
+impl Default for ValType {
     fn default() -> Self {
         Self::I32
     }

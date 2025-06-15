@@ -6,7 +6,7 @@
 #[cfg(feature = "std")]
 use std::boxed::Box;
 
-use wrt_host::{CallbackRegistry, CallbackType};
+use wrt_host::{CallbackRegistry};
 
 use crate::operation::LogOperation;
 

@@ -152,6 +152,8 @@ Key Architectural Decisions
    intercept_system
    logging
    memory_model
+   memory_safety_comparison
+   static_memory_system
    platform_layer
    qnx_platform
    resource_management

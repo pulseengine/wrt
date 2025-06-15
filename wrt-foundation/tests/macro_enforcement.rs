@@ -5,14 +5,14 @@
 
 #[cfg(test)]
 mod macro_enforcement_tests {
-    use wrt_foundation::{
+    use wrt_foundation::{{
         memory_system_initializer,
         budget_aware_provider::{BudgetAwareProviderFactory, CrateId},
         budget_provider::BudgetProvider,
         bounded::{BoundedVec, BoundedString},
         enforcement::{BudgetProviderOnly, ProviderConstraint},
         WrtResult,
-    };
+    }, safe_managed_alloc};
 
     fn setup() -> WrtResult<()> {
         memory_system_initializer::presets::test()
@@ -131,7 +131,7 @@ mod macro_enforcement_tests {
         assert_eq!(crate_id, CrateId::Runtime);
         
         // This would not compile:
-        // let guard = managed_alloc!(1024, CrateId::Foundation)?;
+        // let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
  let bad_provider = unsafe { guard.release() };
         // let _ = only_budget_aware(bad_provider); // Error: doesn't implement BudgetProviderOnly
         

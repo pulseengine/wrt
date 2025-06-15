@@ -114,6 +114,7 @@ extern crate alloc;
 // extern crate log; // Removed
 // Prelude module for consistent imports across std and no_std environments
 pub mod prelude;
+pub mod safety_features;
 
 // Re-export common types from prelude
 pub use prelude::*;
@@ -175,6 +176,11 @@ pub mod generic_provider_factory;
 pub mod wrt_memory_system;
 /// Compile-time budget verification system
 pub mod budget_verification;
+pub mod compile_time_bounds;
+// Validated collections temporarily disabled due to trait bound complexity
+// TODO: Re-enable after trait system refactoring
+// #[cfg(feature = "std")]
+// pub mod validated_collections;
 /// Modern memory initialization system - zero-config setup
 pub mod memory_init;
 /// Compile-time memory enforcement system - prevents bypass
@@ -321,6 +327,16 @@ pub use wrt_memory_system::{WrtProviderFactory, WRT_MEMORY_COORDINATOR};
 pub use memory_coordinator::{GenericMemoryCoordinator, CrateIdentifier, AllocationId};
 pub use generic_memory_guard::{GenericMemoryGuard, ManagedMemoryProvider, MemoryCoordinator};
 pub use budget_verification::{CRATE_BUDGETS, TOTAL_MEMORY_BUDGET};
+pub use compile_time_bounds::{
+    CompileTimeBoundsValidator, MemoryLayoutValidator, CollectionBoundsValidator,
+    StackBoundsValidator, ResourceLimitsValidator, SystemBoundsValidator,
+};
+// Macros are automatically available at crate root due to #[macro_export]
+// Validated collections temporarily disabled
+// #[cfg(feature = "std")]
+// pub use validated_collections::{
+//     ValidatedBoundedVec, ValidatedBoundedMap, ValidatedBoundedString,
+// };
 pub use memory_init::MemoryInitializer;
 pub use enforcement::{MemoryManaged, EnforcedAllocation, AllocationToken};
 

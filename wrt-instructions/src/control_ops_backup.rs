@@ -50,7 +50,6 @@
 // Remove unused imports
 
 use crate::prelude::*;
-use crate::validation::{Validate, ValidationContext};
 
 
 /// Branch target information
@@ -234,7 +233,7 @@ impl BrTable {
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            let guard = managed_alloc!(8192, CrateId::Instructions)?;
+            let guard = safe_managed_alloc!(8192, CrateId::Instructions)?;
 
             let provider = unsafe { guard.release() };\n            let mut table = wrt_foundation::BoundedVec::new(provider).map_err(|_| {\n                Error::memory_error(\"Could not create BoundedVec\")\n            })?;
             for &label in table_slice {
@@ -401,7 +400,7 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
                 let br_table = BrTable::new(table.clone(), *default);
                 #[cfg(not(feature = "std"))]
                 let br_table = {
-                    let guard = managed_alloc!(8192, CrateId::Instructions)?;
+                    let guard = safe_managed_alloc!(8192, CrateId::Instructions)?;
 
                     let provider = unsafe { guard.release() };\n                    let mut bounded_table = wrt_foundation::BoundedVec::new(provider).map_err(|_| {\n                        Error::new(ErrorCategory::Runtime, codes::MEMORY_ERROR, \"Could not create BoundedVec\")\n                    })?;
                     for &label in table.iter() {
@@ -442,7 +441,7 @@ mod tests {
     #[cfg(feature = "std")]
     use std::vec::Vec;
 
-    use wrt_foundation::types::ValueType;
+    use wrt_foundation::{types::ValueType, safe_managed_alloc};
 
     use super::*;
 

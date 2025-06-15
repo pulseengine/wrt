@@ -52,15 +52,20 @@ pub use prelude::*;
 pub mod clean_runtime_test;
 
 // Core modules
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod atomic_execution;
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod atomic_memory_model;
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod branch_prediction;
 pub mod cfi_engine;
 pub mod core_types;
 pub mod execution;
 pub mod func;
 pub mod global;
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod interpreter_optimization;
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod memory;
 
 // Simplified type system - CRITICAL COMPILATION FIX
@@ -79,8 +84,10 @@ pub mod module_instance;
 pub mod prelude;
 // pub mod stackless; // Temporarily disabled due to compilation issues
 pub mod table;
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod thread_manager;
 pub mod types;
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod wait_queue;
 // pub mod wit_debugger_integration; // Temporarily disabled
 
@@ -96,12 +103,15 @@ mod platform_stubs;
 mod component_stubs;
 
 // Re-export commonly used types
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub use atomic_execution::{AtomicMemoryContext, AtomicExecutionStats};
 pub use core_types::{CallFrame, ComponentExecutionState, ExecutionContext};
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub use atomic_memory_model::{
     AtomicMemoryModel, MemoryOrderingPolicy, ConsistencyValidationResult,
     MemoryModelPerformanceMetrics, DataRaceReport, OrderingViolationReport,
 };
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub use branch_prediction::{
     BranchLikelihood, BranchPrediction, FunctionBranchPredictor, ModuleBranchPredictor,
     PredictiveExecutionContext, PredictionStats,
@@ -112,6 +122,7 @@ pub use cfi_engine::{
 };
 pub use execution::ExecutionStats;
 // Note: ExecutionContext is defined in core_types, not execution
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub use interpreter_optimization::{
     OptimizedInterpreter, OptimizationStrategy, OptimizationMetrics, 
     BranchOptimizationResult, ExecutionPath,
@@ -135,6 +146,7 @@ pub use interpreter_optimization::{
 pub use func::Function as RuntimeFunction;
 pub use prelude::FuncType;
 pub use global::Global;
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub use memory::Memory;
 // pub use memory_adapter::{MemoryAdapter, SafeMemoryAdapter, StdMemoryProvider};
 // pub use memory_helpers::ArcMemoryExt;

@@ -6,7 +6,7 @@
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::BTreeMap, vec::Vec};
 use crate::bounded_debug_infra;
-use wrt_foundation::managed_alloc;
+use wrt_foundation::safe_managed_alloc;
 #[cfg(all(not(feature = "std")))]
 use std::{boxed::Box, collections::BTreeMap, vec::Vec};
 
@@ -332,7 +332,7 @@ impl WitSourceMap {
         // TODO: Specify appropriate size for this allocation
 
 
-        let guard = managed_alloc!(8192, CrateId::Debug)?;
+        let guard = safe_managed_alloc!(8192, CrateId::Debug)?;
 
 
         let provider = unsafe { guard.release() };
@@ -394,7 +394,7 @@ impl WitSourceFile {
     pub fn new(path: &str, content: &str) -> Result<Self> {
         // TODO: Specify appropriate size for this allocation
 
-        let guard = managed_alloc!(8192, CrateId::Debug)?;
+        let guard = safe_managed_alloc!(8192, CrateId::Debug)?;
 
         let provider = unsafe { guard.release() };
         let path_bounded = BoundedString::from_str(path, provider.clone())

@@ -96,7 +96,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<
 
     /// Adds an import to the component type.
     pub fn with_import(mut self, import: Import<P>) -> Self {
-        let _ = self.imports.push(import);
+        // Note: Silently ignore capacity errors in builder pattern
+        drop(self.imports.push(import));
         self
     }
 
@@ -108,7 +109,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<
 
     /// Adds an export to the component type.
     pub fn with_export(mut self, export: Export<P>) -> Self {
-        let _ = self.exports.push(export);
+        // Note: Silently ignore capacity errors in builder pattern
+        drop(self.exports.push(export));
         self
     }
 
@@ -120,7 +122,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<
 
     /// Adds an alias to the component type.
     pub fn with_alias(mut self, alias: ComponentAlias<P>) -> Self {
-        let _ = self.aliases.push(alias);
+        // Note: Silently ignore capacity errors in builder pattern
+        drop(self.aliases.push(alias));
         self
     }
 
@@ -132,7 +135,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<
 
     /// Adds a component instance to the component type.
     pub fn with_instance(mut self, instance: ComponentInstance<P>) -> Self {
-        let _ = self.instances.push(instance);
+        // Note: Silently ignore capacity errors in builder pattern
+        drop(self.instances.push(instance));
         self
     }
 
@@ -147,7 +151,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<
 
     /// Adds a core instance to the component type.
     pub fn with_core_instance(mut self, core_instance: CoreInstance<P>) -> Self {
-        let _ = self.core_instances.push(core_instance);
+        // Note: Silently ignore capacity errors in builder pattern
+        drop(self.core_instances.push(core_instance));
         self
     }
 
@@ -162,7 +167,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<
 
     /// Adds a component type reference to the component type.
     pub fn with_component_type(mut self, component_type: TypeRef) -> Self {
-        let _ = self.component_types.push(component_type);
+        drop(self.component_types.push(component_type));
         self
     }
 
@@ -177,7 +182,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<
 
     /// Adds a core type to the component type.
     pub fn with_core_type(mut self, core_type: CoreType<P>) -> Self {
-        let _ = self.core_types.push(core_type);
+        drop(self.core_types.push(core_type));
         self
     }
 

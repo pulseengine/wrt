@@ -23,7 +23,7 @@
 
 #[cfg(feature = "std")]
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{HashMap},
     vec::Vec,
 };
 
@@ -122,7 +122,7 @@ impl FromBytes for BranchHintValue {
         _provider: &PStream,
     ) -> WrtResult<Self> {
         let byte = reader.read_u8()?;
-        Self::from_byte(byte).map_err(|e| {
+        Self::from_byte(byte).map_err(|_e| {
             wrt_error::Error::new(
                 wrt_error::ErrorCategory::Parse,
                 wrt_error::codes::INVALID_VALUE_TYPE,

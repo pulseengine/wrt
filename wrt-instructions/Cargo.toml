@@ -19,22 +19,22 @@ std = [
     "dep:log"]
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
-optimize = ["wrt-foundation/optimize"]
-safety = ["wrt-foundation/safety"]
 
-# Disable panic handler for library builds to avoid conflicts
-disable-panic-handler = [
-    "wrt-error/disable-panic-handler",
-    "wrt-foundation/disable-panic-handler", 
-    "wrt-sync/disable-panic-handler",
-    "wrt-math/disable-panic-handler"
-]
+# Allocation support for no_std environments
+alloc = ["wrt-foundation/alloc", "wrt-math/alloc"]
+optimize = ["wrt-foundation/optimize"]
+safety-asil-b = ["wrt-foundation/safety-asil-b"]
+
+safety-asil-c = ["safety-asil-b"]
+safety-asil-d = ["safety-asil-c"]
+kani = []
+
 
 [dependencies]
-wrt-error = { workspace = true }
-wrt-foundation = { workspace = true }
-wrt-sync = { workspace = true }
-wrt-math = { workspace = true }
+wrt-error = { workspace = true, default-features = false }
+wrt-foundation = { workspace = true, default-features = false }
+wrt-sync = { workspace = true, default-features = false }
+wrt-math = { workspace = true, default-features = false }
 log = { version = "0.4", optional = true }
 
 # No-std support

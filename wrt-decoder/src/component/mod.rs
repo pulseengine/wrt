@@ -62,7 +62,7 @@ pub use validation::{validate_component, validate_component_with_config, Validat
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
 #[cfg(feature = "std")]
-use crate::{prelude::*, utils::BinaryType};
+use crate::{utils::BinaryType};
 
 #[cfg(not(feature = "std"))]
 use crate::prelude::*;

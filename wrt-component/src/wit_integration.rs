@@ -11,7 +11,7 @@ use wrt_foundation::{
 use crate::{
     async_types::{Future, FutureHandle, Stream, StreamHandle},
     generative_types::{BoundKind, GenerativeResourceType, GenerativeTypeRegistry, TypeBound},
-    types::{ComponentError, ComponentInstanceId, TypeId, ValType<NoStdProvider<65536>>},
+    types::{ComponentError, ComponentInstanceId, TypeId, ValType},
 };
 
 use wrt_format::wit_parser::{
@@ -53,21 +53,21 @@ pub struct AsyncInterfaceFunction {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedParam {
     pub name: BoundedString<32, NoStdProvider<65536>>,
-    pub val_type: ValType<NoStdProvider<65536>>,
+    pub val_type: ValType,
     pub wit_type: WitType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedResult {
     pub name: Option<BoundedString<32, NoStdProvider<65536>>>,
-    pub val_type: ValType<NoStdProvider<65536>>,
+    pub val_type: ValType,
     pub wit_type: WitType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AsyncTypedResult {
     pub name: Option<BoundedString<32, NoStdProvider<65536>>>,
-    pub val_type: ValType<NoStdProvider<65536>>,
+    pub val_type: ValType,
     pub wit_type: WitType,
     pub is_stream: bool,
     pub is_future: bool,

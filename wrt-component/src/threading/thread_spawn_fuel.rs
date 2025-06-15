@@ -7,7 +7,7 @@ use crate::{
         ComponentThreadManager, ThreadConfiguration, ThreadHandle, ThreadId, ThreadResult,
         ThreadSpawnError, ThreadSpawnErrorKind, ThreadSpawnRequest, ThreadSpawnResult,
     },
-    ComponentInstanceId, ResourceHandle, ValType<NoStdProvider<65536>>,
+    ComponentInstanceId, ResourceHandle, ValType,
 };
 use core::{
     fmt,

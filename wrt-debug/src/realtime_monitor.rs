@@ -79,6 +79,7 @@ pub struct MemoryAlert {
     /// Alert message
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub message: String,
+    /// Alert message (static for no_std environments)
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     pub message: &'static str,
     /// Affected crate (if specific)
@@ -115,7 +116,7 @@ pub struct RealtimeMonitor {
 impl RealtimeMonitor {
     /// Create a new realtime monitor
     pub fn new(config: MonitorConfig) -> Self {
-        let history_size = config.history_size;
+        let _history_size = config.history_size;
         Self {
             config,
             active: AtomicBool::new(false),

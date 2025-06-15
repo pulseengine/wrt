@@ -7,7 +7,6 @@
 // use wrt_format::component::ResourceOperation as FormatResourceOperation;
 use wrt_foundation::resource::ResourceOperation;
 
-use crate::prelude::*;
 
 // Convert from local ResourceOperation enum to format ResourceOperation
 // Temporarily disabled due to missing FormatResourceOperation type

@@ -7,7 +7,6 @@
 #[cfg(feature = "std")]
 use std::sync::Weak;
 
-use crate::prelude::*;
 
 // Submodules
 pub mod bounded_buffer_pool;
@@ -33,6 +32,8 @@ pub mod resource_strategy_no_std;
 #[cfg(feature = "std")]
 pub mod resource_table;
 pub mod resource_table_no_std;
+#[cfg(feature = "std")]
+pub mod resource_table_budget_integration;
 #[cfg(feature = "std")]
 pub mod size_class_buffer_pool;
 
@@ -71,6 +72,11 @@ pub use resource_strategy_no_std::{ResourceStrategyNoStd, MAX_BUFFER_SIZE};
 #[cfg(feature = "std")]
 pub use resource_table::{
     BufferPoolTrait, MemoryStrategy, Resource, ResourceTable, VerificationLevel,
+};
+#[cfg(feature = "std")]
+pub use resource_table_budget_integration::{
+    BudgetAwareResourceTablePool, ResourceTableUsageStats, create_budget_aware_resource_table,
+    verify_budget_integration,
 };
 #[cfg(not(feature = "std"))]
 pub use resource_table_no_std::{

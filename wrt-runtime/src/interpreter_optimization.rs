@@ -137,11 +137,11 @@ impl InstructionPrefetchCache {
     pub fn clear(&mut self) {
         #[cfg(feature = "std")]
         {
-            self.cache.clear();
+            let _ = self.cache.clear();
         }
         #[cfg(not(feature = "std"))]
         {
-            self.cache.clear();
+            let _ = self.cache.clear();
         }
     }
 }

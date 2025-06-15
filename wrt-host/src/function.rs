@@ -8,7 +8,7 @@
 //! that can be called from WebAssembly components.
 
 // Use the prelude for consistent imports
-use crate::prelude::{Any, Eq, Error, ErrorCategory, PartialEq, Result, Value};
+use crate::prelude::{Any, Eq, PartialEq, Result, Value, Error, ErrorCategory};
 
 // Value vectors for function parameters/returns
 #[cfg(feature = "std")]
@@ -200,7 +200,7 @@ impl Default for CloneableFn {
 #[cfg(test)]
 mod tests {
     use super::*;
-use wrt_foundation::managed_alloc;
+use wrt_foundation::safe_managed_alloc;
 
     #[test]
     fn test_cloneable_fn() {
@@ -212,7 +212,7 @@ use wrt_foundation::managed_alloc;
             {
                 // TODO: Specify appropriate size for this allocation
 
-                let guard = managed_alloc!(8192, CrateId::Host)?;
+                let guard = safe_managed_alloc!(8192, CrateId::Host)?;
 
                 let provider = unsafe { guard.release() };
                 let mut vec = ValueVec::new(provider).unwrap();
@@ -230,7 +230,7 @@ use wrt_foundation::managed_alloc;
         let empty_args = {
             // TODO: Specify appropriate size for this allocation
 
-            let guard = managed_alloc!(8192, CrateId::Host)?;
+            let guard = safe_managed_alloc!(8192, CrateId::Host)?;
 
             let provider = unsafe { guard.release() };
             ValueVec::new(provider).unwrap()
@@ -260,7 +260,7 @@ use wrt_foundation::managed_alloc;
             {
                 // TODO: Specify appropriate size for this allocation
 
-                let guard = managed_alloc!(8192, CrateId::Host)?;
+                let guard = safe_managed_alloc!(8192, CrateId::Host)?;
 
                 let provider = unsafe { guard.release() };
                 let mut vec = ValueVec::new(provider).unwrap();
@@ -277,7 +277,7 @@ use wrt_foundation::managed_alloc;
         let empty_args = {
             // TODO: Specify appropriate size for this allocation
 
-            let guard = managed_alloc!(8192, CrateId::Host)?;
+            let guard = safe_managed_alloc!(8192, CrateId::Host)?;
 
             let provider = unsafe { guard.release() };
             ValueVec::new(provider).unwrap()

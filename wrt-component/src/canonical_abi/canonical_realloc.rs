@@ -4,7 +4,6 @@
 //! Component Model's Canonical ABI, enabling dynamic memory allocation
 //! during lifting and lowering operations.
 
-use crate::prelude::*;
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_COMPONENT_TYPES},
     safe_memory::NoStdProvider,
@@ -12,7 +11,7 @@ use wrt_foundation::{
 use wrt_error::{Error, ErrorCategory, codes};
 
 // Type aliases for no_std compatibility
-pub type ComponentInstanceId = u32;
+pub use crate::types::ComponentInstanceId;
 
 /// Binary std/no_std choice
 pub type ReallocFn = fn(i32, i32, i32, i32) -> i32;
@@ -290,7 +289,7 @@ impl ReallocManager {
 
     /// Update peak memory usage
     fn update_peak_memory(&mut self) {
-        let current_usage: u64 = self.allocations.values().map(|a| a.total_bytes as u64).sum();
+        let current_usage: u64 = self.allocations.iter().map(|(_, a)| a.total_bytes as u64).sum();
 
         if current_usage > self.metrics.peak_memory_usage {
             self.metrics.peak_memory_usage = current_usage;
@@ -302,7 +301,9 @@ impl ReallocManager {
         &mut self,
         instance_id: ComponentInstanceId,
     ) -> Result<()> {
-        if let Some(instance_allocs) = self.allocations.remove(&instance_id) {
+        // Find and remove the instance
+        if let Some(pos) = self.allocations.iter().position(|(id, _)| *id == instance_id) {
+            let (_, instance_allocs) = self.allocations.remove(pos);
             // Update metrics for cleanup
             for alloc in instance_allocs.allocations.iter() {
                 if alloc.active {
@@ -323,6 +324,13 @@ impl ReallocManager {
     pub fn reset_metrics(&mut self) {
         self.metrics = AllocationMetrics::default();
     }
+}
+
+/// Memory layout for allocation calculations
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MemoryLayout {
+    pub size: usize,
+    pub align: usize,
 }
 
 /// Binary std/no_std choice

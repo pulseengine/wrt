@@ -5,14 +5,14 @@
 
 #[cfg(test)]
 mod enforcement_scenario_tests {
-    use wrt_foundation::{
+    use wrt_foundation::{{
         memory_system_initializer,
         budget_aware_provider::{BudgetAwareProviderFactory, CrateId},
         budget_provider::BudgetProvider,
         bounded::{BoundedVec, BoundedString},
         safe_memory::SafeMemoryHandler,
         WrtResult,
-    };
+    }, safe_managed_alloc};
 
     fn setup() -> WrtResult<()> {
         memory_system_initializer::presets::test()
@@ -178,7 +178,14 @@ mod enforcement_scenario_tests {
     fn test_enforcement_with_generics() -> WrtResult<()> {
         setup()?;
         
-        use wrt_foundation::enforcement::BudgetProviderOnly;
+        use wrt_foundation::{{
+        memory_system_initializer,
+        budget_aware_provider::{BudgetAwareProviderFactory, CrateId},
+        budget_provider::BudgetProvider,
+        bounded::{BoundedVec, BoundedString},
+        safe_memory::SafeMemoryHandler,
+        WrtResult,
+    }, safe_managed_alloc};
         
         // Generic function that only accepts budget providers
         fn process_with_provider<const N: usize, P>(provider: P) -> WrtResult<usize>
@@ -195,7 +202,7 @@ mod enforcement_scenario_tests {
         assert_eq!(capacity, 100);
         
         // This would not compile:
-        // let guard = managed_alloc!(1024, CrateId::Foundation)?;
+        // let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
  let bad = unsafe { guard.release() };
         // let _ = process_with_provider(bad); // Error!
         

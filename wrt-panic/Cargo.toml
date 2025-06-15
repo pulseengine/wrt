@@ -5,7 +5,7 @@ edition.workspace = true
 description = "Panic handler for WRT - provides ASIL-B/D compliant panic handling"
 license.workspace = true
 repository.workspace = true
-keywords = ["panic", "no_std", "embedded", "safety", "asil"]
+keywords = ["panic", "no_std", "embedded", "safety-asil-b", "asil"]
 categories = ["no-std", "embedded"]
 
 [dependencies]
@@ -36,13 +36,16 @@ asil-b = []
 asil-d = []
 
 # Safety features for enhanced fault detection
-safety = []
+safety-asil-b = []
 
 # Optimization features for performance-critical paths
 optimize = []
 
 # Enable panic handler (for binary applications only)
 default-panic-handler = []
+safety-asil-c = ["safety-asil-b"]
+safety-asil-d = ["safety-asil-c"]
+
 
 [lib]
 name = "wrt_panic"

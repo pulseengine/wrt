@@ -260,8 +260,8 @@ impl CallbackRegistry {
     #[cfg(not(feature = "std"))]
     pub fn new() -> Self {
         // In no_std mode, we need to provide memory providers for the bounded collections
-        use wrt_foundation::{managed_alloc, CrateId};
-        let guard = managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for callbacks");
+        use wrt_foundation::{safe_managed_alloc, CrateId};
+        let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for callbacks");
         let provider = guard.provider().clone();
         Self { 
             callbacks: HashMap::new(provider).unwrap_or_else(|_| {
@@ -469,8 +469,8 @@ impl CallbackRegistry {
     #[cfg(not(feature = "std"))]
     pub fn get_registered_modules(&self) -> StringVec {
         // In no_std mode, we can't return dynamic module names
-        use wrt_foundation::{managed_alloc, CrateId};
-        let guard = managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for string vector");
+        use wrt_foundation::{safe_managed_alloc, CrateId};
+        let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for string vector");
         let provider = guard.provider().clone();
         StringVec::new(provider).unwrap_or_else(|_| panic!("Failed to create vec"))
     }
@@ -491,8 +491,8 @@ impl CallbackRegistry {
     #[cfg(not(feature = "std"))]
     pub fn get_registered_functions(&self, _module_name: &str) -> StringVec {
         // In no_std mode, we can't return dynamic function names
-        use wrt_foundation::{managed_alloc, CrateId};
-        let guard = managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for string vector");
+        use wrt_foundation::{safe_managed_alloc, CrateId};
+        let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for string vector");
         let provider = guard.provider().clone();
         StringVec::new(provider).unwrap_or_else(|_| panic!("Failed to create vec"))
     }
@@ -528,8 +528,8 @@ impl CallbackRegistry {
     #[cfg(not(feature = "std"))]
     pub fn get_available_builtins(&self) -> wrt_foundation::BoundedSet<BuiltinType, 32, HostProvider> {
         // In no_std mode, we can't dynamically track built-ins
-        use wrt_foundation::{managed_alloc, CrateId};
-        let guard = managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for callbacks");
+        use wrt_foundation::{safe_managed_alloc, CrateId};
+        let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for callbacks");
         let provider = guard.provider().clone();
         wrt_foundation::BoundedSet::new(provider).unwrap_or_else(|_| panic!("Failed to create set"))
     }

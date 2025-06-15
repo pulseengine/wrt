@@ -34,7 +34,6 @@
 //! }
 //! ```
 
-use crate::prelude::BoundedVecExt;
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary;
 use wrt_foundation::{NoStdProvider, BudgetProvider, CrateId};
@@ -326,7 +325,7 @@ pub fn decode_component_header(
     verify_component_header(bytes)?;
 
     // Create a memory provider for the component data
-    let provider = create_memory_provider(bytes, verification_level)?;
+    let _provider = create_memory_provider(bytes, verification_level)?;
 
     // Initialize the component header
     let mut header = ComponentHeader::new(verification_level);

@@ -6,7 +6,6 @@ use wrt_foundation::{
 };
 
 use super::{Instant, ResourceId};
-use crate::prelude::*;
 
 // Implement required traits for BoundedVec compatibility
 use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream};

@@ -2,12 +2,20 @@ use std::sync::Weak;
 use std::format;
 
 use wrt_format::component::ResourceOperation as FormatResourceOperation;
-use wrt_foundation::resource::ResourceOperation;
+use wrt_foundation::{
+    resource::ResourceOperation,
+    bounded_collections::BoundedMap,
+    bounded::BoundedVec,
+    safe_managed_alloc,
+    budget_aware_provider::CrateId,
+    WrtResult,
+};
 use wrt_intercept::{builtins::InterceptContext as InterceptionContext, InterceptionResult};
+use crate::bounded_component_infra::ComponentProvider;
 
 // Safety-critical imports for WRT allocator
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{WrtHashMap, WrtVec, CrateId};
+use wrt_foundation::allocator::{WrtHashMap, WrtVec};
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
 use std::collections::HashMap;
 #[cfg(not(feature = "std"))]
@@ -110,16 +118,18 @@ impl MemoryStrategy {
     }
 }
 
-/// Resource entry in the resource table
+/// Resource entry in the resource table (budget-aware)
 #[derive(Clone)]
 struct ResourceEntry {
     /// The resource instance
     resource: Arc<Mutex<Resource>>,
-    /// Weak references to borrowed resources
-    #[cfg(feature = "safety-critical")]
+    /// Weak references to borrowed resources (budget-aware)
+    #[cfg(all(feature = "std", feature = "safety-critical"))]
     borrows: WrtVec<Weak<Mutex<Resource>>, {CrateId::Component as u8}, 32>,
-    #[cfg(not(feature = "safety-critical"))]
+    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     borrows: Vec<Weak<Mutex<Resource>>>,
+    #[cfg(not(feature = "std"))]
+    borrows: BoundedVec<Weak<Mutex<Resource>>, 32, ComponentProvider>,
     /// Memory strategy for this resource
     memory_strategy: MemoryStrategy,
     /// Verification level
@@ -177,14 +187,23 @@ impl BufferPoolTrait for SizeClassBufferPool {
     }
 }
 
-/// Resource table for tracking resource instances
+/// Budget-aware resource table with bounded memory allocation
+/// 
+/// This table integrates with the WRT memory budget system to ensure
+/// static memory allocation for ASIL-D compliance.
+/// 
+/// SW-REQ-ID: REQ_MEM_001 - Memory bounds checking
+/// SW-REQ-ID: REQ_MEM_002 - Budget enforcement  
+/// SW-REQ-ID: REQ_COMP_001 - Component isolation
 #[derive(Clone)]
 pub struct ResourceTable {
-    /// Map of resource handles to resource entries
-    #[cfg(feature = "safety-critical")]
+    /// Map of resource handles to resource entries (budget-aware)
+    #[cfg(all(feature = "std", feature = "safety-critical"))]
     resources: WrtHashMap<u32, ResourceEntry, {CrateId::Component as u8}, 1024>,
-    #[cfg(not(feature = "safety-critical"))]
+    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     resources: HashMap<u32, ResourceEntry>,
+    #[cfg(not(feature = "std"))]
+    resources: BoundedMap<u32, ResourceEntry, 1024, ComponentProvider>,
     /// Next available resource handle
     next_handle: u32,
     /// Maximum allowed resources
@@ -195,11 +214,16 @@ pub struct ResourceTable {
     default_verification_level: VerificationLevel,
     /// Buffer pool for bounded copy operations
     buffer_pool: Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
-    /// Interceptors for resource operations
-    #[cfg(feature = "safety-critical")]
+    /// Interceptors for resource operations (budget-aware)
+    #[cfg(all(feature = "std", feature = "safety-critical"))]
     interceptors: WrtVec<Arc<dyn ResourceInterceptor>, {CrateId::Component as u8}, 16>,
-    #[cfg(not(feature = "safety-critical"))]
+    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     interceptors: Vec<Arc<dyn ResourceInterceptor>>,
+    #[cfg(not(feature = "std"))]
+    interceptors: BoundedVec<Arc<dyn ResourceInterceptor>, 16, ComponentProvider>,
+    /// Memory budget guard for this resource table
+    #[cfg(not(feature = "std"))]
+    _memory_guard: ComponentProvider,
 }
 
 impl fmt::Debug for ResourceTable {
@@ -216,44 +240,84 @@ impl fmt::Debug for ResourceTable {
 }
 
 impl ResourceTable {
-    /// Create a new resource table with default settings
-    pub fn new() -> Self {
-        Self {
-            #[cfg(feature = "safety-critical")]
+    /// Create a new budget-aware resource table with default settings
+    /// 
+    /// This constructor integrates with the WRT memory budget system
+    /// to ensure compile-time allocation enforcement.
+    /// 
+    /// # ASIL-D Safety
+    /// 
+    /// - Uses bounded collections with compile-time size limits
+    /// - Integrates with budget enforcement system  
+    /// - Prevents runtime allocation failures
+    pub fn new() -> WrtResult<Self> {
+        #[cfg(not(feature = "std"))]
+        let memory_guard = safe_managed_alloc!(131072, CrateId::Component)?; // 128KB for resource table
+        
+        Ok(Self {
+            #[cfg(all(feature = "std", feature = "safety-critical"))]
             resources: WrtHashMap::new(),
-            #[cfg(not(feature = "safety-critical"))]
+            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
             resources: HashMap::new(),
+            #[cfg(not(feature = "std"))]
+            resources: BoundedMap::new(memory_guard.clone())?,
             next_handle: 1, // Start at 1 as 0 is reserved
             max_resources: MAX_RESOURCES,
             default_memory_strategy: MemoryStrategy::default(),
             default_verification_level: VerificationLevel::Critical,
             buffer_pool: Arc::new(Mutex::new(BufferPool::new(4096)))
                 as Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
-            #[cfg(feature = "safety-critical")]
+            #[cfg(all(feature = "std", feature = "safety-critical"))]
             interceptors: WrtVec::new(),
-            #[cfg(not(feature = "safety-critical"))]
+            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
             interceptors: Vec::new(),
-        }
+            #[cfg(not(feature = "std"))]
+            interceptors: BoundedVec::new(memory_guard.clone())?,
+            #[cfg(not(feature = "std"))]
+            _memory_guard: memory_guard,
+        })
+    }
+
+    /// Create a budget-aware ResourceTable factory function
+    /// 
+    /// This is a convenience function that integrates with the memory budget system
+    /// and should be used by component instantiation code.
+    /// 
+    /// # ASIL-D Safety
+    /// 
+    /// This function ensures all resource table allocations are tracked
+    /// by the budget enforcement system.
+    pub fn new_budget_aware() -> WrtResult<Self> {
+        Self::new()
     }
 
     /// Create a new resource table with optimized size-class buffer pool
-    pub fn new_with_optimized_memory() -> Self {
-        Self {
-            #[cfg(feature = "safety-critical")]
+    pub fn new_with_optimized_memory() -> WrtResult<Self> {
+        #[cfg(not(feature = "std"))]
+        let memory_guard = safe_managed_alloc!(131072, CrateId::Component)?; // 128KB for resource table
+        
+        Ok(Self {
+            #[cfg(all(feature = "std", feature = "safety-critical"))]
             resources: WrtHashMap::new(),
-            #[cfg(not(feature = "safety-critical"))]
+            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
             resources: HashMap::new(),
+            #[cfg(not(feature = "std"))]
+            resources: BoundedMap::new(memory_guard.clone())?,
             next_handle: 1,
             max_resources: MAX_RESOURCES,
             default_memory_strategy: MemoryStrategy::default(),
             default_verification_level: VerificationLevel::Critical,
             buffer_pool: Arc::new(Mutex::new(SizeClassBufferPool::new()))
                 as Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
-            #[cfg(feature = "safety-critical")]
+            #[cfg(all(feature = "std", feature = "safety-critical"))]
             interceptors: WrtVec::new(),
-            #[cfg(not(feature = "safety-critical"))]
+            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
             interceptors: Vec::new(),
-        }
+            #[cfg(not(feature = "std"))]
+            interceptors: BoundedVec::new(memory_guard.clone())?,
+            #[cfg(not(feature = "std"))]
+            _memory_guard: memory_guard,
+        })
     }
 
     /// Create a new resource table with custom settings
