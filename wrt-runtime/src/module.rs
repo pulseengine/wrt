@@ -24,6 +24,7 @@ use wrt_foundation::{
         ValueType, // Also import without alias
     },
     values::{Value as WrtValue, Value}, // Also import without alias
+    clean_core_types::CoreMemoryType,
 };
 use wrt_format::{
     DataSegment as WrtDataSegment,
@@ -51,6 +52,14 @@ type CustomSections = BoundedMap<PlatformBoundedString<256>, PlatformBoundedVec<
 type ExportMap = BoundedMap<PlatformBoundedString<256>, Export, 64, RuntimeProvider>;
 type PlatformBoundedVec<T, const N: usize> = wrt_foundation::bounded::BoundedVec<T, N, PlatformProvider>;
 type PlatformBoundedString<const N: usize> = wrt_foundation::bounded::BoundedString<N, PlatformProvider>;
+
+/// Convert MemoryType to CoreMemoryType
+fn to_core_memory_type(memory_type: WrtMemoryType) -> CoreMemoryType {
+    CoreMemoryType {
+        limits: memory_type.limits,
+        shared: memory_type.shared,
+    }
+}
 
 /// A WebAssembly expression (sequence of instructions)
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -456,7 +465,7 @@ impl wrt_foundation::traits::FromBytes for Data {
 
 impl Data {
     /// Returns a reference to the data in this segment
-    pub fn data(&self) -> &[u8] {
+    pub fn data(&self) -> Result<&[u8]> {
         self.init.as_slice()
     }
 }
@@ -589,11 +598,11 @@ impl Module {
             )?;
             let module_key = PlatformBoundedString::from_str_truncate(
                 import_def.module_name.as_str()?,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             let name_key = PlatformBoundedString::from_str_truncate(
                 import_def.item_name.as_str()?,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             let mut inner_map = BoundedMap::new(RuntimeProvider::default())?;
             inner_map.insert(name_key, import)?;
@@ -655,7 +664,7 @@ impl Module {
         }
 
         for memory_def in &wrt_module.memories {
-            runtime_module.memories.push(MemoryWrapper::new(Memory::new(memory_def)?));
+            runtime_module.memories.push(MemoryWrapper::new(Memory::new(to_core_memory_type(memory_def))?));
         }
 
         for global_def in &wrt_module.globals {
@@ -739,7 +748,7 @@ impl Module {
             let export = crate::module::Export::new(export_def.name.as_str()?.to_string(), kind, index)?;
             let name_key = PlatformBoundedString::from_str_truncate(
                 export_def.name.as_str()?,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             runtime_module.exports.insert(name_key, export)?;
         }
@@ -753,7 +762,7 @@ impl Module {
         for custom_def in &wrt_module.custom_sections {
             let name_key = PlatformBoundedString::from_str_truncate(
                 custom_def.name.as_str()?,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             runtime_module.custom_sections.insert(name_key, custom_def.data.clone())?;
         }
@@ -764,7 +773,7 @@ impl Module {
     /// Gets an export by name
     pub fn get_export(&self, name: &str) -> Option<Export> {
         // TODO: BoundedMap doesn't support iteration, so we'll use get with a RuntimeString key
-        let runtime_key = PlatformBoundedString::from_str_truncate(name, RuntimeProvider::default()).ok()?;
+        let runtime_key = PlatformBoundedString::from_str_truncate(name, PlatformProvider::default()).ok()?;
         self.exports.get(&runtime_key).ok().flatten()
     }
 
@@ -824,7 +833,7 @@ impl Module {
         {
             let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -832,7 +841,7 @@ impl Module {
         {
             let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -846,7 +855,7 @@ impl Module {
         {
             let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -854,7 +863,7 @@ impl Module {
         {
             let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -868,7 +877,7 @@ impl Module {
         {
             let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -876,7 +885,7 @@ impl Module {
         {
             let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -890,7 +899,7 @@ impl Module {
         {
             let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -898,7 +907,7 @@ impl Module {
         {
             let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -925,7 +934,7 @@ impl Module {
         let runtime_export = Export::new(export_name_string, runtime_export_kind, format_export.index)?;
         let name_key = PlatformBoundedString::from_str_truncate(
             runtime_export.name.as_str().map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Invalid export name"))?,
-            RuntimeProvider::default()
+            PlatformProvider::default()
         )?;
         self.exports.insert(name_key, runtime_export)?;
         Ok(())
@@ -982,11 +991,11 @@ impl Module {
             // Convert to bounded strings
             let bounded_module = PlatformBoundedString::from_str_truncate(
                 module_name,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             let bounded_item = PlatformBoundedString::from_str_truncate(
                 item_name,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             
             // For BoundedMap, we need to handle the nested map differently
@@ -1006,11 +1015,11 @@ impl Module {
         {
             let bounded_module = PlatformBoundedString::from_str_truncate(
                 module_name,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             let bounded_item = PlatformBoundedString::from_str_truncate(
                 item_name,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             // BoundedMap doesn't support get_mut, so we'll use a simpler approach
             let mut inner_map = BoundedMap::new(RuntimeProvider::default())?;
@@ -1037,11 +1046,11 @@ impl Module {
             // Convert to bounded strings
             let bounded_module = PlatformBoundedString::from_str_truncate(
                 module_name,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             let bounded_item = PlatformBoundedString::from_str_truncate(
                 item_name,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             
             // For BoundedMap, we need to handle the nested map differently
@@ -1061,11 +1070,11 @@ impl Module {
         {
             let bounded_module = PlatformBoundedString::from_str_truncate(
                 module_name,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             let bounded_item = PlatformBoundedString::from_str_truncate(
                 item_name,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             // BoundedMap doesn't support get_mut, so we'll use a simpler approach
             let mut inner_map = BoundedMap::new(RuntimeProvider::default())?;
@@ -1092,11 +1101,11 @@ impl Module {
             // Convert to bounded strings
             let bounded_module = PlatformBoundedString::from_str_truncate(
                 module_name,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             let bounded_item = PlatformBoundedString::from_str_truncate(
                 item_name,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             
             // For BoundedMap, we need to handle the nested map differently
@@ -1116,11 +1125,11 @@ impl Module {
         {
             let bounded_module = PlatformBoundedString::from_str_truncate(
                 module_name,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             let bounded_item = PlatformBoundedString::from_str_truncate(
                 item_name,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             // BoundedMap doesn't support get_mut, so we'll use a simpler approach
             let mut inner_map = BoundedMap::new(RuntimeProvider::default())?;
@@ -1150,11 +1159,11 @@ impl Module {
 
         let module_key = PlatformBoundedString::from_str_truncate(
             module_name,
-            RuntimeProvider::default()
+            PlatformProvider::default()
         )?;
         let item_key = PlatformBoundedString::from_str_truncate(
             item_name,
-            RuntimeProvider::default()
+            PlatformProvider::default()
         )?;
         let mut inner_map = BoundedMap::new(RuntimeProvider::default())?;
         inner_map.insert(item_key, import)?;
@@ -1190,7 +1199,7 @@ impl Module {
 
     /// Add a memory to the module
     pub fn add_memory(&mut self, memory_type: WrtMemoryType) -> Result<()> {
-        self.memories.push(MemoryWrapper::new(Memory::new(memory_type)?));
+        self.memories.push(MemoryWrapper::new(Memory::new(to_core_memory_type(memory_type))?));
         Ok(())
     }
 
@@ -1212,7 +1221,7 @@ impl Module {
         let export = Export::new(name.to_string(), ExportKind::Function, index)?;
         let bounded_name = PlatformBoundedString::from_str_truncate(
             name,
-            RuntimeProvider::default()
+            PlatformProvider::default()
         )?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
@@ -1230,7 +1239,7 @@ impl Module {
 
         let bounded_name = PlatformBoundedString::from_str_truncate(
             name,
-            RuntimeProvider::default()
+            PlatformProvider::default()
         )?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
@@ -1248,7 +1257,7 @@ impl Module {
 
         let bounded_name = PlatformBoundedString::from_str_truncate(
             name,
-            RuntimeProvider::default()
+            PlatformProvider::default()
         )?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
@@ -1266,7 +1275,7 @@ impl Module {
 
         let bounded_name = PlatformBoundedString::from_str_truncate(
             name,
-            RuntimeProvider::default()
+            PlatformProvider::default()
         )?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
@@ -1367,7 +1376,7 @@ impl Module {
 
     /// Add a custom section to the module
     pub fn add_custom_section(&mut self, name: &str, data: Vec<u8>) -> Result<()> {
-        let name_key = PlatformBoundedString::from_str_truncate(name, RuntimeProvider::default())?;
+        let name_key = PlatformBoundedString::from_str_truncate(name, PlatformProvider::default())?;
         let mut bounded_data = PlatformBoundedVec::<u8, 4096>::new(PlatformProvider::default())?;
         for byte in data {
             bounded_data.push(byte)?;
@@ -1418,11 +1427,11 @@ impl Module {
             // Convert to bounded strings
             let bounded_module = PlatformBoundedString::from_str_truncate(
                 module_name,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             let bounded_item = PlatformBoundedString::from_str_truncate(
                 item_name,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             
             // For BoundedMap, we need to handle the nested map differently
@@ -1442,11 +1451,11 @@ impl Module {
         {
             let bounded_module = PlatformBoundedString::from_str_truncate(
                 module_name,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             let bounded_item = PlatformBoundedString::from_str_truncate(
                 item_name,
-                RuntimeProvider::default()
+                PlatformProvider::default()
             )?;
             // BoundedMap doesn't support get_mut, so we'll use a simpler approach
             let mut inner_map = BoundedMap::new(RuntimeProvider::default())?;
@@ -1472,7 +1481,7 @@ impl Module {
             }
         };
         let runtime_export = crate::module::Export::new(name.clone(), kind, index)?;
-        let name_key = PlatformBoundedString::from_str_truncate(&name, RuntimeProvider::default())?;
+        let name_key = PlatformBoundedString::from_str_truncate(&name, PlatformProvider::default())?;
         self.exports.insert(name_key, runtime_export)?;
         Ok(())
     }
@@ -1539,7 +1548,7 @@ impl Module {
     pub fn add_custom_section_runtime(&mut self, section: WrtCustomSection<PlatformProvider>) -> Result<()> {
         let name_key = PlatformBoundedString::from_str_truncate(
             section.name.as_str()?,
-            RuntimeProvider::default()
+            PlatformProvider::default()
         )?;
         self.custom_sections.insert(name_key, section.data)?;
         Ok(())
@@ -1703,7 +1712,7 @@ impl Default for MemoryWrapper {
             limits: Limits { min: 1, max: Some(1) },
             shared: false,
         };
-        Self::new(Memory::new(memory_type).unwrap())
+        Self::new(Memory::new(to_core_memory_type(memory_type)).unwrap())
     }
 }
 
@@ -1936,7 +1945,7 @@ impl FromBytes for MemoryWrapper {
             shared: false,
         };
         
-        let memory = Memory::new(memory_type).map_err(|_| {
+        let memory = Memory::new(to_core_memory_type(memory_type)).map_err(|_| {
             wrt_foundation::Error::new(
                 wrt_foundation::ErrorCategory::Memory,
                 wrt_foundation::codes::INVALID_VALUE,

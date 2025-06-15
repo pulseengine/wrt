@@ -98,17 +98,18 @@ pub struct InstructionPrefetchCache {
 
 impl InstructionPrefetchCache {
     /// Create new prefetch cache
-    #[must_use] pub fn new() -> Self {
-        Self {
-            cache: new_interpreter_opt_map(),
+    pub fn new() -> Result<Self> {
+        Ok(Self {
+            cache: new_interpreter_opt_map()?,
             cache_hits: 0,
             cache_misses: 0,
-        }
+        })
     }
     
     /// Prefetch instruction at offset
     pub fn prefetch(&mut self, offset: u32, instruction: crate::prelude::Instruction) -> Result<()> {
-        self.cache.insert(offset, instruction)
+        self.cache.insert(offset, instruction)?;
+        Ok(())
     }
     
     /// Get cached instruction if available
@@ -147,7 +148,14 @@ impl InstructionPrefetchCache {
 
 impl Default for InstructionPrefetchCache {
     fn default() -> Self {
-        Self::new()
+        Self::new().unwrap_or_else(|_| {
+            // Fallback with basic structure
+            Self {
+                cache: BoundedInterpreterOptMap::default(),
+                cache_hits: 0,
+                cache_misses: 0,
+            }
+        })
     }
 }
 
@@ -166,13 +174,13 @@ pub struct OptimizedInterpreter {
 
 impl OptimizedInterpreter {
     /// Create new optimized interpreter
-    pub fn new(predictor: ModuleBranchPredictor, strategy: OptimizationStrategy) -> Self {
-        Self {
+    pub fn new(predictor: ModuleBranchPredictor, strategy: OptimizationStrategy) -> Result<Self> {
+        Ok(Self {
             predictor,
             strategy,
-            prefetch_cache: InstructionPrefetchCache::new(),
+            prefetch_cache: InstructionPrefetchCache::new()?,
             execution_stats: InterpreterStats::new(),
-        }
+        })
     }
     
     /// Prepare for function execution with optimization

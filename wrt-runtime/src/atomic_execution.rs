@@ -24,7 +24,7 @@ use wrt_instructions::atomic_ops::{
     AtomicOp, AtomicLoadOp, AtomicStoreOp, AtomicRMWInstr, AtomicCmpxchgInstr,
     AtomicWaitNotifyOp, AtomicFence, AtomicRMWOp, MemoryOrdering,
 };
-use wrt_foundation::MemArg;
+use wrt_foundation::{MemArg, traits::BoundedCapacity};
 use wrt_platform::sync::{AtomicU32, AtomicU64, AtomicUsize, Ordering as PlatformOrdering};
 #[cfg(feature = "std")]
 use std::{vec::Vec, sync::Arc, time::Duration, collections::BTreeMap};
@@ -43,10 +43,7 @@ pub type ResultVec = Vec<u32>;
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 pub type ResultVec = wrt_foundation::bounded::BoundedVec<u32, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
 
-// Type alias for thread ID vectors  
-#[cfg(feature = "std")]
-type ThreadIdVec = Vec<ThreadId>;
-#[cfg(all(not(feature = "std"), not(feature = "std")))]
+// Type alias for thread ID vectors - use bounded collections consistently
 type ThreadIdVec = wrt_foundation::bounded::BoundedVec<ThreadId, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>;
 
 // Helper macro for creating Vec compatible with no_std
@@ -102,7 +99,7 @@ pub struct AtomicMemoryContext {
     pub thread_manager: ThreadManager,
     /// Wait/notify coordination data structures
     #[cfg(feature = "std")]
-    wait_queues: BTreeMap<u32, ThreadIdVec>,
+    wait_queues: crate::bounded_runtime_infra::BoundedAtomicOpMap<ThreadIdVec>,
     #[cfg(not(feature = "std"))]
     wait_queues: [(u32, [Option<ThreadId>; 8]); 16],  // Fixed arrays for no_std
     /// Atomic operation statistics
@@ -116,7 +113,7 @@ impl AtomicMemoryContext {
             memory_base,
             memory_size: AtomicUsize::new(memory_size),
             thread_manager,
-            wait_queues: new_atomic_op_map(),
+            wait_queues: new_atomic_op_map()?,
             stats: AtomicExecutionStats::new(),
         })
     }
@@ -589,7 +586,27 @@ impl AtomicMemoryContext {
         // Add thread to wait queue for this address
         #[cfg(feature = "std")]
         {
-            self.wait_queues.entry(addr as u32).or_insert_with(Vec::new).push(thread_id);
+            // BoundedMap API is different from HashMap - handle explicitly
+            let provider = wrt_foundation::safe_memory::NoStdProvider::<1024>::default();
+            let default_vec = wrt_foundation::bounded::BoundedVec::new(provider).map_err(|_| {
+                Error::runtime_error("Failed to create thread wait queue")
+            })?;
+            
+            match self.wait_queues.get(&(addr as u64))? {
+                Some(mut existing_vec) => {
+                    existing_vec.push(thread_id).map_err(|_| {
+                        Error::runtime_error("Thread wait queue capacity exceeded")
+                    })?;
+                    self.wait_queues.insert(addr as u64, existing_vec)?;
+                }
+                None => {
+                    let mut new_vec = default_vec;
+                    new_vec.push(thread_id).map_err(|_| {
+                        Error::runtime_error("Failed to add thread to wait queue")
+                    })?;
+                    self.wait_queues.insert(addr as u64, new_vec)?;
+                }
+            }
         }
         #[cfg(not(feature = "std"))]
         {
@@ -641,16 +658,16 @@ impl AtomicMemoryContext {
         
         #[cfg(feature = "std")]
         {
-            if let Some(queue) = self.wait_queues.get_mut(&(addr as u32)) {
+            if let Ok(Some(queue)) = self.wait_queues.get_mut(&(addr as u64)) {
                 let to_notify = core::cmp::min(count as usize, queue.len());
                 for _ in 0..to_notify {
-                    if let Some(_thread_id) = queue.pop() {
+                    if let Ok(Some(_thread_id)) = queue.pop() {
                         // In real implementation, would wake up the thread
                         notified += 1;
                     }
                 }
                 if queue.is_empty() {
-                    self.wait_queues.remove(&(addr as u32));
+                    self.wait_queues.remove(&(addr as u64))?;
                 }
             }
         }
