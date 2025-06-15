@@ -9,7 +9,7 @@ extern crate alloc;
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
-    managed_alloc,
+    safe_managed_alloc,
     safe_memory::NoStdProvider,
     budget_aware_provider::CrateId,
     WrtResult,
@@ -44,8 +44,7 @@ pub type BoundedModuleName = BoundedString<MAX_MODULE_NAME_LEN, LogProvider>;
 
 /// Create a new bounded log entry vector
 pub fn new_log_entry_vec() -> WrtResult<BoundedLogEntryVec> {
-    let guard = managed_alloc!(8192, CrateId::Logging)?;
-    let provider = guard.provider().clone();
+    let provider = safe_managed_alloc!(8192, CrateId::Logging)?;
     BoundedVec::new(provider)
 }
 
@@ -61,7 +60,6 @@ where
         + Eq
         + Sized,
 {
-    let guard = managed_alloc!(8192, CrateId::Logging)?;
-    let provider = guard.provider().clone();
+    let provider = safe_managed_alloc!(8192, CrateId::Logging)?;
     BoundedVec::new(provider)
 }

@@ -5,6 +5,7 @@
 //! 
 //! SW-REQ-ID: REQ_MEM_002 - Budget enforcement
 
+use crate::safe_managed_alloc;
 use crate::{
     budget_aware_provider::CrateId,
     wrt_memory_system::{WrtMemoryGuard, WrtProviderFactory},
@@ -123,7 +124,7 @@ mod tests {
     fn test_managed_allocation() {
         crate::memory_init::MemoryInitializer::initialize().unwrap();
         
-        let guard = managed_alloc!(1024, CrateId::Component).unwrap();
+        let guard = safe_managed_alloc!(1024, CrateId::Component).unwrap();
         assert_eq!(guard.size(), 1024);
     }
     

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 #[cfg(all(not(feature = "std")))]
+use crate::safe_managed_alloc;
 extern crate alloc;
 
 #[cfg(all(not(feature = "std")))]
@@ -209,11 +210,9 @@ impl core::str::FromStr for ResourceRepresentation {
                 #[cfg(feature = "std")]
                 {
                     use crate::budget_aware_provider::CrateId;
-                    use crate::managed_alloc;
+                    use crate::safe_managed_alloc;
                     
-                    let guard = managed_alloc!(4096, CrateId::Foundation)?;
-                    #[allow(unsafe_code)]
-                    let provider = unsafe { guard.release() };
+                    let provider = safe_managed_alloc!(4096, CrateId::Foundation)?;
                     
                     Ok(ResourceRepresentation::Record(
                         BoundedVec::new(provider).map_err(|_e| {
@@ -234,11 +233,9 @@ impl core::str::FromStr for ResourceRepresentation {
                 #[cfg(feature = "std")]
                 {
                     use crate::budget_aware_provider::CrateId;
-                    use crate::managed_alloc;
+                    use crate::safe_managed_alloc;
                     
-                    let guard = managed_alloc!(4096, CrateId::Foundation)?;
-                    #[allow(unsafe_code)]
-                    let provider = unsafe { guard.release() };
+                    let provider = safe_managed_alloc!(4096, CrateId::Foundation)?;
                     
                     Ok(ResourceRepresentation::Aggregate(
                         BoundedVec::new(provider).map_err(|_e| {
