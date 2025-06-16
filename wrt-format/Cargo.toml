@@ -99,7 +99,7 @@ unsafe_code = "forbid"
 # Rule 1: Language subset
 inline_asm_x86_att_syntax = "deny"
 transmute_ptr_to_ref = "deny"
-type_id = "deny"
+# type_id lint removed - not a valid clippy lint
 dyn_trait = "deny"
 float_arithmetic = "deny"
 # Rule 2: Unsafe usage

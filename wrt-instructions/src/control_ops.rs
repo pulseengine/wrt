@@ -49,7 +49,8 @@
 
 // Remove unused imports
 
-use crate::prelude::{BlockType, Debug, Error, ErrorCategory, PartialEq, PureInstruction, Result, Value, codes, str, BoundedCapacity, BoundedVec};
+use crate::prelude::{BlockType, Debug, Error, ErrorCategory, PartialEq, PureInstruction, Result, Value, codes, str};
+use wrt_foundation::{BoundedVec, traits::BoundedCapacity};
 // use crate::validation::{Validate, ValidationContext}; // Currently unused
 
 
@@ -336,7 +337,7 @@ impl BrTable {
         {
             // For no_std, we create a temporary slice on the stack
             let mut slice_vec = [0u32; 256]; // Static array for no_std
-            let len = core::cmp::min(self.table.len(), 256);
+            let len = core::cmp::min(BoundedCapacity::len(&self.table), 256);
             for i in 0..len {
                 slice_vec[i] = self.table.get(i).map_err(|_| {
                     Error::runtime_error("Branch table index out of bounds")

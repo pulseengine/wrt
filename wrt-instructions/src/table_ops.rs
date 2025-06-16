@@ -42,7 +42,8 @@
 //! // Execute with appropriate context
 //! ```
 
-use crate::prelude::{Debug, Error, PartialEq, PureInstruction, Result, Value, ValueType, BoundedCapacity};
+use crate::prelude::{Debug, Error, PartialEq, PureInstruction, Result, Value, ValueType};
+use wrt_foundation::traits::BoundedCapacity;
 use crate::validation::{Validate, ValidationContext};
 
 /// Table operations trait defining the interface to table implementations
@@ -425,7 +426,7 @@ impl TableInit {
             .ok_or_else(|| Error::runtime_error("Element segment has been dropped"))?;
         
         // Check bounds in element segment
-        let elements_len = elements.len() as u32;
+        let elements_len = BoundedCapacity::len(&elements) as u32;
         let src_end = src_idx.checked_add(copy_size).ok_or_else(|| {
             Error::runtime_error("table.init src index overflow")
         })?;

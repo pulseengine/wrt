@@ -1,8 +1,10 @@
 //! Type aliases for `no_std` compatibility
 
-use crate::prelude::{Debug, Eq, PartialEq, Value, BoundedVec, BoundedStack};
+use crate::prelude::{Debug, Eq, PartialEq, Value};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::safe_memory::NoStdProvider;
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedVec, BoundedStack};
 
 // CFI-specific types
 /// Maximum number of CFI targets
@@ -20,20 +22,20 @@ pub type CfiTargetVec = Vec<u32>;
 #[cfg(not(feature = "std"))]
 pub type CfiTargetVec = BoundedVec<u32, MAX_CFI_TARGETS, NoStdProvider<8192>>;
 
-/// CFI requirement vector type - temporarily disabled
-// #[cfg(feature = "std")]
-// pub type CfiRequirementVec = Vec<crate::cfi_control_ops::CfiValidationRequirement>;
+/// CFI requirement vector type
+#[cfg(feature = "std")]
+pub type CfiRequirementVec = Vec<crate::cfi_control_ops::CfiValidationRequirement>;
 
-// #[cfg(not(feature = "std"))]
-// pub type CfiRequirementVec = BoundedVec<crate::cfi_control_ops::CfiValidationRequirement, MAX_CFI_REQUIREMENTS, NoStdProvider<8192>>;
+#[cfg(not(feature = "std"))]
+pub type CfiRequirementVec = BoundedVec<crate::cfi_control_ops::CfiValidationRequirement, MAX_CFI_REQUIREMENTS, NoStdProvider<8192>>;
 
-/// CFI target type vector - temporarily disabled
-// #[cfg(feature = "std")]
-// pub type CfiTargetTypeVec = Vec<crate::cfi_control_ops::CfiTargetType>;
+/// CFI target type vector
+#[cfg(feature = "std")]
+pub type CfiTargetTypeVec = Vec<crate::cfi_control_ops::CfiTargetType>;
 
-/// CFI target type vector (`no_std`) - uses platform-aware memory provider - temporarily disabled
-// #[cfg(not(feature = "std"))]
-// pub type CfiTargetTypeVec = BoundedVec<crate::cfi_control_ops::CfiTargetType, MAX_CFI_TARGET_TYPES, NoStdProvider<8192>>;
+/// CFI target type vector (`no_std`) - uses platform-aware memory provider
+#[cfg(not(feature = "std"))]
+pub type CfiTargetTypeVec = BoundedVec<crate::cfi_control_ops::CfiTargetType, MAX_CFI_TARGET_TYPES, NoStdProvider<8192>>;
 
 // Additional CFI collection types
 /// Maximum shadow stack size
@@ -43,24 +45,24 @@ pub const MAX_LANDING_PAD_EXPECTATIONS: usize = 64;
 /// Maximum CFI expected values
 pub const MAX_CFI_EXPECTED_VALUES: usize = 16;
 
-// Shadow stack and CFI types temporarily disabled
-// #[cfg(feature = "std")]
-// pub type ShadowStackVec = Vec<crate::cfi_control_ops::ShadowStackEntry>;
+// Shadow stack and CFI types
+#[cfg(feature = "std")]
+pub type ShadowStackVec = Vec<crate::cfi_control_ops::ShadowStackEntry>;
 
-// #[cfg(not(feature = "std"))]
-// pub type ShadowStackVec = BoundedVec<crate::cfi_control_ops::ShadowStackEntry, MAX_SHADOW_STACK, NoStdProvider<65536>>;
+#[cfg(not(feature = "std"))]
+pub type ShadowStackVec = BoundedVec<crate::cfi_control_ops::ShadowStackEntry, MAX_SHADOW_STACK, NoStdProvider<65536>>;
 
-// #[cfg(feature = "std")]
-// pub type LandingPadExpectationVec = Vec<crate::cfi_control_ops::LandingPadExpectation>;
+#[cfg(feature = "std")]
+pub type LandingPadExpectationVec = Vec<crate::cfi_control_ops::LandingPadExpectation>;
 
-// #[cfg(not(feature = "std"))]
-// pub type LandingPadExpectationVec = BoundedVec<crate::cfi_control_ops::LandingPadExpectation, MAX_LANDING_PAD_EXPECTATIONS, NoStdProvider<8192>>;
+#[cfg(not(feature = "std"))]
+pub type LandingPadExpectationVec = BoundedVec<crate::cfi_control_ops::LandingPadExpectation, MAX_LANDING_PAD_EXPECTATIONS, NoStdProvider<8192>>;
 
-// #[cfg(feature = "std")]
-// pub type CfiExpectedValueVec = Vec<crate::cfi_control_ops::CfiExpectedValue>;
+#[cfg(feature = "std")]
+pub type CfiExpectedValueVec = Vec<crate::cfi_control_ops::CfiExpectedValue>;
 
-// #[cfg(not(feature = "std"))]
-// pub type CfiExpectedValueVec = BoundedVec<crate::cfi_control_ops::CfiExpectedValue, MAX_CFI_EXPECTED_VALUES, NoStdProvider<8192>>;
+#[cfg(not(feature = "std"))]
+pub type CfiExpectedValueVec = BoundedVec<crate::cfi_control_ops::CfiExpectedValue, MAX_CFI_EXPECTED_VALUES, NoStdProvider<8192>>;
 
 // Collection type aliases that work across all configurations
 #[cfg(feature = "std")]

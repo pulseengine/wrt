@@ -148,10 +148,9 @@ pub const COMPONENT_VERSION: &str = "0.1.0";
 /// # Returns
 ///
 /// A new stackless execution engine.
-// TODO: Re-enable after fixing wrt-runtime syntax issues
-// pub fn new_stackless_engine() -> StacklessEngine {
-//     wrt_runtime::stackless::StacklessEngine::new()
-// }
+pub fn new_stackless_engine() -> wrt_runtime::stackless::StacklessEngine {
+    wrt_runtime::stackless::StacklessEngine::new()
+}
 
 /// Create a new, empty WebAssembly module.
 ///
@@ -159,9 +158,9 @@ pub const COMPONENT_VERSION: &str = "0.1.0";
 ///
 /// A `Result` containing the new module, or an error if the module
 /// could not be created.
-// TODO: Re-enable after fixing wrt-runtime syntax issues
+// TODO: Re-enable after fixing dependency compilation issues in wrt-instructions
 // pub fn new_module() -> Result<Module> {
-//     Module::new()
+//     wrt_runtime::module::Module::new()
 // }
 
 /// Create a new WebAssembly memory with the given type.
@@ -173,7 +172,7 @@ pub const COMPONENT_VERSION: &str = "0.1.0";
 /// # Returns
 ///
 /// A new memory instance.
-// TODO: Re-enable after fixing wrt-runtime syntax issues
+// TODO: Re-enable after fixing dependency compilation issues in wrt-instructions
 // pub fn new_memory(mem_type: ComponentMemoryType) -> Memory {
 //     Memory::new(mem_type).unwrap()
 // }
@@ -200,7 +199,7 @@ pub const COMPONENT_VERSION: &str = "0.1.0";
 /// # Returns
 ///
 /// A new table instance.
-// TODO: Re-enable after fixing wrt-runtime syntax issues
+// TODO: Re-enable after fixing dependency compilation issues in wrt-instructions
 // pub fn new_table(table_type: ComponentTableType) -> Table {
 //     // Create a default value based on the element type
 //     let default_value = Value::default_for_type(&table_type.element_type);
@@ -220,7 +219,7 @@ pub const COMPONENT_VERSION: &str = "0.1.0";
 /// # Returns
 ///
 /// A Result containing the runtime module or an error
-// TODO: Re-enable after fixing wrt-runtime syntax issues
+// TODO: Re-enable after fixing dependency compilation issues in wrt-instructions
 // pub fn load_module_from_binary(binary: &[u8]) -> Result<Module> {
 //     // Directly use the function re-exported by the prelude from wrt_runtime
 //     // The types `Result` and `Module` are also from the prelude (originating in

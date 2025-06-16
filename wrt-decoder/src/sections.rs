@@ -497,6 +497,7 @@ pub mod parsers {
             offset = new_offset;
 
             let init_expr_start = offset;
+            #[allow(unused_assignments)]
             let mut end_opcode_idx = None;
             // Find the END opcode for the init_expr
             // Correctly iterate through the slice from the current offset

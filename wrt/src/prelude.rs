@@ -45,7 +45,7 @@ pub use wrt_foundation::allocator::{WrtVec as Vec, WrtHashMap as HashMap};
 
 // HashSet for safety-critical mode (simplified as it's less commonly used)
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-pub use std::collections::HashSet; // TODO: Replace with WrtHashSet when available
+pub use std::collections::HashSet; // Using std HashSet - bounded alternative is BoundedSet in no_std mode
 
 // Binary std/no_std choice - use our own memory management
 #[cfg(not(feature = "std"))]
@@ -153,8 +153,8 @@ pub use wrt_foundation::clean_types::{
 pub use wrt_platform::{
     BranchTargetIdentification, BtiExceptionLevel, BtiMode, CfiExceptionMode, ControlFlowIntegrity,
 };
-// Re-export from wrt-runtime (runtime execution) - temporarily disabled due to syntax errors
-// TODO: Re-enable after fixing wrt-runtime memory.rs syntax issues
+// Re-export from wrt-runtime (runtime execution) - temporarily disabled due to compilation issues
+// TODO: Re-enable after fixing dependency compilation issues in wrt-instructions
 // pub use wrt_runtime::{
 //     // Standard runtime exports
 //     component::{Component, Host, InstanceValue},

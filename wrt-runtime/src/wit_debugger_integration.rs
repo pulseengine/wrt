@@ -13,7 +13,7 @@ use alloc::{collections::BTreeMap, vec::Vec, boxed::Box};
 use wrt_foundation::{
     BoundedString, BoundedVec, NoStdProvider,
     prelude::*,
-, safe_managed_alloc};
+    safe_managed_alloc};
 use wrt_error::{Error, Result};
 
 // Import debug types for this module

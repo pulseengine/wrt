@@ -177,8 +177,8 @@ pub mod wrt_memory_system;
 /// Compile-time budget verification system
 pub mod budget_verification;
 pub mod compile_time_bounds;
-// Validated collections temporarily disabled due to trait bound complexity
-// TODO: Re-enable after trait system refactoring
+// Validated collections disabled - architectural decision to keep API simple
+// Use standard bounded collections instead for better maintainability
 // #[cfg(feature = "std")]
 // pub mod validated_collections;
 /// Modern memory initialization system - zero-config setup
@@ -334,7 +334,7 @@ pub use compile_time_bounds::{
     StackBoundsValidator, ResourceLimitsValidator, SystemBoundsValidator,
 };
 // Macros are automatically available at crate root due to #[macro_export]
-// Validated collections temporarily disabled
+// Validated collections disabled - use standard bounded collections instead
 // #[cfg(feature = "std")]
 // pub use validated_collections::{
 //     ValidatedBoundedVec, ValidatedBoundedMap, ValidatedBoundedString,

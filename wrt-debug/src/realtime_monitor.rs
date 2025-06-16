@@ -100,6 +100,7 @@ pub enum AlertLevel {
 /// Real-time memory monitor
 pub struct RealtimeMonitor {
     /// Monitoring configuration
+    #[allow(dead_code)]
     config: MonitorConfig,
     /// Monitoring active flag
     active: AtomicBool,
@@ -272,6 +273,7 @@ impl RealtimeMonitor {
     }
 
     /// Check for alert conditions
+    #[allow(dead_code)]
     fn check_alerts(sample: &MemorySample, config: &MonitorConfig) -> Option<MemoryAlert> {
         // Check global memory health
         // Note: Memory analysis features will be restored when wrt_foundation memory_analysis module is available

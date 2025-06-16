@@ -282,18 +282,23 @@ pub use wrt_foundation::{
     MemoryStats,
 };
 
-// Clean type aliases without provider parameters - for public APIs
-// Component model types (for component support, not core runtime)
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub use wrt_foundation::clean_types::{
-    FuncType as CleanFuncType,
+// Use foundation Value directly for runtime (not clean_types)
+// This ensures compatibility with BoundedVec and bounded collections
+pub use wrt_foundation::{
+    Value as CleanValue,
+    types::FuncType as CleanFuncType,
     MemoryType as CleanMemoryType, 
     TableType as CleanTableType,
     GlobalType as CleanGlobalType,
-    ValType as CleanValType,
-    Value as CleanValue,
-    ExternType as CleanExternType,
+    types::ValueType as CleanValType,
 };
+
+// For ExternType, use the clean_types version which doesn't have provider parameters
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use wrt_foundation::clean_types::ExternType as CleanExternType;
+
+// Import required traits (these should already be implemented by wrt_foundation::Value)
+pub use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes};
 
 // Clean core WebAssembly types (for runtime use)
 #[cfg(any(feature = "std", feature = "alloc"))]

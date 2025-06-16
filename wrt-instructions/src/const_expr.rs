@@ -16,7 +16,6 @@ use wrt_foundation::{
     types::{RefType, ValueType},
     values::Value,
     BoundedVec,
-    BoundedCapacity,
 };
 use crate::validation::{Validate, ValidationContext};
 use wrt_math;

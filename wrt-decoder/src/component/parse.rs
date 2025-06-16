@@ -1580,7 +1580,8 @@ mod std_parsing {
             0x68 => {
                 // Result type (err only)
                 let (_err_type, bytes_read) = parse_val_type(&bytes[offset..])?;
-                offset += bytes_read;
+                #[allow(unused_assignments)]
+                { offset += bytes_read; }
                 // TODO: Fix FormatValType enum to support ResultErr variant
                 // Ok((wrt_format::component::FormatValType::ResultErr(Box::new(err_type)), offset))
                 Err(Error::new(
@@ -1592,9 +1593,11 @@ mod std_parsing {
             0x67 => {
                 // Result type (ok and err)
                 let (_ok_type, bytes_read) = parse_val_type(&bytes[offset..])?;
-                offset += bytes_read;
+                #[allow(unused_assignments)]
+                { offset += bytes_read; }
                 let (_err_type, bytes_read) = parse_val_type(&bytes[offset..])?;
-                offset += bytes_read;
+                #[allow(unused_assignments)]
+                { offset += bytes_read; }
                 // TODO: Fix FormatValType enum to support ResultBoth variant
                 // Ok((
                 //     wrt_format::component::FormatValType::ResultBoth(Box::new(ok_type), Box::new(err_type)),

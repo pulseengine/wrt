@@ -144,7 +144,7 @@ pub fn initialize_platform_services(services: PlatformServices) -> Result<()> {
         Err(_) => {
             // Someone else already initialized, clean up our allocation
             #[allow(unsafe_code)] // Required for cleanup
-            unsafe { let _ = Box::from_raw(boxed); }
+            unsafe { drop(Box::from_raw(boxed)); }
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_STATE,

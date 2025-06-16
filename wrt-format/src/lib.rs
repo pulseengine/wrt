@@ -396,17 +396,6 @@ pub fn uses_experimental_features(binary: &[u8]) -> bool {
     info.detect_experimental_features(binary)
 }
 
-// Deprecated: use conversion utilities instead
-#[deprecated(
-    since = "0.2.0",
-    note = "Use conversion::parse_value_type instead for better type conversion"
-)]
-pub use types::parse_value_type;
-#[deprecated(
-    since = "0.2.0",
-    note = "Use conversion::value_type_to_byte instead for better type conversion"
-)]
-pub use types::value_type_to_byte;
 
 // For formal verification when the 'kani' feature is enabled
 #[cfg(feature = "kani")]

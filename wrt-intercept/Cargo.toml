@@ -67,13 +67,13 @@ clippy.unreachable = "deny" # Rule 4
 clippy.float_arithmetic = "warn" # Rule 1
 clippy.inline_asm_x86_att_syntax = "deny" # Rule 1
 clippy.transmute_ptr_to_ref = "deny" # Rule 1
-clippy.type_id = "deny" # Rule 1
+# clippy.type_id removed - not a valid clippy lint
 clippy.dyn_trait = "warn" # Rule 1
 clippy.ptr_offset_with_cast = "warn" # Rule 2
 clippy.result_unit_err = "warn" # Rule 3
 clippy.let_underscore_drop = "warn" # Rule 3
 clippy.must_use = "warn" # Rule 3
-clippy.static_mut_reference = "deny" # Rule 5
+# clippy.static_mut_reference renamed to static_mut_refs in newer Rust versions
 clippy.arc_mutate = "deny" # Rule 5
 clippy.missing_docs_in_private_items = "allow" # To be reviewed if too noisy
 clippy.debug_assert_with_mut_call = "warn" # Rule 9, ADDED

@@ -100,7 +100,7 @@ needless_range_loop = "allow"
 explicit_iter_loop = "allow"
 bool_to_int_with_if = "allow"
 match_same_arms = "allow"
-pedantic = "allow"
+# pedantic group removed to avoid priority conflicts with individual lints
 # Warn about allocations that could be bounded
 vec_init_then_push = "warn"
 # Performance and safety

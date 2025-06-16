@@ -61,7 +61,7 @@ missing_docs = "allow" # Temporarily allowing missing docs - will be added syste
 [lints.clippy]
 inline_asm_x86_att_syntax = "warn"
 transmute_ptr_to_ref = "deny"
-type_id = "deny"
+# type_id lint removed - not a valid clippy lint
 dyn_trait = "warn"
 float_arithmetic = "warn"
 ptr_offset_with_cast = "warn"
