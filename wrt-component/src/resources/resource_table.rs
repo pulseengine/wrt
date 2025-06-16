@@ -87,7 +87,33 @@ pub enum MemoryStrategy {
 
 impl Default for MemoryStrategy {
     fn default() -> Self {
-        MemoryStrategy::BoundedCopy
+        Self::for_current_safety_level()
+    }
+}
+
+impl MemoryStrategy {
+    /// Get memory strategy based on current safety level features
+    pub fn for_current_safety_level() -> Self {
+        #[cfg(feature = "maximum-safety")]
+        {
+            MemoryStrategy::FullIsolation
+        }
+        #[cfg(all(feature = "static-memory-safety", not(feature = "maximum-safety")))]
+        {
+            MemoryStrategy::Isolated
+        }
+        #[cfg(all(feature = "bounded-collections", not(feature = "static-memory-safety"), not(feature = "maximum-safety")))]
+        {
+            MemoryStrategy::BoundedCopy
+        }
+        #[cfg(all(feature = "dynamic-allocation", not(feature = "bounded-collections"), not(feature = "static-memory-safety"), not(feature = "maximum-safety")))]
+        {
+            MemoryStrategy::ZeroCopy
+        }
+        #[cfg(not(any(feature = "dynamic-allocation", feature = "bounded-collections", feature = "static-memory-safety", feature = "maximum-safety")))]
+        {
+            MemoryStrategy::BoundedCopy // Safe default
+        }
     }
 }
 
@@ -145,6 +171,34 @@ pub enum VerificationLevel {
     Critical,
     /// Verify all operations
     Full,
+}
+
+impl Default for VerificationLevel {
+    fn default() -> Self {
+        Self::for_current_safety_level()
+    }
+}
+
+impl VerificationLevel {
+    /// Get verification level based on current safety level features
+    pub fn for_current_safety_level() -> Self {
+        #[cfg(any(feature = "maximum-safety", feature = "verified-static-allocation"))]
+        {
+            VerificationLevel::Full
+        }
+        #[cfg(all(any(feature = "static-memory-safety", feature = "bounded-collections"), not(feature = "maximum-safety"), not(feature = "verified-static-allocation")))]
+        {
+            VerificationLevel::Critical
+        }
+        #[cfg(all(feature = "dynamic-allocation", not(feature = "bounded-collections"), not(feature = "static-memory-safety"), not(feature = "maximum-safety")))]
+        {
+            VerificationLevel::None
+        }
+        #[cfg(not(any(feature = "dynamic-allocation", feature = "bounded-collections", feature = "static-memory-safety", feature = "maximum-safety")))]
+        {
+            VerificationLevel::Critical // Safe default
+        }
+    }
 }
 
 /// Trait for buffer pools that can be used by ResourceTable
@@ -252,7 +306,7 @@ impl ResourceTable {
     /// - Prevents runtime allocation failures
     pub fn new() -> WrtResult<Self> {
         #[cfg(not(feature = "std"))]
-        let memory_guard = safe_managed_alloc!(131072, CrateId::Component)?; // 128KB for resource table
+        let memory_guard = wrt_foundation::safety_aware_alloc!(131072, CrateId::Component)?; // 128KB for resource table
         
         Ok(Self {
             #[cfg(all(feature = "std", feature = "safety-critical"))]
@@ -264,7 +318,7 @@ impl ResourceTable {
             next_handle: 1, // Start at 1 as 0 is reserved
             max_resources: MAX_RESOURCES,
             default_memory_strategy: MemoryStrategy::default(),
-            default_verification_level: VerificationLevel::Critical,
+            default_verification_level: VerificationLevel::default(),
             buffer_pool: Arc::new(Mutex::new(BufferPool::new(4096)))
                 as Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
             #[cfg(all(feature = "std", feature = "safety-critical"))]
@@ -294,7 +348,7 @@ impl ResourceTable {
     /// Create a new resource table with optimized size-class buffer pool
     pub fn new_with_optimized_memory() -> WrtResult<Self> {
         #[cfg(not(feature = "std"))]
-        let memory_guard = safe_managed_alloc!(131072, CrateId::Component)?; // 128KB for resource table
+        let memory_guard = wrt_foundation::safety_aware_alloc!(131072, CrateId::Component)?; // 128KB for resource table
         
         Ok(Self {
             #[cfg(all(feature = "std", feature = "safety-critical"))]
@@ -306,7 +360,7 @@ impl ResourceTable {
             next_handle: 1,
             max_resources: MAX_RESOURCES,
             default_memory_strategy: MemoryStrategy::default(),
-            default_verification_level: VerificationLevel::Critical,
+            default_verification_level: VerificationLevel::default(),
             buffer_pool: Arc::new(Mutex::new(SizeClassBufferPool::new()))
                 as Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
             #[cfg(all(feature = "std", feature = "safety-critical"))]

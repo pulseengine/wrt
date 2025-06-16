@@ -25,16 +25,16 @@ use wrt_instructions::atomic_ops::{
     AtomicWaitNotifyOp, AtomicFence, AtomicRMWOp, MemoryOrdering,
 };
 use wrt_foundation::{MemArg, traits::BoundedCapacity};
+
+// Import platform abstractions from wrt-foundation PAI layer
+use wrt_foundation::platform_abstraction::{AtomicU32, AtomicU64, AtomicUsize, PlatformOrdering, Duration};
+
 #[cfg(feature = "std")]
-use wrt_platform::sync::{AtomicU32, AtomicU64, AtomicUsize, Ordering as PlatformOrdering};
-#[cfg(feature = "std")]
-use std::{vec::Vec, sync::Arc, time::Duration, collections::BTreeMap};
+use std::{vec::Vec, sync::Arc, collections::BTreeMap};
 #[cfg(not(feature = "std"))]
 use alloc::{vec::Vec, sync::Arc, collections::BTreeMap};
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 use wrt_foundation::bounded::BoundedVec;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use wrt_platform::sync::Duration;
 
 // Type alias for return results
 /// Result vector type for std environments

@@ -46,13 +46,15 @@ wasi-sockets = ["preview3-prep"]  # Future Preview3 feature
 # Component model integration
 component-model = ["wrt-component/component-model-all"]
 
-# Safety-critical features
-safety-critical = [
-    "wrt-foundation/safety-asil-c",
-    "wrt-host/safety-asil-c", 
-    "wrt-component/safety-asil-c",
-    "wrt-platform/safety-asil-c"
-]
+# Safety level presets using new capability-based features
+qm = ["wrt-foundation/dynamic-allocation"]
+asil-a = ["wrt-foundation/bounded-collections"]
+asil-b = ["wrt-foundation/bounded-collections"]
+asil-c = ["wrt-foundation/static-memory-safety"]
+asil-d = ["wrt-foundation/maximum-safety"]
+
+# Legacy compatibility 
+safety-critical = ["asil-c"]
 
 # Development and testing features
 # (Add more features as needed)

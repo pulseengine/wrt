@@ -170,7 +170,7 @@ impl ThreadInfo {
             stack_size,
             priority,
             parent_thread,
-            created_at: wrt_platform::time::current_time_ns(),
+            created_at: wrt_foundation::platform_abstraction::PlatformTime::current_time_ms() * 1_000_000, // Convert ms to ns
             completed_at: None,
         }
     }

@@ -206,6 +206,22 @@ pub use alloc::{
     vec::Vec,
 };
 
+// Provide String and ToString for pure no_std environments
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub use wrt_foundation::bounded::BoundedString as String;
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub trait ToString {
+    fn to_string(&self) -> String;
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl ToString for &str {
+    fn to_string(&self) -> String {
+        String::from_str(self).unwrap_or_default()
+    }
+}
+
 // Remove duplicate definitions - Vec and String are already defined above
 
 // Re-export from wrt-decoder (aliased to avoid name clashes)
@@ -285,6 +301,15 @@ pub use wrt_foundation::clean_core_types::{
     CoreGlobalType,
 };
 
+// Fallback for no_std environments - provide core types
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub use wrt_foundation::types::{
+    FuncType as CoreFuncType,
+    MemoryType as CoreMemoryType, 
+    TableType as CoreTableType,
+    GlobalType as CoreGlobalType,
+};
+
 // Public type aliases using clean CORE types (not component types)
 /// Type alias for WebAssembly function types
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -320,6 +345,10 @@ pub use wrt_foundation::types::{
 /// Default memory provider with 64KB allocation capacity
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub type DefaultProvider = wrt_foundation::NoStdProvider<65536>;
+
+/// Default memory provider for pure no_std (smaller capacity)
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub type DefaultProvider = wrt_foundation::NoStdProvider<16384>;
 
 /// Runtime function type alias for consistency  
 #[cfg(any(feature = "std", feature = "alloc"))]

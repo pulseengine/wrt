@@ -65,7 +65,6 @@ pub mod func;
 pub mod global;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub mod interpreter_optimization;
-#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod memory;
 
 // Simplified type system - CRITICAL COMPILATION FIX
@@ -99,8 +98,10 @@ pub mod bounded_runtime_infra;
 
 // Temporary stub modules for parallel development
 mod foundation_stubs;
-mod platform_stubs;
 mod component_stubs;
+
+// Import platform abstractions from wrt-foundation
+pub use wrt_foundation::platform_abstraction;
 
 // Re-export commonly used types
 #[cfg(any(feature = "std", feature = "alloc"))]

@@ -79,7 +79,7 @@ pub struct ComponentMemoryBudget {
 }
 
 impl ComponentMemoryBudget {
-    pub fn calculate(limits: &super::platform_stubs::ComprehensivePlatformLimits) -> Result<Self, wrt_error::Error> {
+    pub fn calculate(limits: &wrt_foundation::platform_abstraction::ComprehensivePlatformLimits) -> Result<Self, wrt_error::Error> {
         let component_overhead = limits.max_total_memory / 100; // 1% overhead
         let available_memory = limits.max_total_memory.saturating_sub(component_overhead);
         

@@ -24,7 +24,7 @@ use wrt_foundation::{
         ValueType, // Also import without alias
     },
     values::{Value as WrtValue, Value}, // Also import without alias
-    clean_core_types::CoreMemoryType,
+    CoreMemoryType,
 };
 use wrt_format::{
     DataSegment as WrtDataSegment,

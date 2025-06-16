@@ -57,18 +57,26 @@ alloc = [
     "wrt-host/alloc",
     "wrt-intercept/alloc"]
 
-# Safety-critical features
-safety-asil-c = ["wrt-foundation/wrt-allocator"]
+# Safety level presets using capability-based features
+qm = ["wrt-foundation/dynamic-allocation"]
+asil-a = ["wrt-foundation/bounded-collections"]
+asil-b = ["wrt-foundation/bounded-collections"]
+asil-c = ["wrt-foundation/static-memory-safety"]
+asil-d = ["wrt-foundation/maximum-safety"]
+
+# Legacy compatibility features
+safety-asil-b = ["asil-b", "std"]
+safety-asil-c = ["asil-c", "wrt-foundation/wrt-allocator"]
+safety-asil-d = ["asil-d"]
+safe-memory = ["asil-b"]
 
 # For compatibility with verification script
-# This is a no-op since the crate is no_std by default
 no_std = []
-
 
 # Verification with Kani
 kani = ["wrt-host/kani", "wrt-intercept/kani", "wrt-foundation/kani"]
 
-# Performance and safety features
+# Performance features
 optimize = [
     "wrt-format/optimize",
     "wrt-host/optimize",
@@ -78,27 +86,8 @@ optimize = [
     "wrt-runtime/optimize"
 ]
 
-# Safety features (always includes alloc)
-safety-asil-b = [
-    "wrt-format/safety-asil-b",
-    "wrt-host/safety-asil-b",
-    "wrt-foundation/safety-asil-b",
-    "wrt-intercept/safety-asil-b",
-    "wrt-decoder/safety-asil-b",
-    "wrt-runtime/safety-asil-b",
-    "std"
-]
-
 # Debug logging
 debug-log = []
-
-# Disable panic handler for library builds to avoid conflicts
-
-# Safe memory implementations
-safe-memory = [
-    "wrt-foundation/safe-memory",
-    "wrt-format/safe-memory",
-    "wrt-runtime/safe-memory"]
 
 # Component Model features
 component-model-core = ["wrt-format/component-model-core"]
@@ -115,7 +104,6 @@ component-model-all = [
     "component-model-error-context",
     "component-model-threading"
 ]
-safety-asil-d = ["safety-asil-c"]
 
 
 [[example]]

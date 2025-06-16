@@ -14,7 +14,9 @@ use crate::bounded_runtime_infra::{
 };
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_instructions::atomic_ops::{MemoryOrdering, AtomicOp};
-use wrt_platform::sync::Ordering as PlatformOrdering;
+
+// Import platform ordering from wrt-foundation abstraction layer
+use wrt_foundation::platform_abstraction::PlatformOrdering;
 
 #[cfg(feature = "std")]
 use std::{vec::Vec, sync::Arc, time::Instant};

@@ -56,6 +56,25 @@ pub use wrt_foundation::{Resource, MemoryProvider};
 pub use wrt_host::{CallbackRegistry, HostFunction};
 pub use wrt_component::ComponentLinker;
 
+// Re-export safety-aware allocation macros
+pub use wrt_foundation::{safety_aware_alloc, safe_managed_alloc, CrateId};
+
+// Safety configuration for WASI
+use wrt_foundation::safety_features::{allocation::MEMORY_STRATEGY, runtime};
+
+/// WASI-specific crate ID for memory allocation tracking
+pub const WASI_CRATE_ID: CrateId = CrateId::new("wrt-wasi");
+
+/// Get the current safety level for WASI operations
+pub const fn wasi_safety_level() -> &'static str {
+    runtime::current_safety_level()
+}
+
+/// Get maximum allocation size for WASI operations based on safety level
+pub const fn wasi_max_allocation_size() -> usize {
+    runtime::max_allocation_size()
+}
+
 // WASI Preview2 interfaces
 #[cfg(feature = "preview2")]
 pub mod preview2 {

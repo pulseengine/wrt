@@ -162,26 +162,36 @@ optimize = ["wrt-foundation/optimize",
             "wrt-host/optimize",
             "wrt-component/optimize"
             ]
-# Safety features for ASIL-B compliance
-safety-asil-b = ["wrt-foundation/safety-asil-b", 
-          "wrt-decoder/safety-asil-b", 
-          "wrt-format/safety-asil-b", 
-          # "wrt-runtime/safety-asil-b",  # Temporarily disabled
-          "wrt-instructions/safety-asil-b",
-          "wrt-intercept/safety-asil-b",
-          "wrt-host/safety-asil-b",
-          # "wrt-component/safety-asil-b"  # Temporarily disabled
-          ]
-# Safety-critical features for ASIL-C compliance
-safety-asil-c = ["wrt-foundation/wrt-allocator", 
-                   # "wrt-component/safety-asil-c",  # Temporarily disabled
-                   "wrt-decoder/safety-asil-c"]
+# Safety level presets using capability-based features
+qm = ["wrt-foundation/dynamic-allocation"]
+asil-a = ["wrt-foundation/bounded-collections"]
+asil-b = ["wrt-foundation/bounded-collections"]
+asil-c = ["wrt-foundation/static-memory-safety"]
+asil-d = ["wrt-foundation/maximum-safety"]
+
+# DO-178C equivalents
+dal-e = ["qm"]
+dal-d = ["asil-a"]
+dal-c = ["asil-b"]
+dal-b = ["asil-c"]
+dal-a = ["asil-d"]
+
+# IEC 61508 equivalents
+sil-1 = ["asil-a"]
+sil-2 = ["asil-b"]
+sil-3 = ["asil-c"]
+sil-4 = ["asil-d"]
+
+# Legacy compatibility features
+safety-asil-b = ["asil-b"]
+safety-asil-c = ["asil-c"]
+safety-asil-d = ["asil-d"]
+
 # Platform and Helper Mode Features
 helper-mode = ["wrt-platform/helper-mode"]
-# Disable panic handler for library usage
 platform-macos = ["wrt-platform/platform-macos"]
-# Platform feature enables SIMD operations
 platform = ["wrt-math/platform"]
+
 # Proposal features (mostly placeholders/unused for now)
 relaxed_simd = []
 gc = []
@@ -195,7 +205,6 @@ wasm_3_0 = []
 wide_arithmetic = []
 custom_page_sizes = []
 annotations = []
-safety-asil-d = ["safety-asil-c"]
 
 
 [package.metadata.docs.rs]

@@ -10,7 +10,7 @@ use core::any::Any;
 /// WASI get arguments operation
 ///
 /// Implements `wasi:cli/environment.get-arguments` using platform abstractions
-pub fn wasi_get_arguments(
+pub fn wasi_cli_get_arguments(
     _target: &mut dyn Any,
     _args: Vec<Value>,
 ) -> Result<Vec<Value>> {
@@ -41,7 +41,7 @@ pub fn wasi_get_arguments(
 /// WASI get environment operation
 ///
 /// Implements `wasi:cli/environment.get-environment` for environment variables
-pub fn wasi_get_environment(
+pub fn wasi_cli_get_environment(
     _target: &mut dyn Any,
     _args: Vec<Value>,
 ) -> Result<Vec<Value>> {
@@ -240,7 +240,7 @@ mod tests {
     
     #[test]
     fn test_wasi_get_arguments() -> Result<()> {
-        let result = wasi_get_arguments(&mut (), vec![])?;
+        let result = wasi_cli_get_arguments(&mut (), vec![])?;
         assert_eq!(result.len(), 1);
         
         // Should return a list
@@ -256,7 +256,7 @@ mod tests {
     
     #[test]
     fn test_wasi_get_environment() -> Result<()> {
-        let result = wasi_get_environment(&mut (), vec![])?;
+        let result = wasi_cli_get_environment(&mut (), vec![])?;
         assert_eq!(result.len(), 1);
         
         // Should return a list of tuples

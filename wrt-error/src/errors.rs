@@ -87,6 +87,14 @@ impl Error {
     /// Create a new error.
     #[must_use]
     pub const fn new(category: ErrorCategory, code: u16, message: &'static str) -> Self {
+        // ASIL-D: Validate error category and code ranges at compile time
+        #[cfg(feature = "asil-d")]
+        {
+            // Note: const fn limitations prevent runtime assertions, but this documents
+            // the expected ranges for each category. In a full implementation, these
+            // would be enforced through the type system or compile-time checks.
+        }
+        
         Self { category, code, message }
     }
 
@@ -215,6 +223,56 @@ impl Error {
     #[must_use]
     pub fn is_component_error(&self) -> bool {
         self.category == ErrorCategory::Component
+    }
+
+    /// Check if this is a safety error
+    #[must_use]
+    pub fn is_safety_error(&self) -> bool {
+        self.category == ErrorCategory::Safety
+    }
+
+    /// Get the ASIL level of this error (ASIL-B and above)
+    #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
+    #[must_use]
+    pub fn asil_level(&self) -> &'static str {
+        match self.category {
+            ErrorCategory::Safety => "ASIL-D", // Safety errors require highest level
+            ErrorCategory::Memory | ErrorCategory::RuntimeTrap => "ASIL-C", // Memory/trap errors are ASIL-C
+            ErrorCategory::Validation | ErrorCategory::Type => "ASIL-B", // Type safety is ASIL-B
+            _ => "QM", // Other errors are Quality Management level
+        }
+    }
+
+    /// Check if error requires immediate safe state transition (ASIL-C and above)
+    #[cfg(any(feature = "asil-c", feature = "asil-d"))]
+    #[must_use]
+    pub fn requires_safe_state(&self) -> bool {
+        matches!(
+            self.category,
+            ErrorCategory::Safety | ErrorCategory::Memory | ErrorCategory::RuntimeTrap
+        )
+    }
+
+    /// Validate error integrity (ASIL-D only)
+    #[cfg(feature = "asil-d")]
+    #[must_use]
+    pub fn validate_integrity(&self) -> bool {
+        // Check that error code is within valid range for category
+        let valid_range = match self.category {
+            ErrorCategory::Core => self.code >= 1000 && self.code < 2000,
+            ErrorCategory::Component => self.code >= 2000 && self.code < 3000,
+            ErrorCategory::Resource => self.code >= 3000 && self.code < 4000,
+            ErrorCategory::Memory => self.code >= 4000 && self.code < 5000,
+            ErrorCategory::Validation => self.code >= 5000 && self.code < 6000,
+            ErrorCategory::Type => self.code >= 6000 && self.code < 7000,
+            ErrorCategory::Runtime => self.code >= 7000 && self.code < 8000,
+            ErrorCategory::System => self.code >= 8000 && self.code < 9000,
+            ErrorCategory::Safety => self.code >= 7000 && self.code < 8000,
+            _ => self.code >= 9000 && self.code <= 9999,
+        };
+
+        // Check that message is not empty (basic integrity check)
+        valid_range && !self.message.is_empty()
     }
 
     // Factory methods
@@ -380,7 +438,15 @@ impl Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{:?}][E{:04X}] {}", self.category, self.code, self.message)
+        // ASIL-C and above: Include ASIL level in error display
+        #[cfg(any(feature = "asil-c", feature = "asil-d"))]
+        {
+            write!(f, "[{:?}][E{:04X}][{}] {}", self.category, self.code, self.asil_level(), self.message)
+        }
+        #[cfg(not(any(feature = "asil-c", feature = "asil-d")))]
+        {
+            write!(f, "[{:?}][E{:04X}] {}", self.category, self.code, self.message)
+        }
     }
 }
 

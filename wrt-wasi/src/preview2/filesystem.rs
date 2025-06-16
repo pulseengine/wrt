@@ -2,35 +2,61 @@
 //!
 //! Implements the `wasi:filesystem` interface using WRT's platform abstractions
 //! and proven patterns from wrt-host and wrt-platform.
+//! Uses safety-aware allocation based on configured safety level.
 
-use crate::prelude::*;
+use crate::{prelude::*, WASI_CRATE_ID, wasi_max_allocation_size};
 use wrt_platform::filesystem::PlatformFilesystem;
 use wrt_component::values::Value;
+use wrt_foundation::{safety_aware_alloc, BoundedVec};
 use core::any::Any;
+
+/// Maximum size for file I/O operations based on safety level
+const fn max_io_size() -> usize {
+    let max_alloc = wasi_max_allocation_size();
+    if max_alloc > 65536 {
+        65536 // Cap at 64KB for I/O operations
+    } else {
+        max_alloc / 2 // Use half of max allocation for I/O
+    }
+}
+
+/// Safety-aware file data buffer
+type FileBuffer = BoundedVec<u8, {max_io_size()}>;
 
 /// WASI filesystem read operation
 ///
 /// Implements `wasi:filesystem/types.read` using WRT platform abstractions
+/// Uses safety-aware allocation with size limits based on configured safety level
 pub fn wasi_filesystem_read(
     _target: &mut dyn Any,
     args: Vec<Value>,
 ) -> Result<Vec<Value>> {
-    // Extract file descriptor from arguments
+    // Extract file descriptor and length from arguments
     let fd = extract_file_descriptor(&args)?;
+    let length = extract_length(&args, 1)?.min(max_io_size() as u64) as usize;
     
     // Validate the file descriptor exists and is readable
-    // In a real implementation, this would access the resource manager
-    // For now, provide a basic implementation
+    validate_file_descriptor_readable(fd)?;
     
-    // Use platform filesystem abstraction
+    // Create safety-aware buffer for read operation
+    let provider = safety_aware_alloc!(max_io_size(), WASI_CRATE_ID)?;
+    let mut buffer = FileBuffer::new(provider)?;
+    
+    // Use platform filesystem abstraction for actual read
     let filesystem = PlatformFilesystem::new();
+    let bytes_read = filesystem.read_file(fd, &mut buffer, length)?;
     
-    // Read operation would go here
-    // For now, return empty data as placeholder
-    let data = Vec::new();
+    // Convert to WASI list<u8> format
+    let data_values: Vec<Value> = buffer[..bytes_read]
+        .iter()
+        .map(|&byte| Value::U8(byte))
+        .collect();
     
-    // Return as WASI list<u8>
-    Ok(vec![Value::List(data.into_iter().map(Value::U8).collect())])
+    // Return tuple: (data: list<u8>, end-of-file: bool)
+    Ok(vec![
+        Value::List(data_values),
+        Value::Bool(bytes_read < length)
+    ])
 }
 
 /// WASI filesystem write operation
@@ -98,6 +124,136 @@ pub fn wasi_filesystem_stat(
     let metadata = create_file_metadata_record()?;
     
     Ok(vec![metadata])
+}
+
+/// Helper function to extract file descriptor from WASI arguments
+fn extract_file_descriptor(args: &[Value]) -> Result<u32> {
+    args.get(0)
+        .and_then(|v| match v {
+            Value::U32(fd) => Some(*fd),
+            _ => None,
+        })
+        .ok_or_else(|| Error::new(
+            ErrorCategory::InvalidArgument,
+            codes::WASI_INVALID_FD,
+            kinds::WasiFileSystemError("Invalid file descriptor argument")
+        ))
+}
+
+/// Helper function to extract length parameter from WASI arguments
+fn extract_length(args: &[Value], index: usize) -> Result<u64> {
+    args.get(index)
+        .and_then(|v| match v {
+            Value::U64(len) => Some(*len),
+            Value::U32(len) => Some(*len as u64),
+            _ => None,
+        })
+        .ok_or_else(|| Error::new(
+            ErrorCategory::InvalidArgument,
+            codes::WASI_INVALID_FD,
+            kinds::WasiFileSystemError("Invalid length argument")
+        ))
+}
+
+/// Helper function to extract string from WASI arguments
+fn extract_string(args: &[Value], index: usize) -> Result<&str> {
+    args.get(index)
+        .and_then(|v| match v {
+            Value::String(s) => Some(s.as_str()),
+            _ => None,
+        })
+        .ok_or_else(|| Error::new(
+            ErrorCategory::InvalidArgument,
+            codes::WASI_INVALID_FD,
+            kinds::WasiFileSystemError("Invalid string argument")
+        ))
+}
+
+/// Helper function to extract byte data from WASI arguments
+fn extract_byte_data(args: &[Value], index: usize) -> Result<Vec<u8>> {
+    args.get(index)
+        .and_then(|v| match v {
+            Value::List(list) => {
+                let mut bytes = Vec::new();
+                for item in list {
+                    match item {
+                        Value::U8(byte) => bytes.push(*byte),
+                        _ => return None,
+                    }
+                }
+                Some(bytes)
+            },
+            _ => None,
+        })
+        .ok_or_else(|| Error::new(
+            ErrorCategory::InvalidArgument,
+            codes::WASI_INVALID_FD,
+            kinds::WasiFileSystemError("Invalid byte data argument")
+        ))
+}
+
+/// Validate that a file descriptor exists and is readable
+fn validate_file_descriptor_readable(fd: u32) -> Result<()> {
+    // In a real implementation, this would check the resource manager
+    // For now, just validate that it's a reasonable fd value
+    if fd > 1024 {
+        return Err(Error::new(
+            ErrorCategory::Resource,
+            codes::WASI_INVALID_FD,
+            kinds::WasiFileSystemError("File descriptor out of range")
+        ));
+    }
+    Ok(())
+}
+
+/// Create file metadata record for WASI stat operation
+fn create_file_metadata_record() -> Result<Value> {
+    // Return a WASI descriptor-stat record
+    // This would be populated from actual file metadata
+    let metadata_fields = vec![
+        ("type", Value::U8(4)), // Regular file
+        ("link-count", Value::U64(1)),
+        ("size", Value::U64(1024)),
+        ("data-access-timestamp", Value::U64(0)),
+        ("data-modification-timestamp", Value::U64(0)),
+        ("status-change-timestamp", Value::U64(0)),
+    ];
+    
+    Ok(Value::Record(metadata_fields))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_max_io_size_respects_safety_level() {
+        let max_size = max_io_size();
+        
+        // Should never exceed 64KB regardless of safety level
+        assert!(max_size <= 65536);
+        
+        // Should be reasonable minimum for basic operations
+        assert!(max_size >= 1024);
+    }
+    
+    #[test]
+    fn test_extract_file_descriptor() {
+        let args = vec![Value::U32(42)];
+        assert_eq!(extract_file_descriptor(&args).unwrap(), 42);
+        
+        let invalid_args = vec![Value::String("not_a_fd".to_string())];
+        assert!(extract_file_descriptor(&invalid_args).is_err());
+    }
+    
+    #[test]
+    fn test_extract_length() {
+        let args = vec![Value::U32(0), Value::U64(1024)];
+        assert_eq!(extract_length(&args, 1).unwrap(), 1024);
+        
+        let args_u32 = vec![Value::U32(0), Value::U32(512)];
+        assert_eq!(extract_length(&args_u32, 1).unwrap(), 512);
+    }
 }
 
 /// WASI filesystem read directory operation

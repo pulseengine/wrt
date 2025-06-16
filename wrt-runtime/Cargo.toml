@@ -65,23 +65,31 @@ optimize = [
     "wrt-host?/optimize",
     "wrt-intercept/optimize"]
 
-# Safe memory implementations
-safe-memory = [
-    "wrt-foundation/safe-memory"]
-safety-asil-b = [
-    "wrt-foundation/safety-asil-b",
-    # "wrt-decoder/safety-asil-b",
-    "wrt-instructions/safety-asil-b",
-    "wrt-host?/safety-asil-b",
-    "wrt-intercept/safety-asil-b"]
-kani = []
-kani-verifier = []
-platform-macos = ["dep:wrt-platform", "wrt-platform?/platform-macos"]
+# Safety level presets using capability-based features
+qm = ["wrt-foundation/dynamic-allocation"]
+asil-a = ["wrt-foundation/bounded-collections"]
+asil-b = ["wrt-foundation/bounded-collections"]
+asil-c = ["wrt-foundation/static-memory-safety"]
+asil-d = ["wrt-foundation/maximum-safety"]
+
+# Legacy compatibility features
+safe-memory = ["asil-b"]
+safety-asil-b = ["asil-b"]
+safety-asil-c = ["asil-c"]
+safety-asil-d = ["asil-d"]
+
+# Platform features - properly abstracted for ASIL compliance
+# Platform sync enables native platform synchronization primitives
+platform-sync = ["dep:wrt-platform", "wrt-platform?/std"]
+# Specific platform support (requires platform-sync)
+platform-macos = ["platform-sync", "wrt-platform?/platform-macos"]
+platform-linux = ["platform-sync", "wrt-platform?/platform-linux"]
+platform-qnx = ["platform-sync", "wrt-platform?/platform-qnx"]
+platform-embedded = ["dep:wrt-platform"] # Minimal platform support
 helper-mode = ["dep:wrt-platform", "wrt-platform?/helper-mode"]
 
-# Additional features
-# Disable panic handler for library builds to avoid conflicts
-safety-asil-c = ["safety-asil-b"]
-safety-asil-d = ["safety-asil-c"]
+# Verification features
+kani = []
+kani-verifier = []
 
 

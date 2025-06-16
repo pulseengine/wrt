@@ -706,6 +706,10 @@ impl NoStdProviderBuilder1 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "std")]
+    use std::format;
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::format;
 
     #[test]
     fn test_bounded_builder() {

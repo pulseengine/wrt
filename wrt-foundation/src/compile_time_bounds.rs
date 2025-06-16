@@ -306,7 +306,7 @@ mod tests {
     fn test_compile_time_validation_works() {
         // These should compile without issues
         validate_allocation!(1024, CrateId::Component);
-        validate_allocation!(64 * 1024, CrateId::Runtime);
+        validate_allocation!({64 * 1024}, CrateId::Runtime);
     }
     
     #[test]

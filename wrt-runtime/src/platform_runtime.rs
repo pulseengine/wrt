@@ -16,7 +16,6 @@
 
 use crate::{
     foundation_stubs::{SafetyContext, UnifiedMemoryProvider, AsilLevel, MediumProvider},
-    platform_stubs::{ComprehensivePlatformLimits, PlatformId},
     component_stubs::ComponentId,
     cfi_engine::{CfiExecutionEngine, CfiViolationPolicy},
     execution::ExecutionContext,
@@ -28,6 +27,9 @@ use crate::{
 // use wrt_instructions::CfiControlFlowProtection;
 use crate::cfi_engine::CfiControlFlowProtection;
 use wrt_error::{Error, ErrorCategory, Result};
+
+// Import from wrt-foundation platform abstraction
+use wrt_foundation::platform_abstraction::{ComprehensivePlatformLimits, PlatformId};
 
 /// Simple platform memory adapter trait for platform_runtime.rs
 pub trait PlatformMemoryAdapter: Send + Sync {
@@ -551,7 +553,7 @@ impl LinuxMemoryAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::platform_stubs::ComprehensivePlatformLimits;
+    use wrt_foundation::platform_abstraction::ComprehensivePlatformLimits;
 
     #[test]
     fn test_platform_runtime_creation() {

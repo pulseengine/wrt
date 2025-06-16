@@ -13,13 +13,11 @@ use wrt_debug::{DwarfDebugInfo, LineInfo};
 
 use crate::{global::Global, memory::Memory, module::{Module, MemoryWrapper, TableWrapper, GlobalWrapper}, prelude::{Debug, DefaultProvider, Error, ErrorCategory, FuncType, Result, codes}, table::Table};
 
-// Platform sync primitives
-#[cfg(not(feature = "std"))]
-use wrt_platform::sync::Mutex;
+// Platform sync primitives - use prelude imports for consistency
 #[cfg(feature = "std")]
 use std::sync::{Arc, Mutex};
 #[cfg(not(feature = "std"))]
-use alloc::sync::Arc;
+use crate::prelude::{Arc, Mutex};
 
 // Import format! macro for string formatting
 #[cfg(feature = "std")]

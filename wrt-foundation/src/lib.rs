@@ -220,6 +220,8 @@ pub mod unified_types_simple;
 pub mod safety_system;
 /// ASIL-tagged testing framework for safety verification
 pub mod asil_testing;
+/// Platform Abstraction Interface (PAI) for cross-platform safety-critical runtime
+pub mod platform_abstraction;
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
@@ -365,6 +367,19 @@ pub use monitoring::{
 
 // Re-export hierarchical budget types
 pub use hierarchical_budgets::{HierarchicalBudget, MemoryPriority};
+
+// Re-export platform abstraction types
+pub use platform_abstraction::{
+    // Core platform types
+    PlatformLimits, PlatformServices, TimeProvider, 
+    CounterTimeProvider, 
+    // Factory functions
+    initialize_platform_services, get_platform_services, current_time_ns, get_platform_limits,
+};
+
+// Re-export platform abstraction std types
+#[cfg(feature = "std")]
+pub use platform_abstraction::SystemTimeProvider;
 
 // Re-export clean types (provider-free) - only when allocation is available
 #[cfg(any(feature = "std", feature = "alloc"))]

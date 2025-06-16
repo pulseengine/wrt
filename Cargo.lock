@@ -4148,6 +4148,7 @@ dependencies = [
 name = "wrt-math"
 version = "0.2.0"
 dependencies = [
+ "libm",
  "wrt-error",
  "wrt-platform",
 ]

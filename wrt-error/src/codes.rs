@@ -120,9 +120,9 @@ pub const VERIFICATION_LEVEL_VIOLATION: u16 = 5006;
 /// Validation global type mismatch error
 pub const VALIDATION_GLOBAL_TYPE_MISMATCH: u16 = 5007;
 /// Validation invalid memory index error
-pub const VALIDATION_INVALID_MEMORY_INDEX: u16 = 5006;
+pub const VALIDATION_INVALID_MEMORY_INDEX: u16 = 5027;
 /// Validation invalid global index error
-pub const VALIDATION_INVALID_GLOBAL_INDEX: u16 = 5007;
+pub const VALIDATION_INVALID_GLOBAL_INDEX: u16 = 5028;
 /// Validation unsupported feature error
 pub const VALIDATION_UNSUPPORTED_FEATURE: u16 = 5008;
 /// Validation invalid instruction error
@@ -191,6 +191,14 @@ pub const VERIFICATION_FAILED: u16 = 7003;
 pub const SAFETY_CONTEXT_INVALID: u16 = 7004;
 /// Safety guard failure error
 pub const SAFETY_GUARD_FAILURE: u16 = 7005;
+/// Determinism violation error (ASIL-D)
+pub const DETERMINISM_VIOLATION: u16 = 7006;
+/// Redundancy check failure error (ASIL-D)
+pub const REDUNDANCY_CHECK_FAILURE: u16 = 7007;
+/// ASIL level mismatch error
+pub const ASIL_LEVEL_MISMATCH: u16 = 7008;
+/// Safety monitor timeout error
+pub const SAFETY_MONITOR_TIMEOUT: u16 = 7009;
 
 // Unified types error codes (8000-8999)
 /// Unified type configuration error

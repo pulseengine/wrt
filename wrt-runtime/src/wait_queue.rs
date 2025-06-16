@@ -16,20 +16,54 @@ extern crate alloc;
 use crate::prelude::{BoundedVec, Debug, Eq, PartialEq};
 use crate::thread_manager::{ThreadId, ThreadState};
 use wrt_error::{Error, ErrorCategory, Result, codes};
+
+// Import platform abstractions
+use wrt_foundation::platform_abstraction::Duration;
+
 #[cfg(feature = "std")]
-use wrt_platform::sync::{Mutex, Condvar};
-#[cfg(feature = "std")]
-use std::{sync::Arc, time::{Duration, Instant}};
+use std::{sync::{Arc, Mutex, Condvar}, time::Instant};
 #[cfg(not(feature = "std"))]
-use alloc::sync::Arc;
+use crate::prelude::{Arc, Mutex};
+
+// Platform-specific Condvar - only available with platform-sync
+#[cfg(all(not(feature = "std"), feature = "platform-sync"))]
+use wrt_platform::sync::Condvar;
+
+// Stub Condvar for no_std without platform-sync
+#[cfg(all(not(feature = "std"), not(feature = "platform-sync")))]
+struct Condvar;
+
+#[cfg(all(not(feature = "std"), not(feature = "platform-sync")))]
+impl Condvar {
+    fn new() -> Self { Self }
+    fn wait<'a, T>(&self, _guard: crate::prelude::MutexGuard<'a, T>) -> Result<crate::prelude::MutexGuard<'a, T>> {
+        Err(Error::new(
+            ErrorCategory::NotSupported,
+            codes::NOT_SUPPORTED,
+            "Condvar not supported without platform-sync"
+        ))
+    }
+    fn notify_one(&self) -> Result<()> {
+        Err(Error::new(
+            ErrorCategory::NotSupported,
+            codes::NOT_SUPPORTED,
+            "Condvar not supported without platform-sync"
+        ))
+    }
+    fn notify_all(&self) -> Result<()> {
+        Err(Error::new(
+            ErrorCategory::NotSupported,
+            codes::NOT_SUPPORTED,
+            "Condvar not supported without platform-sync"
+        ))
+    }
+}
 
 use crate::bounded_runtime_infra::{
     BoundedWaitQueueVec, RuntimeProvider, new_thread_vec
 };
 #[cfg(not(feature = "std"))]
 use wrt_foundation::traits::BoundedCapacity;
-#[cfg(not(feature = "std"))]
-use wrt_platform::sync::Duration;
 
 /// Wait queue identifier
 pub type WaitQueueId = u64;
@@ -109,7 +143,7 @@ impl WaitQueue {
             #[cfg(feature = "std")]
             enqueue_time: Instant::now(),
             #[cfg(not(feature = "std"))]
-            enqueue_time: wrt_platform::time::current_time_ns(),
+            enqueue_time: 0, // Time tracking not available without platform support
             timeout,
             priority,
         };
