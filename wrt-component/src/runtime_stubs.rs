@@ -1,5 +1,5 @@
-// Runtime stubs for Agent C independent development  
-// These will be replaced with real implementations during integration
+// Runtime stubs for component module development
+// These provide the interface to the runtime module's types
 
 use crate::foundation_stubs::{SmallVec, MediumVec, LargeVec, SafetyContext};
 use crate::platform_stubs::ComprehensivePlatformLimits;

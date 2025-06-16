@@ -1,7 +1,7 @@
-//! Agent Registry for Managing Execution Agents
+//! Execution Agent Registry
 //!
-//! This module provides a centralized registry for managing different types of execution agents
-//! and provides a migration path from the legacy individual agents to the unified agent system.
+//! This module provides a centralized registry for managing different types of execution engines
+//! and provides a migration path from legacy execution engines to the unified execution system.
 
 #[cfg(feature = "std")]
 use std::{collections::HashMap, boxed::Box, sync::Arc};

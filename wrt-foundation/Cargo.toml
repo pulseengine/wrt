@@ -56,12 +56,12 @@ maximum-safety = [
     "compile-time-memory-layout"
 ]
 
-# ASIL Safety Levels
+# ASIL Safety Levels (mutually exclusive)
 qm = ["dynamic-allocation"]
 asil-a = ["runtime-bounds-checking", "basic-monitoring"]
-asil-b = ["asil-a", "bounded-collections"]
-asil-c = ["asil-b", "static-memory-safety"]
-asil-d = ["asil-c", "maximum-safety"]
+asil-b = ["runtime-bounds-checking", "basic-monitoring", "bounded-collections"]
+asil-c = ["runtime-bounds-checking", "basic-monitoring", "bounded-collections", "memory-budget-enforcement", "component-isolation"]
+asil-d = ["runtime-bounds-checking", "basic-monitoring", "bounded-collections", "memory-budget-enforcement", "component-isolation", "compile-time-memory-layout", "mathematical-proofs", "redundant-safety-checks", "hardware-isolation"]
 
 # Legacy compatibility features
 std = ["wrt-sync/std", "dynamic-allocation"]

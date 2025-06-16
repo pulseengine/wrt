@@ -94,7 +94,10 @@ For full development workflow:
    cargo install cargo-component
 
    # WebAssembly tools
-   cargo install wasmtime-cli wasm-tools
+   cargo install wasm-tools
+   
+   # WRT command-line interface
+   cargo install --path wrt-cli
 
    # Code coverage (optional)
    cargo install cargo-llvm-cov

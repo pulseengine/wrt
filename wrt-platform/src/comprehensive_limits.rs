@@ -12,7 +12,7 @@ extern crate std;
 #[cfg(feature = "std")]
 use std::boxed::Box;
 
-// Stub imports for Agent A's work - will be replaced during integration
+// Stub imports for foundation module - will be replaced during integration
 mod foundation_stubs {
     /// ASIL (Automotive Safety Integrity Level) classification
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]

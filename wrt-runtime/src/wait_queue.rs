@@ -18,7 +18,7 @@ use crate::thread_manager::{ThreadId, ThreadState};
 use wrt_error::{Error, ErrorCategory, Result, codes};
 
 // Import platform abstractions
-use wrt_foundation::platform_abstraction::Duration;
+use core::time::Duration;
 
 #[cfg(feature = "std")]
 use std::{sync::{Arc, Mutex, Condvar}, time::Instant};
@@ -29,6 +29,17 @@ use crate::prelude::{Arc, Mutex};
 #[cfg(all(not(feature = "std"), feature = "platform-sync"))]
 use wrt_platform::sync::Condvar;
 
+// Stub timeout result for no_std
+#[cfg(all(not(feature = "std"), not(feature = "platform-sync")))]
+struct WaitTimeoutResult(bool);
+
+#[cfg(all(not(feature = "std"), not(feature = "platform-sync")))]
+impl WaitTimeoutResult {
+    fn timed_out(&self) -> bool {
+        self.0
+    }
+}
+
 // Stub Condvar for no_std without platform-sync
 #[cfg(all(not(feature = "std"), not(feature = "platform-sync")))]
 struct Condvar;
@@ -36,26 +47,35 @@ struct Condvar;
 #[cfg(all(not(feature = "std"), not(feature = "platform-sync")))]
 impl Condvar {
     fn new() -> Self { Self }
+    
     fn wait<'a, T>(&self, _guard: crate::prelude::MutexGuard<'a, T>) -> Result<crate::prelude::MutexGuard<'a, T>> {
+        // For safety-critical systems without platform sync, we return immediately
+        // indicating that blocking operations are not supported.
+        // The runtime should handle this by using polling or other non-blocking mechanisms.
         Err(Error::new(
             ErrorCategory::NotSupported,
-            codes::NOT_SUPPORTED,
-            "Condvar not supported without platform-sync"
+            codes::WOULD_BLOCK,
+            "Blocking wait not supported in no_std without platform-sync - use polling"
         ))
     }
+    
+    fn wait_timeout<'a, T>(&self, guard: crate::prelude::MutexGuard<'a, T>, _timeout: Duration) 
+        -> Result<(crate::prelude::MutexGuard<'a, T>, WaitTimeoutResult)> {
+        // Timeout-based wait also not supported without platform sync
+        // Return immediately with timeout indication
+        Ok((guard, WaitTimeoutResult(true)))
+    }
+    
     fn notify_one(&self) -> Result<()> {
-        Err(Error::new(
-            ErrorCategory::NotSupported,
-            codes::NOT_SUPPORTED,
-            "Condvar not supported without platform-sync"
-        ))
+        // Notification is a no-op when there's no actual blocking
+        // In a real system, this would set a flag that waiters could poll
+        Ok(())
     }
+    
     fn notify_all(&self) -> Result<()> {
-        Err(Error::new(
-            ErrorCategory::NotSupported,
-            codes::NOT_SUPPORTED,
-            "Condvar not supported without platform-sync"
-        ))
+        // Notification is a no-op when there's no actual blocking
+        // In a real system, this would set a flag that waiters could poll
+        Ok(())
     }
 }
 

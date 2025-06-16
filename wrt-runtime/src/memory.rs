@@ -585,12 +585,13 @@ impl Memory {
     ///
     /// For memory-safe access, prefer using `get_safe_slice()` or
     /// `as_safe_slice()` methods instead.
-    pub fn buffer(&self) -> Result<Vec<u8>> {
+    #[cfg(feature = "std")]
+    pub fn buffer(&self) -> Result<std::vec::Vec<u8>> {
         // Use the SafeMemoryHandler to get data through a safe slice to ensure
         // memory integrity is verified during the operation
         let data_size = self.data.size();
         if data_size == 0 {
-            return Ok(Vec::new());
+            return Ok(std::vec::Vec::new());
         }
 
         // Get a safe slice over the entire memory
@@ -600,7 +601,7 @@ impl Memory {
         let memory_data = safe_slice.data()?;
 
         // Create a new RuntimeVec with the data
-        let mut result = Vec::with_capacity(data_size);
+        let mut result = std::vec::Vec::with_capacity(data_size);
         for &byte in memory_data.iter().take(result.capacity()) {
             result.push(byte);
             }
@@ -1928,7 +1929,8 @@ impl Memory {
     /// # Returns
     ///
     /// A string containing the statistics
-    pub fn safety_stats(&self) -> String {
+    #[cfg(feature = "std")]
+    pub fn safety_stats(&self) -> std::string::String {
         let memory_stats = self.memory_stats();
         let access_count = self.access_count();
         let peak_memory = self.peak_memory();
@@ -1936,8 +1938,16 @@ impl Memory {
         let unique_regions = self.unique_regions();
 
         // Create a string with formatted stats
-        let stats_str = "Memory Safety Stats: [Runtime memory]";
-        stats_str.to_string()
+        "Memory Safety Stats: [Runtime memory]".to_string()
+    }
+
+    /// Get safety statistics for this memory instance (no_std version)
+    #[cfg(not(feature = "std"))]
+    pub fn safety_stats(&self) -> crate::prelude::RuntimeString {
+        use crate::prelude::RuntimeString;
+        let provider = wrt_foundation::NoStdProvider::<1024>::default();
+        RuntimeString::from_str_truncate("Memory Safety Stats: [Runtime memory]", provider)
+            .unwrap_or_else(|_| RuntimeString::from_str_truncate("", provider).unwrap())
     }
 
     /// Returns a `SafeSlice` representing the entire memory
@@ -2132,7 +2142,7 @@ impl MemoryOperations for Memory {
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
         // Handle zero-length reads
         if len == 0 {
-            return Ok(Vec::new());
+            return Ok(std::vec::Vec::new());
         }
 
         // Convert to usize and check for overflow

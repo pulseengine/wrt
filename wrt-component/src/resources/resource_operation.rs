@@ -1,6 +1,5 @@
 // Re-export ResourceOperation for convenience
 pub use wrt_foundation::resource::ResourceOperation;
-use wrt_foundation::ResourceOperation;
 
 use crate::prelude::*;
 

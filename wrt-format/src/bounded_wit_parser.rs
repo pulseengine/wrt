@@ -1,5 +1,5 @@
-// Enhanced Bounded WIT Parser with configurable limits for Agent C
-// This is Agent C's enhanced implementation according to the parallel development plan
+// Enhanced Bounded WIT Parser with configurable limits
+// This is the enhanced implementation for the component module
 
 use wrt_error::{Error, Result};
 use wrt_foundation::{MemoryProvider, NoStdProvider};

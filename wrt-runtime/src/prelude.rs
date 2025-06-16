@@ -42,8 +42,8 @@ macro_rules! vec_new {
 // Helper function to create Vec with capacity
 /// Create a Vec with specified capacity for `no_std` environments
 #[cfg(not(feature = "std"))]
-#[must_use] pub fn vec_with_capacity<T>(capacity: usize) -> Vec<T> {
-    Vec::with_capacity(capacity)
+#[must_use] pub fn vec_with_capacity<T>(capacity: usize) -> alloc::vec::Vec<T> {
+    alloc::vec::Vec::with_capacity(capacity)
 }
 
 // Add vec! macro for no_std environments without alloc
@@ -212,13 +212,16 @@ pub use wrt_foundation::bounded::BoundedString as String;
 
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 pub trait ToString {
-    fn to_string(&self) -> String;
+    fn to_string(&self) -> RuntimeString;
 }
 
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 impl ToString for &str {
-    fn to_string(&self) -> String {
-        String::from_str(self).unwrap_or_default()
+    fn to_string(&self) -> RuntimeString {
+        let provider = wrt_foundation::NoStdProvider::<1024>::default();
+        RuntimeString::from_str(self, provider.clone()).unwrap_or_else(|_| 
+            RuntimeString::from_str("", provider).unwrap()
+        )
     }
 }
 

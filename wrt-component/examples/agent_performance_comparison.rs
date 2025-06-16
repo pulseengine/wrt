@@ -1,14 +1,14 @@
-//! Performance Comparison: Legacy vs Unified Agents
+//! Performance Comparison: Legacy vs Unified Execution Engines
 //!
 //! This example demonstrates the performance benefits of using the unified
-//! agent system compared to legacy individual agents.
+//! execution engine compared to legacy individual engines.
 
 use std::time::{Duration, Instant};
 use wrt_component::{
     AgentConfiguration,
     AgentCreationOptions,
     AgentRegistry,
-    // Legacy agents (deprecated)
+    // Legacy engines (deprecated)
     ComponentExecutionEngine,
     ExecutionMode,
     ExecutionState,
@@ -26,7 +26,7 @@ const ITERATIONS: usize = 10000;
 const WARMUP_ITERATIONS: usize = 100;
 
 fn main() {
-    println!("=== Agent Performance Comparison ===\n");
+    println!("=== Execution Engine Performance Comparison ===\n");
 
     // Warm up
     println!("Warming up...");

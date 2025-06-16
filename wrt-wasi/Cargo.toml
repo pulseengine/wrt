@@ -47,13 +47,17 @@ wasi-sockets = ["preview3-prep"]  # Future Preview3 feature
 component-model = ["wrt-component/component-model-all"]
 
 # Safety level presets using new capability-based features
-qm = ["wrt-foundation/dynamic-allocation"]
-asil-a = ["wrt-foundation/bounded-collections"]
-asil-b = ["wrt-foundation/bounded-collections"]
-asil-c = ["wrt-foundation/static-memory-safety"]
-asil-d = ["wrt-foundation/maximum-safety"]
+qm = ["wrt-foundation/dynamic-allocation", "wrt-format/qm", "wrt-host/qm", "wrt-component/qm", "wrt-platform/qm"]
+asil-a = ["wrt-foundation/bounded-collections", "wrt-format/asil-a", "wrt-host/asil-a", "wrt-component/asil-a", "wrt-platform/asil-a"]
+asil-b = ["wrt-foundation/bounded-collections", "wrt-format/asil-b", "wrt-host/asil-b", "wrt-component/asil-b", "wrt-platform/asil-b"]
+asil-c = ["wrt-foundation/static-memory-safety", "wrt-format/asil-c", "wrt-host/asil-c", "wrt-component/asil-c", "wrt-platform/asil-c"]
+asil-d = ["wrt-foundation/maximum-safety", "wrt-format/asil-d", "wrt-host/asil-d", "wrt-component/asil-d", "wrt-platform/asil-d"]
 
 # Legacy compatibility 
+safe-memory = ["asil-b"]
+safety-asil-b = ["asil-b"]
+safety-asil-c = ["asil-c"]
+safety-asil-d = ["asil-d"]
 safety-critical = ["asil-c"]
 
 # Development and testing features

@@ -5,7 +5,7 @@
 
 use wrt_error::Error;
 
-// Stub imports for Agent B's platform limits - will be replaced during integration
+// Stub imports for platform limits - will be replaced during integration
 mod platform_stubs {
     /// Comprehensive platform limits configuration
     ///

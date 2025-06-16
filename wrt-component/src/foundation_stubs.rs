@@ -6,8 +6,8 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-// Foundation stubs for Agent C independent development
-// These will be replaced with real implementations during integration
+// Foundation stubs for component module development
+// These provide the interface to the foundation module's types
 
 use alloc::vec::Vec;
 

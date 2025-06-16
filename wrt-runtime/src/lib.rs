@@ -73,9 +73,11 @@ pub mod unified_types;
 
 // Component model integration - temporarily disabled for compilation
 // pub mod component_unified;
-// pub mod memory_adapter;
+pub mod memory_adapter;
+#[cfg(test)]
+mod memory_adapter_test;
 // pub mod memory_config_adapter;
-// pub mod memory_helpers;
+pub mod memory_helpers;
 /// WebAssembly module representation and management
 pub mod module;
 // pub mod module_builder; // Temporarily disabled due to compilation issues
@@ -90,7 +92,7 @@ pub mod types;
 pub mod wait_queue;
 // pub mod wit_debugger_integration; // Temporarily disabled
 
-// Agent D: Platform-aware runtime and unified memory management - temporarily disabled
+// Platform-aware runtime and unified memory management - temporarily disabled
 // pub mod platform_runtime;
 
 // Bounded infrastructure for static memory allocation
@@ -161,7 +163,7 @@ pub use memory::Memory;
 // }; // Temporarily disabled due to compilation issues
 pub use table::Table;
 
-// Agent D: Re-export platform-aware runtime types - temporarily disabled
+// Re-export platform-aware runtime types - temporarily disabled
 // pub use platform_runtime::{PlatformAwareRuntime, PlatformMemoryAdapter, RuntimeMetrics};
 
 /// The WebAssembly memory page size (64KiB)

@@ -43,9 +43,20 @@ no_std = []
 # Allocation support for no_std environments
 alloc = ["wrt-foundation/alloc", "wrt-format/alloc"]
 optimize = []
-safety-asil-b = ["wrt-foundation/safety-asil-b", "wrt-format/safety-asil-b"]
-# Safety-critical features
-safety-asil-c = ["wrt-foundation/wrt-allocator"]
+
+# Safety level presets using capability-based features
+qm = ["wrt-foundation/dynamic-allocation", "wrt-format/qm"]
+asil-a = ["wrt-foundation/bounded-collections", "wrt-format/asil-a"]
+asil-b = ["wrt-foundation/bounded-collections", "wrt-format/asil-b"]
+asil-c = ["wrt-foundation/static-memory-safety", "wrt-format/asil-c"]
+asil-d = ["wrt-foundation/maximum-safety", "wrt-format/asil-d"]
+
+# Legacy compatibility features
+safe-memory = ["asil-b"]
+safety-asil-b = ["asil-b"]
+safety-asil-c = ["asil-c"]
+safety-asil-d = ["asil-d"]
+
 wat = ["dep:wat", "std"]
 
 # Component Model features
@@ -66,7 +77,6 @@ component-model-all = [
 conversion = ["wrt-format/conversion"]
 
 # Disable panic handler for library builds to avoid conflicts
-safety-asil-d = ["safety-asil-c"]
 kani = []
 
 

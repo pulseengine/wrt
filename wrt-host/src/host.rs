@@ -175,17 +175,17 @@ impl Default for BuiltinHost {
         #[cfg(not(feature = "std"))]
         {
             use wrt_foundation::{safe_managed_alloc, CrateId};
-            let string_guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for strings");
-            let map_guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for maps");
+            let string_provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for strings");
+            let map_provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for maps");
             
             Self {
-                component_name: HostString::from_str("", string_guard.provider().clone())
+                component_name: HostString::from_str("", string_provider.clone())
                     .expect("Failed to create empty string"),
-                host_id: HostString::from_str("", string_guard.provider().clone())
+                host_id: HostString::from_str("", string_provider.clone())
                     .expect("Failed to create empty string"),
-                handlers: HandlerMap::new(map_guard.provider().clone())
+                handlers: HandlerMap::new(map_provider.clone())
                     .expect("Failed to create HandlerMap"),
-                critical_builtins: CriticalBuiltinsMap::new(map_guard.provider().clone())
+                critical_builtins: CriticalBuiltinsMap::new(map_provider.clone())
                     .expect("Failed to create CriticalBuiltinsMap"),
             }
         }
@@ -229,10 +229,8 @@ impl BuiltinHost {
     #[cfg(not(feature = "std"))]
     #[must_use] pub fn new(component_name: &str, host_id: &str) -> Self {
         use wrt_foundation::{safe_managed_alloc, CrateId};
-        let string_guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for strings");
-        let map_guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for maps");
-        let string_provider = string_guard.provider().clone();
-        let map_provider = map_guard.provider().clone();
+        let string_provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for strings");
+        let map_provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for maps");
         let comp_name = HostString::from_str(component_name, string_provider.clone())
             .expect("Failed to create component name");
         let host_name = HostString::from_str(host_id, string_provider)
@@ -278,8 +276,8 @@ impl BuiltinHost {
     {
         // In no_std mode, we can't store function handlers dynamically
         use wrt_foundation::{safe_managed_alloc, CrateId};
-        let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for builtin name");
-        let name = HostString::from_str(builtin_type.name(), guard.provider().clone())
+        let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for builtin name");
+        let name = HostString::from_str(builtin_type.name(), provider)
             .expect("Failed to create builtin name");
         let _ = self.handlers.insert(name, HandlerData::default());
     }
@@ -327,8 +325,8 @@ impl BuiltinHost {
         {
             // In no_std mode, check if we have any handlers registered
             use wrt_foundation::{safe_managed_alloc, CrateId};
-        let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for builtin name");
-        let name = HostString::from_str(builtin_type.name(), guard.provider().clone())
+        let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for builtin name");
+        let name = HostString::from_str(builtin_type.name(), provider)
                 .expect("Failed to create builtin name");
             self.handlers.contains_key(&name).unwrap_or(false)
         }
@@ -487,8 +485,7 @@ impl Clone for BuiltinHost {
         #[cfg(not(feature = "std"))]
         {
             use wrt_foundation::{safe_managed_alloc, CrateId};
-            let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for registry");
-            let provider = guard.provider().clone();
+            let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for registry");
             Self {
                 component_name: self.component_name.clone(),
                 host_id: self.host_id.clone(),

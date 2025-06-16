@@ -88,10 +88,10 @@ impl Default for HostBuilder {
             // TODO: Specify appropriate size for this allocation
             use wrt_foundation::{safe_managed_alloc, CrateId};
             
-            let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).unwrap_or_else(|_| panic!("Failed to allocate memory for HostBuilder"));
+            let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).unwrap_or_else(|_| panic!("Failed to allocate memory for HostBuilder"));
             Self {
                 registry: CallbackRegistry::new(),
-                required_builtins: wrt_foundation::BoundedSet::new(guard.provider().clone()).unwrap_or_else(|_| panic!("Failed to create builtins set")),
+                required_builtins: wrt_foundation::BoundedSet::new(provider).unwrap_or_else(|_| panic!("Failed to create builtins set")),
                 strict_validation: false,
             }
         }
@@ -183,8 +183,8 @@ impl HostBuilder {
             #[cfg(not(feature = "std"))]
             let args: ValueVec = {
                 use wrt_foundation::{safe_managed_alloc, CrateId};
-                let guard = safe_managed_alloc!(65536, CrateId::Host).unwrap();
-                ValueVec::new(guard.provider().clone()).unwrap()
+                let provider = safe_managed_alloc!(65536, CrateId::Host).unwrap();
+                ValueVec::new(provider).unwrap()
             };
             handler(target, args)
         });
@@ -315,8 +315,8 @@ impl HostBuilder {
             #[cfg(not(feature = "std"))]
             let args: ValueVec = {
                 use wrt_foundation::{safe_managed_alloc, CrateId};
-                let guard = safe_managed_alloc!(65536, CrateId::Host).unwrap();
-                ValueVec::new(guard.provider().clone()).unwrap()
+                let provider = safe_managed_alloc!(65536, CrateId::Host).unwrap();
+                ValueVec::new(provider).unwrap()
             };
             handler(target, args)
         });

@@ -50,7 +50,6 @@ pub use std::{
     fmt as std_fmt, format, io,
     string::{String, ToString},
     sync::{Arc, Mutex, RwLock},
-    time::Instant,
     vec,
     vec::Vec,
 };

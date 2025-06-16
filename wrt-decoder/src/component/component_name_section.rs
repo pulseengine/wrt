@@ -19,6 +19,8 @@ use wrt_format::{write_leb128_u32, write_string};
 
 #[cfg(not(feature = "std"))]
 use wrt_foundation::bounded::BoundedVec;
+#[cfg(not(feature = "std"))]
+use wrt_foundation::safe_memory::NoStdProvider;
 
 use crate::prelude::*;
 
@@ -176,7 +178,6 @@ pub fn generate_component_name_section(section: &ComponentNameSection) -> Result
 pub fn generate_component_name_section(
     section: &ComponentNameSection,
 ) -> Result<BoundedVec<u8, 1024, NoStdProvider<2048>>> {
-    use wrt_foundation::safe_memory::NoStdProvider;
     let provider = NoStdProvider::<2048>::default();
     let mut result = BoundedVec::new(provider).map_err(|_| {
         Error::new(

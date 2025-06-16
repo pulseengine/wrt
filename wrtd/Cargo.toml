@@ -61,8 +61,21 @@ wasi-random = ["wasi", "wrt-wasi/wasi-random"]
 # Component model support
 component-model = ["wrt-execution", "wrt-component/component-model-all", "wrt-wasi/component-model"]
 
+# Safety level presets using capability-based features
+qm = ["wrt-foundation/dynamic-allocation", "wrt-logging/qm"]
+asil-a = ["wrt-foundation/bounded-collections", "wrt-logging/asil-a"]
+asil-b = ["wrt-foundation/bounded-collections", "wrt-logging/asil-b"]
+asil-c = ["wrt-foundation/static-memory-safety", "wrt-logging/asil-c"]
+asil-d = ["wrt-foundation/maximum-safety", "wrt-logging/asil-d"]
+
+# Legacy compatibility features
+safe-memory = ["asil-b"]
+safety-asil-b = ["asil-b"]
+safety-asil-c = ["asil-c"]
+safety-asil-d = ["asil-d"]
+
 # Safety-critical features for ASIL-C compliance
-safety-asil-c = ["std", "wrt-foundation/wrt-allocator", "wrt/safety-asil-c"]
+safety-asil-c-legacy = ["std", "wrt-foundation/wrt-allocator", "wrt/safety-asil-c"]
 
 # Panic handler for no_std builds - ASIL-D compliant by default
 enable-panic-handler = ["wrt-panic/default-panic-handler", "wrt-panic/asil-d", "dep:linked_list_allocator"]
@@ -72,8 +85,6 @@ asil-b-panic = ["wrt-panic/default-panic-handler", "wrt-panic/asil-b", "dep:link
 
 # Development panic handler (enhanced debugging)
 dev-panic = ["wrt-panic/default-panic-handler", "wrt-panic/dev", "dep:linked_list_allocator"]
-safety-asil-b = []
-safety-asil-d = ["safety-asil-c"]
 
 
 [lints.rust]

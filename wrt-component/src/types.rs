@@ -2,17 +2,10 @@
 //!
 //! This module provides component model type definitions.
 
-#[cfg(not(feature = "std"))]
-use core::fmt;
-#[cfg(feature = "std")]
-use std::fmt;
+use crate::prelude::*;
 
 #[cfg(all(feature = "std", feature = "safety-critical"))]
 use wrt_foundation::allocator::{WrtVec, CrateId};
-#[cfg(all(feature = "std", not(feature = "safety-critical")))]
-use std::{string::String, vec::Vec};
-#[cfg(feature = "std")]
-use std::string::String;
 
 use wrt_foundation::{bounded::{BoundedVec, BoundedString}, prelude::*, traits::{Checksummable, ToBytes, FromBytes}};
 

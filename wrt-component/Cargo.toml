@@ -58,17 +58,17 @@ alloc = [
     "wrt-intercept/alloc"]
 
 # Safety level presets using capability-based features
-qm = ["wrt-foundation/dynamic-allocation"]
-asil-a = ["wrt-foundation/bounded-collections"]
-asil-b = ["wrt-foundation/bounded-collections"]
-asil-c = ["wrt-foundation/static-memory-safety"]
-asil-d = ["wrt-foundation/maximum-safety"]
+qm = ["wrt-foundation/dynamic-allocation", "wrt-format/qm", "wrt-host/qm", "wrt-decoder/qm", "wrt-runtime/qm", "wrt-intercept/qm"]
+asil-a = ["wrt-foundation/bounded-collections", "wrt-format/asil-a", "wrt-host/asil-a", "wrt-decoder/asil-a", "wrt-runtime/asil-a", "wrt-intercept/asil-a"]
+asil-b = ["wrt-foundation/bounded-collections", "wrt-format/asil-b", "wrt-host/asil-b", "wrt-decoder/asil-b", "wrt-runtime/asil-b", "wrt-intercept/asil-b"]
+asil-c = ["wrt-foundation/static-memory-safety", "wrt-format/asil-c", "wrt-host/asil-c", "wrt-decoder/asil-c", "wrt-runtime/asil-c", "wrt-intercept/asil-c"]
+asil-d = ["wrt-foundation/maximum-safety", "wrt-format/asil-d", "wrt-host/asil-d", "wrt-decoder/asil-d", "wrt-runtime/asil-d", "wrt-intercept/asil-d"]
 
 # Legacy compatibility features
-safety-asil-b = ["asil-b", "std"]
-safety-asil-c = ["asil-c", "wrt-foundation/wrt-allocator"]
-safety-asil-d = ["asil-d"]
 safe-memory = ["asil-b"]
+safety-asil-b = ["asil-b"]
+safety-asil-c = ["asil-c"]
+safety-asil-d = ["asil-d"]
 
 # For compatibility with verification script
 no_std = []

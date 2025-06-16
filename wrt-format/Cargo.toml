@@ -32,9 +32,20 @@ no_std = []
 # Allocation support for no_std environments
 alloc = ["wrt-foundation/alloc"]
 optimize = ["wrt-foundation/optimize"]
-safety-asil-b = ["wrt-foundation/safety-asil-b"]
-# Safety-critical features for ASIL-C compliance
-safety-asil-c = ["wrt-foundation/wrt-allocator"]
+
+# Safety level presets using capability-based features
+qm = ["wrt-foundation/dynamic-allocation"]
+asil-a = ["wrt-foundation/bounded-collections"]
+asil-b = ["wrt-foundation/bounded-collections"]
+asil-c = ["wrt-foundation/static-memory-safety"]
+asil-d = ["wrt-foundation/maximum-safety"]
+
+# Legacy compatibility features
+safe-memory = ["asil-b"]
+safety-asil-b = ["asil-b"]
+safety-asil-c = ["asil-c"]
+safety-asil-d = ["asil-d"]
+
 # The 'kani' feature enables formal verification with the Kani verifier
 kani = ["dep:kani-verifier"]
 
@@ -65,8 +76,6 @@ component-model-all = [
 # Type conversion feature
 conversion = []
 
-# Safe memory implementations
-safe-memory = ["wrt-foundation/safe-memory"]
 
 # LSP (Language Server Protocol) support
 lsp = ["std"]
@@ -77,7 +86,6 @@ wit-parsing = []
 # Disable panic handler for library builds to avoid conflicts
 
 # Config for linting
-safety-asil-d = ["safety-asil-c"]
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }

@@ -23,10 +23,20 @@ no_std = []
 # Allocation support for no_std environments
 alloc = ["wrt-foundation/alloc", "wrt-math/alloc"]
 optimize = ["wrt-foundation/optimize"]
-safety-asil-b = ["wrt-foundation/safety-asil-b"]
 
-safety-asil-c = ["safety-asil-b"]
-safety-asil-d = ["safety-asil-c"]
+# Safety level presets using capability-based features
+qm = ["wrt-foundation/dynamic-allocation", "wrt-math/qm"]
+asil-a = ["wrt-foundation/bounded-collections", "wrt-math/asil-a"]
+asil-b = ["wrt-foundation/bounded-collections", "wrt-math/asil-b"]
+asil-c = ["wrt-foundation/static-memory-safety", "wrt-math/asil-c"]
+asil-d = ["wrt-foundation/maximum-safety", "wrt-math/asil-d"]
+
+# Legacy compatibility features
+safe-memory = ["asil-b"]
+safety-asil-b = ["asil-b"]
+safety-asil-c = ["asil-c"]
+safety-asil-d = ["asil-d"]
+
 kani = []
 
 

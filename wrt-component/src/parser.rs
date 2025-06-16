@@ -21,10 +21,74 @@ use crate::{prelude::*, builtins::BuiltinType};
 /// # Returns
 ///
 /// A Result containing a vector of built-in names found in the import section
-pub fn scan_for_builtins(_binary: &[u8]) -> Result<Vec<String>> {
-    // Stub implementation - Parser and Payload types not available in wrt-decoder
-    // TODO: Implement using available wrt-decoder functionality
-    Ok(Vec::new())
+pub fn scan_for_builtins(binary: &[u8]) -> Result<Vec<String>> {
+    use wrt_decoder::sections::parsers::parse_import_section;
+    use wrt_format::binary;
+    
+    // Validate WebAssembly magic number and version
+    if binary.len() < 8 {
+        return Err(Error::new(
+            ErrorCategory::Parse,
+            wrt_error::codes::PARSE_ERROR,
+            "Binary too short to be a valid WebAssembly module"
+        ));
+    }
+    
+    // Check magic number
+    if &binary[0..4] != b"\0asm" {
+        return Err(Error::new(
+            ErrorCategory::Parse,
+            wrt_error::codes::PARSE_ERROR,
+            "Invalid WebAssembly magic number"
+        ));
+    }
+    
+    let mut builtin_names = Vec::new();
+    let mut offset = 8; // Skip magic number and version
+    
+    // Parse sections to find the import section
+    while offset < binary.len() {
+        // Read section ID
+        let section_id = binary[offset];
+        offset += 1;
+        
+        // Read section size
+        let (section_size, new_offset) = binary::read_leb128_u32(binary, offset)
+            .map_err(|e| Error::new(
+                ErrorCategory::Parse,
+                wrt_error::codes::PARSE_ERROR,
+                &format!("Failed to read section size: {}", e)
+            ))?;
+        offset = new_offset;
+        
+        let section_end = offset + section_size as usize;
+        
+        // Check if this is the import section (ID = 2)
+        if section_id == 2 {
+            // Parse imports
+            let section_data = &binary[offset..section_end];
+            let imports = parse_import_section(section_data)
+                .map_err(|e| Error::new(
+                    ErrorCategory::Parse,
+                    wrt_error::codes::PARSE_ERROR,
+                    &format!("Failed to parse import section: {}", e)
+                ))?;
+            
+            // Look for wasi_builtin imports
+            for import in imports {
+                if import.module == "wasi_builtin" {
+                    builtin_names.push(import.name.clone());
+                }
+            }
+            
+            break; // No need to continue after import section
+        }
+        
+        // Skip to next section
+        offset = section_end;
+    }
+    
+    Ok(builtin_names)
 }
 
 /// Scan a WebAssembly binary for built-in imports and map them to built-in

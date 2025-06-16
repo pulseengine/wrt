@@ -117,7 +117,8 @@ impl ModuleInstance {
     }
 
     /// Get the function type for a function
-    pub fn function_type(&self, idx: u32) -> Result<FuncType> {
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    pub fn function_type(&self, idx: u32) -> Result<crate::prelude::CoreFuncType> {
         let function = self.module.functions.get(idx as usize).map_err(|_| {
             Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, "Function index not found")
         })?;
@@ -127,10 +128,24 @@ impl ModuleInstance {
         })?;
 
         // Convert from provider-aware FuncType to clean CoreFuncType
-        Ok(wrt_foundation::clean_core_types::CoreFuncType {
+        Ok(crate::prelude::CoreFuncType {
             params: ty.params.iter().collect(),
             results: ty.results.iter().collect(),
         })
+    }
+
+    /// Get the function type for a function (no_std version)
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    pub fn function_type(&self, idx: u32) -> Result<wrt_foundation::types::FuncType> {
+        let function = self.module.functions.get(idx as usize).map_err(|_| {
+            Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, "Function index not found")
+        })?;
+
+        let ty = self.module.types.get(function.type_idx as usize).map_err(|_| {
+            Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH, "Type index not found")
+        })?;
+
+        Ok(ty.clone())
     }
 
     /// Add a memory to this instance

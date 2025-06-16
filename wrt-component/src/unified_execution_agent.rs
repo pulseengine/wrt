@@ -1,7 +1,7 @@
-//! Unified Execution Agent for WebAssembly Runtime
+//! Unified Execution Engine for WebAssembly Runtime
 //!
-//! This module provides a unified execution agent that consolidates functionality
-//! from ComponentExecutionEngine, AsyncExecutionEngine, StacklessEngine, and CfiExecutionEngine.
+//! This module provides a unified execution engine that consolidates functionality
+//! from various execution modes (synchronous, asynchronous, stackless, and CFI-protected).
 //! It provides a single, cohesive interface for WebAssembly execution with support for:
 //! - Synchronous and asynchronous execution
 //! - Stackless execution for memory-constrained environments  

@@ -1,5 +1,5 @@
-//! Minimal stubs for unified execution agent compilation
-//! These stubs allow the unified agent to compile without all dependencies
+//! Minimal stubs for unified execution engine compilation
+//! These stubs allow the unified engine to compile without all dependencies
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},

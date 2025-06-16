@@ -13,7 +13,7 @@ use wrt_foundation::WrtResult;
 #[cfg(feature = "std")]
 extern crate std;
 
-// Stub imports for Agent B's platform limits - will be replaced during integration
+// Stub imports for platform limits - will be replaced during integration
 mod platform_stubs {
     /// Comprehensive platform limits configuration
     ///

@@ -141,7 +141,6 @@ impl Default for WrtComponentType {
 }
 
 /// Represents a component instance
-#[derive(Debug)]
 // Type aliases for compatibility
 pub type ComponentInstance = RuntimeInstance;
 pub type ComponentType = WrtComponentType;

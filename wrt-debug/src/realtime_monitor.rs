@@ -116,7 +116,7 @@ pub struct RealtimeMonitor {
 impl RealtimeMonitor {
     /// Create a new realtime monitor
     pub fn new(config: MonitorConfig) -> Self {
-        let _history_size = config.history_size;
+        let history_size = config.history_size;
         Self {
             config,
             active: AtomicBool::new(false),

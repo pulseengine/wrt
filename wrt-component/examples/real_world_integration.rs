@@ -1,6 +1,6 @@
 //! Real-World Integration Example
 //!
-//! This example demonstrates how to integrate the unified execution agent
+//! This example demonstrates how to integrate the unified execution engine
 //! into a practical WebAssembly application with multiple components.
 
 use std::collections::HashMap;
@@ -9,12 +9,12 @@ use wrt_component::{
     RuntimeBridgeConfig, UnifiedExecutionAgent, UnifiedExecutionState, Value,
 };
 
-/// A WebAssembly application manager using unified agents
+/// A WebAssembly application manager using unified execution engines
 pub struct WasmApplicationManager {
-    /// Registry for managing execution agents
+    /// Registry for managing execution engines
     agent_registry: AgentRegistry,
 
-    /// Mapping of component names to agent IDs
+    /// Mapping of component names to engine IDs
     component_agents: HashMap<String, AgentId>,
 
     /// Application configuration

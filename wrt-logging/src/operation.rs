@@ -9,6 +9,7 @@ use std::string::String;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
+use alloc::string::String;
 
 use crate::level::LogLevel;
 

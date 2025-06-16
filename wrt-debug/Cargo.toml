@@ -48,10 +48,20 @@ development = ["runtime-debug"]  # Full debugging
 production = ["static-debug"]  # Error reporting only
 full-debug = ["static-debug", "runtime-debug", "wit-integration"]  # Everything
 
+# Safety level presets using capability-based features
+qm = ["wrt-foundation/dynamic-allocation", "wrt-format/qm"]
+asil-a = ["wrt-foundation/bounded-collections", "wrt-format/asil-a"]
+asil-b = ["wrt-foundation/bounded-collections", "wrt-format/asil-b"]
+asil-c = ["wrt-foundation/static-memory-safety", "wrt-format/asil-c"]
+asil-d = ["wrt-foundation/maximum-safety", "wrt-format/asil-d"]
+
+# Legacy compatibility features
+safe-memory = ["asil-b"]
+safety-asil-b = ["asil-b"]
+safety-asil-c = ["asil-c"]
+safety-asil-d = ["asil-d"]
+
 # Disable panic handler for library builds to avoid conflicts
-safety-asil-b = []
-safety-asil-c = ["safety-asil-b"]
-safety-asil-d = ["safety-asil-c"]
 kani = []
 
 

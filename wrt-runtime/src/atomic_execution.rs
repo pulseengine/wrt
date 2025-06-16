@@ -27,7 +27,8 @@ use wrt_instructions::atomic_ops::{
 use wrt_foundation::{MemArg, traits::BoundedCapacity};
 
 // Import platform abstractions from wrt-foundation PAI layer
-use wrt_foundation::platform_abstraction::{AtomicU32, AtomicU64, AtomicUsize, PlatformOrdering, Duration};
+use core::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering as AtomicOrdering};
+use core::time::Duration;
 
 #[cfg(feature = "std")]
 use std::{vec::Vec, sync::Arc, collections::BTreeMap};
@@ -78,14 +79,14 @@ macro_rules! result_vec {
 }
 
 /// Conversion from WebAssembly memory ordering to platform ordering
-fn convert_memory_ordering(ordering: MemoryOrdering) -> PlatformOrdering {
+fn convert_memory_ordering(ordering: MemoryOrdering) -> AtomicOrdering {
     match ordering {
-        MemoryOrdering::Unordered => PlatformOrdering::Relaxed,
-        MemoryOrdering::SeqCst => PlatformOrdering::SeqCst,
-        MemoryOrdering::Release => PlatformOrdering::Release,
-        MemoryOrdering::Acquire => PlatformOrdering::Acquire,
-        MemoryOrdering::AcqRel => PlatformOrdering::AcqRel,
-        MemoryOrdering::Relaxed => PlatformOrdering::Relaxed,
+        MemoryOrdering::Unordered => AtomicOrdering::Relaxed,
+        MemoryOrdering::SeqCst => AtomicOrdering::SeqCst,
+        MemoryOrdering::Release => AtomicOrdering::Release,
+        MemoryOrdering::Acquire => AtomicOrdering::Acquire,
+        MemoryOrdering::AcqRel => AtomicOrdering::AcqRel,
+        MemoryOrdering::Relaxed => AtomicOrdering::Relaxed,
     }
 }
 
@@ -145,6 +146,42 @@ impl AtomicMemoryContext {
                 // Pop expected and replacement values from stack for compare-exchange operation
                 let expected = 0u64; // TODO: Should be popped from execution stack
                 let replacement = 0u64; // TODO: Should be popped from execution stack
+                self.execute_atomic_cmpxchg(cmpxchg_op, expected, replacement)
+            },
+            AtomicOp::WaitNotify(wait_notify_op) => self.execute_wait_notify(thread_id, wait_notify_op),
+            AtomicOp::Fence(fence) => {
+                self.execute_atomic_fence(fence)?;
+                Ok(result_vec![])
+            },
+        }
+    }
+    
+    /// Execute atomic operation with provided operands
+    pub fn execute_atomic_with_operands(&mut self, thread_id: ThreadId, op: AtomicOp, operands: &[u64]) -> Result<ResultVec> {
+        self.stats.total_operations += 1;
+        
+        // Update thread statistics
+        if let Ok(context) = self.thread_manager.get_thread_context_mut(thread_id) {
+            context.stats.record_atomic_operation();
+        }
+        
+        match op {
+            AtomicOp::Load(load_op) => self.execute_atomic_load(load_op),
+            AtomicOp::Store(store_op) => {
+                // Get value from operands
+                let value = operands.get(0).copied().unwrap_or(0u64);
+                self.execute_atomic_store(store_op, value)?;
+                Ok(result_vec![])
+            },
+            AtomicOp::RMW(rmw_op) => {
+                // Get value from operands
+                let value = operands.get(0).copied().unwrap_or(0u64);
+                self.execute_atomic_rmw(rmw_op, value)
+            },
+            AtomicOp::Cmpxchg(cmpxchg_op) => {
+                // Get expected and replacement values from operands
+                let expected = operands.get(0).copied().unwrap_or(0u64);
+                let replacement = operands.get(1).copied().unwrap_or(0u64);
                 self.execute_atomic_cmpxchg(cmpxchg_op, expected, replacement)
             },
             AtomicOp::WaitNotify(wait_notify_op) => self.execute_wait_notify(thread_id, wait_notify_op),
@@ -361,15 +398,15 @@ impl AtomicMemoryContext {
         self.stats.fence_operations += 1;
         
         // Execute memory fence with specified ordering
-        let ordering: PlatformOrdering = convert_memory_ordering(fence.ordering);
+        let ordering: AtomicOrdering = convert_memory_ordering(fence.ordering);
         
         // Platform-specific fence implementation
         match ordering {
-            PlatformOrdering::SeqCst => {
+            AtomicOrdering::SeqCst => {
                 // Full memory barrier
-                core::sync::atomic::fence(PlatformOrdering::SeqCst);
+                core::sync::atomic::fence(AtomicOrdering::SeqCst);
             },
-            PlatformOrdering::Relaxed => {
+            AtomicOrdering::Relaxed => {
                 // No fence needed for relaxed ordering
             },
             _ => {
@@ -384,7 +421,7 @@ impl AtomicMemoryContext {
     
     fn calculate_address(&self, memarg: MemArg) -> Result<usize> {
         let addr = memarg.offset as usize;
-        if addr >= self.memory_size.load(PlatformOrdering::Relaxed) {
+        if addr >= self.memory_size.load(AtomicOrdering::Relaxed) {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::EXECUTION_ERROR,
@@ -770,8 +807,8 @@ mod tests {
     
     #[test]
     fn test_memory_ordering_conversion() {
-        assert_eq!(PlatformOrdering::from(MemoryOrdering::Unordered), PlatformOrdering::Relaxed);
-        assert_eq!(PlatformOrdering::from(MemoryOrdering::SeqCst), PlatformOrdering::SeqCst);
+        assert_eq!(AtomicOrdering::from(MemoryOrdering::Unordered), AtomicOrdering::Relaxed);
+        assert_eq!(AtomicOrdering::from(MemoryOrdering::SeqCst), AtomicOrdering::SeqCst);
     }
     
     #[cfg(feature = "std")]

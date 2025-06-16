@@ -16,7 +16,7 @@ use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_instructions::atomic_ops::{MemoryOrdering, AtomicOp};
 
 // Import platform ordering from wrt-foundation abstraction layer
-use wrt_foundation::platform_abstraction::PlatformOrdering;
+use core::sync::atomic::Ordering as AtomicOrdering;
 
 #[cfg(feature = "std")]
 use std::{vec::Vec, sync::Arc, time::Instant};
@@ -76,7 +76,7 @@ impl AtomicMemoryModel {
         let result = match &operation {
             AtomicOp::Load(_) => {
                 self.model_stats.load_operations += 1;
-                self.atomic_context.execute_atomic(thread_id, operation.clone())
+                self.atomic_context.execute_atomic_with_operands(thread_id, operation.clone(), operands)
             },
             AtomicOp::Store(_) => {
                 self.model_stats.store_operations += 1;
@@ -114,11 +114,11 @@ impl AtomicMemoryModel {
             },
             AtomicOp::WaitNotify(_) => {
                 self.model_stats.wait_notify_operations += 1;
-                self.atomic_context.execute_atomic(thread_id, operation.clone())
+                self.atomic_context.execute_atomic_with_operands(thread_id, operation.clone(), operands)
             },
             AtomicOp::Fence(_) => {
                 self.model_stats.fence_operations += 1;
-                self.atomic_context.execute_atomic(thread_id, operation.clone())
+                self.atomic_context.execute_atomic_with_operands(thread_id, operation.clone(), operands)
             },
         };
         
@@ -227,7 +227,7 @@ impl AtomicMemoryModel {
         match self.ordering_policy {
             MemoryOrderingPolicy::StrictSequential => {
                 // Ensure all previous operations complete before this one
-                core::sync::atomic::fence(PlatformOrdering::SeqCst);
+                core::sync::atomic::fence(AtomicOrdering::SeqCst);
             },
             MemoryOrderingPolicy::Relaxed => {
                 // No ordering constraints
@@ -236,16 +236,16 @@ impl AtomicMemoryModel {
                 // Apply ordering based on operation type
                 match &operation {
                     AtomicOp::Load(_) => {
-                        core::sync::atomic::fence(PlatformOrdering::Acquire);
+                        core::sync::atomic::fence(AtomicOrdering::Acquire);
                     },
                     AtomicOp::Store(_) => {
-                        core::sync::atomic::fence(PlatformOrdering::Release);
+                        core::sync::atomic::fence(AtomicOrdering::Release);
                     },
                     AtomicOp::RMW(_) | AtomicOp::Cmpxchg(_) => {
-                        core::sync::atomic::fence(PlatformOrdering::SeqCst);
+                        core::sync::atomic::fence(AtomicOrdering::SeqCst);
                     },
                     AtomicOp::Fence(_) | AtomicOp::WaitNotify(_) => {
-                        core::sync::atomic::fence(PlatformOrdering::SeqCst);
+                        core::sync::atomic::fence(AtomicOrdering::SeqCst);
                     },
                 }
             },

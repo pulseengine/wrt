@@ -11,6 +11,8 @@ use wrt_format::{
 
 #[cfg(not(feature = "std"))]
 use wrt_format::binary;
+#[cfg(not(feature = "std"))]
+use wrt_foundation::BoundedCapacity;
 
 use super::types::ModuleInfo;
 use crate::prelude::*;

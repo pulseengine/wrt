@@ -41,6 +41,7 @@ pub mod size_class_buffer_pool;
 mod tests;
 
 // Re-export for no_std feature
+#[cfg(not(feature = "std"))]
 pub use bounded_buffer_pool::{BoundedBufferPool, BoundedBufferStats as BufferPoolStats};
 // Re-export for std feature
 #[cfg(feature = "std")]
@@ -52,6 +53,7 @@ pub use memory_access::MemoryAccessMode;
 // Export ResourceArena based on feature flags
 #[cfg(feature = "std")]
 pub use resource_arena::ResourceArena;
+#[cfg(not(feature = "std"))]
 pub use resource_arena_no_std::ResourceArena;
 // Export Builder types
 pub use resource_builder::{ResourceBuilder, ResourceManagerBuilder, ResourceTableBuilder};
@@ -60,6 +62,7 @@ pub use resource_interceptor::ResourceInterceptor;
 // Export ResourceId and ResourceManager based on feature flags
 #[cfg(feature = "std")]
 pub use resource_manager::{ResourceId, ResourceManager};
+#[cfg(not(feature = "std"))]
 pub use resource_manager_no_std::{ResourceId, ResourceManager};
 // Export resource_operation based on feature flags
 #[cfg(feature = "std")]

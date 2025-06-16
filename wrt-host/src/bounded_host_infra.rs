@@ -122,8 +122,8 @@ pub fn new_host_function_vec<T>() -> WrtResult<BoundedHostFunctionVec<T>>
 where
     T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedVec::new(guard.provider().clone())
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedVec::new(provider)
 }
 
 /// Create a new bounded callback vector
@@ -131,8 +131,8 @@ pub fn new_callback_vec<T>() -> WrtResult<BoundedCallbackVec<T>>
 where
     T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedVec::new(guard.provider().clone())
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedVec::new(provider)
 }
 
 /// Create a new bounded host module vector
@@ -140,14 +140,14 @@ pub fn new_host_module_vec<T>() -> WrtResult<BoundedHostModuleVec<T>>
 where
     T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedVec::new(guard.provider().clone())
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedVec::new(provider)
 }
 
 /// Create a new bounded host function name
 pub fn new_host_function_name() -> WrtResult<BoundedHostFunctionName> {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedString::<MAX_HOST_FUNCTION_NAME_LEN, HostProvider>::from_str("", guard.provider().clone()).map_err(|_| {
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedString::<MAX_HOST_FUNCTION_NAME_LEN, HostProvider>::from_str("", provider).map_err(|_| {
         wrt_error::Error::new(
             wrt_error::ErrorCategory::Memory,
             wrt_error::codes::MEMORY_ALLOCATION_FAILED,
@@ -158,8 +158,8 @@ pub fn new_host_function_name() -> WrtResult<BoundedHostFunctionName> {
 
 /// Create a bounded host function name from str
 pub fn bounded_host_function_name_from_str(s: &str) -> WrtResult<BoundedHostFunctionName> {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedString::<MAX_HOST_FUNCTION_NAME_LEN, HostProvider>::from_str(s, guard.provider().clone()).map_err(|_| {
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedString::<MAX_HOST_FUNCTION_NAME_LEN, HostProvider>::from_str(s, provider).map_err(|_| {
         wrt_error::Error::new(
             wrt_error::ErrorCategory::Validation,
             wrt_error::codes::VALIDATION_ERROR,
@@ -170,8 +170,8 @@ pub fn bounded_host_function_name_from_str(s: &str) -> WrtResult<BoundedHostFunc
 
 /// Create a new bounded host module name
 pub fn new_host_module_name() -> WrtResult<BoundedHostModuleName> {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedString::<MAX_HOST_MODULE_NAME_LEN, HostProvider>::from_str("", guard.provider().clone()).map_err(|_| {
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedString::<MAX_HOST_MODULE_NAME_LEN, HostProvider>::from_str("", provider).map_err(|_| {
         wrt_error::Error::new(
             wrt_error::ErrorCategory::Memory,
             wrt_error::codes::MEMORY_ALLOCATION_FAILED,
@@ -182,8 +182,8 @@ pub fn new_host_module_name() -> WrtResult<BoundedHostModuleName> {
 
 /// Create a bounded host module name from str
 pub fn bounded_host_module_name_from_str(s: &str) -> WrtResult<BoundedHostModuleName> {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedString::<MAX_HOST_MODULE_NAME_LEN, HostProvider>::from_str(s, guard.provider().clone()).map_err(|_| {
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedString::<MAX_HOST_MODULE_NAME_LEN, HostProvider>::from_str(s, provider).map_err(|_| {
         wrt_error::Error::new(
             wrt_error::ErrorCategory::Validation,
             wrt_error::codes::VALIDATION_ERROR,
@@ -194,8 +194,8 @@ pub fn bounded_host_module_name_from_str(s: &str) -> WrtResult<BoundedHostModule
 
 /// Create a new bounded host ID
 pub fn new_host_id() -> WrtResult<BoundedHostId> {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedString::<MAX_HOST_ID_LEN, HostProvider>::from_str("", guard.provider().clone()).map_err(|_| {
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedString::<MAX_HOST_ID_LEN, HostProvider>::from_str("", provider).map_err(|_| {
         wrt_error::Error::new(
             wrt_error::ErrorCategory::Memory,
             wrt_error::codes::MEMORY_ALLOCATION_FAILED,
@@ -206,8 +206,8 @@ pub fn new_host_id() -> WrtResult<BoundedHostId> {
 
 /// Create a bounded host ID from str
 pub fn bounded_host_id_from_str(s: &str) -> WrtResult<BoundedHostId> {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedString::<MAX_HOST_ID_LEN, HostProvider>::from_str(s, guard.provider().clone()).map_err(|_| {
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedString::<MAX_HOST_ID_LEN, HostProvider>::from_str(s, provider).map_err(|_| {
         wrt_error::Error::new(
             wrt_error::ErrorCategory::Validation,
             wrt_error::codes::VALIDATION_ERROR,
@@ -221,8 +221,8 @@ pub fn new_host_instance_vec<T>() -> WrtResult<BoundedHostInstanceVec<T>>
 where
     T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedVec::new(guard.provider().clone())
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedVec::new(provider)
 }
 
 /// Create a new bounded args vector
@@ -230,8 +230,8 @@ pub fn new_args_vec<T>() -> WrtResult<BoundedArgsVec<T>>
 where
     T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedVec::new(guard.provider().clone())
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedVec::new(provider)
 }
 
 /// Create a new bounded results vector
@@ -239,8 +239,8 @@ pub fn new_results_vec<T>() -> WrtResult<BoundedResultsVec<T>>
 where
     T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedVec::new(guard.provider().clone())
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedVec::new(provider)
 }
 
 /// Create a new bounded host function map
@@ -248,8 +248,8 @@ pub fn new_host_function_map<V>() -> WrtResult<BoundedHostFunctionMap<V>>
 where
     V: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedHashMap::new(guard.provider().clone())
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedHashMap::new(provider)
 }
 
 /// Create a new bounded callback map
@@ -257,14 +257,14 @@ pub fn new_callback_map<V>() -> WrtResult<BoundedCallbackMap<V>>
 where
     V: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedHashMap::new(guard.provider().clone())
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedHashMap::new(provider)
 }
 
 /// Create a new bounded environment map
 pub fn new_env_map() -> WrtResult<BoundedEnvMap> {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedHashMap::new(guard.provider().clone())
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedHashMap::new(provider)
 }
 
 /// Create a new bounded host resource vector
@@ -272,8 +272,8 @@ pub fn new_host_resource_vec<T>() -> WrtResult<BoundedHostResourceVec<T>>
 where
     T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedVec::new(guard.provider().clone())
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedVec::new(provider)
 }
 
 /// Create a new bounded function pointer vector
@@ -281,6 +281,6 @@ pub fn new_function_pointer_vec<T>() -> WrtResult<BoundedFunctionPointerVec<T>>
 where
     T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
-    BoundedVec::new(guard.provider().clone())
+    let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host)?;
+    BoundedVec::new(provider)
 }

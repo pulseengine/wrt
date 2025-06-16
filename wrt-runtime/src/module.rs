@@ -24,8 +24,8 @@ use wrt_foundation::{
         ValueType, // Also import without alias
     },
     values::{Value as WrtValue, Value}, // Also import without alias
-    CoreMemoryType,
 };
+use crate::prelude::CoreMemoryType;
 use wrt_format::{
     DataSegment as WrtDataSegment,
     ElementSegment as WrtElementSegment,
@@ -1288,8 +1288,8 @@ impl Module {
             wrt_format::module::ElementInit::FuncIndices(func_indices) => {
                 // For function indices, copy them
                 let mut bounded_items = PlatformBoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<8192>::default())?;
-                for &idx in func_indices {
-                    bounded_items.push(idx)?;
+                for idx in func_indices.iter() {
+                    bounded_items.push(*idx)?;
                 }
                 bounded_items
             }
@@ -1359,8 +1359,8 @@ impl Module {
         let mut init_4096 = PlatformBoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<8192>::default())?;
         
         // Copy data from the format's init (1024 capacity) to runtime's init (4096 capacity)
-        for &byte in &data.init {
-            init_4096.push(byte)?;
+        for byte in data.init.iter() {
+            init_4096.push(*byte)?;
         }
         
         let runtime_data = crate::module::Data {
@@ -1531,8 +1531,8 @@ impl Module {
 
         // Convert data_segment.init to larger capacity
         let mut runtime_init = PlatformBoundedVec::<u8, 4096>::new(PlatformProvider::default())?;
-        for &byte in &data_segment.init {
-            runtime_init.push(byte)?;
+        for byte in data_segment.init.iter() {
+            runtime_init.push(*byte)?;
         }
         
         self.data.push(crate::module::Data {

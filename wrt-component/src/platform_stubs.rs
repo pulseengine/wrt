@@ -1,5 +1,5 @@
-// Platform stubs for Agent C independent development
-// These will be replaced with real implementations during integration
+// Platform stubs for component module development
+// These provide the interface to the platform module's types
 
 use crate::foundation_stubs::AsilLevel;
 

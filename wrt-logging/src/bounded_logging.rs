@@ -1,6 +1,6 @@
 
-// Enhanced Bounded Logging Infrastructure for Agent C
-// This is Agent C's bounded logging implementation according to the parallel development plan
+// Enhanced Bounded Logging Infrastructure
+// This is the bounded logging implementation for the component module
 
 extern crate alloc;
 use alloc::{string::String, vec::Vec};

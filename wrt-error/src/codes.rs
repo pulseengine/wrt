@@ -248,7 +248,7 @@ pub const INVALID_VALUE: u16 = 1019;
 /// Unimplemented feature error
 pub const UNIMPLEMENTED: u16 = 1020;
 /// Conversion error (general) - moved to system error codes section as `CONVERSION_ERROR`: u16 = 8002
-// WIT parsing error codes (11000-11999) - Agent C stubs
+// WIT parsing error codes (11000-11999)
 /// WIT input too large error
 pub const WIT_INPUT_TOO_LARGE: u16 = 11000;
 /// WIT world limit exceeded error  
@@ -260,7 +260,7 @@ pub const WIT_IDENTIFIER_TOO_LONG: u16 = 11003;
 /// WIT parsing buffer overflow error
 pub const WIT_PARSING_BUFFER_OVERFLOW: u16 = 11004;
 
-// Component error codes (12000-12999) - Agent C stubs
+// Component error codes (12000-12999)
 /// Insufficient memory for component error
 pub const INSUFFICIENT_MEMORY: u16 = 12000;
 /// Component limit exceeded error
@@ -270,7 +270,7 @@ pub const RESOURCE_TYPE_LIMIT_EXCEEDED: u16 = 12002;
 /// Component memory budget exceeded error
 pub const COMPONENT_MEMORY_BUDGET_EXCEEDED: u16 = 12003;
 
-// Platform error codes (13000-13999) - Agent B stubs
+// Platform error codes (13000-13999)
 /// Platform detection failed error
 pub const PLATFORM_DETECTION_FAILED: u16 = 13000;
 /// Platform limits discovery failed error
@@ -282,7 +282,7 @@ pub const STACK_LIMIT_EXCEEDED: u16 = 13003;
 /// Debug infrastructure error
 pub const DEBUG_INFRASTRUCTURE_ERROR: u16 = 13004;
 
-// Runtime error codes (14000-14999) - Agent D stubs
+// Runtime error codes (14000-14999)
 /// CFI validation failed error  
 pub const CFI_VALIDATION_FAILED: u16 = 14000;
 /// CFI unsupported error

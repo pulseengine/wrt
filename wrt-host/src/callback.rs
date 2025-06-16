@@ -262,7 +262,7 @@ impl CallbackRegistry {
         // In no_std mode, we need to provide memory providers for the bounded collections
         use wrt_foundation::{safe_managed_alloc, CrateId};
         let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for callbacks");
-        let provider = guard.provider().clone();
+        let provider = guard;
         Self { 
             callbacks: HashMap::new(provider).unwrap_or_else(|_| {
                 // In a real embedded system, this should return an error
@@ -471,7 +471,7 @@ impl CallbackRegistry {
         // In no_std mode, we can't return dynamic module names
         use wrt_foundation::{safe_managed_alloc, CrateId};
         let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for string vector");
-        let provider = guard.provider().clone();
+        let provider = guard;
         StringVec::new(provider).unwrap_or_else(|_| panic!("Failed to create vec"))
     }
 
@@ -493,7 +493,7 @@ impl CallbackRegistry {
         // In no_std mode, we can't return dynamic function names
         use wrt_foundation::{safe_managed_alloc, CrateId};
         let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for string vector");
-        let provider = guard.provider().clone();
+        let provider = guard;
         StringVec::new(provider).unwrap_or_else(|_| panic!("Failed to create vec"))
     }
 
@@ -530,7 +530,7 @@ impl CallbackRegistry {
         // In no_std mode, we can't dynamically track built-ins
         use wrt_foundation::{safe_managed_alloc, CrateId};
         let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for callbacks");
-        let provider = guard.provider().clone();
+        let provider = guard;
         wrt_foundation::BoundedSet::new(provider).unwrap_or_else(|_| panic!("Failed to create set"))
     }
 
