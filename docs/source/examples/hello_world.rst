@@ -218,7 +218,7 @@ Next Steps 🎯
 Now that you've got your first module running:
 
 1. **Try the Component Model**: Check out :doc:`basic_component` to see the modern way of building WebAssembly
-2. **Learn Memory Management**: See :doc:`foundation/safe_memory` for production-ready memory handling
+2. **Learn Memory Management**: See :doc:`foundation/safe_memory` for memory handling examples
 3. **Add Host Functions**: Learn how to give your modules superpowers in :doc:`host/functions`
 
 .. admonition:: Challenge
