@@ -208,14 +208,11 @@ Reference Documentation
 
 .. toctree::
    :hidden:
-   :caption: Qualification
+   :caption: Safety & Qualification
 
+   safety_manual/index
    requirements/index
    qualification/index
-   safety_requirements
-   safety_mechanisms
-   safety_implementations
-   safety_test_cases
 
 .. toctree::
    :hidden:
@@ -236,7 +233,7 @@ Reference Documentation
    binary
    changelog.md
    
-.. include:: _generated_symbols.rst
+.. comment:: _generated_symbols.rst - Generated during build process
 
 .. include:: _generated_coverage_summary.rst
 
