@@ -1,15 +1,15 @@
-# WRT - WebAssembly Runtime
+# PulseEngine (WRT Edition)
 
-A pure Rust implementation of a WebAssembly runtime supporting both the core WebAssembly specification and the WebAssembly Component Model.
+A pure Rust implementation of WebAssembly infrastructure designed for safety-critical systems. Provides foundational components for WebAssembly execution with emphasis on memory safety, deterministic behavior, and formal verification capabilities.
 
 ## Features
 
-- **Core WebAssembly Support**: Full WebAssembly 1.0 specification implementation
-- **Component Model**: WebAssembly Component Model for language-agnostic interoperability  
+- **Memory Operations**: Complete WebAssembly memory management with bounds checking
+- **Arithmetic Instructions**: Full implementation of WebAssembly numeric operations
+- **Type System**: Complete WebAssembly value types and validation infrastructure
 - **`no_std` Compatible**: Works in embedded and bare-metal environments
-- **Memory Safety**: Safe memory management with ASIL-B compliance features
-- **Stackless Execution**: Configurable execution engine for constrained environments
-- **Control Flow Integrity**: Hardware and software CFI protection
+- **Safety-Critical Design**: ASIL compliance framework and formal verification support
+- **Development Status**: Core execution engine and Component Model under development
 
 ## Quick Start
 
@@ -35,7 +35,7 @@ just test-wrtd-example
 
 ### Usage
 
-Add WRT to your `Cargo.toml`:
+Add PulseEngine to your `Cargo.toml`:
 
 ```toml
 [dependencies]
@@ -47,10 +47,11 @@ Basic usage:
 ```rust
 use wrt::prelude::*;
 
-// Load and run a WebAssembly module
-let module = Module::from_bytes(&wasm_bytes)?;
-let mut instance = ModuleInstance::new(module, imports)?;
-let result = instance.invoke("function_name", &args)?;
+// Note: Core execution engine under development
+// Current example shows memory and arithmetic operations
+let memory = WrtMemory::new(1024)?;
+let value = Value::I32(42);
+let result = ArithmeticOp::I32Add.execute(&[value, Value::I32(8)])?;
 ```
 
 ## Project Structure

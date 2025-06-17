@@ -1,6 +1,6 @@
 =====================
-Hello World with WRT
-=====================
+Hello World with PulseEngine
+============================
 
 .. epigraph::
 
@@ -8,14 +8,18 @@ Hello World with WRT
    
    -- Every developer's first words
 
-Welcome to WRT! Let's start with the classic "Hello, World!" - but with a WebAssembly twist. This example will show you how to create, compile, and run your first WebAssembly module using WRT.
+Welcome to PulseEngine! Let's start with the classic "Hello, World!" - but with a WebAssembly twist. This example will show you how to create, compile, and run your first WebAssembly module using PulseEngine.
+
+.. note::
+   **Development Status**: This example demonstrates the target functionality. 
+   Core execution engine is under development.
 
 .. admonition:: What You'll Learn
    :class: note
 
    - How to write a simple WebAssembly module in Rust
    - How to compile Rust to WebAssembly
-   - How to run WebAssembly with ``wrtd``
+   - How to run WebAssembly with PulseEngine (under development)
    - How to pass data between host and guest
 
 Prerequisites
@@ -31,8 +35,10 @@ Before we start, make sure you have:
    # WebAssembly target
    rustup target add wasm32-unknown-unknown
    
-   # WRT command-line tool
-   cargo install wrtd
+   # PulseEngine command-line tool (from source)
+   git clone https://github.com/pulseengine/wrt
+   cd wrt
+   cargo build --bin wrtd
 
 Let's Build Something! 🔨
 -------------------------
@@ -94,7 +100,7 @@ Now for the fun part - let's write some code:
            let name = std::str::from_utf8_unchecked(name_bytes);
            
            // Create our greeting
-           let greeting = format!("Hello, {}! Welcome to WRT!", name);
+           let greeting = format!("Hello, {}! Welcome to PulseEngine!", name);
            
            // Leak the string so it persists after this function returns
            // In a real app, you'd want proper memory management!
@@ -156,9 +162,9 @@ Let's create a simple runner to test our module:
        let name = "WRT User";
        let name_bytes = name.as_bytes();
        
-       // In a real implementation, you'd allocate memory in the module
-       // For now, we'll keep it simple
-       println!("Greeting: Hello, WRT User! Welcome to WRT!");
+       // Note: Module instantiation under development
+       // This shows the target API
+       println!("Greeting: Hello, PulseEngine User! Welcome to PulseEngine!");
        
        Ok(())
    }
@@ -192,7 +198,7 @@ Let's break down what we just did:
 2. **Exported Functions**: The ``#[no_mangle]`` and ``extern "C"`` make our functions callable from the host
 3. **Handled Data**: We showed basic number operations and (simplified) string handling
 4. **Compiled to WASM**: Rust's toolchain made it easy to target WebAssembly
-5. **Ran It**: We loaded and executed our module with WRT
+5. **Target API**: We showed how modules will be loaded and executed with PulseEngine (execution engine under development)
 
 Common Gotchas 🎣
 -----------------
@@ -223,4 +229,4 @@ Now that you've got your first module running:
    - Create a function that returns the larger of two numbers?
    - Make a function that counts the vowels in a string?
 
-Remember: Every expert was once a beginner. You've just taken your first step into the world of WebAssembly with WRT! 🎉
+Remember: Every expert was once a beginner. You've just taken your first step into the world of WebAssembly with PulseEngine! 🎉
