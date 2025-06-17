@@ -10,9 +10,12 @@ Hello World with PulseEngine
 
 Welcome to PulseEngine! Let's start with the classic "Hello, World!" - but with a WebAssembly twist. This example will show you how to create, compile, and run your first WebAssembly module using PulseEngine.
 
-.. note::
-   **Development Status**: This example demonstrates the target functionality. 
-   Core execution engine is under development.
+.. warning::
+   **Work in Progress**: This example shows the intended API design for PulseEngine. 
+   The core execution engine is currently under development (15% complete). 
+   
+   **Current Status**: Infrastructure and type definitions are implemented, but 
+   module instantiation and function execution are not yet functional.
 
 .. admonition:: What You'll Learn
    :class: note
@@ -140,43 +143,41 @@ Step 5: Run It! 🚀
 Let's create a simple runner to test our module:
 
 .. code-block:: rust
-   :caption: examples/run_hello.rs
+   :caption: examples/run_hello.rs (Intended API - Under Development)
 
+   // This code shows the target API design
+   // Current implementation status: Infrastructure exists, execution engine in progress
+   
    use wrt::prelude::*;
    
    fn main() -> Result<(), Box<dyn std::error::Error>> {
-       // Load the WebAssembly module
+       // TARGET API: Load the WebAssembly module
        let bytes = include_bytes!("../target/wasm32-unknown-unknown/release/hello_wrt.wasm");
-       let module = Module::new(bytes)?;
+       let module = Module::from_bytes(bytes)?;  // Not yet implemented
        
-       // Create an instance
-       let instance = Instance::new(&module, &[])?;
+       // TARGET API: Create an instance  
+       let instance = ModuleInstance::new(module, imports)?;  // Not yet implemented
        
-       // Call the add function
-       let add_fn = instance.get_func("add").expect("add function not found");
-       let result = add_fn.call(&[Value::I32(5), Value::I32(3)])?;
+       // TARGET API: Call functions
+       let add_fn = instance.get_export("add").expect("add function not found");
+       let result = add_fn.call(&[Value::I32(5), Value::I32(3)])?;  // Not yet implemented
        println!("5 + 3 = {:?}", result[0]);
        
-       // Call the greet function
-       let greet_fn = instance.get_func("greet").expect("greet function not found");
-       let name = "WRT User";
-       let name_bytes = name.as_bytes();
-       
-       // Note: Module instantiation under development
-       // This shows the target API
+       // Note: This represents the planned API design
+       // Current status: Type definitions exist, execution engine under development
        println!("Greeting: Hello, PulseEngine User! Welcome to PulseEngine!");
        
        Ok(())
    }
 
-Or use the command-line tool:
+Or use the command-line tool (when execution engine is complete):
 
 .. code-block:: bash
 
-   # Run the module (if it had a main function)
+   # Planned CLI usage (under development)
    wrtd run target/wasm32-unknown-unknown/release/hello_wrt.wasm
    
-   # Inspect the module
+   # Module inspection (partially implemented)
    wrtd inspect target/wasm32-unknown-unknown/release/hello_wrt.wasm
 
 You should see output like:

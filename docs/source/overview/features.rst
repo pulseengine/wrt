@@ -19,12 +19,12 @@ Core Features
 WebAssembly Core Implementation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-PulseEngine provides WebAssembly Core infrastructure with the following implemented features:
+PulseEngine provides WebAssembly Core infrastructure with the following features in development:
 
-- **Memory operations**: Complete load/store operations with bounds checking and memory isolation
-- **Arithmetic instructions**: Full implementation of i32/i64/f32/f64 arithmetic operations
-- **Type system**: Complete WebAssembly value types and type checking
-- **Safety infrastructure**: Deterministic compilation and bounded execution framework
+- **Memory operations**: Load/store infrastructure with bounds checking framework (execution engine in progress)
+- **Arithmetic instructions**: Arithmetic operation definitions (i32/i64/f32/f64 framework implemented)
+- **Type system**: WebAssembly value types and type validation infrastructure
+- **Safety infrastructure**: Deterministic compilation framework and bounded execution design
 
 .. note::
    **Development Status**: Core WebAssembly instruction execution engine is currently under development. 

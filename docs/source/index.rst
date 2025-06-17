@@ -103,7 +103,7 @@ Qualification Material
       :link: qualification/plan
       :link-type: doc
 
-      ISO 26262 ASIL-D qualification approach
+      ISO 26262 ASIL-D qualification preparation (not certified)
 
    .. grid-item-card:: Test Documentation
       :link: qualification/index
