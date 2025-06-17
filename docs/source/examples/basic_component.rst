@@ -10,6 +10,13 @@ Building Your First Component
 
 Remember the old days when sharing code meant "here's my library, good luck with the ABI"? The WebAssembly Component Model changes everything. Components are self-contained, composable, and language-agnostic. Let's build one!
 
+.. warning::
+   **Component Model Under Development**: This example demonstrates the intended Component Model API design. 
+   Component parsing and instantiation are currently under active development in PulseEngine.
+   
+   **Current Status**: WIT interface definitions and component types are implemented, 
+   but component execution is not yet functional.
+
 .. admonition:: What You'll Learn
    :class: note
 
@@ -198,64 +205,67 @@ Using Your Component 🎮
 Now let's use our calculator component from a host application:
 
 .. code-block:: rust
-   :caption: examples/use_calculator.rs
-   :linenos:
+   :caption: examples/use_calculator.rs (Target API - Under Development)
 
-   use wrt::component::*;
-   use wrt::{Config, Engine, Store};
+   // This code shows the intended Component Model API design
+   // Current implementation status: WIT interface definitions exist, component execution in development
    
-   bindgen!({
+   use wrt::component::*;  // Not yet implemented
+   use wrt::{Config, Engine, Store};  // Infrastructure exists, execution engine in progress
+   
+   bindgen!({  // Target API - component bindings under development
        world: "calculator-world",
        async: false,
    });
    
    fn main() -> Result<()> {
-       // Configure the engine
-       let mut config = Config::new();
-       config.wasm_component_model(true);
-       let engine = Engine::new(&config)?;
+       // TARGET API: Configure the engine for component model
+       let mut config = Config::new();  // Configuration infrastructure exists
+       config.wasm_component_model(true);  // Not yet implemented
+       let engine = Engine::new(&config)?;  // Basic engine infrastructure exists
        
-       // Load the component
-       let component = Component::from_file(
+       // TARGET API: Load the component
+       let component = Component::from_file(  // Not yet implemented
            &engine,
            "target/wasm32-wasi/release/calculator.wasm"
        )?;
        
-       // Create a store with our state
+       // TARGET API: Create a store with our state
        struct State {
            prints: Vec<String>,
        }
        
-       let mut store = Store::new(&engine, State { prints: Vec::new() });
+       let mut store = Store::new(&engine, State { prints: Vec::new() });  // Not yet implemented
        
-       // Create a linker and add our imports
-       let mut linker = Linker::new(&engine);
+       // TARGET API: Create a linker and add our imports
+       let mut linker = Linker::new(&engine);  // Not yet implemented
        
-       // Provide the print function
-       linker.func_wrap("print", |mut store: StoreContextMut<State>, msg: String| {
+       // TARGET API: Provide the print function
+       linker.func_wrap("print", |mut store: StoreContextMut<State>, msg: String| {  // Not yet implemented
            store.data_mut().prints.push(msg);
            println!("Component says: {}", store.data().prints.last().unwrap());
        })?;
        
-       // Instantiate the component
-       let instance = linker.instantiate(&mut store, &component)?;
-       let calculator = CalculatorWorld::new(&mut store, &instance)?;
+       // TARGET API: Instantiate the component
+       let instance = linker.instantiate(&mut store, &component)?;  // Not yet implemented
+       let calculator = CalculatorWorld::new(&mut store, &instance)?;  // Not yet implemented
        
-       // Use it!
-       let calc = Calculation {
+       // TARGET API: Use it!
+       let calc = Calculation {  // Type definitions implemented
            left: 10.0,
            right: 5.0,
            op: Operation::Add,
        };
        
-       match calculator.example_calculator_calculator()
+       // TARGET API: Call component functions
+       match calculator.example_calculator_calculator()  // Not yet implemented
            .call_calculate(&mut store, &calc)? {
            Ok(result) => println!("10 + 5 = {}", result),
            Err(e) => println!("Error: {:?}", e),
        }
        
-       // Check history
-       let history = calculator.example_calculator_calculator()
+       // TARGET API: Check history
+       let history = calculator.example_calculator_calculator()  // Not yet implemented
            .call_get_history(&mut store)?;
        println!("History has {} calculations", history.len());
        

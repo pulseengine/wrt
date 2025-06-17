@@ -1,45 +1,49 @@
 Safety Architecture
 ==================
 
-WRT Safety System Implementation
----------------------------------
+.. warning::
+   **Legacy Documentation**: This is legacy design documentation. The safety system 
+   implementation is under development as part of the overall safety-critical infrastructure.
 
-This document describes the safety architecture for WRT, satisfying requirement REQ_SAFETY_001.
-
-ASIL Context Maintenance
+WRT Safety System Design
 ------------------------
 
-The runtime maintains safety context with ASIL level tracking through:
+This document describes the intended safety architecture design for WRT.
 
-* Safety system in wrt-foundation/src/safety_system.rs
-* ASIL level enforcement and validation
-* Safety context propagation across components
-* ASIL-D compliance for highest safety integrity
+Target ASIL Context Design
+--------------------------
 
-Implementation Details
-----------------------
+The planned runtime safety context includes:
 
-The safety architecture ensures:
+* Safety system infrastructure in wrt-foundation/src/safety_system.rs (partial)
+* ASIL level tracking framework (designed)
+* Safety context propagation design (planned)
+* ASIL-D preparation for highest safety integrity (not certified)
 
-1. **ASIL Context Tracking**: Every operation maintains its safety level
-2. **Safety Boundaries**: Clear separation between safety levels
-3. **Integrity Checks**: Continuous validation of safety constraints
+Design Components
+-----------------
 
-Verification
-------------
+The safety architecture design includes:
 
-Safety compliance is verified through:
+1. **ASIL Context Tracking**: Framework for safety level maintenance (infrastructure exists)
+2. **Safety Boundaries**: Design for separation between safety levels (planned)
+3. **Integrity Checks**: Framework for safety constraint validation (under development)
 
-* Comprehensive test coverage 
-* ASIL-D tagged safety tests
-* Static analysis for safety violations
-* Formal verification methods
+Verification Approach
+---------------------
 
-Safety Requirements
--------------------
+Safety compliance verification approach:
 
-This implementation satisfies:
+* Test coverage framework (partial)
+* ASIL-D tagged safety test design (infrastructure exists)
+* Static analysis integration (planned)
+* Formal verification approach (designed)
 
-* REQ_SAFETY_001: ASIL Context Maintenance
-* ASIL Level: D (Highest Safety Integrity)
-* Verification Status: In Progress
+Requirements Mapping
+--------------------
+
+This design addresses:
+
+* REQ_SAFETY_001: ASIL Context Maintenance (framework designed)
+* ASIL Level: D preparation (not certified)
+* Implementation Status: Infrastructure exists, safety mechanisms under development

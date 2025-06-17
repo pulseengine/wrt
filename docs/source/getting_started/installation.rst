@@ -2,7 +2,11 @@
 Installation
 ============
 
-This page provides detailed installation instructions for PulseEngine (WRT Edition) across all supported platforms.
+This page provides installation instructions for PulseEngine (WRT Edition) development environment.
+
+.. warning::
+   **Development Status**: PulseEngine provides WebAssembly infrastructure and tooling, but the core execution engine is under development. 
+   Installation allows building modules and exploring the intended API design.
 
 .. warning::
    **Source-Only Installation**: PulseEngine is currently available only as source code. 
@@ -162,14 +166,14 @@ Package Manager Installation
 Configuration
 =============
 
-Environment Variables
----------------------
+Environment Variables (Planned)
+--------------------------------
 
-Set these for optimal performance:
+The following environment variables are designed for the target runtime configuration:
 
 .. code-block:: bash
 
-   # Runtime configuration
+   # Target runtime configuration (execution engine under development)
    export WRT_STACK_SIZE=1048576
    export WRT_FUEL_LIMIT=1000000
 
@@ -177,13 +181,14 @@ Set these for optimal performance:
    export WRT_LOG_LEVEL=info
    export WRT_DEBUG_MODE=1
 
-Build Configuration
--------------------
+Build Configuration (Planned)
+------------------------------
 
-Create a ``.wrt/config.toml`` file in your project:
+The planned configuration system will use a ``.wrt/config.toml`` file:
 
 .. code-block:: toml
 
+   # Target configuration format (under development)
    [runtime]
    stack_size = 1048576
    fuel_limit = 1000000
@@ -199,20 +204,22 @@ Create a ``.wrt/config.toml`` file in your project:
 Verification
 ============
 
-Verify your installation works correctly:
+Verify your development environment works correctly:
 
 .. code-block:: bash
 
-   # Check PulseEngine installation (if installed from source)
-   cargo run --bin wrtd -- --version
+   # Check that wrtd builds (infrastructure verification)
+   cargo run --bin wrtd -- --help
 
-   # Build and run example
-   just test-wrtd-example
+   # Build all crates to verify dependencies
+   just build
 
-   # Run comprehensive tests
-   just ci-main
+   # Run infrastructure tests
+   just ci-test
 
-Expected output should show successful compilation and test execution.
+.. note::
+   **Development Status**: The wrtd tool currently provides infrastructure and module validation. 
+   Full WebAssembly execution is under development. Expected output shows successful build and infrastructure validation.
 
 Troubleshooting
 ===============

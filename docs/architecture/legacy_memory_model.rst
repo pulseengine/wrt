@@ -1,42 +1,46 @@
 Memory Model
 ============
 
-WRT Memory Safety Architecture
--------------------------------
+.. warning::
+   **Legacy Documentation**: This is legacy design documentation. The memory model 
+   implementation is under development as part of the overall WebAssembly execution engine.
 
-This document describes the memory model implementation for WRT, satisfying requirement REQ_MEM_001.
+WRT Memory Safety Architecture Design
+-------------------------------------
 
-Key Features
-------------
+This document describes the intended memory model design for WRT.
 
-* Bounds checking for all memory operations
-* No buffer overflow vulnerabilities
-* ASIL-C compliance for memory safety
-* Safe memory abstractions in wrt-foundation/src/safe_memory.rs
+Target Features
+---------------
 
-Implementation
---------------
+* Bounds checking for all memory operations (infrastructure designed)
+* Buffer overflow prevention (framework in development)
+* ASIL-C preparation for memory safety (not certified)
+* Safe memory abstractions in wrt-foundation/src/safe_memory.rs (partial implementation)
 
-The memory model ensures that all memory accesses are bounds-checked through:
+Implementation Status
+---------------------
 
-1. **SafeMemory abstractions**: Wrapper types that enforce bounds checking
-2. **Bounded collections**: Collections with compile-time or runtime size limits
-3. **Memory validation**: All allocations verified before use
+The memory model design includes bounds-checking infrastructure through:
 
-Verification
-------------
+1. **SafeMemory abstractions**: Wrapper types designed for bounds checking (implemented)
+2. **Bounded collections**: Collections with compile-time size limits (implemented)
+3. **Memory validation**: Allocation verification framework (under development)
 
-Memory safety is verified through:
-
-* Unit tests in wrt-foundation/tests/memory_tests_moved.rs
-* ASIL-C tagged test cases
-* Static analysis and formal verification
-
-Safety Requirements
+Verification Status
 -------------------
 
-This implementation satisfies:
+Memory safety verification approach includes:
 
-* REQ_MEM_001: Memory Bounds Checking
-* ASIL Level: C
-* Verification Status: Complete
+* Unit tests in wrt-foundation/tests/ (partial coverage)
+* ASIL-C tagged test cases (framework exists)
+* Static analysis integration (planned)
+
+Requirements Mapping
+--------------------
+
+This design addresses:
+
+* REQ_MEM_001: Memory Bounds Checking (infrastructure exists)
+* ASIL Level: C preparation (not certified)
+* Implementation Status: Infrastructure exists, execution engine in development
