@@ -134,7 +134,10 @@ fn demo_cfi_protected_execution() {
                     "CFI-protected instructions: {}",
                     engine.statistics().cfi_instructions_protected
                 );
-                println!("CFI violations detected: {}", engine.statistics().cfi_violations_detected);
+                println!(
+                    "CFI violations detected: {}",
+                    engine.statistics().cfi_violations_detected
+                );
             }
             Err(e) => println!("CFI-protected execution failed: {:?}", e),
         }
@@ -206,8 +209,9 @@ fn demo_engine_registry() {
         max_memory: 64 * 1024, // 64KB for embedded
         ..AgentConfiguration::default()
     };
-    let stackless_engine_id =
-        registry.create_unified_engine(stackless_config).expect("Failed to create stackless engine");
+    let stackless_engine_id = registry
+        .create_unified_engine(stackless_config)
+        .expect("Failed to create stackless engine");
 
     println!("Created {} engines in registry", registry.statistics().active_engines);
 

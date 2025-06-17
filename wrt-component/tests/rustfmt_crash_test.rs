@@ -1,4 +1,3 @@
-
 use std::boxed::Box;
 
 pub use wrt_error::{Error, ErrorCategory};

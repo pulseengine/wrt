@@ -297,6 +297,20 @@ pub const PARSE_INVALID_GLOBAL_INDEX_TYPE: u16 = 6007;
 pub const VALUE_OUT_OF_RANGE: u16 = 6015;
 /// Type invalid conversion
 pub const TYPE_INVALID_CONVERSION: u16 = 6016;
+
+// Security error codes (15000-15999)
+/// Access denied error
+pub const ACCESS_DENIED: u16 = 15000;
+/// Operation not permitted error
+pub const OPERATION_NOT_PERMITTED: u16 = 15001;
+/// Invalid parameter error
+pub const INVALID_PARAMETER: u16 = 15002;
+/// Out of bounds error
+pub const OUT_OF_BOUNDS: u16 = 15003;
+/// Bounds violation error
+pub const BOUNDS_VIOLATION: u16 = 15004;
+/// Verification required error
+pub const VERIFICATION_REQUIRED: u16 = 15005;
 /// Type parameter count mismatch
 pub const TYPE_PARAM_COUNT_MISMATCH: u16 = 6017;
 /// Type parameter type mismatch

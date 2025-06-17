@@ -89,7 +89,6 @@ pub fn wrt_type_error(message: &'static str) -> Error {
     Error::type_error(message)
 }
 
-
 #[cfg(test)]
 mod tests {
     use wrt_error::{ErrorCategory, ErrorSource};

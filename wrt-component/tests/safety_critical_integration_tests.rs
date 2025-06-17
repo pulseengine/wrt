@@ -20,27 +20,26 @@ use wrt_component::{
     resource_management::ResourceTable,
     resources::{
         resource_lifecycle::{
-            ResourceLifecycleManager, Resource, ResourceType, ResourceMetadata, ResourceState,
+            Resource, ResourceLifecycleManager, ResourceMetadata, ResourceState, ResourceType,
         },
         MemoryStrategy, VerificationLevel,
     },
 };
 use wrt_foundation::{
-    bounded::{BoundedVec, BoundedString},
-    managed_alloc,
-    WrtError, WrtResult,
+    bounded::{BoundedString, BoundedVec},
     budget_aware_provider::CrateId,
+    managed_alloc, WrtError, WrtResult,
 };
 
 #[cfg(not(feature = "std"))]
 use wrt_foundation::bounded_collections::BoundedMap as BoundedHashMap;
 
+#[cfg(not(feature = "std"))]
+use alloc::sync::Arc;
 #[cfg(feature = "std")]
 use std::sync::{Arc, Mutex};
 #[cfg(not(feature = "std"))]
 use wrt_sync::Mutex;
-#[cfg(not(feature = "std"))]
-use alloc::sync::Arc;
 
 #[cfg(test)]
 mod integration_tests {
@@ -51,7 +50,7 @@ mod integration_tests {
     fn test_component_lifecycle_integration() {
         // Create component registry
         let mut components = new_component_vec::<MockComponent>().unwrap();
-        
+
         // Create mock component
         let component = MockComponent {
             id: 1,
@@ -59,10 +58,10 @@ mod integration_tests {
             resource_count: 0,
             state: ComponentState::Initialized,
         };
-        
+
         // Add to registry
         assert!(components.try_push(component).is_ok());
-        
+
         // Verify component management
         assert_eq!(components.len(), 1);
         let comp = &components[0];
@@ -75,7 +74,7 @@ mod integration_tests {
     fn test_canonical_abi_resource_integration() {
         let abi = CanonicalABI::new();
         let mut resource_table = ResourceTable::new();
-        
+
         // Allocate resources up to limit
         let mut handles = Vec::new();
         for i in 0..100 {
@@ -85,12 +84,12 @@ mod integration_tests {
                 Err(e) => panic!("Unexpected error: {:?}", e),
             }
         }
-        
+
         assert!(!handles.is_empty());
-        
+
         // Verify canonical operations work with resources
         let options = CanonicalOptions::default();
-        
+
         // Test resource handle encoding/decoding would happen here
         // In real implementation, would use canonical ABI methods
         for handle in &handles {
@@ -109,24 +108,25 @@ mod integration_tests {
             resource_count: 0,
             state: ComponentState::Running,
         };
-        
+
         let component2 = MockComponent {
             id: 2,
             name: "receiver".to_string(),
             resource_count: 0,
             state: ComponentState::Running,
         };
-        
+
         // Create call manager
         let call_manager = CrossComponentCallManager::new();
-        
+
         // Register components
         assert!(call_manager.register_component(component1).is_ok());
         assert!(call_manager.register_component(component2).is_ok());
-        
+
         // Test call limits
         let mut successful_calls = 0;
-        for i in 0..100 {  // Test with reasonable number
+        for i in 0..100 {
+            // Test with reasonable number
             let result = call_manager.initiate_call(1, 2, "test_func", &[]);
             match result {
                 Ok(_) => successful_calls += 1,
@@ -134,7 +134,7 @@ mod integration_tests {
                 Err(e) => panic!("Unexpected error: {:?}", e),
             }
         }
-        
+
         assert!(successful_calls > 0);
     }
 
@@ -142,14 +142,14 @@ mod integration_tests {
     #[test]
     fn test_resource_sharing_integration() {
         let mut lifecycle_manager = ResourceLifecycleManager::new();
-        
+
         // Create resource type
         let resource_type = ResourceType {
             type_idx: 1,
             name: bounded_component_name_from_str("SharedResource").unwrap(),
             destructor: Some(100),
         };
-        
+
         // Component 1 creates resource
         let metadata1 = ResourceMetadata {
             created_at: Some(1000),
@@ -158,27 +158,27 @@ mod integration_tests {
             owner: 1,
             user_data: None,
         };
-        
+
         let handle = lifecycle_manager
             .create_resource(resource_type.clone(), metadata1)
             .expect("Failed to create resource");
-        
+
         // Component 2 borrows resource
         assert!(lifecycle_manager.borrow_resource(handle).is_ok());
-        
+
         // Verify resource state
         let resource = lifecycle_manager.get_resource(handle).unwrap();
         assert_eq!(resource.state, ResourceState::Borrowed);
         assert_eq!(resource.borrow_count, 1);
-        
+
         // Multiple borrows should be allowed
         assert!(lifecycle_manager.borrow_resource(handle).is_ok());
         assert_eq!(lifecycle_manager.get_resource(handle).unwrap().borrow_count, 2);
-        
+
         // Release borrows
         assert!(lifecycle_manager.release_borrow(handle).is_ok());
         assert!(lifecycle_manager.release_borrow(handle).is_ok());
-        
+
         // Transfer ownership
         assert!(lifecycle_manager.transfer_ownership(handle, 2).is_ok());
         let resource = lifecycle_manager.get_resource(handle).unwrap();
@@ -192,36 +192,34 @@ mod integration_tests {
             types: BoundedTypeMap<String>,
             resources: BoundedResourceVec<u32>,
         }
-        
+
         let mut components = Vec::new();
-        
+
         // Create multiple components with memory allocations
         for i in 0..5 {
             let usage = ComponentMemoryUsage {
-                types: new_type_map().unwrap_or_else(|_| {
-                    panic!("Failed to allocate types for component {}", i)
-                }),
-                resources: new_resource_vec().unwrap_or_else(|_| {
-                    panic!("Failed to allocate resources for component {}", i)
-                }),
+                types: new_type_map()
+                    .unwrap_or_else(|_| panic!("Failed to allocate types for component {}", i)),
+                resources: new_resource_vec()
+                    .unwrap_or_else(|_| panic!("Failed to allocate resources for component {}", i)),
             };
-            
+
             components.push(usage);
         }
-        
+
         // Fill each component's collections partially
         for (idx, comp) in components.iter_mut().enumerate() {
             // Add types
             for j in 0..20 {
                 comp.types.try_insert(j, format!("type_{}_{}", idx, j)).unwrap();
             }
-            
+
             // Add resources
             for j in 0..30 {
                 comp.resources.try_push(j).unwrap();
             }
         }
-        
+
         // Verify all components have their data
         for (idx, comp) in components.iter().enumerate() {
             assert_eq!(comp.types.len(), 20);
@@ -233,7 +231,7 @@ mod integration_tests {
     #[test]
     fn test_component_linking_integration() {
         let mut linker = ComponentLinker::new();
-        
+
         // Create provider component
         let provider = MockComponent {
             id: 1,
@@ -241,7 +239,7 @@ mod integration_tests {
             resource_count: 50,
             state: ComponentState::Initialized,
         };
-        
+
         // Create consumer component
         let consumer = MockComponent {
             id: 2,
@@ -249,12 +247,12 @@ mod integration_tests {
             resource_count: 0,
             state: ComponentState::Initialized,
         };
-        
+
         // Link components
         assert!(linker.register_component(provider).is_ok());
         assert!(linker.register_component(consumer).is_ok());
         assert!(linker.link(1, 2).is_ok());
-        
+
         // Verify linking established
         assert!(linker.is_linked(1, 2));
     }
@@ -264,7 +262,7 @@ mod integration_tests {
     fn test_error_propagation_integration() {
         fn create_component_stack(depth: usize) -> WrtResult<BoundedComponentVec<MockComponent>> {
             let mut components = new_component_vec()?;
-            
+
             for i in 0..depth {
                 let component = MockComponent {
                     id: i as u32,
@@ -272,26 +270,26 @@ mod integration_tests {
                     resource_count: 0,
                     state: ComponentState::Initialized,
                 };
-                
+
                 components.try_push(component)?;
             }
-            
+
             Ok(components)
         }
-        
+
         // Test with reasonable depth
         match create_component_stack(10) {
             Ok(stack) => assert_eq!(stack.len(), 10),
             Err(e) => {
                 // Any error should be properly typed
                 match e {
-                    WrtError::OutOfMemory => {},
-                    WrtError::CapacityExceeded => {},
+                    WrtError::OutOfMemory => {}
+                    WrtError::CapacityExceeded => {}
                     _ => panic!("Unexpected error type: {:?}", e),
                 }
             }
         }
-        
+
         // Test with excessive depth
         match create_component_stack(MAX_COMPONENT_INSTANCES + 1) {
             Ok(_) => panic!("Should have failed with capacity error"),
@@ -308,7 +306,7 @@ mod integration_tests {
         // CanonicalABI metrics are tested through usage
         // In a real implementation, we would track lift/lower operations
         let abi = CanonicalABI::new();
-        
+
         // Verify ABI was created successfully
         // Actual metrics tracking would happen during component operations
         assert!(true); // Placeholder for actual metrics tests
@@ -320,7 +318,7 @@ mod integration_tests {
         struct TestStrategy {
             allocations: Arc<Mutex<BoundedResourceVec<u32>>>,
         }
-        
+
         impl TestStrategy {
             fn allocate(&self, size: usize) -> WrtResult<u32> {
                 let mut allocs = self.allocations.lock().unwrap();
@@ -328,7 +326,7 @@ mod integration_tests {
                 allocs.try_push(size as u32)?;
                 Ok(handle)
             }
-            
+
             fn deallocate(&self, handle: u32) -> WrtResult<()> {
                 let allocs = self.allocations.lock().unwrap();
                 if (handle as usize) < allocs.len() {
@@ -337,7 +335,7 @@ mod integration_tests {
                     Err(WrtError::InvalidHandle)
                 }
             }
-            
+
             fn verify(&self, handle: u32) -> WrtResult<()> {
                 let allocs = self.allocations.lock().unwrap();
                 if (handle as usize) < allocs.len() {
@@ -347,11 +345,10 @@ mod integration_tests {
                 }
             }
         }
-        
-        let strategy = TestStrategy {
-            allocations: Arc::new(Mutex::new(new_resource_vec().unwrap())),
-        };
-        
+
+        let strategy =
+            TestStrategy { allocations: Arc::new(Mutex::new(new_resource_vec().unwrap())) };
+
         // Test allocation up to limits
         let mut handles = Vec::new();
         for size in (0..MAX_RESOURCE_HANDLES).step_by(100) {
@@ -361,12 +358,12 @@ mod integration_tests {
                 Err(e) => panic!("Unexpected error: {:?}", e),
             }
         }
-        
+
         // Verify all handles
         for handle in &handles {
             assert!(strategy.verify(*handle).is_ok());
         }
-        
+
         // Deallocate all
         for handle in &handles {
             assert!(strategy.deallocate(*handle).is_ok());
@@ -405,18 +402,18 @@ impl ComponentLinker {
             links: new_type_map().expect("Failed to create links map"),
         }
     }
-    
+
     fn register_component(&mut self, component: MockComponent) -> WrtResult<()> {
         self.components.try_push(component)
     }
-    
+
     fn link(&mut self, provider_id: u32, consumer_id: u32) -> WrtResult<()> {
         // Use a combined key for the link
         let key = (provider_id << 16) | consumer_id;
         self.links.try_insert(key, true)?;
         Ok(())
     }
-    
+
     fn is_linked(&self, provider_id: u32, consumer_id: u32) -> bool {
         let key = (provider_id << 16) | consumer_id;
         self.links.get(&key).copied().unwrap_or(false)
@@ -440,36 +437,37 @@ impl CrossComponentCallManager {
     fn new() -> Self {
         Self {
             components: Arc::new(Mutex::new(
-                new_component_vec().expect("Failed to create component vec")
+                new_component_vec().expect("Failed to create component vec"),
             )),
             call_stack: Arc::new(Mutex::new(
-                new_call_stack().expect("Failed to create call stack")
+                new_call_stack().expect("Failed to create call stack"),
             )),
         }
     }
-    
+
     fn register_component(&self, component: MockComponent) -> WrtResult<()> {
         let mut components = self.components.lock().unwrap();
         components.try_push(component)
     }
-    
-    fn initiate_call(&self, caller_id: u32, callee_id: u32, 
-                     function: &str, args: &[u8]) -> WrtResult<()> {
+
+    fn initiate_call(
+        &self,
+        caller_id: u32,
+        callee_id: u32,
+        function: &str,
+        args: &[u8],
+    ) -> WrtResult<()> {
         let mut stack = self.call_stack.lock().unwrap();
-        
-        let frame = CallFrame {
-            caller_id,
-            callee_id,
-            function: function.to_string(),
-        };
-        
+
+        let frame = CallFrame { caller_id, callee_id, function: function.to_string() };
+
         stack.try_push(frame)?;
-        
+
         // Simulate call execution
-        
+
         // Pop frame on completion
         stack.pop();
-        
+
         Ok(())
     }
 }
@@ -480,24 +478,24 @@ impl CrossComponentCallManager {
 #[cfg(all(test, feature = "safety-critical"))]
 mod safety_critical_integration {
     use super::*;
-    
+
     /// Comprehensive test of all safety-critical features
     #[test]
     fn test_complete_safety_critical_system() {
         // This test exercises all safety-critical features together
-        
+
         // 1. Memory budget enforcement
         let components = new_component_vec::<MockComponent>().unwrap();
         assert_eq!(components.capacity(), MAX_COMPONENT_INSTANCES);
-        
+
         // 2. Resource limits
         let resources = new_resource_vec::<u32>().unwrap();
         assert_eq!(resources.capacity(), MAX_RESOURCE_HANDLES);
-        
+
         // 3. Call stack limits
         let call_stack = new_call_stack::<u32>().unwrap();
         assert_eq!(call_stack.capacity(), MAX_CALL_STACK_DEPTH);
-        
+
         // 4. No panic guarantees - all operations return Result
         let mut test_components = new_component_vec::<MockComponent>().unwrap();
         let overflow_test = test_components.try_push(MockComponent {
@@ -506,11 +504,11 @@ mod safety_critical_integration {
             resource_count: 0,
             state: ComponentState::Initialized,
         });
-        
+
         // Even at capacity, operations don't panic
         match overflow_test {
-            Ok(_) => {},
-            Err(WrtError::CapacityExceeded) => {},
+            Ok(_) => {}
+            Err(WrtError::CapacityExceeded) => {}
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
     }

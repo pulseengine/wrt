@@ -1,9 +1,9 @@
 #![cfg(feature = "runtime-inspection")]
 
-#[cfg(feature = "std")]
-use std::boxed::Box;
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
+#[cfg(feature = "std")]
+use std::boxed::Box;
 
 use crate::bounded_debug_infra;
 
@@ -192,7 +192,11 @@ pub enum DebugAction {
 /// Runtime debugger interface
 pub trait RuntimeDebugger {
     /// Called when breakpoint is hit
-    fn on_breakpoint(&mut self, bp: &Breakpoint, state: &(dyn RuntimeState + 'static)) -> DebugAction;
+    fn on_breakpoint(
+        &mut self,
+        bp: &Breakpoint,
+        state: &(dyn RuntimeState + 'static),
+    ) -> DebugAction;
 
     /// Called on each instruction (if enabled)
     fn on_instruction(&mut self, pc: u32, state: &(dyn RuntimeState + 'static)) -> DebugAction;

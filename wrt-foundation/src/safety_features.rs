@@ -1,13 +1,12 @@
 /// Safety-aware feature system for WRT
-/// 
+///
 /// This module provides capability-based safety features that can be composed
 /// to meet various safety standards (ISO 26262, DO-178C, IEC 61508, etc.)
 /// without being tied to specific standard names.
-
-use crate::{WrtResult};
+use crate::WrtResult;
 
 /// Compile-time feature validation
-/// 
+///
 /// These compile-error! macros prevent incompatible feature combinations
 /// from building, ensuring safety constraints are enforced at compile time.
 
@@ -48,14 +47,17 @@ pub mod allocation {
                 // QM level - dynamic allocation allowed
                 crate::safe_managed_alloc!($size, $crate_id)
             }
-            
+
             #[cfg(all(feature = "bounded-collections", not(feature = "static-allocation")))]
             {
                 // ASIL-A/B level - bounded collections with monitoring
-                compile_time_assert!($size <= 65536, "ASIL-A/B: allocation size exceeds 64KB limit");
+                compile_time_assert!(
+                    $size <= 65536,
+                    "ASIL-A/B: allocation size exceeds 64KB limit"
+                );
                 crate::safe_managed_alloc!($size, $crate_id)
             }
-            
+
             #[cfg(all(feature = "static-allocation", not(feature = "verified-static-allocation")))]
             {
                 // ASIL-C level - static allocation only
@@ -63,13 +65,16 @@ pub mod allocation {
                 const_assert!($size > 0, "ASIL-C: zero-size allocation not allowed");
                 crate::safe_managed_alloc!($size, $crate_id)
             }
-            
+
             #[cfg(feature = "verified-static-allocation")]
             {
                 // ASIL-D level - verified static allocation with redundancy
                 compile_time_assert!($size <= 16384, "ASIL-D: allocation size exceeds 16KB limit");
                 const_assert!($size > 0, "ASIL-D: zero-size allocation not allowed");
-                const_assert!($size.is_power_of_two(), "ASIL-D: allocation size must be power of 2");
+                const_assert!(
+                    $size.is_power_of_two(),
+                    "ASIL-D: allocation size must be power of 2"
+                );
                 crate::safe_managed_alloc!($size, $crate_id)
             }
         }};
@@ -89,16 +94,25 @@ pub mod allocation {
         {
             1 // BoundedCopy for safety
         }
-        #[cfg(all(feature = "dynamic-allocation", not(feature = "bounded-collections"), not(feature = "static-allocation")))]
+        #[cfg(all(
+            feature = "dynamic-allocation",
+            not(feature = "bounded-collections"),
+            not(feature = "static-allocation")
+        ))]
         {
             0 // ZeroCopy for performance
         }
-        #[cfg(not(any(feature = "dynamic-allocation", feature = "bounded-collections", feature = "static-allocation", feature = "verified-static-allocation")))]
+        #[cfg(not(any(
+            feature = "dynamic-allocation",
+            feature = "bounded-collections",
+            feature = "static-allocation",
+            feature = "verified-static-allocation"
+        )))]
         {
             1 // Default to BoundedCopy
         }
     }
-    
+
     pub const MEMORY_STRATEGY: u8 = get_memory_strategy();
 }
 
@@ -143,31 +157,54 @@ pub mod standards {
         fn required_capabilities() -> &'static [&'static str] {
             #[cfg(feature = "maximum-safety")]
             {
-                &["verified-static-allocation", "mathematical-proofs", "hardware-isolation"] // ASIL-D
+                &["verified-static-allocation", "mathematical-proofs", "hardware-isolation"]
+                // ASIL-D
             }
             #[cfg(all(feature = "static-memory-safety", not(feature = "maximum-safety")))]
             {
-                &["static-allocation", "component-isolation", "memory-budget-enforcement"] // ASIL-C
+                &["static-allocation", "component-isolation", "memory-budget-enforcement"]
+                // ASIL-C
             }
-            #[cfg(all(feature = "bounded-collections", not(feature = "static-memory-safety"), not(feature = "maximum-safety")))]
+            #[cfg(all(
+                feature = "bounded-collections",
+                not(feature = "static-memory-safety"),
+                not(feature = "maximum-safety")
+            ))]
             {
-                &["compile-time-capacity-limits", "runtime-bounds-checking", "basic-monitoring"] // ASIL-A/B
+                &["compile-time-capacity-limits", "runtime-bounds-checking", "basic-monitoring"]
+                // ASIL-A/B
             }
-            #[cfg(all(feature = "dynamic-allocation", not(feature = "bounded-collections"), not(feature = "static-memory-safety"), not(feature = "maximum-safety")))]
+            #[cfg(all(
+                feature = "dynamic-allocation",
+                not(feature = "bounded-collections"),
+                not(feature = "static-memory-safety"),
+                not(feature = "maximum-safety")
+            ))]
             {
                 &["dynamic-allocation"] // QM
             }
-            #[cfg(not(any(feature = "dynamic-allocation", feature = "bounded-collections", feature = "static-memory-safety", feature = "maximum-safety")))]
+            #[cfg(not(any(
+                feature = "dynamic-allocation",
+                feature = "bounded-collections",
+                feature = "static-memory-safety",
+                feature = "maximum-safety"
+            )))]
             {
                 &[] // Fallback
             }
         }
 
         fn validates_current_config() -> bool {
-            cfg!(all(feature = "maximum-safety", feature = "verified-static-allocation", feature = "mathematical-proofs")) ||
-            cfg!(all(feature = "static-memory-safety", feature = "static-allocation", feature = "component-isolation")) ||
-            cfg!(all(feature = "bounded-collections", feature = "runtime-bounds-checking")) ||
-            cfg!(feature = "dynamic-allocation")
+            cfg!(all(
+                feature = "maximum-safety",
+                feature = "verified-static-allocation",
+                feature = "mathematical-proofs"
+            )) || cfg!(all(
+                feature = "static-memory-safety",
+                feature = "static-allocation",
+                feature = "component-isolation"
+            )) || cfg!(all(feature = "bounded-collections", feature = "runtime-bounds-checking"))
+                || cfg!(feature = "dynamic-allocation")
         }
     }
 
@@ -271,21 +308,21 @@ mod tests {
     fn test_current_safety_level() {
         let level = runtime::current_safety_level();
         assert!(!level.is_empty(), "Safety level should be determined");
-        
+
         // Verify that the detected level makes sense
         match level {
             "maximum-safety" => {
                 assert!(runtime::has_capability("verified-static-allocation"));
-            },
+            }
             "static-memory-safety" => {
                 assert!(runtime::has_capability("static-allocation"));
-            },
+            }
             "bounded-collections" => {
                 assert!(runtime::has_capability("bounded-collections"));
-            },
+            }
             "dynamic-allocation" => {
                 assert!(runtime::has_capability("dynamic-allocation"));
-            },
+            }
             _ => panic!("Unknown safety level: {}", level),
         }
     }
@@ -294,13 +331,13 @@ mod tests {
     fn test_max_allocation_size() {
         let max_size = runtime::max_allocation_size();
         let level = runtime::current_safety_level();
-        
+
         match level {
             "maximum-safety" => assert_eq!(max_size, 16384),
             "static-memory-safety" => assert_eq!(max_size, 32768),
             "bounded-collections" => assert_eq!(max_size, 65536),
             "dynamic-allocation" => assert_eq!(max_size, usize::MAX),
-            _ => {},
+            _ => {}
         }
     }
 
@@ -308,8 +345,10 @@ mod tests {
     fn test_capability_consistency() {
         // Verify that enabled features are consistent
         use standards::{AsilLevel, SafetyStandardMapping};
-        
-        assert!(AsilLevel::validates_current_config(), 
-                "Current feature configuration should be valid for some ASIL level");
+
+        assert!(
+            AsilLevel::validates_current_config(),
+            "Current feature configuration should be valid for some ASIL level"
+        );
     }
 }

@@ -1,7 +1,7 @@
 //! Minimal library for testing safety enforcement without wrt-component dependency
 
 use wrt_foundation::{
-    safety_aware_alloc, safe_managed_alloc, CrateId,
+    safety_aware_alloc, capability_context, safe_capability_alloc, CrateId,
     runtime::{current_safety_level, max_allocation_size},
 };
 
@@ -16,7 +16,8 @@ pub fn test_max_allocation() -> usize {
 }
 
 pub fn test_allocation(size: usize) -> Result<(), wrt_foundation::Error> {
-    let _provider = safe_managed_alloc!(size, TEST_CRATE_ID)?;
+    let context = capability_context!(dynamic(TEST_CRATE_ID, size))?;
+    let _provider = safe_capability_alloc!(context, TEST_CRATE_ID, size)?;
     Ok(())
 }
 

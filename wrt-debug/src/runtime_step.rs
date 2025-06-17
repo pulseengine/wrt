@@ -1,10 +1,12 @@
 #![cfg(feature = "runtime-stepping")]
 
-use wrt_foundation::{{
-    bounded::{BoundedStack, BoundedVec, MAX_DWARF_FILE_TABLE},
-    managed_alloc, CrateId,
-    NoStdProvider,
-}, safe_managed_alloc};
+use wrt_foundation::{
+    safe_managed_alloc,
+    {
+        bounded::{BoundedStack, BoundedVec, MAX_DWARF_FILE_TABLE},
+        managed_alloc, CrateId, NoStdProvider,
+    },
+};
 
 use crate::bounded_debug_infra;
 /// Runtime stepping logic implementation
@@ -67,7 +69,10 @@ impl StepController {
             mode: StepMode::None,
             target_line: None,
             target_file: None,
-            call_stack: BoundedStack::new(safe_managed_alloc!(32768, CrateId::Debug).unwrap().provider().clone()).unwrap(),
+            call_stack: BoundedStack::new(
+                safe_managed_alloc!(32768, CrateId::Debug).unwrap().provider().clone(),
+            )
+            .unwrap(),
             step_over_depth: 0,
             previous_pc: 0,
             previous_line: None,
@@ -256,7 +261,8 @@ pub struct SteppingDebugger {
     /// Step controller
     controller: StepController,
     /// Line number cache
-    line_cache: BoundedVec<LineCacheEntry, MAX_DWARF_FILE_TABLE, crate::bounded_debug_infra::DebugProvider>,
+    line_cache:
+        BoundedVec<LineCacheEntry, MAX_DWARF_FILE_TABLE, crate::bounded_debug_infra::DebugProvider>,
 }
 
 #[derive(Debug, Clone)]
@@ -269,9 +275,12 @@ struct LineCacheEntry {
 impl SteppingDebugger {
     /// Create a new stepping debugger
     pub fn new() -> Self {
-        Self { 
-            controller: StepController::new(), 
-            line_cache: BoundedVec::new(safe_managed_alloc!(32768, CrateId::Debug).unwrap().provider().clone()).unwrap() 
+        Self {
+            controller: StepController::new(),
+            line_cache: BoundedVec::new(
+                safe_managed_alloc!(32768, CrateId::Debug).unwrap().provider().clone(),
+            )
+            .unwrap(),
         }
     }
 

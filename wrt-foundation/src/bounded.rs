@@ -126,18 +126,18 @@ extern crate alloc;
 // Binary std/no_std choice
 
 // For no_std environment
-#[cfg(feature = "std")]
-use std::format;
-#[cfg(feature = "std")]
-use std::string::String;
-#[cfg(feature = "std")]
-use std::vec::Vec;
 #[cfg(not(feature = "std"))]
 use core::fmt; // Removed hash, mem
 use core::{
     hash::{Hash, Hash as CoreHash, Hasher, Hasher as CoreHasher},
     marker::PhantomData,
 };
+#[cfg(feature = "std")]
+use std::format;
+#[cfg(feature = "std")]
+use std::string::String;
+#[cfg(feature = "std")]
+use std::vec::Vec;
 // use core::mem::MaybeUninit; // No longer needed here if SafeMemoryHandler doesn't expose it
 // directly
 #[cfg(feature = "std")]
@@ -1377,20 +1377,22 @@ where
     /// In no_std environments, this returns a clone of the current BoundedVec
     /// as a standard Vec type isn't available.
     #[cfg(not(feature = "std"))]
-    pub fn to_vec(&self) -> WrtResult<Self> 
+    pub fn to_vec(&self) -> WrtResult<Self>
     where
         P: Default,
     {
         let mut result = Self::new(P::default())?;
         result.verification_level = self.verification_level;
-        
+
         for i in 0..self.length {
             let item = self.get(i)?;
-            result.push(item).map_err(|e| crate::Error::new(
-                crate::ErrorCategory::Memory,
-                crate::codes::INVALID_VALUE,
-                "Failed to push item during to_vec conversion",
-            ))?;
+            result.push(item).map_err(|e| {
+                crate::Error::new(
+                    crate::ErrorCategory::Memory,
+                    crate::codes::INVALID_VALUE,
+                    "Failed to push item during to_vec conversion",
+                )
+            })?;
         }
         Ok(result)
     }
@@ -2899,7 +2901,8 @@ where
     current_index: usize,
 }
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider> Iterator for BoundedVecIntoIterator<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider> Iterator
+    for BoundedVecIntoIterator<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
     P: MemoryProvider + Clone + PartialEq + Eq,
@@ -2930,10 +2933,7 @@ where
     type IntoIter = BoundedVecIntoIterator<T, N_ELEMENTS, P>;
 
     fn into_iter(self) -> Self::IntoIter {
-        BoundedVecIntoIterator {
-            vec: self,
-            current_index: 0,
-        }
+        BoundedVecIntoIterator { vec: self, current_index: 0 }
     }
 }
 
@@ -3211,13 +3211,21 @@ pub struct BoundedString<const N_BYTES: usize, P: MemoryProvider + Default + Clo
 }
 
 // Implement Ord specifically for BoundedString to support HashMap keys in no_std (BTreeMap)
-impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq + PartialOrd + Ord> PartialOrd for BoundedString<N_BYTES, P> {
+impl<
+        const N_BYTES: usize,
+        P: MemoryProvider + Default + Clone + PartialEq + Eq + PartialOrd + Ord,
+    > PartialOrd for BoundedString<N_BYTES, P>
+{
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq + PartialOrd + Ord> Ord for BoundedString<N_BYTES, P> {
+impl<
+        const N_BYTES: usize,
+        P: MemoryProvider + Default + Clone + PartialEq + Eq + PartialOrd + Ord,
+    > Ord for BoundedString<N_BYTES, P>
+{
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         // Compare strings lexicographically by comparing their byte sequences
         // If as_str() fails, fall back to comparing the raw bytes
@@ -3228,7 +3236,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq 
                 let self_len = self.len();
                 let other_len = other.len();
                 let min_len = self_len.min(other_len);
-                
+
                 for i in 0..min_len {
                     match (self.bytes.get(i), other.bytes.get(i)) {
                         (Ok(a), Ok(b)) => {

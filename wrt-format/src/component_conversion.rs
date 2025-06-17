@@ -13,7 +13,7 @@ use crate::component::FormatValType;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub struct ValTypeWrapper(pub FormatValType);
 
-// For no_std without alloc, use simplified conversion without wrappers  
+// For no_std without alloc, use simplified conversion without wrappers
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 pub struct ValTypeWrapper(pub ValueType);
 
@@ -152,7 +152,6 @@ mod tests {
     #[test]
     #[cfg(any(feature = "std", feature = "alloc"))]
     fn test_value_type_conversion() {
-
         // Test basic primitive types
         let s32_val = FormatValType::S32;
         let i32_val = format_val_type_to_value_type(&s32_val).unwrap();

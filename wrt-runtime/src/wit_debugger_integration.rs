@@ -13,8 +13,18 @@ use alloc::{collections::BTreeMap, vec::Vec, boxed::Box};
 use wrt_foundation::{
     BoundedString, BoundedVec, NoStdProvider,
     prelude::*,
-    safe_managed_alloc};
+    budget_aware_provider::CrateId,
+    capabilities::{CapabilityAwareProvider, capability_context, safe_capability_alloc}};
 use wrt_error::{Error, Result};
+
+/// Type alias for capability-aware provider  
+type RuntimeProvider<const N: usize> = CapabilityAwareProvider<NoStdProvider<N>>;
+
+/// Helper function to create a capability-aware provider
+fn create_provider<const N: usize>() -> Result<RuntimeProvider<N>> {
+    let context = capability_context!(dynamic(CrateId::Runtime, N))?;
+    safe_capability_alloc!(context, CrateId::Runtime, N)
+}
 
 // Import debug types for this module
 #[cfg(feature = "wit-debug-integration")]
@@ -39,7 +49,7 @@ pub use wrt_debug::{
 #[derive(Debug, Clone)]
 pub struct ComponentMetadata {
     /// Component name
-    pub name: BoundedString<64, NoStdProvider<1024>>,
+    pub name: BoundedString<64, RuntimeProvider<1024>>,
     
     /// Source span in WIT
     pub source_span: SourceSpan,
@@ -62,7 +72,7 @@ pub struct ComponentMetadata {
 #[derive(Debug, Clone)]
 pub struct FunctionMetadata {
     /// Function name
-    pub name: BoundedString<64, NoStdProvider<1024>>,
+    pub name: BoundedString<64, RuntimeProvider<1024>>,
     
     /// Source span in WIT
     pub source_span: SourceSpan,
@@ -85,7 +95,7 @@ pub struct FunctionMetadata {
 #[derive(Debug, Clone)]
 pub struct TypeMetadata {
     /// Type name
-    pub name: BoundedString<64, NoStdProvider<1024>>,
+    pub name: BoundedString<64, RuntimeProvider<1024>>,
     
     /// Source span in WIT
     pub source_span: SourceSpan,
@@ -167,10 +177,10 @@ pub struct WrtRuntimeState {
     current_function: Option<u32>,
     
     /// Local variables
-    locals: BoundedVec<u64, 256, NoStdProvider<1024>>,
+    locals: BoundedVec<u64, 256, RuntimeProvider<8192>>,
     
     /// Operand stack
-    stack: BoundedVec<u64, 1024, NoStdProvider<2048>>,
+    stack: BoundedVec<u64, 1024, RuntimeProvider<8192>>,
     
     /// Memory reference
     memory_base: Option<u32>,
@@ -182,21 +192,19 @@ pub struct WrtRuntimeState {
 #[cfg(feature = "wit-debug-integration")]
 impl WrtRuntimeState {
     /// Create a new runtime state
-    pub fn new() -> Self {
-        // TODO: Specify appropriate size for this allocation
-
-        let guard = safe_managed_alloc!(8192, CrateId::Runtime)?;
-
-        let provider = unsafe { guard.release() };
-        Self {
+    pub fn new() -> Result<Self> {
+        let provider1 = create_provider::<8192>()?;
+        let provider2 = create_provider::<8192>()?;
+        
+        Ok(Self {
             pc: 0,
             sp: 0,
             current_function: None,
-            locals: BoundedVec::new(provider.clone()),
-            stack: BoundedVec::new(provider),
+            locals: BoundedVec::new(provider1).map_err(|_| Error::memory("Failed to create locals vector"))?,
+            stack: BoundedVec::new(provider2).map_err(|_| Error::memory("Failed to create stack vector"))?,
             memory_base: None,
             memory_size: 0,
-        }
+        })
     }
     
     /// Update program counter
@@ -292,7 +300,7 @@ impl RuntimeState for WrtRuntimeState {
 #[derive(Debug)]
 pub struct WrtDebugMemory {
     /// Memory data reference
-    memory_data: BoundedVec<u8, 65536, NoStdProvider<65536>>, // 64KB max for no_std
+    memory_data: BoundedVec<u8, 65536, RuntimeProvider<65536>>, // 64KB max for no_std
     
     /// Memory base address
     base_address: u32,
@@ -301,16 +309,13 @@ pub struct WrtDebugMemory {
 #[cfg(feature = "wit-debug-integration")]
 impl WrtDebugMemory {
     /// Create a new debug memory accessor
-    pub fn new(base_address: u32) -> Self {
-        // TODO: Specify appropriate size for this allocation
-
-        let guard = safe_managed_alloc!(8192, CrateId::Runtime)?;
-
-        let provider = unsafe { guard.release() };
-        Self {
-            memory_data: BoundedVec::new(provider),
+    pub fn new(base_address: u32) -> Result<Self> {
+        let provider = create_provider::<65536>()?;
+        
+        Ok(Self {
+            memory_data: BoundedVec::new(provider).map_err(|_| Error::memory("Failed to create memory data vector"))?,
             base_address,
-        }
+        })
     }
     
     /// Set memory data (for testing/simulation)
@@ -582,11 +587,7 @@ pub fn create_component_metadata(
     binary_start: u32,
     binary_end: u32,
 ) -> Result<ComponentMetadata> {
-    // TODO: Specify appropriate size for this allocation
-
-    let guard = safe_managed_alloc!(8192, CrateId::Runtime)?;
-
-    let provider = unsafe { guard.release() };
+    let provider = create_provider::<8192>()?;
     
     Ok(ComponentMetadata {
         name: BoundedString::from_str(name, provider)
@@ -609,11 +610,7 @@ pub fn create_function_metadata(
     binary_offset: u32,
     is_async: bool,
 ) -> Result<FunctionMetadata> {
-    // TODO: Specify appropriate size for this allocation
-
-    let guard = safe_managed_alloc!(8192, CrateId::Runtime)?;
-
-    let provider = unsafe { guard.release() };
+    let provider = create_provider::<8192>()?;
     
     Ok(FunctionMetadata {
         name: BoundedString::from_str(name, provider)
@@ -638,9 +635,7 @@ pub fn create_type_metadata(
 ) -> Result<TypeMetadata> {
     // TODO: Specify appropriate size for this allocation
 
-    let guard = safe_managed_alloc!(8192, CrateId::Runtime)?;
-
-    let provider = unsafe { guard.release() };
+    let provider = create_provider::<8192>()?;
     
     Ok(TypeMetadata {
         name: BoundedString::from_str(name, provider)

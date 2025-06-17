@@ -18,23 +18,24 @@ mod factory {
     #[cfg(feature = "std")]
     use std::marker::PhantomData;
 
-    #[cfg(feature = "std")]
-    use std::{string::String, vec::Vec, boxed::Box};
     #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::{string::String, vec::Vec, boxed::Box};
+    use alloc::{boxed::Box, string::String, vec::Vec};
+    #[cfg(feature = "std")]
+    use std::{boxed::Box, string::String, vec::Vec};
 
     use crate::{
+        bounded::{BoundedString, BoundedVec},
         clean_types::{
-            ValType as CleanValType, Value as CleanValue, FuncType as CleanFuncType,
-            MemoryType as CleanMemoryType, TableType as CleanTableType, GlobalType as CleanGlobalType,
-            ComponentType as CleanComponentType, ExternType as CleanExternType,
-            Record as CleanRecord, Field as CleanField, Tuple as CleanTuple,
-            Variant as CleanVariant, Case as CleanCase, Enum as CleanEnum,
-            Result_ as CleanResult, Flags as CleanFlags,
+            Case as CleanCase, ComponentType as CleanComponentType, Enum as CleanEnum,
+            ExternType as CleanExternType, Field as CleanField, Flags as CleanFlags,
+            FuncType as CleanFuncType, GlobalType as CleanGlobalType,
+            MemoryType as CleanMemoryType, Record as CleanRecord, Result_ as CleanResult,
+            TableType as CleanTableType, Tuple as CleanTuple, ValType as CleanValType,
+            Value as CleanValue, Variant as CleanVariant,
         },
-        bounded::{BoundedVec, BoundedString},
-        safe_memory::{NoStdProvider, MemoryProvider},
-        Result, Error, ErrorCategory, codes,
+        codes,
+        safe_memory::{MemoryProvider, NoStdProvider},
+        Error, ErrorCategory, Result,
     };
 
     /// Factory trait for creating provider-aware types from clean types
@@ -43,12 +44,24 @@ mod factory {
         type Provider: MemoryProvider + Clone + PartialEq + Eq + Default;
 
         /// Create a bounded string from a clean string
-        fn create_bounded_string<const N: usize>(&self, s: &str) -> Result<BoundedString<N, Self::Provider>>;
+        fn create_bounded_string<const N: usize>(
+            &self,
+            s: &str,
+        ) -> Result<BoundedString<N, Self::Provider>>;
 
         /// Create a bounded vector from a clean vector
-        fn create_bounded_vec<T, const N: usize>(&self, items: Vec<T>) -> Result<BoundedVec<T, N, Self::Provider>>
+        fn create_bounded_vec<T, const N: usize>(
+            &self,
+            items: Vec<T>,
+        ) -> Result<BoundedVec<T, N, Self::Provider>>
         where
-            T: Clone + Default + PartialEq + Eq + crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes;
+            T: Clone
+                + Default
+                + PartialEq
+                + Eq
+                + crate::traits::Checksummable
+                + crate::traits::ToBytes
+                + crate::traits::FromBytes;
 
         /// Convert clean ValType to provider-aware ValType (if needed by legacy code)
         fn convert_valtype(&self, clean_type: &CleanValType) -> Result<CleanValType> {
@@ -71,9 +84,7 @@ mod factory {
     impl<const BUFFER_SIZE: usize> RuntimeTypeFactory<BUFFER_SIZE> {
         /// Create a new runtime type factory
         pub fn new() -> Self {
-            Self {
-                provider: NoStdProvider::<BUFFER_SIZE>::default(),
-            }
+            Self { provider: NoStdProvider::<BUFFER_SIZE>::default() }
         }
 
         /// Create with custom provider
@@ -96,25 +107,37 @@ mod factory {
     impl<const BUFFER_SIZE: usize> TypeFactory for RuntimeTypeFactory<BUFFER_SIZE> {
         type Provider = NoStdProvider<BUFFER_SIZE>;
 
-        fn create_bounded_string<const N: usize>(&self, s: &str) -> Result<BoundedString<N, Self::Provider>> {
+        fn create_bounded_string<const N: usize>(
+            &self,
+            s: &str,
+        ) -> Result<BoundedString<N, Self::Provider>> {
             BoundedString::from_str(s, self.provider.clone()).map_err(|_| {
                 Error::new(
                     ErrorCategory::Memory,
                     codes::MEMORY_ALLOCATION_ERROR,
-                    "String too long for bounded string"
+                    "String too long for bounded string",
                 )
             })
         }
 
-        fn create_bounded_vec<T, const N: usize>(&self, items: Vec<T>) -> Result<BoundedVec<T, N, Self::Provider>>
+        fn create_bounded_vec<T, const N: usize>(
+            &self,
+            items: Vec<T>,
+        ) -> Result<BoundedVec<T, N, Self::Provider>>
         where
-            T: Clone + Default + PartialEq + Eq + crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes,
+            T: Clone
+                + Default
+                + PartialEq
+                + Eq
+                + crate::traits::Checksummable
+                + crate::traits::ToBytes
+                + crate::traits::FromBytes,
         {
             let mut bounded_vec = BoundedVec::new(self.provider.clone()).map_err(|e| {
                 Error::new(
                     ErrorCategory::Memory,
                     codes::MEMORY_ALLOCATION_ERROR,
-                    "Failed to create bounded vector"
+                    "Failed to create bounded vector",
                 )
             })?;
 
@@ -123,7 +146,7 @@ mod factory {
                     Error::new(
                         ErrorCategory::Memory,
                         codes::MEMORY_ALLOCATION_ERROR,
-                        "Bounded vector capacity exceeded"
+                        "Bounded vector capacity exceeded",
                     )
                 })?;
             }
@@ -140,9 +163,7 @@ mod factory {
     impl<const BUFFER_SIZE: usize> ComponentTypeFactory<BUFFER_SIZE> {
         /// Create a new component type factory
         pub fn new() -> Self {
-            Self {
-                provider: NoStdProvider::<BUFFER_SIZE>::default(),
-            }
+            Self { provider: NoStdProvider::<BUFFER_SIZE>::default() }
         }
 
         /// Create with custom provider
@@ -165,25 +186,37 @@ mod factory {
     impl<const BUFFER_SIZE: usize> TypeFactory for ComponentTypeFactory<BUFFER_SIZE> {
         type Provider = NoStdProvider<BUFFER_SIZE>;
 
-        fn create_bounded_string<const N: usize>(&self, s: &str) -> Result<BoundedString<N, Self::Provider>> {
+        fn create_bounded_string<const N: usize>(
+            &self,
+            s: &str,
+        ) -> Result<BoundedString<N, Self::Provider>> {
             BoundedString::from_str(s, self.provider.clone()).map_err(|_| {
                 Error::new(
                     ErrorCategory::Memory,
                     codes::MEMORY_ALLOCATION_ERROR,
-                    "String too long for bounded string"
+                    "String too long for bounded string",
                 )
             })
         }
 
-        fn create_bounded_vec<T, const N: usize>(&self, items: Vec<T>) -> Result<BoundedVec<T, N, Self::Provider>>
+        fn create_bounded_vec<T, const N: usize>(
+            &self,
+            items: Vec<T>,
+        ) -> Result<BoundedVec<T, N, Self::Provider>>
         where
-            T: Clone + Default + PartialEq + Eq + crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes,
+            T: Clone
+                + Default
+                + PartialEq
+                + Eq
+                + crate::traits::Checksummable
+                + crate::traits::ToBytes
+                + crate::traits::FromBytes,
         {
             let mut bounded_vec = BoundedVec::new(self.provider.clone()).map_err(|e| {
                 Error::new(
                     ErrorCategory::Memory,
                     codes::MEMORY_ALLOCATION_ERROR,
-                    "Failed to create bounded vector"
+                    "Failed to create bounded vector",
                 )
             })?;
 
@@ -192,7 +225,7 @@ mod factory {
                     Error::new(
                         ErrorCategory::Memory,
                         codes::MEMORY_ALLOCATION_ERROR,
-                        "Bounded vector capacity exceeded"
+                        "Bounded vector capacity exceeded",
                     )
                 })?;
             }
@@ -209,7 +242,7 @@ mod factory {
         pub fn convert_field_to_bounded<F, const BUFFER_SIZE: usize>(
             field: &CleanField,
             _factory: &F,
-        ) -> Result<CleanField> 
+        ) -> Result<CleanField>
         where
             F: TypeFactory<Provider = NoStdProvider<BUFFER_SIZE>>,
         {
@@ -257,9 +290,7 @@ mod factory {
     impl<const BUFFER_SIZE: usize> FactoryBuilder<BUFFER_SIZE> {
         /// Create a new factory builder
         pub fn new() -> Self {
-            Self {
-                _phantom: PhantomData,
-            }
+            Self { _phantom: PhantomData }
         }
 
         /// Build a runtime factory
@@ -306,20 +337,17 @@ mod factory {
         fn test_factory_builder() {
             let builder = FactoryBuilder::<1024>::new();
             let runtime_factory = builder.build_runtime_factory();
-            
+
             let builder2 = FactoryBuilder::<1024>::new();
             let component_factory = builder2.build_component_factory();
-            
+
             // Just ensure they can be created
             assert!(!core::ptr::eq(runtime_factory.provider(), component_factory.provider()));
         }
 
         #[test]
         fn test_type_converter() {
-            let field = CleanField {
-                name: "test_field".to_string(),
-                ty: CleanValType::S32,
-            };
+            let field = CleanField { name: "test_field".to_string(), ty: CleanValType::S32 };
 
             let converted = TypeConverter::convert_field_from_bounded(&field);
             assert_eq!(converted.name, field.name);

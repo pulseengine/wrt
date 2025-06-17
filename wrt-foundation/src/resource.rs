@@ -211,18 +211,16 @@ impl core::str::FromStr for ResourceRepresentation {
                 {
                     use crate::budget_aware_provider::CrateId;
                     use crate::safe_managed_alloc;
-                    
+
                     let provider = safe_managed_alloc!(4096, CrateId::Foundation)?;
-                    
-                    Ok(ResourceRepresentation::Record(
-                        BoundedVec::new(provider).map_err(|_e| {
-                            wrt_error::Error::new(
-                                wrt_error::ErrorCategory::Memory,
-                                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
-                                "Failed to create BoundedVec for ResourceRepresentation::Record",
-                            )
-                        })?,
-                    ))
+
+                    Ok(ResourceRepresentation::Record(BoundedVec::new(provider).map_err(|_e| {
+                        wrt_error::Error::new(
+                            wrt_error::ErrorCategory::Memory,
+                            wrt_error::codes::MEMORY_ALLOCATION_ERROR,
+                            "Failed to create BoundedVec for ResourceRepresentation::Record",
+                        )
+                    })?))
                 }
                 #[cfg(not(feature = "std"))]
                 {
@@ -234,18 +232,18 @@ impl core::str::FromStr for ResourceRepresentation {
                 {
                     use crate::budget_aware_provider::CrateId;
                     use crate::safe_managed_alloc;
-                    
+
                     let provider = safe_managed_alloc!(4096, CrateId::Foundation)?;
-                    
-                    Ok(ResourceRepresentation::Aggregate(
-                        BoundedVec::new(provider).map_err(|_e| {
+
+                    Ok(ResourceRepresentation::Aggregate(BoundedVec::new(provider).map_err(
+                        |_e| {
                             wrt_error::Error::new(
                                 wrt_error::ErrorCategory::Memory,
                                 wrt_error::codes::MEMORY_ALLOCATION_ERROR,
                                 "Failed to create BoundedVec for ResourceRepresentation::Aggregate",
                             )
-                        })?,
-                    ))
+                        },
+                    )?))
                 }
                 #[cfg(not(feature = "std"))]
                 {

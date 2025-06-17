@@ -3,11 +3,10 @@
 //! This module provides bounded alternatives for decoder collections
 //! to ensure static memory allocation throughout the decoder.
 
-
 use wrt_foundation::{
     bounded::{BoundedString, BoundedVec},
-    safe_memory::NoStdProvider,
     no_std_hashmap::BoundedHashMap,
+    safe_memory::NoStdProvider,
     WrtResult,
 };
 
@@ -109,14 +108,21 @@ pub type BoundedNameMap<V> = BoundedHashMap<
 /// Create a new bounded section vector
 pub fn new_section_vec<T>() -> WrtResult<BoundedSectionVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = DecoderProvider::default();
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded type vector (concrete version for WrtFuncType)
-pub fn new_type_vec() -> WrtResult<BoundedTypeVec<wrt_foundation::types::FuncType<DecoderProvider>>> {
+pub fn new_type_vec() -> WrtResult<BoundedTypeVec<wrt_foundation::types::FuncType<DecoderProvider>>>
+{
     let provider = DecoderProvider::default();
     BoundedVec::new(provider)
 }
@@ -124,14 +130,21 @@ pub fn new_type_vec() -> WrtResult<BoundedTypeVec<wrt_foundation::types::FuncTyp
 /// Create a new bounded type vector (generic version)
 pub fn new_type_vec_generic<T>() -> WrtResult<BoundedTypeVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = DecoderProvider::default();
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded import vector (concrete version for WrtImport)
-pub fn new_import_vec() -> WrtResult<BoundedImportVec<wrt_foundation::types::Import<DecoderProvider>>> {
+pub fn new_import_vec(
+) -> WrtResult<BoundedImportVec<wrt_foundation::types::Import<DecoderProvider>>> {
     let provider = DecoderProvider::default();
     BoundedVec::new(provider)
 }
@@ -139,7 +152,13 @@ pub fn new_import_vec() -> WrtResult<BoundedImportVec<wrt_foundation::types::Imp
 /// Create a new bounded import vector (generic version)
 pub fn new_import_vec_generic<T>() -> WrtResult<BoundedImportVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = DecoderProvider::default();
     BoundedVec::new(provider)
@@ -154,7 +173,13 @@ pub fn new_export_vec() -> WrtResult<BoundedExportVec<wrt_format::module::Export
 /// Create a new bounded export vector (generic version)
 pub fn new_export_vec_generic<T>() -> WrtResult<BoundedExportVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = DecoderProvider::default();
     BoundedVec::new(provider)
@@ -169,7 +194,13 @@ pub fn new_function_vec() -> WrtResult<BoundedFunctionVec<u32>> {
 /// Create a new bounded function vector (generic version)
 pub fn new_function_vec_generic<T>() -> WrtResult<BoundedVec<T, MAX_FUNCTIONS, DecoderProvider>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = DecoderProvider::default();
     BoundedVec::new(provider)
@@ -182,7 +213,7 @@ pub fn new_name_string() -> WrtResult<BoundedNameString> {
         wrt_error::Error::new(
             wrt_error::ErrorCategory::Memory,
             wrt_error::codes::MEMORY_ALLOCATION_FAILED,
-            "Failed to create empty bounded string"
+            "Failed to create empty bounded string",
         )
     })
 }
@@ -194,7 +225,7 @@ pub fn bounded_name_from_str(s: &str) -> WrtResult<BoundedNameString> {
         wrt_error::Error::new(
             wrt_error::ErrorCategory::Validation,
             wrt_error::codes::VALIDATION_ERROR,
-            "String too long for bounded name"
+            "String too long for bounded name",
         )
     })
 }
@@ -202,7 +233,13 @@ pub fn bounded_name_from_str(s: &str) -> WrtResult<BoundedNameString> {
 /// Create a new bounded name map
 pub fn new_name_map<V>() -> WrtResult<BoundedNameMap<V>>
 where
-    V: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    V: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = DecoderProvider::default();
     BoundedHashMap::new(provider)
@@ -211,13 +248,15 @@ where
 // Additional concrete vector factory functions
 
 /// Create a new bounded params vector (for function parameters)
-pub fn new_params_vec() -> WrtResult<BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_PARAMS, DecoderProvider>> {
+pub fn new_params_vec(
+) -> WrtResult<BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_PARAMS, DecoderProvider>> {
     let provider = DecoderProvider::default();
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded results vector (for function results)
-pub fn new_results_vec() -> WrtResult<BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_RESULTS, DecoderProvider>> {
+pub fn new_results_vec(
+) -> WrtResult<BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_RESULTS, DecoderProvider>> {
     let provider = DecoderProvider::default();
     BoundedVec::new(provider)
 }
@@ -247,7 +286,8 @@ pub fn new_element_vec() -> WrtResult<BoundedElementVec<wrt_format::module::Elem
 }
 
 /// Create a new bounded data vector
-pub fn new_data_vec() -> WrtResult<BoundedVec<wrt_format::module::Data, MAX_DATA_SEGMENTS, DecoderProvider>> {
+pub fn new_data_vec(
+) -> WrtResult<BoundedVec<wrt_format::module::Data, MAX_DATA_SEGMENTS, DecoderProvider>> {
     let provider = DecoderProvider::default();
     BoundedVec::new(provider)
 }

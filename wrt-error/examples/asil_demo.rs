@@ -1,16 +1,16 @@
 //! Example demonstrating ASIL-aware error handling
 //!
 //! This example shows how to use wrt-error with different ASIL safety levels.
-//! 
+//!
 //! Run with different features to see different behaviors:
 //! - `cargo run --example asil_demo --features asil-b`
 //! - `cargo run --example asil_demo --features asil-c`
 //! - `cargo run --example asil_demo --features asil-d`
 
-use wrt_error::{Error, ErrorCategory, codes};
+use wrt_error::{codes, Error, ErrorCategory};
 
 #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
-use wrt_error::{AsilLevel, AsilErrorContext};
+use wrt_error::{AsilErrorContext, AsilLevel};
 
 #[cfg(any(feature = "asil-c", feature = "asil-d"))]
 use wrt_error::SafetyMonitor;
@@ -18,7 +18,7 @@ use wrt_error::SafetyMonitor;
 fn main() {
     println!("WRT Error ASIL Demo");
     println!("===================\n");
-    
+
     // Show current ASIL level
     #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
     {
@@ -26,24 +26,24 @@ fn main() {
         println!("Current ASIL Level: {}", current_level.name());
         println!();
     }
-    
+
     #[cfg(not(any(feature = "asil-b", feature = "asil-c", feature = "asil-d")))]
     {
         println!("Current ASIL Level: QM (Quality Management)");
         println!();
     }
-    
+
     // Demonstrate basic error creation
     demonstrate_basic_errors();
-    
+
     // Demonstrate ASIL-specific features
     #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
     demonstrate_asil_features();
-    
+
     // Demonstrate safety monitoring (ASIL-C and above)
     #[cfg(any(feature = "asil-c", feature = "asil-d"))]
     demonstrate_safety_monitoring();
-    
+
     // Demonstrate ASIL-D specific features
     #[cfg(feature = "asil-d")]
     demonstrate_asil_d_features();
@@ -52,12 +52,12 @@ fn main() {
 fn demonstrate_basic_errors() {
     println!("Basic Error Creation");
     println!("-------------------");
-    
+
     // Create various error types
     let memory_error = Error::memory_error("Memory allocation failed");
     let validation_error = Error::validation_error("Invalid input parameter");
     let runtime_error = Error::runtime_error("Execution failed");
-    
+
     println!("Memory Error: {}", memory_error);
     println!("Validation Error: {}", validation_error);
     println!("Runtime Error: {}", runtime_error);
@@ -68,16 +68,24 @@ fn demonstrate_basic_errors() {
 fn demonstrate_asil_features() {
     println!("ASIL-Aware Features");
     println!("------------------");
-    
+
     // Create errors and check their ASIL levels
-    let safety_error = Error::new(ErrorCategory::Safety, codes::SAFETY_VIOLATION, "Critical safety violation detected");
-    let memory_error = Error::new(ErrorCategory::Memory, codes::MEMORY_CORRUPTION_DETECTED, "Memory corruption detected");
+    let safety_error = Error::new(
+        ErrorCategory::Safety,
+        codes::SAFETY_VIOLATION,
+        "Critical safety violation detected",
+    );
+    let memory_error = Error::new(
+        ErrorCategory::Memory,
+        codes::MEMORY_CORRUPTION_DETECTED,
+        "Memory corruption detected",
+    );
     let type_error = Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "Type mismatch");
-    
+
     println!("Safety Error: {} [Level: {}]", safety_error, safety_error.asil_level());
     println!("Memory Error: {} [Level: {}]", memory_error, memory_error.asil_level());
     println!("Type Error: {} [Level: {}]", type_error, type_error.asil_level());
-    
+
     // Check safe state requirements
     #[cfg(any(feature = "asil-c", feature = "asil-d"))]
     {
@@ -86,12 +94,10 @@ fn demonstrate_asil_features() {
         println!("Memory Error requires safe state: {}", memory_error.requires_safe_state());
         println!("Type Error requires safe state: {}", type_error.requires_safe_state());
     }
-    
+
     // Create error context
-    let context = AsilErrorContext::new(safety_error)
-        .with_timestamp(1234567890)
-        .with_module_id(42);
-    
+    let context = AsilErrorContext::new(safety_error).with_timestamp(1234567890).with_module_id(42);
+
     println!("\nError Context:");
     println!("- ASIL Level: {}", context.asil_level.name());
     println!("- Timestamp: {:?}", context.timestamp);
@@ -104,9 +110,9 @@ fn demonstrate_asil_features() {
 fn demonstrate_safety_monitoring() {
     println!("Safety Monitoring (ASIL-C+)");
     println!("--------------------------");
-    
+
     let monitor = SafetyMonitor::new();
-    
+
     // Simulate some errors
     let errors = vec![
         Error::memory_error("Out of bounds access"),
@@ -114,15 +120,15 @@ fn demonstrate_safety_monitoring() {
         Error::new(ErrorCategory::Safety, codes::SAFETY_VIOLATION, "Safety check failed"),
         Error::runtime_error("Execution timeout"),
     ];
-    
+
     // Record errors
     for (i, error) in errors.iter().enumerate() {
         monitor.record_error(error);
         println!("Recorded error {}: {}", i + 1, error);
     }
-    
+
     println!("\nTotal errors recorded: {}", monitor.error_count());
-    
+
     // Reset monitor
     monitor.reset();
     println!("Monitor reset. Error count: {}", monitor.error_count());
@@ -132,31 +138,41 @@ fn demonstrate_safety_monitoring() {
 #[cfg(feature = "asil-d")]
 fn demonstrate_asil_d_features() {
     use wrt_error::validate_error_consistency;
-    
+
     println!("ASIL-D Specific Features");
     println!("-----------------------");
-    
+
     // Demonstrate error integrity validation
-    let valid_error = Error::new(ErrorCategory::Memory, codes::MEMORY_OUT_OF_BOUNDS, "Valid memory error");
-    let valid_safety = Error::new(ErrorCategory::Safety, codes::SAFETY_VIOLATION, "Valid safety error");
-    
+    let valid_error =
+        Error::new(ErrorCategory::Memory, codes::MEMORY_OUT_OF_BOUNDS, "Valid memory error");
+    let valid_safety =
+        Error::new(ErrorCategory::Safety, codes::SAFETY_VIOLATION, "Valid safety error");
+
     println!("Error Integrity Validation:");
     println!("Memory Error: {} - Valid: {}", valid_error, valid_error.validate_integrity());
     println!("Safety Error: {} - Valid: {}", valid_safety, valid_safety.validate_integrity());
-    
+
     // Demonstrate determinism and redundancy errors
-    let det_error = Error::new(ErrorCategory::Safety, codes::DETERMINISM_VIOLATION, "Non-deterministic behavior detected");
-    let red_error = Error::new(ErrorCategory::Safety, codes::REDUNDANCY_CHECK_FAILURE, "Redundancy check failed");
-    
+    let det_error = Error::new(
+        ErrorCategory::Safety,
+        codes::DETERMINISM_VIOLATION,
+        "Non-deterministic behavior detected",
+    );
+    let red_error = Error::new(
+        ErrorCategory::Safety,
+        codes::REDUNDANCY_CHECK_FAILURE,
+        "Redundancy check failed",
+    );
+
     println!("\nASIL-D Specific Errors:");
     println!("Determinism Error: {}", det_error);
     println!("Redundancy Error: {}", red_error);
-    
+
     // Validate consistency using standalone function
     println!("\nStandalone Consistency Validation:");
     println!("Memory Error consistent: {}", validate_error_consistency(&valid_error));
     println!("Safety Error consistent: {}", validate_error_consistency(&valid_safety));
-    
+
     println!();
 }
 
@@ -172,15 +188,19 @@ fn process_with_asil_checks() -> Result<(), Error> {
             return Err(Error::validation_error("ASIL-B validation failed"));
         }
     }
-    
+
     #[cfg(any(feature = "asil-c", feature = "asil-d"))]
     {
         // ASIL-C/D: Would panic on failure in real implementation
         let condition = true;
         if !condition {
-            return Err(Error::new(ErrorCategory::Safety, codes::SAFETY_VIOLATION, "ASIL-C/D safety check failed"));
+            return Err(Error::new(
+                ErrorCategory::Safety,
+                codes::SAFETY_VIOLATION,
+                "ASIL-C/D safety check failed",
+            ));
         }
     }
-    
+
     Ok(())
 }

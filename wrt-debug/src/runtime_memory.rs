@@ -60,7 +60,8 @@ pub struct MemoryInspector<'a> {
     /// Memory regions
     regions: BoundedVec<MemoryRegion, 16, crate::bounded_debug_infra::DebugProvider>,
     /// Binary std/no_std choice
-    allocations: BoundedVec<HeapAllocation, MAX_DWARF_FILE_TABLE, crate::bounded_debug_infra::DebugProvider>,
+    allocations:
+        BoundedVec<HeapAllocation, MAX_DWARF_FILE_TABLE, crate::bounded_debug_infra::DebugProvider>,
     /// Reference to debug memory interface
     memory: Option<&'a dyn DebugMemory>,
 }

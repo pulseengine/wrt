@@ -28,23 +28,23 @@ pub enum CrateId {
 
 /// Compile-time memory budgets per crate (in bytes)
 pub const CRATE_BUDGETS: [usize; 17] = [
-    256 * 1024,   // Foundation: 256 KiB
-    512 * 1024,   // Decoder: 512 KiB  
-    1024 * 1024,  // Runtime: 1 MiB
-    1024 * 1024,  // Component: 1 MiB
-    512 * 1024,   // Host: 512 KiB
-    768 * 1024,   // Platform: 768 KiB
-    128 * 1024,   // Sync: 128 KiB
-    256 * 1024,   // Logging: 256 KiB
-    128 * 1024,   // Intercept: 128 KiB
-    256 * 1024,   // Instructions: 256 KiB
-    64 * 1024,    // Math: 64 KiB
-    512 * 1024,   // Format: 512 KiB
-    1024 * 1024,  // Debug: 1 MiB
-    64 * 1024,    // Error: 64 KiB
-    128 * 1024,   // VerificationTool: 128 KiB
-    2048 * 1024,  // Wrt: 2 MiB
-    512 * 1024,   // Wrtd: 512 KiB
+    256 * 1024,  // Foundation: 256 KiB
+    512 * 1024,  // Decoder: 512 KiB
+    1024 * 1024, // Runtime: 1 MiB
+    1024 * 1024, // Component: 1 MiB
+    512 * 1024,  // Host: 512 KiB
+    768 * 1024,  // Platform: 768 KiB
+    128 * 1024,  // Sync: 128 KiB
+    256 * 1024,  // Logging: 256 KiB
+    128 * 1024,  // Intercept: 128 KiB
+    256 * 1024,  // Instructions: 256 KiB
+    64 * 1024,   // Math: 64 KiB
+    512 * 1024,  // Format: 512 KiB
+    1024 * 1024, // Debug: 1 MiB
+    64 * 1024,   // Error: 64 KiB
+    128 * 1024,  // VerificationTool: 128 KiB
+    2048 * 1024, // Wrt: 2 MiB
+    512 * 1024,  // Wrtd: 512 KiB
 ];
 
 /// Error type for capacity violations
@@ -76,12 +76,12 @@ impl<const CRATE: u8, const SIZE: usize> MemoryBudget<CRATE, SIZE> {
         // so we'll add runtime verification for now
         Self
     }
-    
+
     /// Get the crate ID at compile time
     pub const fn crate_id() -> u8 {
         CRATE
     }
-    
+
     /// Get the allocated size at compile time
     pub const fn size() -> usize {
         SIZE
@@ -91,18 +91,18 @@ impl<const CRATE: u8, const SIZE: usize> MemoryBudget<CRATE, SIZE> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_crate_budgets() {
         assert_eq!(CRATE_BUDGETS[CrateId::Foundation as usize], 256 * 1024);
         assert_eq!(CRATE_BUDGETS[CrateId::Runtime as usize], 1024 * 1024);
         assert_eq!(CRATE_BUDGETS[CrateId::Wrt as usize], 2048 * 1024);
     }
-    
+
     #[test]
     fn test_phantom_type() {
-        let _budget: MemoryBudget<{CrateId::Foundation as u8}, 1024> = MemoryBudget::verify();
-        assert_eq!(MemoryBudget::<{CrateId::Foundation as u8}, 1024>::crate_id(), 0);
-        assert_eq!(MemoryBudget::<{CrateId::Foundation as u8}, 1024>::size(), 1024);
+        let _budget: MemoryBudget<{ CrateId::Foundation as u8 }, 1024> = MemoryBudget::verify();
+        assert_eq!(MemoryBudget::<{ CrateId::Foundation as u8 }, 1024>::crate_id(), 0);
+        assert_eq!(MemoryBudget::<{ CrateId::Foundation as u8 }, 1024>::size(), 1024);
     }
 }

@@ -5,9 +5,9 @@
 //! hardcoded memory sizes with platform-aware dynamic sizing.
 
 use wrt_foundation::{
-    safe_managed_alloc,
     budget_aware_provider::CrateId,
     safe_memory::NoStdProvider,
+    capabilities::{CapabilityAwareProvider, capability_context, safe_capability_alloc},
     prelude::*,
 };
 
@@ -141,8 +141,9 @@ pub mod platform_types {
     }
     
     /// Create a platform-aware memory provider for runtime operations
-    pub fn create_platform_provider() -> Result<NoStdProvider<8192>> {
-        let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+    pub fn create_platform_provider() -> Result<CapabilityAwareProvider<NoStdProvider<8192>>> {
+        let context = capability_context!(dynamic(CrateId::Runtime, 8192))?;
+        let provider = safe_capability_alloc!(context, CrateId::Runtime, 8192)?;
         Ok(provider)
     }
 }
@@ -152,7 +153,7 @@ pub struct DynamicProviderFactory;
 
 impl DynamicProviderFactory {
     /// Create a provider sized for the current platform
-    pub fn create_for_use_case(use_case: MemoryUseCase) -> Result<NoStdProvider<16384>> {
+    pub fn create_for_use_case(use_case: MemoryUseCase) -> Result<CapabilityAwareProvider<NoStdProvider<16384>>> {
         let size = match use_case {
             MemoryUseCase::FunctionLocals => 16384,
             MemoryUseCase::InstructionBuffer => 16384,
@@ -161,19 +162,22 @@ impl DynamicProviderFactory {
             MemoryUseCase::TemporaryBuffer => 16384,
         };
         // Use consistent 16KB provider for all runtime use cases
-        let provider = safe_managed_alloc!(16384, CrateId::Runtime)?;
+        let context = capability_context!(dynamic(CrateId::Runtime, 16384))?;
+        let provider = safe_capability_alloc!(context, CrateId::Runtime, 16384)?;
         Ok(provider)
     }
     
     /// Create a string provider with platform-appropriate size
-    pub fn create_string_provider() -> Result<NoStdProvider<8192>> {
-        let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+    pub fn create_string_provider() -> Result<CapabilityAwareProvider<NoStdProvider<8192>>> {
+        let context = capability_context!(dynamic(CrateId::Runtime, 8192))?;
+        let provider = safe_capability_alloc!(context, CrateId::Runtime, 8192)?;
         Ok(provider)
     }
     
     /// Create a collection provider with platform-appropriate size
-    pub fn create_collection_provider() -> Result<NoStdProvider<16384>> {
-        let provider = safe_managed_alloc!(16384, CrateId::Runtime)?;
+    pub fn create_collection_provider() -> Result<CapabilityAwareProvider<NoStdProvider<16384>>> {
+        let context = capability_context!(dynamic(CrateId::Runtime, 16384))?;
+        let provider = safe_capability_alloc!(context, CrateId::Runtime, 16384)?;
         Ok(provider)
     }
 }

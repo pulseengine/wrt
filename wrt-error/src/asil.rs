@@ -11,7 +11,7 @@
 //! This module provides ASIL-specific functionality for safety-critical
 //! error handling as per ISO 26262 standard.
 
-use crate::{Error, ErrorCategory, codes};
+use crate::{codes, Error, ErrorCategory};
 
 /// ASIL (Automotive Safety Integrity Level) as defined by ISO 26262
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -34,15 +34,30 @@ impl AsilLevel {
     #[must_use]
     pub const fn current() -> Self {
         #[cfg(feature = "asil-d")]
-        { Self::AsilD }
+        {
+            Self::AsilD
+        }
         #[cfg(all(feature = "asil-c", not(feature = "asil-d")))]
-        { Self::AsilC }
+        {
+            Self::AsilC
+        }
         #[cfg(all(feature = "asil-b", not(feature = "asil-c")))]
-        { Self::AsilB }
+        {
+            Self::AsilB
+        }
         #[cfg(all(feature = "asil-a", not(feature = "asil-b")))]
-        { Self::AsilA }
-        #[cfg(not(any(feature = "asil-a", feature = "asil-b", feature = "asil-c", feature = "asil-d")))]
-        { Self::QM }
+        {
+            Self::AsilA
+        }
+        #[cfg(not(any(
+            feature = "asil-a",
+            feature = "asil-b",
+            feature = "asil-c",
+            feature = "asil-d"
+        )))]
+        {
+            Self::QM
+        }
     }
 
     /// Check if current level meets minimum requirement
@@ -84,10 +99,10 @@ impl SafetyMonitor {
     /// Record an error occurrence
     pub fn record_error(&self, error: &Error) {
         use core::sync::atomic::Ordering;
-        
+
         self.error_count.fetch_add(1, Ordering::SeqCst);
         self.last_error_code.store(error.code, Ordering::SeqCst);
-        
+
         // ASIL-D: Check for error storm indicating systematic failure
         #[cfg(feature = "asil-d")]
         {
@@ -98,7 +113,7 @@ impl SafetyMonitor {
                 let _ = Error::new(
                     ErrorCategory::Safety,
                     codes::SAFETY_MONITOR_TIMEOUT,
-                    "Error storm detected - systematic failure"
+                    "Error storm detected - systematic failure",
                 );
             }
         }
@@ -137,12 +152,7 @@ impl AsilErrorContext {
     /// Create a new ASIL error context
     #[must_use]
     pub fn new(error: Error) -> Self {
-        Self {
-            error,
-            asil_level: AsilLevel::current(),
-            timestamp: None,
-            module_id: None,
-        }
+        Self { error, asil_level: AsilLevel::current(), timestamp: None, module_id: None }
     }
 
     /// Add timestamp to context
@@ -205,7 +215,7 @@ pub fn create_asil_error(
         return Err(Error::new(
             ErrorCategory::Safety,
             codes::ASIL_LEVEL_MISMATCH,
-            "ASIL level requirement not met"
+            "ASIL level requirement not met",
         ));
     }
 
@@ -219,7 +229,7 @@ pub fn create_asil_error(
             return Err(Error::new(
                 ErrorCategory::Safety,
                 codes::VERIFICATION_FAILED,
-                "Error consistency validation failed"
+                "Error consistency validation failed",
             ));
         }
     }
@@ -266,9 +276,7 @@ mod tests {
     #[test]
     fn test_asil_error_context() {
         let error = Error::new(ErrorCategory::Safety, 7000, "Safety error");
-        let context = AsilErrorContext::new(error)
-            .with_timestamp(12345)
-            .with_module_id(42);
+        let context = AsilErrorContext::new(error).with_timestamp(12345).with_module_id(42);
 
         assert_eq!(context.timestamp, Some(12345));
         assert_eq!(context.module_id, Some(42));

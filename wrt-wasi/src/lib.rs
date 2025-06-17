@@ -223,7 +223,7 @@ pub mod prelude {
     // Re-export commonly used WRT foundation types
     pub use wrt_foundation::{
         BoundedVec, BoundedMap, BoundedString,
-        safe_managed_alloc, CrateId,
+        capability_context, safe_capability_alloc, CrateId,
     };
     
     // Re-export platform abstractions

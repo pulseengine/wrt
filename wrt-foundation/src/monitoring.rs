@@ -1,15 +1,12 @@
 //! Memory System Monitoring and Telemetry
-//! 
+//!
 //! This module provides comprehensive monitoring and telemetry for the memory
 //! management system, enabling A+ grade observability.
-//! 
+//!
 //! SW-REQ-ID: REQ_MONITOR_001 - System observability
 
-use core::sync::atomic::{AtomicUsize, AtomicU64, Ordering};
-use crate::{
-    budget_aware_provider::CrateId,
-    memory_coordinator::CrateIdentifier,
-};
+use crate::{budget_aware_provider::CrateId, memory_coordinator::CrateIdentifier};
+use core::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
 /// Global monitoring statistics
 pub struct MemoryMonitor {
@@ -39,12 +36,12 @@ impl MemoryMonitor {
             budget_overruns_prevented: AtomicU64::new(0),
         }
     }
-    
+
     /// Record a successful allocation
     pub fn record_allocation(&self, size: usize) {
         self.total_allocations.fetch_add(1, Ordering::Relaxed);
         let new_usage = self.current_usage.fetch_add(size, Ordering::Relaxed) + size;
-        
+
         // Update peak if necessary
         let mut current_peak = self.peak_usage.load(Ordering::Relaxed);
         while new_usage > current_peak {
@@ -52,30 +49,30 @@ impl MemoryMonitor {
                 current_peak,
                 new_usage,
                 Ordering::Relaxed,
-                Ordering::Relaxed
+                Ordering::Relaxed,
             ) {
                 Ok(_) => break,
                 Err(x) => current_peak = x,
             }
         }
     }
-    
+
     /// Record a deallocation
     pub fn record_deallocation(&self, size: usize) {
         self.total_deallocations.fetch_add(1, Ordering::Relaxed);
         self.current_usage.fetch_sub(size, Ordering::Relaxed);
     }
-    
+
     /// Record an allocation failure
     pub fn record_allocation_failure(&self) {
         self.allocation_failures.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     /// Record a budget overrun prevention
     pub fn record_budget_overrun_prevented(&self) {
         self.budget_overruns_prevented.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     /// Get current statistics snapshot
     pub fn get_statistics(&self) -> MemoryStatistics {
         MemoryStatistics {
@@ -87,7 +84,7 @@ impl MemoryMonitor {
             budget_overruns_prevented: self.budget_overruns_prevented.load(Ordering::Relaxed),
         }
     }
-    
+
     /// Reset all counters (useful for testing)
     pub fn reset(&self) {
         self.total_allocations.store(0, Ordering::Relaxed);
@@ -119,12 +116,12 @@ impl MemoryStatistics {
         let successful = self.total_allocations - self.allocation_failures;
         successful as f64 / self.total_allocations as f64
     }
-    
+
     /// Check if there are any memory leaks
     pub fn has_leaks(&self) -> bool {
         self.total_allocations > self.total_deallocations && self.current_usage > 0
     }
-    
+
     /// Get memory efficiency (prevents overruns)
     pub fn efficiency_score(&self) -> f64 {
         if self.total_allocations == 0 {
@@ -154,11 +151,11 @@ impl CrateMonitor {
             peak_usage: AtomicUsize::new(0),
         }
     }
-    
+
     pub fn record_allocation(&self, size: usize) {
         self.allocations.fetch_add(1, Ordering::Relaxed);
         let new_usage = self.current_usage.fetch_add(size, Ordering::Relaxed) + size;
-        
+
         // Update peak
         let mut current_peak = self.peak_usage.load(Ordering::Relaxed);
         while new_usage > current_peak {
@@ -166,22 +163,22 @@ impl CrateMonitor {
                 current_peak,
                 new_usage,
                 Ordering::Relaxed,
-                Ordering::Relaxed
+                Ordering::Relaxed,
             ) {
                 Ok(_) => break,
                 Err(x) => current_peak = x,
             }
         }
-        
+
         // Also record in global monitor
         MEMORY_MONITOR.record_allocation(size);
     }
-    
+
     pub fn record_deallocation(&self, size: usize) {
         self.current_usage.fetch_sub(size, Ordering::Relaxed);
         MEMORY_MONITOR.record_deallocation(size);
     }
-    
+
     pub fn get_statistics(&self) -> CrateStatistics {
         CrateStatistics {
             crate_id: self.crate_id,
@@ -205,14 +202,14 @@ pub struct CrateStatistics {
 pub fn debug_track_allocation(crate_id: CrateId, size: usize, purpose: &str) {
     // In debug mode, we can add detailed tracking
     MEMORY_MONITOR.record_allocation(size);
-    
+
     #[cfg(feature = "std")]
     {
-        use std::sync::{Mutex, OnceLock};
         use std::collections::HashMap;
-        
+        use std::sync::{Mutex, OnceLock};
+
         static DEBUG_TRACKER: OnceLock<Mutex<HashMap<String, (usize, usize)>>> = OnceLock::new();
-        
+
         let tracker = DEBUG_TRACKER.get_or_init(|| Mutex::new(HashMap::new()));
         if let Ok(mut map) = tracker.lock() {
             let key = format!("{}:{}", crate_id.name(), purpose);
@@ -226,7 +223,7 @@ pub fn debug_track_allocation(crate_id: CrateId, size: usize, purpose: &str) {
 /// Get comprehensive system report
 pub fn get_system_report() -> SystemReport {
     let global_stats = MEMORY_MONITOR.get_statistics();
-    
+
     SystemReport {
         global_statistics: global_stats,
         system_health: calculate_system_health(&global_stats),
@@ -241,16 +238,16 @@ pub struct SystemReport {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SystemHealth {
-    Excellent,  // >95% success rate, no leaks
-    Good,       // >90% success rate, minimal leaks
-    Warning,    // >80% success rate, some issues
-    Critical,   // <80% success rate or major leaks
+    Excellent, // >95% success rate, no leaks
+    Good,      // >90% success rate, minimal leaks
+    Warning,   // >80% success rate, some issues
+    Critical,  // <80% success rate or major leaks
 }
 
 fn calculate_system_health(stats: &MemoryStatistics) -> SystemHealth {
     let success_rate = stats.success_rate();
     let has_leaks = stats.has_leaks();
-    
+
     if success_rate > 0.95 && !has_leaks {
         SystemHealth::Excellent
     } else if success_rate > 0.90 && stats.current_usage < stats.peak_usage / 2 {
@@ -265,12 +262,12 @@ fn calculate_system_health(stats: &MemoryStatistics) -> SystemHealth {
 /// Convenience functions for monitoring
 pub mod convenience {
     use super::*;
-    
+
     /// Get global memory statistics
     pub fn global_stats() -> MemoryStatistics {
         MEMORY_MONITOR.get_statistics()
     }
-    
+
     /// Check if system is healthy
     pub fn is_healthy() -> bool {
         matches!(
@@ -278,17 +275,17 @@ pub mod convenience {
             SystemHealth::Excellent | SystemHealth::Good
         )
     }
-    
+
     /// Get success rate percentage
     pub fn success_rate_percent() -> f64 {
         global_stats().success_rate() * 100.0
     }
-    
+
     /// Get current memory usage in KB
     pub fn current_usage_kb() -> f64 {
         global_stats().current_usage as f64 / 1024.0
     }
-    
+
     /// Get peak memory usage in KB
     pub fn peak_usage_kb() -> f64 {
         global_stats().peak_usage as f64 / 1024.0

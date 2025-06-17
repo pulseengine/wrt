@@ -107,7 +107,6 @@ use wrt_foundation::safe_memory::{
 };
 use wrt_foundation::MemoryStats;
 use wrt_foundation::budget_aware_provider::CrateId;
-use wrt_foundation::wrt_memory_system::WrtProviderFactory;
 
 #[cfg(not(feature = "std"))]
 use wrt_sync::WrtRwLock as RwLock;

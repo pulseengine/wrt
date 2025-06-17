@@ -9,13 +9,19 @@ use wrt_foundation::{
     bounded_collections::BoundedMap as BoundedHashMap,
     safe_memory::NoStdProvider,
     budget_aware_provider::CrateId,
-    safe_managed_alloc,
+    capabilities::{CapabilityAwareProvider, capability_context, safe_capability_alloc},
     traits::{Checksummable, ToBytes, FromBytes},
     WrtResult,
 };
 
 /// Budget-aware memory provider for WRTD daemon (64KB)
-pub type WrtdProvider = NoStdProvider<32768>;
+pub type WrtdProvider = CapabilityAwareProvider<NoStdProvider<32768>>;
+
+/// Helper function to create a capability-aware provider for WRTD
+fn create_wrtd_provider() -> WrtResult<WrtdProvider> {
+    let context = capability_context!(dynamic(CrateId::Platform, 32768))?;
+    safe_capability_alloc!(context, CrateId::Platform, 32768)
+}
 
 /// Maximum number of daemon services
 pub const MAX_DAEMON_SERVICES: usize = 32;
@@ -158,7 +164,7 @@ pub fn new_daemon_service_vec<T>() -> WrtResult<BoundedDaemonServiceVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedVec::new(provider)
 }
 
@@ -167,7 +173,7 @@ pub fn new_connection_vec<T>() -> WrtResult<BoundedConnectionVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedVec::new(provider)
 }
 
@@ -176,7 +182,7 @@ pub fn new_service_config_vec<T>() -> WrtResult<BoundedServiceConfigVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedVec::new(provider)
 }
 
@@ -185,7 +191,7 @@ pub fn new_process_vec<T>() -> WrtResult<BoundedProcessVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedVec::new(provider)
 }
 
@@ -194,13 +200,13 @@ pub fn new_log_entry_vec<T>() -> WrtResult<BoundedLogEntryVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded service name
 pub fn new_service_name() -> WrtResult<BoundedServiceName> {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedString::from_str("", provider)
         .map_err(|_| wrt_foundation::Error::new(
             wrt_foundation::ErrorCategory::Resource,
@@ -211,7 +217,7 @@ pub fn new_service_name() -> WrtResult<BoundedServiceName> {
 
 /// Create a bounded service name from str
 pub fn bounded_service_name_from_str(s: &str) -> WrtResult<BoundedServiceName> {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedString::from_str(s, provider)
         .map_err(|_| wrt_foundation::Error::new(
             wrt_foundation::ErrorCategory::Resource,
@@ -222,7 +228,7 @@ pub fn bounded_service_name_from_str(s: &str) -> WrtResult<BoundedServiceName> {
 
 /// Create a new bounded configuration key
 pub fn new_config_key() -> WrtResult<BoundedConfigKey> {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedString::from_str("", provider)
         .map_err(|_| wrt_foundation::Error::new(
             wrt_foundation::ErrorCategory::Resource,
@@ -233,7 +239,7 @@ pub fn new_config_key() -> WrtResult<BoundedConfigKey> {
 
 /// Create a bounded configuration key from str
 pub fn bounded_config_key_from_str(s: &str) -> WrtResult<BoundedConfigKey> {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedString::from_str(s, provider)
         .map_err(|_| wrt_foundation::Error::new(
             wrt_foundation::ErrorCategory::Resource,
@@ -244,7 +250,7 @@ pub fn bounded_config_key_from_str(s: &str) -> WrtResult<BoundedConfigKey> {
 
 /// Create a new bounded configuration value
 pub fn new_config_value() -> WrtResult<BoundedConfigValue> {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedString::from_str("", provider)
         .map_err(|_| wrt_foundation::Error::new(
             wrt_foundation::ErrorCategory::Resource,
@@ -255,7 +261,7 @@ pub fn new_config_value() -> WrtResult<BoundedConfigValue> {
 
 /// Create a bounded configuration value from str
 pub fn bounded_config_value_from_str(s: &str) -> WrtResult<BoundedConfigValue> {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedString::from_str(s, provider)
         .map_err(|_| wrt_foundation::Error::new(
             wrt_foundation::ErrorCategory::Resource,
@@ -266,7 +272,7 @@ pub fn bounded_config_value_from_str(s: &str) -> WrtResult<BoundedConfigValue> {
 
 /// Create a new bounded log message
 pub fn new_log_message() -> WrtResult<BoundedLogMessage> {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedString::from_str("", provider)
         .map_err(|_| wrt_foundation::Error::new(
             wrt_foundation::ErrorCategory::Resource,
@@ -277,7 +283,7 @@ pub fn new_log_message() -> WrtResult<BoundedLogMessage> {
 
 /// Create a bounded log message from str
 pub fn bounded_log_message_from_str(s: &str) -> WrtResult<BoundedLogMessage> {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedString::from_str(s, provider)
         .map_err(|_| wrt_foundation::Error::new(
             wrt_foundation::ErrorCategory::Resource,
@@ -291,7 +297,7 @@ pub fn new_service_map<V>() -> WrtResult<BoundedServiceMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedHashMap::new(provider)
 }
 
@@ -300,13 +306,13 @@ pub fn new_connection_map<V>() -> WrtResult<BoundedConnectionMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedHashMap::new(provider)
 }
 
 /// Create a new bounded configuration map
 pub fn new_config_map() -> WrtResult<BoundedConfigMap> {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedHashMap::new(provider)
 }
 
@@ -315,12 +321,12 @@ pub fn new_process_map<V>() -> WrtResult<BoundedProcessMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedHashMap::new(provider)
 }
 
 /// Create a new bounded environment map
 pub fn new_env_map() -> WrtResult<BoundedEnvMap> {
-    let provider = safe_managed_alloc!(32768, CrateId::Platform)?;
+    let provider = create_wrtd_provider()?;
     BoundedHashMap::new(provider)
 }

@@ -31,7 +31,7 @@ macro_rules! asil_error {
     ($category:expr, $code:expr, $message:expr, "asil-d") => {{
         #[cfg(not(feature = "asil-d"))]
         compile_error!("This error requires ASIL-D safety level");
-        
+
         #[cfg(feature = "asil-d")]
         {
             let error = $crate::Error::new($category, $code, $message);
@@ -45,14 +45,14 @@ macro_rules! asil_error {
     ($category:expr, $code:expr, $message:expr, "asil-c") => {{
         #[cfg(not(any(feature = "asil-c", feature = "asil-d")))]
         compile_error!("This error requires ASIL-C safety level or higher");
-        
+
         #[cfg(any(feature = "asil-c", feature = "asil-d"))]
         $crate::Error::new($category, $code, $message)
     }};
     ($category:expr, $code:expr, $message:expr, "asil-b") => {{
         #[cfg(not(any(feature = "asil-b", feature = "asil-c", feature = "asil-d")))]
         compile_error!("This error requires ASIL-B safety level or higher");
-        
+
         #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
         $crate::Error::new($category, $code, $message)
     }};
@@ -77,7 +77,7 @@ macro_rules! asil_error {
 macro_rules! monitor_error {
     ($monitor:expr, $error:expr) => {{
         $monitor.record_error(&$error);
-        
+
         // ASIL-D: Check if immediate safe state is required
         #[cfg(feature = "asil-d")]
         {
@@ -89,7 +89,7 @@ macro_rules! monitor_error {
                 $error
             }
         }
-        
+
         #[cfg(not(feature = "asil-d"))]
         $error
     }};
@@ -126,7 +126,7 @@ macro_rules! asil_assert {
             }
             Ok(())
         }
-        
+
         #[cfg(all(feature = "asil-c", not(feature = "asil-d")))]
         {
             if !$condition {
@@ -135,7 +135,7 @@ macro_rules! asil_assert {
             }
             Ok(())
         }
-        
+
         #[cfg(all(feature = "asil-b", not(feature = "asil-c")))]
         {
             if !$condition {
@@ -145,7 +145,7 @@ macro_rules! asil_assert {
                 Ok(())
             }
         }
-        
+
         #[cfg(not(any(feature = "asil-b", feature = "asil-c", feature = "asil-d")))]
         {
             // QM/ASIL-A: Debug assertion only
@@ -176,7 +176,7 @@ macro_rules! safety_error {
     ($code:expr, $message:expr) => {{
         #[cfg(not(any(feature = "asil-c", feature = "asil-d")))]
         compile_error!("Safety errors require ASIL-C or higher");
-        
+
         #[cfg(any(feature = "asil-c", feature = "asil-d"))]
         $crate::Error::new($crate::ErrorCategory::Safety, $code, $message)
     }};
@@ -195,32 +195,34 @@ macro_rules! asil_log_error {
         {
             // ASIL-D: Full logging with integrity check
             let integrity = if $error.validate_integrity() { "VALID" } else { "INVALID" };
-            format!("[{}][E{:04X}][{}][{}] {}", 
-                format!("{:?}", $error.category), 
+            format!(
+                "[{}][E{:04X}][{}][{}] {}",
+                format!("{:?}", $error.category),
                 $error.code,
                 $error.asil_level(),
                 integrity,
                 $error.message
             )
         }
-        
+
         #[cfg(all(feature = "asil-c", not(feature = "asil-d")))]
         {
             // ASIL-C: Detailed logging
-            format!("[{:?}][E{:04X}][{}] {}", 
-                $error.category, 
+            format!(
+                "[{:?}][E{:04X}][{}] {}",
+                $error.category,
                 $error.code,
                 $error.asil_level(),
                 $error.message
             )
         }
-        
+
         #[cfg(all(feature = "asil-b", not(feature = "asil-c")))]
         {
             // ASIL-B: Category and message
             format!("[{:?}] {}", $error.category, $error.message)
         }
-        
+
         #[cfg(not(any(feature = "asil-b", feature = "asil-c", feature = "asil-d")))]
         {
             // QM: Basic message only

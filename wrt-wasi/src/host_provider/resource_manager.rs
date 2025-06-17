@@ -4,7 +4,11 @@
 //! Resource<P> patterns from wrt-foundation.
 
 use crate::prelude::*;
-use wrt_foundation::{Resource, ResourceRepr, ResourceOperation};
+use wrt_foundation::{
+    Resource, ResourceRepr, ResourceOperation,
+    capabilities::{CapabilityAwareProvider, capability_context, safe_capability_alloc},
+    CrateId,
+};
 use core::any::Any;
 
 /// Maximum number of WASI resources per manager
@@ -69,14 +73,14 @@ pub struct WasiResourceManager {
     /// Next available handle ID
     next_handle: WasiHandle,
     /// Memory provider for allocations
-    provider: NoStdProvider<8192>,
+    provider: CapabilityAwareProvider<NoStdProvider<8192>>,
 }
 
 /// WASI resource wrapper using WRT Resource<P> pattern
 #[derive(Debug)]
 pub struct WasiResource {
     /// Base WRT resource
-    base: Resource<NoStdProvider<8192>>,
+    base: Resource<CapabilityAwareProvider<NoStdProvider<8192>>>,
     /// WASI-specific resource type
     resource_type: WasiResourceType,
     /// Resource capabilities
@@ -99,7 +103,8 @@ pub struct WasiResourceCapabilities {
 impl WasiResourceManager {
     /// Create a new WASI resource manager
     pub fn new() -> Result<Self> {
-        let provider = safe_managed_alloc!(8192, CrateId::WrtWasi)?;
+        let context = capability_context!(dynamic(CrateId::WrtWasi, 8192))?;
+        let provider = safe_capability_alloc!(context, CrateId::WrtWasi, 8192)?;
         let resources = BoundedMap::new(provider.clone())?;
         
         Ok(Self {

@@ -3,7 +3,6 @@
 //! This module provides continuous monitoring capabilities for memory usage
 //! with configurable alerts and automatic visualization generation.
 
-
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use wrt_foundation::CrateId;
 use wrt_foundation::{codes, Error, ErrorCategory, Result as WrtResult};
@@ -219,11 +218,14 @@ impl RealtimeMonitor {
 
     /// Collect a single memory sample
     fn collect_sample(timestamp: u64) -> WrtResult<MemorySample> {
-        use wrt_foundation::wrt_memory_system::WRT_MEMORY_COORDINATOR;
+        // TODO: Update to use capability-based memory monitoring
+        // This requires injecting a MemoryCapabilityContext that can provide
+        // aggregated statistics across all capabilities
+
         use wrt_foundation::monitoring::MEMORY_MONITOR;
-        
+
         let monitor_stats = MEMORY_MONITOR.get_statistics();
-        let total_allocated = WRT_MEMORY_COORDINATOR.get_total_allocation();
+        let total_allocated = 0; // TODO: Get from capability context
 
         // Collect per-crate utilization
         let mut crate_utilization = [0usize; 16];
@@ -246,27 +248,27 @@ impl RealtimeMonitor {
             CrateId::VerificationTool,
         ];
 
-        for (i, &crate_id) in crates.iter().enumerate() {
-            let allocated = WRT_MEMORY_COORDINATOR.get_crate_allocation(crate_id);
-            let budget = WRT_MEMORY_COORDINATOR.get_crate_budget(crate_id);
+        for (i, &_crate_id) in crates.iter().enumerate() {
+            // TODO: Get allocation info from capability context
+            let allocated = 0; // TODO: context.get_crate_allocation(crate_id);
+            let budget = 0; // TODO: context.get_crate_budget(crate_id);
             if budget > 0 {
                 crate_utilization[i] = (allocated * 100) / budget;
             }
         }
 
         // Collect shared pool utilization (using total system stats)
-        let total_budget = WRT_MEMORY_COORDINATOR.get_total_budget();
+        let total_budget = 0; // TODO: Get from capability context
         let shared_pool_utilization =
-            if total_budget > 0 {
-                (total_allocated * 100) / total_budget
-            } else {
-                0
-            };
+            if total_budget > 0 { (total_allocated * 100) / total_budget } else { 0 };
 
         Ok(MemorySample {
             timestamp,
             total_allocated: total_allocated,
-            active_providers: monitor_stats.total_allocations.saturating_sub(monitor_stats.total_deallocations) as usize,
+            active_providers: monitor_stats
+                .total_allocations
+                .saturating_sub(monitor_stats.total_deallocations)
+                as usize,
             crate_utilization,
             shared_pool_utilization,
         })
@@ -376,7 +378,7 @@ impl RealtimeMonitor {
         // Note: Visualization features will be restored when budget_visualization module is available
         let json_path = format!("{}/memory_report_{}.json", config.output_dir, timestamp);
         let html_path = format!("{}/memory_report_{}.html", config.output_dir, timestamp);
-        
+
         // Placeholder for now
         let _ = fs::write(json_path, "{}");
         let _ = fs::write(html_path, "<html><body>Memory report placeholder</body></html>");
@@ -417,11 +419,7 @@ impl RealtimeMonitor {
         use std::io::Write;
 
         let mut file = File::create(filename).map_err(|_e| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::RUNTIME_ERROR,
-                "Failed to create CSV file",
-            )
+            Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to create CSV file")
         })?;
 
         // Write CSV header

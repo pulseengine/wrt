@@ -1,16 +1,17 @@
 //! Hierarchical Budget System
-//! 
+//!
 //! This module provides a hierarchical budget allocation system that allows
 //! complex memory management with sub-budgets and priority-based allocation.
-//! 
+//!
 //! SW-REQ-ID: REQ_MEM_001 - Memory bounds checking
 //! SW-REQ-ID: REQ_RESOURCE_002 - Resource limits
 
 use crate::{
     budget_aware_provider::CrateId,
+    codes,
     memory_coordinator::CrateIdentifier,
     wrt_memory_system::{WrtMemoryGuard, WrtProviderFactory},
-    Error, ErrorCategory, codes, Result,
+    Error, ErrorCategory, Result,
 };
 use core::sync::atomic::{AtomicUsize, Ordering};
 
@@ -43,48 +44,40 @@ pub struct SubBudget {
 impl SubBudget {
     /// Create a new sub-budget
     pub const fn new(name: &'static str, max_allocation: usize, priority: MemoryPriority) -> Self {
-        Self {
-            name,
-            max_allocation,
-            allocated: AtomicUsize::new(0),
-            priority,
-        }
+        Self { name, max_allocation, allocated: AtomicUsize::new(0), priority }
     }
-    
+
     /// Try to allocate from this sub-budget
     pub fn try_allocate(&self, size: usize) -> Result<()> {
         let current = self.allocated.load(Ordering::Acquire);
-        let new_total = current.checked_add(size)
-            .ok_or_else(|| Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ERROR,
-                "Allocation would overflow"
-            ))?;
-            
+        let new_total = current.checked_add(size).ok_or_else(|| {
+            Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Allocation would overflow")
+        })?;
+
         if new_total > self.max_allocation {
             return Err(Error::new(
                 ErrorCategory::Capacity,
                 codes::CAPACITY_EXCEEDED,
-                "Sub-budget exceeded"
+                "Sub-budget exceeded",
             ));
         }
-        
+
         // Try atomic update
         match self.allocated.compare_exchange_weak(
             current,
             new_total,
             Ordering::AcqRel,
-            Ordering::Acquire
+            Ordering::Acquire,
         ) {
             Ok(_) => Ok(()),
             Err(_) => Err(Error::new(
                 ErrorCategory::Concurrency,
                 codes::CONCURRENCY_ERROR,
-                "Concurrent allocation in sub-budget"
-            ))
+                "Concurrent allocation in sub-budget",
+            )),
         }
     }
-    
+
     /// Return allocation to this sub-budget
     pub fn deallocate(&self, size: usize) -> Result<()> {
         let current = self.allocated.load(Ordering::Acquire);
@@ -92,19 +85,19 @@ impl SubBudget {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_STATE,
-                "Deallocating more than allocated"
+                "Deallocating more than allocated",
             ));
         }
-        
+
         self.allocated.store(current - size, Ordering::Release);
         Ok(())
     }
-    
+
     /// Get current allocation
     pub fn current_allocation(&self) -> usize {
         self.allocated.load(Ordering::Acquire)
     }
-    
+
     /// Get available space
     pub fn available(&self) -> usize {
         self.max_allocation.saturating_sub(self.current_allocation())
@@ -133,7 +126,7 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
             active_count: AtomicUsize::new(0),
         }
     }
-    
+
     /// Add a sub-budget
     pub fn add_sub_budget(
         &mut self,
@@ -145,19 +138,19 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
             return Err(Error::new(
                 ErrorCategory::Capacity,
                 codes::CAPACITY_EXCEEDED,
-                "Sub-budget exceeds total budget"
+                "Sub-budget exceeds total budget",
             ));
         }
-        
+
         let count = self.active_count.load(Ordering::Acquire);
         if count >= MAX_SUB_BUDGETS {
             return Err(Error::new(
                 ErrorCategory::Capacity,
                 codes::CAPACITY_EXCEEDED,
-                "Maximum sub-budgets reached"
+                "Maximum sub-budgets reached",
             ));
         }
-        
+
         // Find empty slot
         for (i, slot) in self.sub_budgets.iter_mut().enumerate() {
             if slot.is_none() {
@@ -166,14 +159,14 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
                 return Ok(i);
             }
         }
-        
+
         Err(Error::new(
             ErrorCategory::Runtime,
             codes::INVALID_STATE,
-            "No available sub-budget slots"
+            "No available sub-budget slots",
         ))
     }
-    
+
     /// Allocate from the best available sub-budget
     pub fn allocate_prioritized<const N: usize>(
         &self,
@@ -183,7 +176,7 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
         // Find the best sub-budget based on priority and availability
         let mut best_idx = None;
         let mut best_priority = MemoryPriority::Low;
-        
+
         for (i, sub_budget) in self.sub_budgets.iter().enumerate() {
             if let Some(budget) = sub_budget {
                 if budget.priority <= min_priority && budget.available() >= size {
@@ -194,51 +187,49 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
                 }
             }
         }
-        
-        let idx = best_idx.ok_or_else(|| Error::new(
-            ErrorCategory::Capacity,
-            codes::CAPACITY_EXCEEDED,
-            "No suitable sub-budget found"
-        ))?;
-        
+
+        let idx = best_idx.ok_or_else(|| {
+            Error::new(
+                ErrorCategory::Capacity,
+                codes::CAPACITY_EXCEEDED,
+                "No suitable sub-budget found",
+            )
+        })?;
+
         // Try to allocate from the selected sub-budget
         if let Some(sub_budget) = &self.sub_budgets[idx] {
             sub_budget.try_allocate(size)?;
-            
+
             // Create the actual memory allocation
             let guard = WrtProviderFactory::create_provider::<N>(self.crate_id)?;
-            
+
             Ok((guard, idx))
         } else {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_STATE,
-                "Sub-budget disappeared during allocation"
+                "Sub-budget disappeared during allocation",
             ))
         }
     }
-    
+
     /// Deallocate from a specific sub-budget
     pub fn deallocate(&self, sub_budget_idx: usize, size: usize) -> Result<()> {
         if sub_budget_idx >= MAX_SUB_BUDGETS {
             return Err(Error::new(
                 ErrorCategory::Capacity,
                 codes::OUT_OF_BOUNDS_ERROR,
-                "Invalid sub-budget index"
+                "Invalid sub-budget index",
             ));
         }
-        
+
         if let Some(sub_budget) = &self.sub_budgets[sub_budget_idx] {
             sub_budget.deallocate(size)
         } else {
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_STATE,
-                "Sub-budget not found"
-            ))
+            Err(Error::new(ErrorCategory::Runtime, codes::INVALID_STATE, "Sub-budget not found"))
         }
     }
-    
+
     /// Get statistics for all sub-budgets
     pub fn get_statistics(&self) -> HierarchicalStats {
         let mut stats = HierarchicalStats {
@@ -250,13 +241,13 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
             normal_allocated: 0,
             low_allocated: 0,
         };
-        
+
         for sub_budget in &self.sub_budgets {
             if let Some(budget) = sub_budget {
                 let allocated = budget.current_allocation();
                 stats.total_allocated += allocated;
                 stats.sub_budget_count += 1;
-                
+
                 match budget.priority {
                     MemoryPriority::Critical => stats.critical_allocated += allocated,
                     MemoryPriority::High => stats.high_allocated += allocated,
@@ -265,7 +256,7 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
                 }
             }
         }
-        
+
         stats
     }
 }
@@ -291,7 +282,7 @@ impl HierarchicalStats {
             (self.total_allocated as f32 / self.total_budget as f32) * 100.0
         }
     }
-    
+
     /// Get available budget
     pub fn available(&self) -> usize {
         self.total_budget.saturating_sub(self.total_allocated)
@@ -312,13 +303,9 @@ impl<const N: usize> HierarchicalGuard<N> {
         sub_budget_idx: usize,
         budget: *const HierarchicalBudget<16>,
     ) -> Self {
-        Self {
-            guard,
-            sub_budget_idx,
-            budget,
-        }
+        Self { guard, sub_budget_idx, budget }
     }
-    
+
     /// Get the underlying memory guard
     pub fn guard(&self) -> &WrtMemoryGuard<N> {
         &self.guard
@@ -341,30 +328,30 @@ impl<const N: usize> Drop for HierarchicalGuard<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_sub_budget() {
         let sub_budget = SubBudget::new("test", 1024, MemoryPriority::Normal);
-        
+
         assert_eq!(sub_budget.available(), 1024);
-        
+
         sub_budget.try_allocate(512).unwrap();
         assert_eq!(sub_budget.current_allocation(), 512);
         assert_eq!(sub_budget.available(), 512);
-        
+
         sub_budget.deallocate(256).unwrap();
         assert_eq!(sub_budget.current_allocation(), 256);
     }
-    
+
     #[test]
     fn test_hierarchical_budget() {
         crate::memory_init::MemoryInitializer::initialize().unwrap();
-        
+
         let mut budget = HierarchicalBudget::<4>::new(CrateId::Component, 4096);
-        
+
         let idx1 = budget.add_sub_budget("critical", 1024, MemoryPriority::Critical).unwrap();
         let idx2 = budget.add_sub_budget("normal", 2048, MemoryPriority::Normal).unwrap();
-        
+
         let stats = budget.get_statistics();
         assert_eq!(stats.sub_budget_count, 2);
         assert_eq!(stats.total_budget, 4096);

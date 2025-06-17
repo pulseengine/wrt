@@ -226,8 +226,7 @@ impl NameMap {
         let mut entries = {
             let provider = crate::prelude::create_decoder_provider::<4096>()
                 .map_err(|_| Error::parse_error("Failed to create memory provider"))?;
-            Vec::new(provider)
-                .map_err(|_| Error::parse_error("Failed to create entries vector"))?
+            Vec::new(provider).map_err(|_| Error::parse_error("Failed to create entries vector"))?
         };
 
         for _ in 0..count {
@@ -295,10 +294,15 @@ impl wrt_foundation::traits::FromBytes for NameMap {
         let mut entries = Vec::new();
         #[cfg(not(feature = "std"))]
         let mut entries = {
-            let provider = crate::prelude::create_decoder_provider::<4096>()
-                .map_err(|_| wrt_foundation::traits::SerializationError::Custom("Failed to create memory provider"))?;
+            let provider = crate::prelude::create_decoder_provider::<4096>().map_err(|_| {
+                wrt_foundation::traits::SerializationError::Custom(
+                    "Failed to create memory provider",
+                )
+            })?;
             Vec::new(provider).map_err(|_| {
-                wrt_foundation::traits::SerializationError::Custom("Failed to create entries vector")
+                wrt_foundation::traits::SerializationError::Custom(
+                    "Failed to create entries vector",
+                )
             })?
         };
         for _ in 0..count {
@@ -383,7 +387,8 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
                     #[cfg(not(feature = "std"))]
                     {
                         let name = {
-                            if let Ok(provider) = crate::prelude::create_decoder_provider::<4096>() {
+                            if let Ok(provider) = crate::prelude::create_decoder_provider::<4096>()
+                            {
                                 String::from_str("", provider).unwrap_or_default()
                             } else {
                                 String::default()

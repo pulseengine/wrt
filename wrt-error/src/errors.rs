@@ -55,6 +55,12 @@ pub enum ErrorCategory {
     NotSupported = 15,
     /// Safety-related errors (ASIL violations, integrity checks, etc.)
     Safety = 16,
+    /// Security-related errors (access control, permissions, etc.)
+    Security = 17,
+    /// Parameter-related errors (invalid arguments, missing parameters, etc.)
+    Parameter = 18,
+    /// Verification errors (proofs, checksums, integrity, etc.)
+    Verification = 19,
 }
 
 /// Base trait for all error types - `no_std` version
@@ -94,7 +100,7 @@ impl Error {
             // the expected ranges for each category. In a full implementation, these
             // would be enforced through the type system or compile-time checks.
         }
-        
+
         Self { category, code, message }
     }
 
@@ -238,7 +244,7 @@ impl Error {
         match self.category {
             ErrorCategory::Safety => "ASIL-D", // Safety errors require highest level
             ErrorCategory::Memory | ErrorCategory::RuntimeTrap => "ASIL-C", // Memory/trap errors are ASIL-C
-            ErrorCategory::Validation | ErrorCategory::Type => "ASIL-B", // Type safety is ASIL-B
+            ErrorCategory::Validation | ErrorCategory::Type => "ASIL-B",    // Type safety is ASIL-B
             _ => "QM", // Other errors are Quality Management level
         }
     }
@@ -393,6 +399,18 @@ impl Error {
         Self::new(ErrorCategory::Parse, codes::WIT_INTERFACE_LIMIT_EXCEEDED, message)
     }
 
+    /// Create a capability violation error
+    #[must_use]
+    pub const fn capability_violation(message: &'static str) -> Self {
+        Self::new(ErrorCategory::Security, crate::codes::ACCESS_DENIED, message)
+    }
+
+    /// Create a no capability error
+    #[must_use]
+    pub const fn no_capability(message: &'static str) -> Self {
+        Self::new(ErrorCategory::Security, crate::codes::ACCESS_DENIED, message)
+    }
+
     /// Create a no WIT definitions found error
     #[must_use]
     pub const fn no_wit_definitions_found(message: &'static str) -> Self {
@@ -441,7 +459,14 @@ impl fmt::Display for Error {
         // ASIL-C and above: Include ASIL level in error display
         #[cfg(any(feature = "asil-c", feature = "asil-d"))]
         {
-            write!(f, "[{:?}][E{:04X}][{}] {}", self.category, self.code, self.asil_level(), self.message)
+            write!(
+                f,
+                "[{:?}][E{:04X}][{}] {}",
+                self.category,
+                self.code,
+                self.asil_level(),
+                self.message
+            )
         }
         #[cfg(not(any(feature = "asil-c", feature = "asil-d")))]
         {

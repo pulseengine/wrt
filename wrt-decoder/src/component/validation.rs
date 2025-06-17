@@ -10,8 +10,6 @@
 #[cfg(feature = "std")]
 use std::{collections::HashMap, vec::Vec};
 
-
-
 #[cfg(feature = "std")]
 use wrt_format::component::{
     Alias, AliasTarget, Canon, CanonOperation, Component, ComponentType, ComponentTypeDefinition,
@@ -25,7 +23,7 @@ use wrt_format::component::{
 #[cfg(feature = "std")]
 mod component_validation {
     use super::*;
-    use wrt_error::{Error, ErrorCategory, codes};
+    use wrt_error::{codes, Error, ErrorCategory};
 
     /// Maximum reasonable number of types in a component for validation
     const MAX_TYPES: u32 = 100_000;

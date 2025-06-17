@@ -211,9 +211,6 @@ pub mod binary;
 /// Bounded infrastructure for static memory allocation
 #[cfg(not(feature = "std"))]
 pub mod bounded_format_infra;
-/// Safety-critical memory limits
-#[cfg(feature = "safety-critical")]
-pub mod memory_limits;
 /// WebAssembly canonical format
 #[cfg(feature = "std")]
 pub mod canonical;
@@ -235,6 +232,9 @@ pub mod incremental_parser;
 /// Basic LSP (Language Server Protocol) infrastructure
 #[cfg(all(any(feature = "std"), feature = "lsp"))]
 pub mod lsp_server;
+/// Safety-critical memory limits
+#[cfg(feature = "safety-critical")]
+pub mod memory_limits;
 /// WebAssembly module format
 pub mod module;
 /// Common imports for convenience
@@ -395,7 +395,6 @@ pub fn uses_experimental_features(binary: &[u8]) -> bool {
     let mut info = VersionInfo::from_version_bytes(version_bytes);
     info.detect_experimental_features(binary)
 }
-
 
 // For formal verification when the 'kani' feature is enabled
 #[cfg(feature = "kani")]

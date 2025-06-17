@@ -77,6 +77,7 @@ extern crate wrt_panic;
 // Simple panic handler when no explicit handler is available
 #[cfg(all(
     not(feature = "std"),
+    not(test),
     not(any(
         feature = "enable-panic-handler",
         feature = "dev-panic-handler",
@@ -344,12 +345,16 @@ mod tests {
 
     #[test]
     fn test_memory_provider_creation() {
-        use wrt_foundation::budget_aware_provider::{WrtProviderFactory, CrateId};
+        use wrt_foundation::{
+            capabilities::{capability_context, safe_capability_alloc, CapabilityAwareProvider},
+            CrateId, NoStdProvider,
+        };
         
-        let provider = WrtProviderFactory::create_provider_with_verification::<2048>(
-            CrateId::Platform, 
-            VerificationLevel::Full
-        ).expect("Failed to create provider");
+        let context = capability_context!(verified(CrateId::Platform, 2048, VerificationLevel::Full))
+            .expect("Failed to create capability context");
+        let provider: CapabilityAwareProvider<NoStdProvider<2048>> = 
+            safe_capability_alloc!(context, CrateId::Platform, 2048)
+                .expect("Failed to create provider");
 
         // Note: verification level check would need to be implemented in provider
         // Actual size is capped at 4096 in the stub implementation

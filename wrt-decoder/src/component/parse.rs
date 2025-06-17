@@ -22,7 +22,6 @@ mod std_parsing {
         String::from_utf8(bytes.to_vec()).unwrap_or_else(|_| String::new())
     }
 
-
     // Define a helper function for converting format strings to String
     fn format_to_string(message: &str, value: impl core::fmt::Display) -> String {
         #[cfg(feature = "std")]
@@ -1174,8 +1173,8 @@ mod std_parsing {
                 #[cfg(feature = "std")]
                 let bounded_fields = {
                     use wrt_foundation::{
-                        resource::MAX_RESOURCE_FIELD_NAME_LEN,
-                        BoundedString, BoundedVec, NoStdProvider,
+                        resource::MAX_RESOURCE_FIELD_NAME_LEN, BoundedString, BoundedVec,
+                        NoStdProvider,
                     };
                     let provider = NoStdProvider::<4096>::default();
                     let mut bounded = BoundedVec::new(provider)?;
@@ -1243,9 +1242,7 @@ mod std_parsing {
 
                 #[cfg(feature = "std")]
                 let repr = {
-                    use wrt_foundation::{
-                        BoundedVec, NoStdProvider,
-                    };
+                    use wrt_foundation::{BoundedVec, NoStdProvider};
                     let provider = NoStdProvider::<4096>::default();
                     let mut bounded_indices = BoundedVec::new(provider)?;
                     for idx in indices {
@@ -1581,7 +1578,9 @@ mod std_parsing {
                 // Result type (err only)
                 let (_err_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                 #[allow(unused_assignments)]
-                { offset += bytes_read; }
+                {
+                    offset += bytes_read;
+                }
                 // TODO: Fix FormatValType enum to support ResultErr variant
                 // Ok((wrt_format::component::FormatValType::ResultErr(Box::new(err_type)), offset))
                 Err(Error::new(
@@ -1594,10 +1593,14 @@ mod std_parsing {
                 // Result type (ok and err)
                 let (_ok_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                 #[allow(unused_assignments)]
-                { offset += bytes_read; }
+                {
+                    offset += bytes_read;
+                }
                 let (_err_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                 #[allow(unused_assignments)]
-                { offset += bytes_read; }
+                {
+                    offset += bytes_read;
+                }
                 // TODO: Fix FormatValType enum to support ResultBoth variant
                 // Ok((
                 //     wrt_format::component::FormatValType::ResultBoth(Box::new(ok_type), Box::new(err_type)),
@@ -2417,7 +2420,6 @@ mod std_parsing {
 
 // Re-export std functions when std is available
 #[cfg(feature = "std")]
-
 // No_std implementation with bounded alternatives following functional safety guidelines
 #[cfg(not(feature = "std"))]
 mod no_std_parsing {
@@ -2616,4 +2618,3 @@ mod no_std_parsing {
 // Re-export std functions when std feature is enabled
 #[cfg(feature = "std")]
 pub use std_parsing::*;
-

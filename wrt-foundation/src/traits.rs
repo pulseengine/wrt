@@ -905,7 +905,7 @@ impl<'a> ReadStream<'a> {
     /// Attempts to provide access to the underlying memory provider.
     /// Returns None if the ReadStream was not constructed with a provider
     /// or if direct provider access is not supported in this design.
-    /// 
+    ///
     /// For this ReadStream<'a> which operates on a Slice<'a>, direct provider
     /// access is not typical. It's recommended to pass providers explicitly
     /// to methods that need them rather than relying on this method.
@@ -1047,7 +1047,7 @@ impl<'a> WriteStream<'a> {
     /// Attempts to provide access to the underlying memory provider.
     /// Returns None if the WriteStream was not constructed with a provider
     /// or if direct provider access is not supported in this design.
-    /// 
+    ///
     /// It's recommended to pass providers explicitly to methods that need them
     /// rather than relying on this method.
     pub fn try_provider<P: crate::MemoryProvider>(&self, _provider_ref: &P) -> Option<&P> {

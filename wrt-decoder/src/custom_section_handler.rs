@@ -12,10 +12,10 @@ use wrt_error::{codes, Error, ErrorCategory, Result};
 
 // Conditional imports for WRT allocator
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{WrtHashMap, CrateId};
+use wrt_foundation::allocator::{CrateId, WrtHashMap};
 
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-use std::collections::{HashMap};
+use std::collections::HashMap;
 
 #[cfg(not(feature = "std"))]
 use alloc::collections::BTreeMap;
@@ -38,7 +38,7 @@ pub enum CustomSection {
         module_name: Option<String>,
         /// Function names
         #[cfg(all(feature = "std", feature = "safety-critical"))]
-        function_names: WrtHashMap<u32, String, {CrateId::Decoder as u8}, 256>,
+        function_names: WrtHashMap<u32, String, { CrateId::Decoder as u8 }, 256>,
         #[cfg(all(feature = "std", not(feature = "safety-critical")))]
         function_names: HashMap<u32, String>,
         #[cfg(not(feature = "std"))]
@@ -58,7 +58,7 @@ pub enum CustomSection {
 pub struct CustomSectionHandler {
     /// Parsed custom sections by name
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    sections: WrtHashMap<String, CustomSection, {CrateId::Decoder as u8}, 64>,
+    sections: WrtHashMap<String, CustomSection, { CrateId::Decoder as u8 }, 64>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     sections: HashMap<String, CustomSection>,
     #[cfg(not(feature = "std"))]
@@ -101,11 +101,11 @@ impl CustomSectionHandler {
                 Error::new(
                     ErrorCategory::Runtime,
                     codes::CAPACITY_EXCEEDED,
-                    "Custom sections capacity exceeded (limit: 64)"
+                    "Custom sections capacity exceeded (limit: 64)",
                 )
             })?;
         }
-        
+
         #[cfg(not(feature = "safety-critical"))]
         {
             self.sections.insert(name.to_string(), section);

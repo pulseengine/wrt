@@ -22,17 +22,12 @@
 // Core/std library imports
 
 #[cfg(feature = "std")]
-use std::{
-    collections::{HashMap},
-    vec::Vec,
-};
+use std::{collections::HashMap, vec::Vec};
 
 // External crates
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary::{read_leb128_u32, read_u8};
-use wrt_foundation::traits::{
-    Checksummable, FromBytes, ReadStream, ToBytes, WriteStream,
-};
+use wrt_foundation::traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream};
 // NoStdProvider import removed - not used
 use wrt_foundation::{verification::Checksum, WrtResult};
 

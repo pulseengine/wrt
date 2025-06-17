@@ -14,12 +14,10 @@
 extern crate alloc;
 
 use wrt_component::bounded_component_infra::*;
-use wrt_foundation::{{
-    bounded::{BoundedVec},
-    managed_alloc,
-    WrtError, WrtResult,
-    budget_aware_provider::CrateId,
-}, safe_managed_alloc};
+use wrt_foundation::{
+    safe_managed_alloc,
+    {bounded::BoundedVec, budget_aware_provider::CrateId, managed_alloc, WrtError, WrtResult},
+};
 
 #[cfg(test)]
 mod feature_flag_tests {
@@ -31,10 +29,10 @@ mod feature_flag_tests {
         // These should work regardless of std feature
         let vec = new_component_vec::<u32>();
         assert!(vec.is_ok());
-        
+
         let map = new_export_map::<String>();
         assert!(map.is_ok());
-        
+
         let name = new_component_name();
         assert!(name.is_ok());
     }
@@ -43,19 +41,19 @@ mod feature_flag_tests {
     #[test]
     fn test_safety_critical_enabled() {
         // When safety-critical is enabled, all allocations must be bounded
-        
+
         // Verify we're using WRT allocator
         let guard_result = safe_managed_alloc!(1024, CrateId::Component);
         assert!(guard_result.is_ok() || matches!(guard_result, Err(WrtError::OutOfMemory)));
-        
+
         // Verify collections have fixed capacity
         let vec = new_component_vec::<u32>().unwrap();
         assert_eq!(vec.capacity(), MAX_COMPONENT_INSTANCES);
-        
+
         // Capacity should not change
         let initial_capacity = vec.capacity();
         drop(vec);
-        
+
         let vec2 = new_component_vec::<u32>().unwrap();
         assert_eq!(vec2.capacity(), initial_capacity);
     }
@@ -65,9 +63,9 @@ mod feature_flag_tests {
     fn test_safety_critical_disabled() {
         // When safety-critical is disabled, we still use bounded collections
         // but may have more relaxed constraints
-        
+
         let vec = new_component_vec::<u32>().unwrap();
-        
+
         // Still bounded, but might allow different behavior
         assert!(vec.capacity() > 0);
         assert!(vec.capacity() <= MAX_COMPONENT_INSTANCES);
@@ -77,17 +75,15 @@ mod feature_flag_tests {
     #[test]
     fn test_std_features() {
         // Test features that require std
-        use std::thread;
         use std::sync::Arc;
-        
+        use std::thread;
+
         let vec = Arc::new(new_component_vec::<u32>().unwrap());
         let vec_clone = Arc::clone(&vec);
-        
+
         // Can use std threading
-        let handle = thread::spawn(move || {
-            vec_clone.len()
-        });
-        
+        let handle = thread::spawn(move || vec_clone.len());
+
         let len = handle.join().unwrap();
         assert_eq!(len, 0);
     }
@@ -97,10 +93,10 @@ mod feature_flag_tests {
     fn test_no_std_features() {
         // Test no_std specific behavior
         use wrt_sync::Mutex;
-        
+
         let vec = new_component_vec::<u32>().unwrap();
         let mutex = Mutex::new(vec);
-        
+
         // Can use no_std mutex
         {
             let guard = mutex.lock();
@@ -113,26 +109,23 @@ mod feature_flag_tests {
     fn test_std_with_safety_critical() {
         // Most restrictive configuration
         // Should use WRT allocator even with std available
-        
+
         let vec_result = new_component_vec::<u64>();
         assert!(vec_result.is_ok());
-        
+
         let vec = vec_result.unwrap();
-        
+
         // Should have bounded capacity
         assert_eq!(vec.capacity(), MAX_COMPONENT_INSTANCES);
-        
+
         // Should handle errors gracefully
         let mut filled_vec = new_component_vec::<u32>().unwrap();
         for i in 0..MAX_COMPONENT_INSTANCES {
             assert!(filled_vec.try_push(i as u32).is_ok());
         }
-        
+
         // No panic on overflow
-        assert!(matches!(
-            filled_vec.try_push(999),
-            Err(WrtError::CapacityExceeded)
-        ));
+        assert!(matches!(filled_vec.try_push(999), Err(WrtError::CapacityExceeded)));
     }
 
     #[cfg(all(not(feature = "std"), not(feature = "safety-critical")))]
@@ -140,10 +133,10 @@ mod feature_flag_tests {
     fn test_no_std_without_safety_critical() {
         // no_std but not safety-critical
         // Still uses bounded collections but might have different trade-offs
-        
+
         let vec = new_component_vec::<u32>().unwrap();
         assert!(vec.capacity() > 0);
-        
+
         // Basic operations should still work
         let mut test_vec = new_export_vec::<i32>().unwrap();
         assert!(test_vec.try_push(42).is_ok());
@@ -154,25 +147,25 @@ mod feature_flag_tests {
     #[test]
     fn test_generic_type_support() {
         // Test with various types to ensure generic support
-        
+
         // Primitive types
         let _u8_vec = new_component_vec::<u8>().unwrap();
         let _u16_vec = new_component_vec::<u16>().unwrap();
         let _u32_vec = new_component_vec::<u32>().unwrap();
         let _u64_vec = new_component_vec::<u64>().unwrap();
-        
+
         // Composite types
         #[derive(Clone)]
         struct TestStruct {
             a: u32,
             b: u64,
         }
-        
+
         let _struct_vec = new_component_vec::<TestStruct>().unwrap();
-        
+
         // Option types
         let _option_vec = new_component_vec::<Option<u32>>().unwrap();
-        
+
         // Result types
         let _result_vec = new_component_vec::<Result<u32, ()>>().unwrap();
     }
@@ -182,7 +175,7 @@ mod feature_flag_tests {
     fn test_api_consistency() {
         // All factory functions should return WrtResult
         fn assert_returns_result<T>(_: WrtResult<T>) {}
-        
+
         assert_returns_result(new_component_vec::<u32>());
         assert_returns_result(new_export_vec::<u32>());
         assert_returns_result(new_import_vec::<u32>());
@@ -203,12 +196,12 @@ mod feature_flag_tests {
     fn test_memory_provider_abstraction() {
         // ComponentProvider should work consistently
         type TestVec = BoundedVec<u32, 100, ComponentProvider>;
-        
+
         // Direct provider usage should also work
         let provider = unsafe { ComponentProvider::new().release() };
         let vec_result = TestVec::new(provider);
         assert!(vec_result.is_ok());
-        
+
         let mut vec = vec_result.unwrap();
         assert!(vec.try_push(42).is_ok());
         assert_eq!(vec.len(), 1);
@@ -222,7 +215,7 @@ mod feature_flag_tests {
         const _MAX_EXP: usize = MAX_COMPONENT_EXPORTS;
         const _MAX_IMP: usize = MAX_COMPONENT_IMPORTS;
         const _MAX_RES: usize = MAX_RESOURCE_HANDLES;
-        
+
         // Can use in const contexts
         const ARRAY: [u8; MAX_COMPONENT_INSTANCES] = [0; MAX_COMPONENT_INSTANCES];
         assert_eq!(ARRAY.len(), MAX_COMPONENT_INSTANCES);
@@ -237,16 +230,16 @@ mod safety_critical_only_tests {
     #[test]
     fn test_deterministic_allocation() {
         // In safety-critical mode, allocations should be deterministic
-        
+
         let mut vecs = Vec::new();
-        
+
         // Allocate multiple vectors
         for _ in 0..5 {
             if let Ok(vec) = new_component_vec::<u32>() {
                 vecs.push(vec);
             }
         }
-        
+
         // All should have the same capacity
         if vecs.len() > 1 {
             let first_capacity = vecs[0].capacity();
@@ -261,29 +254,29 @@ mod safety_critical_only_tests {
     fn test_no_dynamic_allocation() {
         // Create a vector
         let mut vec = new_component_vec::<u64>().unwrap();
-        
+
         let initial_capacity = vec.capacity();
-        
+
         // Fill it
         for i in 0..initial_capacity {
             if vec.try_push(i as u64).is_err() {
                 break;
             }
         }
-        
+
         // Capacity should not have changed
         assert_eq!(vec.capacity(), initial_capacity);
-        
+
         // Clear and refill
         vec.clear();
         assert_eq!(vec.capacity(), initial_capacity);
-        
+
         for i in 0..initial_capacity {
             if vec.try_push(i as u64).is_err() {
                 break;
             }
         }
-        
+
         // Still same capacity
         assert_eq!(vec.capacity(), initial_capacity);
     }
@@ -297,28 +290,28 @@ mod cross_feature_tests {
     #[test]
     fn test_universal_compatibility() {
         // This test should pass regardless of features
-        
+
         // Basic allocation
         let vec = new_component_vec::<u32>();
         assert!(vec.is_ok());
-        
+
         // Basic operations
         let mut v = vec.unwrap();
         assert_eq!(v.len(), 0);
         assert!(!v.is_full());
         assert!(v.is_empty());
-        
+
         // Push and pop
         if v.try_push(100).is_ok() {
             assert_eq!(v.len(), 1);
             assert_eq!(v.pop(), Some(100));
         }
-        
+
         // Error handling
         for i in 0..v.capacity() + 10 {
             let _ = v.try_push(i as u32);
         }
-        
+
         // Should be full or close to it
         assert!(v.len() <= v.capacity());
     }

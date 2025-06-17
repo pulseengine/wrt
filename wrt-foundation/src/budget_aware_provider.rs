@@ -3,10 +3,13 @@
 //! This module provides the CrateId enum used throughout the WRT memory system.
 
 use crate::memory_coordinator::CrateIdentifier;
+use crate::traits::{Checksummable, FromBytes, ToBytes};
+use crate::verification::Checksum;
 
 /// Crate identifiers for budget tracking
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum CrateId {
+    #[default]
     Foundation,
     Decoder,
     Runtime,
@@ -52,7 +55,7 @@ impl CrateIdentifier for CrateId {
             CrateId::WasiComponents => 18,
         }
     }
-    
+
     fn name(&self) -> &'static str {
         match self {
             CrateId::Foundation => "foundation",
@@ -76,8 +79,59 @@ impl CrateIdentifier for CrateId {
             CrateId::WasiComponents => "wasi_components",
         }
     }
-    
+
     fn count() -> usize {
         19
+    }
+}
+
+impl Checksummable for CrateId {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        checksum.update(self.as_index() as u8);
+    }
+}
+
+impl ToBytes for CrateId {
+    fn serialized_size(&self) -> usize {
+        1
+    }
+
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut crate::traits::WriteStream<'a>,
+        _provider: &PStream,
+    ) -> crate::WrtResult<()> {
+        writer.write_u8(self.as_index() as u8)
+    }
+}
+
+impl FromBytes for CrateId {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut crate::traits::ReadStream<'a>,
+        _provider: &PStream,
+    ) -> crate::WrtResult<Self> {
+        let byte = reader.read_u8()?;
+        match byte {
+            0 => Ok(CrateId::Foundation),
+            1 => Ok(CrateId::Decoder),
+            2 => Ok(CrateId::Runtime),
+            3 => Ok(CrateId::Component),
+            4 => Ok(CrateId::Host),
+            5 => Ok(CrateId::Debug),
+            6 => Ok(CrateId::Platform),
+            7 => Ok(CrateId::Instructions),
+            8 => Ok(CrateId::Format),
+            9 => Ok(CrateId::Intercept),
+            10 => Ok(CrateId::Sync),
+            11 => Ok(CrateId::Math),
+            12 => Ok(CrateId::Logging),
+            13 => Ok(CrateId::Panic),
+            14 => Ok(CrateId::TestRegistry),
+            15 => Ok(CrateId::VerificationTool),
+            16 => Ok(CrateId::Unknown),
+            17 => Ok(CrateId::Wasi),
+            18 => Ok(CrateId::WasiComponents),
+            _ => Err(crate::Error::invalid_input("Invalid CrateId index")),
+        }
     }
 }

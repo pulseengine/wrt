@@ -15,8 +15,8 @@ use wrt_format::{
 // Note: These functions should be available if they're exported by wrt_format
 // If not, we'll need to implement alternatives or define them locally
 use wrt_foundation::types::{
-    FuncType, GlobalType as WrtGlobalType, Import as WrtImport,
-    MemoryType as WrtMemoryType, TableType as WrtTableType,
+    FuncType, GlobalType as WrtGlobalType, Import as WrtImport, MemoryType as WrtMemoryType,
+    TableType as WrtTableType,
 };
 use wrt_foundation::NoStdProvider;
 
@@ -29,11 +29,9 @@ use wrt_format::{
     module::Export as WrtExport, DataSegment as WrtDataSegment, ElementSegment as WrtElementSegment,
 };
 
-use crate::memory_optimized::{
-    check_bounds_u32, safe_usize_conversion,
-};
+use crate::memory_optimized::{check_bounds_u32, safe_usize_conversion};
 use crate::optimized_string::parse_utf8_string_inplace;
-use crate::prelude::{Vec};
+use crate::prelude::Vec;
 
 // Helper functions for missing imports
 fn parse_element_segment(
@@ -283,57 +281,57 @@ pub mod parsers {
         // Since Table and Memory are now type aliases to foundation types, this should work directly
         let mut wrt_imports = Vec::with_capacity(format_imports.len());
         let provider = wrt_foundation::NoStdProvider::<1024>::default();
-        
+
         for format_import in format_imports {
             let module_name = wrt_foundation::bounded::WasmName::from_str(
                 &format_import.module,
-                provider.clone()
-            ).map_err(|_| Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Module name too long for bounded string"
-            ))?;
-            
-            let item_name = wrt_foundation::bounded::WasmName::from_str(
-                &format_import.name,
-                provider.clone()
-            ).map_err(|_| Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Item name too long for bounded string"
-            ))?;
-            
+                provider.clone(),
+            )
+            .map_err(|_| {
+                Error::new(
+                    ErrorCategory::Parse,
+                    codes::PARSE_ERROR,
+                    "Module name too long for bounded string",
+                )
+            })?;
+
+            let item_name =
+                wrt_foundation::bounded::WasmName::from_str(&format_import.name, provider.clone())
+                    .map_err(|_| {
+                        Error::new(
+                            ErrorCategory::Parse,
+                            codes::PARSE_ERROR,
+                            "Item name too long for bounded string",
+                        )
+                    })?;
+
             let wrt_desc = match format_import.desc {
                 wrt_format::module::ImportDesc::Function(type_idx) => {
                     wrt_foundation::types::ImportDesc::Function(type_idx)
-                },
+                }
                 wrt_format::module::ImportDesc::Table(table) => {
                     wrt_foundation::types::ImportDesc::Table(table)
-                },
+                }
                 wrt_format::module::ImportDesc::Memory(memory) => {
                     wrt_foundation::types::ImportDesc::Memory(memory)
-                },
+                }
                 wrt_format::module::ImportDesc::Global(format_global) => {
                     // Convert FormatGlobalType to wrt_foundation::GlobalType
                     let global_type = wrt_foundation::GlobalType::new(
                         format_global.value_type,
-                        format_global.mutable
+                        format_global.mutable,
                     );
                     wrt_foundation::types::ImportDesc::Global(global_type)
-                },
+                }
                 wrt_format::module::ImportDesc::Tag(type_idx) => {
                     // Tag is not available in ImportDesc, map to Function for now
                     wrt_foundation::types::ImportDesc::Function(type_idx)
-                },
+                }
             };
-            
-            wrt_imports.push(WrtFoundationImport {
-                module_name,
-                item_name,
-                desc: wrt_desc,
-            });
+
+            wrt_imports.push(WrtFoundationImport { module_name, item_name, desc: wrt_desc });
         }
-        
+
         Ok(wrt_imports)
     }
 
@@ -346,12 +344,12 @@ pub mod parsers {
         for _ in 0..count {
             let (format_table, new_offset) = parse_format_module_table(bytes, offset)?;
             offset = new_offset;
-            
+
             // Since wrt_format::module::Table is now a type alias to wrt_foundation::TableType,
             // we can use it directly
             wrt_tables.push(format_table);
         }
-        
+
         Ok(wrt_tables)
     }
 
@@ -401,14 +399,17 @@ pub mod parsers {
                 ));
             }
         };
-        
+
         // Convert wrt_format::Limits to wrt_foundation::Limits
         let foundation_limits = wrt_foundation::Limits::new(
             limits.min as u32, // Convert u64 to u32
-            limits.max.map(|m| m as u32)
+            limits.max.map(|m| m as u32),
         );
-        
-        Ok((wrt_foundation::TableType { element_type: ref_type, limits: foundation_limits }, offset))
+
+        Ok((
+            wrt_foundation::TableType { element_type: ref_type, limits: foundation_limits },
+            offset,
+        ))
     }
 
     /// Parse a memory section
@@ -420,12 +421,12 @@ pub mod parsers {
         for _ in 0..count {
             let (format_memory, new_offset) = parse_format_module_memory(bytes, offset)?;
             offset = new_offset;
-            
+
             // Since wrt_format::module::Memory is now a type alias to wrt_foundation::MemoryType,
             // we can use it directly
             wrt_memories.push(format_memory);
         }
-        
+
         Ok(wrt_memories)
     }
 
@@ -434,17 +435,14 @@ pub mod parsers {
         offset: usize,
     ) -> Result<(wrt_foundation::MemoryType, usize)> {
         let (limits, new_offset) = parse_limits(bytes, offset)?;
-        
+
         // Convert wrt_format::Limits to wrt_foundation::Limits
         let foundation_limits = wrt_foundation::Limits::new(
             limits.min as u32, // Convert u64 to u32
-            limits.max.map(|m| m as u32)
+            limits.max.map(|m| m as u32),
         );
-        
-        Ok((
-            wrt_foundation::MemoryType::new(foundation_limits, limits.shared),
-            new_offset,
-        ))
+
+        Ok((wrt_foundation::MemoryType::new(foundation_limits, limits.shared), new_offset))
     }
 
     fn parse_format_global_type(
@@ -558,7 +556,7 @@ pub mod parsers {
                 value_type: format_global_type.value_type,
                 mutable: format_global_type.mutable,
             };
-            
+
             wrt_globals.push(wrt_global);
         }
         Ok(wrt_globals)
@@ -625,14 +623,8 @@ pub mod parsers {
 
         for _ in 0..count {
             // binary::parse_element is expected to parse a wrt_format::module::Element
-            let (format_element, new_offset) =
-                parse_element_segment(bytes, offset).map_err(|e| {
-                    Error::new(
-                        e.category(),
-                        e.code(),
-                        "Failed to parse element entry",
-                    )
-                })?;
+            let (format_element, new_offset) = parse_element_segment(bytes, offset)
+                .map_err(|e| Error::new(e.category(), e.code(), "Failed to parse element entry"))?;
             offset = new_offset;
 
             // Since we're expecting wrt_format::ElementSegment, use the parsed element directly
@@ -691,11 +683,7 @@ pub mod parsers {
             // Note: The name in wrt_format::binary might be parse_data, not
             // parse_data_segment
             let (format_data_segment, new_offset) = parse_data(bytes, offset).map_err(|e| {
-                Error::new(
-                    e.category(),
-                    e.code(),
-                    "Failed to parse data segment entry",
-                )
+                Error::new(e.category(), e.code(), "Failed to parse data segment entry")
             })?;
             offset = new_offset;
 

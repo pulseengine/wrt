@@ -31,17 +31,15 @@ pub mod collections;
 pub mod phantom_budgets;
 
 #[cfg(feature = "wrt-allocator")]
-pub use collections::{WrtVec, WrtHashMap, WrtString};
+pub use collections::{WrtHashMap, WrtString, WrtVec};
 
 #[cfg(feature = "wrt-allocator")]
 pub use phantom_budgets::{CapacityError, CrateId, CRATE_BUDGETS};
 
 #[cfg(feature = "wrt-allocator")]
 pub use collections::aliases::{
-    ComponentVec, ComponentHashMap, ComponentString,
-    RuntimeVec, RuntimeHashMap, RuntimeString,
-    FoundationVec, FoundationHashMap, FoundationString,
-    HostVec, HostHashMap, HostString,
+    ComponentHashMap, ComponentString, ComponentVec, FoundationHashMap, FoundationString,
+    FoundationVec, HostHashMap, HostString, HostVec, RuntimeHashMap, RuntimeString, RuntimeVec,
 };
 
 // Re-export for convenience when not using the allocator feature

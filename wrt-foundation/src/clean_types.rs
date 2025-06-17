@@ -18,10 +18,10 @@ mod types {
     use std::fmt;
 
     #[cfg(feature = "std")]
-    use std::{string::String, vec::Vec, boxed::Box};
+    use std::{boxed::Box, string::String, vec::Vec};
 
     #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::{string::String, vec::Vec, boxed::Box};
+    use alloc::{boxed::Box, string::String, vec::Vec};
 
     /// Clean component model value type without provider parameters
     #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -93,9 +93,7 @@ mod types {
 
     impl Default for Record {
         fn default() -> Self {
-            Self {
-                fields: Vec::new(),
-            }
+            Self { fields: Vec::new() }
         }
     }
 
@@ -110,10 +108,7 @@ mod types {
 
     impl Default for Field {
         fn default() -> Self {
-            Self {
-                name: String::new(),
-                ty: ValType::default(),
-            }
+            Self { name: String::new(), ty: ValType::default() }
         }
     }
 
@@ -126,9 +121,7 @@ mod types {
 
     impl Default for Tuple {
         fn default() -> Self {
-            Self {
-                types: Vec::new(),
-            }
+            Self { types: Vec::new() }
         }
     }
 
@@ -141,9 +134,7 @@ mod types {
 
     impl Default for Variant {
         fn default() -> Self {
-            Self {
-                cases: Vec::new(),
-            }
+            Self { cases: Vec::new() }
         }
     }
 
@@ -160,11 +151,7 @@ mod types {
 
     impl Default for Case {
         fn default() -> Self {
-            Self {
-                name: String::new(),
-                ty: None,
-                refines: None,
-            }
+            Self { name: String::new(), ty: None, refines: None }
         }
     }
 
@@ -177,9 +164,7 @@ mod types {
 
     impl Default for Enum {
         fn default() -> Self {
-            Self {
-                cases: Vec::new(),
-            }
+            Self { cases: Vec::new() }
         }
     }
 
@@ -194,10 +179,7 @@ mod types {
 
     impl Default for Result_ {
         fn default() -> Self {
-            Self {
-                ok: None,
-                err: None,
-            }
+            Self { ok: None, err: None }
         }
     }
 
@@ -210,9 +192,7 @@ mod types {
 
     impl Default for Flags {
         fn default() -> Self {
-            Self {
-                labels: Vec::new(),
-            }
+            Self { labels: Vec::new() }
         }
     }
 
@@ -292,9 +272,8 @@ mod types {
                 Value::String(_) => ValType::String,
                 Value::List(list) => {
                     // Determine element type from first element, or default to Bool
-                    let element_type = list.first()
-                        .map(|v| v.value_type())
-                        .unwrap_or(ValType::Bool);
+                    let element_type =
+                        list.first().map(|v| v.value_type()).unwrap_or(ValType::Bool);
                     ValType::List(Box::new(element_type))
                 }
                 Value::Record(_) => {
@@ -312,17 +291,16 @@ mod types {
                 }
                 Value::Enum(_) => ValType::Enum(Enum::default()),
                 Value::Option(opt) => {
-                    let inner_type = opt.as_ref()
-                        .map(|v| v.value_type())
-                        .unwrap_or(ValType::Bool);
+                    let inner_type = opt.as_ref().map(|v| v.value_type()).unwrap_or(ValType::Bool);
                     ValType::Option(Box::new(inner_type))
                 }
                 Value::Result(result) => {
-                    let ok_type = result.as_ref().ok()
+                    let ok_type = result
+                        .as_ref()
+                        .ok()
                         .and_then(|opt| opt.as_ref())
                         .map(|v| Box::new(v.value_type()));
-                    let err_type = result.as_ref().err()
-                        .map(|v| Box::new(v.value_type()));
+                    let err_type = result.as_ref().err().map(|v| Box::new(v.value_type()));
                     ValType::Result(Result_ { ok: ok_type, err: err_type })
                 }
                 Value::Flags(_) => ValType::Flags(Flags::default()),
@@ -343,10 +321,7 @@ mod types {
 
     impl Default for FuncType {
         fn default() -> Self {
-            Self {
-                params: Vec::new(),
-                results: Vec::new(),
-            }
+            Self { params: Vec::new(), results: Vec::new() }
         }
     }
 
@@ -361,10 +336,7 @@ mod types {
 
     impl Default for MemoryType {
         fn default() -> Self {
-            Self {
-                limits: Limits::default(),
-                shared: false,
-            }
+            Self { limits: Limits::default(), shared: false }
         }
     }
 
@@ -379,10 +351,7 @@ mod types {
 
     impl Default for TableType {
         fn default() -> Self {
-            Self {
-                element_type: RefType::FuncRef,
-                limits: Limits::default(),
-            }
+            Self { element_type: RefType::FuncRef, limits: Limits::default() }
         }
     }
 
@@ -397,10 +366,7 @@ mod types {
 
     impl Default for GlobalType {
         fn default() -> Self {
-            Self {
-                value_type: ValType::Bool,
-                mutable: false,
-            }
+            Self { value_type: ValType::Bool, mutable: false }
         }
     }
 
@@ -415,10 +381,7 @@ mod types {
 
     impl Default for Limits {
         fn default() -> Self {
-            Self {
-                min: 0,
-                max: None,
-            }
+            Self { min: 0, max: None }
         }
     }
 
@@ -450,11 +413,7 @@ mod types {
 
     impl Default for ComponentType {
         fn default() -> Self {
-            Self {
-                imports: Vec::new(),
-                exports: Vec::new(),
-                instances: Vec::new(),
-            }
+            Self { imports: Vec::new(), exports: Vec::new(), instances: Vec::new() }
         }
     }
 
@@ -490,9 +449,7 @@ mod types {
 
     impl Default for InstanceType {
         fn default() -> Self {
-            Self {
-                exports: Vec::new(),
-            }
+            Self { exports: Vec::new() }
         }
     }
 
@@ -507,10 +464,7 @@ mod types {
 
     impl Default for ComponentTypeDefinition {
         fn default() -> Self {
-            Self {
-                name: String::new(),
-                ty: ExternType::default(),
-            }
+            Self { name: String::new(), ty: ExternType::default() }
         }
     }
 
@@ -528,14 +482,8 @@ mod types {
         fn test_record_creation() {
             let record = Record {
                 fields: vec![
-                    Field {
-                        name: "x".to_string(),
-                        ty: ValType::S32,
-                    },
-                    Field {
-                        name: "y".to_string(),
-                        ty: ValType::F64,
-                    },
+                    Field { name: "x".to_string(), ty: ValType::S32 },
+                    Field { name: "y".to_string(), ty: ValType::F64 },
                 ],
             };
             assert_eq!(record.fields.len(), 2);
@@ -552,10 +500,8 @@ mod types {
 
         #[test]
         fn test_func_type_creation() {
-            let func_type = FuncType {
-                params: vec![ValType::S32, ValType::S32],
-                results: vec![ValType::S32],
-            };
+            let func_type =
+                FuncType { params: vec![ValType::S32, ValType::S32], results: vec![ValType::S32] };
             assert_eq!(func_type.params.len(), 2);
             assert_eq!(func_type.results.len(), 1);
         }

@@ -309,7 +309,7 @@ impl MemoryLoad {
         match (self.value_type, self.width) {
             (ValueType::I32, 32) => {
                 let bytes = memory.read_bytes(effective_addr, 4)?;
-                if BoundedCapacity::len(&bytes) < 4 {
+                if bytes.len() < 4 {
                     return Err(Error::memory_error("Insufficient bytes read for i32 value"));
                 }
                 #[cfg(feature = "std")]
@@ -326,7 +326,7 @@ impl MemoryLoad {
             }
             (ValueType::I64, 64) => {
                 let bytes = memory.read_bytes(effective_addr, 8)?;
-                if BoundedCapacity::len(&bytes) < 8 {
+                if bytes.len() < 8 {
                     return Err(Error::memory_error("Insufficient bytes read for i64 value"));
                 }
                 #[cfg(feature = "std")]
@@ -346,7 +346,7 @@ impl MemoryLoad {
             }
             (ValueType::F32, 32) => {
                 let bytes = memory.read_bytes(effective_addr, 4)?;
-                if BoundedCapacity::len(&bytes) < 4 {
+                if bytes.len() < 4 {
                     return Err(Error::memory_error("Insufficient bytes read for f32 value"));
                 }
                 #[cfg(feature = "std")]
@@ -363,7 +363,7 @@ impl MemoryLoad {
             }
             (ValueType::F64, 64) => {
                 let bytes = memory.read_bytes(effective_addr, 8)?;
-                if BoundedCapacity::len(&bytes) < 8 {
+                if bytes.len() < 8 {
                     return Err(Error::memory_error("Insufficient bytes read for f64 value"));
                 }
                 #[cfg(feature = "std")]
@@ -407,7 +407,7 @@ impl MemoryLoad {
             }
             (ValueType::I32, 16) => {
                 let bytes = memory.read_bytes(effective_addr, 2)?;
-                if BoundedCapacity::len(&bytes) < 2 {
+                if bytes.len() < 2 {
                     return Err(Error::memory_error("Insufficient bytes read for i16 value"));
                 }
                 #[cfg(feature = "std")]
@@ -434,7 +434,7 @@ impl MemoryLoad {
             }
             (ValueType::I64, 16) => {
                 let bytes = memory.read_bytes(effective_addr, 2)?;
-                if BoundedCapacity::len(&bytes) < 2 {
+                if bytes.len() < 2 {
                     return Err(Error::memory_error("Insufficient bytes read for i16 value"));
                 }
                 #[cfg(feature = "std")]
@@ -461,7 +461,7 @@ impl MemoryLoad {
             }
             (ValueType::I64, 32) => {
                 let bytes = memory.read_bytes(effective_addr, 4)?;
-                if BoundedCapacity::len(&bytes) < 4 {
+                if bytes.len() < 4 {
                     return Err(Error::memory_error("Insufficient bytes read for i32 value"));
                 }
                 #[cfg(feature = "std")]
@@ -1262,7 +1262,7 @@ mod tests {
             let start = offset as usize;
             let end = start + len as usize;
 
-            if end > BoundedCapacity::len(&self.data) {
+            if end > self.data.len() {
                 return Err(Error::memory_error("Memory access out of bounds"));
             }
 
@@ -1293,7 +1293,7 @@ mod tests {
             let start = offset as usize;
             let end = start + bytes.len();
 
-            if end > BoundedCapacity::len(&self.data) {
+            if end > self.data.len() {
                 return Err(Error::memory_error("Memory access out of bounds"));
             }
 
@@ -1310,7 +1310,7 @@ mod tests {
             }
             #[cfg(not(feature = "std"))]
             {
-                Ok(BoundedCapacity::len(&self.data))
+                Ok(self.data.len())
             }
         }
 
@@ -1323,7 +1323,7 @@ mod tests {
 
         #[cfg(not(feature = "std"))]
         fn grow(&mut self, bytes: usize) -> Result<()> {
-            let current_len = BoundedCapacity::len(&self.data);
+            let current_len = self.data.len();
             let new_size = current_len + bytes;
             
             // Check if we can fit the new size in our bounded capacity
@@ -1357,7 +1357,7 @@ mod tests {
             let start = offset as usize;
             let end = start + size as usize;
 
-            if end > BoundedCapacity::len(&self.data) {
+            if end > self.data.len() {
                 return Err(Error::memory_error("Memory fill out of bounds"));
             }
 
@@ -1393,7 +1393,7 @@ mod tests {
             let src_start = src as usize;
             let src_end = src_start + size as usize;
 
-            if dest_end > BoundedCapacity::len(&self.data) || src_end > BoundedCapacity::len(&self.data) {
+            if dest_end > self.data.len() || src_end > self.data.len() {
                 return Err(Error::memory_error("Memory copy out of bounds"));
             }
 
@@ -1620,8 +1620,8 @@ mod tests {
 
         #[cfg(not(any(feature = "std", )))]
         fn get_data_segment(&self, data_index: u32) -> Result<Option<wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::NoStdProvider<65_536>>>> {
-            if (data_index as usize) < BoundedCapacity::len(&self.segments) {
-                Ok(self.segments.get(data_index as usize).map_err(|_| Error::validation_error("Invalid data segment index"))?.clone())
+            if (data_index as usize) < self.segments.len() {
+                Ok(self.segments.get(data_index as usize).ok_or_else(|| Error::validation_error("Invalid data segment index"))?.clone())
             } else {
                 Err(Error::validation_error("Invalid data segment index"))
             }
@@ -1631,7 +1631,7 @@ mod tests {
             #[cfg(feature = "std")]
             let segments_len = self.segments.len();
             #[cfg(not(feature = "std"))]
-            let segments_len = BoundedCapacity::len(&self.segments);
+            let segments_len = self.segments.len();
 
             if (data_index as usize) < segments_len {
                 #[cfg(feature = "std")]

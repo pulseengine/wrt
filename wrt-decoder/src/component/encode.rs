@@ -830,4 +830,3 @@ mod no_std_encoding {
         Ok(binary)
     }
 }
-

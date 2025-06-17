@@ -62,7 +62,7 @@ pub use validation::{validate_component, validate_component_with_config, Validat
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
 #[cfg(feature = "std")]
-use crate::{utils::BinaryType};
+use crate::utils::BinaryType;
 
 #[cfg(not(feature = "std"))]
 use crate::prelude::*;
@@ -155,7 +155,6 @@ mod no_std_utils {
         Ok((name_string, length + 1))
     }
 }
-
 
 /// Decode a component from binary data
 ///

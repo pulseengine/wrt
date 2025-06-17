@@ -3,8 +3,8 @@
 //! This module provides essential platform services that can be injected
 //! into the runtime, keeping the core runtime platform-agnostic.
 
-use wrt_error::{Error, ErrorCategory, Result, codes};
-use crate::safety_system::{SafetyContext, AsilLevel};
+use crate::safety_system::{AsilLevel, SafetyContext};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
@@ -32,8 +32,8 @@ impl Default for PlatformLimits {
 impl PlatformLimits {
     pub const fn minimal() -> Self {
         Self {
-            max_memory: 64 * 1024,  // 64KB
-            max_stack: 16 * 1024,   // 16KB
+            max_memory: 64 * 1024, // 64KB
+            max_stack: 16 * 1024,  // 16KB
             max_components: 8,
         }
     }
@@ -52,9 +52,7 @@ pub struct CounterTimeProvider {
 
 impl CounterTimeProvider {
     pub const fn new() -> Self {
-        Self {
-            counter: core::sync::atomic::AtomicU64::new(0),
-        }
+        Self { counter: core::sync::atomic::AtomicU64::new(0) }
     }
 }
 
@@ -79,10 +77,7 @@ pub struct SystemTimeProvider;
 impl TimeProvider for SystemTimeProvider {
     fn current_time_ns(&self) -> u64 {
         use std::time::{SystemTime, UNIX_EPOCH};
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_nanos() as u64)
-            .unwrap_or(0)
+        SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_nanos() as u64).unwrap_or(0)
     }
 }
 
@@ -102,7 +97,7 @@ impl PlatformServices {
             safety_context: SafetyContext::new(AsilLevel::AsilD),
         }
     }
-    
+
     #[cfg(feature = "std")]
     pub fn standard() -> Self {
         static TIME_PROVIDER: SystemTimeProvider = SystemTimeProvider;
@@ -112,7 +107,7 @@ impl PlatformServices {
             safety_context: SafetyContext::new(AsilLevel::QM),
         }
     }
-    
+
     #[cfg(not(feature = "std"))]
     pub fn standard() -> Self {
         Self::minimal()
@@ -138,17 +133,19 @@ pub fn initialize_platform_services(services: PlatformServices) -> Result<()> {
         core::ptr::null_mut(),
         boxed,
         Ordering::AcqRel,
-        Ordering::Acquire
+        Ordering::Acquire,
     ) {
         Ok(_) => Ok(()),
         Err(_) => {
             // Someone else already initialized, clean up our allocation
             #[allow(unsafe_code)] // Required for cleanup
-            unsafe { drop(Box::from_raw(boxed)); }
+            unsafe {
+                drop(Box::from_raw(boxed));
+            }
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_STATE,
-                "Platform services already initialized"
+                "Platform services already initialized",
             ))
         }
     }
@@ -161,7 +158,7 @@ pub fn initialize_platform_services(_services: PlatformServices) -> Result<()> {
     Err(Error::new(
         ErrorCategory::NotSupported,
         codes::NOT_IMPLEMENTED,
-        "Dynamic platform services not supported in pure no_std"
+        "Dynamic platform services not supported in pure no_std",
     ))
 }
 
@@ -170,7 +167,9 @@ pub fn get_platform_services() -> &'static PlatformServices {
     let ptr = PLATFORM_SERVICES.load(Ordering::Acquire);
     if !ptr.is_null() {
         #[allow(unsafe_code)] // Required for pointer dereference
-        unsafe { &*ptr }
+        unsafe {
+            &*ptr
+        }
     } else {
         // Return static minimal services as fallback
         static MINIMAL_TIME_PROVIDER: CounterTimeProvider = CounterTimeProvider::new();

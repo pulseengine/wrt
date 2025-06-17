@@ -395,7 +395,7 @@ impl ComponentAnalyzer for Component {
             exports_count: wrt_foundation::traits::BoundedCapacity::len(&self.exports) as u32,
             aliases_count: 0, // No aliases field in no_std Component
             module_info: wrt_foundation::BoundedVec::new(
-                wrt_foundation::safe_memory::NoStdProvider::<8192>::default()
+                wrt_foundation::safe_memory::NoStdProvider::<8192>::default(),
             )
             .unwrap_or_default(),
             export_info: (),

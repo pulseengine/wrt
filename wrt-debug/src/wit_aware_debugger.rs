@@ -3,10 +3,10 @@
 //! This module extends the runtime debugger with WIT source mapping capabilities,
 //! allowing debugging at the WIT source level rather than just binary level.
 
-#[cfg(feature = "std")]
-use std::{boxed::Box, collections::BTreeMap, format, vec::Vec};
 #[cfg(not(feature = "std"))]
 use alloc::{boxed::Box, collections::BTreeMap, format, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, collections::BTreeMap, format, vec::Vec};
 
 use crate::bounded_debug_infra;
 use wrt_foundation::{safe_managed_alloc, CrateId};
@@ -64,7 +64,10 @@ pub trait WitAwareDebugger: RuntimeDebugger {
     ) -> Option<BoundedString<64, crate::bounded_debug_infra::DebugProvider>>;
 
     /// Get WIT type name for a type ID
-    fn wit_type_name(&self, type_id: TypeId) -> Option<BoundedString<64, crate::bounded_debug_infra::DebugProvider>>;
+    fn wit_type_name(
+        &self,
+        type_id: TypeId,
+    ) -> Option<BoundedString<64, crate::bounded_debug_infra::DebugProvider>>;
 }
 
 /// Implementation of WIT-aware debugger
@@ -324,7 +327,11 @@ impl Default for WitDebugger {
 
 #[cfg(feature = "wit-integration")]
 impl RuntimeDebugger for WitDebugger {
-    fn on_breakpoint(&mut self, bp: &Breakpoint, state: &(dyn RuntimeState + 'static)) -> DebugAction {
+    fn on_breakpoint(
+        &mut self,
+        bp: &Breakpoint,
+        state: &(dyn RuntimeState + 'static),
+    ) -> DebugAction {
         // Update current context
         let pc = state.pc();
         self.current_component = self.find_component_for_address(pc);
@@ -449,7 +456,8 @@ impl WitAwareDebugger for WitDebugger {
         #[cfg(feature = "std")]
         {
             let error_str = error.message.as_str().unwrap_or("Unknown error");
-            let runtime_error = Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, &format!("{}", error_str));
+            let runtime_error =
+                Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, &format!("{}", error_str));
             self.source_map.map_error_to_diagnostic(&runtime_error, error.binary_offset)
         }
         #[cfg(not(feature = "std"))]
@@ -466,7 +474,10 @@ impl WitAwareDebugger for WitDebugger {
         self.functions.get(&function_id).map(|metadata| metadata.name.clone())
     }
 
-    fn wit_type_name(&self, type_id: TypeId) -> Option<BoundedString<64, crate::bounded_debug_infra::DebugProvider>> {
+    fn wit_type_name(
+        &self,
+        type_id: TypeId,
+    ) -> Option<BoundedString<64, crate::bounded_debug_infra::DebugProvider>> {
         self.types.get(&type_id).map(|metadata| metadata.name.clone())
     }
 }

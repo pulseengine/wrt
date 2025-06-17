@@ -103,7 +103,8 @@ pub struct Abbreviation {
 /// DWARF abbreviation table
 pub struct AbbreviationTable {
     /// Cached abbreviations
-    entries: BoundedVec<Abbreviation, MAX_DWARF_ABBREV_CACHE, crate::bounded_debug_infra::DebugProvider>,
+    entries:
+        BoundedVec<Abbreviation, MAX_DWARF_ABBREV_CACHE, crate::bounded_debug_infra::DebugProvider>,
 }
 
 impl AbbreviationTable {

@@ -3,12 +3,12 @@
 //! This module provides source mapping capabilities between WIT source code,
 //! AST nodes, and component binary representations for enhanced debugging.
 
+use crate::bounded_debug_infra;
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::BTreeMap, vec::Vec};
-use crate::bounded_debug_infra;
-use wrt_foundation::safe_managed_alloc;
 #[cfg(all(not(feature = "std")))]
 use std::{boxed::Box, collections::BTreeMap, vec::Vec};
+use wrt_foundation::safe_managed_alloc;
 
 use wrt_foundation::{prelude::*, BoundedString, BoundedVec, NoStdProvider};
 
@@ -331,9 +331,7 @@ impl WitSourceMap {
 
         // TODO: Specify appropriate size for this allocation
 
-
         let guard = safe_managed_alloc!(8192, CrateId::Debug)?;
-
 
         let provider = unsafe { guard.release() };
         let message =
@@ -412,7 +410,10 @@ impl WitSourceFile {
 
     /// Get line by line number (1-based)
     #[cfg(feature = "wit-integration")]
-    pub fn line(&self, line_number: u32) -> Option<&BoundedString<1024, crate::bounded_debug_infra::DebugProvider>> {
+    pub fn line(
+        &self,
+        line_number: u32,
+    ) -> Option<&BoundedString<1024, crate::bounded_debug_infra::DebugProvider>> {
         if line_number == 0 {
             return None;
         }

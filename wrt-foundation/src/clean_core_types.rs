@@ -10,13 +10,13 @@ pub use types::*;
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 mod types {
-    #[cfg(feature = "std")]
-    use std::vec::Vec;
     #[cfg(all(not(feature = "std"), feature = "alloc"))]
     use alloc::vec::Vec;
-    
+    #[cfg(feature = "std")]
+    use std::vec::Vec;
+
     use crate::types::ValueType;
-    
+
     /// Clean core WebAssembly function type without provider parameters
     #[derive(Debug, Clone, PartialEq, Eq, Hash)]
     pub struct CoreFuncType {
@@ -25,7 +25,7 @@ mod types {
         /// Function result types  
         pub results: Vec<ValueType>,
     }
-    
+
     /// Clean core WebAssembly memory type without provider parameters
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct CoreMemoryType {
@@ -34,7 +34,7 @@ mod types {
         /// Whether the memory is shared
         pub shared: bool,
     }
-    
+
     /// Clean core WebAssembly table type without provider parameters
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct CoreTableType {
@@ -43,7 +43,7 @@ mod types {
         /// Table size limits
         pub limits: crate::types::Limits,
     }
-    
+
     /// Clean core WebAssembly global type without provider parameters
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct CoreGlobalType {

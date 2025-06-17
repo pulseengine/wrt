@@ -17,7 +17,6 @@ use wrt_foundation::BoundedCapacity;
 use super::types::ModuleInfo;
 use crate::prelude::*;
 
-
 // Compatibility trait to provide as_bytes() for BoundedString
 #[cfg(not(feature = "std"))]
 pub trait BoundedStringExt {

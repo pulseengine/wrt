@@ -136,12 +136,16 @@ pub fn memory_provider_with_capacity(capacity: usize) -> wrt_foundation::safe_me
     wrt_foundation::safe_memory::StdProvider::with_capacity(capacity)
 }
 
-// Factory function for creating providers using BudgetProvider
+// Factory function for creating providers using capability system
 #[cfg(not(feature = "std"))]
-#[allow(deprecated)] // We need to use deprecated API to avoid unsafe
-pub fn create_format_provider<const N: usize>() -> wrt_foundation::WrtResult<wrt_foundation::NoStdProvider<N>> {
-    use wrt_foundation::{BudgetProvider, CrateId};
-    BudgetProvider::new::<N>(CrateId::Format)
+pub fn create_format_provider<const N: usize>() -> wrt_foundation::WrtResult<wrt_foundation::capabilities::CapabilityAwareProvider<wrt_foundation::NoStdProvider<N>>> {
+    use wrt_foundation::{
+        capability_context, safe_capability_alloc,
+        CrateId
+    };
+    let context: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Format, N));
+    let context = context?;
+    safe_capability_alloc!(context, CrateId::Format, N)
 }
 
 /// The prelude trait

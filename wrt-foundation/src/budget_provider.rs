@@ -1,48 +1,103 @@
-//! Budget Provider Compatibility Layer
-//! 
-//! This module provides compatibility for existing code that expects BudgetProvider
-//! while we transition to the new generic memory system.
+//! Budget Provider Compatibility Layer (DEPRECATED)
+//!
+//! This module has been DEPRECATED in favor of the capability-driven memory system.
+//! Use CapabilityFactoryBuilder and safe_capability_alloc! macro instead.
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+extern crate alloc;
 
 use crate::{
-    safe_memory::NoStdProvider,
     budget_aware_provider::CrateId,
-    wrt_memory_system::WrtProviderFactory,
-    Error, Result,
+    safe_memory::NoStdProvider,
+    verification::VerificationLevel,
+    Result,
 };
 
-/// Compatibility wrapper for budget-aware provider creation
+#[cfg(any(feature = "std", feature = "alloc"))]
+use crate::capabilities::{
+    CapabilityAwareProvider, CapabilityFactoryBuilder, DynamicMemoryCapability, ProviderCapabilityExt
+};
+
+/// DEPRECATED: Use capability-driven memory management instead
+///
+/// This struct is deprecated as it violates capability-based design principles.
+/// Use CapabilityFactoryBuilder and CapabilityMemoryFactory for safe memory management.
+#[deprecated(
+    since = "0.3.0",
+    note = "Use CapabilityFactoryBuilder and safe_capability_alloc! macro instead"
+)]
 pub struct BudgetProvider;
 
+#[allow(deprecated)]
 impl BudgetProvider {
-    /// Create a new provider with budget tracking
+    /// DEPRECATED: Use capability-driven allocation instead
+    ///
+    /// # Migration
+    ///
+    /// Instead of:
+    /// ```ignore
+    /// let provider = BudgetProvider::new::<1024>(crate_id)?;
+    /// ```
+    ///
+    /// Use:
+    /// ```ignore
+    /// let context = capability_context!(dynamic(crate_id, 1024))?;
+    /// let provider = safe_capability_alloc!(context, crate_id, 1024)?;
+    /// ```
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[deprecated(
         since = "0.3.0",
-        note = "Use WrtProviderFactory::create_provider() for new code"
+        note = "Use safe_capability_alloc! macro with capability context"
     )]
-    pub fn new<const N: usize>(crate_id: CrateId) -> Result<NoStdProvider<N>> {
-        // Create through factory
-        let guard = WrtProviderFactory::create_provider::<N>(crate_id)?;
-        
-        // For compatibility, we release the guard
-        // This is not ideal but maintains backward compatibility
-        #[allow(unsafe_code)] // Safe: guard.release() transfers ownership properly
-        Ok(unsafe { guard.release() })
+    pub fn new<const N: usize>(
+        crate_id: CrateId,
+    ) -> Result<CapabilityAwareProvider<NoStdProvider<N>>> {
+        // Create raw provider and wrap with capability
+        use alloc::boxed::Box;
+        use crate::capabilities::DynamicMemoryCapability;
+        use crate::verification::VerificationLevel;
+
+        let provider = NoStdProvider::<N>::new();
+        let capability =
+            Box::new(DynamicMemoryCapability::new(N, crate_id, VerificationLevel::Standard));
+
+        Ok(provider.with_capability(capability, crate_id))
     }
     
-    /// Create with explicit size (for compatibility)
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
     #[deprecated(
-        since = "0.3.0", 
-        note = "Use WrtProviderFactory::create_provider() for new code"
+        since = "0.3.0",
+        note = "Use NoStdProvider::new() directly in no_std environments"
     )]
-    pub fn with_size<const N: usize>(crate_id: CrateId, _size: usize) -> Result<NoStdProvider<N>> {
-        // Create through factory
-        let guard = WrtProviderFactory::create_provider::<N>(crate_id)?;
-        
-        // For compatibility, we release the guard
-        // This is not ideal but maintains backward compatibility
-        #[allow(unsafe_code)] // Safe: guard.release() transfers ownership properly
-        Ok(unsafe { guard.release() })
+    pub fn new<const N: usize>(
+        _crate_id: CrateId,
+    ) -> Result<NoStdProvider<N>> {
+        Ok(NoStdProvider::<N>::new())
+    }
+
+    /// DEPRECATED: Use capability-driven allocation instead
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use safe_capability_alloc! macro with capability context"
+    )]
+    pub fn with_size<const N: usize>(
+        crate_id: CrateId,
+        _size: usize,
+    ) -> Result<CapabilityAwareProvider<NoStdProvider<N>>> {
+        // Ignore the size parameter and use const generic N
+        Self::new::<N>(crate_id)
+    }
+    
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use NoStdProvider::new() directly in no_std environments"
+    )]
+    pub fn with_size<const N: usize>(
+        _crate_id: CrateId,
+        _size: usize,
+    ) -> Result<NoStdProvider<N>> {
+        Ok(NoStdProvider::<N>::new())
     }
 }
-
-// create_provider macro is now defined in macros.rs

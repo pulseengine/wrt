@@ -553,14 +553,14 @@ impl<P: MemoryProvider + Default + Clone> MemoryBuilder<P> {
 /// # Migration Required
 /// This builder has been replaced with the modern WRT memory factory system.
 /// Use `WrtProviderFactory::create_provider::<SIZE>(crate_id)` instead.
-/// 
+///
 /// # Migration Example
 /// ```ignore
 /// // OLD (deprecated):
 /// let provider = NoStdProviderBuilder::<1024>::new()
 ///     .with_verification_level(VerificationLevel::Full)
 ///     .build()?;
-/// 
+///
 /// // NEW (recommended):
 /// let guard = WrtProviderFactory::create_provider_with_verification::<1024>(
 ///     CrateId::YourCrate,
@@ -605,7 +605,7 @@ impl<const N: usize> NoStdProviderBuilder<N> {
     }
 
     /// Sets the verification level (MIGRATION REQUIRED).
-    /// 
+    ///
     /// # Migration
     /// Use `WrtProviderFactory::create_provider_with_verification()` instead.
     #[deprecated(
@@ -617,7 +617,7 @@ impl<const N: usize> NoStdProviderBuilder<N> {
     }
 
     /// Builds a NoStdProvider (MIGRATION REQUIRED).
-    /// 
+    ///
     /// # Migration
     /// This method now returns an error directing users to the new API.
     /// Use `WrtProviderFactory::create_provider::<N>(crate_id)` instead.
@@ -635,7 +635,7 @@ impl<const N: usize> NoStdProviderBuilder<N> {
 }
 
 /// Backwards compatibility type (DEPRECATED).
-/// 
+///
 /// # Migration Required
 /// Use `WrtProviderFactory::create_provider()` instead.
 #[deprecated(
@@ -700,16 +700,16 @@ impl NoStdProviderBuilder1 {
 // Use WrtProviderFactory::create_provider::<SIZE>(crate_id) instead.
 // Examples:
 // - Small: WrtProviderFactory::create_provider::<512>(crate_id)
-// - Medium: WrtProviderFactory::create_provider::<4096>(crate_id) 
+// - Medium: WrtProviderFactory::create_provider::<4096>(crate_id)
 // - Large: WrtProviderFactory::create_provider::<16384>(crate_id)
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(feature = "std")]
-    use std::format;
     #[cfg(all(not(feature = "std"), feature = "alloc"))]
     use alloc::format;
+    #[cfg(feature = "std")]
+    use std::format;
 
     #[test]
     fn test_bounded_builder() {
@@ -723,8 +723,9 @@ mod tests {
 
     #[test]
     fn test_string_builder() {
-        let builder =
-            StringBuilder::<256, NoStdProvider<1024>>::new().with_content("test").with_truncation(true);
+        let builder = StringBuilder::<256, NoStdProvider<1024>>::new()
+            .with_content("test")
+            .with_truncation(true);
 
         let string = builder.build_string().unwrap();
         assert_eq!(string.as_str().unwrap(), "test");
@@ -801,10 +802,13 @@ mod tests {
 
         let result = builder.build();
         assert!(result.is_err(), "Deprecated builder should return an error");
-        
+
         // Verify the error message contains migration guidance
         let error_msg = format!("{}", result.unwrap_err());
-        assert!(error_msg.contains("WrtProviderFactory"), "Error should mention WrtProviderFactory");
+        assert!(
+            error_msg.contains("WrtProviderFactory"),
+            "Error should mention WrtProviderFactory"
+        );
     }
 
     #[test]
@@ -817,9 +821,12 @@ mod tests {
 
         let result = builder.build();
         assert!(result.is_err(), "Deprecated legacy builder should return an error");
-        
+
         // Verify the error message contains migration guidance
         let error_msg = format!("{}", result.unwrap_err());
-        assert!(error_msg.contains("WrtProviderFactory"), "Error should mention WrtProviderFactory");
+        assert!(
+            error_msg.contains("WrtProviderFactory"),
+            "Error should mention WrtProviderFactory"
+        );
     }
 }

@@ -8,7 +8,7 @@ use core::str;
 
 // Conditional imports for different environments
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{WrtVec, CrateId};
+use wrt_foundation::allocator::{CrateId, WrtVec};
 
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
 use std::{format, string::String, vec::Vec};
@@ -728,8 +728,8 @@ pub mod with_alloc {
 
         // Create a minimal valid module with bounded allocation
         #[cfg(feature = "safety-critical")]
-        let mut binary: WrtVec<u8, {CrateId::Format as u8}, {4 * 1024 * 1024}> = WrtVec::new();
-        
+        let mut binary: WrtVec<u8, { CrateId::Format as u8 }, { 4 * 1024 * 1024 }> = WrtVec::new();
+
         #[cfg(not(feature = "safety-critical"))]
         let mut binary = Vec::with_capacity(8);
 
@@ -737,11 +737,13 @@ pub mod with_alloc {
         #[cfg(feature = "safety-critical")]
         {
             for &byte in &WASM_MAGIC {
-                binary.push(byte).map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::CAPACITY_EXCEEDED,
-                    "Binary generation capacity exceeded (magic bytes)"
-                ))?;
+                binary.push(byte).map_err(|_| {
+                    Error::new(
+                        ErrorCategory::Runtime,
+                        codes::CAPACITY_EXCEEDED,
+                        "Binary generation capacity exceeded (magic bytes)",
+                    )
+                })?;
             }
         }
         #[cfg(not(feature = "safety-critical"))]
@@ -751,11 +753,13 @@ pub mod with_alloc {
         #[cfg(feature = "safety-critical")]
         {
             for &byte in &WASM_VERSION {
-                binary.push(byte).map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::CAPACITY_EXCEEDED,
-                    "Binary generation capacity exceeded (version)"
-                ))?;
+                binary.push(byte).map_err(|_| {
+                    Error::new(
+                        ErrorCategory::Runtime,
+                        codes::CAPACITY_EXCEEDED,
+                        "Binary generation capacity exceeded (version)",
+                    )
+                })?;
             }
         }
         #[cfg(not(feature = "safety-critical"))]
@@ -769,7 +773,7 @@ pub mod with_alloc {
         let result = binary.to_vec();
         #[cfg(not(feature = "safety-critical"))]
         let result = binary;
-        
+
         Ok(result)
     }
 

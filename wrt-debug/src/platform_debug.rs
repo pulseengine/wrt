@@ -2,7 +2,6 @@
 //!
 //! Provides debug capabilities that adapt to platform limitations and resources.
 
-
 use wrt_error::Error;
 
 // Stub imports for platform limits - will be replaced during integration

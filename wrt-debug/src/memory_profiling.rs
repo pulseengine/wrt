@@ -20,10 +20,8 @@ use wrt_foundation::no_std_hashmap::BoundedHashMap;
 
 use wrt_foundation::{
     bounded::{BoundedString, BoundedVec},
-    CrateId,
     verification::Checksum,
-    wrt_provider,
-    Result as WrtResult,
+    wrt_provider, CrateId, Result as WrtResult,
 };
 
 use crate::runtime_memory::MemoryInspector;
@@ -97,10 +95,14 @@ impl wrt_foundation::traits::Checksummable for AllocationType {
 
 #[cfg(not(feature = "std"))]
 impl wrt_foundation::traits::ToBytes for AllocationType {
-    fn to_bytes(&self) -> wrt_foundation::bounded::BoundedVec<u8, 32, crate::bounded_debug_infra::DebugProvider> {
+    fn to_bytes(
+        &self,
+    ) -> wrt_foundation::bounded::BoundedVec<u8, 32, crate::bounded_debug_infra::DebugProvider>
+    {
         let mut vec = wrt_foundation::bounded::BoundedVec::new(
-            wrt_provider!(32, CrateId::Debug).unwrap_or_default()
-        ).expect("Failed to create bounded vector");
+            wrt_provider!(32, CrateId::Debug).unwrap_or_default(),
+        )
+        .expect("Failed to create bounded vector");
         let _ = vec.push(*self as u8);
         vec
     }
@@ -212,14 +214,41 @@ impl<'a> MemoryProfiler<'a> {
     pub fn new() -> Self {
         Self {
             allocations: BoundedVec::new(
-                wrt_provider!({ { MAX_ALLOCATION_RECORDS  * 32 } }, CrateId::Debug).unwrap_or_default()
-            ).expect("Failed to create allocations vector"),
+                wrt_provider!(
+                    {
+                        {
+                            MAX_ALLOCATION_RECORDS * 32
+                        }
+                    },
+                    CrateId::Debug
+                )
+                .unwrap_or_default(),
+            )
+            .expect("Failed to create allocations vector"),
             access_records: BoundedVec::new(
-                wrt_provider!({ { MAX_ALLOCATION_RECORDS  * 32 } }, CrateId::Debug).unwrap_or_default()
-            ).expect("Failed to create access records vector"),
+                wrt_provider!(
+                    {
+                        {
+                            MAX_ALLOCATION_RECORDS * 32
+                        }
+                    },
+                    CrateId::Debug
+                )
+                .unwrap_or_default(),
+            )
+            .expect("Failed to create access records vector"),
             perf_samples: BoundedVec::new(
-                wrt_provider!({ { MAX_PERF_SAMPLES  * 32 } }, CrateId::Debug).unwrap_or_default()
-            ).expect("Failed to create perf samples vector"),
+                wrt_provider!(
+                    {
+                        {
+                            MAX_PERF_SAMPLES * 32
+                        }
+                    },
+                    CrateId::Debug
+                )
+                .unwrap_or_default(),
+            )
+            .expect("Failed to create perf samples vector"),
             next_alloc_id: AtomicU32::new(1),
             start_time: Self::get_timestamp(),
             total_allocations: AtomicUsize::new(0),
@@ -389,9 +418,8 @@ impl<'a> MemoryProfiler<'a> {
 
     /// Detect potential memory leaks
     pub fn detect_leaks(&self) -> WrtResult<BoundedVec<LeakInfo, 16, NoStdProvider<{ 16 * 256 }>>> {
-        let mut leaks = BoundedVec::new(
-            wrt_provider!({ 16  * 256 }, CrateId::Debug).unwrap_or_default()
-        )?;
+        let mut leaks =
+            BoundedVec::new(wrt_provider!({ 16 * 256 }, CrateId::Debug).unwrap_or_default())?;
         let current_time = self.get_relative_timestamp();
 
         for alloc in self.allocations.iter() {
@@ -403,7 +431,7 @@ impl<'a> MemoryProfiler<'a> {
             let age = current_time - alloc.timestamp;
             let mut confidence = 0u8;
             let mut reason = BoundedString::<128, crate::bounded_debug_infra::DebugProvider>::new(
-                wrt_provider!(128, CrateId::Debug).unwrap_or_default()
+                wrt_provider!(128, CrateId::Debug).unwrap_or_default(),
             )?;
 
             // Long-lived allocation
@@ -451,12 +479,12 @@ impl<'a> MemoryProfiler<'a> {
 
         #[cfg(not(feature = "std"))]
         let mut crate_stats = BoundedHashMap::<CrateId, usize, 32, NoStdProvider<{ 32 * 64 }>>::new(
-            wrt_provider!({ 32  * 64 }, CrateId::Debug).unwrap_or_default(),
+            wrt_provider!({ 32 * 64 }, CrateId::Debug).unwrap_or_default(),
         );
         #[cfg(not(feature = "std"))]
         let mut type_stats =
             BoundedHashMap::<AllocationType, usize, 16, NoStdProvider<{ 16 * 64 }>>::new(
-                wrt_provider!({ 16  * 64 }, CrateId::Debug).unwrap_or_default(),
+                wrt_provider!({ 16 * 64 }, CrateId::Debug).unwrap_or_default(),
             );
 
         // Analyze active allocations
@@ -543,16 +571,15 @@ impl<'a> MemoryProfiler<'a> {
     fn detect_memory_hotspots(
         &self,
     ) -> WrtResult<BoundedVec<MemoryHotspot, 8, NoStdProvider<{ 8 * 32 }>>> {
-        let mut hotspots = BoundedVec::new(
-            wrt_provider!({ 8  * 32 }, CrateId::Debug).unwrap_or_default()
-        )?;
+        let mut hotspots =
+            BoundedVec::new(wrt_provider!({ 8 * 32 }, CrateId::Debug).unwrap_or_default())?;
 
         // Group accesses by address range
         #[cfg(feature = "std")]
         let mut access_counts = BTreeMap::new();
         #[cfg(not(feature = "std"))]
         let mut access_counts = BoundedHashMap::<usize, usize, 64, NoStdProvider<{ 64 * 32 }>>::new(
-            wrt_provider!({ 64  * 32 }, CrateId::Debug).unwrap_or_default(),
+            wrt_provider!({ 64 * 32 }, CrateId::Debug).unwrap_or_default(),
         );
 
         for access in self.access_records.iter() {
@@ -562,9 +589,7 @@ impl<'a> MemoryProfiler<'a> {
 
         // Find top hotspots
         let mut sorted: BoundedVec<(usize, usize), 32, NoStdProvider<{ 32 * 16 }>> =
-            BoundedVec::new(
-                wrt_provider!({ 32  * 16 }, CrateId::Debug).unwrap_or_default()
-            )?;
+            BoundedVec::new(wrt_provider!({ 32 * 16 }, CrateId::Debug).unwrap_or_default())?;
         for (region, count) in access_counts {
             let _ = sorted.push((region, count));
         }
@@ -603,14 +628,13 @@ impl<'a> MemoryProfiler<'a> {
         #[cfg(feature = "std")]
         let mut operation_times = BTreeMap::new();
         #[cfg(not(feature = "std"))]
-        let mut operation_times = BoundedHashMap::<
-            BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
-            (u64, u32),
-            32,
-            NoStdProvider<{ 32 * 96 }>,
-        >::new(
-            wrt_provider!({ 32  * 96 }, CrateId::Debug).unwrap_or_default()
-        );
+        let mut operation_times =
+            BoundedHashMap::<
+                BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
+                (u64, u32),
+                32,
+                NoStdProvider<{ 32 * 96 }>,
+            >::new(wrt_provider!({ 32 * 96 }, CrateId::Debug).unwrap_or_default());
 
         for sample in self.perf_samples.iter() {
             total_duration += sample.duration;
@@ -623,13 +647,12 @@ impl<'a> MemoryProfiler<'a> {
         }
 
         // Find slowest operations
-        let mut slowest_ops = BoundedVec::<
-            (BoundedString<64, crate::bounded_debug_infra::DebugProvider>, u64),
-            5,
-            NoStdProvider<{ 5 * 72 }>,
-        >::new(
-            wrt_provider!({ 5  * 72 }, CrateId::Debug).unwrap_or_default()
-        )?;
+        let mut slowest_ops =
+            BoundedVec::<
+                (BoundedString<64, crate::bounded_debug_infra::DebugProvider>, u64),
+                5,
+                NoStdProvider<{ 5 * 72 }>,
+            >::new(wrt_provider!({ 5 * 72 }, CrateId::Debug).unwrap_or_default())?;
         for (op, (total_time, count)) in operation_times {
             let avg_time = total_time / count as u64;
             let _ = slowest_ops.push((op, avg_time));
@@ -664,7 +687,7 @@ impl<'a> MemoryProfiler<'a> {
         // In a real implementation, this would use platform-specific
         // stack unwinding. For now, return a dummy stack.
         let mut stack = BoundedVec::new(
-            wrt_provider!({ MAX_CALL_STACK_DEPTH  * 8 }, CrateId::Debug).unwrap_or_default()
+            wrt_provider!({ MAX_CALL_STACK_DEPTH * 8 }, CrateId::Debug).unwrap_or_default(),
         )?;
         let _ = stack.push(0x1000); // Dummy addresses
         let _ = stack.push(0x2000);
@@ -780,8 +803,11 @@ pub struct PerformanceAnalysis {
     /// Memory allocation/deallocation rate per microsecond
     pub memory_churn_rate: u64,
     /// Slowest operations by average time
-    pub slowest_operations:
-        BoundedVec<(BoundedString<64, crate::bounded_debug_infra::DebugProvider>, u64), 5, NoStdProvider<{ 5 * 72 }>>,
+    pub slowest_operations: BoundedVec<
+        (BoundedString<64, crate::bounded_debug_infra::DebugProvider>, u64),
+        5,
+        NoStdProvider<{ 5 * 72 }>,
+    >,
 }
 
 /// Memory profiler instance

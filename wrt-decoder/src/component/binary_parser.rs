@@ -14,7 +14,7 @@ mod component_binary_parser {
 
     use core::fmt;
     use wrt_error::{codes, Error, ErrorCategory, Result};
-    use wrt_format::{component::Component};
+    use wrt_format::component::Component;
 
     // Import ValidationLevel from foundation if available, otherwise define locally
     pub use wrt_foundation::VerificationLevel as ValidationLevel;

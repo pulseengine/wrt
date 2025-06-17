@@ -145,7 +145,7 @@ pub use helpers::*;
 
 // Re-export ASIL types when enabled
 #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
-pub use asil::{AsilLevel, AsilErrorContext};
+pub use asil::{AsilErrorContext, AsilLevel};
 
 #[cfg(any(feature = "asil-c", feature = "asil-d"))]
 pub use asil::SafetyMonitor;

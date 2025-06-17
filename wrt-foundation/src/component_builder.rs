@@ -10,7 +10,6 @@
 //! This module provides builders for complex types in the WebAssembly Component
 //! Model, ensuring proper initialization, validation, and resource management.
 
-
 #[cfg(all(not(feature = "std")))]
 extern crate alloc;
 
@@ -404,7 +403,8 @@ pub struct NamespaceBuilder<P: MemoryProvider + Default + Clone + PartialEq + Eq
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for NamespaceBuilder<P> {
     fn default() -> Self {
         let provider = P::default();
-        let elements = BoundedVec::new(provider.clone()).expect("Failed to create BoundedVec with default provider");
+        let elements = BoundedVec::new(provider.clone())
+            .expect("Failed to create BoundedVec with default provider");
         Self { provider, elements }
     }
 }
@@ -502,14 +502,20 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTypeBuilder<P
     }
 
     /// Configures this as a record resource type with the given field names.
-    pub fn as_record(mut self, field_names: BoundedVec<BoundedString<MAX_WASM_NAME_LENGTH, P>, 32, P>) -> Self {
+    pub fn as_record(
+        mut self,
+        field_names: BoundedVec<BoundedString<MAX_WASM_NAME_LENGTH, P>, 32, P>,
+    ) -> Self {
         self.variant = Some(ResourceTypeVariant::Record(field_names));
         self
     }
 
     /// Configures this as an aggregate resource type with the given resource
     /// IDs.
-    pub fn as_aggregate(mut self, resource_ids: BoundedVec<u32, { crate::resource::MAX_RESOURCE_AGGREGATE_IDS }, P>) -> Self {
+    pub fn as_aggregate(
+        mut self,
+        resource_ids: BoundedVec<u32, { crate::resource::MAX_RESOURCE_AGGREGATE_IDS }, P>,
+    ) -> Self {
         self.variant = Some(ResourceTypeVariant::Aggregate(resource_ids));
         self
     }
@@ -544,7 +550,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTypeBuilder<P
     }
 }
 
-#[cfg(all(test, ))]
+#[cfg(all(test,))]
 mod tests {
     use super::*;
     use crate::{safe_memory::NoStdProvider, traits::BoundedCapacity};
@@ -598,7 +604,7 @@ mod tests {
         let field_name = BoundedString::from_str("field", provider.clone()).unwrap();
         let mut field_names = BoundedVec::new(provider.clone()).unwrap();
         field_names.push(field_name).unwrap();
-        
+
         let resource_type = ResourceTypeBuilder::new()
             .with_provider(provider.clone())
             .as_record(field_names)
@@ -615,7 +621,7 @@ mod tests {
         resource_ids.push(1).unwrap();
         resource_ids.push(2).unwrap();
         resource_ids.push(3).unwrap();
-        
+
         let resource_type = ResourceTypeBuilder::new()
             .with_provider(provider.clone())
             .as_aggregate(resource_ids)

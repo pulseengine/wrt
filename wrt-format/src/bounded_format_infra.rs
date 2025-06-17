@@ -3,11 +3,10 @@
 //! This module provides bounded alternatives for format collections
 //! to ensure static memory allocation throughout the format structures.
 
-
 use wrt_foundation::{
     bounded::{BoundedString, BoundedVec},
-    safe_memory::NoStdProvider,
     no_std_hashmap::BoundedHashMap,
+    safe_memory::NoStdProvider,
     WrtResult,
 };
 

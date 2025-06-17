@@ -1,15 +1,15 @@
 //! Modern Memory Initialization System
-//! 
+//!
 //! This module provides automatic memory system initialization that works
 //! across all crates in the WRT ecosystem with zero boilerplate.
-//! 
+//!
 //! SW-REQ-ID: REQ_MEM_001 - Memory bounds checking
 //! SW-REQ-ID: REQ_MEM_002 - Budget enforcement
 
 use crate::{
     budget_aware_provider::CrateId,
-    wrt_memory_system::{WRT_MEMORY_COORDINATOR, WrtMemoryCoordinator},
     budget_verification::{CRATE_BUDGETS, TOTAL_MEMORY_BUDGET},
+    wrt_memory_system::{WrtMemoryCoordinator, WRT_MEMORY_COORDINATOR},
     Error, Result,
 };
 use core::sync::atomic::{AtomicBool, Ordering};
@@ -25,14 +25,14 @@ pub struct MemoryInitializer;
 
 impl MemoryInitializer {
     /// Initialize the entire WRT memory system
-    /// 
+    ///
     /// This is called once at startup and configures all crate budgets
     pub fn initialize() -> Result<()> {
         // Check if already initialized
         if MEMORY_INITIALIZED.swap(true, Ordering::AcqRel) {
             return Ok(()); // Already initialized
         }
-        
+
         // Create budget configuration
         let budgets = [
             (CrateId::Foundation, CRATE_BUDGETS[0]),
@@ -53,7 +53,7 @@ impl MemoryInitializer {
             (CrateId::VerificationTool, CRATE_BUDGETS[15]),
             (CrateId::Unknown, CRATE_BUDGETS[16]),
         ];
-        
+
         // Initialize coordinator
         match WRT_MEMORY_COORDINATOR.initialize(budgets.iter().copied(), TOTAL_MEMORY_BUDGET) {
             Ok(()) => Ok(()),
@@ -68,18 +68,20 @@ impl MemoryInitializer {
             }
         }
     }
-    
+
     /// Check if memory system is initialized
     pub fn is_initialized() -> bool {
         MEMORY_INITIALIZED.load(Ordering::Acquire)
     }
-    
+
     /// Get initialization error if any
     pub fn get_error() -> Option<&'static str> {
         #[allow(unsafe_code)] // Safe: read-only access to static
-        unsafe { INIT_ERROR }
+        unsafe {
+            INIT_ERROR
+        }
     }
-    
+
     /// Force reinitialization (for testing only)
     #[cfg(test)]
     pub fn reset() {
@@ -91,7 +93,7 @@ impl MemoryInitializer {
 }
 
 /// Macro to ensure memory system is initialized
-/// 
+///
 /// This macro can be placed at the beginning of any function that uses
 /// memory allocation to ensure the system is ready.
 #[macro_export]
@@ -104,7 +106,7 @@ macro_rules! ensure_memory_init {
 }
 
 /// Attribute macro for automatic memory initialization
-/// 
+///
 /// Place this on functions that need memory allocation
 #[macro_export]
 macro_rules! memory_safe {
@@ -132,41 +134,41 @@ pub fn init_wrt_memory() -> Result<()> {
 pub fn init_crate_memory(crate_id: CrateId) -> Result<()> {
     // Ensure global system is initialized
     MemoryInitializer::initialize()?;
-    
+
     // Verify crate is properly configured
     let budget = WRT_MEMORY_COORDINATOR.get_crate_budget(crate_id);
     if budget == 0 {
         return Err(Error::new(
             crate::ErrorCategory::Initialization,
             crate::codes::INITIALIZATION_ERROR,
-            "Crate has zero budget"
+            "Crate has zero budget",
         ));
     }
-    
+
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_memory_initialization() {
         MemoryInitializer::reset();
-        
+
         assert!(!MemoryInitializer::is_initialized());
-        
+
         MemoryInitializer::initialize().unwrap();
-        
+
         assert!(MemoryInitializer::is_initialized());
     }
-    
+
     #[test]
     fn test_crate_initialization() {
         MemoryInitializer::reset();
-        
+
         init_crate_memory(CrateId::Component).unwrap();
-        
+
         assert!(MemoryInitializer::is_initialized());
         assert!(WRT_MEMORY_COORDINATOR.get_crate_budget(CrateId::Component) > 0);
     }

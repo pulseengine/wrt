@@ -17,10 +17,10 @@
 use crate::safety_system::AsilLevel;
 
 // Import appropriate types based on environment
-#[cfg(feature = "std")]
-use std::{sync::Mutex, vec::Vec};
 #[cfg(not(feature = "std"))]
 use core::sync::atomic::{AtomicBool, Ordering};
+#[cfg(feature = "std")]
+use std::{sync::Mutex, vec::Vec};
 
 // For no_std mode, use bounded collections
 #[cfg(not(feature = "std"))]
@@ -138,7 +138,7 @@ pub fn register_asil_test(metadata: AsilTestMetadata) {
             reg.push(metadata);
         }
     }
-    
+
     #[cfg(all(feature = "alloc", not(feature = "std")))]
     {
         init_test_registry();
@@ -148,7 +148,7 @@ pub fn register_asil_test(metadata: AsilTestMetadata) {
             }
         }
     }
-    
+
     #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
     {
         init_test_registry();
@@ -174,7 +174,7 @@ pub fn get_asil_tests() -> Vec<AsilTestMetadata> {
         let registry = TEST_REGISTRY.lock().unwrap();
         registry.as_ref().map_or_else(Vec::new, |reg| reg.clone())
     }
-    
+
     #[cfg(all(feature = "alloc", not(feature = "std")))]
     {
         init_test_registry();
@@ -204,10 +204,7 @@ pub fn get_asil_tests() -> [Option<AsilTestMetadata>; MAX_TESTS_NO_STD] {
 /// Get tests by ASIL level
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub fn get_tests_by_asil(level: AsilLevel) -> Vec<AsilTestMetadata> {
-    get_asil_tests()
-        .into_iter()
-        .filter(|test| test.asil_level == level)
-        .collect()
+    get_asil_tests().into_iter().filter(|test| test.asil_level == level).collect()
 }
 
 /// Get tests by ASIL level (no_std version)
@@ -216,7 +213,7 @@ pub fn get_tests_by_asil(level: AsilLevel) -> [Option<AsilTestMetadata>; MAX_TES
     let all_tests = get_asil_tests();
     let mut result = [None; MAX_TESTS_NO_STD];
     let mut result_idx = 0;
-    
+
     for test in all_tests.iter() {
         if let Some(test) = test {
             if test.asil_level == level && result_idx < MAX_TESTS_NO_STD {
@@ -231,19 +228,18 @@ pub fn get_tests_by_asil(level: AsilLevel) -> [Option<AsilTestMetadata>; MAX_TES
 /// Get tests by category
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub fn get_tests_by_category(category: TestCategory) -> Vec<AsilTestMetadata> {
-    get_asil_tests()
-        .into_iter()
-        .filter(|test| test.category == category)
-        .collect()
+    get_asil_tests().into_iter().filter(|test| test.category == category).collect()
 }
 
 /// Get tests by category (no_std version)
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-pub fn get_tests_by_category(category: TestCategory) -> [Option<AsilTestMetadata>; MAX_TESTS_NO_STD] {
+pub fn get_tests_by_category(
+    category: TestCategory,
+) -> [Option<AsilTestMetadata>; MAX_TESTS_NO_STD] {
     let all_tests = get_asil_tests();
     let mut result = [None; MAX_TESTS_NO_STD];
     let mut result_idx = 0;
-    
+
     for test in all_tests.iter() {
         if let Some(test) = test {
             if test.category == category && result_idx < MAX_TESTS_NO_STD {
@@ -261,10 +257,10 @@ pub fn get_test_statistics() -> TestStatistics {
     {
         let tests = get_asil_tests();
         let mut stats = TestStatistics::default();
-        
+
         for test in tests {
             stats.total_count += 1;
-            
+
             match test.asil_level {
                 AsilLevel::QM => stats.qm_count += 1,
                 AsilLevel::AsilA => stats.asil_a_count += 1,
@@ -272,7 +268,7 @@ pub fn get_test_statistics() -> TestStatistics {
                 AsilLevel::AsilC => stats.asil_c_count += 1,
                 AsilLevel::AsilD => stats.asil_d_count += 1,
             }
-            
+
             match test.category {
                 TestCategory::Unit => stats.unit_count += 1,
                 TestCategory::Integration => stats.integration_count += 1,
@@ -282,19 +278,19 @@ pub fn get_test_statistics() -> TestStatistics {
                 TestCategory::Resource => stats.resource_count += 1,
             }
         }
-        
+
         stats
     }
-    
+
     #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
     {
         let tests = get_asil_tests();
         let mut stats = TestStatistics::default();
-        
+
         for test_opt in tests.iter() {
             if let Some(test) = test_opt {
                 stats.total_count += 1;
-                
+
                 match test.asil_level {
                     AsilLevel::QM => stats.qm_count += 1,
                     AsilLevel::AsilA => stats.asil_a_count += 1,
@@ -302,7 +298,7 @@ pub fn get_test_statistics() -> TestStatistics {
                     AsilLevel::AsilC => stats.asil_c_count += 1,
                     AsilLevel::AsilD => stats.asil_d_count += 1,
                 }
-                
+
                 match test.category {
                     TestCategory::Unit => stats.unit_count += 1,
                     TestCategory::Integration => stats.integration_count += 1,
@@ -313,7 +309,7 @@ pub fn get_test_statistics() -> TestStatistics {
                 }
             }
         }
-        
+
         stats
     }
 }
@@ -355,7 +351,7 @@ macro_rules! asil_test {
                 category: $category,
                 description: $desc,
             });
-            
+
             // Run the actual test
             $test_body
         }
@@ -458,22 +454,22 @@ mod tests {
         unsafe {
             TEST_REGISTRY = Mutex::new(Some(Vec::new()));
         }
-        
+
         #[cfg(not(feature = "std"))]
         unsafe {
             TEST_REGISTRY = Some([None; MAX_TESTS_NO_STD]);
         }
-        
+
         let metadata = AsilTestMetadata {
             asil_level: AsilLevel::AsilC,
             requirement_id: "REQ_TEST_001",
             category: TestCategory::Unit,
             description: "Test ASIL registration",
         };
-        
+
         register_asil_test(metadata.clone());
         let tests = get_asil_tests();
-        
+
         assert_eq!(tests.len(), 1);
         assert_eq!(tests[0], metadata);
     }
@@ -485,12 +481,12 @@ mod tests {
         unsafe {
             TEST_REGISTRY = Mutex::new(Some(Vec::new()));
         }
-        
+
         #[cfg(not(feature = "std"))]
         unsafe {
             TEST_REGISTRY = Some([None; MAX_TESTS_NO_STD]);
         }
-        
+
         // Register tests at different ASIL levels
         register_asil_test(AsilTestMetadata {
             asil_level: AsilLevel::AsilC,
@@ -498,18 +494,18 @@ mod tests {
             category: TestCategory::Unit,
             description: "ASIL-C test",
         });
-        
+
         register_asil_test(AsilTestMetadata {
             asil_level: AsilLevel::AsilD,
             requirement_id: "REQ_D_001",
             category: TestCategory::Safety,
             description: "ASIL-D test",
         });
-        
+
         let asil_c_tests = get_tests_by_asil(AsilLevel::AsilC);
         let asil_d_tests = get_tests_by_asil(AsilLevel::AsilD);
         let safety_tests = get_tests_by_category(TestCategory::Safety);
-        
+
         assert_eq!(asil_c_tests.len(), 1);
         assert_eq!(asil_d_tests.len(), 1);
         assert_eq!(safety_tests.len(), 1);
@@ -543,7 +539,7 @@ mod tests {
     fn test_statistics_generation() {
         // This test relies on the example tests above being registered
         let stats = get_test_statistics();
-        
+
         // Should have at least the tests from this module
         assert!(stats.total_count >= 2);
         assert!(stats.asil_c_count >= 1);

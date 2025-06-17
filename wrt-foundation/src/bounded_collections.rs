@@ -529,23 +529,20 @@ where
         // Note: This is a simplified implementation that doesn't provide true mut access
         // due to the complexity of BoundedVec's serialization model.
         // In practice, you'd need to get, modify, and re-insert the value.
-        Err(BoundedError::new(BoundedErrorKind::CapacityExceeded, "get_mut not supported due to serialization constraints"))
+        Err(BoundedError::new(
+            BoundedErrorKind::CapacityExceeded,
+            "get_mut not supported due to serialization constraints",
+        ))
     }
 
     /// Returns an iterator over the values in the map.
     pub fn values(&self) -> BoundedMapValues<K, V, N_ELEMENTS, P> {
-        BoundedMapValues {
-            map: self,
-            index: 0,
-        }
+        BoundedMapValues { map: self, index: 0 }
     }
 
     /// Entry API for in-place manipulation of a map entry.
     pub fn entry(&mut self, key: K) -> BoundedMapEntry<K, V, N_ELEMENTS, P> {
-        BoundedMapEntry {
-            map: self,
-            key,
-        }
+        BoundedMapEntry { map: self, key }
     }
 }
 
@@ -560,7 +557,8 @@ where
     index: usize,
 }
 
-impl<'a, K, V, const N_ELEMENTS: usize, P: MemoryProvider> Iterator for BoundedMapValues<'a, K, V, N_ELEMENTS, P>
+impl<'a, K, V, const N_ELEMENTS: usize, P: MemoryProvider> Iterator
+    for BoundedMapValues<'a, K, V, N_ELEMENTS, P>
 where
     K: Sized + Checksummable + ToBytes + FromBytes + Default + Eq + Clone + PartialEq,
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
@@ -3384,14 +3382,14 @@ where
     fn clone(&self) -> Self {
         let mut new_map = Self::new(P::default()).unwrap();
         new_map.verification_level = self.verification_level;
-        
+
         // Clone all entries
         for i in 0..self.entries.len() {
             if let Ok((k, v)) = self.entries.get(i) {
                 drop(new_map.insert(k, v));
             }
         }
-        
+
         new_map
     }
 }
@@ -3406,7 +3404,7 @@ where
         if self.len() != other.len() {
             return false;
         }
-        
+
         for i in 0..self.entries.len() {
             if let (Ok((k1, v1)), Ok((k2, v2))) = (self.entries.get(i), other.entries.get(i)) {
                 if k1 != k2 || v1 != v2 {
@@ -3414,7 +3412,7 @@ where
                 }
             }
         }
-        
+
         true
     }
 }
@@ -3427,7 +3425,8 @@ where
 {
 }
 
-impl<K, V, const N_ELEMENTS: usize, P: MemoryProvider> Checksummable for BoundedMap<K, V, N_ELEMENTS, P>
+impl<K, V, const N_ELEMENTS: usize, P: MemoryProvider> Checksummable
+    for BoundedMap<K, V, N_ELEMENTS, P>
 where
     K: Sized + Checksummable + ToBytes + FromBytes + Default + Eq + Clone + PartialEq,
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
@@ -3451,7 +3450,11 @@ where
     P: Default + Clone + PartialEq + Eq,
 {
     fn serialized_size(&self) -> usize {
-        4 + self.entries.iter().map(|(k, v)| k.serialized_size() + v.serialized_size()).sum::<usize>()
+        4 + self
+            .entries
+            .iter()
+            .map(|(k, v)| k.serialized_size() + v.serialized_size())
+            .sum::<usize>()
     }
 
     fn to_bytes_with_provider<'a, PROV: MemoryProvider>(
@@ -3483,15 +3486,15 @@ where
         let mut len_bytes = [0u8; 4];
         reader.read_exact(&mut len_bytes)?;
         let len = u32::from_le_bytes(len_bytes) as usize;
-        
+
         let mut map = Self::new(P::default())?;
-        
+
         for _ in 0..len.min(N_ELEMENTS) {
             let k = K::from_bytes_with_provider(reader, provider)?;
             let v = V::from_bytes_with_provider(reader, provider)?;
             drop(map.insert(k, v));
         }
-        
+
         Ok(map)
     }
 }

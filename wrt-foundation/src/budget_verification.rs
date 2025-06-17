@@ -10,25 +10,25 @@ pub const CRATE_COUNT: usize = 19;
 /// Per-crate memory budgets (in bytes)
 /// These are compile-time constants for verification
 pub const CRATE_BUDGETS: [usize; CRATE_COUNT] = [
-    256 * 1024,      // Foundation: 256 KiB
-    512 * 1024,      // Decoder: 512 KiB
-    1024 * 1024,     // Runtime: 1 MiB
-    1024 * 1024,     // Component: 1 MiB
-    256 * 1024,      // Host: 256 KiB
-    128 * 1024,      // Debug: 128 KiB
-    256 * 1024,      // Platform: 256 KiB
-    128 * 1024,      // Instructions: 128 KiB
-    256 * 1024,      // Format: 256 KiB
-    128 * 1024,      // Intercept: 128 KiB
-    64 * 1024,       // Sync: 64 KiB
-    64 * 1024,       // Math: 64 KiB
-    64 * 1024,       // Logging: 64 KiB
-    32 * 1024,       // Panic: 32 KiB
-    64 * 1024,       // TestRegistry: 64 KiB
-    64 * 1024,       // VerificationTool: 64 KiB
-    128 * 1024,      // Unknown/Reserve: 128 KiB
-    4 * 1024 * 1024, // Wasi: 4 MiB
-    16 * 1024 * 1024,// WasiComponents: 16 MiB
+    256 * 1024,       // Foundation: 256 KiB
+    512 * 1024,       // Decoder: 512 KiB
+    1024 * 1024,      // Runtime: 1 MiB
+    1024 * 1024,      // Component: 1 MiB
+    256 * 1024,       // Host: 256 KiB
+    128 * 1024,       // Debug: 128 KiB
+    256 * 1024,       // Platform: 256 KiB
+    128 * 1024,       // Instructions: 128 KiB
+    256 * 1024,       // Format: 256 KiB
+    128 * 1024,       // Intercept: 128 KiB
+    64 * 1024,        // Sync: 64 KiB
+    64 * 1024,        // Math: 64 KiB
+    64 * 1024,        // Logging: 64 KiB
+    32 * 1024,        // Panic: 32 KiB
+    64 * 1024,        // TestRegistry: 64 KiB
+    64 * 1024,        // VerificationTool: 64 KiB
+    128 * 1024,       // Unknown/Reserve: 128 KiB
+    4 * 1024 * 1024,  // Wasi: 4 MiB
+    16 * 1024 * 1024, // WasiComponents: 16 MiB
 ];
 
 /// Total system memory budget based on platform
@@ -50,7 +50,7 @@ pub const TOTAL_MEMORY_BUDGET: usize = 64 * 1024 * 1024; // 64 MB for embedded A
 
 #[cfg(not(any(
     target_os = "linux",
-    target_os = "macos", 
+    target_os = "macos",
     target_os = "qnx",
     target_os = "vxworks",
     all(target_arch = "arm", target_os = "none")
@@ -62,13 +62,13 @@ pub const TOTAL_MEMORY_BUDGET: usize = 128 * 1024 * 1024; // 128 MB default
 pub const fn calculate_total_budget() -> usize {
     let mut total = 0;
     let mut i = 0;
-    
+
     // Const loop to sum all budgets
     while i < CRATE_COUNT {
         total += CRATE_BUDGETS[i];
         i += 1;
     }
-    
+
     total
 }
 
@@ -94,9 +94,9 @@ const fn validate_total_budget() {
 const _: () = validate_total_budget();
 
 /// Macro to verify crate budget at compile time
-/// 
+///
 /// # Example
-/// 
+///
 /// ```rust,ignore
 /// verify_crate_budget!(CrateId::Component, 64 * 1024);
 /// ```
@@ -122,12 +122,12 @@ macro_rules! verify_crate_budget {
 }
 
 /// Macro to initialize crate memory at runtime
-/// 
+///
 /// This macro should be called once at crate initialization to register
 /// the crate with the memory coordinator.
-/// 
+///
 /// # Example
-/// 
+///
 /// ```rust,ignore
 /// init_crate_memory!(CrateId::Component);
 /// ```
@@ -138,8 +138,8 @@ macro_rules! init_crate_memory {
         #[cfg(all(not(test), feature = "ctor"))]
         #[ctor::ctor]
         fn __init_crate_memory() {
-            use $crate::memory_budget::{MEMORY_COORDINATOR, CrateId};
-            
+            use $crate::memory_budget::{CrateId, MEMORY_COORDINATOR};
+
             // Register crate with coordinator
             if let Err(e) = MEMORY_COORDINATOR.register_crate($crate_id) {
                 // Can't panic in ctor, so we need a different strategy
@@ -147,12 +147,12 @@ macro_rules! init_crate_memory {
                 defmt::error!("Failed to register crate {:?}: {:?}", $crate_id, e);
             }
         }
-        
+
         // Manual initialization function for platforms without ctor
         #[cfg(not(feature = "ctor"))]
         pub fn init_memory() {
-            use $crate::memory_budget::{MEMORY_COORDINATOR, CrateId};
-            
+            use $crate::memory_budget::{CrateId, MEMORY_COORDINATOR};
+
             // Register crate with coordinator
             if let Err(e) = MEMORY_COORDINATOR.register_crate($crate_id) {
                 // Log error but don't panic
@@ -185,12 +185,12 @@ impl BudgetReport {
     pub const fn remaining_memory(&self) -> usize {
         self.total_system_memory - self.total_allocated
     }
-    
+
     /// Get allocation percentage
     pub const fn allocation_percentage(&self) -> u8 {
         ((self.total_allocated * 100) / self.total_system_memory) as u8
     }
-    
+
     /// Check if over-allocated
     pub const fn is_over_allocated(&self) -> bool {
         self.total_allocated > self.total_system_memory
@@ -200,13 +200,13 @@ impl BudgetReport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_budget_calculation() {
         let total = calculate_total_budget();
         assert!(total <= TOTAL_MEMORY_BUDGET);
     }
-    
+
     #[test]
     fn test_budget_report() {
         let report = generate_budget_report();
@@ -219,10 +219,10 @@ mod tests {
 #[cfg(all(test, feature = "compile-time-checks"))]
 mod compile_checks {
     use super::*;
-    
+
     // This would fail at compile time if Component budget < 64KB
     verify_crate_budget!(CrateId::Component, 64 * 1024);
-    
-    // This would fail at compile time if Runtime budget < 128KB  
+
+    // This would fail at compile time if Runtime budget < 128KB
     verify_crate_budget!(CrateId::Runtime, 128 * 1024);
 }

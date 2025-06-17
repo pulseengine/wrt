@@ -3,10 +3,14 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
+use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::bounded::BoundedVec;
 use wrt_foundation::budget_aware_provider::CrateId;
-use wrt_foundation::wrt_memory_system::WrtProviderFactory;
+use wrt_foundation::capabilities::{CapabilityAwareProvider, safe_capability_alloc, capability_context};
+use wrt_foundation::safe_memory::NoStdProvider;
 
+/// Type alias for capability-aware buffer provider
+type BufferProvider = CapabilityAwareProvider<NoStdProvider<65536>>;
 
 /// Maximum number of buffer size classes
 pub const MAX_BUFFER_SIZE_CLASSES: usize = 8;
@@ -31,15 +35,14 @@ pub struct BufferSizeClass {
     /// Size of buffers in this class
     pub size: usize,
     /// Actual buffers
-    pub buffers: BoundedVec<u8, MAX_BUFFERS_PER_CLASS, NoStdProvider<65536>>,
+    pub buffers: BoundedVec<u8, MAX_BUFFERS_PER_CLASS, BufferProvider>,
 }
 
 impl BufferSizeClass {
     /// Create a new buffer size class
     pub fn new(size: usize) -> Result<Self> {
-        let guard = WrtProviderFactory::create_provider::<65536>(CrateId::Component)?;
-        // Extract provider from guard (we'll keep the guard alive)
-        let provider = unsafe { guard.release() };
+        let context = capability_context!(dynamic(CrateId::Component, 65536))?;
+        let provider = safe_capability_alloc!(context, CrateId::Component, 65536)?;
         Ok(Self { 
             size, 
             buffers: BoundedVec::new(provider).map_err(|_| Error::new(
@@ -51,7 +54,7 @@ impl BufferSizeClass {
     }
 
     /// Get a buffer from this size class if one is available
-    pub fn get_buffer(&mut self) -> Option<BoundedVec<u8, MAX_BUFFERS_PER_CLASS, NoStdProvider<65536>>, NoStdProvider<65536>> {
+    pub fn get_buffer(&mut self) -> Option<BoundedVec<u8, MAX_BUFFERS_PER_CLASS, BufferProvider>, BufferProvider> {
         if self.buffers.is_empty() {
             None
         } else {
@@ -63,7 +66,7 @@ impl BufferSizeClass {
     }
 
     /// Return a buffer to this size class
-    pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS, NoStdProvider<65536>>) -> core::result::Result<(), NoStdProvider<65536>> {
+    pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS, BufferProvider>) -> core::result::Result<(), BufferProvider> {
         if self.buffers.len() >= MAX_BUFFERS_PER_CLASS {
             // Size class is full
             return Ok(());
@@ -109,7 +112,7 @@ impl BoundedBufferPool {
     }
 
     /// Allocate a buffer of at least the specified size
-    pub fn allocate(&mut self, size: usize) -> core::result::Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS, NoStdProvider<65536>>, NoStdProvider<65536>> {
+    pub fn allocate(&mut self, size: usize) -> core::result::Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS, BufferProvider>, BufferProvider> {
         // Find a size class that can fit this buffer
         let matching_class = self.find_size_class(size);
 
@@ -123,13 +126,18 @@ impl BoundedBufferPool {
         }
 
         // No suitable buffer found, create a new one
-        let guard = WrtProviderFactory::create_provider::<65536>(CrateId::Component)
+        let context = capability_context!(dynamic(CrateId::Component, 65536))
+            .map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ERROR,
+                "Failed to create capability context for buffer"
+            ))?;
+        let provider = safe_capability_alloc!(context, CrateId::Component, 65536)
             .map_err(|_| Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ERROR,
                 "Failed to allocate memory provider for buffer"
             ))?;
-        let provider = unsafe { guard.release() };
         let mut buffer = BoundedVec::new(provider).map_err(|_| Error::new(
             ErrorCategory::Memory,
             codes::MEMORY_ERROR,
@@ -149,7 +157,7 @@ impl BoundedBufferPool {
     }
 
     /// Return a buffer to the pool
-    pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS, NoStdProvider<65536>>) -> core::result::Result<(), NoStdProvider<65536>> {
+    pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS, BufferProvider>) -> core::result::Result<(), BufferProvider> {
         let size = buffer.capacity();
 
         // Find the appropriate size class

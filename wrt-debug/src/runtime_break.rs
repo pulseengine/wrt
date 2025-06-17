@@ -19,7 +19,8 @@ use crate::{
 /// Breakpoint manager for runtime debugging
 pub struct BreakpointManager {
     /// Active breakpoints
-    breakpoints: BoundedVec<Breakpoint, MAX_DWARF_FILE_TABLE, crate::bounded_debug_infra::DebugProvider>,
+    breakpoints:
+        BoundedVec<Breakpoint, MAX_DWARF_FILE_TABLE, crate::bounded_debug_infra::DebugProvider>,
     /// Next breakpoint ID
     next_id: u32,
     /// Global enable/disable

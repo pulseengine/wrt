@@ -4,15 +4,14 @@
 //! features to track memory usage in a WRT application.
 
 use wrt_foundation::{
-    memory_system_initializer,
+    bounded::{BoundedMap, BoundedString, BoundedVec},
     budget_aware_provider::{BudgetAwareProviderFactory, CrateId},
     budget_provider::BudgetProvider,
     budget_visualization::{
-        BudgetVisualizer, DebugDumper, VisualizationConfig, VisualizationFormat,
-        quick_ascii_dump, quick_debug_dump
+        quick_ascii_dump, quick_debug_dump, BudgetVisualizer, DebugDumper, VisualizationConfig,
+        VisualizationFormat,
     },
-    bounded::{BoundedVec, BoundedString, BoundedMap},
-    WrtResult,
+    memory_system_initializer, WrtResult,
 };
 
 #[cfg(feature = "std")]
@@ -82,62 +81,62 @@ fn main() -> WrtResult<()> {
     Ok(())
 }
 
-fn simulate_foundation_startup() -> WrtResult<Vec<BudgetProvider<{64 * 1024}>>> {
+fn simulate_foundation_startup() -> WrtResult<Vec<BudgetProvider<{ 64 * 1024 }>>> {
     let mut providers = Vec::new();
-    
+
     // Simulate core foundation allocations
     for i in 0..3 {
         let provider = wrt_foundation::monitor_operation!(
             format!("Foundation allocation {}", i),
-            BudgetProvider::<{64 * 1024}>::new(CrateId::Foundation)
+            BudgetProvider::<{ 64 * 1024 }>::new(CrateId::Foundation)
         )?;
         providers.push(provider);
-        
+
         #[cfg(feature = "std")]
         thread::sleep(Duration::from_millis(100));
     }
-    
+
     Ok(providers)
 }
 
-fn simulate_runtime_loading() -> WrtResult<Vec<BudgetProvider<{256 * 1024}>>> {
+fn simulate_runtime_loading() -> WrtResult<Vec<BudgetProvider<{ 256 * 1024 }>>> {
     let mut providers = Vec::new();
-    
+
     // Simulate runtime module loading
     for i in 0..4 {
         let provider = wrt_foundation::monitor_operation!(
             format!("Runtime module {}", i),
-            BudgetProvider::<{256 * 1024}>::new(CrateId::Runtime)
+            BudgetProvider::<{ 256 * 1024 }>::new(CrateId::Runtime)
         )?;
         providers.push(provider);
-        
+
         #[cfg(feature = "std")]
         thread::sleep(Duration::from_millis(150));
     }
-    
+
     Ok(providers)
 }
 
 fn simulate_component_instantiation() -> WrtResult<Vec<Box<dyn core::any::Any>>> {
     let mut allocations: Vec<Box<dyn core::any::Any>> = Vec::new();
-    
+
     // Simulate component type definitions
     for i in 0..2 {
-        let provider = BudgetProvider::<{128 * 1024}>::new(CrateId::Component)?;
+        let provider = BudgetProvider::<{ 128 * 1024 }>::new(CrateId::Component)?;
         let component_types = BoundedMap::<u32, BoundedString<64, _>, 50, _>::new(provider)?;
         allocations.push(Box::new(component_types));
-        
+
         #[cfg(feature = "std")]
         thread::sleep(Duration::from_millis(100));
     }
-    
+
     // Simulate decoder buffers
     for i in 0..3 {
-        let provider = BudgetProvider::<{64 * 1024}>::new(CrateId::Decoder)?;
+        let provider = BudgetProvider::<{ 64 * 1024 }>::new(CrateId::Decoder)?;
         let decode_buffer = BoundedVec::<u8, 32768, _>::new(provider)?;
         allocations.push(Box::new(decode_buffer));
     }
-    
+
     Ok(allocations)
 }
 
@@ -166,11 +165,8 @@ fn demonstrate_visualization_formats() -> WrtResult<()> {
     };
     let json_output = BudgetVisualizer::generate_visualization(json_config)?;
     // Show first 200 characters
-    let preview = if json_output.len() > 200 {
-        format!("{}...", &json_output[..200])
-    } else {
-        json_output
-    };
+    let preview =
+        if json_output.len() > 200 { format!("{}...", &json_output[..200]) } else { json_output };
     println!("{}\n", preview);
 
     // Markdown format (for documentation)
@@ -194,15 +190,15 @@ fn demonstrate_monitoring_macros() -> WrtResult<()> {
 
     // Monitor a complex operation
     let result = wrt_foundation::monitor_operation!("Complex allocation operation", {
-        let provider1 = BudgetProvider::<{32 * 1024}>::new(CrateId::Format)?;
-        let provider2 = BudgetProvider::<{64 * 1024}>::new(CrateId::Host)?;
-        
+        let provider1 = BudgetProvider::<{ 32 * 1024 }>::new(CrateId::Format)?;
+        let provider2 = BudgetProvider::<{ 64 * 1024 }>::new(CrateId::Host)?;
+
         let vec1 = BoundedVec::<u32, 1000, _>::new(provider1)?;
         let vec2 = BoundedVec::<u8, 8000, _>::new(provider2)?;
-        
+
         (vec1, vec2)
     });
-    
+
     let (_vec1, _vec2) = result?;
 
     // Print current memory status
@@ -210,7 +206,7 @@ fn demonstrate_monitoring_macros() -> WrtResult<()> {
 
     // Assert reasonable memory usage
     wrt_foundation::assert_memory_usage!(total < 50 * 1024 * 1024, "Total memory too high");
-    
+
     // Check memory health
     wrt_foundation::check_memory_health!("Macro demonstration");
 
@@ -228,10 +224,10 @@ fn demonstrate_monitoring_macros() -> WrtResult<()> {
 
 fn simulate_memory_pressure() -> WrtResult<()> {
     let mut pressure_allocations = Vec::new();
-    
+
     // Try to allocate large chunks until we hit limits
     for i in 0..10 {
-        match BudgetProvider::<{1024 * 1024}>::new(CrateId::Platform) {
+        match BudgetProvider::<{ 1024 * 1024 }>::new(CrateId::Platform) {
             Ok(provider) => {
                 println!("  ✅ Large allocation {} succeeded", i + 1);
                 pressure_allocations.push(provider);
@@ -242,29 +238,29 @@ fn simulate_memory_pressure() -> WrtResult<()> {
             }
         }
     }
-    
+
     // Show state under pressure
     println!("📊 Memory State Under Pressure:");
     println!("{}", quick_ascii_dump()?);
-    
+
     Ok(())
 }
 
 #[cfg(feature = "std")]
 fn save_reports_example() -> WrtResult<()> {
     use std::fs;
-    
+
     println!("💾 Saving visualization reports...");
-    
+
     // Create output directory
     fs::create_dir_all("./demo_reports")?;
-    
+
     // Save different formats
     wrt_foundation::save_visualization!("./demo_reports/budget_report.html", Html);
     wrt_foundation::save_visualization!("./demo_reports/budget_data.json", Json);
     wrt_foundation::save_visualization!("./demo_reports/budget_data.csv", Csv);
     wrt_foundation::save_visualization!("./demo_reports/budget_report.md", Markdown);
-    
+
     println!("✅ Reports saved to ./demo_reports/");
     Ok(())
 }

@@ -7,14 +7,10 @@
 //! This module contains parsers for various sections in WebAssembly modules
 //! using bounded collections for static memory allocation.
 
-
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::{
     binary::{self},
-    module::{
-        DataMode, ExportKind,
-        ElementInit,
-    },
+    module::{DataMode, ElementInit, ExportKind},
     types::{parse_value_type, RefType},
 };
 
@@ -28,13 +24,11 @@ use wrt_foundation::{
 };
 
 use wrt_format::{
-    module::Export as WrtExport, DataSegment as WrtDataSegment, ElementSegment as WrtElementSegment,
-    WasmString,
+    module::Export as WrtExport, DataSegment as WrtDataSegment,
+    ElementSegment as WrtElementSegment, WasmString,
 };
 
-use crate::memory_optimized::{
-    check_bounds_u32, safe_usize_conversion,
-};
+use crate::memory_optimized::{check_bounds_u32, safe_usize_conversion};
 use crate::optimized_string::parse_utf8_string_inplace;
 
 // Import bounded infrastructure
@@ -93,7 +87,9 @@ pub mod parsers {
     use super::*;
 
     /// Parse a type section with bounded memory
-    pub fn parse_type_section(bytes: &[u8]) -> Result<BoundedTypeVec<WrtFuncType<DecoderProvider>>> {
+    pub fn parse_type_section(
+        bytes: &[u8],
+    ) -> Result<BoundedTypeVec<WrtFuncType<DecoderProvider>>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
 
         check_bounds_u32(count, MAX_TYPES as u32, "type count")?;
@@ -184,22 +180,42 @@ pub mod parsers {
             // For now, we'll create a placeholder
             // Convert to the correct BoundedVec type for FuncType
             let provider = DecoderProvider::default();
-            let mut func_type_params = BoundedVec::<wrt_format::types::ValueType, 128, DecoderProvider>::new(provider.clone()).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Failed to create params vector")
-            })?;
-            let mut func_type_results = BoundedVec::<wrt_format::types::ValueType, 128, DecoderProvider>::new(provider.clone()).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Failed to create results vector")
-            })?;
-            
+            let mut func_type_params =
+                BoundedVec::<wrt_format::types::ValueType, 128, DecoderProvider>::new(
+                    provider.clone(),
+                )
+                .map_err(|_| {
+                    Error::new(
+                        ErrorCategory::Memory,
+                        codes::MEMORY_ERROR,
+                        "Failed to create params vector",
+                    )
+                })?;
+            let mut func_type_results =
+                BoundedVec::<wrt_format::types::ValueType, 128, DecoderProvider>::new(
+                    provider.clone(),
+                )
+                .map_err(|_| {
+                    Error::new(
+                        ErrorCategory::Memory,
+                        codes::MEMORY_ERROR,
+                        "Failed to create results vector",
+                    )
+                })?;
+
             // Copy parameters
             for i in 0..params.len() {
                 if let Ok(param) = params.get(i) {
                     func_type_params.push(param).map_err(|_| {
-                        Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many parameters")
+                        Error::new(
+                            ErrorCategory::Memory,
+                            codes::MEMORY_ERROR,
+                            "Too many parameters",
+                        )
                     })?;
                 }
             }
-            
+
             // Copy results
             for i in 0..results.len() {
                 if let Ok(result) = results.get(i) {
@@ -208,11 +224,8 @@ pub mod parsers {
                     })?;
                 }
             }
-            
-            let func_type = WrtFuncType {
-                params: func_type_params,
-                results: func_type_results,
-            };
+
+            let func_type = WrtFuncType { params: func_type_params, results: func_type_results };
 
             format_func_types.push(func_type).map_err(|_| {
                 Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many function types")
@@ -243,7 +256,9 @@ pub mod parsers {
     }
 
     /// Parse an import section with bounded memory
-    pub fn parse_import_section(bytes: &[u8]) -> Result<BoundedImportVec<WrtImport<DecoderProvider>>> {
+    pub fn parse_import_section(
+        bytes: &[u8],
+    ) -> Result<BoundedImportVec<WrtImport<DecoderProvider>>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
 
         check_bounds_u32(count, MAX_IMPORTS as u32, "import count")?;
@@ -281,7 +296,8 @@ pub mod parsers {
                 }
                 0x01 => {
                     // Table import
-                    let (table_type, new_offset) = (wrt_foundation::TableType::default(), offset + 1); // TODO: Implement table type parsing
+                    let (table_type, new_offset) =
+                        (wrt_foundation::TableType::default(), offset + 1); // TODO: Implement table type parsing
                     offset = new_offset;
                     // Convert to WrtTableType - needs implementation
                     WrtImportDesc::Table(table_type)
@@ -291,18 +307,19 @@ pub mod parsers {
                     let (mem_limits, new_offset) = parse_limits(bytes, offset)?;
                     offset = new_offset;
                     // Convert to MemoryType
-                    let memory_type = WrtMemoryType { 
+                    let memory_type = WrtMemoryType {
                         limits: wrt_foundation::types::Limits {
                             min: mem_limits.min as u32,
                             max: mem_limits.max.map(|v| v as u32),
                         },
-                        shared: mem_limits.shared 
+                        shared: mem_limits.shared,
                     };
                     WrtImportDesc::Memory(memory_type)
                 }
                 0x03 => {
                     // Global import
-                    let (global_type, new_offset) = (wrt_foundation::GlobalType::default(), offset + 1); // TODO: Implement global type parsing
+                    let (global_type, new_offset) =
+                        (wrt_foundation::GlobalType::default(), offset + 1); // TODO: Implement global type parsing
                     offset = new_offset;
                     // Convert to WrtGlobalType - needs implementation
                     WrtImportDesc::Global(global_type)
@@ -331,12 +348,8 @@ pub mod parsers {
             let item_name = WasmName::from_str(field_str, provider.clone()).map_err(|_| {
                 Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Item name too long")
             })?;
-            
-            let wrt_import = WrtImport {
-                module_name,
-                item_name,
-                desc: import_desc,
-            };
+
+            let wrt_import = WrtImport { module_name, item_name, desc: import_desc };
 
             format_imports.push(wrt_import).map_err(|_| {
                 Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many imports")
@@ -473,12 +486,8 @@ pub mod parsers {
             let export_name = WasmString::from_str(name_str, string_provider).map_err(|_| {
                 Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Export name too long")
             })?;
-            
-            let export = WrtExport {
-                name: export_name,
-                kind,
-                index,
-            };
+
+            let export = WrtExport { name: export_name, kind, index };
 
             exports.push(export).map_err(|_| {
                 Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many exports")

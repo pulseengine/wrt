@@ -90,8 +90,7 @@ pub use wrt_foundation::{
 // Re-export clean types only when allocation is available
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use wrt_foundation::{
-    CleanValType, CleanFuncType, CleanGlobalType, 
-    CleanMemoryType, CleanTableType, CleanValue,
+    CleanFuncType, CleanGlobalType, CleanMemoryType, CleanTableType, CleanValType, CleanValue,
 };
 
 // Most re-exports temporarily disabled for demo
@@ -114,7 +113,8 @@ pub type String = BoundedString<256, wrt_foundation::NoStdProvider<4096>>;
 // Factory function for creating providers using BudgetProvider
 #[cfg(not(feature = "std"))]
 #[allow(deprecated)] // We need to use deprecated API to avoid unsafe
-pub fn create_decoder_provider<const N: usize>() -> wrt_foundation::WrtResult<wrt_foundation::NoStdProvider<N>> {
+pub fn create_decoder_provider<const N: usize>(
+) -> wrt_foundation::WrtResult<wrt_foundation::NoStdProvider<N>> {
     use wrt_foundation::{BudgetProvider, CrateId};
     BudgetProvider::new::<N>(CrateId::Decoder)
 }
@@ -147,11 +147,8 @@ macro_rules! format {
         // In pure no_std, return a simple bounded string
         use wrt_foundation::{BoundedString, NoStdProvider};
         if let Ok(provider) = $crate::prelude::create_decoder_provider::<512>() {
-            BoundedString::<256, NoStdProvider<512>>::from_str(
-                "formatted_string",
-                provider,
-            )
-            .unwrap_or_default()
+            BoundedString::<256, NoStdProvider<512>>::from_str("formatted_string", provider)
+                .unwrap_or_default()
         } else {
             BoundedString::<256, NoStdProvider<512>>::default()
         }
@@ -174,14 +171,14 @@ pub mod binary {
 /// Binary utilities for no_std environments
 #[cfg(not(feature = "std"))]
 pub mod binary {
-    use wrt_foundation::{BoundedVec, NoStdProvider};
     use super::create_decoder_provider;
+    use wrt_foundation::{BoundedVec, NoStdProvider};
 
     /// Write LEB128 u32 in no_std mode
     pub fn write_leb128_u32(value: u32) -> BoundedVec<u8, 10, NoStdProvider<64>> {
         if let Ok(provider) = create_decoder_provider::<64>() {
-            let mut result = BoundedVec::new(provider)
-                .expect("Failed to create bounded vec for LEB128");
+            let mut result =
+                BoundedVec::new(provider).expect("Failed to create bounded vec for LEB128");
             let mut buffer = [0u8; 10];
             // Simple LEB128 encoding for no_std
             let mut bytes_written = 0;
@@ -216,8 +213,7 @@ pub mod binary {
     pub fn write_string(_s: &str) -> BoundedVec<u8, 256, NoStdProvider<512>> {
         if let Ok(provider) = create_decoder_provider::<512>() {
             // Simplified no_std implementation
-            BoundedVec::new(provider)
-                .expect("Failed to create bounded vec for string")
+            BoundedVec::new(provider).expect("Failed to create bounded vec for string")
         } else {
             BoundedVec::default()
         }
@@ -310,8 +306,7 @@ pub trait BoundedVecExt<T, const N: usize, P: wrt_foundation::MemoryProvider> {
 }
 
 #[cfg(not(feature = "std"))]
-impl<T, const N: usize, P> BoundedVecExt<T, N, P> 
-    for wrt_foundation::bounded::BoundedVec<T, N, P>
+impl<T, const N: usize, P> BoundedVecExt<T, N, P> for wrt_foundation::bounded::BoundedVec<T, N, P>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes

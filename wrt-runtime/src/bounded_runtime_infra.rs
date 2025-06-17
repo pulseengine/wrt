@@ -6,18 +6,23 @@
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
-    safe_managed_alloc,
     bounded_collections::BoundedMap,
     safe_memory::NoStdProvider,
-    budget_provider::BudgetProvider,
     budget_aware_provider::CrateId,
+    capabilities::{CapabilityAwareProvider, capability_context, safe_capability_alloc},
     traits::{Checksummable, ToBytes, FromBytes},
     WrtResult,
 };
 use wrt_error::{Error, ErrorCategory, codes};
 
 /// Budget-aware memory provider for runtime (256KB)
-pub type RuntimeProvider = NoStdProvider<131072>;
+pub type RuntimeProvider = CapabilityAwareProvider<NoStdProvider<131072>>;
+
+/// Helper function to create a capability-aware provider for runtime
+fn create_runtime_provider() -> WrtResult<RuntimeProvider> {
+    let context = capability_context!(dynamic(CrateId::Runtime, 131072))?;
+    safe_capability_alloc!(context, CrateId::Runtime, 131072)
+}
 
 /// Maximum number of runtime instances
 pub const MAX_RUNTIME_INSTANCES: usize = 64;
@@ -202,7 +207,7 @@ pub fn new_runtime_vec<T>() -> WrtResult<BoundedRuntimeVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedVec::new(provider)
 }
 
@@ -211,7 +216,7 @@ pub fn new_module_vec<T>() -> WrtResult<BoundedModuleVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedVec::new(provider)
 }
 
@@ -220,7 +225,7 @@ pub fn new_function_vec<T>() -> WrtResult<BoundedFunctionVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedVec::new(provider)
 }
 
@@ -229,7 +234,7 @@ pub fn new_memory_vec<T>() -> WrtResult<BoundedMemoryVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedVec::new(provider)
 }
 
@@ -238,7 +243,7 @@ pub fn new_table_vec<T>() -> WrtResult<BoundedTableVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedVec::new(provider)
 }
 
@@ -247,7 +252,7 @@ pub fn new_global_vec<T>() -> WrtResult<BoundedGlobalVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedVec::new(provider)
 }
 
@@ -256,7 +261,7 @@ pub fn new_thread_vec<T>() -> WrtResult<BoundedThreadVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedVec::new(provider)
 }
 
@@ -265,7 +270,7 @@ pub fn new_call_stack_vec<T>() -> WrtResult<BoundedCallStackVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedVec::new(provider)
 }
 
@@ -274,31 +279,31 @@ pub fn new_execution_context_vec<T>() -> WrtResult<BoundedExecutionContextVec<T>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded module name
 pub fn new_module_name() -> WrtResult<BoundedModuleName> {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedString::from_str("", provider).map_err(|e| Error::new(ErrorCategory::Memory, codes::SERIALIZATION_ERROR, "Failed to create bounded string"))
 }
 
 /// Create a bounded module name from str
 pub fn bounded_module_name_from_str(s: &str) -> WrtResult<BoundedModuleName> {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedString::from_str(s, provider).map_err(|e| Error::new(ErrorCategory::Memory, codes::SERIALIZATION_ERROR, "Failed to create bounded string"))
 }
 
 /// Create a new bounded function name
 pub fn new_function_name() -> WrtResult<BoundedFunctionName> {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedString::from_str("", provider).map_err(|e| Error::new(ErrorCategory::Memory, codes::SERIALIZATION_ERROR, "Failed to create bounded string"))
 }
 
 /// Create a bounded function name from str
 pub fn bounded_function_name_from_str(s: &str) -> WrtResult<BoundedFunctionName> {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedString::from_str(s, provider).map_err(|e| Error::new(ErrorCategory::Memory, codes::SERIALIZATION_ERROR, "Failed to create bounded string"))
 }
 
@@ -307,7 +312,7 @@ pub fn new_branch_prediction_map<V>() -> WrtResult<BoundedBranchPredictionMap<V>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedMap::new(provider)
 }
 
@@ -316,7 +321,7 @@ pub fn new_function_predictor_map<V>() -> WrtResult<BoundedFunctionPredictorMap<
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedMap::new(provider)
 }
 
@@ -325,7 +330,7 @@ pub fn new_interpreter_opt_map<V>() -> WrtResult<BoundedInterpreterOptMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedMap::new(provider)
 }
 
@@ -334,7 +339,7 @@ pub fn new_atomic_op_map<V>() -> WrtResult<BoundedAtomicOpMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedMap::new(provider)
 }
 
@@ -343,7 +348,7 @@ pub fn new_module_map<V>() -> WrtResult<BoundedModuleMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedMap::new(provider)
 }
 
@@ -352,7 +357,7 @@ pub fn new_import_map<V>() -> WrtResult<BoundedImportMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedMap::new(provider)
 }
 
@@ -361,7 +366,7 @@ pub fn new_export_map<V>() -> WrtResult<BoundedExportMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedMap::new(provider)
 }
 
@@ -370,6 +375,6 @@ pub fn new_thread_map<V>() -> WrtResult<BoundedThreadMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     BoundedMap::new(provider)
 }
