@@ -4,8 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-.. warning::
-   **Development Status**: PulseEngine is not published to crates.io. Source installation only.
+> **⚠️ Source Installation Only**: PulseEngine is not published to crates.io yet. See the [Installation Guide](../docs/source/getting_started/installation.rst) for detailed setup instructions.
 
 ## Overview
 
@@ -23,11 +22,13 @@ PulseEngine (WRT Edition) provides WebAssembly infrastructure implemented in pur
 
 ## Quick Start
 
-**Source Installation Only** (not published to crates.io):
+For comprehensive installation instructions, see the [Installation Guide](../docs/source/getting_started/installation.rst).
+
+### Add to Your Project
 
 ```toml
 [dependencies]
-wrt = { path = "path/to/wrt" }
+wrt = { path = "path/to/wrt" }  # Point to local clone
 ```
 
 ### Basic Usage

@@ -13,21 +13,25 @@ A pure Rust implementation of WebAssembly infrastructure designed for safety-cri
 
 ## Quick Start
 
+For comprehensive installation instructions, see the [Installation Guide](docs/source/getting_started/installation.rst).
+
 ### Prerequisites
 
 - Rust 1.86.0 or newer
 - [just](https://github.com/casey/just) command runner
 
-### Building
+### Building from Source
 
 ```bash
+# Clone repository
+git clone https://github.com/pulseengine/wrt
+cd wrt
+
 # Build everything
 just build
-# Or directly: cargo build --workspace
 
 # Run tests
-cargo xtask run-tests
-# Or via just: just ci-test
+just ci-test
 
 # Run example
 just test-wrtd-example
@@ -35,11 +39,11 @@ just test-wrtd-example
 
 ### Usage
 
-Add PulseEngine to your `Cargo.toml`:
+**Note**: PulseEngine is currently available only as source code. Add it to your project:
 
 ```toml
 [dependencies]
-wrt = { path = "wrt" }  # Use appropriate version/path
+wrt = { path = "path/to/wrt" }  # Point to local clone
 ```
 
 Basic usage:

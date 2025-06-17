@@ -30,6 +30,10 @@ A comprehensive WebAssembly runtime daemon with support for WASI, component mode
 
 ## Installation
 
+For comprehensive installation instructions, see the [Installation Guide](../docs/source/getting_started/installation.rst).
+
+### Building from Source
+
 ```bash
 # Build all variants
 cargo build --release
