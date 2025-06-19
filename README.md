@@ -97,6 +97,16 @@ cargo-wrt coverage --html --open
 
 ## Development
 
+Setup development environment:
+
+```bash
+# Setup git hooks for code quality checks
+cargo-wrt setup --hooks
+
+# Setup all development tools
+cargo-wrt setup --all
+```
+
 See the [Developer Guide](docs/source/development/) for detailed development instructions.
 
 Common commands:

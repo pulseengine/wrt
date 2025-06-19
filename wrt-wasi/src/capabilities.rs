@@ -5,7 +5,7 @@
 //! can access. Built on WRT's bounded collections for memory safety.
 
 use wrt_foundation::{
-    BoundedVec, BoundedString, safety_aware_alloc,
+    BoundedVec, BoundedString, safe_managed_alloc,
     safe_memory::NoStdProvider,
     capabilities::CapabilityAwareProvider,
 };
@@ -97,7 +97,7 @@ pub struct WasiFileSystemCapabilities {
 impl WasiFileSystemCapabilities {
     /// Create minimal filesystem capabilities (no access)
     pub fn minimal() -> Result<Self> {
-        let provider = safety_aware_alloc!(8192, WASI_CRATE_ID)?;
+        let provider = safe_managed_alloc!(8192, WASI_CRATE_ID)?;
         Ok(Self {
             allowed_paths: BoundedVec::new(provider)?,
             read_access: false,
@@ -109,7 +109,7 @@ impl WasiFileSystemCapabilities {
     
     /// Create read-only filesystem capabilities
     pub fn read_only() -> Result<Self> {
-        let provider = safety_aware_alloc!(8192, WASI_CRATE_ID)?;
+        let provider = safe_managed_alloc!(8192, WASI_CRATE_ID)?;
         Ok(Self {
             allowed_paths: BoundedVec::new(provider)?,
             read_access: true,
@@ -121,7 +121,7 @@ impl WasiFileSystemCapabilities {
     
     /// Create full filesystem access capabilities
     pub fn full_access() -> Result<Self> {
-        let provider = safety_aware_alloc!(8192, WASI_CRATE_ID)?;
+        let provider = safe_managed_alloc!(8192, WASI_CRATE_ID)?;
         Ok(Self {
             allowed_paths: BoundedVec::new(provider)?,
             read_access: true,
@@ -181,7 +181,7 @@ pub struct WasiEnvironmentCapabilities {
 impl WasiEnvironmentCapabilities {
     /// Create minimal environment capabilities (no access)
     pub fn minimal() -> Result<Self> {
-        let provider = safety_aware_alloc!(8192, WASI_CRATE_ID)?;
+        let provider = safe_managed_alloc!(8192, WASI_CRATE_ID)?;
         Ok(Self {
             args_access: false,
             environ_access: false,
@@ -191,7 +191,7 @@ impl WasiEnvironmentCapabilities {
     
     /// Create args-only environment capabilities
     pub fn args_only() -> Result<Self> {
-        let provider = safety_aware_alloc!(8192, WASI_CRATE_ID)?;
+        let provider = safe_managed_alloc!(8192, WASI_CRATE_ID)?;
         Ok(Self {
             args_access: true,
             environ_access: false,
@@ -201,7 +201,7 @@ impl WasiEnvironmentCapabilities {
     
     /// Create full environment access capabilities
     pub fn full_access() -> Result<Self> {
-        let provider = safety_aware_alloc!(8192, WASI_CRATE_ID)?;
+        let provider = safe_managed_alloc!(8192, WASI_CRATE_ID)?;
         Ok(Self {
             args_access: true,
             environ_access: true,

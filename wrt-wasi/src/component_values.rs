@@ -24,4 +24,8 @@ pub enum Value {
     List(Vec<Value>),
     /// Record (struct) with named fields
     Record(Vec<(String, Value)>),
+    /// Tuple of values
+    Tuple(Vec<Value>),
+    /// Optional value
+    Option(Option<Box<Value>>),
 }

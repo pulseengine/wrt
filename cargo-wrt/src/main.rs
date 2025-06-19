@@ -264,6 +264,17 @@ enum Commands {
         #[arg(short, long)]
         verbose: bool,
     },
+    
+    /// Setup development environment
+    Setup {
+        /// Setup git hooks
+        #[arg(long)]
+        hooks: bool,
+        
+        /// Setup all development tools
+        #[arg(long)]
+        all: bool,
+    },
 }
 
 /// ASIL level arguments for CLI
@@ -381,6 +392,9 @@ async fn main() -> Result<()> {
         },
         Commands::Validate { check_test_files, check_docs, all, verbose } => {
             cmd_validate(&build_system, check_test_files, check_docs, all, verbose).await
+        },
+        Commands::Setup { hooks, all } => {
+            cmd_setup(&build_system, hooks, all).await
         },
     };
 
@@ -896,6 +910,58 @@ async fn cmd_validate(
     
     if any_failed {
         anyhow::bail!("Validation checks failed");
+    }
+    
+    Ok(())
+}
+
+/// Setup command implementation
+async fn cmd_setup(
+    build_system: &BuildSystem,
+    hooks: bool,
+    all: bool,
+) -> Result<()> {
+    use std::fs;
+    use std::process::Command;
+    
+    println!("{} Setting up development environment...", "🔧".bright_blue());
+    
+    let workspace_root = build_system.workspace_root();
+    
+    if all || hooks {
+        println!("{} Configuring git hooks...", "🪝".bright_cyan());
+        
+        // Check if .githooks directory exists
+        let githooks_dir = workspace_root.join(".githooks");
+        if !githooks_dir.exists() {
+            fs::create_dir(&githooks_dir)
+                .context("Failed to create .githooks directory")?;
+        }
+        
+        // Configure git to use .githooks directory
+        let mut git_cmd = Command::new("git");
+        git_cmd.args(["config", "core.hooksPath", ".githooks"])
+            .current_dir(workspace_root);
+        
+        let output = git_cmd.output()
+            .context("Failed to configure git hooks")?;
+        
+        if output.status.success() {
+            println!("{} Git hooks configured successfully!", "✅".bright_green());
+            println!("  Pre-commit hook will prevent test files in src/ directories");
+            println!();
+            println!("  To bypass hooks temporarily (not recommended), use:");
+            println!("    git commit --no-verify");
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("Failed to configure git hooks: {}", stderr);
+        }
+    }
+    
+    if !all && !hooks {
+        println!("{} No setup options specified. Available options:", "ℹ️".bright_blue());
+        println!("  --hooks    Setup git hooks");
+        println!("  --all      Setup all development tools");
     }
     
     Ok(())

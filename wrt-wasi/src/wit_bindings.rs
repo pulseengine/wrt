@@ -112,7 +112,7 @@ pub mod io_types {
 
 /// WASI random types from WIT
 pub mod random_types {
-    /// No special types for random interface
+    // No special types for random interface
 }
 
 /// WASI sockets types from WIT (Preview3)

@@ -7,7 +7,7 @@ use crate::prelude::*;
 use wrt_foundation::{
     safe_memory::NoStdProvider,
     resource::{Resource, ResourceRepr, ResourceOperation},
-    capabilities::{CapabilityAwareProvider, capability_context, safe_capability_alloc},
+    capabilities::CapabilityAwareProvider,
     traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream},
     verification::Checksum,
     CrateId, Result as WrtResult,
@@ -111,8 +111,10 @@ pub struct WasiResourceCapabilities {
 impl WasiResourceManager {
     /// Create a new WASI resource manager
     pub fn new() -> Result<Self> {
-        let context = capability_context!(dynamic(CrateId::WrtWasi, 8192))?;
-        let provider = safe_capability_alloc!(context, CrateId::WrtWasi, 8192)?;
+        // TODO: Replace with proper capability context when available
+        let provider = CapabilityAwareProvider::new(
+            NoStdProvider::<8192>::new()
+        );
         let resources = BoundedMap::new(provider.clone())?;
         
         Ok(Self {

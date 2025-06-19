@@ -63,7 +63,7 @@ pub use wrt_foundation::{safety_aware_alloc, safe_managed_alloc, CrateId};
 use wrt_foundation::safety_features::{allocation::MEMORY_STRATEGY, runtime};
 
 /// WASI-specific crate ID for memory allocation tracking
-pub const WASI_CRATE_ID: CrateId = CrateId::new("wrt-wasi");
+pub const WASI_CRATE_ID: CrateId = CrateId::Wasi;
 
 /// Get the current safety level for WASI operations
 pub const fn wasi_safety_level() -> &'static str {

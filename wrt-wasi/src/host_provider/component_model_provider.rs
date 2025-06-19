@@ -5,10 +5,11 @@
 //! Uses safety-aware allocation and respects configured safety levels.
 
 use crate::{prelude::*, WASI_CRATE_ID, wasi_safety_level};
+use crate::capabilities::WasiCapabilities;
 use wrt_host::{HostFunctionHandler, CloneableFn};
 use crate::HostFunction;
 use wrt_format::component::ExternType;
-use wrt_foundation::safety_aware_alloc;
+use wrt_foundation::safe_managed_alloc;
 
 /// Component model provider for WASI Preview2
 ///
