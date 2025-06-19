@@ -77,6 +77,30 @@ jobs:
       - name: Generate Safety Summary for Documentation
         run: cargo-wrt verify --asil c --detailed # Safety summary is generated automatically
 
+  code_quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+      - name: Install cargo-wrt
+        run: |
+          cargo build --package cargo-wrt
+          cargo install --path cargo-wrt
+      - name: Check for test files in src/
+        run: cargo-wrt validate --check-test-files
+      - name: Check module documentation coverage
+        run: cargo-wrt validate --check-docs
+      - name: Check code formatting
+        run: cargo fmt --all -- --check
+      - name: Run clippy checks
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
   core_tests_and_analysis:
     name: Core Tests, Analysis & Coverage
     runs-on: ubuntu-latest
@@ -110,6 +134,8 @@ jobs:
           cargo install --path cargo-wrt
       - name: Run Tests
         run: cargo-wrt test
+      - name: Run Code Validation Checks
+        run: cargo-wrt validate --all
       - name: Check Unused Dependencies
         run: cargo-wrt check --strict
       - name: Run Security Audit

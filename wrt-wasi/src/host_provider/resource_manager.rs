@@ -5,11 +5,13 @@
 
 use crate::prelude::*;
 use wrt_foundation::{
-    Resource, ResourceRepr, ResourceOperation,
+    safe_memory::NoStdProvider,
+    resource::{Resource, ResourceRepr, ResourceOperation},
     capabilities::{CapabilityAwareProvider, capability_context, safe_capability_alloc},
     traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream},
     verification::Checksum,
     CrateId, Result as WrtResult,
+    BoundedMap, BoundedVec, BoundedString,
 };
 use core::any::Any;
 
@@ -27,22 +29,22 @@ pub enum WasiResourceType {
     Null,
     /// File descriptor
     FileDescriptor {
-        path: BoundedString<256>,
+        path: BoundedString<256, CapabilityAwareProvider<NoStdProvider<8192>>>,
         readable: bool,
         writable: bool,
     },
     /// Directory handle
     DirectoryHandle {
-        path: BoundedString<256>,
+        path: BoundedString<256, CapabilityAwareProvider<NoStdProvider<8192>>>,
     },
     /// Input stream
     InputStream {
-        name: BoundedString<64>,
+        name: BoundedString<64, CapabilityAwareProvider<NoStdProvider<8192>>>,
         position: u64,
     },
     /// Output stream
     OutputStream {
-        name: BoundedString<64>,
+        name: BoundedString<64, CapabilityAwareProvider<NoStdProvider<8192>>>,
         position: u64,
     },
     /// Clock handle
@@ -75,7 +77,7 @@ pub enum WasiClockType {
 #[derive(Debug)]
 pub struct WasiResourceManager {
     /// Resource table using WRT foundation patterns
-    resources: BoundedMap<WasiHandle, WasiResource, MAX_WASI_RESOURCES>,
+    resources: BoundedMap<WasiHandle, WasiResource, MAX_WASI_RESOURCES, CapabilityAwareProvider<NoStdProvider<8192>>>,
     /// Next available handle ID
     next_handle: WasiHandle,
     /// Memory provider for allocations
@@ -94,7 +96,7 @@ pub struct WasiResource {
 }
 
 /// Capabilities for WASI resources
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WasiResourceCapabilities {
     /// Can read from this resource
     pub readable: bool,

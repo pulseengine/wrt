@@ -47,6 +47,7 @@ pub mod matrix;
 pub mod memory;
 pub mod requirements;
 pub mod test;
+pub mod validation;
 pub mod verify;
 
 // Public API

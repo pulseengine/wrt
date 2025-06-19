@@ -4,7 +4,11 @@
 //! host applications to specify exactly what system resources WASI modules
 //! can access. Built on WRT's bounded collections for memory safety.
 
-use wrt_foundation::{BoundedVec, BoundedString, safety_aware_alloc};
+use wrt_foundation::{
+    BoundedVec, BoundedString, safety_aware_alloc,
+    safe_memory::NoStdProvider,
+    capabilities::CapabilityAwareProvider,
+};
 use crate::{prelude::*, WASI_CRATE_ID};
 
 /// Maximum number of allowed filesystem paths
@@ -79,7 +83,7 @@ impl WasiCapabilities {
 #[derive(Debug, Clone, PartialEq)]
 pub struct WasiFileSystemCapabilities {
     /// Allowed filesystem paths (bounded for safety)
-    allowed_paths: BoundedVec<BoundedString<MAX_PATH_LENGTH>, MAX_FILESYSTEM_PATHS>,
+    allowed_paths: BoundedVec<BoundedString<MAX_PATH_LENGTH, CapabilityAwareProvider<NoStdProvider<8192>>>, MAX_FILESYSTEM_PATHS, CapabilityAwareProvider<NoStdProvider<8192>>>,
     /// Allow read operations
     pub read_access: bool,
     /// Allow write operations
@@ -171,7 +175,7 @@ pub struct WasiEnvironmentCapabilities {
     /// Allow access to environment variables
     pub environ_access: bool,
     /// Specific environment variables that are allowed
-    allowed_env_vars: BoundedVec<BoundedString<MAX_ENV_VAR_LENGTH>, MAX_ENV_VARS>,
+    allowed_env_vars: BoundedVec<BoundedString<MAX_ENV_VAR_LENGTH, CapabilityAwareProvider<NoStdProvider<8192>>>, MAX_ENV_VARS, CapabilityAwareProvider<NoStdProvider<8192>>>,
 }
 
 impl WasiEnvironmentCapabilities {

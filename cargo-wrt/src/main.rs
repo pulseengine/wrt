@@ -245,6 +245,25 @@ enum Commands {
         #[arg(long)]
         extra_args: Vec<String>,
     },
+    
+    /// Run code validation checks
+    Validate {
+        /// Check for test files in src/
+        #[arg(long)]
+        check_test_files: bool,
+        
+        /// Check module documentation coverage
+        #[arg(long)]
+        check_docs: bool,
+        
+        /// Run all validation checks
+        #[arg(long)]
+        all: bool,
+        
+        /// Show verbose output
+        #[arg(short, long)]
+        verbose: bool,
+    },
 }
 
 /// ASIL level arguments for CLI
@@ -359,6 +378,9 @@ async fn main() -> Result<()> {
         Commands::SimulateCi { verbose, output_dir } => cmd_simulate_ci(&build_system, verbose, output_dir).await,
         Commands::KaniVerify { asil_profile, package, harness, verbose, extra_args } => {
             cmd_kani_verify(&build_system, asil_profile, package, harness, verbose, extra_args).await
+        },
+        Commands::Validate { check_test_files, check_docs, all, verbose } => {
+            cmd_validate(&build_system, check_test_files, check_docs, all, verbose).await
         },
     };
 
@@ -818,6 +840,62 @@ async fn cmd_kani_verify(
         anyhow::bail!("KANI verification failed for {}/{} packages", 
                      results.total_packages - results.passed_packages, 
                      results.total_packages);
+    }
+    
+    Ok(())
+}
+
+/// Validate command implementation
+async fn cmd_validate(
+    build_system: &BuildSystem,
+    check_test_files: bool,
+    check_docs: bool,
+    all: bool,
+    verbose: bool,
+) -> Result<()> {
+    use wrt_build_core::validation::CodeValidator;
+    
+    let workspace_root = build_system.workspace_root().to_path_buf();
+    let validator = CodeValidator::new(workspace_root.clone(), verbose);
+    
+    let mut any_failed = false;
+    
+    if all || check_test_files {
+        println!("{} Checking for test files in src/...", "🔍".bright_blue());
+        let result = validator.check_no_test_files_in_src()
+            .context("Failed to check for test files")?;
+        
+        if !result.success {
+            any_failed = true;
+            for error in &result.errors {
+                println!("{} {}: {}", "❌".bright_red(), error.file.display(), error.message);
+            }
+        }
+    }
+    
+    if all || check_docs {
+        println!();
+        println!("{} Checking module documentation coverage...", "📚".bright_blue());
+        let result = validator.check_module_documentation()
+            .context("Failed to check documentation")?;
+        
+        if !result.success {
+            any_failed = true;
+        }
+    }
+    
+    if !all && !check_test_files && !check_docs {
+        // If no specific checks requested, run all
+        let all_passed = wrt_build_core::validation::run_all_validations(&workspace_root, verbose)
+            .context("Failed to run validation checks")?;
+        
+        if !all_passed {
+            any_failed = true;
+        }
+    }
+    
+    if any_failed {
+        anyhow::bail!("Validation checks failed");
     }
     
     Ok(())

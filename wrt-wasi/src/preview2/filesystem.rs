@@ -5,9 +5,20 @@
 //! Uses safety-aware allocation based on configured safety level.
 
 use crate::{prelude::*, WASI_CRATE_ID, wasi_max_allocation_size};
-use wrt_platform::filesystem::PlatformFilesystem;
-use wrt_foundation::values::Value;
-use wrt_foundation::{safety_aware_alloc, BoundedVec};
+// Temporary filesystem abstraction until platform support is added
+struct PlatformFilesystem;
+
+impl PlatformFilesystem {
+    fn new() -> Self {
+        Self
+    }
+}
+use crate::component_values::Value;
+use wrt_foundation::{
+    safety_aware_alloc, BoundedVec, BoundedString,
+    safe_memory::NoStdProvider,
+    capabilities::CapabilityAwareProvider,
+};
 use core::any::Any;
 
 /// Maximum size for file I/O operations based on safety level
@@ -21,7 +32,8 @@ const fn max_io_size() -> usize {
 }
 
 /// Safety-aware file data buffer
-type FileBuffer = BoundedVec<u8, {max_io_size()}>;
+/// Using 64KB as a reasonable maximum for file I/O operations
+type FileBuffer = BoundedVec<u8, 65536, CapabilityAwareProvider<NoStdProvider<8192>>>;
 
 /// WASI filesystem read operation
 ///
@@ -254,119 +266,9 @@ mod tests {
         let args_u32 = vec![Value::U32(0), Value::U32(512)];
         assert_eq!(extract_length(&args_u32, 1).unwrap(), 512);
     }
-}
-
-/// WASI filesystem read directory operation
-///
-/// Implements `wasi:filesystem/types.read-directory` for directory listing
-pub fn wasi_filesystem_read_directory(
-    _target: &mut dyn Any,
-    args: Vec<Value>,
-) -> Result<Vec<Value>> {
-    let dir_fd = extract_file_descriptor(&args)?;
-    
-    // Read directory contents using platform abstraction
-    let filesystem = PlatformFilesystem::new();
-    
-    // Return directory entries
-    // For now, return empty directory
-    let entries = Vec::new();
-    
-    Ok(vec![Value::List(entries)])
-}
-
-
-/// Helper function to extract file descriptor from arguments
-fn extract_file_descriptor(args: &[Value]) -> Result<u32> {
-    if args.is_empty() {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Missing file descriptor argument")
-        ));
-    }
-    
-    match &args[0] {
-        Value::U32(fd) => Ok(*fd),
-        Value::S32(fd) => {
-            if *fd < 0 {
-                Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::WASI_INVALID_FD,
-                    kinds::WasiResourceError("Invalid negative file descriptor")
-                ))
-            } else {
-                Ok(*fd as u32)
-            }
-        }
-        _ => Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Invalid file descriptor type")
-        )),
-    }
-}
-
-/// Helper function to extract byte data from arguments
-fn extract_byte_data(args: &[Value], index: usize) -> Result<Vec<u8>> {
-    if args.len() <= index {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Missing data argument")
-        ));
-    }
-    
-    match &args[index] {
-        Value::List(items) => {
-            let mut data = Vec::new();
-            for item in items {
-                match item {
-                    Value::U8(byte) => data.push(*byte),
-                    _ => return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::WASI_INVALID_FD,
-                        kinds::WasiResourceError("Invalid byte data")
-                    )),
-                }
-            }
-            Ok(data)
-        }
-        _ => Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Invalid data type")
-        )),
-    }
-}
-
-/// Helper function to extract string from arguments
-fn extract_string(args: &[Value], index: usize) -> Result<String> {
-    if args.len() <= index {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Missing string argument")
-        ));
-    }
-    
-    match &args[index] {
-        Value::String(s) => Ok(s.clone()),
-        _ => Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Invalid string type")
-        )),
-    }
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
     
     #[test]
-    fn test_extract_file_descriptor() -> Result<()> {
+    fn test_extract_file_descriptor_comprehensive() -> Result<()> {
         let args = vec![Value::U32(42)];
         let fd = extract_file_descriptor(&args)?;
         assert_eq!(fd, 42);
@@ -422,3 +324,25 @@ mod tests {
         Ok(())
     }
 }
+
+/// WASI filesystem read directory operation
+///
+/// Implements `wasi:filesystem/types.read-directory` for directory listing
+pub fn wasi_filesystem_read_directory(
+    _target: &mut dyn Any,
+    args: Vec<Value>,
+) -> Result<Vec<Value>> {
+    let dir_fd = extract_file_descriptor(&args)?;
+    
+    // Read directory contents using platform abstraction
+    let filesystem = PlatformFilesystem::new();
+    
+    // Return directory entries
+    // For now, return empty directory
+    let entries = Vec::new();
+    
+    Ok(vec![Value::List(entries)])
+}
+
+
+

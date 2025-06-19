@@ -75,6 +75,9 @@ pub const fn wasi_max_allocation_size() -> usize {
     runtime::max_allocation_size()
 }
 
+// Temporary component model values
+pub mod component_values;
+
 // WASI Preview2 interfaces
 #[cfg(feature = "preview2")]
 pub mod preview2 {
@@ -175,42 +178,35 @@ pub struct HostFunction {
 
 /// Error types specific to WASI operations
 pub mod error {
-    use wrt_error::{ErrorCategory, ErrorCode, ErrorKind};
+    use wrt_error::ErrorCategory;
     
     /// WASI-specific error codes
     pub mod codes {
-        use wrt_error::ErrorCode;
-        
         /// WASI permission denied
-        pub const WASI_PERMISSION_DENIED: ErrorCode = ErrorCode(0x2001);
+        pub const WASI_PERMISSION_DENIED: u16 = 0x2001;
         /// WASI file not found
-        pub const WASI_FILE_NOT_FOUND: ErrorCode = ErrorCode(0x2002);
+        pub const WASI_FILE_NOT_FOUND: u16 = 0x2002;
         /// WASI invalid file descriptor
-        pub const WASI_INVALID_FD: ErrorCode = ErrorCode(0x2003);
+        pub const WASI_INVALID_FD: u16 = 0x2003;
         /// WASI capability not available
-        pub const WASI_CAPABILITY_UNAVAILABLE: ErrorCode = ErrorCode(0x2004);
+        pub const WASI_CAPABILITY_UNAVAILABLE: u16 = 0x2004;
         /// WASI resource limit exceeded
-        pub const WASI_RESOURCE_LIMIT: ErrorCode = ErrorCode(0x2005);
+        pub const WASI_RESOURCE_LIMIT: u16 = 0x2005;
     }
     
     /// WASI-specific error kinds
     pub mod kinds {
-        use wrt_error::ErrorKind;
-        
         /// WASI permission error
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub struct WasiPermissionError(pub &'static str);
-        impl ErrorKind for WasiPermissionError {}
         
         /// WASI file system error
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub struct WasiFileSystemError(pub &'static str);
-        impl ErrorKind for WasiFileSystemError {}
         
         /// WASI resource error
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub struct WasiResourceError(pub &'static str);
-        impl ErrorKind for WasiResourceError {}
     }
 }
 
@@ -240,7 +236,6 @@ pub mod prelude {
     // Re-export platform abstractions
     pub use wrt_platform::{
         memory::MemoryProvider as PlatformMemoryProvider,
-        filesystem::PlatformFilesystem,
         time::PlatformTime,
     };
 }

@@ -4,8 +4,10 @@
 //! platform abstractions and proven patterns.
 
 use crate::prelude::*;
+use crate::capabilities::WasiClockCapabilities;
+use crate::host_provider::resource_manager::WasiClockType;
 use wrt_platform::time::PlatformTime;
-use wrt_foundation::values::Value;
+use crate::component_values::Value;
 use core::any::Any;
 
 /// WASI monotonic clock now operation
