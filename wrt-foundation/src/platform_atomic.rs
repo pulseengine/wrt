@@ -15,7 +15,7 @@ pub struct SafeAtomicMemory {
 }
 
 /// Platform-specific atomic memory provider
-pub trait PlatformAtomicProvider: Send + Sync {
+pub trait PlatformAtomicProvider: Send + Sync + core::fmt::Debug {
     /// Create a safe atomic view of memory
     fn create_atomic_view(&self, base: *mut u8, size: usize) -> Result<SafeAtomicMemory>;
     
@@ -61,6 +61,7 @@ pub trait PlatformAtomicProvider: Send + Sync {
 }
 
 /// No-op implementation for platforms without atomic support
+#[derive(Debug)]
 pub struct NoAtomicProvider;
 
 impl PlatformAtomicProvider for NoAtomicProvider {
@@ -161,6 +162,7 @@ pub fn get_platform_atomic_provider() -> &'static dyn PlatformAtomicProvider {
 }
 
 /// Safe atomic operations wrapper
+#[derive(Debug)]
 pub struct SafeAtomicOps<'a> {
     provider: &'a dyn PlatformAtomicProvider,
     view: SafeAtomicMemory,

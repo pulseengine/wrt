@@ -401,15 +401,21 @@ impl PlatformAwareRuntime {
         _arg_count: usize,
     ) -> Result<Vec<Value>> {
         // Simplified implementation - in real scenario this would extract actual values
-        #[cfg(feature = "std")]
+        #[cfg(any(feature = "std", feature = "alloc"))]
         {
-            use std::vec;
-            Ok(vec![Value::I32(0)])
-        }
-        #[cfg(all(not(feature = "std"), feature = "alloc"))]
-        {
-            use alloc::vec;
-            Ok(vec![Value::I32(0)])
+            use wrt_foundation::{
+                memory_init::get_global_capability_context,
+                capability_allocators::capability_alloc::capability_vec,
+                budget_aware_provider::CrateId,
+            };
+            
+            // Get capability context
+            let context = get_global_capability_context()?;
+            
+            // Use capability-aware allocation
+            let mut result = capability_vec(context, CrateId::Runtime, 1)?;
+            result.push(Value::I32(0));
+            Ok(result)
         }
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         {

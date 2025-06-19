@@ -72,16 +72,14 @@ impl CapabilityMemoryOps {
     }
 }
 
-/// Capability-aware memory allocation macro
+/// Capability-aware memory allocation function
 ///
 /// This replaces the old safe_managed_alloc! macro with capability verification
-#[macro_export]
-macro_rules! capability_managed_alloc {
-    ($context:expr, $size:expr, $crate_id:expr) => {{
-        $crate::capabilities::operations::CapabilityMemoryOps::allocate::<$size>(
-            $context, $crate_id,
-        )
-    }};
+pub fn capability_managed_alloc<const N: usize>(
+    context: &super::MemoryCapabilityContext,
+    crate_id: crate::budget_aware_provider::CrateId,
+) -> crate::Result<super::context::CapabilityGuardedProvider<N>> {
+    CapabilityMemoryOps::allocate::<N>(context, crate_id)
 }
 
 /// Memory operation builder for complex operations

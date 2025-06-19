@@ -225,6 +225,8 @@ pub mod unified_types_simple;
 
 // Capability-driven memory architecture
 pub mod capabilities;
+// Capability-aware allocators for heap types
+pub mod capability_allocators;
 // Platform abstraction for safe atomic operations
 pub mod platform_atomic;
 

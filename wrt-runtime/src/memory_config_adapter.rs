@@ -49,12 +49,7 @@ impl RuntimeMemoryConfig {
         }
         
         // Get budget information from capability context
-        let context = get_global_capability_context()
-            .ok_or_else(|| Error::new(
-                ErrorCategory::Initialization,
-                codes::INITIALIZATION_ERROR,
-                "Global capability context not initialized"
-            ))?;
+        let context = get_global_capability_context()?;
         
         // Get runtime capability to determine budget
         let runtime_capability = context.get_capability(CrateId::Runtime)?;

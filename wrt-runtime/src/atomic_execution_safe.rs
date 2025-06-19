@@ -310,14 +310,14 @@ impl SafeAtomicMemoryContext {
     /// Verify capability for read operation
     fn verify_capability_for_read(&self, thread_id: ThreadId, offset: usize, len: usize) -> Result<()> {
         let operation = MemoryOperation::Read { offset, len };
-        let crate_id = wrt_foundation::budget_aware_provider::CrateId::from_thread_id(thread_id.0);
+        let crate_id = wrt_foundation::budget_aware_provider::CrateId::from_thread_id(thread_id);
         self.capability_context.verify_operation(crate_id, &operation)
     }
     
     /// Verify capability for write operation
     fn verify_capability_for_write(&self, thread_id: ThreadId, offset: usize, len: usize) -> Result<()> {
         let operation = MemoryOperation::Write { offset, len };
-        let crate_id = wrt_foundation::budget_aware_provider::CrateId::from_thread_id(thread_id.0);
+        let crate_id = wrt_foundation::budget_aware_provider::CrateId::from_thread_id(thread_id);
         self.capability_context.verify_operation(crate_id, &operation)
     }
     

@@ -5,7 +5,7 @@
 
 use core::sync::atomic::{AtomicU8, AtomicU16, AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use crate::{codes, Error, ErrorCategory, Result};
-use super::{MemoryCapability, MemoryOperation, CapabilityMask};
+use super::{MemoryCapability, MemoryOperation, CapabilityMask, AnyMemoryCapability};
 
 /// Atomic memory capability extension trait
 pub trait AtomicMemoryCapability: MemoryCapability {
@@ -45,7 +45,7 @@ pub struct CapabilityAtomicMemory<'a> {
     /// Base memory pointer (managed by capability)
     memory_base: &'a [AtomicU8],
     /// Associated capability for verification
-    capability: &'a dyn MemoryCapability,
+    capability: &'a dyn AnyMemoryCapability,
     /// Size of the memory region
     size: usize,
 }
@@ -54,11 +54,11 @@ impl<'a> CapabilityAtomicMemory<'a> {
     /// Create a new capability-aware atomic memory region
     pub fn new(
         memory_base: &'a [AtomicU8],
-        capability: &'a dyn MemoryCapability,
+        capability: &'a dyn AnyMemoryCapability,
     ) -> Result<Self> {
         // Verify the capability allows memory access
         let operation = MemoryOperation::Read { offset: 0, len: memory_base.len() };
-        capability.verify_operation(&operation)?;
+        capability.verify_access(&operation)?;
         
         Ok(Self {
             memory_base,
@@ -89,7 +89,7 @@ impl<'a> CapabilityAtomicMemory<'a> {
         
         // Verify capability allows this operation
         let operation = MemoryOperation::Read { offset, len: size };
-        self.capability.verify_operation(&operation)?;
+        self.capability.verify_access(&operation)?;
         
         Ok(())
     }
@@ -135,7 +135,7 @@ impl<'a> CapabilityAtomicMemory<'a> {
         
         // Verify write capability
         let operation = MemoryOperation::Write { offset, len: 4 };
-        self.capability.verify_operation(&operation)?;
+        self.capability.verify_access(&operation)?;
         
         // For now, return error until we have safe transmute
         Err(Error::new(
@@ -158,8 +158,8 @@ impl<'a> CapabilityAtomicMemory<'a> {
         // Verify read-write capability
         let read_op = MemoryOperation::Read { offset, len: 4 };
         let write_op = MemoryOperation::Write { offset, len: 4 };
-        self.capability.verify_operation(&read_op)?;
-        self.capability.verify_operation(&write_op)?;
+        self.capability.verify_access(&read_op)?;
+        self.capability.verify_access(&write_op)?;
         
         // For now, return error until we have safe transmute
         Err(Error::new(
@@ -227,7 +227,7 @@ impl CapabilityAtomicStats {
 
 /// Builder for atomic operations with capabilities
 pub struct AtomicOperationBuilder<'a> {
-    capability: Option<&'a dyn MemoryCapability>,
+    capability: Option<&'a dyn AnyMemoryCapability>,
     offset: Option<usize>,
     ordering: Ordering,
 }
@@ -243,7 +243,7 @@ impl<'a> AtomicOperationBuilder<'a> {
     }
     
     /// Set the capability to use
-    pub fn with_capability(mut self, capability: &'a dyn MemoryCapability) -> Self {
+    pub fn with_capability(mut self, capability: &'a dyn AnyMemoryCapability) -> Self {
         self.capability = Some(capability);
         self
     }
@@ -280,7 +280,7 @@ impl<'a> AtomicOperationBuilder<'a> {
         
         // Verify basic read capability
         let operation = MemoryOperation::Read { offset, len: 8 }; // Max atomic size
-        capability.verify_operation(&operation)?;
+        capability.verify_access(&operation)?;
         
         Ok(())
     }
