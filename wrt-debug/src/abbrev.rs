@@ -110,7 +110,9 @@ pub struct AbbreviationTable {
 impl AbbreviationTable {
     /// Create a new abbreviation table
     pub fn new() -> Self {
-        Self { entries: BoundedVec::new(NoStdProvider) }
+        Self {
+            entries: BoundedVec::new(NoStdProvider),
+        }
     }
 
     /// Parse abbreviations from data
@@ -145,7 +147,10 @@ impl AbbreviationTable {
                     break;
                 }
 
-                let attr_spec = AttributeSpec { name, form: AttributeForm::from_u16(form) };
+                let attr_spec = AttributeSpec {
+                    name,
+                    form: AttributeForm::from_u16(form),
+                };
 
                 attributes.push(attr_spec).map_err(|_| {
                     Error::new(
@@ -156,7 +161,12 @@ impl AbbreviationTable {
                 })?;
             }
 
-            let abbrev = Abbreviation { code, tag, has_children, attributes };
+            let abbrev = Abbreviation {
+                code,
+                tag,
+                has_children,
+                attributes,
+            };
 
             self.entries.push(abbrev).map_err(|_| {
                 Error::new(

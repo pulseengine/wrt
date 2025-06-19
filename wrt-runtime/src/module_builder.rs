@@ -8,6 +8,11 @@
 // use wrt_decoder::{module::CodeSection, runtime_adapter::RuntimeModuleBuilder};
 extern crate alloc;
 
+#[cfg(feature = "std")]
+use std::vec::Vec;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 use wrt_foundation::types::{
     FuncType,
     GlobalType as WrtGlobalType,
@@ -31,6 +36,12 @@ use crate::memory_adapter::StdMemoryProvider;
 use std::format;
 #[cfg(not(feature = "std"))]
 use alloc::format;
+
+// String type for runtime - use std::string::String or BoundedString
+#[cfg(feature = "std")]
+type String = std::string::String;
+#[cfg(not(feature = "std"))]
+type String = wrt_foundation::bounded::BoundedString<256, wrt_foundation::NoStdProvider<1024>>;
 
 // Define trait locally if not available from wrt_decoder
 pub trait RuntimeModuleBuilder {
@@ -68,7 +79,10 @@ impl RuntimeModuleBuilder for ModuleBuilder {
     /// Create a new module builder
     fn new() -> Self {
         Self { 
-            module: Module::new().unwrap_or_else(|_| Module::default()), 
+            module: Module::new().unwrap_or_else(|e| {
+                // Log the error and panic or handle gracefully
+                panic!("Failed to create new module: {:?}", e)
+            }), 
             imported_func_count: 0 
         }
     }

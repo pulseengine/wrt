@@ -140,8 +140,6 @@ pub use crate::{
     values::{FloatBits32, FloatBits64, Value},
     // Verification types
     verification::{Checksum, VerificationLevel},
-    // Modern memory system types
-    wrt_memory_system::{WrtProviderFactory, WRT_MEMORY_COORDINATOR},
     // Direct re-exports for convenience (original list)
     // ResourceType, // Already covered by component::* above
     SafeMemoryHandler,

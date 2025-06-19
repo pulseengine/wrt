@@ -170,7 +170,7 @@ pub fn convert_format_to_common_valtype(format_type: &FormatValType) -> Canonica
 }
 
 // Serialization and deserialization functions for ComponentValue
-pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<u8>> {
+pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<u8>, Error> {
     let common_type = value.get_type();
     let format_type = convert_common_to_format_valtype(&common_type);
 
@@ -398,7 +398,7 @@ pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvid
     value: &ComponentComponentValue,
     writer: &mut WriteStream<'a>,
     provider: &P,
-) -> Result<()> {
+) -> Result<(), Error> {
     match value {
         ComponentComponentValue::Bool(b) => {
             writer.write_bool(*b)?;
@@ -579,7 +579,7 @@ pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvid
 pub fn deserialize_component_value(
     data: &[u8],
     format_type: &FormatValType,
-) -> Result<ComponentComponentValue> {
+) -> Result<ComponentComponentValue, Error> {
     let mut offset = 0;
     match format_type {
         FormatValType::Bool => {
@@ -1080,7 +1080,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
     reader: &mut ReadStream<'a>,
     format_type: &FormatValType,
     provider: &P,
-) -> Result<ComponentComponentValue> {
+) -> Result<ComponentComponentValue, Error> {
     match format_type {
         FormatValType::Bool => {
             let value = reader.read_bool()?;
@@ -1430,7 +1430,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 }
 
 /// Serialize multiple component values
-pub fn serialize_component_values(values: &[ComponentValue]) -> Result<Vec<u8>> {
+pub fn serialize_component_values(values: &[ComponentValue]) -> Result<Vec<u8>, Error> {
     let mut buffer = Vec::new();
 
     // Write the number of values
@@ -1457,7 +1457,7 @@ pub fn serialize_component_values_with_stream<'a, P: wrt_foundation::MemoryProvi
     values: &[ComponentValue],
     writer: &mut WriteStream<'a>,
     provider: &P,
-) -> Result<()> {
+) -> Result<(), Error> {
     // Write the number of values
     writer.write_u32_le(values.len() as u32)?;
 
@@ -1473,7 +1473,7 @@ pub fn serialize_component_values_with_stream<'a, P: wrt_foundation::MemoryProvi
 pub fn deserialize_component_values(
     data: &[u8],
     types: &[FormatValType],
-) -> Result<Vec<ComponentComponentValue>> {
+) -> Result<Vec<ComponentComponentValue>, Error> {
     // Need at least 4 bytes for the count
     if data.len() < 4 {
         return Err(Error::new(
@@ -1544,7 +1544,7 @@ pub fn deserialize_component_values_with_stream<'a, P: wrt_foundation::MemoryPro
     reader: &mut ReadStream<'a>,
     types: &[FormatValType],
     provider: &P,
-) -> Result<Vec<ComponentComponentValue>> {
+) -> Result<Vec<ComponentComponentValue>, Error> {
     // Read the count
     let count = reader.read_u32_le()? as usize;
 
@@ -1568,7 +1568,7 @@ pub fn deserialize_component_values_with_stream<'a, P: wrt_foundation::MemoryPro
 }
 
 // Core value conversion functions
-pub fn core_to_component_value(value: &Value, ty: &FormatValType<ComponentProvider>) -> crate::WrtResult<ComponentComponentValue> {
+pub fn core_to_component_value(value: &Value, ty: &FormatValType) -> crate::WrtResult<ComponentComponentValue> {
     use crate::type_conversion::{
         core_value_to_types_componentvalue, format_valtype_to_types_valtype,
     };

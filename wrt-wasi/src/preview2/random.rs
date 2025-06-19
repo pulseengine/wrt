@@ -4,7 +4,7 @@
 //! WRT's platform abstractions and security patterns.
 
 use crate::prelude::*;
-use wrt_component::values::Value;
+use wrt_foundation::values::Value;
 use core::any::Any;
 
 /// WASI get random bytes operation

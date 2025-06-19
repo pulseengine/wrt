@@ -6,7 +6,7 @@
 
 use crate::{prelude::*, WASI_CRATE_ID, wasi_max_allocation_size};
 use wrt_platform::filesystem::PlatformFilesystem;
-use wrt_component::values::Value;
+use wrt_foundation::values::Value;
 use wrt_foundation::{safety_aware_alloc, BoundedVec};
 use core::any::Any;
 
@@ -275,6 +275,7 @@ pub fn wasi_filesystem_read_directory(
     Ok(vec![Value::List(entries)])
 }
 
+
 /// Helper function to extract file descriptor from arguments
 fn extract_file_descriptor(args: &[Value]) -> Result<u32> {
     if args.is_empty() {
@@ -359,22 +360,6 @@ fn extract_string(args: &[Value], index: usize) -> Result<String> {
     }
 }
 
-/// Create file metadata record for WASI
-fn create_file_metadata_record() -> Result<Value> {
-    // Create a WASI descriptor-stat record
-    // This would contain file type, size, timestamps, etc.
-    // For now, return a basic record structure
-    
-    let metadata_fields = vec![
-        ("type".to_string(), Value::U8(1)), // Regular file
-        ("size".to_string(), Value::U64(0)), // File size
-        ("data-access-timestamp".to_string(), Value::U64(0)), // Access time
-        ("data-modification-timestamp".to_string(), Value::U64(0)), // Modification time
-        ("status-change-timestamp".to_string(), Value::U64(0)), // Status change time
-    ];
-    
-    Ok(Value::Record(metadata_fields))
-}
 
 #[cfg(test)]
 mod tests {

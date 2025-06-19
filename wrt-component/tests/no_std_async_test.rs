@@ -38,7 +38,10 @@ fn test_async_context_no_std() {
     // Retrieve value
     let retrieved = AsyncContextManager::get_context_value(&key).unwrap();
     assert!(retrieved.is_some());
-    assert_eq!(retrieved.unwrap().as_component_value().unwrap(), &ComponentValue::I32(42));
+    assert_eq!(
+        retrieved.unwrap().as_component_value().unwrap(),
+        &ComponentValue::I32(42)
+    );
 
     // Clean up
     AsyncContextManager::context_pop().unwrap();
@@ -80,7 +83,10 @@ fn test_waitable_sets_no_std() {
     let set_id = WaitableSetBuiltins::waitable_set_new().unwrap();
 
     // Add future
-    let future = Future { handle: FutureHandle::new(), state: FutureState::Pending };
+    let future = Future {
+        handle: FutureHandle::new(),
+        state: FutureState::Pending,
+    };
     let waitable_id =
         WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(future)).unwrap();
 
@@ -132,13 +138,19 @@ fn test_advanced_threading_no_std() {
     // Create function reference with bounded string
     let func_ref = FunctionReference::new(
         "test_fn",
-        FunctionSignature { params: vec![], results: vec![] },
+        FunctionSignature {
+            params: vec![],
+            results: vec![],
+        },
         0,
         0,
     )
     .unwrap();
 
-    let config = ThreadSpawnConfig { stack_size: Some(4096), priority: Some(5) };
+    let config = ThreadSpawnConfig {
+        stack_size: Some(4096),
+        priority: Some(5),
+    };
 
     // Spawn thread
     let thread_id = AdvancedThreadingBuiltins::thread_spawn_ref(func_ref, config, None).unwrap();
@@ -174,7 +186,11 @@ fn test_fixed_length_lists_no_std() {
     assert!(list.is_full());
 
     // Create with predefined elements
-    let elements = [ComponentValue::I32(10), ComponentValue::I32(20), ComponentValue::I32(30)];
+    let elements = [
+        ComponentValue::I32(10),
+        ComponentValue::I32(20),
+        ComponentValue::I32(30),
+    ];
     let list2 = FixedLengthList::with_elements(list_type, &elements).unwrap();
     assert_eq!(list2.current_length(), 3);
 
@@ -235,13 +251,21 @@ fn test_stack_based_operations() {
     // Binary std/no_std choice
 
     // Binary std/no_std choice
-    let values = [ComponentValue::Bool(true), ComponentValue::I32(42), ComponentValue::F64(3.14)];
+    let values = [
+        ComponentValue::Bool(true),
+        ComponentValue::I32(42),
+        ComponentValue::F64(3.14),
+    ];
 
     // Create fixed list from stack array
     let list_type = FixedLengthListType::new(ValueType::I32, 3);
     let list = FixedLengthList::with_elements(
         list_type,
-        &[ComponentValue::I32(1), ComponentValue::I32(2), ComponentValue::I32(3)],
+        &[
+            ComponentValue::I32(1),
+            ComponentValue::I32(2),
+            ComponentValue::I32(3),
+        ],
     )
     .unwrap();
 

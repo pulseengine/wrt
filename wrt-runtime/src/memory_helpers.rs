@@ -537,8 +537,12 @@ impl ArcMemoryExt for Arc<Memory> {
         
         #[cfg(not(feature = "std"))]
         {
-            // For no_std, use write method directly
-            self.as_ref().write(offset, buffer)
+            // For no_std, Arc<Memory> cannot provide mutable access without interior mutability
+            Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::UNSUPPORTED_OPERATION,
+                "write_via_callback on Arc<Memory> is not supported without interior mutability in Memory for its data.",
+            ))
         }
     }
 

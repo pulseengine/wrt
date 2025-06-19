@@ -79,7 +79,12 @@ impl VariableValue {
     /// Interpret as i32
     pub fn as_i32(&self) -> Option<i32> {
         if self.size >= 4 {
-            Some(i32::from_le_bytes([self.bytes[0], self.bytes[1], self.bytes[2], self.bytes[3]]))
+            Some(i32::from_le_bytes([
+                self.bytes[0],
+                self.bytes[1],
+                self.bytes[2],
+                self.bytes[3],
+            ]))
         } else {
             None
         }
@@ -88,7 +93,12 @@ impl VariableValue {
     /// Interpret as u32
     pub fn as_u32(&self) -> Option<u32> {
         if self.size >= 4 {
-            Some(u32::from_le_bytes([self.bytes[0], self.bytes[1], self.bytes[2], self.bytes[3]]))
+            Some(u32::from_le_bytes([
+                self.bytes[0],
+                self.bytes[1],
+                self.bytes[2],
+                self.bytes[3],
+            ]))
         } else {
             None
         }

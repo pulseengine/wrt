@@ -140,7 +140,10 @@ pub struct BranchHint {
 impl BranchHint {
     /// Create a new branch hint
     pub fn new(instruction_offset: u32, hint_value: BranchHintValue) -> Self {
-        Self { instruction_offset, hint_value }
+        Self {
+            instruction_offset,
+            hint_value,
+        }
     }
 
     /// Check if this hint suggests the branch should be optimized for the taken path
@@ -238,7 +241,8 @@ impl BranchHintSection {
         function_index: u32,
         instruction_offset: u32,
     ) -> Option<BranchHintValue> {
-        self.get_function_hints(function_index).and_then(|hints| hints.get_hint(instruction_offset))
+        self.get_function_hints(function_index)
+            .and_then(|hints| hints.get_hint(instruction_offset))
     }
 
     /// Get number of functions with hints
@@ -311,7 +315,9 @@ pub fn encode_branch_hint_section(section: &BranchHintSection) -> Result<Vec<u8>
     let mut data = Vec::new();
 
     // Write function count
-    data.extend_from_slice(&format_write_leb128_u32(usize_to_wasm_u32(section.function_count())?));
+    data.extend_from_slice(&format_write_leb128_u32(usize_to_wasm_u32(
+        section.function_count(),
+    )?));
 
     // Write each function's hints
     for (func_idx, hints) in &section.function_hints {
@@ -336,8 +342,14 @@ mod tests {
 
     #[test]
     fn test_branch_hint_value() {
-        assert_eq!(BranchHintValue::from_byte(0x00).unwrap(), BranchHintValue::LikelyFalse);
-        assert_eq!(BranchHintValue::from_byte(0x01).unwrap(), BranchHintValue::LikelyTrue);
+        assert_eq!(
+            BranchHintValue::from_byte(0x00).unwrap(),
+            BranchHintValue::LikelyFalse
+        );
+        assert_eq!(
+            BranchHintValue::from_byte(0x01).unwrap(),
+            BranchHintValue::LikelyTrue
+        );
         assert!(BranchHintValue::from_byte(0x02).is_err());
 
         assert_eq!(BranchHintValue::LikelyFalse.to_byte(), 0x00);

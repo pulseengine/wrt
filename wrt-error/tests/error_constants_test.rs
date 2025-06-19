@@ -38,7 +38,11 @@ mod tests {
 
         for code in &core_codes {
             assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
-            assert!(*code >= 1000 && *code < 2000, "Core error code {} out of range", code);
+            assert!(
+                *code >= 1000 && *code < 2000,
+                "Core error code {} out of range",
+                code
+            );
         }
 
         // Component model error codes (2000-2999)
@@ -54,7 +58,11 @@ mod tests {
 
         for code in &component_codes {
             assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
-            assert!(*code >= 2000 && *code < 3000, "Component error code {} out of range", code);
+            assert!(
+                *code >= 2000 && *code < 3000,
+                "Component error code {} out of range",
+                code
+            );
         }
 
         // Resource error codes (3000-3999)
@@ -71,7 +79,11 @@ mod tests {
 
         for code in &resource_codes {
             assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
-            assert!(*code >= 3000 && *code < 4000, "Resource error code {} out of range", code);
+            assert!(
+                *code >= 3000 && *code < 4000,
+                "Resource error code {} out of range",
+                code
+            );
         }
 
         // Memory error codes (4000-4999)
@@ -84,7 +96,11 @@ mod tests {
 
         for code in &memory_codes {
             assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
-            assert!(*code >= 4000 && *code < 5000, "Memory error code {} out of range", code);
+            assert!(
+                *code >= 4000 && *code < 5000,
+                "Memory error code {} out of range",
+                code
+            );
         }
 
         // Validation error codes (5000-5999)
@@ -120,7 +136,11 @@ mod tests {
 
         for code in &validation_codes {
             assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
-            assert!(*code >= 5000 && *code < 6000, "Validation error code {} out of range", code);
+            assert!(
+                *code >= 5000 && *code < 6000,
+                "Validation error code {} out of range",
+                code
+            );
         }
 
         // Type error codes (6000-6999)
@@ -145,7 +165,11 @@ mod tests {
 
         for code in &type_codes {
             assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
-            assert!(*code >= 6000 && *code < 7000, "Type error code {} out of range", code);
+            assert!(
+                *code >= 6000 && *code < 7000,
+                "Type error code {} out of range",
+                code
+            );
         }
 
         // Runtime error codes (7000-7999)
@@ -162,7 +186,11 @@ mod tests {
 
         for code in &runtime_codes {
             assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
-            assert!(*code >= 7000 && *code < 8000, "Runtime error code {} out of range", code);
+            assert!(
+                *code >= 7000 && *code < 8000,
+                "Runtime error code {} out of range",
+                code
+            );
         }
 
         // System error codes (8000-8999)
@@ -185,7 +213,11 @@ mod tests {
 
         for code in &system_codes {
             assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
-            assert!(*code >= 8000 && *code < 9000, "System error code {} out of range", code);
+            assert!(
+                *code >= 8000 && *code < 9000,
+                "System error code {} out of range",
+                code
+            );
         }
 
         // Parser error codes (8100-8199)
@@ -209,7 +241,11 @@ mod tests {
 
         for code in &parser_codes {
             assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
-            assert!(*code >= 8100 && *code < 8200, "Parser error code {} out of range", code);
+            assert!(
+                *code >= 8100 && *code < 8200,
+                "Parser error code {} out of range",
+                code
+            );
         }
 
         // Validation error codes (8200-8299)
@@ -233,7 +269,10 @@ mod tests {
         }
 
         // Unknown error
-        assert!(seen_codes.insert(codes::UNKNOWN), "Duplicate error code: UNKNOWN");
+        assert!(
+            seen_codes.insert(codes::UNKNOWN),
+            "Duplicate error code: UNKNOWN"
+        );
         assert_eq!(codes::UNKNOWN, 9999);
     }
 
@@ -263,7 +302,10 @@ mod tests {
         }
 
         // Test a few codes to ensure the function works
-        assert_eq!(get_error_description(codes::STACK_UNDERFLOW), "Stack underflow");
+        assert_eq!(
+            get_error_description(codes::STACK_UNDERFLOW),
+            "Stack underflow"
+        );
         assert_eq!(get_error_description(codes::UNKNOWN), "Unknown error");
         assert_eq!(get_error_description(12345), "Other error");
     }

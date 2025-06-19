@@ -126,7 +126,7 @@ pub fn generate_component_name_section(section: &ComponentNameSection) -> Result
                 _ => {
                     // Skip unknown sorts
                     continue;
-                }
+                },
             };
             sort_data.push(sort_id);
 
@@ -157,7 +157,11 @@ pub fn generate_component_name_section(section: &ComponentNameSection) -> Result
 
     // Write canonical names
     if !section.canonical_names.is_empty() {
-        write_name_map(&mut result, subsection::CANONICAL_NAMES, &section.canonical_names);
+        write_name_map(
+            &mut result,
+            subsection::CANONICAL_NAMES,
+            &section.canonical_names,
+        );
     }
 
     // Write type names
@@ -278,7 +282,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
                     ));
                 }
                 result.component_name = Some(name);
-            }
+            },
             subsection::SORT_NAMES => {
                 // Parse sort names
                 let mut subsection_pos = pos;
@@ -310,7 +314,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
                         sort_type::INSTANCE => Sort::Instance,
                         _ => {
                             return Err(Error::parse_error("Unknown sort ID"));
-                        }
+                        },
                     };
 
                     #[cfg(not(feature = "std"))]
@@ -337,22 +341,22 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
 
                     result.sort_names.push((sort, names));
                 }
-            }
+            },
             subsection::IMPORT_NAMES => {
                 result.import_names = read_name_map(&data[pos..subsection_end])?;
-            }
+            },
             subsection::EXPORT_NAMES => {
                 result.export_names = read_name_map(&data[pos..subsection_end])?;
-            }
+            },
             subsection::CANONICAL_NAMES => {
                 result.canonical_names = read_name_map(&data[pos..subsection_end])?;
-            }
+            },
             subsection::TYPE_NAMES => {
                 result.type_names = read_name_map(&data[pos..subsection_end])?;
-            }
+            },
             _ => {
                 // Skip unknown subsections
-            }
+            },
         }
 
         pos = subsection_end;

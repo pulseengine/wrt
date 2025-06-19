@@ -104,21 +104,22 @@ jobs:
           fi
           
           # If VERSIONS_TO_PASS can contain multiple space-separated versions (e.g. from input), ensure uniqueness.
-          # The xtask expects space-separated versions.
+          # The cargo-wrt expects space-separated versions.
           UNIQUE_VERSIONS=$(echo "$VERSIONS_TO_PASS" | xargs -n1 | sort -u | xargs)
           echo "VERSIONS_TO_BUILD=$UNIQUE_VERSIONS" >> $GITHUB_ENV
-          echo "Final list of versions to build for xtask: $UNIQUE_VERSIONS"
+          echo "Final list of versions to build for cargo-wrt: $UNIQUE_VERSIONS"
 
       - name: Generate code coverage for documentation
         run: |
           echo "Generating code coverage for documentation inclusion"
-          # Ensure xtask is compiled
-          cargo build --package xtask
+          # Ensure cargo-wrt is compiled and installed
+          cargo build --package cargo-wrt
+          cargo install --path cargo-wrt
           # Add Dagger to PATH
           export PATH="$HOME/.dagger/bin:$(pwd)/bin:$PATH"
           echo $PATH
           # Run quick coverage analysis to generate coverage.json for docs
-          ./target/debug/xtask coverage
+          cargo-wrt coverage --html
         env:
           RUST_LOG: info
           RUST_BACKTRACE: 1
@@ -128,11 +129,11 @@ jobs:
           # CI environment flag
           CI: true
 
-      - name: Build documentation via Dagger and xtask
+      - name: Build documentation via cargo-wrt
         run: |
           echo "Building documentation for versions: ${{ env.VERSIONS_TO_BUILD }}"
           export PATH="$HOME/.dagger/bin:$(pwd)/bin:$PATH"
-          ./target/debug/xtask publish-docs-dagger --versions "${{ env.VERSIONS_TO_BUILD }}" --output-dir ./docs_artifact_final
+          cargo-wrt docs --open --private
         env:
           RUST_LOG: info
           RUST_BACKTRACE: 1
@@ -149,7 +150,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './docs_artifact_final' # Path where Dagger pipeline (via xtask) exports the final result
+          path: './docs_artifact_final' # Path where Dagger pipeline (via cargo-wrt) exports the final result
           
   # Deployment job
   deploy:

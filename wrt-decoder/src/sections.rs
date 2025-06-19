@@ -83,7 +83,15 @@ fn parse_limits(bytes: &[u8], offset: usize) -> Result<(wrt_format::types::Limit
     // Check shared flag (flag bit 1)
     let shared = flags & 0x02 != 0;
 
-    Ok((wrt_format::types::Limits { min: min as u64, max, shared, memory64: false }, new_offset))
+    Ok((
+        wrt_format::types::Limits {
+            min: min as u64,
+            max,
+            shared,
+            memory64: false,
+        },
+        new_offset,
+    ))
 }
 
 /// Parsers implementation
@@ -241,25 +249,25 @@ pub mod parsers {
                     let (type_idx, new_offset) = binary::read_leb128_u32(bytes, offset)?;
                     offset = new_offset;
                     wrt_format::module::ImportDesc::Function(type_idx)
-                }
+                },
                 0x01 => {
                     // Table import
                     let (format_table, new_offset) = parse_format_module_table(bytes, offset)?;
                     offset = new_offset;
                     wrt_format::module::ImportDesc::Table(format_table)
-                }
+                },
                 0x02 => {
                     // Memory import
                     let (format_memory, new_offset) = parse_format_module_memory(bytes, offset)?;
                     offset = new_offset;
                     wrt_format::module::ImportDesc::Memory(format_memory)
-                }
+                },
                 0x03 => {
                     // Global import
                     let (format_global_type, new_offset) = parse_format_global_type(bytes, offset)?;
                     offset = new_offset;
                     wrt_format::module::ImportDesc::Global(format_global_type)
-                }
+                },
                 // TODO: Handle 0x04 Tag import if/when supported by wrt_format
                 _ => {
                     return Err(Error::new(
@@ -267,7 +275,7 @@ pub mod parsers {
                         codes::PARSE_ERROR,
                         "Invalid import description kind",
                     ));
-                }
+                },
             };
 
             format_imports.push(wrt_format::module::Import {
@@ -308,13 +316,13 @@ pub mod parsers {
             let wrt_desc = match format_import.desc {
                 wrt_format::module::ImportDesc::Function(type_idx) => {
                     wrt_foundation::types::ImportDesc::Function(type_idx)
-                }
+                },
                 wrt_format::module::ImportDesc::Table(table) => {
                     wrt_foundation::types::ImportDesc::Table(table)
-                }
+                },
                 wrt_format::module::ImportDesc::Memory(memory) => {
                     wrt_foundation::types::ImportDesc::Memory(memory)
-                }
+                },
                 wrt_format::module::ImportDesc::Global(format_global) => {
                     // Convert FormatGlobalType to wrt_foundation::GlobalType
                     let global_type = wrt_foundation::GlobalType::new(
@@ -322,14 +330,18 @@ pub mod parsers {
                         format_global.mutable,
                     );
                     wrt_foundation::types::ImportDesc::Global(global_type)
-                }
+                },
                 wrt_format::module::ImportDesc::Tag(type_idx) => {
                     // Tag is not available in ImportDesc, map to Function for now
                     wrt_foundation::types::ImportDesc::Function(type_idx)
-                }
+                },
             };
 
-            wrt_imports.push(WrtFoundationImport { module_name, item_name, desc: wrt_desc });
+            wrt_imports.push(WrtFoundationImport {
+                module_name,
+                item_name,
+                desc: wrt_desc,
+            });
         }
 
         Ok(wrt_imports)
@@ -397,7 +409,7 @@ pub mod parsers {
                     codes::INVALID_TYPE,
                     "Table element type must be funcref or externref",
                 ));
-            }
+            },
         };
 
         // Convert wrt_format::Limits to wrt_foundation::Limits
@@ -407,7 +419,10 @@ pub mod parsers {
         );
 
         Ok((
-            wrt_foundation::TableType { element_type: ref_type, limits: foundation_limits },
+            wrt_foundation::TableType {
+                element_type: ref_type,
+                limits: foundation_limits,
+            },
             offset,
         ))
     }
@@ -442,7 +457,10 @@ pub mod parsers {
             limits.max.map(|m| m as u32),
         );
 
-        Ok((wrt_foundation::MemoryType::new(foundation_limits, limits.shared), new_offset))
+        Ok((
+            wrt_foundation::MemoryType::new(foundation_limits, limits.shared),
+            new_offset,
+        ))
     }
 
     fn parse_format_global_type(
@@ -479,10 +497,16 @@ pub mod parsers {
                     codes::PARSE_ERROR,
                     "Invalid mutability byte for global",
                 ))
-            }
+            },
         };
 
-        Ok((wrt_format::types::FormatGlobalType { value_type, mutable }, offset))
+        Ok((
+            wrt_format::types::FormatGlobalType {
+                value_type,
+                mutable,
+            },
+            offset,
+        ))
     }
 
     /// Parse a global section
@@ -600,7 +624,7 @@ pub mod parsers {
                         codes::PARSE_ERROR,
                         "Invalid export kind byte",
                     ))
-                }
+                },
             };
 
             let (index, new_offset) = binary::read_leb128_u32(bytes, offset)?;

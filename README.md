@@ -18,7 +18,7 @@ For comprehensive installation instructions, see the [Installation Guide](docs/s
 ### Prerequisites
 
 - Rust 1.86.0 or newer
-- [just](https://github.com/casey/just) command runner
+- cargo-wrt (included in this repository)
 
 ### Building from Source
 
@@ -27,14 +27,17 @@ For comprehensive installation instructions, see the [Installation Guide](docs/s
 git clone https://github.com/pulseengine/wrt
 cd wrt
 
+# Install cargo-wrt
+cargo install --path cargo-wrt
+
 # Build everything
-just build
+cargo-wrt build
 
 # Run tests
-just ci-test
+cargo-wrt test
 
-# Run example
-just test-wrtd-example
+# Run example (requires setup)
+cargo-wrt wrtd --test
 ```
 
 ### Usage
@@ -80,22 +83,16 @@ Generate documentation:
 
 ```bash
 # Build comprehensive documentation
-cargo xtask publish-docs-dagger --output-dir docs_output
+cargo-wrt docs --private
 
-# Preview documentation locally
-cargo xtask preview-docs --open-browser
+# Open documentation in browser
+cargo-wrt docs --open
 
 # API documentation only  
 cargo doc --workspace --open
 
-# Generate changelog (requires git-cliff)
-cargo xtask generate-changelog
-
-# Deploy to SFTP hosting (shared hosting, VPS, etc.)
-cargo xtask deploy-docs-sftp --build-docs
-
-# Validate documentation structure
-cargo xtask validate-docs-comprehensive
+# Generate and view coverage reports
+cargo-wrt coverage --html --open
 ```
 
 ## Development
@@ -105,16 +102,16 @@ See the [Developer Guide](docs/source/development/) for detailed development ins
 Common commands:
 
 ```bash
-just --list          # Show all available commands
-just fmt            # Format code
-just ci-main        # Run main CI checks
-just ci-full        # Run complete CI suite
+cargo-wrt --help             # Show all available commands
+cargo-wrt check              # Format code and run static analysis
+cargo-wrt ci                 # Run main CI checks
+cargo-wrt verify --asil d    # Run complete verification suite
 
-# Xtask commands for development
-cargo xtask --help                # Show all xtask commands
-cargo xtask verify-no-std         # Verify no_std compatibility
-cargo xtask fmt-check             # Check code formatting
-cargo xtask coverage              # Generate code coverage
+# Development commands
+cargo-wrt no-std             # Verify no_std compatibility
+cargo-wrt check --strict      # Strict code formatting and linting
+cargo-wrt coverage --html     # Generate code coverage
+cargo-wrt simulate-ci         # Simulate CI workflow locally
 ```
 
 ## License

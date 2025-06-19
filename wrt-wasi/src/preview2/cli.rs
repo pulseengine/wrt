@@ -4,7 +4,7 @@
 //! variables using WRT's platform abstractions.
 
 use crate::prelude::*;
-use wrt_component::values::Value;
+use wrt_foundation::values::Value;
 use core::any::Any;
 
 /// WASI get arguments operation

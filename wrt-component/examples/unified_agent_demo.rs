@@ -51,7 +51,7 @@ fn demo_synchronous_execution() {
             println!("Result: {:?}", result);
             println!("State: {:?}", engine.state());
             println!("Statistics: {:?}", engine.statistics());
-        }
+        },
         Err(e) => println!("Execution failed: {:?}", e),
     }
 
@@ -80,8 +80,11 @@ fn demo_async_execution() {
                 println!("Result: {:?}", result);
 
                 // In real usage, you would poll or await the async operation
-                println!("Async operations tracked: {}", engine.statistics().async_operations);
-            }
+                println!(
+                    "Async operations tracked: {}",
+                    engine.statistics().async_operations
+                );
+            },
             Err(e) => println!("Async execution failed: {:?}", e),
         }
     }
@@ -107,7 +110,7 @@ fn demo_stackless_execution() {
             println!("Stackless execution successful!");
             println!("Result: {:?}", result);
             println!("Stackless frames: {}", engine.statistics().stackless_frames);
-        }
+        },
         Err(e) => println!("Stackless execution failed: {:?}", e),
     }
 
@@ -138,7 +141,7 @@ fn demo_cfi_protected_execution() {
                     "CFI violations detected: {}",
                     engine.statistics().cfi_violations_detected
                 );
-            }
+            },
             Err(e) => println!("CFI-protected execution failed: {:?}", e),
         }
     }
@@ -185,7 +188,7 @@ fn demo_hybrid_execution() {
 
             #[cfg(feature = "cfi")]
             println!("  - CFI protected: {}", stats.cfi_instructions_protected);
-        }
+        },
         Err(e) => println!("Hybrid execution failed: {:?}", e),
     }
 
@@ -213,7 +216,10 @@ fn demo_engine_registry() {
         .create_unified_engine(stackless_config)
         .expect("Failed to create stackless engine");
 
-    println!("Created {} engines in registry", registry.statistics().active_engines);
+    println!(
+        "Created {} engines in registry",
+        registry.statistics().active_engines
+    );
 
     // Execute functions on different engines
     let args = vec![Value::U32(777)];
@@ -248,12 +254,16 @@ fn demo_legacy_migration() {
 
     // Create a legacy engine (for demonstration)
     println!("Creating legacy component engine...");
-    let legacy_id =
-        registry.create_legacy_component_engine().expect("Failed to create legacy engine");
+    let legacy_id = registry
+        .create_legacy_component_engine()
+        .expect("Failed to create legacy engine");
 
     // Check migration status
     let migration_status = registry.migration_status();
-    println!("Pending migrations: {}", migration_status.pending_migrations.len());
+    println!(
+        "Pending migrations: {}",
+        migration_status.pending_migrations.len()
+    );
 
     // Get engine info before migration
     if let Some(info) = registry.get_engine_info(legacy_id) {
@@ -275,8 +285,11 @@ fn demo_legacy_migration() {
                 println!("  Migration status: {:?}", info.migration_status);
             }
 
-            println!("Completed migrations: {}", registry.migration_status().completed_migrations);
-        }
+            println!(
+                "Completed migrations: {}",
+                registry.migration_status().completed_migrations
+            );
+        },
         Err(e) => println!("Migration failed: {:?}", e),
     }
 

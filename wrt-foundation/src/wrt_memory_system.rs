@@ -103,6 +103,7 @@ pub type WrtBudgetAwareFactory<const N: usize> =
 )]
 pub struct WrtProviderFactory;
 
+#[allow(deprecated)]
 impl WrtProviderFactory {
     /// Create a budget-aware provider with specified size (DEPRECATED)
     #[deprecated(
@@ -126,6 +127,7 @@ impl WrtProviderFactory {
     }
 
     /// Initialize the WRT memory system with default budgets
+    #[allow(deprecated)]
     pub fn initialize_default() -> Result<()> {
         use crate::budget_verification::CRATE_BUDGETS;
 

@@ -73,7 +73,7 @@ mod concurrency_tests {
                                 "Thread {} failed to allocate resource {}: {:?}",
                                 thread_id, i, e
                             );
-                        }
+                        },
                     }
                 }
 
@@ -81,13 +81,13 @@ mod concurrency_tests {
                 for (i, handle) in local_handles.iter().take(resources_per_thread / 2).enumerate() {
                     let mut table = table_clone.lock().unwrap();
                     match table.deallocate(*handle) {
-                        Ok(_) => {}
+                        Ok(_) => {},
                         Err(e) => {
                             eprintln!(
                                 "Thread {} failed to deallocate resource {}: {:?}",
                                 thread_id, i, e
                             );
-                        }
+                        },
                     }
                 }
 
@@ -141,7 +141,7 @@ mod concurrency_tests {
                         Ok(_) => successful_pushes += 1,
                         Err(WrtError::CapacityExceeded) => {
                             // Expected when near capacity
-                        }
+                        },
                         Err(e) => panic!("Unexpected error: {:?}", e),
                     }
                 }
@@ -219,7 +219,7 @@ mod concurrency_tests {
                             Ok(_) => successful_ops += 1,
                             Err(WrtError::CapacityExceeded) => {
                                 // Expected near capacity
-                            }
+                            },
                             Err(e) => panic!("Unexpected error: {:?}", e),
                         }
                     }
@@ -304,10 +304,10 @@ mod concurrency_tests {
                                     released += 1;
                                 }
                             }
-                        }
+                        },
                         Err(_) => {
                             // Capacity reached
-                        }
+                        },
                     }
                 }
 
@@ -385,7 +385,10 @@ mod concurrency_tests {
         assert!(total_allocations > 0);
 
         // Under memory pressure, some failures are expected
-        println!("Allocations: {}, Failures: {}", total_allocations, total_failures);
+        println!(
+            "Allocations: {}, Failures: {}",
+            total_allocations, total_failures
+        );
     }
 
     /// Test deadlock prevention with multiple locks

@@ -329,7 +329,11 @@ pub use compile_time_bounds::{
 };
 pub use generic_memory_guard::{GenericMemoryGuard, ManagedMemoryProvider, MemoryCoordinator};
 pub use memory_coordinator::{AllocationId, CrateIdentifier, GenericMemoryCoordinator};
+
+// Re-export deprecated types for backward compatibility
+#[allow(deprecated)]
 pub use wrt_memory_system::{WrtProviderFactory, WRT_MEMORY_COORDINATOR};
+
 // Macros are automatically available at crate root due to #[macro_export]
 // Validated collections disabled - use standard bounded collections instead
 // #[cfg(feature = "std")]
@@ -340,6 +344,7 @@ pub use enforcement::{AllocationToken, EnforcedAllocation, MemoryManaged};
 pub use memory_init::MemoryInitializer;
 
 // Re-export budget provider types
+#[allow(deprecated)]
 pub use budget_provider::BudgetProvider;
 
 // Re-export safety system types

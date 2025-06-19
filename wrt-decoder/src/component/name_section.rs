@@ -125,7 +125,7 @@ impl wrt_foundation::traits::FromBytes for NameMapEntry {
                 #[cfg(not(feature = "std"))]
                 Ok(byte) => {
                     let _ = bytes.push(byte);
-                }
+                },
                 Err(_) => break,
             }
         }
@@ -369,7 +369,9 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
         let subsection_end = subsection_start + subsection_size as usize;
 
         if subsection_end > data.len() {
-            return Err(Error::parse_error("Component name subsection size exceeds data size"));
+            return Err(Error::parse_error(
+                "Component name subsection size exceeds data size",
+            ));
         }
 
         let subsection_data = &data[subsection_start..subsection_end];
@@ -397,7 +399,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
                         name_section.component_name = Some(name); // Simplified for no_std
                     }
                 }
-            }
+            },
             COMPONENT_NAME_SORT => {
                 // Sort names
                 if !subsection_data.is_empty() {
@@ -412,40 +414,40 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
                         name_section.sort_names.push((sort, name_map));
                     }
                 }
-            }
+            },
             COMPONENT_NAME_IMPORT => {
                 // Import names
                 if !subsection_data.is_empty() {
                     let (name_map, _) = parse_name_map(subsection_data, 0)?;
                     name_section.import_names = name_map;
                 }
-            }
+            },
             COMPONENT_NAME_EXPORT => {
                 // Export names
                 if !subsection_data.is_empty() {
                     let (name_map, _) = parse_name_map(subsection_data, 0)?;
                     name_section.export_names = name_map;
                 }
-            }
+            },
             COMPONENT_NAME_CANONICAL => {
                 // Canonical names
                 if !subsection_data.is_empty() {
                     let (name_map, _) = parse_name_map(subsection_data, 0)?;
                     name_section.canonical_names = name_map;
                 }
-            }
+            },
             COMPONENT_NAME_TYPE => {
                 // Type names
                 if !subsection_data.is_empty() {
                     let (name_map, _) = parse_name_map(subsection_data, 0)?;
                     name_section.type_names = name_map;
                 }
-            }
+            },
             _ => {
                 // Skip unknown subsection
                 offset = subsection_end;
                 continue;
-            }
+            },
         }
 
         offset = subsection_end;
@@ -475,7 +477,7 @@ fn parse_sort(bytes: &[u8], pos: usize) -> Result<(SortIdentifier, usize)> {
         11 => SortIdentifier::Value,
         _ => {
             return Err(Error::parse_error("Invalid sort identifier"));
-        }
+        },
     };
 
     Ok((sort, 1))
@@ -920,12 +922,20 @@ pub fn parse_error(_message: &str) -> Error {
 
 pub fn parse_error_with_context(_message: &str, _context: &str) -> Error {
     use wrt_error::{codes, ErrorCategory};
-    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Parse error with context")
+    Error::new(
+        ErrorCategory::Parse,
+        codes::PARSE_ERROR,
+        "Parse error with context",
+    )
 }
 
 pub fn parse_error_with_position(_message: &str, _position: usize) -> Error {
     use wrt_error::{codes, ErrorCategory};
-    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Parse error at position")
+    Error::new(
+        ErrorCategory::Parse,
+        codes::PARSE_ERROR,
+        "Parse error at position",
+    )
 }
 
 #[cfg(test)]
@@ -948,8 +958,14 @@ mod tests {
         let mut name_section = ComponentNameSection::default();
 
         let mut name_map = NameMap::new();
-        name_map.entries.push(NameMapEntry { index: 0, name: "func0".to_string() });
-        name_map.entries.push(NameMapEntry { index: 1, name: "func1".to_string() });
+        name_map.entries.push(NameMapEntry {
+            index: 0,
+            name: "func0".to_string(),
+        });
+        name_map.entries.push(NameMapEntry {
+            index: 1,
+            name: "func1".to_string(),
+        });
 
         name_section.sort_names.push((SortIdentifier::Function, name_map));
 

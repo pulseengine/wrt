@@ -61,14 +61,17 @@ Quick Setup
    git clone https://github.com/pulseengine/wrt.git
    cd wrt
 
+   # Install unified build tool
+   cargo install --path cargo-wrt
+
    # Verify build
-   just build
+   cargo-wrt build
 
    # Run tests
-   just ci-test
+   cargo-wrt test
 
-   # Format code
-   just fmt
+   # Format code and run checks
+   cargo-wrt check
 
 Next Steps
 ==========

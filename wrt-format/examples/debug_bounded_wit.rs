@@ -27,10 +27,10 @@ fn main() -> Result<(), wrt_error::Error> {
                     println!("  World name: '{}'", name);
                 }
             }
-        }
+        },
         Err(e) => {
             println!("✗ Parse failed: {:?}", e);
-        }
+        },
     }
 
     // Test an even simpler case
@@ -43,10 +43,10 @@ fn main() -> Result<(), wrt_error::Error> {
         Ok(()) => {
             println!("✓ Simple parse completed");
             println!("Worlds found: {}", simple_parser.world_count());
-        }
+        },
         Err(e) => {
             println!("✗ Simple parse failed: {:?}", e);
-        }
+        },
     }
 
     Ok(())

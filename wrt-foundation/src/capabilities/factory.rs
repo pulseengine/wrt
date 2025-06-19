@@ -63,6 +63,32 @@ impl CapabilityMemoryFactory {
         CapabilityGuardedProvider::new(capability.clone_capability())
     }
 
+    /// Create a capability-aware wrapped provider (compatible with Provider trait)
+    ///
+    /// This method creates a CapabilityAwareProvider that wraps a NoStdProvider
+    /// and can be used anywhere a Provider trait is expected.
+    pub fn create_capability_aware_provider<const N: usize>(
+        &self,
+        crate_id: CrateId,
+    ) -> Result<super::provider_bridge::CapabilityAwareProvider<NoStdProvider<N>>> {
+        // Verify the crate has capability to allocate this size
+        let capability = self.context.get_capability(crate_id)?;
+
+        // Verify allocation operation
+        let operation = MemoryOperation::Allocate { size: N };
+        capability.verify_access(&operation)?;
+
+        // Create the underlying NoStdProvider
+        let provider = NoStdProvider::<N>::new();
+
+        // Wrap with capability verification
+        Ok(super::provider_bridge::CapabilityAwareProvider::new(
+            provider,
+            capability.clone_capability(),
+            crate_id,
+        ))
+    }
+
     /// Create a provider with explicit capability verification
     pub fn create_verified_provider<const N: usize>(
         &self,

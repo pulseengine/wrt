@@ -91,12 +91,12 @@ impl StepController {
                     self.target_line = Some(line.line);
                     self.previous_line = Some(line.line);
                 }
-            }
+            },
             StepMode::Out => {
                 // Step out needs at least one frame
                 self.step_over_depth = 1;
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 
@@ -120,7 +120,7 @@ impl StepController {
                 // Always break on next instruction
                 self.mode = StepMode::None;
                 DebugAction::Break
-            }
+            },
 
             StepMode::Line => self.check_line_step(current_line),
 
@@ -138,16 +138,20 @@ impl StepController {
             StepMode::Over => {
                 // Track call depth
                 self.step_over_depth += 1;
-            }
+            },
             StepMode::Out => {
                 // Track call depth
                 self.step_over_depth += 1;
-            }
-            _ => {}
+            },
+            _ => {},
         }
 
         // Push frame
-        let frame = StepFrame { function_idx: func_idx, return_pc, call_line: self.previous_line };
+        let frame = StepFrame {
+            function_idx: func_idx,
+            return_pc,
+            call_line: self.previous_line,
+        };
         self.call_stack.push(frame).ok();
     }
 
@@ -159,15 +163,15 @@ impl StepController {
         match self.mode {
             StepMode::Over => {
                 self.step_over_depth = self.step_over_depth.saturating_sub(1);
-            }
+            },
             StepMode::Out => {
                 self.step_over_depth = self.step_over_depth.saturating_sub(1);
                 if self.step_over_depth == 0 {
                     // We've stepped out
                     self.mode = StepMode::None;
                 }
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 
@@ -291,7 +295,11 @@ impl SteppingDebugger {
         pc_end: u32,
         line_info: LineInfo,
     ) -> Result<(), ()> {
-        let entry = LineCacheEntry { pc_start, pc_end, line_info };
+        let entry = LineCacheEntry {
+            pc_start,
+            pc_end,
+            line_info,
+        };
         self.line_cache.push(entry).map_err(|_| ())
     }
 
@@ -381,11 +389,21 @@ mod tests {
         let mut controller = StepController::new();
         let state = MockState { pc: 0x1000 };
 
-        let line1 =
-            LineInfo { file_index: 1, line: 10, column: 0, is_stmt: true, end_sequence: false };
+        let line1 = LineInfo {
+            file_index: 1,
+            line: 10,
+            column: 0,
+            is_stmt: true,
+            end_sequence: false,
+        };
 
-        let line2 =
-            LineInfo { file_index: 1, line: 11, column: 0, is_stmt: true, end_sequence: false };
+        let line2 = LineInfo {
+            file_index: 1,
+            line: 11,
+            column: 0,
+            is_stmt: true,
+            end_sequence: false,
+        };
 
         // Start line step
         controller.start_step(StepMode::Line, Some(&line1));
@@ -404,8 +422,13 @@ mod tests {
         let mut controller = StepController::new();
         let state = MockState { pc: 0x1000 };
 
-        let line1 =
-            LineInfo { file_index: 1, line: 10, column: 0, is_stmt: true, end_sequence: false };
+        let line1 = LineInfo {
+            file_index: 1,
+            line: 10,
+            column: 0,
+            is_stmt: true,
+            end_sequence: false,
+        };
 
         // Start step over
         controller.start_step(StepMode::Over, Some(&line1));
@@ -421,8 +444,13 @@ mod tests {
         controller.on_function_exit();
 
         // Back at original depth with new line - break
-        let line2 =
-            LineInfo { file_index: 1, line: 11, column: 0, is_stmt: true, end_sequence: false };
+        let line2 = LineInfo {
+            file_index: 1,
+            line: 11,
+            column: 0,
+            is_stmt: true,
+            end_sequence: false,
+        };
         let action = controller.should_break(0x1100, &state, Some(&line2));
         assert_eq!(action, DebugAction::Break);
     }

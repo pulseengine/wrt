@@ -60,7 +60,7 @@ mod component_decode {
                         codes::PARSE_ERROR,
                         "Invalid section size",
                     ));
-                }
+                },
             };
             offset += bytes_read;
 
@@ -96,45 +96,45 @@ mod component_decode {
                                     }
                                 }
                             }
-                        }
+                        },
                         Err(_) => {
                             // Continue parsing even if custom section name can't be
                             // read
-                        }
+                        },
                     }
-                }
+                },
                 binary::COMPONENT_CORE_MODULE_SECTION_ID => {
                     // Core module section
                     match parse_core_module_section(section_bytes) {
                         Ok((modules, _)) => {
                             component.modules.extend(modules);
-                        }
+                        },
                         Err(_) => {
                             // Continue parsing other sections even if this one
                             // fails
-                        }
+                        },
                     }
-                }
+                },
                 binary::COMPONENT_CORE_INSTANCE_SECTION_ID => {
                     // Core instance section
                     match parse_core_instance_section(section_bytes) {
                         Ok((instances, _)) => {
                             component.core_instances.extend(instances);
-                        }
+                        },
                         Err(_) => {
                             // Continue parsing other sections
-                        }
+                        },
                     }
-                }
+                },
                 binary::COMPONENT_TYPE_SECTION_ID => {
                     // Type section
                     match parse_core_type_section(section_bytes) {
                         Ok((types, _)) => {
                             component.core_types.extend(types);
-                        }
+                        },
                         Err(_) => {
                             // Continue parsing other sections
-                        }
+                        },
                     }
 
                     // If this is a component type section, also try to parse it as such
@@ -142,103 +142,103 @@ mod component_decode {
                         Ok((types, _)) => {
                             // Add component types to component
                             component.types.extend(types);
-                        }
+                        },
                         Err(_) => {
                             // Continue parsing other sections
-                        }
+                        },
                     }
-                }
+                },
                 binary::COMPONENT_COMPONENT_SECTION_ID => {
                     // Component section
                     match parse_component_section(section_bytes) {
                         Ok((components, _)) => {
                             component.components.extend(components);
-                        }
+                        },
                         Err(_) => {
                             // Continue parsing other sections
-                        }
+                        },
                     }
-                }
+                },
                 binary::COMPONENT_INSTANCE_SECTION_ID => {
                     // Instance section
                     match parse_instance_section(section_bytes) {
                         Ok((instances, _)) => {
                             component.instances.extend(instances);
-                        }
+                        },
                         Err(_) => {
                             // Continue parsing other sections
-                        }
+                        },
                     }
-                }
+                },
                 binary::COMPONENT_CANON_SECTION_ID => {
                     // Canon section
                     match parse_canon_section(section_bytes) {
                         Ok((canons, _)) => {
                             component.canonicals.extend(canons);
-                        }
+                        },
                         Err(_) => {
                             // Continue parsing other sections
-                        }
+                        },
                     }
-                }
+                },
                 binary::COMPONENT_START_SECTION_ID => {
                     // Start section
                     match parse_start_section(section_bytes) {
                         Ok((start, _)) => {
                             component.start = Some(start);
-                        }
+                        },
                         Err(_) => {
                             // Continue parsing other sections
-                        }
+                        },
                     }
-                }
+                },
                 binary::COMPONENT_IMPORT_SECTION_ID => {
                     // Import section
                     match parse_import_section(section_bytes) {
                         Ok((imports, _)) => {
                             component.imports.extend(imports);
-                        }
+                        },
                         Err(_) => {
                             // Continue parsing other sections
-                        }
+                        },
                     }
-                }
+                },
                 binary::COMPONENT_EXPORT_SECTION_ID => {
                     // Export section
                     match parse_export_section(section_bytes) {
                         Ok((exports, _)) => {
                             component.exports.extend(exports);
-                        }
+                        },
                         Err(_) => {
                             // Continue parsing other sections
-                        }
+                        },
                     }
-                }
+                },
                 binary::COMPONENT_VALUE_SECTION_ID => {
                     // Value section
                     match parse_value_section(section_bytes) {
                         Ok((values, _)) => {
                             component.values.extend(values);
-                        }
+                        },
                         Err(_) => {
                             // Continue parsing other sections
-                        }
+                        },
                     }
-                }
+                },
                 binary::COMPONENT_ALIAS_SECTION_ID => {
                     // Alias section
                     match parse_alias_section(section_bytes) {
                         Ok((aliases, _)) => {
                             component.aliases.extend(aliases);
-                        }
+                        },
                         Err(_) => {
                             // Continue parsing other sections
-                        }
+                        },
                     }
-                }
+                },
                 _ => {
                     // Unknown section - skip
-                }
+                },
             }
         }
 
@@ -247,7 +247,11 @@ mod component_decode {
 
     /// Helper function to create a decode error
     pub fn decode_error(_message: &str) -> Error {
-        Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, "Component decode error")
+        Error::new(
+            ErrorCategory::Parse,
+            codes::DECODING_ERROR,
+            "Component decode error",
+        )
     }
 
     /// Helper function to create a decode error with context
@@ -270,17 +274,29 @@ mod component_decode {
 
     /// Helper function to create a decode error with type
     pub fn decode_error_with_type(_message: &str, _type_name: &str) -> Error {
-        Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, "Component decode error with type")
+        Error::new(
+            ErrorCategory::Parse,
+            codes::DECODING_ERROR,
+            "Component decode error with type",
+        )
     }
 
     /// Helper function to create a decode error with value
     pub fn decode_error_with_value(_message: &str, _value: &str) -> Error {
-        Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, "Component decode error with value")
+        Error::new(
+            ErrorCategory::Parse,
+            codes::DECODING_ERROR,
+            "Component decode error with value",
+        )
     }
 
     /// Helper function to create a parse error
     pub fn parse_error(_message: &str) -> Error {
-        Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Component parse error")
+        Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Component parse error",
+        )
     }
 
     /// Helper function to create a parse error with context
@@ -322,7 +338,11 @@ pub mod no_std_stubs {
 
     /// Helper functions (no_std stubs)
     pub fn decode_error(_message: &str) -> Error {
-        Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, "Component decode error")
+        Error::new(
+            ErrorCategory::Parse,
+            codes::DECODING_ERROR,
+            "Component decode error",
+        )
     }
 
     pub fn decode_error_with_context(_message: &str, _context: &str) -> Error {
@@ -342,15 +362,27 @@ pub mod no_std_stubs {
     }
 
     pub fn decode_error_with_type(_message: &str, _type_name: &str) -> Error {
-        Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, "Component decode error with type")
+        Error::new(
+            ErrorCategory::Parse,
+            codes::DECODING_ERROR,
+            "Component decode error with type",
+        )
     }
 
     pub fn decode_error_with_value(_message: &str, _value: &str) -> Error {
-        Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, "Component decode error with value")
+        Error::new(
+            ErrorCategory::Parse,
+            codes::DECODING_ERROR,
+            "Component decode error with value",
+        )
     }
 
     pub fn parse_error(_message: &str) -> Error {
-        Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Component parse error")
+        Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Component parse error",
+        )
     }
 
     pub fn parse_error_with_context(_message: &str, _context: &str) -> Error {
@@ -358,7 +390,11 @@ pub mod no_std_stubs {
     }
 
     pub fn parse_error_with_position(_message: &str, _position: usize) -> Error {
-        Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Parse error at position")
+        Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Parse error at position",
+        )
     }
 }
 

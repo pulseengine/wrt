@@ -48,11 +48,20 @@ mod tests {
     fn test_primitive_types() {
         let span = SourceSpan::new(0, 10, 0);
 
-        let string_type = PrimitiveType { kind: PrimitiveKind::String, span };
+        let string_type = PrimitiveType {
+            kind: PrimitiveKind::String,
+            span,
+        };
 
-        let u32_type = PrimitiveType { kind: PrimitiveKind::U32, span };
+        let u32_type = PrimitiveType {
+            kind: PrimitiveKind::U32,
+            span,
+        };
 
-        let bool_type = PrimitiveType { kind: PrimitiveKind::Bool, span };
+        let bool_type = PrimitiveType {
+            kind: PrimitiveKind::Bool,
+            span,
+        };
 
         assert_eq!(string_type.kind, PrimitiveKind::String);
         assert_eq!(u32_type.kind, PrimitiveKind::U32);
@@ -63,7 +72,10 @@ mod tests {
     fn test_type_expressions() {
         let span = SourceSpan::new(0, 10, 0);
 
-        let string_type = PrimitiveType { kind: PrimitiveKind::String, span };
+        let string_type = PrimitiveType {
+            kind: PrimitiveKind::String,
+            span,
+        };
 
         let type_expr = TypeExpr::Primitive(string_type);
 
@@ -71,7 +83,7 @@ mod tests {
         match type_expr {
             TypeExpr::Primitive(prim) => {
                 assert_eq!(prim.kind, PrimitiveKind::String);
-            }
+            },
             _ => panic!("Expected primitive type expression"),
         }
     }
@@ -80,12 +92,15 @@ mod tests {
     fn test_function_results() {
         let span = SourceSpan::new(0, 10, 0);
 
-        let u32_type = PrimitiveType { kind: PrimitiveKind::U32, span };
+        let u32_type = PrimitiveType {
+            kind: PrimitiveKind::U32,
+            span,
+        };
 
         // Test None results
         let no_results = FunctionResults::None;
         match no_results {
-            FunctionResults::None => {} // Expected
+            FunctionResults::None => {}, // Expected
             _ => panic!("Expected None results"),
         }
 
@@ -94,7 +109,7 @@ mod tests {
         match single_result {
             FunctionResults::Single(TypeExpr::Primitive(prim)) => {
                 assert_eq!(prim.kind, PrimitiveKind::U32);
-            }
+            },
             _ => panic!("Expected single primitive result"),
         }
     }
@@ -172,7 +187,7 @@ mod tests {
         assert!(function.params.is_empty());
 
         match function.results {
-            FunctionResults::None => {} // Expected
+            FunctionResults::None => {}, // Expected
             _ => panic!("Expected no results"),
         }
     }
@@ -190,7 +205,7 @@ mod tests {
         // Test that default implementations work
         let function_results = FunctionResults::default();
         match function_results {
-            FunctionResults::None => {} // Expected default
+            FunctionResults::None => {}, // Expected default
             _ => panic!("Expected None as default for FunctionResults"),
         }
     }

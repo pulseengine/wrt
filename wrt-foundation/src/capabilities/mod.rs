@@ -36,6 +36,8 @@ pub mod factory;
 pub mod macros;
 pub mod operations;
 #[cfg(any(feature = "std", feature = "alloc"))]
+pub mod platform_bridge;
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod provider_bridge;
 pub mod static_alloc;
 pub mod verified;
@@ -45,6 +47,10 @@ pub use context::{AnyMemoryCapability, CapabilityGuardedProvider, MemoryCapabili
 pub use dynamic::DynamicMemoryCapability;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use factory::{CapabilityFactoryBuilder, CapabilityMemoryFactory};
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use platform_bridge::{
+    PlatformAllocator, PlatformCapabilityBuilder, PlatformCapabilityProvider, PlatformMemoryProvider,
+};
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use provider_bridge::{
     CapabilityAwareProvider, CapabilityProviderFactory, ProviderCapabilityExt,

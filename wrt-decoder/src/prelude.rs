@@ -282,7 +282,10 @@ pub mod binary {
             ));
         }
 
-        Ok((&data[name_start..name_start + length as usize], name_start + length as usize))
+        Ok((
+            &data[name_start..name_start + length as usize],
+            name_start + length as usize,
+        ))
     }
 }
 

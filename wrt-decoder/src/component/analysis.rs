@@ -505,7 +505,11 @@ impl wrt_foundation::traits::FromBytes for ExtendedImportInfo {
         let kind = String::from_utf8(kind_bytes)
             .map_err(|_| wrt_foundation::traits::SerializationError::InvalidFormat)?;
 
-        Ok(ExtendedImportInfo { namespace, name, kind })
+        Ok(ExtendedImportInfo {
+            namespace,
+            name,
+            kind,
+        })
     }
 }
 

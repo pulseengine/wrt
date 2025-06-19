@@ -38,11 +38,11 @@ macro_rules! safe_capability_alloc {
     ($capability_context:expr, $crate_id:expr, $size:expr) => {{
         use $crate::capabilities::{CapabilityMemoryFactory, MemoryOperation};
 
-        // Create the factory from the context
-        let factory = CapabilityMemoryFactory::new($capability_context);
+        // The capability_context should already be a CapabilityMemoryFactory
+        let factory = $capability_context;
 
-        // Create a capability-verified provider
-        factory.create_provider::<$size>($crate_id)
+        // Create a capability-aware provider that implements Provider trait
+        factory.create_capability_aware_provider::<$size>($crate_id)
     }};
 }
 
@@ -98,7 +98,7 @@ macro_rules! safe_verified_alloc {
     ($capability_context:expr, $crate_id:expr, $size:expr, $verification_level:expr) => {{
         use $crate::capabilities::CapabilityMemoryFactory;
 
-        let factory = CapabilityMemoryFactory::new($capability_context);
+        let factory = $capability_context;
         factory.create_verified_provider::<$size>($crate_id, $verification_level)
     }};
 }

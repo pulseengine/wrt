@@ -196,3 +196,4 @@ Internal Documents
    integration
    configuration
    safety_case
+   aspice_mapping

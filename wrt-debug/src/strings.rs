@@ -90,7 +90,10 @@ impl<'a> StringTable<'a> {
 
     /// Iterator over all strings in the table
     pub fn strings(&self) -> StringTableIterator<'a> {
-        StringTableIterator { data: self.data, offset: 0 }
+        StringTableIterator {
+            data: self.data,
+            offset: 0,
+        }
     }
 
     /// Check if the string table is empty

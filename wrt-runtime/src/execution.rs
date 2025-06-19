@@ -1,7 +1,20 @@
-//! Execution related structures and functions
+//! WebAssembly Execution Context and Statistics
 //!
-//! This module provides types and utilities for tracking execution statistics
-//! and managing WebAssembly execution.
+//! This module provides the core execution context for WebAssembly modules,
+//! including execution statistics tracking, resource monitoring, and execution
+//! state management.
+//!
+//! # Core Components
+//!
+//! - `ExecutionContext`: Main execution state including value stack and call frames
+//! - `ExecutionStatistics`: Performance metrics and resource usage tracking
+//! - Stack depth management with configurable limits
+//! - Integration with the interpreter for instruction execution
+//!
+//! # Safety
+//!
+//! All execution operations are bounds-checked and memory-safe, preventing
+//! stack overflows and maintaining WebAssembly's sandboxing guarantees.
 
 extern crate alloc;
 

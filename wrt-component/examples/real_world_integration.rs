@@ -75,7 +75,11 @@ pub struct ComponentResult {
 impl WasmApplicationManager {
     /// Create a new application manager
     pub fn new(config: ApplicationConfig) -> Self {
-        Self { agent_registry: AgentRegistry::new(), component_agents: HashMap::new(), config }
+        Self {
+            agent_registry: AgentRegistry::new(),
+            component_agents: HashMap::new(),
+            config,
+        }
     }
 
     /// Register a WebAssembly component
@@ -84,7 +88,10 @@ impl WasmApplicationManager {
         name: String,
         component_type: ComponentType,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        println!("Registering component '{}' of type {:?}", name, component_type);
+        println!(
+            "Registering component '{}' of type {:?}",
+            name, component_type
+        );
 
         // Choose appropriate execution mode based on component type
         let execution_mode = self.determine_execution_mode(&component_type);
@@ -105,7 +112,10 @@ impl WasmApplicationManager {
         // Store the mapping
         self.component_agents.insert(name.clone(), agent_id);
 
-        println!("Successfully registered component '{}' with agent ID {:?}", name, agent_id);
+        println!(
+            "Successfully registered component '{}' with agent ID {:?}",
+            name, agent_id
+        );
         Ok(())
     }
 
@@ -124,7 +134,10 @@ impl WasmApplicationManager {
             .get(component_name)
             .ok_or_else(|| format!("Component '{}' not found", component_name))?;
 
-        println!("Executing function '{}' in component '{}'", function_name, component_name);
+        println!(
+            "Executing function '{}' in component '{}'",
+            function_name, component_name
+        );
 
         // Simple function name to index mapping (in real app, this would be more sophisticated)
         let function_index = self.function_name_to_index(function_name);
@@ -196,7 +209,7 @@ impl WasmApplicationManager {
                     "update_display",
                     vec![Value::Bool(true)],
                 )?);
-            }
+            },
 
             "batch_data_processing" => {
                 // Use async execution for batch processing
@@ -214,7 +227,7 @@ impl WasmApplicationManager {
                         vec![Value::U32(i)],
                     )?);
                 }
-            }
+            },
 
             _ => return Err(format!("Unknown workflow: {}", workflow_name).into()),
         }
@@ -262,7 +275,7 @@ impl WasmApplicationManager {
                 } else {
                     ExecutionMode::Synchronous
                 }
-            }
+            },
 
             ComponentType::BusinessLogic => {
                 // Business logic can use hybrid mode for flexibility
@@ -271,7 +284,7 @@ impl WasmApplicationManager {
                     stackless_enabled: false,
                     cfi_enabled: false,
                 })
-            }
+            },
 
             ComponentType::DataProcessing => {
                 // Data processing benefits from memory optimization
@@ -280,7 +293,7 @@ impl WasmApplicationManager {
                 } else {
                     ExecutionMode::Synchronous
                 }
-            }
+            },
 
             ComponentType::IoOperations => {
                 // I/O operations are typically async
@@ -289,7 +302,7 @@ impl WasmApplicationManager {
                 } else {
                     ExecutionMode::Synchronous
                 }
-            }
+            },
 
             ComponentType::SecurityCritical => {
                 // Security components need CFI protection
@@ -302,7 +315,7 @@ impl WasmApplicationManager {
                         cfi_enabled: false,
                     })
                 }
-            }
+            },
         }
     }
 
@@ -385,8 +398,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Execute complex workflows
     println!("\n🏗️ Executing Complex Workflows:");
 
-    let workflow_results = app_manager
-        .execute_workflow("user_data_processing", Value::String("user_data_payload".to_string()))?;
+    let workflow_results = app_manager.execute_workflow(
+        "user_data_processing",
+        Value::String("user_data_payload".to_string()),
+    )?;
 
     let batch_results = app_manager.execute_workflow("batch_data_processing", Value::U32(1000))?;
 

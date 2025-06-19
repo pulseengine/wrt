@@ -2,7 +2,6 @@
 members = [
     "wrt",
     "wrtd",
-    "xtask",
     "wrt-sync",
     "wrt-error",
     "wrt-format",
@@ -22,7 +21,7 @@ members = [
     "wrt-test-registry",
     "wrt-platform",
     "wrt-panic",
-    "wrt-tests/integration"]
+    "wrt-tests/integration", "wrt-build-core", "cargo-wrt", "wrt-dagger"]
 resolver = "2"  # Use edition 2021 resolver
 
 [workspace.package]

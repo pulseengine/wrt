@@ -157,7 +157,7 @@ Developer Documentation
       :link: developer/tooling/index
       :link-type: doc
 
-      xtask commands, development tools, and safety verification
+      cargo-wrt unified build tool, development workflows, and safety verification
 
 Reference Documentation
 -----------------------
@@ -165,11 +165,11 @@ Reference Documentation
 .. grid:: 2
    :gutter: 3
 
-   .. grid-item-card:: Safety Guidelines
-      :link: safety/index
+   .. grid-item-card:: Safety Manual
+      :link: safety_manual/index
       :link-type: doc
 
-      Safety constraints, mechanisms, and best practices
+      Comprehensive safety documentation and compliance guidance
 
    .. grid-item-card:: Binary Format
       :link: binary
@@ -229,7 +229,7 @@ Reference Documentation
    :hidden:
    :caption: Reference
 
-   safety/index
+   safety_manual/index
    binary
    changelog.md
    

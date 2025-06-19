@@ -116,7 +116,6 @@ pub struct RealtimeMonitor {
 impl RealtimeMonitor {
     /// Create a new realtime monitor
     pub fn new(config: MonitorConfig) -> Self {
-        let history_size = config.history_size;
         Self {
             config,
             active: AtomicBool::new(false),
@@ -131,7 +130,11 @@ impl RealtimeMonitor {
     /// Start monitoring in background thread (std only)
     #[cfg(feature = "std")]
     pub fn start(&self) -> WrtResult<()> {
-        if self.active.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire).is_err() {
+        if self
+            .active
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_err()
+        {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::RUNTIME_ERROR,
@@ -264,7 +267,7 @@ impl RealtimeMonitor {
 
         Ok(MemorySample {
             timestamp,
-            total_allocated: total_allocated,
+            total_allocated,
             active_providers: monitor_stats
                 .total_allocations
                 .saturating_sub(monitor_stats.total_deallocations)
@@ -354,7 +357,10 @@ impl RealtimeMonitor {
             AlertLevel::Critical => "🚨",
         };
 
-        println!("{} MEMORY ALERT [{}]: {}", icon, alert.timestamp, alert.message);
+        println!(
+            "{} MEMORY ALERT [{}]: {}",
+            icon, alert.timestamp, alert.message
+        );
     }
 
     /// Auto-generate visualization reports
@@ -381,7 +387,10 @@ impl RealtimeMonitor {
 
         // Placeholder for now
         let _ = fs::write(json_path, "{}");
-        let _ = fs::write(html_path, "<html><body>Memory report placeholder</body></html>");
+        let _ = fs::write(
+            html_path,
+            "<html><body>Memory report placeholder</body></html>",
+        );
 
         Ok(())
     }
@@ -419,7 +428,11 @@ impl RealtimeMonitor {
         use std::io::Write;
 
         let mut file = File::create(filename).map_err(|_e| {
-            Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to create CSV file")
+            Error::new(
+                ErrorCategory::Runtime,
+                codes::RUNTIME_ERROR,
+                "Failed to create CSV file",
+            )
         })?;
 
         // Write CSV header
@@ -537,8 +550,8 @@ mod tests {
         // Should be able to get current sample
         let sample = get_current_sample();
         match sample {
-            Ok(_) => {}  // Success
-            Err(_) => {} // Expected if memory system not initialized
+            Ok(_) => {},  // Success
+            Err(_) => {}, // Expected if memory system not initialized
         }
     }
 }

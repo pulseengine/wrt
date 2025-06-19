@@ -4,7 +4,7 @@
 //! resource management patterns and platform abstractions.
 
 use crate::prelude::*;
-use wrt_component::values::Value;
+use wrt_foundation::values::Value;
 use core::any::Any;
 
 /// WASI stream read operation

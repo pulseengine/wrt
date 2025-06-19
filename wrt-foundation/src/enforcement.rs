@@ -9,9 +9,11 @@ use crate::safe_managed_alloc;
 use crate::{
     budget_aware_provider::CrateId,
     memory_coordinator::CrateIdentifier,
-    wrt_memory_system::{WrtMemoryGuard, WrtProviderFactory},
     Error, Result,
 };
+
+#[allow(deprecated)]
+use crate::wrt_memory_system::{WrtMemoryGuard, WrtProviderFactory};
 
 /// Sealed trait to prevent external implementation
 mod sealed {
@@ -29,6 +31,7 @@ pub trait MemoryManaged: sealed::Sealed {
 /// Only WrtProviderFactory can implement MemoryManaged
 impl sealed::Sealed for WrtProviderFactory {}
 
+#[allow(deprecated)]
 impl MemoryManaged for WrtProviderFactory {
     type Guard<const N: usize> = WrtMemoryGuard<N>;
 
@@ -52,6 +55,7 @@ impl<const SIZE: usize, const CRATE: usize> EnforcedAllocation<SIZE, CRATE> {
     }
 
     /// Materialize the allocation (only possible through managed system)
+    #[allow(deprecated)]
     pub fn materialize(self, crate_id: CrateId) -> Result<WrtMemoryGuard<SIZE>> {
         // Verify crate ID matches compile-time constant
         if crate_id.as_index() != CRATE {
@@ -79,6 +83,7 @@ impl<const SIZE: usize> AllocationToken<SIZE> {
     }
 
     /// Use the token to allocate memory
+    #[allow(deprecated)]
     pub fn allocate(self) -> Result<WrtMemoryGuard<SIZE>> {
         WrtProviderFactory::create_provider::<SIZE>(self.crate_id)
     }

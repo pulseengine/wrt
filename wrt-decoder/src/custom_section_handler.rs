@@ -84,15 +84,18 @@ impl CustomSectionHandler {
             BRANCH_HINT_SECTION_NAME => {
                 let branch_hints = parse_branch_hint_section(data)?;
                 CustomSection::BranchHint(branch_hints)
-            }
+            },
             "name" => {
                 let name_section = parse_name_section(data)?;
                 name_section
-            }
+            },
             _ => {
                 // Unknown section - preserve raw data
-                CustomSection::Unknown { name: name.to_string(), data: data.to_vec() }
-            }
+                CustomSection::Unknown {
+                    name: name.to_string(),
+                    data: data.to_vec(),
+                }
+            },
         };
 
         #[cfg(feature = "safety-critical")]
@@ -130,7 +133,8 @@ impl CustomSectionHandler {
         function_index: u32,
         instruction_offset: u32,
     ) -> Option<crate::branch_hint_section::BranchHintValue> {
-        self.get_branch_hints().and_then(|hints| hints.get_hint(function_index, instruction_offset))
+        self.get_branch_hints()
+            .and_then(|hints| hints.get_hint(function_index, instruction_offset))
     }
 
     /// Get name section information
@@ -190,7 +194,10 @@ fn parse_name_section(_data: &[u8]) -> Result<CustomSection> {
 
 impl Default for CustomSection {
     fn default() -> Self {
-        CustomSection::Unknown { name: String::new(), data: Vec::new() }
+        CustomSection::Unknown {
+            name: String::new(),
+            data: Vec::new(),
+        }
     }
 }
 
@@ -212,7 +219,11 @@ pub fn extract_custom_section(section_data: &[u8]) -> Result<(String, &[u8])> {
 
     let name_bytes = section_data[offset..offset + name_len as usize].to_vec();
     let name = String::from_utf8(name_bytes).map_err(|_| {
-        Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Invalid UTF-8 in custom section name")
+        Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Invalid UTF-8 in custom section name",
+        )
     })?;
 
     offset += name_len as usize;
@@ -244,7 +255,10 @@ mod tests {
 
         // Verify it's accessible
         assert!(handler.has_branch_hints());
-        assert_eq!(handler.get_branch_hint(0, 10), Some(BranchHintValue::LikelyTrue));
+        assert_eq!(
+            handler.get_branch_hint(0, 10),
+            Some(BranchHintValue::LikelyTrue)
+        );
         assert_eq!(handler.get_branch_hint(0, 20), None);
         assert_eq!(handler.get_branch_hint(1, 10), None);
 

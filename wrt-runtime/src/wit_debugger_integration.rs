@@ -14,10 +14,20 @@ use wrt_foundation::{
     BoundedString, BoundedVec, NoStdProvider,
     prelude::*,
     budget_aware_provider::CrateId,
-    capabilities::{CapabilityAwareProvider, capability_context, safe_capability_alloc}};
+    capabilities::{CapabilityAwareProvider, factory::CapabilityMemoryFactory},
+    capability_context, safe_capability_alloc
+};
 use wrt_error::{Error, Result};
 
-/// Type alias for capability-aware provider  
+// MemoryCapabilityContext and CapabilityGuardedProvider are imported above
+
+// Type alias for the provider type that works with BoundedVec
+// In std/alloc environments, use CapabilityAwareProvider wrapper
+#[cfg(any(feature = "std", feature = "alloc"))]
+type RuntimeProvider<const N: usize> = CapabilityAwareProvider<NoStdProvider<N>>;
+
+// In no_std environments, use NoStdProvider directly
+#[cfg(not(any(feature = "std", feature = "alloc")))]
 type RuntimeProvider<const N: usize> = CapabilityAwareProvider<NoStdProvider<N>>;
 
 /// Helper function to create a capability-aware provider

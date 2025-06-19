@@ -26,7 +26,7 @@ mod component_val_type {
             FormatValType::List(inner) => {
                 result.push(0x0D);
                 encode_val_type(result, inner)?;
-            }
+            },
             FormatValType::S32 => result.push(0x01),
             FormatValType::U32 => result.push(0x02),
             FormatValType::S64 => result.push(0x03),
@@ -40,7 +40,7 @@ mod component_val_type {
                     result.extend_from_slice(&write_string(name));
                     encode_val_type(result, field_type)?;
                 }
-            }
+            },
             FormatValType::Variant(cases) => {
                 result.push(0x0F);
                 result.extend_from_slice(&write_leb128_u32(cases.len() as u32));
@@ -53,50 +53,50 @@ mod component_val_type {
                         result.push(0x00); // no type
                     }
                 }
-            }
+            },
             FormatValType::Tuple(types) => {
                 result.push(0x10);
                 result.extend_from_slice(&write_leb128_u32(types.len() as u32));
                 for ty in types {
                     encode_val_type(result, ty)?;
                 }
-            }
+            },
             FormatValType::Option(inner) => {
                 result.push(0x11);
                 encode_val_type(result, inner)?;
-            }
+            },
             // Handle Result type - assuming it's a tuple with optional ok and err values
             FormatValType::Result(inner) => {
                 // For now, assume it's an ok-only type by default
                 result.push(0x12);
                 result.push(0x01); // ok only
                 encode_val_type(result, inner)?;
-            }
+            },
             FormatValType::Enum(cases) => {
                 result.push(0x13);
                 result.extend_from_slice(&write_leb128_u32(cases.len() as u32));
                 for case_name in cases {
                     result.extend_from_slice(&write_string(case_name));
                 }
-            }
+            },
             FormatValType::Flags(names) => {
                 result.push(0x14);
                 result.extend_from_slice(&write_leb128_u32(names.len() as u32));
                 for name in names {
                     result.extend_from_slice(&write_string(name));
                 }
-            }
+            },
             FormatValType::Ref(idx) => {
                 result.push(0x15);
                 result.extend_from_slice(&write_leb128_u32(*idx));
-            }
+            },
             FormatValType::Own(_) | FormatValType::Borrow(_) => {
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
                     "Resource types are not supported for encoding yet",
                 ));
-            }
+            },
             FormatValType::Char => result.push(0x16),
             FormatValType::FixedList(inner, size) => {
                 // Fixed-length lists are encoded as a list tag followed by the element type and
@@ -106,15 +106,15 @@ mod component_val_type {
 
                 // Encode size
                 result.extend_from_slice(&write_leb128_u32(*size));
-            }
+            },
             FormatValType::ErrorContext => {
                 // Error context is a simple type
                 result.push(0x18); // Example tag for error context
-            }
+            },
             FormatValType::Void => {
                 // Void is a simple type
                 result.push(0x19); // Example tag for void
-            }
+            },
             // Add a catch-all for any new variants that might be added in the future
             _ => {
                 return Err(Error::new(
@@ -122,7 +122,7 @@ mod component_val_type {
                     codes::PARSE_ERROR,
                     "Unsupported value type for encoding",
                 ));
-            }
+            },
         }
         Ok(())
     }

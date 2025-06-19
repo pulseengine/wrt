@@ -20,10 +20,10 @@ pub mod random;
 
 // Re-export main functions for convenience
 #[cfg(feature = "wasi-filesystem")]
-pub use filesystem::{wasi_filesystem_read, wasi_filesystem_write};
+pub use filesystem::{wasi_filesystem_read, wasi_filesystem_write, wasi_filesystem_open_at};
 
 #[cfg(feature = "wasi-cli")]
-pub use cli::{wasi_get_arguments, wasi_get_environment};
+pub use cli::{wasi_cli_get_arguments, wasi_cli_get_environment};
 
 #[cfg(feature = "wasi-clocks")]
 pub use clocks::{wasi_monotonic_clock_now, wasi_wall_clock_now};

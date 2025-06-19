@@ -7,6 +7,7 @@
 extern crate alloc;
 
 use crate::prelude::{BoundedCapacity, Debug, Eq, PartialEq, str};
+use core::sync::atomic::AtomicU32;
 use crate::bounded_runtime_infra::{
     BoundedThreadVec, BoundedThreadMap, RuntimeProvider, 
     new_thread_vec, new_thread_map, MAX_MANAGED_THREADS
@@ -599,7 +600,21 @@ impl ThreadManager {
 
 impl Default for ThreadManager {
     fn default() -> Self {
-        Self::new(ThreadConfig::default()).unwrap()
+        Self::new(ThreadConfig::default()).unwrap_or_else(|_| {
+            // Create a minimal thread manager with very limited resources
+            Self {
+                threads: [const { None }; MAX_MANAGED_THREADS],
+                next_thread_id: 1,
+                config: ThreadConfig {
+                    max_threads: 1,
+                    default_stack_size: 64 * 1024,
+                    max_stack_size: 64 * 1024,
+                    priority: 50,
+                    enable_tls: false,
+                },
+                stats: ThreadManagerStats::new(),
+            }
+        })
     }
 }
 

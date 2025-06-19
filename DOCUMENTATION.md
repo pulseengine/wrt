@@ -62,7 +62,8 @@ This document provides a comprehensive index of all documentation in the WRT pro
 #### Utilities and Tools
 - [wrt-helper/README.md](wrt-helper/README.md) - Helper utilities
 - [wrtd/README.md](wrtd/README.md) - WRT daemon/CLI tool
-- [xtask/README.md](xtask/README.md) - Build automation tasks
+- [cargo-wrt/README.md](cargo-wrt/README.md) - Unified build tool (cargo-wrt)
+- [wrt-build-core/README.md](wrt-build-core/README.md) - Core build system library
 
 ### Testing and Quality Assurance
 

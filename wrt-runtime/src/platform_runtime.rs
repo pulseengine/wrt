@@ -23,13 +23,87 @@ use crate::{
     unified_types::UnifiedMemoryAdapter as UnifiedMemoryAdapterTrait,
     prelude::*,
 };
+
+// Import Box, Vec, and other types for allocating memory adapters
+#[cfg(feature = "std")]
+use std::{boxed::Box, vec::Vec};
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{boxed::Box, vec::Vec};
+
+// For no_std without alloc, use BoundedVec instead of Vec
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+use wrt_foundation::bounded::BoundedVec;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+type Vec<T> = BoundedVec<T, 16, wrt_foundation::NoStdProvider<1024>>;
+
+// Import Value type
+use wrt_foundation::Value;
 // CFI imports temporarily disabled since CFI module is disabled
 // use wrt_instructions::CfiControlFlowProtection;
 use crate::cfi_engine::CfiControlFlowProtection;
 use wrt_error::{Error, ErrorCategory, Result};
 
 // Import from wrt-platform for comprehensive platform limits
+#[cfg(feature = "std")]
 use wrt_platform::{ComprehensivePlatformLimits, PlatformId};
+
+// Stub definitions for when wrt-platform is not available
+#[cfg(not(feature = "std"))]
+mod platform_stubs {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum PlatformId {
+        Linux,
+        QNX,
+        MacOS,
+        Embedded,
+        Zephyr,
+    }
+    
+    #[derive(Debug, Clone)]
+    pub struct ComprehensivePlatformLimits {
+        pub platform_id: PlatformId,
+        pub max_total_memory: usize,
+        pub max_stack_bytes: usize,
+        pub max_components: usize,
+        pub asil_level: crate::foundation_stubs::AsilLevel,
+    }
+    
+    impl Default for ComprehensivePlatformLimits {
+        fn default() -> Self {
+            Self {
+                platform_id: PlatformId::Linux,
+                max_total_memory: 64 * 1024 * 1024,
+                max_stack_bytes: 1024 * 1024,
+                max_components: 64,
+                asil_level: crate::foundation_stubs::AsilLevel::QM,
+            }
+        }
+    }
+}
+
+#[cfg(not(feature = "std"))]
+use platform_stubs::{ComprehensivePlatformLimits, PlatformId};
+
+// Helper function to convert between ASIL level types
+#[cfg(feature = "std")]
+fn convert_asil_level(platform_asil: wrt_platform::AsilLevel) -> AsilLevel {
+    match platform_asil {
+        wrt_platform::AsilLevel::QM => AsilLevel::QM,
+        wrt_platform::AsilLevel::AsilA => AsilLevel::A,
+        wrt_platform::AsilLevel::AsilB => AsilLevel::B,
+        wrt_platform::AsilLevel::AsilC => AsilLevel::C,
+        wrt_platform::AsilLevel::AsilD => AsilLevel::D,
+    }
+}
+
+// No conversion needed for no_std since it already uses foundation_stubs::AsilLevel
+#[cfg(not(feature = "std"))]
+fn convert_asil_level(asil: AsilLevel) -> AsilLevel {
+    asil
+}
 
 /// Simple platform memory adapter trait for platform_runtime.rs
 pub trait PlatformMemoryAdapter: Send + Sync + Debug {
@@ -45,7 +119,11 @@ pub struct PlatformAwareRuntime {
     /// Execution engine with CFI protection
     execution_engine: CfiExecutionEngine,
     /// Unified memory adapter for the platform
+    #[cfg(any(feature = "std", feature = "alloc"))]
     memory_adapter: Box<dyn PlatformMemoryAdapter>,
+    /// Memory adapter for no_std environments
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    memory_adapter: GenericMemoryAdapter,
     /// Platform-specific limits and capabilities
     platform_limits: ComprehensivePlatformLimits,
     /// Safety context for ASIL compliance
@@ -75,10 +153,14 @@ pub struct RuntimeMetrics {
 impl PlatformAwareRuntime {
     /// Create new platform-aware runtime
     pub fn new(limits: ComprehensivePlatformLimits) -> Result<Self> {
+        #[cfg(any(feature = "std", feature = "alloc"))]
         let memory_adapter = Self::create_memory_adapter(&limits)?;
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let memory_adapter = Self::create_memory_adapter_nostd(&limits)?;
+        
         let cfi_protection = Self::create_cfi_protection(&limits);
         let execution_engine = CfiExecutionEngine::new(cfi_protection);
-        let safety_context = SafetyContext::new(limits.asil_level);
+        let safety_context = SafetyContext::new(convert_asil_level(limits.asil_level));
         
         Ok(Self {
             execution_engine,
@@ -94,10 +176,14 @@ impl PlatformAwareRuntime {
         limits: ComprehensivePlatformLimits,
         cfi_policy: CfiViolationPolicy,
     ) -> Result<Self> {
+        #[cfg(any(feature = "std", feature = "alloc"))]
         let memory_adapter = Self::create_memory_adapter(&limits)?;
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let memory_adapter = Self::create_memory_adapter_nostd(&limits)?;
+        
         let cfi_protection = Self::create_cfi_protection(&limits);
         let execution_engine = CfiExecutionEngine::new_with_policy(cfi_protection, cfi_policy);
-        let safety_context = SafetyContext::new(limits.asil_level);
+        let safety_context = SafetyContext::new(convert_asil_level(limits.asil_level));
         
         Ok(Self {
             execution_engine,
@@ -186,10 +272,18 @@ impl PlatformAwareRuntime {
     
     /// Get memory adapter
     pub fn memory_adapter(&self) -> &dyn PlatformMemoryAdapter {
-        self.memory_adapter.as_ref()
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            self.memory_adapter.as_ref()
+        }
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            &self.memory_adapter
+        }
     }
     
     /// Create platform-specific memory adapter
+    #[cfg(any(feature = "std", feature = "alloc"))]
     fn create_memory_adapter(limits: &ComprehensivePlatformLimits) -> Result<Box<dyn PlatformMemoryAdapter>> {
         match limits.platform_id {
             PlatformId::Linux => Ok(Box::new(LinuxMemoryAdapter::new(limits.max_total_memory)?)),
@@ -200,12 +294,19 @@ impl PlatformAwareRuntime {
         }
     }
     
+    /// Create memory adapter for no_std environments
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    fn create_memory_adapter_nostd(limits: &ComprehensivePlatformLimits) -> Result<GenericMemoryAdapter> {
+        // In no_std, always use GenericMemoryAdapter with fixed size
+        GenericMemoryAdapter::new(limits.max_total_memory)
+    }
+    
     /// Create CFI protection configuration based on platform capabilities
     fn create_cfi_protection(limits: &ComprehensivePlatformLimits) -> CfiControlFlowProtection {
-        let protection_level = match limits.asil_level {
-            AsilLevel::QM => wrt_instructions::CfiProtectionLevel::Basic,
-            AsilLevel::ASIL_A | AsilLevel::ASIL_B => wrt_instructions::CfiProtectionLevel::Enhanced,
-            AsilLevel::ASIL_C | AsilLevel::ASIL_D => wrt_instructions::CfiProtectionLevel::Maximum,
+        let protection_level = match convert_asil_level(limits.asil_level) {
+            AsilLevel::QM => 0, // Basic protection level
+            AsilLevel::A | AsilLevel::B => 1, // Enhanced protection level
+            AsilLevel::C | AsilLevel::D => 2, // Maximum protection level
         };
         
         CfiControlFlowProtection::new_with_level(protection_level)
@@ -269,7 +370,39 @@ impl PlatformAwareRuntime {
         _arg_count: usize,
     ) -> Result<Vec<Value>> {
         // Simplified implementation - in real scenario this would extract actual values
-        Ok(vec![Value::I32(0)])
+        #[cfg(feature = "std")]
+        {
+            use std::vec;
+            Ok(vec![Value::I32(0)])
+        }
+        #[cfg(all(not(feature = "std"), feature = "alloc"))]
+        {
+            use alloc::vec;
+            Ok(vec![Value::I32(0)])
+        }
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            // For no_std no_alloc, return a fixed array wrapped as Vec-like
+            use wrt_foundation::bounded::BoundedVec;
+            use wrt_foundation::safe_memory::NoStdProvider;
+            let provider = NoStdProvider::<1024>::new();
+            let mut result: BoundedVec<Value, 16, _> = BoundedVec::new(provider).map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
+                "Failed to create result vector",
+            ))?;
+            result.push(Value::I32(0)).map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
+                "Failed to push result value",
+            ))?;
+            // Convert to Vec for compatibility - this is a temporary workaround
+            Err(Error::new(
+                ErrorCategory::Runtime,
+                wrt_error::codes::UNSUPPORTED_OPERATION,
+                "Function execution not supported in no_std no_alloc mode",
+            ))
+        }
     }
     
     /// Get current timestamp for performance tracking
@@ -301,6 +434,7 @@ struct LinuxMemoryAdapter {
     allocated: usize,
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl LinuxMemoryAdapter {
     fn new(size: usize) -> Result<Self> {
         Ok(Self {
@@ -310,6 +444,7 @@ impl LinuxMemoryAdapter {
     }
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl PlatformMemoryAdapter for LinuxMemoryAdapter {
     fn allocate(&mut self, size: usize) -> Result<&mut [u8]> {
         if self.allocated + size > self.memory.len() {
@@ -322,7 +457,7 @@ impl PlatformMemoryAdapter for LinuxMemoryAdapter {
         
         let start = self.allocated;
         self.allocated += size;
-        Ok(&mut self.memory[start..self.allocated])
+        let slice = self.memory.as_mut_slice(); Ok(&mut slice[start..self.allocated])
     }
     
     fn deallocate(&mut self, _ptr: &mut [u8]) -> Result<()> {
@@ -373,7 +508,7 @@ impl PlatformMemoryAdapter for QnxMemoryAdapter {
         
         let start = self.allocated;
         self.allocated += size;
-        Ok(&mut self.memory[start..self.allocated])
+        let slice = self.memory.as_mut_slice(); Ok(&mut slice[start..self.allocated])
     }
     
     fn deallocate(&mut self, _ptr: &mut [u8]) -> Result<()> {
@@ -477,7 +612,7 @@ impl PlatformMemoryAdapter for MacOSMemoryAdapter {
         
         let start = self.allocated;
         self.allocated += size;
-        Ok(&mut self.memory[start..self.allocated])
+        let slice = self.memory.as_mut_slice(); Ok(&mut slice[start..self.allocated])
     }
     
     fn deallocate(&mut self, _ptr: &mut [u8]) -> Result<()> {
@@ -501,25 +636,40 @@ impl PlatformMemoryAdapter for MacOSMemoryAdapter {
 // MacOSMemoryAdapter platform_id is now part of the trait implementation
 
 /// Generic memory adapter for unknown platforms
-#[derive(Debug)]
-struct GenericMemoryAdapter {
+#[derive(Debug, Clone)]
+pub struct GenericMemoryAdapter {
+    #[cfg(any(feature = "std", feature = "alloc"))]
     memory: Vec<u8>,
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    memory: [u8; 65536], // Fixed size for no_std
     allocated: usize,
 }
 
 impl GenericMemoryAdapter {
     fn new(size: usize) -> Result<Self> {
-        Ok(Self {
-            memory: vec![0; size],
-            allocated: 0,
-        })
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            Ok(Self {
+                memory: vec![0; size],
+                allocated: 0,
+            })
+        }
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            let _ = size; // Ignore size parameter in no_std
+            Ok(Self {
+                memory: [0; 65536],
+                allocated: 0,
+            })
+        }
     }
 }
 
 impl PlatformMemoryAdapter for GenericMemoryAdapter {
     
     fn allocate(&mut self, size: usize) -> Result<&mut [u8]> {
-        if self.allocated + size > self.memory.len() {
+        let memory_len = self.memory.len();
+        if self.allocated + size > memory_len {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 wrt_error::codes::MEMORY_ALLOCATION_ERROR,
@@ -529,7 +679,7 @@ impl PlatformMemoryAdapter for GenericMemoryAdapter {
         
         let start = self.allocated;
         self.allocated += size;
-        Ok(&mut self.memory[start..self.allocated])
+        let slice = self.memory.as_mut_slice(); Ok(&mut slice[start..self.allocated])
     }
     
     fn deallocate(&mut self, _ptr: &mut [u8]) -> Result<()> {
@@ -553,16 +703,30 @@ impl PlatformMemoryAdapter for GenericMemoryAdapter {
 // GenericMemoryAdapter platform_id is now part of the trait implementation
 
 /// Create a generic memory adapter for use by other modules
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub fn create_generic_memory_adapter(size: usize) -> Result<Box<dyn PlatformMemoryAdapter>> {
     let adapter = GenericMemoryAdapter::new(size)?;
     Ok(Box::new(adapter))
 }
 
 /// Create a memory adapter suitable for the current platform
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub fn create_platform_memory_adapter(size: usize) -> Result<Box<dyn PlatformMemoryAdapter>> {
     // For now, use the generic adapter. In the future, this could detect
     // the platform and return the appropriate adapter type.
     create_generic_memory_adapter(size)
+}
+
+/// Create a memory adapter suitable for the current platform (no_std version)
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub fn create_platform_memory_adapter(size: usize) -> Result<GenericMemoryAdapter> {
+    GenericMemoryAdapter::new(size)
+}
+
+/// For no_std environments, create a static generic adapter
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub fn create_generic_memory_adapter_static(size: usize) -> Result<GenericMemoryAdapter> {
+    GenericMemoryAdapter::new(size)
 }
 
 #[cfg(test)]

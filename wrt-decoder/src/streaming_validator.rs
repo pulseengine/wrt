@@ -191,12 +191,12 @@ impl ToBytes for Section {
                 if let Some(max) = mem.maximum {
                     writer.write_u32_le(max)?;
                 }
-            }
+            },
             Section::Code(code) => {
                 writer.write_u32_le(code.function_count)?;
                 writer.write_u32_le(code.estimated_stack_usage)?;
-            }
-            _ => {} // No additional data
+            },
+            _ => {}, // No additional data
         }
 
         Ok(())
@@ -220,7 +220,7 @@ impl FromBytes for Section {
                 let maximum =
                     if reader.remaining_len() >= 4 { Some(reader.read_u32_le()?) } else { None };
                 Section::Memory(MemorySection { initial, maximum })
-            }
+            },
             6 => Section::Global,
             7 => Section::Export,
             8 => Section::Start,
@@ -228,8 +228,11 @@ impl FromBytes for Section {
             10 => {
                 let function_count = reader.read_u32_le()?;
                 let estimated_stack_usage = reader.read_u32_le()?;
-                Section::Code(CodeSection { function_count, estimated_stack_usage })
-            }
+                Section::Code(CodeSection {
+                    function_count,
+                    estimated_stack_usage,
+                })
+            },
             11 => Section::Data,
             _ => Section::Custom, // Default fallback
         })
@@ -447,7 +450,11 @@ impl StreamingWasmValidator {
             9 => Ok(Section::Element),
             10 => self.parse_code_section(section_data),
             11 => Ok(Section::Data),
-            _ => Err(Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Unknown section type")),
+            _ => Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Unknown section type",
+            )),
         }
     }
 
@@ -509,7 +516,10 @@ impl StreamingWasmValidator {
     /// Parse code section
     fn parse_code_section(&self, section_data: &[u8]) -> Result<Section, Error> {
         if section_data.is_empty() {
-            return Ok(Section::Code(CodeSection { function_count: 0, estimated_stack_usage: 0 }));
+            return Ok(Section::Code(CodeSection {
+                function_count: 0,
+                estimated_stack_usage: 0,
+            }));
         }
 
         let (function_count, _) = self.read_leb128_u32(section_data)?;
@@ -518,7 +528,10 @@ impl StreamingWasmValidator {
         // This is a simplified heuristic - real implementation would analyze function bodies
         let estimated_stack_usage = function_count * 512; // 512 bytes per function estimate
 
-        Ok(Section::Code(CodeSection { function_count, estimated_stack_usage }))
+        Ok(Section::Code(CodeSection {
+            function_count,
+            estimated_stack_usage,
+        }))
     }
 
     /// Validate individual section against platform limits
@@ -536,7 +549,7 @@ impl StreamingWasmValidator {
                 }
 
                 self.requirements.required_memory = required;
-            }
+            },
             Section::Code(code) => {
                 if code.estimated_stack_usage as usize > self.platform_limits.max_stack_bytes {
                     return Err(Error::new(
@@ -548,16 +561,16 @@ impl StreamingWasmValidator {
 
                 self.requirements.estimated_stack_usage = code.estimated_stack_usage as usize;
                 self.requirements.function_count = code.function_count;
-            }
+            },
             Section::Import => {
                 self.requirements.import_count += 1;
-            }
+            },
             Section::Export => {
                 self.requirements.export_count += 1;
-            }
+            },
             _ => {
                 // Other sections don't have immediate resource implications
-            }
+            },
         }
 
         Ok(())
@@ -620,7 +633,11 @@ impl StreamingWasmValidator {
             }
         }
 
-        Err(Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Truncated LEB128 value"))
+        Err(Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Truncated LEB128 value",
+        ))
     }
 
     /// Get current validation state
@@ -735,7 +752,10 @@ mod tests {
         assert_eq!(validator.state(), ValidationState::Header);
 
         let embedded_validator = PlatformWasmValidatorFactory::create_for_embedded(1024 * 1024);
-        assert_eq!(embedded_validator.platform_limits.max_total_memory, 1024 * 1024);
+        assert_eq!(
+            embedded_validator.platform_limits.max_total_memory,
+            1024 * 1024
+        );
     }
 
     #[test]

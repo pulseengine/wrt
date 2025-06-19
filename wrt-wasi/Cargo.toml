@@ -14,19 +14,19 @@ categories = ["wasm", "api-bindings", "os"]
 wrt-error = { workspace = true, default-features = false }
 wrt-foundation = { workspace = true, default-features = false }
 wrt-host = { workspace = true, default-features = false }
-wrt-component = { workspace = true, default-features = false }
+# wrt-component = { workspace = true, default-features = false }
 wrt-platform = { workspace = true, default-features = false }
 wrt-format = { workspace = true, default-features = false }
 
 [features]
-default = ["std", "preview2"]
+default = ["std", "preview2", "wasi-filesystem", "wasi-cli", "wasi-clocks", "wasi-io", "wasi-random"]
 
 # Standard library support
 std = [
     "wrt-error/std",
     "wrt-foundation/std", 
     "wrt-host/std",
-    "wrt-component/std",
+    # "wrt-component/std",
     "wrt-platform/std",
     "wrt-format/std"
 ]
@@ -44,14 +44,14 @@ wasi-random = ["preview2"]
 wasi-sockets = ["preview3-prep"]  # Future Preview3 feature
 
 # Component model integration
-component-model = ["wrt-component/component-model-all"]
+component-model = []
 
 # Safety level presets using new capability-based features
-qm = ["wrt-foundation/dynamic-allocation", "wrt-format/qm", "wrt-host/qm", "wrt-component/qm", "wrt-platform/qm"]
-asil-a = ["wrt-foundation/bounded-collections", "wrt-format/asil-a", "wrt-host/asil-a", "wrt-component/asil-a", "wrt-platform/asil-a"]
-asil-b = ["wrt-foundation/bounded-collections", "wrt-format/asil-b", "wrt-host/asil-b", "wrt-component/asil-b", "wrt-platform/asil-b"]
-asil-c = ["wrt-foundation/static-memory-safety", "wrt-format/asil-c", "wrt-host/asil-c", "wrt-component/asil-c", "wrt-platform/asil-c"]
-asil-d = ["wrt-foundation/maximum-safety", "wrt-format/asil-d", "wrt-host/asil-d", "wrt-component/asil-d", "wrt-platform/asil-d"]
+qm = ["wrt-foundation/dynamic-allocation", "wrt-format/qm", "wrt-host/qm", "wrt-platform/qm"]
+asil-a = ["wrt-foundation/bounded-collections", "wrt-format/asil-a", "wrt-host/asil-a", "wrt-platform/asil-a"]
+asil-b = ["wrt-foundation/bounded-collections", "wrt-format/asil-b", "wrt-host/asil-b", "wrt-platform/asil-b"]
+asil-c = ["wrt-foundation/static-memory-safety", "wrt-format/asil-c", "wrt-host/asil-c", "wrt-platform/asil-c"]
+asil-d = ["wrt-foundation/maximum-safety", "wrt-format/asil-d", "wrt-host/asil-d", "wrt-platform/asil-d"]
 
 # Legacy compatibility 
 safe-memory = ["asil-b"]

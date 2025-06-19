@@ -26,12 +26,20 @@ pub struct SourceSpan {
 impl SourceSpan {
     /// Create a new source span
     pub const fn new(start: u32, end: u32, file_id: u32) -> Self {
-        Self { start, end, file_id }
+        Self {
+            start,
+            end,
+            file_id,
+        }
     }
 
     /// Create an empty span (used for synthetic nodes)
     pub const fn empty() -> Self {
-        Self { start: 0, end: 0, file_id: 0 }
+        Self {
+            start: 0,
+            end: 0,
+            file_id: 0,
+        }
     }
 
     /// Get the length of the span in bytes
@@ -46,7 +54,10 @@ impl SourceSpan {
 
     /// Merge two spans to create a span covering both
     pub fn merge(&self, other: &Self) -> Self {
-        assert_eq!(self.file_id, other.file_id, "Cannot merge spans from different files");
+        assert_eq!(
+            self.file_id, other.file_id,
+            "Cannot merge spans from different files"
+        );
         Self {
             start: self.start.min(other.start),
             end: self.end.max(other.end),
@@ -286,7 +297,10 @@ impl TypeExpr {
 
 impl Default for TypeExpr {
     fn default() -> Self {
-        Self::Primitive(PrimitiveType { kind: PrimitiveKind::String, span: SourceSpan::empty() })
+        Self::Primitive(PrimitiveType {
+            kind: PrimitiveKind::String,
+            span: SourceSpan::empty(),
+        })
     }
 }
 

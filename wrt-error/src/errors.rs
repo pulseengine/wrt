@@ -101,7 +101,11 @@ impl Error {
             // would be enforced through the type system or compile-time checks.
         }
 
-        Self { category, code, message }
+        Self {
+            category,
+            code,
+            message,
+        }
     }
 
     // Agent C constant error instances
@@ -141,8 +145,11 @@ impl Error {
     );
 
     /// Out of memory error
-    pub const OUT_OF_MEMORY: Self =
-        Self::new(ErrorCategory::Resource, codes::OUT_OF_MEMORY, "Out of memory");
+    pub const OUT_OF_MEMORY: Self = Self::new(
+        ErrorCategory::Resource,
+        codes::OUT_OF_MEMORY,
+        "Out of memory",
+    );
 
     /// Too many components error
     pub const TOO_MANY_COMPONENTS: Self = Self::new(
@@ -152,35 +159,57 @@ impl Error {
     );
 
     /// Component not found error
-    pub const COMPONENT_NOT_FOUND: Self =
-        Self::new(ErrorCategory::Component, codes::COMPONENT_NOT_FOUND, "Component not found");
+    pub const COMPONENT_NOT_FOUND: Self = Self::new(
+        ErrorCategory::Component,
+        codes::COMPONENT_NOT_FOUND,
+        "Component not found",
+    );
 
     /// Stack overflow error
-    pub const STACK_OVERFLOW: Self =
-        Self::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow");
+    pub const STACK_OVERFLOW: Self = Self::new(
+        ErrorCategory::Runtime,
+        codes::STACK_OVERFLOW,
+        "Stack overflow",
+    );
 
     /// Create a component error with dynamic context (using static fallback)
     #[must_use]
     pub const fn component_error(_message: &'static str) -> Self {
-        Self::new(ErrorCategory::Component, codes::COMPONENT_ERROR, "Component error")
+        Self::new(
+            ErrorCategory::Component,
+            codes::COMPONENT_ERROR,
+            "Component error",
+        )
     }
 
     /// Create a WIT parse error with dynamic message (using static fallback)
     #[must_use]
     pub const fn wit_parse_error(_message: &'static str) -> Self {
-        Self::new(ErrorCategory::Parse, codes::WIT_PARSE_ERROR, "WIT parse error")
+        Self::new(
+            ErrorCategory::Parse,
+            codes::WIT_PARSE_ERROR,
+            "WIT parse error",
+        )
     }
 
     /// Create an invalid input error with dynamic message (using static fallback)
     #[must_use]
     pub const fn invalid_input(_message: &'static str) -> Self {
-        Self::new(ErrorCategory::Validation, codes::INVALID_INPUT, "Invalid input")
+        Self::new(
+            ErrorCategory::Validation,
+            codes::INVALID_INPUT,
+            "Invalid input",
+        )
     }
 
     /// Create an unsupported error with dynamic message (using static fallback)
     #[must_use]
     pub const fn unsupported(_message: &'static str) -> Self {
-        Self::new(ErrorCategory::System, codes::UNSUPPORTED, "Unsupported operation")
+        Self::new(
+            ErrorCategory::System,
+            codes::UNSUPPORTED,
+            "Unsupported operation",
+        )
     }
 
     /// Check if this is a resource error
@@ -390,31 +419,51 @@ impl Error {
     /// Create a WIT world limit exceeded error
     #[must_use]
     pub const fn wit_world_limit_exceeded(message: &'static str) -> Self {
-        Self::new(ErrorCategory::Parse, codes::WIT_WORLD_LIMIT_EXCEEDED, message)
+        Self::new(
+            ErrorCategory::Parse,
+            codes::WIT_WORLD_LIMIT_EXCEEDED,
+            message,
+        )
     }
 
     /// Create a WIT interface limit exceeded error
     #[must_use]
     pub const fn wit_interface_limit_exceeded(message: &'static str) -> Self {
-        Self::new(ErrorCategory::Parse, codes::WIT_INTERFACE_LIMIT_EXCEEDED, message)
+        Self::new(
+            ErrorCategory::Parse,
+            codes::WIT_INTERFACE_LIMIT_EXCEEDED,
+            message,
+        )
     }
 
     /// Create a capability violation error
     #[must_use]
     pub const fn capability_violation(message: &'static str) -> Self {
-        Self::new(ErrorCategory::Security, crate::codes::ACCESS_DENIED, message)
+        Self::new(
+            ErrorCategory::Security,
+            crate::codes::ACCESS_DENIED,
+            message,
+        )
     }
 
     /// Create a no capability error
     #[must_use]
     pub const fn no_capability(message: &'static str) -> Self {
-        Self::new(ErrorCategory::Security, crate::codes::ACCESS_DENIED, message)
+        Self::new(
+            ErrorCategory::Security,
+            crate::codes::ACCESS_DENIED,
+            message,
+        )
     }
 
     /// Create a no WIT definitions found error
     #[must_use]
     pub const fn no_wit_definitions_found(message: &'static str) -> Self {
-        Self::new(ErrorCategory::Parse, codes::NO_WIT_DEFINITIONS_FOUND, message)
+        Self::new(
+            ErrorCategory::Parse,
+            codes::NO_WIT_DEFINITIONS_FOUND,
+            message,
+        )
     }
 
     /// Create an insufficient memory error
@@ -432,13 +481,21 @@ impl Error {
     /// Create a too many components error
     #[must_use]
     pub const fn too_many_components(message: &'static str) -> Self {
-        Self::new(ErrorCategory::Component, codes::TOO_MANY_COMPONENTS, message)
+        Self::new(
+            ErrorCategory::Component,
+            codes::TOO_MANY_COMPONENTS,
+            message,
+        )
     }
 
     /// Create a component not found error
     #[must_use]
     pub const fn component_not_found(message: &'static str) -> Self {
-        Self::new(ErrorCategory::Component, codes::COMPONENT_NOT_FOUND, message)
+        Self::new(
+            ErrorCategory::Component,
+            codes::COMPONENT_NOT_FOUND,
+            message,
+        )
     }
 
     /// Create a component error with context
@@ -470,7 +527,11 @@ impl fmt::Display for Error {
         }
         #[cfg(not(any(feature = "asil-c", feature = "asil-d")))]
         {
-            write!(f, "[{:?}][E{:04X}] {}", self.category, self.code, self.message)
+            write!(
+                f,
+                "[{:?}][E{:04X}] {}",
+                self.category, self.code, self.message
+            )
         }
     }
 }
@@ -656,7 +717,11 @@ pub mod codes {
 
 impl From<core::fmt::Error> for Error {
     fn from(_: core::fmt::Error) -> Self {
-        Self::new(ErrorCategory::System, codes::SYSTEM_ERROR, "Formatting error (static)")
+        Self::new(
+            ErrorCategory::System,
+            codes::SYSTEM_ERROR,
+            "Formatting error (static)",
+        )
     }
 }
 
@@ -665,13 +730,21 @@ impl From<core::fmt::Error> for Error {
 // -- From<kinds::X> for Error implementations --
 impl From<kinds::ValidationError> for Error {
     fn from(_e: kinds::ValidationError) -> Self {
-        Self::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "Validation error from kind")
+        Self::new(
+            ErrorCategory::Validation,
+            codes::VALIDATION_ERROR,
+            "Validation error from kind",
+        )
     }
 }
 
 impl From<kinds::ParseError> for Error {
     fn from(_e: kinds::ParseError) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::PARSE_ERROR, "Parse error from kind")
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::PARSE_ERROR,
+            "Parse error from kind",
+        )
     }
 }
 
@@ -687,13 +760,21 @@ impl From<kinds::OutOfBoundsError> for Error {
 
 impl From<kinds::InvalidType> for Error {
     fn from(_e: kinds::InvalidType) -> Self {
-        Self::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "Invalid type error from kind")
+        Self::new(
+            ErrorCategory::Type,
+            codes::TYPE_MISMATCH_ERROR,
+            "Invalid type error from kind",
+        )
     }
 }
 
 impl From<kinds::ResourceError> for Error {
     fn from(_e: kinds::ResourceError) -> Self {
-        Self::new(ErrorCategory::Resource, codes::RESOURCE_ERROR, "Resource error from kind")
+        Self::new(
+            ErrorCategory::Resource,
+            codes::RESOURCE_ERROR,
+            "Resource error from kind",
+        )
     }
 }
 
@@ -709,19 +790,31 @@ impl From<kinds::ComponentError> for Error {
 
 impl From<kinds::RuntimeError> for Error {
     fn from(_e: kinds::RuntimeError) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Runtime error from kind")
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::RUNTIME_ERROR,
+            "Runtime error from kind",
+        )
     }
 }
 
 impl From<kinds::PoisonedLockError> for Error {
     fn from(_e: kinds::PoisonedLockError) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::POISONED_LOCK, "Poisoned lock error from kind")
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::POISONED_LOCK,
+            "Poisoned lock error from kind",
+        )
     }
 }
 
 impl From<kinds::TypeMismatchError> for Error {
     fn from(_e: kinds::TypeMismatchError) -> Self {
-        Self::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "Type mismatch error from kind")
+        Self::new(
+            ErrorCategory::Type,
+            codes::TYPE_MISMATCH_ERROR,
+            "Type mismatch error from kind",
+        )
     }
 }
 
@@ -747,31 +840,51 @@ impl From<kinds::TableAccessOutOfBounds> for Error {
 
 impl From<kinds::ConversionError> for Error {
     fn from(_e: kinds::ConversionError) -> Self {
-        Self::new(ErrorCategory::System, codes::CONVERSION_ERROR, "Conversion error from kind")
+        Self::new(
+            ErrorCategory::System,
+            codes::CONVERSION_ERROR,
+            "Conversion error from kind",
+        )
     }
 }
 
 impl From<kinds::DivisionByZeroError> for Error {
     fn from(_e: kinds::DivisionByZeroError) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Division by zero error from kind")
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::RUNTIME_ERROR,
+            "Division by zero error from kind",
+        )
     }
 }
 
 impl From<kinds::IntegerOverflowError> for Error {
     fn from(_e: kinds::IntegerOverflowError) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Integer overflow error from kind")
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::RUNTIME_ERROR,
+            "Integer overflow error from kind",
+        )
     }
 }
 
 impl From<kinds::StackUnderflow> for Error {
     fn from(_e: kinds::StackUnderflow) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow error from kind")
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::STACK_UNDERFLOW,
+            "Stack underflow error from kind",
+        )
     }
 }
 
 impl From<kinds::TypeMismatch> for Error {
     fn from(_e: kinds::TypeMismatch) -> Self {
-        Self::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "Type mismatch from kind")
+        Self::new(
+            ErrorCategory::Type,
+            codes::TYPE_MISMATCH_ERROR,
+            "Type mismatch from kind",
+        )
     }
 }
 
@@ -812,7 +925,11 @@ impl FromError<kinds::ValidationError> for Error {
 
 impl FromError<kinds::ParseError> for Error {
     fn from_error(_error: kinds::ParseError) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::PARSE_ERROR, "Parse error from kind (FromError)")
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::PARSE_ERROR,
+            "Parse error from kind (FromError)",
+        )
     }
 }
 
@@ -1039,19 +1156,31 @@ impl From<kinds::InvalidReferenceTypeUsage> for Error {
 
 impl From<kinds::BulkOperationError> for Error {
     fn from(_e: kinds::BulkOperationError) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::BULK_OPERATION_ERROR, "Bulk operation error")
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::BULK_OPERATION_ERROR,
+            "Bulk operation error",
+        )
     }
 }
 
 impl From<kinds::SimdOperationError> for Error {
     fn from(_e: kinds::SimdOperationError) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::SIMD_OPERATION_ERROR, "SIMD operation error")
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::SIMD_OPERATION_ERROR,
+            "SIMD operation error",
+        )
     }
 }
 
 impl From<kinds::TailCallError> for Error {
     fn from(_e: kinds::TailCallError) -> Self {
-        Self::new(ErrorCategory::Validation, codes::TAIL_CALL_ERROR, "Tail call error")
+        Self::new(
+            ErrorCategory::Validation,
+            codes::TAIL_CALL_ERROR,
+            "Tail call error",
+        )
     }
 }
 // --- END Wasm 2.0 From Impls ---

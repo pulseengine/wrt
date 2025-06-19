@@ -125,7 +125,10 @@ mod feature_flag_tests {
         }
 
         // No panic on overflow
-        assert!(matches!(filled_vec.try_push(999), Err(WrtError::CapacityExceeded)));
+        assert!(matches!(
+            filled_vec.try_push(999),
+            Err(WrtError::CapacityExceeded)
+        ));
     }
 
     #[cfg(all(not(feature = "std"), not(feature = "safety-critical")))]

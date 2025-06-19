@@ -52,10 +52,10 @@ Memory Safety Mechanisms
    :detection: 100% of out-of-bounds accesses
    :reaction: Reject access, return error
    :asil: A, B, C, D
-   :diagnostic_coverage: >99%
+   :diagnostic_coverage: 99%
    
-   **Description**: All memory accesses are validated against allocation boundaries before 
-   execution. Both base address and offset+length are checked.
+   **Description**: The runtime validates all memory accesses against allocation boundaries before 
+   execution. The system checks both base address and offset+length.
    
    **Implementation**:
    - SafeSlice wrapper enforces bounds on all slice operations
@@ -73,16 +73,16 @@ Memory Safety Mechanisms
    :detection: 100% of cross-module access attempts
    :reaction: Block access, signal violation
    :asil: C, D
-   :diagnostic_coverage: >99%
+   :diagnostic_coverage: 99%
    
-   **Description**: WebAssembly modules are isolated in separate memory spaces with no 
+   **Description**: The runtime isolates WebAssembly modules in separate memory spaces with no 
    shared mutable state except through validated interfaces.
    
    **Implementation**:
    - Separate linear memory per module instance
    - No direct memory sharing between modules
    - Explicit import/export validation
-   - Hardware memory protection when available (MPU/MMU)
+   - Hardware memory protection when available (Memory Protection Unit/Memory Management Unit)
    
    **Integration Requirements**:
    - Platform must provide memory protection unit
@@ -90,12 +90,12 @@ Memory Safety Mechanisms
 
 .. safety:: Stack Overflow Protection
    :id: SAFETY_MEM_003  
-   :detection: >95% of stack overflows before corruption
+   :detection: 95% of stack overflows before corruption
    :reaction: Terminate execution, report error
    :asil: B, C, D
-   :diagnostic_coverage: >90%
+   :diagnostic_coverage: 90%
    
-   **Description**: Stack usage is monitored and limited to prevent overflow into 
+   **Description**: The runtime monitors and limits stack usage to prevent overflow into 
    adjacent memory regions.
    
    **Implementation**:
@@ -316,7 +316,7 @@ Fault Detection Mechanisms
    :detection: >95% of permanent faults
    :reaction: Prevent operation, report failure
    :asil: C, D
-   :diagnostic_coverage: >90%
+   :diagnostic_coverage: 90%
    
    **Description**: Power-on and periodic self-tests verify correct operation of safety 
    mechanisms.

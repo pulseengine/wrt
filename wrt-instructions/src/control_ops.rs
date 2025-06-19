@@ -49,8 +49,7 @@
 
 // Remove unused imports
 
-use crate::prelude::{BlockType, Debug, Error, ErrorCategory, PartialEq, PureInstruction, Result, Value, codes, str};
-use wrt_foundation::{BoundedVec, traits::BoundedCapacity};
+use crate::prelude::{BlockType, Debug, Error, ErrorCategory, PartialEq, PureInstruction, Result, Value, codes, str, BoundedVec, BoundedCapacity};
 // use crate::validation::{Validate, ValidationContext}; // Currently unused
 
 

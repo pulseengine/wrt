@@ -32,7 +32,10 @@ pub struct StackTrace<'a> {
 impl<'a> StackTrace<'a> {
     /// Create a new empty stack trace
     pub fn new() -> Self {
-        Self { frames: [None; MAX_STACK_FRAMES], frame_count: 0 }
+        Self {
+            frames: [None; MAX_STACK_FRAMES],
+            frame_count: 0,
+        }
     }
 
     /// Add a frame to the stack trace
@@ -230,7 +233,12 @@ mod tests {
         let mut trace = StackTrace::new();
 
         // Add a frame with no debug info
-        let frame1 = StackFrame { pc: 0x1000, function: None, line_info: None, depth: 0 };
+        let frame1 = StackFrame {
+            pc: 0x1000,
+            function: None,
+            line_info: None,
+            depth: 0,
+        };
 
         trace.push_frame(frame1).unwrap();
 

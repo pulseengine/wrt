@@ -30,13 +30,13 @@ Memory Management Paradigms
 Static vs Dynamic Allocation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Industry Consensus**: All major safety standards (MISRA-C, DO-178B, IEC 61508, automotive standard 26262) prohibit dynamic memory allocation in safety-critical contexts due to:
+**Industry Consensus**: All major safety standards (MISRA-C, DO-178B - Software Considerations in Airborne Systems, IEC 61508 - Functional Safety of Electrical/Electronic Systems, ISO 26262 - Road vehicles functional safety) prohibit dynamic memory allocation in safety-critical contexts due to:
 
 - Non-deterministic access times
 - Memory fragmentation issues  
 - Potential for memory leaks
 - Unpredictable failure modes
-- Difficult worst-case execution time (WCET) analysis
+- Difficult Worst-Case Execution Time (WCET) analysis
 
 **Alternative Approaches**:
 
@@ -88,7 +88,7 @@ C and C++ with MISRA Guidelines
 C++ Polymorphic Memory Resources (PMR)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**std::pmr Approach**: C++17 introduced polymorphic memory resources to provide configurable allocation strategies while maintaining type erasure.
+**std::pmr Approach**: C++17 introduced Polymorphic Memory Resources (PMR) to provide configurable allocation strategies while maintaining type erasure.
 
 .. code-block:: cpp
 

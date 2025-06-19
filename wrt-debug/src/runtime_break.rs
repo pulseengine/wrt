@@ -30,7 +30,11 @@ pub struct BreakpointManager {
 impl BreakpointManager {
     /// Create a new breakpoint manager
     pub fn new() -> Self {
-        Self { breakpoints: BoundedVec::new(NoStdProvider), next_id: 1, enabled: true }
+        Self {
+            breakpoints: BoundedVec::new(NoStdProvider),
+            next_id: 1,
+            enabled: true,
+        }
     }
 
     /// Enable or disable all breakpoints
@@ -171,7 +175,7 @@ impl BreakpointManager {
                 } else {
                     None
                 }
-            }
+            },
             Some(BreakpointCondition::LocalEquals { index, value }) => {
                 if let Some(local_val) = state.read_local(*index) {
                     if local_val == *value {
@@ -182,7 +186,7 @@ impl BreakpointManager {
                 } else {
                     None
                 }
-            }
+            },
         }
     }
 
@@ -245,11 +249,11 @@ impl DefaultDebugger {
         match action {
             DebugAction::StepInstruction | DebugAction::StepLine => {
                 self.single_step = true;
-            }
+            },
             DebugAction::Continue => {
                 self.single_step = false;
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 

@@ -87,7 +87,9 @@ pub fn is_valid_integrity(integrity: &str) -> bool {
 /// Check if the binary is a WebAssembly component
 pub fn is_component(bytes: &[u8]) -> Result<bool> {
     if bytes.len() < 8 {
-        return Err(Error::parse_error("Binary too short for WebAssembly header"));
+        return Err(Error::parse_error(
+            "Binary too short for WebAssembly header",
+        ));
     }
 
     if bytes[0..4] != binary::WASM_MAGIC {
@@ -102,7 +104,9 @@ pub fn is_component(bytes: &[u8]) -> Result<bool> {
 #[cfg(feature = "std")]
 pub fn parse_val_type(bytes: &[u8], offset: usize) -> Result<(FormatValType, usize)> {
     if offset >= bytes.len() {
-        return Err(Error::parse_error("Unexpected end of binary when parsing ValType"));
+        return Err(Error::parse_error(
+            "Unexpected end of binary when parsing ValType",
+        ));
     }
 
     let val_type_byte = bytes[offset];
@@ -122,7 +126,7 @@ pub fn parse_val_type(bytes: &[u8], offset: usize) -> Result<(FormatValType, usi
         0x0C => FormatValType::String,
         _ => {
             return Err(Error::parse_error("Unknown ValType byte"));
-        }
+        },
     };
 
     Ok((val_type, 1))
@@ -141,22 +145,38 @@ pub fn parse_val_type(_bytes: &[u8], _offset: usize) -> Result<(u8, usize)> {
 
 pub fn invalid_component_format(_message: &str) -> Error {
     use wrt_error::{codes, ErrorCategory};
-    Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "Invalid component format")
+    Error::new(
+        ErrorCategory::Validation,
+        codes::VALIDATION_ERROR,
+        "Invalid component format",
+    )
 }
 
 pub fn invalid_component_data(_message: &str) -> Error {
     use wrt_error::{codes, ErrorCategory};
-    Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "Invalid component data")
+    Error::new(
+        ErrorCategory::Validation,
+        codes::VALIDATION_ERROR,
+        "Invalid component data",
+    )
 }
 
 pub fn invalid_component_section(_message: &str) -> Error {
     use wrt_error::{codes, ErrorCategory};
-    Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "Invalid component section")
+    Error::new(
+        ErrorCategory::Validation,
+        codes::VALIDATION_ERROR,
+        "Invalid component section",
+    )
 }
 
 pub fn invalid_component_value(_message: &str) -> Error {
     use wrt_error::{codes, ErrorCategory};
-    Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "Invalid component value")
+    Error::new(
+        ErrorCategory::Validation,
+        codes::VALIDATION_ERROR,
+        "Invalid component value",
+    )
 }
 
 pub fn parse_error(_message: &str) -> Error {
@@ -166,10 +186,18 @@ pub fn parse_error(_message: &str) -> Error {
 
 pub fn parse_error_with_context(_message: &str, _context: &str) -> Error {
     use wrt_error::{codes, ErrorCategory};
-    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Parse error with context")
+    Error::new(
+        ErrorCategory::Parse,
+        codes::PARSE_ERROR,
+        "Parse error with context",
+    )
 }
 
 pub fn parse_error_with_position(_message: &str, _position: usize) -> Error {
     use wrt_error::{codes, ErrorCategory};
-    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Parse error at position")
+    Error::new(
+        ErrorCategory::Parse,
+        codes::PARSE_ERROR,
+        "Parse error at position",
+    )
 }

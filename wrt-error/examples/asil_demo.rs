@@ -80,29 +80,59 @@ fn demonstrate_asil_features() {
         codes::MEMORY_CORRUPTION_DETECTED,
         "Memory corruption detected",
     );
-    let type_error = Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "Type mismatch");
+    let type_error = Error::new(
+        ErrorCategory::Type,
+        codes::TYPE_MISMATCH_ERROR,
+        "Type mismatch",
+    );
 
-    println!("Safety Error: {} [Level: {}]", safety_error, safety_error.asil_level());
-    println!("Memory Error: {} [Level: {}]", memory_error, memory_error.asil_level());
-    println!("Type Error: {} [Level: {}]", type_error, type_error.asil_level());
+    println!(
+        "Safety Error: {} [Level: {}]",
+        safety_error,
+        safety_error.asil_level()
+    );
+    println!(
+        "Memory Error: {} [Level: {}]",
+        memory_error,
+        memory_error.asil_level()
+    );
+    println!(
+        "Type Error: {} [Level: {}]",
+        type_error,
+        type_error.asil_level()
+    );
 
     // Check safe state requirements
     #[cfg(any(feature = "asil-c", feature = "asil-d"))]
     {
         println!("\nSafe State Requirements:");
-        println!("Safety Error requires safe state: {}", safety_error.requires_safe_state());
-        println!("Memory Error requires safe state: {}", memory_error.requires_safe_state());
-        println!("Type Error requires safe state: {}", type_error.requires_safe_state());
+        println!(
+            "Safety Error requires safe state: {}",
+            safety_error.requires_safe_state()
+        );
+        println!(
+            "Memory Error requires safe state: {}",
+            memory_error.requires_safe_state()
+        );
+        println!(
+            "Type Error requires safe state: {}",
+            type_error.requires_safe_state()
+        );
     }
 
     // Create error context
-    let context = AsilErrorContext::new(safety_error).with_timestamp(1234567890).with_module_id(42);
+    let context = AsilErrorContext::new(safety_error)
+        .with_timestamp(1234567890)
+        .with_module_id(42);
 
     println!("\nError Context:");
     println!("- ASIL Level: {}", context.asil_level.name());
     println!("- Timestamp: {:?}", context.timestamp);
     println!("- Module ID: {:?}", context.module_id);
-    println!("- Requires Immediate Action: {}", context.requires_immediate_action());
+    println!(
+        "- Requires Immediate Action: {}",
+        context.requires_immediate_action()
+    );
     println!();
 }
 
@@ -117,7 +147,11 @@ fn demonstrate_safety_monitoring() {
     let errors = vec![
         Error::memory_error("Out of bounds access"),
         Error::validation_error("Invalid parameter"),
-        Error::new(ErrorCategory::Safety, codes::SAFETY_VIOLATION, "Safety check failed"),
+        Error::new(
+            ErrorCategory::Safety,
+            codes::SAFETY_VIOLATION,
+            "Safety check failed",
+        ),
         Error::runtime_error("Execution timeout"),
     ];
 
@@ -143,14 +177,28 @@ fn demonstrate_asil_d_features() {
     println!("-----------------------");
 
     // Demonstrate error integrity validation
-    let valid_error =
-        Error::new(ErrorCategory::Memory, codes::MEMORY_OUT_OF_BOUNDS, "Valid memory error");
-    let valid_safety =
-        Error::new(ErrorCategory::Safety, codes::SAFETY_VIOLATION, "Valid safety error");
+    let valid_error = Error::new(
+        ErrorCategory::Memory,
+        codes::MEMORY_OUT_OF_BOUNDS,
+        "Valid memory error",
+    );
+    let valid_safety = Error::new(
+        ErrorCategory::Safety,
+        codes::SAFETY_VIOLATION,
+        "Valid safety error",
+    );
 
     println!("Error Integrity Validation:");
-    println!("Memory Error: {} - Valid: {}", valid_error, valid_error.validate_integrity());
-    println!("Safety Error: {} - Valid: {}", valid_safety, valid_safety.validate_integrity());
+    println!(
+        "Memory Error: {} - Valid: {}",
+        valid_error,
+        valid_error.validate_integrity()
+    );
+    println!(
+        "Safety Error: {} - Valid: {}",
+        valid_safety,
+        valid_safety.validate_integrity()
+    );
 
     // Demonstrate determinism and redundancy errors
     let det_error = Error::new(
@@ -170,8 +218,14 @@ fn demonstrate_asil_d_features() {
 
     // Validate consistency using standalone function
     println!("\nStandalone Consistency Validation:");
-    println!("Memory Error consistent: {}", validate_error_consistency(&valid_error));
-    println!("Safety Error consistent: {}", validate_error_consistency(&valid_safety));
+    println!(
+        "Memory Error consistent: {}",
+        validate_error_consistency(&valid_error)
+    );
+    println!(
+        "Safety Error consistent: {}",
+        validate_error_consistency(&valid_safety)
+    );
 
     println!();
 }

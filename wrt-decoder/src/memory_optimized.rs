@@ -104,7 +104,11 @@ pub fn parse_string_inplace<'a>(
     offset: usize,
 ) -> Result<(&'a str, usize)> {
     let data = slice.data().map_err(|_| {
-        Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Failed to access slice data")
+        Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Failed to access slice data",
+        )
     })?;
 
     if offset >= data.len() {
@@ -165,12 +169,21 @@ impl<'a> StreamingCollectionParser<'a> {
     /// Create a new streaming parser for a collection
     pub fn new(slice: &'a SafeSlice<'a>, offset: usize) -> Result<Self> {
         let data = slice.data().map_err(|_| {
-            Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Failed to access slice data")
+            Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Failed to access slice data",
+            )
         })?;
 
         let (count, new_offset) = read_leb128_u32(data, offset)?;
 
-        Ok(Self { slice, offset: new_offset, count, processed: 0 })
+        Ok(Self {
+            slice,
+            offset: new_offset,
+            count,
+            processed: 0,
+        })
     }
 
     /// Get the total count of items
@@ -211,7 +224,10 @@ pub struct ModuleArena {
 impl ModuleArena {
     /// Create a new arena with the given capacity
     pub fn new(capacity: usize) -> Self {
-        Self { buffer: crate::prelude::Vec::with_capacity(capacity), offset: 0 }
+        Self {
+            buffer: crate::prelude::Vec::with_capacity(capacity),
+            offset: 0,
+        }
     }
 
     /// Allocate space in the arena
@@ -247,7 +263,11 @@ pub struct BoundedIterator<'a, T> {
 impl<'a, T> BoundedIterator<'a, T> {
     /// Create a new bounded iterator
     pub fn new(items: &'a [T], max_items: usize) -> Self {
-        Self { items, index: 0, max_items }
+        Self {
+            items,
+            index: 0,
+            max_items,
+        }
     }
 }
 
@@ -268,7 +288,11 @@ impl<'a, T> Iterator for BoundedIterator<'a, T> {
 /// Memory-efficient bounds checking
 pub fn check_bounds_u32(value: u32, max_value: u32, _context: &str) -> Result<()> {
     if value > max_value {
-        Err(Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Bounds check failed"))
+        Err(Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Bounds check failed",
+        ))
     } else {
         Ok(())
     }

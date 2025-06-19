@@ -152,8 +152,14 @@ fn test_memory_usage() {
     let hybrid_legacy_size = legacy_component_size * 3; // Component + Async + CFI
 
     println!("Unified agent size: {} bytes", unified_size);
-    println!("Legacy component agent size: {} bytes", legacy_component_size);
-    println!("Legacy hybrid equivalent: {} bytes (3 agents)", hybrid_legacy_size);
+    println!(
+        "Legacy component agent size: {} bytes",
+        legacy_component_size
+    );
+    println!(
+        "Legacy hybrid equivalent: {} bytes (3 agents)",
+        hybrid_legacy_size
+    );
 
     let memory_savings =
         ((hybrid_legacy_size - unified_size) as f64 / hybrid_legacy_size as f64) * 100.0;

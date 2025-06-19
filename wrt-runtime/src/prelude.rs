@@ -303,25 +303,29 @@ pub use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes};
 // Clean core WebAssembly types (for runtime use)
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use wrt_foundation::clean_core_types::{
-    CoreFuncType,
     CoreMemoryType,
     CoreTableType,
     CoreGlobalType,
 };
 
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type CoreFuncType = wrt_foundation::types::FuncType<crate::memory_adapter::StdMemoryProvider>;
+
 // Fallback for no_std environments - provide core types
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 pub use wrt_foundation::types::{
-    FuncType as CoreFuncType,
     MemoryType as CoreMemoryType, 
     TableType as CoreTableType,
     GlobalType as CoreGlobalType,
 };
 
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub type CoreFuncType = wrt_foundation::types::FuncType<wrt_foundation::NoStdProvider<1024>>;
+
 // Public type aliases using clean CORE types (not component types)
 /// Type alias for WebAssembly function types
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub type FuncType = CoreFuncType;
+pub type FuncType<P> = wrt_foundation::types::FuncType<P>;
 /// Type alias for WebAssembly memory types
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub type MemoryType = CoreMemoryType;
@@ -360,7 +364,7 @@ pub type DefaultProvider = wrt_foundation::NoStdProvider<16384>;
 
 /// Runtime function type alias for consistency  
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub type RuntimeFuncType = FuncType;
+pub type RuntimeFuncType = FuncType<crate::memory_adapter::StdMemoryProvider>;
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 pub type RuntimeFuncType = wrt_foundation::types::FuncType<wrt_foundation::NoStdProvider<1024>>;
 
@@ -398,6 +402,8 @@ pub enum Instruction {
     Arithmetic(ArithmeticOp),
     /// Control flow operation instruction
     Control(ControlOp),
+    /// Function call instruction (simplified for compatibility)
+    Call(u32),
     // Add other variants as needed
 }
 
@@ -422,6 +428,10 @@ impl wrt_foundation::traits::Checksummable for Instruction {
                 checksum.update_slice(&[2u8]); // Variant discriminant
                 // ControlOp would need to implement Checksummable
             }
+            Instruction::Call(func_idx) => {
+                checksum.update_slice(&[3u8]); // Variant discriminant
+                checksum.update_slice(&func_idx.to_le_bytes());
+            }
         }
     }
 }
@@ -432,6 +442,7 @@ impl wrt_foundation::traits::ToBytes for Instruction {
             Instruction::Nop => 0,            // No additional data
             Instruction::Arithmetic(_) => 4,  // Placeholder size
             Instruction::Control(_) => 4,     // Placeholder size
+            Instruction::Call(_) => 4,        // Function index size
         }
     }
 
@@ -444,6 +455,10 @@ impl wrt_foundation::traits::ToBytes for Instruction {
             Instruction::Nop => writer.write_all(&[0u8])?,
             Instruction::Arithmetic(_) => writer.write_all(&[1u8])?,
             Instruction::Control(_) => writer.write_all(&[2u8])?,
+            Instruction::Call(func_idx) => {
+                writer.write_all(&[3u8])?;
+                writer.write_all(&func_idx.to_le_bytes())?;
+            }
         }
         Ok(())
     }
@@ -460,6 +475,12 @@ impl wrt_foundation::traits::FromBytes for Instruction {
             0 => Ok(Instruction::Nop),
             1 => Ok(Instruction::Arithmetic(ArithmeticOp::default())),
             2 => Ok(Instruction::Control(ControlOp::default())),
+            3 => {
+                let mut func_bytes = [0u8; 4];
+                reader.read_exact(&mut func_bytes)?;
+                let func_idx = u32::from_le_bytes(func_bytes);
+                Ok(Instruction::Call(func_idx))
+            }
             _ => Err(wrt_foundation::Error::new(
                 wrt_foundation::ErrorCategory::Validation,
                 wrt_foundation::codes::INVALID_VALUE,

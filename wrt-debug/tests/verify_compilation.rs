@@ -11,7 +11,9 @@ mod mock_deps {
 
     impl<T, const N: usize, P> BoundedVec<T, N, P> {
         pub fn new(_: P) -> Self {
-            Self { _phantom: std::marker::PhantomData }
+            Self {
+                _phantom: std::marker::PhantomData,
+            }
         }
         pub fn push(&mut self, _: T) -> Result<(), ()> {
             Ok(())
@@ -33,7 +35,9 @@ mod mock_deps {
 
     impl<T, const N: usize, P> BoundedStack<T, N, P> {
         pub fn new(_: P) -> Self {
-            Self { _phantom: std::marker::PhantomData }
+            Self {
+                _phantom: std::marker::PhantomData,
+            }
         }
         pub fn push(&mut self, _: T) -> Result<(), ()> {
             Ok(())

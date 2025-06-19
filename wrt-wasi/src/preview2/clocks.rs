@@ -5,7 +5,7 @@
 
 use crate::prelude::*;
 use wrt_platform::time::PlatformTime;
-use wrt_component::values::Value;
+use wrt_foundation::values::Value;
 use core::any::Any;
 
 /// WASI monotonic clock now operation

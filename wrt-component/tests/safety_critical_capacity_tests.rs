@@ -38,7 +38,11 @@ mod capacity_limit_tests {
         // Fill to capacity
         for i in 0..MAX_COMPONENT_INSTANCES {
             let push_result = vec.try_push(i as u32);
-            assert!(push_result.is_ok(), "Failed to push within capacity at index {}", i);
+            assert!(
+                push_result.is_ok(),
+                "Failed to push within capacity at index {}",
+                i
+            );
         }
 
         // Verify we're at capacity
@@ -51,7 +55,7 @@ mod capacity_limit_tests {
         match overflow_result {
             Err(WrtError::CapacityExceeded) => {
                 // Expected error
-            }
+            },
             _ => panic!("Expected CapacityExceeded error"),
         }
     }
@@ -131,7 +135,10 @@ mod capacity_limit_tests {
 
         // Simulate deep recursion up to limit
         for depth in 0..MAX_CALL_STACK_DEPTH {
-            let frame = CallFrame { function_idx: depth as u32, return_addr: (depth * 4) as u32 };
+            let frame = CallFrame {
+                function_idx: depth as u32,
+                return_addr: (depth * 4) as u32,
+            };
 
             let push_result = stack.try_push(frame);
             assert!(push_result.is_ok(), "Failed at depth {}", depth);
@@ -140,7 +147,10 @@ mod capacity_limit_tests {
         assert_eq!(stack.len(), MAX_CALL_STACK_DEPTH);
 
         // Stack overflow should be caught
-        let overflow_frame = CallFrame { function_idx: 9999, return_addr: 0 };
+        let overflow_frame = CallFrame {
+            function_idx: 9999,
+            return_addr: 0,
+        };
 
         let overflow_result = stack.try_push(overflow_frame);
         assert!(overflow_result.is_err());
@@ -249,7 +259,10 @@ mod capacity_limit_tests {
         let mut vec = vec_result.unwrap();
 
         for i in 0..MAX_MEMORY_INSTANCES {
-            let mem = MockMemory { base: i as u64 * 65536, size: 65536 };
+            let mem = MockMemory {
+                base: i as u64 * 65536,
+                size: 65536,
+            };
             assert!(vec.try_push(mem).is_ok());
         }
 
@@ -354,7 +367,10 @@ mod capacity_limit_tests {
 
         // Fill to capacity
         for i in 0..MAX_RESOURCE_TYPES {
-            let info = ResourceTypeInfo { name: format!("resource_type_{}", i), size: i * 8 };
+            let info = ResourceTypeInfo {
+                name: format!("resource_type_{}", i),
+                size: i * 8,
+            };
             assert!(map.try_insert(i as u32, info).is_ok());
         }
 

@@ -117,7 +117,7 @@ impl PlatformDebugLimits {
                     } else {
                         100 // Low-memory systems
                     }
-                }
+                },
             },
             max_stack_traces: match debug_level {
                 DebugLevel::None => 0,
@@ -131,7 +131,7 @@ impl PlatformDebugLimits {
                     } else {
                         10 // Low-memory systems
                     }
-                }
+                },
             },
             debug_level,
         }

@@ -260,9 +260,11 @@ impl CallbackRegistry {
     #[cfg(not(feature = "std"))]
     pub fn new() -> Self {
         // In no_std mode, we need to provide memory providers for the bounded collections
-        use wrt_foundation::{safe_managed_alloc, CrateId};
-        let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for callbacks");
-        let provider = guard;
+        use wrt_foundation::{safe_capability_alloc, CrateId, capability_context};
+        let context_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
+        let context = context_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
+        let provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
+        let provider: HostProvider = provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory"));
         Self { 
             callbacks: HashMap::new(provider).unwrap_or_else(|_| {
                 // In a real embedded system, this should return an error
@@ -469,9 +471,11 @@ impl CallbackRegistry {
     #[cfg(not(feature = "std"))]
     pub fn get_registered_modules(&self) -> StringVec {
         // In no_std mode, we can't return dynamic module names
-        use wrt_foundation::{safe_managed_alloc, CrateId};
-        let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for string vector");
-        let provider = guard;
+        use wrt_foundation::{safe_capability_alloc, CrateId, capability_context};
+        let context_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
+        let context = context_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
+        let provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
+        let provider: HostProvider = provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory"));
         StringVec::new(provider).unwrap_or_else(|_| panic!("Failed to create vec"))
     }
 
@@ -482,7 +486,7 @@ impl CallbackRegistry {
         if let Some(module_functions) = self.host_functions.get(module_name) {
             module_functions.keys().collect()
         } else {
-            Vec::new()
+            std::vec::Vec::new()
         }
     }
 
@@ -491,9 +495,11 @@ impl CallbackRegistry {
     #[cfg(not(feature = "std"))]
     pub fn get_registered_functions(&self, _module_name: &str) -> StringVec {
         // In no_std mode, we can't return dynamic function names
-        use wrt_foundation::{safe_managed_alloc, CrateId};
-        let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for string vector");
-        let provider = guard;
+        use wrt_foundation::{safe_capability_alloc, CrateId, capability_context};
+        let context_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
+        let context = context_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
+        let provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
+        let provider: HostProvider = provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory"));
         StringVec::new(provider).unwrap_or_else(|_| panic!("Failed to create vec"))
     }
 
@@ -528,9 +534,11 @@ impl CallbackRegistry {
     #[cfg(not(feature = "std"))]
     pub fn get_available_builtins(&self) -> wrt_foundation::BoundedSet<BuiltinType, 32, HostProvider> {
         // In no_std mode, we can't dynamically track built-ins
-        use wrt_foundation::{safe_managed_alloc, CrateId};
-        let guard = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).expect("Failed to allocate memory for callbacks");
-        let provider = guard;
+        use wrt_foundation::{safe_capability_alloc, CrateId, capability_context};
+        let context_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
+        let context = context_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
+        let provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
+        let provider: HostProvider = provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory"));
         wrt_foundation::BoundedSet::new(provider).unwrap_or_else(|_| panic!("Failed to create set"))
     }
 

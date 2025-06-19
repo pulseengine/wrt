@@ -486,7 +486,7 @@ pub mod no_std_demo {
             crate::streaming::ParseResult::Complete(_) => {
                 assert_eq!(parser.bytes_processed(), 8); // 4 magic + 4 version bytes
                 Ok(())
-            }
+            },
             _ => Err(crate::Error::new(
                 crate::ErrorCategory::Validation,
                 wrt_error::codes::PARSE_ERROR,

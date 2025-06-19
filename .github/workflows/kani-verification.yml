@@ -23,13 +23,13 @@ on:
       asil_level:
         description: 'ASIL verification level'
         required: true
-        default: 'asil-c'
+        default: 'c'
         type: choice
         options:
-          - asil-a
-          - asil-b
-          - asil-c
-          - asil-d
+          - a
+          - b
+          - c
+          - d
       package:
         description: 'Specific package to verify (optional)'
         required: false
@@ -66,16 +66,18 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-kani-${{ hashFiles('**/Cargo.lock') }}
       
-      - name: Install KANI
+      - name: Install KANI and cargo-wrt
         run: |
           if ! command -v kani &> /dev/null; then
             cargo install --version ${KANI_VERSION} --locked kani-verifier
             cargo kani setup
           fi
+          cargo build --package cargo-wrt
+          cargo install --path cargo-wrt
       
       - name: Run Quick Verification
         run: |
-          ./scripts/kani-verify.sh --profile asil-a --package wrt-integration-tests
+          cargo-wrt kani-verify --asil-profile a --package wrt-integration-tests
         continue-on-error: true
       
       - name: Upload Quick Report
@@ -93,7 +95,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        asil: [asil-b, asil-c]
+        asil: [b, c]
         package: 
           - wrt-foundation
           - wrt-component
@@ -101,9 +103,9 @@ jobs:
           - wrt-integration-tests
         include:
           # Add ASIL-D verification for critical packages only
-          - asil: asil-d
+          - asil: d
             package: wrt-integration-tests
-          - asil: asil-d
+          - asil: d
             package: wrt-foundation
     
     steps:
@@ -126,16 +128,18 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-kani-${{ matrix.package }}-${{ hashFiles('**/Cargo.lock') }}
       
-      - name: Install KANI
+      - name: Install KANI and cargo-wrt
         run: |
           if ! command -v kani &> /dev/null; then
             cargo install --version ${KANI_VERSION} --locked kani-verifier
             cargo kani setup
           fi
+          cargo build --package cargo-wrt
+          cargo install --path cargo-wrt
       
       - name: Run Verification
         run: |
-          ./scripts/kani-verify.sh --profile ${{ matrix.asil }} --package ${{ matrix.package }}
+          cargo-wrt kani-verify --asil-profile ${{ matrix.asil }} --package ${{ matrix.package }}
         timeout-minutes: 30
       
       - name: Upload Verification Report
@@ -176,20 +180,22 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-kani-comprehensive-${{ hashFiles('**/Cargo.lock') }}
       
-      - name: Install KANI
+      - name: Install KANI and cargo-wrt
         run: |
           cargo install --version ${KANI_VERSION} --locked kani-verifier
           cargo kani setup
+          cargo build --package cargo-wrt
+          cargo install --path cargo-wrt
       
       - name: Run Comprehensive Verification
         run: |
-          ASIL_LEVEL="${{ github.event.inputs.asil_level || 'asil-c' }}"
+          ASIL_LEVEL="${{ github.event.inputs.asil_level || 'c' }}"
           PACKAGE="${{ github.event.inputs.package || '' }}"
           
           if [ -n "$PACKAGE" ]; then
-            ./scripts/kani-verify.sh --profile $ASIL_LEVEL --package $PACKAGE --verbose
+            cargo-wrt kani-verify --asil-profile $ASIL_LEVEL --package $PACKAGE --verbose
           else
-            ./scripts/kani-verify.sh --profile $ASIL_LEVEL --verbose
+            cargo-wrt kani-verify --asil-profile $ASIL_LEVEL --verbose
           fi
         timeout-minutes: 60
       

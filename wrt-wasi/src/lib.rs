@@ -52,9 +52,9 @@
 
 // Re-export core WRT types for convenience
 pub use wrt_error::{Error, ErrorCategory, Result};
-pub use wrt_foundation::{Resource, MemoryProvider};
-pub use wrt_host::{CallbackRegistry, HostFunction};
-pub use wrt_component::ComponentLinker;
+pub use wrt_foundation::{resource::Resource, MemoryProvider};
+pub use wrt_host::{CallbackRegistry, HostFunctionHandler};
+// pub use wrt_component::ComponentLinker;
 
 // Re-export safety-aware allocation macros
 pub use wrt_foundation::{safety_aware_alloc, safe_managed_alloc, CrateId};
@@ -162,6 +162,17 @@ pub trait WasiHostProvider {
     fn capabilities(&self) -> &WasiCapabilities;
 }
 
+/// Simple host function representation for WASI
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HostFunction {
+    /// Function name
+    pub name: String,
+    /// Function handler
+    pub handler: HostFunctionHandler,
+    /// External type (for component model integration)
+    pub extern_type: wrt_format::component::ExternType,
+}
+
 /// Error types specific to WASI operations
 pub mod error {
     use wrt_error::{ErrorCategory, ErrorCode, ErrorKind};
@@ -211,8 +222,8 @@ pub mod prelude {
         WasiVersion, WasiHostProvider, WasiCapabilities,
         Error, ErrorCategory, Result,
         Resource, MemoryProvider,
-        CallbackRegistry, HostFunction,
-        ComponentLinker,
+        CallbackRegistry, HostFunctionHandler, HostFunction,
+        // ComponentLinker,
     };
     
     #[cfg(feature = "preview2")]

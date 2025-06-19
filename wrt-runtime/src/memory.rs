@@ -1,13 +1,24 @@
-//! WebAssembly memory implementation.
+//! WebAssembly Memory Implementation
 //!
 //! This module provides a comprehensive implementation of WebAssembly linear
-//! memory.
+//! memory, supporting both single and multiple memory proposals with full
+//! safety guarantees and platform-aware resource management.
 //!
-//! # Memory Architecture
+//! # Features
 //!
-//! The `Memory` struct is the core implementation for WebAssembly linear
-//! memory. It represents a memory instance as defined in the WebAssembly
-//! specification. Key features include:
+//! - Linear memory with configurable page sizes
+//! - Memory growth and shrinking operations
+//! - Protected memory regions for security
+//! - Shared memory support for threading
+//! - Zero-copy data segments
+//! - Platform-specific memory limits enforcement
+//! - Integration with custom memory allocators
+//!
+//! # Memory Model
+//!
+//! WebAssembly memory is organized as a contiguous, byte-addressable range
+//! starting at offset 0, with bounds checking on all accesses to prevent
+//! out-of-bounds reads or writes.
 //!
 //! - Thread-safe access with internal synchronization
 //! - Performance metrics tracking (access counts, peak usage)
@@ -383,7 +394,20 @@ impl Default for Memory {
             limits: Limits { min: 1, max: Some(1) },
             shared: false,
         };
-        Self::new(to_core_memory_type(&memory_type)).unwrap()
+        Self::new(to_core_memory_type(&memory_type)).unwrap_or_else(|e| {
+            // If we can't create default memory, create a minimal fallback
+            // Log the error if logging is available
+            #[cfg(feature = "std")]
+            eprintln!("Warning: Failed to create default memory: {}. Creating minimal fallback.", e);
+            
+            // Create minimal memory with zero pages
+            let minimal_type = MemoryType {
+                limits: Limits { min: 0, max: Some(1) },
+                shared: false,
+            };
+            Self::new(to_core_memory_type(&minimal_type))
+                .expect("Critical: Unable to create even minimal memory")
+        })
     }
 }
 
@@ -1945,7 +1969,7 @@ impl Memory {
     pub fn safety_stats(&self) -> crate::prelude::RuntimeString {
         use crate::prelude::RuntimeString;
         let provider = wrt_foundation::NoStdProvider::<1024>::default();
-        RuntimeString::from_str_truncate("Memory Safety Stats: [Runtime memory]", provider)
+        RuntimeString::from_str_truncate("Memory Safety Stats: [Runtime memory]", provider.clone())
             .unwrap_or_else(|_| RuntimeString::from_str_truncate("", provider).unwrap())
     }
 

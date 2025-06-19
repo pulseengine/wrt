@@ -405,7 +405,11 @@ impl WitSourceFile {
             lines.push(line_bounded);
         }
 
-        Ok(Self { path: path_bounded, lines, size: content.len() as u32 })
+        Ok(Self {
+            path: path_bounded,
+            lines,
+            size: content.len() as u32,
+        })
     }
 
     /// Get line by line number (1-based)
@@ -430,19 +434,27 @@ impl WitSourceFile {
 impl ComponentBoundary {
     /// Check if an address is within this component's memory regions
     pub fn contains_address(&self, address: u32) -> bool {
-        self.memory_regions.iter().any(|region| address >= region.start && address < region.end)
+        self.memory_regions
+            .iter()
+            .any(|region| address >= region.start && address < region.end)
     }
 
     /// Get memory region containing the given address
     pub fn memory_region_for_address(&self, address: u32) -> Option<&MemoryRegion> {
-        self.memory_regions.iter().find(|region| address >= region.start && address < region.end)
+        self.memory_regions
+            .iter()
+            .find(|region| address >= region.start && address < region.end)
     }
 }
 
 impl MemoryRegion {
     /// Create a new memory region
     pub const fn new(start: u32, end: u32, region_type: MemoryRegionType) -> Self {
-        Self { start, end, region_type }
+        Self {
+            start,
+            end,
+            region_type,
+        }
     }
 
     /// Get the size of this memory region

@@ -68,11 +68,11 @@ mod memory_budget_tests {
                     if allocations.len() > 1000 {
                         panic!("Too many allocations without hitting budget");
                     }
-                }
+                },
                 Err(WrtError::OutOfMemory) => {
                     // Expected when budget is exhausted
                     break;
-                }
+                },
                 Err(e) => panic!("Unexpected error: {:?}", e),
             }
         }
@@ -140,12 +140,12 @@ mod memory_budget_tests {
                         }
                     }
                     vecs.push(vec);
-                }
+                },
                 Err(WrtError::OutOfMemory) => {
                     // Budget exhausted
                     assert!(i > 0, "Should allocate at least one vector");
                     break;
-                }
+                },
                 Err(e) => panic!("Unexpected error: {:?}", e),
             }
         }
@@ -200,7 +200,11 @@ mod memory_budget_tests {
             }
 
             // Should allocate at least one
-            assert!(!temp_vecs.is_empty(), "Failed to allocate in cycle {}", cycle);
+            assert!(
+                !temp_vecs.is_empty(),
+                "Failed to allocate in cycle {}",
+                cycle
+            );
 
             // Drop all vectors (memory should be reclaimed)
             drop(temp_vecs);
@@ -224,7 +228,7 @@ mod memory_budget_tests {
                     // Budget exhausted
                     assert!(i > 0, "Should allocate at least one string");
                     break;
-                }
+                },
                 Err(e) => panic!("Unexpected error: {:?}", e),
             }
         }
@@ -255,7 +259,11 @@ mod memory_budget_tests {
 
         // Fill with complex data
         for i in 0..MAX_COMPONENT_INSTANCES {
-            let data = ComplexData { id: i as u32, data: [i as u8; 512], flags: (i as u64) << 32 };
+            let data = ComplexData {
+                id: i as u32,
+                data: [i as u8; 512],
+                flags: (i as u64) << 32,
+            };
 
             match vec.try_push(data) {
                 Ok(_) => count += 1,
@@ -332,7 +340,7 @@ mod memory_budget_tests {
                     Ok(stack) => {
                         allocation_count += 1;
                         allocations.push(stack);
-                    }
+                    },
                     Err(WrtError::OutOfMemory) => break,
                     Err(e) => panic!("Unexpected error in iteration {}: {:?}", iteration, e),
                 }
@@ -344,7 +352,11 @@ mod memory_budget_tests {
             }
 
             // Should have consistent behavior across iterations
-            assert!(allocation_count > 0, "No allocations in iteration {}", iteration);
+            assert!(
+                allocation_count > 0,
+                "No allocations in iteration {}",
+                iteration
+            );
 
             // Clean up for next iteration
             drop(allocations);
@@ -367,11 +379,11 @@ mod memory_budget_tests {
                         }
                     }
                     maps.push(map);
-                }
+                },
                 Err(WrtError::OutOfMemory) => {
                     // Budget exhausted
                     break;
-                }
+                },
                 Err(e) => panic!("Unexpected error: {:?}", e),
             }
 
@@ -411,10 +423,10 @@ mod safety_critical_budget_tests {
             Ok(guard) => {
                 // Guard ensures memory is tracked
                 drop(guard);
-            }
+            },
             Err(WrtError::OutOfMemory) => {
                 // Budget exhausted - expected in some cases
-            }
+            },
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
     }

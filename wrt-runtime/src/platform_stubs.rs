@@ -228,8 +228,8 @@ impl PlatformId {
     pub const fn default_asil_level(&self) -> AsilLevel {
         match self {
             PlatformId::Linux => AsilLevel::QM,
-            PlatformId::QNX => AsilLevel::AsilB,
-            PlatformId::Embedded => AsilLevel::AsilD,
+            PlatformId::QNX => AsilLevel::B,
+            PlatformId::Embedded => AsilLevel::D,
             PlatformId::MacOS => AsilLevel::QM,
             PlatformId::Windows => AsilLevel::QM,
             PlatformId::Unknown => AsilLevel::QM,
@@ -307,7 +307,7 @@ impl ComprehensivePlatformLimits {
             max_stack_bytes: 16 * 1024, // 16KB
             max_components: 8,
             max_debug_overhead: 0,
-            asil_level: AsilLevel::AsilD,
+            asil_level: AsilLevel::D,
         }
     }
 }
@@ -365,7 +365,7 @@ impl ComprehensiveLimitProvider for QnxLimitProvider {
             max_stack_bytes: 4 * 1024 * 1024, // 4MB
             max_components: 64,
             max_debug_overhead: 16 * 1024 * 1024, // 16MB
-            asil_level: AsilLevel::AsilB,
+            asil_level: AsilLevel::B,
         })
     }
     
@@ -434,7 +434,7 @@ pub fn create_platform_interface() -> Result<&'static dyn PlatformInterface> {
             max_stack_bytes: 16 * 1024,
             max_components: 8,
             max_debug_overhead: 0,
-            asil_level: AsilLevel::AsilD,
+            asil_level: AsilLevel::D,
         },
     };
     Ok(&MINIMAL_PLATFORM)

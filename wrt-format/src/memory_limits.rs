@@ -70,7 +70,11 @@ mod validation {
         let budget = binary_processing::MAX_SECTION_SIZE * 2 + // Active sections
             binary_processing::MAX_LEB128_BUFFER * 64; // LEB128 buffers
 
-        assert!(budget < 150 * 1024, "Binary processing budget exceeds 150KB: {}KB", budget / 1024);
+        assert!(
+            budget < 150 * 1024,
+            "Binary processing budget exceeds 150KB: {}KB",
+            budget / 1024
+        );
     }
 
     #[test]
@@ -80,7 +84,11 @@ mod validation {
             + wit_parsing::MAX_GENERATIVE_TYPES * 128
             + wit_parsing::MAX_LINE_LENGTH * 16; // Multiple line buffers
 
-        assert!(budget < 150 * 1024, "WIT parsing budget exceeds 150KB: {}KB", budget / 1024);
+        assert!(
+            budget < 150 * 1024,
+            "WIT parsing budget exceeds 150KB: {}KB",
+            budget / 1024
+        );
     }
 
     #[test]

@@ -22,7 +22,11 @@ pub enum ChangeType {
     /// Text was deleted from a position
     Delete { offset: u32, length: u32 },
     /// Text was replaced at a position
-    Replace { offset: u32, old_length: u32, new_length: u32 },
+    Replace {
+        offset: u32,
+        old_length: u32,
+        new_length: u32,
+    },
 }
 
 /// A change to a source file
@@ -151,11 +155,15 @@ impl IncrementalParser {
                         .as_ref()
                         .ok_or_else(|| Error::parse_error("Insert change requires text"))?,
                 )?;
-            }
+            },
             ChangeType::Delete { offset, length } => {
                 self.apply_delete(offset, length)?;
-            }
-            ChangeType::Replace { offset, old_length, new_length: _ } => {
+            },
+            ChangeType::Replace {
+                offset,
+                old_length,
+                new_length: _,
+            } => {
                 self.apply_replace(
                     offset,
                     old_length,
@@ -164,7 +172,7 @@ impl IncrementalParser {
                         .as_ref()
                         .ok_or_else(|| Error::parse_error("Replace change requires text"))?,
                 )?;
-            }
+            },
         }
 
         // Mark affected nodes as dirty
@@ -303,9 +311,11 @@ impl IncrementalParser {
         let change_span = match change {
             ChangeType::Insert { offset, length } => SourceSpan::new(*offset, offset + length, 0),
             ChangeType::Delete { offset, length } => SourceSpan::new(*offset, offset + length, 0),
-            ChangeType::Replace { offset, old_length: _, new_length } => {
-                SourceSpan::new(*offset, offset + new_length, 0)
-            }
+            ChangeType::Replace {
+                offset,
+                old_length: _,
+                new_length,
+            } => SourceSpan::new(*offset, offset + new_length, 0),
         };
 
         // Check if this node is affected by the change
@@ -364,7 +374,12 @@ impl IncrementalParser {
             });
         }
 
-        Ok(ParseNode { node: ParseNodeKind::Document, span: doc.span, children, dirty: false })
+        Ok(ParseNode {
+            node: ParseNodeKind::Document,
+            span: doc.span,
+            children,
+            dirty: false,
+        })
     }
 
     /// Reparse dirty nodes in the tree (static version)
@@ -423,7 +438,10 @@ pub struct IncrementalParserCache {
 impl IncrementalParserCache {
     /// Create a new parser cache
     pub fn new() -> Self {
-        Self { parsers: BTreeMap::new(), global_stats: ParseStats::default() }
+        Self {
+            parsers: BTreeMap::new(),
+            global_stats: ParseStats::default(),
+        }
     }
 
     /// Get or create parser for a file
@@ -475,15 +493,25 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_source_change_types() {
-        let insert = ChangeType::Insert { offset: 10, length: 5 };
-        let delete = ChangeType::Delete { offset: 20, length: 3 };
-        let replace = ChangeType::Replace { offset: 30, old_length: 4, new_length: 6 };
+        let insert = ChangeType::Insert {
+            offset: 10,
+            length: 5,
+        };
+        let delete = ChangeType::Delete {
+            offset: 20,
+            length: 3,
+        };
+        let replace = ChangeType::Replace {
+            offset: 30,
+            old_length: 4,
+            new_length: 6,
+        };
 
         match insert {
             ChangeType::Insert { offset, length } => {
                 assert_eq!(offset, 10);
                 assert_eq!(length, 5);
-            }
+            },
             _ => panic!("Wrong change type"),
         }
     }

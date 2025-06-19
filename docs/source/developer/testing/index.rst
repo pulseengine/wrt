@@ -88,8 +88,8 @@ Generate Coverage Reports
 
 .. code-block:: bash
 
-   # Generate coverage with xtask
-   cargo xtask coverage
+   # Generate coverage with cargo-wrt
+   cargo-wrt coverage --html
 
    # Generate coverage directly
    cargo llvm-cov --html --output-dir coverage
@@ -111,16 +111,13 @@ KANI formal verification for mathematical proof of safety properties:
    cargo kani -p wrt-integration-tests --features kani
 
    # Run with specific ASIL profile
-   ./scripts/kani-verify.sh --profile asil-c
+   cargo-wrt kani-verify --asil-profile c
 
    # Run specific proof harness
    cargo kani --harness kani_verify_memory_budget_never_exceeded
 
-   # Check verification readiness
-   ./scripts/check-kani-status.sh
-
    # Simulate CI workflow locally
-   ./scripts/simulate-ci.sh
+   cargo-wrt simulate-ci
 
 For complete formal verification documentation, see :doc:`../../safety/formal_verification`.
 
@@ -204,13 +201,13 @@ Local CI Simulation
 .. code-block:: bash
 
    # Run main CI checks
-   just ci-main
+   cargo-wrt ci
 
-   # Run full CI suite
-   just ci-full
+   # Run full test suite
+   cargo-wrt test
 
-   # Run specific test category
-   cargo xtask ci-advanced-tests
+   # Run comprehensive verification
+   cargo-wrt verify-matrix --report
 
 Continuous Integration
 ----------------------

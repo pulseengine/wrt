@@ -286,13 +286,13 @@ Create documentation snippets for consistent formatting:
 
 ```bash
 # Generate complete documentation
-just docs
+cargo-wrt docs
 
 # Generate documentation with safety analysis
-just docs-safety
+cargo-wrt docs --safety
 
 # Validate documentation consistency
-just check-docs-consistency
+cargo-wrt docs --check
 ```
 
 This documentation standard ensures that WRT maintains world-class documentation quality appropriate for safety-critical software development while providing clear guidance for developers and safety engineers.

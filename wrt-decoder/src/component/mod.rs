@@ -106,7 +106,11 @@ mod no_std_utils {
                 Ok(BinaryType::Component)
             }
         } else {
-            Err(Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Invalid WASM magic number"))
+            Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Invalid WASM magic number",
+            ))
         }
     }
 
@@ -119,7 +123,10 @@ mod no_std_utils {
     pub fn read_name_as_string(
         data: &[u8],
         offset: usize,
-    ) -> Result<(BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<512>>, usize)> {
+    ) -> Result<(
+        BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<512>>,
+        usize,
+    )> {
         if offset >= data.len() {
             return Err(Error::new(
                 ErrorCategory::Parse,
@@ -143,7 +150,11 @@ mod no_std_utils {
         // Validate UTF-8 and create bounded string
         let name_bytes = &data[name_start..name_start + length];
         let name_str = core::str::from_utf8(name_bytes).map_err(|_| {
-            Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Invalid UTF-8 in name")
+            Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Invalid UTF-8 in name",
+            )
         })?;
 
         // Create the properly sized bounded string for the return type
@@ -200,7 +211,7 @@ pub fn decode_component(binary: &[u8]) -> Result<Component> {
                 codes::PARSE_ERROR,
                 "Cannot decode a WebAssembly core module as a Component",
             ))
-        }
+        },
         BinaryType::Component => {
             // Verify component header
             if binary.len() < 8 {
@@ -237,7 +248,7 @@ pub fn decode_component(binary: &[u8]) -> Result<Component> {
             parse_component_sections(&binary[8..], &mut component)?;
 
             Ok(component)
-        }
+        },
     }
 }
 
@@ -289,96 +300,96 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                         }
                     }
                 }
-            }
+            },
             0x01 => {
                 // Type section
                 let (types, _) = parse::parse_component_type_section(section_data)?;
                 component.types = types;
-            }
+            },
             0x02 => {
                 // Import section
                 let (imports, _) = parse::parse_import_section(section_data)?;
                 component.imports = imports;
-            }
+            },
             0x03 => {
                 // Core module section
                 let (modules, _) = parse::parse_core_module_section(section_data)?;
                 component.modules = modules;
-            }
+            },
             0x04 => {
                 // Function section
                 // Skip - currently not implemented for component model
                 // Functions are handled differently in the component model
-            }
+            },
             0x05 => {
                 // Table section
                 // Skip - currently not implemented for component model
                 // Tables are handled differently in the component model
-            }
+            },
             0x06 => {
                 // Memory section
                 // Skip - currently not implemented for component model
                 // Memories are handled differently in the component model
-            }
+            },
             0x07 => {
                 // Global section
                 // Skip - currently not implemented for component model
                 // Globals are handled differently in the component model
-            }
+            },
             0x08 => {
                 // Export section
                 let (exports, _) = parse::parse_export_section(section_data)?;
                 component.exports = exports;
-            }
+            },
             0x09 => {
                 // Start section
                 let (start, _) = parse::parse_start_section(section_data)?;
                 component.start = Some(start);
-            }
+            },
             0x0A => {
                 // Element section
                 // Skip - currently not implemented for component model
                 // Elements are handled differently in the component model
-            }
+            },
             0x0B => {
                 // Data section
                 // Skip - currently not implemented for component model
                 // Data sections are handled differently in the component model
-            }
+            },
             0x10 => {
                 // Instance section
                 let (instances, _) = parse::parse_instance_section(section_data)?;
                 component.instances = instances;
-            }
+            },
             0x11 => {
                 // Component section
                 let (components, _) = parse::parse_component_section(section_data)?;
                 component.components = components;
-            }
+            },
             0x12 => {
                 // Alias section
                 let (aliases, _) = parse::parse_alias_section(section_data)?;
                 component.aliases = aliases;
-            }
+            },
             0x13 => {
                 // Core instance section
                 let (core_instances, _) = parse::parse_core_instance_section(section_data)?;
                 component.core_instances = core_instances;
-            }
+            },
             0x14 => {
                 // Core type section
                 let (core_types, _) = parse::parse_core_type_section(section_data)?;
                 component.core_types = core_types;
-            }
+            },
             0x15 => {
                 // Canon section
                 let (canons, _) = parse::parse_canon_section(section_data)?;
                 component.canonicals = canons;
-            }
+            },
             _ => {
                 // Unknown section - ignore for now
                 // We could log a warning here
-            }
+            },
         }
 
         // Move to the next section

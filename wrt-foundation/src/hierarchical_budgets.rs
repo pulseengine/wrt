@@ -10,9 +10,11 @@ use crate::{
     budget_aware_provider::CrateId,
     codes,
     memory_coordinator::CrateIdentifier,
-    wrt_memory_system::{WrtMemoryGuard, WrtProviderFactory},
     Error, ErrorCategory, Result,
 };
+
+#[allow(deprecated)]
+use crate::wrt_memory_system::{WrtMemoryGuard, WrtProviderFactory};
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// Priority levels for memory allocation

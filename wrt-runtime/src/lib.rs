@@ -60,6 +60,7 @@ pub mod simple_types;
 pub mod unified_types;
 
 // Component model integration
+pub mod capability_integration;
 pub mod component_unified;
 pub mod memory_adapter;
 #[cfg(test)]

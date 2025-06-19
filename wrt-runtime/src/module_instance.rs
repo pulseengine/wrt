@@ -12,6 +12,11 @@ use wrt_debug::FunctionInfo;
 use wrt_debug::{DwarfDebugInfo, LineInfo};
 
 use crate::{global::Global, memory::Memory, module::{Module, MemoryWrapper, TableWrapper, GlobalWrapper}, prelude::{Debug, DefaultProvider, Error, ErrorCategory, FuncType, Result, codes}, table::Table};
+use wrt_foundation::traits::BoundedCapacity;
+use wrt_instructions::reference_ops::ReferenceOperations;
+
+// Type alias for FuncType to make signatures more readable - matches PlatformProvider from module.rs
+type WrtFuncType = wrt_foundation::types::FuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>;
 
 // Platform sync primitives - use prelude imports for consistency
 #[cfg(feature = "std")]
@@ -128,15 +133,35 @@ impl ModuleInstance {
         })?;
 
         // Convert from provider-aware FuncType to clean CoreFuncType
+        // Create BoundedVecs manually since FromIterator isn't implemented
+        let params_slice = ty.params.as_slice().map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to access params"))?;
+        let results_slice = ty.results.as_slice().map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to access results"))?;
+        
+        let mut params = wrt_foundation::bounded::BoundedVec::<wrt_foundation::ValueType, 128, crate::memory_adapter::StdMemoryProvider>::new(
+            crate::memory_adapter::StdMemoryProvider::default()
+        ).map_err(|_| Error::new(ErrorCategory::Memory, codes::MEMORY_ALLOCATION_ERROR, "Failed to create params vec"))?;
+        
+        let mut results = wrt_foundation::bounded::BoundedVec::<wrt_foundation::ValueType, 128, crate::memory_adapter::StdMemoryProvider>::new(
+            crate::memory_adapter::StdMemoryProvider::default()
+        ).map_err(|_| Error::new(ErrorCategory::Memory, codes::MEMORY_ALLOCATION_ERROR, "Failed to create results vec"))?;
+        
+        for param in params_slice {
+            params.push(param.clone()).map_err(|_| Error::new(ErrorCategory::Capacity, codes::CAPACITY_EXCEEDED, "Too many params"))?;
+        }
+        
+        for result in results_slice {
+            results.push(result.clone()).map_err(|_| Error::new(ErrorCategory::Capacity, codes::CAPACITY_EXCEEDED, "Too many results"))?;
+        }
+        
         Ok(crate::prelude::CoreFuncType {
-            params: ty.params.iter().collect(),
-            results: ty.results.iter().collect(),
+            params,
+            results,
         })
     }
 
     /// Get the function type for a function (no_std version)
     #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub fn function_type(&self, idx: u32) -> Result<wrt_foundation::types::FuncType> {
+    pub fn function_type(&self, idx: u32) -> Result<WrtFuncType> {
         let function = self.module.functions.get(idx as usize).map_err(|_| {
             Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, "Function index not found")
         })?;
@@ -230,6 +255,56 @@ impl ModuleInstance {
     #[cfg(feature = "debug")]
     pub fn has_debug_info(&self) -> bool {
         self.debug_info.as_ref().map_or(false, |di| di.has_debug_info())
+    }
+
+    /// Get a function by index - alias for compatibility with tail_call.rs
+    pub fn get_function(&self, idx: usize) -> Result<crate::module::Function> {
+        self.module.functions.get(idx).map_err(|_| {
+            Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, "Function index not found")
+        })
+    }
+
+    /// Get function type by index - alias for compatibility with tail_call.rs  
+    pub fn get_function_type(&self, idx: usize) -> Result<WrtFuncType> {
+        let function = self.module.functions.get(idx).map_err(|_| {
+            Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, "Function index not found")
+        })?;
+
+        self.module.types.get(function.type_idx as usize).map_err(|_| {
+            Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH, "Type index not found")
+        })
+    }
+
+    /// Get a table by index - alias for compatibility with tail_call.rs
+    pub fn get_table(&self, idx: usize) -> Result<TableWrapper> {
+        self.table(idx as u32)
+    }
+
+    /// Get a type by index - alias for compatibility with tail_call.rs
+    pub fn get_type(&self, idx: usize) -> Result<WrtFuncType> {
+        self.module.types.get(idx).map_err(|_| {
+            Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH, "Type index not found")
+        })
+    }
+}
+
+/// Implementation of ReferenceOperations trait for ModuleInstance
+impl ReferenceOperations for ModuleInstance {
+    fn get_function(&self, function_index: u32) -> Result<Option<u32>> {
+        // Check if function exists in module
+        if (function_index as usize) < self.module.functions.len() {
+            Ok(Some(function_index))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn validate_function_index(&self, function_index: u32) -> Result<()> {
+        if (function_index as usize) < self.module.functions.len() {
+            Ok(())
+        } else {
+            Err(Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, "Function index out of bounds"))
+        }
     }
 }
 

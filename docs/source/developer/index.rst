@@ -22,7 +22,8 @@ Essential developer resources:
 * **Contributing**: :doc:`contributing/index` - Contribution guidelines  
 * **Build System**: :doc:`build_system/index` - Build commands and configuration
 * **Testing**: :doc:`testing/index` - Test frameworks and procedures
-* **Documentation**: :doc:`/development/documentation_style_guide` - Documentation standards
+* **Style Guide**: :doc:`style_guide` - Documentation writing standards
+* **Templates**: :doc:`templates/index` - Documentation templates
 
 .. toctree::
    :maxdepth: 2
@@ -34,6 +35,8 @@ Essential developer resources:
    testing/index
    tooling/index
    internals/index
+   style_guide
+   templates/index
 
 Cross-References
 ----------------

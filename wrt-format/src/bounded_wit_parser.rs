@@ -14,7 +14,10 @@ pub struct SimpleBoundedString {
 
 impl SimpleBoundedString {
     pub fn new() -> Self {
-        Self { data: [0; 64], len: 0 }
+        Self {
+            data: [0; 64],
+            len: 0,
+        }
     }
 
     pub fn from_str(s: &str) -> Option<Self> {
@@ -198,7 +201,9 @@ impl WitParsingLimits {
             return Err(Error::invalid_input("max_interfaces cannot be zero"));
         }
         if self.max_identifier_length < 8 {
-            return Err(Error::invalid_input("max_identifier_length must be at least 8"));
+            return Err(Error::invalid_input(
+                "max_identifier_length must be at least 8",
+            ));
         }
         Ok(())
     }
@@ -358,7 +363,11 @@ impl BoundedWitParser {
             warnings: self.warnings.clone(),
         };
 
-        Ok(WitParseResult { worlds: result_worlds, interfaces: result_interfaces, metadata })
+        Ok(WitParseResult {
+            worlds: result_worlds,
+            interfaces: result_interfaces,
+            metadata,
+        })
     }
 
     /// Reset parser state
@@ -421,8 +430,8 @@ impl BoundedWitParser {
                             severity: WarningSeverity::Warning,
                         });
                     }
-                }
-                _ => {}
+                },
+                _ => {},
             }
 
             // Skip whitespace
@@ -452,7 +461,7 @@ impl BoundedWitParser {
                             });
                             position = new_pos;
                         }
-                    }
+                    },
                     Ok("interface") => {
                         if let Some((name, final_pos)) = self.read_identifier(new_pos) {
                             if let Err(e) = self.add_interface(name) {
@@ -471,10 +480,10 @@ impl BoundedWitParser {
                             });
                             position = new_pos;
                         }
-                    }
+                    },
                     _ => {
                         position = new_pos;
-                    }
+                    },
                 }
             } else {
                 position += 1;
@@ -566,7 +575,7 @@ impl BoundedWitParser {
                 b'{' => {
                     brace_count += 1;
                     found_opening = true;
-                }
+                },
                 b'}' => {
                     if brace_count > 0 {
                         brace_count -= 1;
@@ -574,8 +583,8 @@ impl BoundedWitParser {
                             return position + 1; // Return position after closing brace
                         }
                     }
-                }
-                _ => {}
+                },
+                _ => {},
             }
             position += 1;
         }
@@ -589,7 +598,11 @@ impl BoundedWitParser {
             return Err(Error::WIT_WORLD_LIMIT_EXCEEDED);
         }
 
-        let world = BoundedWitWorld { name, import_count: 0, export_count: 0 };
+        let world = BoundedWitWorld {
+            name,
+            import_count: 0,
+            export_count: 0,
+        };
 
         self.worlds[self.world_count] = Some(world);
         self.world_count += 1;
@@ -603,7 +616,10 @@ impl BoundedWitParser {
             return Err(Error::WIT_INTERFACE_LIMIT_EXCEEDED);
         }
 
-        let interface = BoundedWitInterface { name, function_count: 0 };
+        let interface = BoundedWitInterface {
+            name,
+            function_count: 0,
+        };
 
         self.interfaces[self.interface_count] = Some(interface);
         self.interface_count += 1;
@@ -723,7 +739,10 @@ mod tests {
 
     #[test]
     fn test_input_size_limit() {
-        let limits = WitParsingLimits { max_input_buffer: 10, ..WitParsingLimits::default() };
+        let limits = WitParsingLimits {
+            max_input_buffer: 10,
+            ..WitParsingLimits::default()
+        };
 
         let mut parser = BoundedWitParser::new(limits).unwrap();
         let large_input = b"world very-long-world-name-that-exceeds-limit { }";
@@ -734,7 +753,10 @@ mod tests {
 
     #[test]
     fn test_identifier_length_limit() {
-        let limits = WitParsingLimits { max_identifier_length: 5, ..WitParsingLimits::default() };
+        let limits = WitParsingLimits {
+            max_identifier_length: 5,
+            ..WitParsingLimits::default()
+        };
 
         let mut parser = BoundedWitParser::new(limits).unwrap();
         let wit_source = b"world verylongname { }";
@@ -750,7 +772,10 @@ mod tests {
 
     #[test]
     fn test_world_limit() {
-        let limits = WitParsingLimits { max_worlds: 1, ..WitParsingLimits::default() };
+        let limits = WitParsingLimits {
+            max_worlds: 1,
+            ..WitParsingLimits::default()
+        };
 
         let mut parser = BoundedWitParser::new(limits).unwrap();
         let wit_source = b"world world1 { } world world2 { }";
@@ -775,8 +800,10 @@ mod tests {
 
     #[test]
     fn test_validation() {
-        let invalid_limits =
-            WitParsingLimits { max_input_buffer: 0, ..WitParsingLimits::default() };
+        let invalid_limits = WitParsingLimits {
+            max_input_buffer: 0,
+            ..WitParsingLimits::default()
+        };
 
         let result = BoundedWitParser::new(invalid_limits);
         assert!(result.is_err());

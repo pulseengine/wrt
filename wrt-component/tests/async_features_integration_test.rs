@@ -51,7 +51,10 @@ mod async_context_tests {
 
         let retrieved = AsyncContextManager::get_context_value(&key).unwrap();
         assert!(retrieved.is_some());
-        assert_eq!(retrieved.unwrap().as_component_value().unwrap(), &ComponentValue::I32(42));
+        assert_eq!(
+            retrieved.unwrap().as_component_value().unwrap(),
+            &ComponentValue::I32(42)
+        );
 
         // Clean up
         AsyncContextManager::clear_context().unwrap();
@@ -184,7 +187,10 @@ mod waitable_set_tests {
         let set_id = WaitableSetBuiltins::waitable_set_new().unwrap();
         assert_eq!(WaitableSetBuiltins::waitable_set_count(set_id).unwrap(), 0);
 
-        let future = Future { handle: FutureHandle::new(), state: FutureState::Pending };
+        let future = Future {
+            handle: FutureHandle::new(),
+            state: FutureState::Pending,
+        };
 
         let waitable_id =
             WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(future)).unwrap();
@@ -203,7 +209,10 @@ mod waitable_set_tests {
         let set_id = WaitableSetBuiltins::waitable_set_new().unwrap();
 
         // Add pending future
-        let pending = Future { handle: FutureHandle::new(), state: FutureState::Pending };
+        let pending = Future {
+            handle: FutureHandle::new(),
+            state: FutureState::Pending,
+        };
         WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(pending)).unwrap();
 
         // Wait should timeout since nothing is ready
@@ -229,8 +238,14 @@ mod waitable_set_tests {
         let set_id = WaitableSetBuiltins::waitable_set_new().unwrap();
 
         // Add different types of waitables
-        let future = Future { handle: FutureHandle::new(), state: FutureState::Pending };
-        let stream = Stream { handle: StreamHandle::new(), state: StreamState::Open };
+        let future = Future {
+            handle: FutureHandle::new(),
+            state: FutureState::Pending,
+        };
+        let stream = Stream {
+            handle: StreamHandle::new(),
+            state: StreamState::Open,
+        };
 
         WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(future)).unwrap();
         WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Stream(stream)).unwrap();
@@ -243,7 +258,10 @@ mod waitable_set_tests {
         WaitableSetBuiltins::initialize().unwrap();
 
         let futures = vec![
-            Future { handle: FutureHandle::new(), state: FutureState::Pending },
+            Future {
+                handle: FutureHandle::new(),
+                state: FutureState::Pending,
+            },
             Future {
                 handle: FutureHandle::new(),
                 state: FutureState::Resolved(ComponentValue::Bool(true)),
@@ -299,7 +317,10 @@ mod error_context_tests {
 
         let metadata =
             ErrorContextBuiltins::error_context_get_metadata(context_id, "component").unwrap();
-        assert_eq!(metadata, Some(ComponentValue::String("test_component".to_string())));
+        assert_eq!(
+            metadata,
+            Some(ComponentValue::String("test_component".to_string()))
+        );
     }
 
     #[test]
@@ -360,7 +381,10 @@ mod advanced_threading_tests {
             42,
         );
 
-        let config = ThreadSpawnConfig { stack_size: Some(65536), priority: Some(5) };
+        let config = ThreadSpawnConfig {
+            stack_size: Some(65536),
+            priority: Some(5),
+        };
 
         let thread_id =
             AdvancedThreadingBuiltins::thread_spawn_ref(func_ref, config, None).unwrap();
@@ -375,12 +399,18 @@ mod advanced_threading_tests {
 
         let func_ref = FunctionReference::new(
             "test_func".to_string(),
-            FunctionSignature { params: vec![], results: vec![] },
+            FunctionSignature {
+                params: vec![],
+                results: vec![],
+            },
             0,
             0,
         );
 
-        let config = ThreadSpawnConfig { stack_size: Some(65536), priority: Some(5) };
+        let config = ThreadSpawnConfig {
+            stack_size: Some(65536),
+            priority: Some(5),
+        };
 
         let thread_id =
             AdvancedThreadingBuiltins::thread_spawn_ref(func_ref, config, None).unwrap();
@@ -404,7 +434,10 @@ mod advanced_threading_tests {
 
         // Get thread-local values
         let value1 = AdvancedThreadingBuiltins::thread_local_get(thread_id, 1).unwrap();
-        assert_eq!(value1, Some(ComponentValue::String("test_value".to_string())));
+        assert_eq!(
+            value1,
+            Some(ComponentValue::String("test_value".to_string()))
+        );
 
         let value2 = AdvancedThreadingBuiltins::thread_local_get(thread_id, 2).unwrap();
         assert_eq!(value2, Some(ComponentValue::I32(42)));
@@ -421,7 +454,10 @@ mod advanced_threading_tests {
             vec![ComponentValue::I32(123), ComponentValue::Bool(true)],
         );
 
-        let config = ThreadSpawnConfig { stack_size: Some(65536), priority: Some(5) };
+        let config = ThreadSpawnConfig {
+            stack_size: Some(65536),
+            priority: Some(5),
+        };
 
         let thread_id =
             AdvancedThreadingBuiltins::thread_spawn_indirect(indirect_call, config, None).unwrap();
@@ -436,12 +472,18 @@ mod advanced_threading_tests {
 
         let func_ref = FunctionReference::new(
             "parent_func".to_string(),
-            FunctionSignature { params: vec![], results: vec![] },
+            FunctionSignature {
+                params: vec![],
+                results: vec![],
+            },
             0,
             0,
         );
 
-        let config = ThreadSpawnConfig { stack_size: Some(65536), priority: Some(5) };
+        let config = ThreadSpawnConfig {
+            stack_size: Some(65536),
+            priority: Some(5),
+        };
 
         let parent_id =
             AdvancedThreadingBuiltins::thread_spawn_ref(func_ref.clone(), config.clone(), None)
@@ -672,12 +714,18 @@ mod cross_feature_integration_tests {
 
         // Fail the task
         TaskBuiltins::task_cancel(task_id).unwrap();
-        assert_eq!(TaskBuiltins::task_status(task_id).unwrap(), TaskStatus::Cancelled);
+        assert_eq!(
+            TaskBuiltins::task_status(task_id).unwrap(),
+            TaskStatus::Cancelled
+        );
 
         // Verify error context has task info
         let task_id_from_error =
             ErrorContextBuiltins::error_context_get_metadata(error_id, "task_id").unwrap();
-        assert_eq!(task_id_from_error, Some(ComponentValue::U64(task_id.as_u64())));
+        assert_eq!(
+            task_id_from_error,
+            Some(ComponentValue::U64(task_id.as_u64()))
+        );
     }
 
     #[test]
@@ -694,7 +742,10 @@ mod cross_feature_integration_tests {
         WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(future)).unwrap();
 
         // Add stream
-        let stream = Stream { handle: StreamHandle::new(), state: StreamState::Open };
+        let stream = Stream {
+            handle: StreamHandle::new(),
+            state: StreamState::Open,
+        };
         WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Stream(stream)).unwrap();
 
         // Check for ready items
@@ -710,7 +761,11 @@ mod cross_feature_integration_tests {
         let arg_list_type = FixedLengthListType::new(ValueType::I32, 3);
         let args = FixedLengthList::with_elements(
             arg_list_type,
-            vec![ComponentValue::I32(10), ComponentValue::I32(20), ComponentValue::I32(30)],
+            vec![
+                ComponentValue::I32(10),
+                ComponentValue::I32(20),
+                ComponentValue::I32(30),
+            ],
         )
         .unwrap();
 
@@ -725,7 +780,10 @@ mod cross_feature_integration_tests {
             100,
         );
 
-        let config = ThreadSpawnConfig { stack_size: Some(65536), priority: Some(5) };
+        let config = ThreadSpawnConfig {
+            stack_size: Some(65536),
+            priority: Some(5),
+        };
 
         let thread_id =
             AdvancedThreadingBuiltins::thread_spawn_ref(func_ref, config, None).unwrap();

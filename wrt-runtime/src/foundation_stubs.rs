@@ -98,14 +98,17 @@ pub type LargeVec<T> = wrt_foundation::bounded::BoundedVec<T, 65536, wrt_foundat
 
 /// ASIL levels for safety context
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(Default)]
 pub enum AsilLevel {
-    #[default]
-    QM = 0,
-    AsilA = 1,
-    AsilB = 2,
-    AsilC = 3,
-    AsilD = 4,
+    /// QM: Quality Management (no ASIL requirement)
+    QM,
+    /// ASIL-A: Lowest safety criticality
+    A,
+    /// ASIL-B: Low safety criticality
+    B,
+    /// ASIL-C: Medium safety criticality
+    C,
+    /// ASIL-D: Highest safety criticality
+    D,
 }
 
 

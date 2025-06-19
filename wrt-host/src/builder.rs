@@ -79,16 +79,18 @@ impl Default for HostBuilder {
                 strict_validation: false,
                 component_name: String::new(),
                 host_id: String::new(),
-                fallback_handlers: Vec::new(),
+                fallback_handlers: std::vec::Vec::new(),
             }
         }
         
         #[cfg(not(feature = "std"))]
         {
-            // TODO: Specify appropriate size for this allocation
-            use wrt_foundation::{safe_managed_alloc, CrateId};
+            use wrt_foundation::{safe_capability_alloc, CrateId, capability_context};
             
-            let provider = safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).unwrap_or_else(|_| panic!("Failed to allocate memory for HostBuilder"));
+            let context_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, 65536));
+            let context = context_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
+            let provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
+            let provider: HostProvider = provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory"));
             Self {
                 registry: CallbackRegistry::new(),
                 required_builtins: wrt_foundation::BoundedSet::new(provider).unwrap_or_else(|_| panic!("Failed to create builtins set")),
@@ -179,11 +181,14 @@ impl HostBuilder {
     {
         let handler_fn = HostFunctionHandler::new(move |target| {
             #[cfg(feature = "std")]
-            let args: ValueVec = Vec::new();
+            let args: ValueVec = std::vec::Vec::new();
             #[cfg(not(feature = "std"))]
             let args: ValueVec = {
-                use wrt_foundation::{safe_managed_alloc, CrateId};
-                let provider = safe_managed_alloc!(65536, CrateId::Host).unwrap();
+                use wrt_foundation::{safe_managed_alloc, safe_capability_alloc, capability_context, CrateId};
+                let context_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, 65536));
+                let context = context_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
+                let provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, 65536);
+                let provider: HostProvider = provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory"));
                 ValueVec::new(provider).unwrap()
             };
             handler(target, args)
@@ -311,11 +316,14 @@ impl HostBuilder {
     {
         let handler_fn = HostFunctionHandler::new(move |target| {
             #[cfg(feature = "std")]
-            let args: ValueVec = Vec::new();
+            let args: ValueVec = std::vec::Vec::new();
             #[cfg(not(feature = "std"))]
             let args: ValueVec = {
-                use wrt_foundation::{safe_managed_alloc, CrateId};
-                let provider = safe_managed_alloc!(65536, CrateId::Host).unwrap();
+                use wrt_foundation::{safe_managed_alloc, safe_capability_alloc, capability_context, CrateId};
+                let context_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, 65536));
+                let context = context_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
+                let provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, 65536);
+                let provider: HostProvider = provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory"));
                 ValueVec::new(provider).unwrap()
             };
             handler(target, args)

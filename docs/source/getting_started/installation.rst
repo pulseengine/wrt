@@ -43,8 +43,9 @@ Core Dependencies
 All platforms require:
 
 1. **Rust Toolchain**: Version 1.86.0 or newer (stable)
-2. **just**: Build automation tool
-3. **Git**: Source code management
+2. **Git**: Source code management
+
+The unified build tool (cargo-wrt) is included in the repository and installed automatically.
 
 Install Rust
 ~~~~~~~~~~~~~
@@ -66,18 +67,21 @@ Install Rust
 
       Download from the `official Rust website <https://forge.rust-lang.org/infra/channel-layout.html#archives>`_
 
-Install just
-~~~~~~~~~~~~
+Install cargo-wrt
+~~~~~~~~~~~~~~~~~~
+
+The cargo-wrt unified build tool is installed from the repository:
 
 .. code-block:: bash
 
-   cargo install just
+   # After cloning the repository
+   cargo install --path cargo-wrt
 
 Verify installation:
 
 .. code-block:: bash
 
-   just --version
+   cargo-wrt --help
    rustc --version
 
 WebAssembly Targets
@@ -125,17 +129,18 @@ Source Installation
       git clone https://github.com/pulseengine/wrt
       cd wrt
 
-2. Build from source:
+2. Install and build:
 
    .. code-block:: bash
 
-      just build
+      cargo install --path cargo-wrt
+      cargo-wrt build
 
 3. Run tests to verify:
 
    .. code-block:: bash
 
-      just ci-test
+      cargo-wrt test
 
 4. (Optional) Install system-wide:
 
@@ -174,8 +179,8 @@ The following environment variables are designed for the target runtime configur
 .. code-block:: bash
 
    # Target runtime configuration (execution engine under development)
-   export WRT_STACK_SIZE=1048576
-   export WRT_FUEL_LIMIT=1000000
+   export WRT_STACK_SIZE=1048576    # Stack size for PulseEngine runtime
+   export WRT_FUEL_LIMIT=1000000    # Fuel limit for PulseEngine execution
 
    # Development options
    export WRT_LOG_LEVEL=info
@@ -212,10 +217,10 @@ Verify your development environment works correctly:
    cargo run --bin wrtd -- --help
 
    # Build all crates to verify dependencies
-   just build
+   cargo-wrt build
 
    # Run infrastructure tests
-   just ci-test
+   cargo-wrt test
 
 .. note::
    **Development Status**: The wrtd tool currently provides infrastructure and module validation. 
@@ -238,14 +243,14 @@ Common Issues
 
 .. code-block:: bash
 
-   just setup-rust-targets
+   rustup target add wasm32-unknown-unknown wasm32-wasip1 wasm32-wasip2
 
 **Build failures:**
 
 .. code-block:: bash
 
-   cargo clean
-   just build
+   cargo-wrt clean
+   cargo-wrt build
 
 **Permission errors:**
 

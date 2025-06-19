@@ -30,7 +30,7 @@ wrt-debug = { workspace = true, default-features = false, optional = true }
 # No additional dependencies for now
 
 [features]
-default = [] # no_std + no_alloc by default for safety-critical core
+default = ["std"] # Enable std by default for platform compatibility
 # Binary choice: std OR no_std (no alloc middle ground)
 std = [
     # "wrt-decoder/std",
@@ -40,7 +40,6 @@ std = [
     "wrt-instructions/std",
     "wrt-intercept/std",
     "dep:wrt-platform",
-    "wrt-platform?/std",
     "wrt-sync/std",
     "wrt-foundation/std"]
 

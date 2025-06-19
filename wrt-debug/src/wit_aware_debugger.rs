@@ -253,8 +253,10 @@ impl WitDebugger {
     /// Add a source-level breakpoint
     pub fn add_source_breakpoint(&mut self, span: SourceSpan) -> Result<u32, DebugError> {
         // Find binary offset for this source location
-        let binary_offset =
-            self.source_map.binary_offset_for_source(span).ok_or(DebugError::InvalidAddress)?;
+        let binary_offset = self
+            .source_map
+            .binary_offset_for_source(span)
+            .ok_or(DebugError::InvalidAddress)?;
 
         // Generate breakpoint ID
         let bp_id = self.source_breakpoints.len() as u32 + 1;
@@ -265,7 +267,10 @@ impl WitDebugger {
 
     /// Remove a source-level breakpoint
     pub fn remove_source_breakpoint(&mut self, span: SourceSpan) -> Result<(), DebugError> {
-        self.source_breakpoints.remove(&span).map(|_| ()).ok_or(DebugError::BreakpointNotFound)
+        self.source_breakpoints
+            .remove(&span)
+            .map(|_| ())
+            .ok_or(DebugError::BreakpointNotFound)
     }
 
     /// Set step mode
@@ -362,7 +367,7 @@ impl RuntimeDebugger for WitDebugger {
                 } else {
                     DebugAction::StepInstruction
                 }
-            }
+            },
             WitStepMode::SourceStepOver => DebugAction::StepOver,
             WitStepMode::SourceStepOut => DebugAction::StepOut,
             WitStepMode::Continue => DebugAction::Continue,
@@ -456,8 +461,11 @@ impl WitAwareDebugger for WitDebugger {
         #[cfg(feature = "std")]
         {
             let error_str = error.message.as_str().unwrap_or("Unknown error");
-            let runtime_error =
-                Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, &format!("{}", error_str));
+            let runtime_error = Error::new(
+                ErrorCategory::Runtime,
+                codes::RUNTIME_ERROR,
+                &format!("{}", error_str),
+            );
             self.source_map.map_error_to_diagnostic(&runtime_error, error.binary_offset)
         }
         #[cfg(not(feature = "std"))]

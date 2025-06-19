@@ -221,7 +221,11 @@ impl WitLanguageServer {
 
     /// Open a document
     pub fn open_document(&mut self, document: TextDocumentItem) -> Result<()> {
-        let uri = document.uri.as_str().map_err(|_| Error::parse_error("Invalid URI"))?.to_string();
+        let uri = document
+            .uri
+            .as_str()
+            .map_err(|_| Error::parse_error("Invalid URI"))?
+            .to_string();
 
         // Set up parser for this document
         let file_id = self.uri_to_file_id(&uri);
@@ -319,18 +323,21 @@ impl WitLanguageServer {
                 let hover_text = match node_info {
                     NodeInfo::Function(name) => {
                         BoundedString::from_str(&format!("Function: {}", name), provider).ok()
-                    }
+                    },
                     NodeInfo::Type(name) => {
                         BoundedString::from_str(&format!("Type: {}", name), provider).ok()
-                    }
+                    },
                     NodeInfo::Interface(name) => {
                         BoundedString::from_str(&format!("Interface: {}", name), provider).ok()
-                    }
+                    },
                     _ => None,
                 };
 
                 if let Some(contents) = hover_text {
-                    return Ok(Some(Hover { contents, range: None }));
+                    return Ok(Some(Hover {
+                        contents,
+                        range: None,
+                    }));
                 }
             }
         }
@@ -500,7 +507,7 @@ impl WitLanguageServer {
                                     selection_range: self.span_to_range(func.name.span),
                                     children: Vec::new(),
                                 });
-                            }
+                            },
                             InterfaceItem::Type(type_decl) => {
                                 children.push(DocumentSymbol {
                                     name: type_decl.name.name.clone(),
@@ -509,10 +516,10 @@ impl WitLanguageServer {
                                     selection_range: self.span_to_range(type_decl.name.span),
                                     children: Vec::new(),
                                 });
-                            }
+                            },
                             InterfaceItem::Use(_use_decl) => {
                                 // Skip use declarations for now
-                            }
+                            },
                         }
                     }
 
@@ -523,8 +530,8 @@ impl WitLanguageServer {
                         selection_range: self.span_to_range(interface.name.span),
                         children,
                     });
-                }
-                _ => {} // Handle other top-level items
+                },
+                _ => {}, // Handle other top-level items
             }
         }
 
@@ -535,8 +542,14 @@ impl WitLanguageServer {
     fn span_to_range(&self, span: SourceSpan) -> Range {
         // Simplified conversion - real implementation would use line/column mapping
         Range {
-            start: Position { line: 0, character: span.start },
-            end: Position { line: 0, character: span.end },
+            start: Position {
+                line: 0,
+                character: span.start,
+            },
+            end: Position {
+                line: 0,
+                character: span.end,
+            },
         }
     }
 }
@@ -590,10 +603,19 @@ mod tests {
 
     #[test]
     fn test_position_range() {
-        let pos = Position { line: 5, character: 10 };
+        let pos = Position {
+            line: 5,
+            character: 10,
+        };
         let range = Range {
-            start: Position { line: 5, character: 5 },
-            end: Position { line: 5, character: 15 },
+            start: Position {
+                line: 5,
+                character: 5,
+            },
+            end: Position {
+                line: 5,
+                character: 15,
+            },
         };
 
         assert!(pos.line >= range.start.line);

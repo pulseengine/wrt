@@ -36,8 +36,14 @@ fn demonstrate_source_spans() {
     let span1 = SourceSpan::new(0, 10, 0);
     let span2 = SourceSpan::new(10, 20, 0);
 
-    println!("Created span1: start={}, end={}, file_id={}", span1.start, span1.end, span1.file_id);
-    println!("Created span2: start={}, end={}, file_id={}", span2.start, span2.end, span2.file_id);
+    println!(
+        "Created span1: start={}, end={}, file_id={}",
+        span1.start, span1.end, span1.file_id
+    );
+    println!(
+        "Created span2: start={}, end={}, file_id={}",
+        span2.start, span2.end, span2.file_id
+    );
 
     let merged = span1.merge(&span2);
     println!(
@@ -46,7 +52,10 @@ fn demonstrate_source_spans() {
     );
 
     let empty = SourceSpan::empty();
-    println!("Empty span: start={}, end={}, file_id={}", empty.start, empty.end, empty.file_id);
+    println!(
+        "Empty span: start={}, end={}, file_id={}",
+        empty.start, empty.end, empty.file_id
+    );
 
     println!("✓ Source location tracking works correctly");
 }
@@ -90,7 +99,10 @@ fn demonstrate_type_expressions() {
 
     let span = SourceSpan::new(0, 10, 0);
 
-    let string_type = PrimitiveType { kind: PrimitiveKind::String, span };
+    let string_type = PrimitiveType {
+        kind: PrimitiveKind::String,
+        span,
+    };
 
     let type_expr = TypeExpr::Primitive(string_type);
 
@@ -98,7 +110,7 @@ fn demonstrate_type_expressions() {
         TypeExpr::Primitive(prim) => {
             println!("✓ Created primitive type expression: {:?}", prim.kind);
             assert_eq!(prim.kind, PrimitiveKind::String);
-        }
+        },
         TypeExpr::Named(..) => println!("✓ Named type expression structure available"),
         TypeExpr::List(..) => println!("✓ List type expression structure available"),
         TypeExpr::Option(..) => println!("✓ Option type expression structure available"),
@@ -132,14 +144,17 @@ fn demonstrate_function_results() {
     }
 
     // Test Single result
-    let u32_type = PrimitiveType { kind: PrimitiveKind::U32, span };
+    let u32_type = PrimitiveType {
+        kind: PrimitiveKind::U32,
+        span,
+    };
 
     let single_result = FunctionResults::Single(TypeExpr::Primitive(u32_type));
     match single_result {
         FunctionResults::Single(TypeExpr::Primitive(prim)) => {
             println!("✓ Created function with single U32 result: {:?}", prim.kind);
             assert_eq!(prim.kind, PrimitiveKind::U32);
-        }
+        },
         _ => println!("✗ Unexpected function result type"),
     }
 

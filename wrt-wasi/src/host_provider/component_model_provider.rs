@@ -5,7 +5,8 @@
 //! Uses safety-aware allocation and respects configured safety levels.
 
 use crate::{prelude::*, WASI_CRATE_ID, wasi_safety_level};
-use wrt_host::{HostFunction, HostFunctionHandler, CloneableFn};
+use wrt_host::{HostFunctionHandler, CloneableFn};
+use crate::HostFunction;
 use wrt_format::component::ExternType;
 use wrt_foundation::safety_aware_alloc;
 
@@ -20,7 +21,10 @@ pub struct ComponentModelProvider {
     /// Resource manager for WASI handles
     resource_manager: WasiResourceManager,
     /// Cached host functions
-    cached_functions: Option<BoundedVec<HostFunction, 64>>,
+    #[cfg(feature = "std")]
+    cached_functions: Option<Vec<HostFunction>>,
+    #[cfg(not(feature = "std"))]
+    cached_functions: Option<u8>, // Simplified for no_std mode
 }
 
 impl ComponentModelProvider {
@@ -29,9 +33,11 @@ impl ComponentModelProvider {
     pub fn new(capabilities: WasiCapabilities) -> Result<Self> {
         let resource_manager = WasiResourceManager::new()?;
         
-        // Initialize function cache with safety-aware allocation
-        let provider = safety_aware_alloc!(4096, WASI_CRATE_ID)?;
-        let cached_functions = Some(BoundedVec::new(provider)?);
+        // Initialize function cache
+        #[cfg(feature = "std")]
+        let cached_functions = Some(Vec::new());
+        #[cfg(not(feature = "std"))]
+        let cached_functions = Some(0);
         
         Ok(Self {
             capabilities,
@@ -60,50 +66,69 @@ impl ComponentModelProvider {
     }
     
     /// Build all WASI host functions based on enabled capabilities
-    fn build_host_functions(&mut self) -> Result<&BoundedVec<HostFunction, 64>> {
+    #[cfg(feature = "std")]
+    fn build_host_functions(&mut self) -> Result<&Vec<HostFunction>> {
         if self.cached_functions.is_some() {
             return Ok(self.cached_functions.as_ref().unwrap());
         }
         
-        let provider = safety_aware_alloc!(4096, WASI_CRATE_ID)?;
-        let mut functions = BoundedVec::new(provider)?;
+        let mut functions = Vec::new();
         
         // Add filesystem functions if capabilities allow
         if self.capabilities.filesystem.read_access {
-            functions.push(self.create_filesystem_read_function()?)?;
+            functions.push(self.create_filesystem_read_function()?);
         }
         if self.capabilities.filesystem.write_access {
-            functions.push(self.create_filesystem_write_function()?)?;
+            functions.push(self.create_filesystem_write_function()?);
         }
         if self.capabilities.filesystem.directory_access {
-            functions.push(self.create_filesystem_open_function()?)?;
+            functions.push(self.create_filesystem_open_function()?);
         }
         
         // Add CLI functions if capabilities allow
         if self.capabilities.environment.args_access {
-            functions.push(self.create_cli_args_function()?)?;
+            functions.push(self.create_cli_args_function()?);
         }
         if self.capabilities.environment.environ_access {
-            functions.push(self.create_cli_environ_function()?)?;
+            functions.push(self.create_cli_environ_function()?);
         }
         
         // Add clock functions if capabilities allow
         if self.capabilities.clocks.monotonic_access {
-            functions.push(self.create_clock_now_function()?)?;
+            functions.push(self.create_clock_now_function()?);
         }
         
         // Add I/O functions if capabilities allow
         if self.capabilities.io.stdout_access {
-            functions.push(self.create_io_write_function()?)?;
+            functions.push(self.create_io_write_function()?);
         }
         
         // Add random functions if capabilities allow
         if self.capabilities.random.secure_random {
-            functions.push(self.create_random_get_function()?)?;
+            functions.push(self.create_random_get_function()?);
         }
         
         self.cached_functions = Some(functions);
         Ok(self.cached_functions.as_ref().unwrap())
+    }
+    
+    /// Build all WASI host functions based on enabled capabilities (no_std version)
+    #[cfg(not(feature = "std"))]
+    fn build_host_functions(&mut self) -> Result<u8> {
+        // In no_std mode, return a simple count of available functions
+        let mut count = 0u8;
+        
+        if self.capabilities.filesystem.read_access { count += 1; }
+        if self.capabilities.filesystem.write_access { count += 1; }
+        if self.capabilities.filesystem.directory_access { count += 1; }
+        if self.capabilities.environment.args_access { count += 1; }
+        if self.capabilities.environment.environ_access { count += 1; }
+        if self.capabilities.clocks.monotonic_access { count += 1; }
+        if self.capabilities.io.stdout_access { count += 1; }
+        if self.capabilities.random.secure_random { count += 1; }
+        
+        self.cached_functions = Some(count);
+        Ok(count)
     }
     
     /// Create host function for WASI filesystem read operations
@@ -163,33 +188,33 @@ impl ComponentModelProvider {
     
     /// Create host function for WASI monotonic clock
     fn create_clock_now_function(&self) -> Result<HostFunction> {
-        use crate::preview2::clocks::wasi_clocks_monotonic_now;
+        use crate::preview2::clocks::wasi_monotonic_clock_now;
         
         Ok(HostFunction {
             name: "wasi:clocks/monotonic-clock.now".to_string(),
-            handler: HostFunctionHandler::new(CloneableFn::new(wasi_clocks_monotonic_now)),
+            handler: HostFunctionHandler::new(CloneableFn::new(wasi_monotonic_clock_now)),
             extern_type: ExternType::Func,
         })
     }
     
     /// Create host function for WASI I/O write
     fn create_io_write_function(&self) -> Result<HostFunction> {
-        use crate::preview2::io::wasi_io_write;
+        use crate::preview2::io::wasi_stream_write;
         
         Ok(HostFunction {
             name: "wasi:io/streams.write".to_string(),
-            handler: HostFunctionHandler::new(CloneableFn::new(wasi_io_write)),
+            handler: HostFunctionHandler::new(CloneableFn::new(wasi_stream_write)),
             extern_type: ExternType::Func,
         })
     }
     
     /// Create host function for WASI random number generation
     fn create_random_get_function(&self) -> Result<HostFunction> {
-        use crate::preview2::random::wasi_random_get;
+        use crate::preview2::random::wasi_get_random_bytes;
         
         Ok(HostFunction {
             name: "wasi:random/random.get-random-bytes".to_string(),
-            handler: HostFunctionHandler::new(CloneableFn::new(wasi_random_get)),
+            handler: HostFunctionHandler::new(CloneableFn::new(wasi_get_random_bytes)),
             extern_type: ExternType::Func,
         })
     }
@@ -208,17 +233,38 @@ impl ComponentModelProvider {
 impl WasiHostProvider for ComponentModelProvider {
     /// Get all host functions provided by this WASI implementation
     fn get_host_functions(&self) -> Result<Vec<HostFunction>> {
-        // For this stub implementation, return empty vector
-        // In full implementation, would call build_host_functions
-        Ok(Vec::new())
+        #[cfg(feature = "std")]
+        {
+            if let Some(ref functions) = self.cached_functions {
+                Ok(functions.clone())
+            } else {
+                Ok(Vec::new())
+            }
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            // In no_std mode, return empty vector since we can't store dynamic functions
+            Ok(Vec::new())
+        }
     }
     
     /// Get the number of functions provided
     fn function_count(&self) -> usize {
-        if let Some(ref functions) = self.cached_functions {
-            functions.len()
-        } else {
-            0
+        #[cfg(feature = "std")]
+        {
+            if let Some(ref functions) = self.cached_functions {
+                functions.len()
+            } else {
+                0
+            }
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            if let Some(count) = self.cached_functions {
+                count as usize
+            } else {
+                0
+            }
         }
     }
     

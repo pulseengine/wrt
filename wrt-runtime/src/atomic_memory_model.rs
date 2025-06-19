@@ -143,7 +143,7 @@ impl AtomicMemoryModel {
     
     /// Validate memory consistency across all threads
     pub fn validate_memory_consistency(&self) -> Result<ConsistencyValidationResult> {
-        let mut result = ConsistencyValidationResult::new();
+        let mut result = ConsistencyValidationResult::new()?;
         
         // Check for data races
         result.data_races = self.detect_data_races()?;
@@ -290,19 +290,39 @@ impl AtomicMemoryModel {
     
     fn detect_data_races(&self) -> Result<wrt_foundation::bounded::BoundedVec<DataRaceReport, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
         // Simplified data race detection - real implementation would be more sophisticated
-        Ok(wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())
+        wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())
+            .map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ALLOCATION_ERROR,
+                "Failed to create data race report vector"
+            ))
     }
     
     fn detect_ordering_violations(&self) -> Result<wrt_foundation::bounded::BoundedVec<OrderingViolationReport, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
-        Ok(wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())
+        wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())
+            .map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ALLOCATION_ERROR,
+                "Failed to create ordering violation report vector"
+            ))
     }
     
     fn detect_potential_deadlocks(&self) -> Result<wrt_foundation::bounded::BoundedVec<DeadlockReport, 32, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
-        Ok(wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())
+        wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())
+            .map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ALLOCATION_ERROR,
+                "Failed to create deadlock report vector"
+            ))
     }
     
     fn validate_sync_state(&self) -> Result<wrt_foundation::bounded::BoundedVec<SyncViolationReport, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
-        Ok(wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())
+        wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())
+            .map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ALLOCATION_ERROR,
+                "Failed to create sync violation report vector"
+            ))
     }
     
     fn calculate_operations_per_second(&self) -> f64 {
@@ -479,14 +499,34 @@ pub struct ConsistencyValidationResult {
 }
 
 impl ConsistencyValidationResult {
-    fn new() -> Self {
-        Self {
+    fn new() -> Result<Self> {
+        Ok(Self {
             is_consistent: true,
-            data_races: wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
-            ordering_violations: wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
-            potential_deadlocks: wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
-            sync_violations: wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
-        }
+            data_races: wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())
+                .map_err(|_| Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ALLOCATION_ERROR,
+                    "Failed to create data races vector"
+                ))?,
+            ordering_violations: wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())
+                .map_err(|_| Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ALLOCATION_ERROR,
+                    "Failed to create ordering violations vector"
+                ))?,
+            potential_deadlocks: wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())
+                .map_err(|_| Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ALLOCATION_ERROR,
+                    "Failed to create potential deadlocks vector"
+                ))?,
+            sync_violations: wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())
+                .map_err(|_| Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ALLOCATION_ERROR,
+                    "Failed to create sync violations vector"
+                ))?,
+        })
     }
 }
 
@@ -714,7 +754,7 @@ mod tests {
     
     #[test]
     fn test_consistency_validation_result() {
-        let result = ConsistencyValidationResult::new();
+        let result = ConsistencyValidationResult::new().unwrap();
         assert!(result.is_consistent);
         assert!(result.data_races.is_empty());
     }

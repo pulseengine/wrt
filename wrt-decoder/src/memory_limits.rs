@@ -45,7 +45,11 @@ mod validation {
             + custom_sections::FUNCTION_NAMES_LIMIT * BYTES_PER_FUNCTION_NAME
             + custom_sections::RAW_SECTION_DATA_LIMIT;
 
-        assert!(budget < 200 * 1024, "Custom sections budget exceeds 200KB: {}KB", budget / 1024);
+        assert!(
+            budget < 200 * 1024,
+            "Custom sections budget exceeds 200KB: {}KB",
+            budget / 1024
+        );
     }
 
     #[test]
@@ -55,7 +59,11 @@ mod validation {
                 * branch_hints::HINTS_PER_FUNCTION_LIMIT
                 * BYTES_PER_HINT;
 
-        assert!(budget < 300 * 1024, "Branch hints budget exceeds 300KB: {}KB", budget / 1024);
+        assert!(
+            budget < 300 * 1024,
+            "Branch hints budget exceeds 300KB: {}KB",
+            budget / 1024
+        );
     }
 
     #[test]
@@ -66,7 +74,11 @@ mod validation {
 
         let total = custom_sections + branch_hints + overhead;
 
-        assert!(total <= TOTAL_BUDGET, "Total budget exceeds 512KB: {}KB", total / 1024);
+        assert!(
+            total <= TOTAL_BUDGET,
+            "Total budget exceeds 512KB: {}KB",
+            total / 1024
+        );
     }
 }
 

@@ -50,7 +50,7 @@ mod error_handling_tests {
             match result {
                 Err(WrtError::CapacityExceeded) => {
                     // Expected - no panic
-                }
+                },
                 Ok(_) => panic!("Push should have failed"),
                 Err(e) => panic!("Unexpected error: {:?}", e),
             }
@@ -81,7 +81,7 @@ mod error_handling_tests {
         match result {
             Err(WrtError::CapacityExceeded) => {
                 // Expected
-            }
+            },
             _ => panic!("Expected CapacityExceeded error"),
         }
 
@@ -108,10 +108,10 @@ mod error_handling_tests {
             Ok(_) => {
                 // Key was updated
                 assert_eq!(map.get(&key1), Some(&200));
-            }
+            },
             Err(_) => {
                 // Or error was returned - both are valid
-            }
+            },
         }
 
         // Test non-existent key lookup
@@ -134,7 +134,7 @@ mod error_handling_tests {
         match result {
             Err(WrtError::InvalidHandle) => {
                 // Expected
-            }
+            },
             _ => panic!("Expected InvalidHandle error"),
         }
 
@@ -192,8 +192,9 @@ mod error_handling_tests {
         };
 
         // Create resource
-        let handle =
-            manager.create_resource(resource_type, metadata).expect("Failed to create resource");
+        let handle = manager
+            .create_resource(resource_type, metadata)
+            .expect("Failed to create resource");
 
         // Test invalid operations
         let invalid_handle = handle + 1000;
@@ -317,15 +318,15 @@ mod error_handling_tests {
         match allocate_nested() {
             Ok(_) => {
                 // Success case
-            }
+            },
             Err(e) => {
                 // Error propagated correctly
                 match e {
-                    WrtError::OutOfMemory => {}
-                    WrtError::CapacityExceeded => {}
+                    WrtError::OutOfMemory => {},
+                    WrtError::CapacityExceeded => {},
                     _ => panic!("Unexpected error type: {:?}", e),
                 }
-            }
+            },
         }
     }
 

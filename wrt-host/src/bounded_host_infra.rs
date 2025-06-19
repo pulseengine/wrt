@@ -10,15 +10,22 @@ use wrt_foundation::{
     managed_alloc, CrateId,
     safe_memory::NoStdProvider,
     WrtResult,
-    capabilities::CapabilityAwareProvider,
     safe_capability_alloc, capability_context,
 };
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+use wrt_foundation::capabilities::CapabilityAwareProvider;
 
 /// Budget-aware memory size for host (64KB)
 pub const HOST_MEMORY_SIZE: usize = 65536;
 
-/// Default provider type for host (capability-aware provider)
+/// Default provider type for host (capability-aware provider when available)
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub type HostProvider = CapabilityAwareProvider<NoStdProvider<HOST_MEMORY_SIZE>>;
+
+/// Default provider type for host (direct provider in no_std mode)
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub type HostProvider = NoStdProvider<HOST_MEMORY_SIZE>;
 
 /// Maximum number of host functions
 pub const MAX_HOST_FUNCTIONS: usize = 1024;
@@ -51,10 +58,17 @@ pub const MAX_FUNCTION_RESULTS: usize = 128;
 pub const MAX_ENV_VARS: usize = 256;
 
 /// Create a capability-aware provider for host operations
+#[cfg(any(feature = "std", feature = "alloc"))]
 fn create_host_provider() -> WrtResult<HostProvider> {
-    let context: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
-    let context = context?;
+    let context = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE))?;
     safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE)
+}
+
+/// Create a provider for host operations (no_std version)
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+fn create_host_provider() -> WrtResult<HostProvider> {
+    // In no_std mode, directly create the provider
+    Ok(NoStdProvider::<HOST_MEMORY_SIZE>::new())
 }
 
 /// Maximum environment variable name length

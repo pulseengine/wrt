@@ -9,9 +9,11 @@
 use crate::{
     budget_aware_provider::CrateId,
     budget_verification::{CRATE_BUDGETS, TOTAL_MEMORY_BUDGET},
-    wrt_memory_system::{WrtMemoryCoordinator, WRT_MEMORY_COORDINATOR},
     Error, Result,
 };
+
+#[allow(deprecated)]
+use crate::wrt_memory_system::{WrtMemoryCoordinator, WRT_MEMORY_COORDINATOR};
 use core::sync::atomic::{AtomicBool, Ordering};
 
 /// Global initialization state

@@ -104,7 +104,10 @@ mod example {
             manager.allocate(instance_id, initial_capacity * element_size, alignment)?
         };
 
-        println!("Allocated list at ptr: {} with capacity: {}", ptr, initial_capacity);
+        println!(
+            "Allocated list at ptr: {} with capacity: {}",
+            ptr, initial_capacity
+        );
 
         // Grow the list
         let new_capacity = 20;
@@ -119,7 +122,10 @@ mod example {
             )?
         };
 
-        println!("Reallocated list to ptr: {} with new capacity: {}", new_ptr, new_capacity);
+        println!(
+            "Reallocated list to ptr: {} with new capacity: {}",
+            new_ptr, new_capacity
+        );
 
         // Clean up
         {

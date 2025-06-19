@@ -57,8 +57,9 @@ fn test_handle_lifetime_tracking() {
     let mut tracker = HandleLifetimeTracker::new();
 
     // Create owned handle
-    let owned: OwnHandle<u32> =
-        tracker.create_owned_handle(ResourceId(1), ComponentId(1), "test-resource").unwrap();
+    let owned: OwnHandle<u32> = tracker
+        .create_owned_handle(ResourceId(1), ComponentId(1), "test-resource")
+        .unwrap();
 
     // Create scope and borrow handle
     let result = with_lifetime_scope(&mut tracker, ComponentId(1), TaskId(1), |scope| {
@@ -66,7 +67,10 @@ fn test_handle_lifetime_tracking() {
 
         // Validate borrow
         let validation = tracker.validate_borrow(&borrowed);
-        assert!(matches!(validation, wrt_component::borrowed_handles::BorrowValidation::Valid));
+        assert!(matches!(
+            validation,
+            wrt_component::borrowed_handles::BorrowValidation::Valid
+        ));
 
         // Return borrowed handle for testing
         Ok(borrowed)
@@ -76,7 +80,10 @@ fn test_handle_lifetime_tracking() {
 
     // After scope ends, borrow should be invalid
     let validation = tracker.validate_borrow(&borrowed);
-    assert!(matches!(validation, wrt_component::borrowed_handles::BorrowValidation::ScopeEnded));
+    assert!(matches!(
+        validation,
+        wrt_component::borrowed_handles::BorrowValidation::ScopeEnded
+    ));
 
     // Cleanup tracker
     tracker.cleanup().unwrap();
@@ -159,7 +166,9 @@ fn test_subtask_management() {
         .unwrap();
 
     // Cancel subtask
-    manager.cancel_subtask(wrt_component::async_execution_engine::ExecutionId(1)).unwrap();
+    manager
+        .cancel_subtask(wrt_component::async_execution_engine::ExecutionId(1))
+        .unwrap();
     assert!(subtask_token.is_cancelled());
 
     // Complete subtask
@@ -214,7 +223,12 @@ fn test_resource_with_drop_handlers() {
 
     // Register drop handler
     let handler_id = manager
-        .register_drop_handler(ResourceType::Stream, DropHandlerFunction::StreamCleanup, 0, true)
+        .register_drop_handler(
+            ResourceType::Stream,
+            DropHandlerFunction::StreamCleanup,
+            0,
+            true,
+        )
         .unwrap();
 
     // Create resource with custom handlers

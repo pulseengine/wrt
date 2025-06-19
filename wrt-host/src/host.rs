@@ -179,18 +179,14 @@ impl Default for BuiltinHost {
                 CrateId
             };
             
-            let context: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
-            let context = context.expect("Failed to create capability context");
-            let string_alloc_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
-            let string_provider: HostProvider = match string_alloc_result {
-                Ok(provider) => provider,
-                Err(_) => panic!("Failed to allocate memory for strings"),
-            };
-            let map_alloc_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
-            let map_provider: HostProvider = match map_alloc_result {
-                Ok(provider) => provider,
-                Err(_) => panic!("Failed to allocate memory for maps"),
-            };
+            let context_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
+            let context = context_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
+            let string_provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
+            let string_provider: HostProvider = string_provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory for strings"));
+            let context2_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
+            let context2 = context2_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
+            let map_provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context2, CrateId::Host, HOST_MEMORY_SIZE);
+            let map_provider: HostProvider = map_provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory for maps"));
             
             Self {
                 component_name: HostString::from_str("", string_provider.clone())
@@ -243,20 +239,14 @@ impl BuiltinHost {
     #[cfg(not(feature = "std"))]
     #[must_use] pub fn new(component_name: &str, host_id: &str) -> Self {
         use wrt_foundation::{capability_context, safe_capability_alloc, CrateId};
-        let context: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
-        let context = context.expect("Failed to create capability context");
-        let string_alloc_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
-        let string_provider: HostProvider = match string_alloc_result {
-            Ok(provider) => provider,
-            Err(_) => panic!("Failed to allocate memory for strings"),
-        };
-        let context2: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
-        let context2 = context2.expect("Failed to create capability context");
-        let map_alloc_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context2, CrateId::Host, HOST_MEMORY_SIZE);
-        let map_provider: HostProvider = match map_alloc_result {
-            Ok(provider) => provider,
-            Err(_) => panic!("Failed to allocate memory for maps"),
-        };
+        let context_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
+        let context = context_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
+        let string_provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
+        let string_provider: HostProvider = string_provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory"));
+        let context2_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
+        let context2 = context2_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
+        let map_provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context2, CrateId::Host, HOST_MEMORY_SIZE);
+        let map_provider: HostProvider = map_provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory"));
         let comp_name = HostString::from_str(component_name, string_provider.clone())
             .expect("Failed to create component name");
         let host_name = HostString::from_str(host_id, string_provider)
@@ -302,13 +292,10 @@ impl BuiltinHost {
     {
         // In no_std mode, we can't store function handlers dynamically
         use wrt_foundation::{capability_context, safe_capability_alloc, CrateId};
-        let context: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
-        let context = context.expect("Failed to create capability context");
-        let alloc_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
-        let provider: HostProvider = match alloc_result {
-            Ok(provider) => provider,
-            Err(_) => panic!("Failed to allocate memory for register_handler"),
-        };
+        let context_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
+        let context = context_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
+        let provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
+        let provider: HostProvider = provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory"));
         let name = HostString::from_str(builtin_type.name(), provider)
             .expect("Failed to create builtin name");
         let _ = self.handlers.insert(name, HandlerData::default());
@@ -357,13 +344,10 @@ impl BuiltinHost {
         {
             // In no_std mode, check if we have any handlers registered
             use wrt_foundation::{capability_context, safe_capability_alloc, CrateId};
-            let context: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
-            let context = context.expect("Failed to create capability context");
-            let alloc_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
-            let provider: HostProvider = match alloc_result {
-                Ok(provider) => provider,
-                Err(_) => panic!("Failed to allocate memory for is_implemented"),
-            };
+            let context_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
+        let context = context_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
+            let provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
+            let provider: HostProvider = provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory"));
         let name = HostString::from_str(builtin_type.name(), provider)
                 .expect("Failed to create builtin name");
             self.handlers.contains_key(&name).unwrap_or(false)
@@ -523,13 +507,10 @@ impl Clone for BuiltinHost {
         #[cfg(not(feature = "std"))]
         {
             use wrt_foundation::{capability_context, safe_capability_alloc, CrateId};
-            let context: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
-            let context = context.expect("Failed to create capability context");
-            let alloc_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
-            let provider: HostProvider = match alloc_result {
-                Ok(provider) => provider,
-                Err(_) => panic!("Failed to allocate memory for clone"),
-            };
+            let context_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, HOST_MEMORY_SIZE));
+        let context = context_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
+            let provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
+            let provider: HostProvider = provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory"));
             Self {
                 component_name: self.component_name.clone(),
                 host_id: self.host_id.clone(),

@@ -112,9 +112,9 @@ impl wrt_foundation::traits::ToBytes for AllocationType {
 impl wrt_foundation::traits::FromBytes for AllocationType {
     fn from_bytes(bytes: &[u8]) -> Result<Self, wrt_foundation::Error> {
         if bytes.is_empty() {
-            return Err(wrt_foundation::Error::from(wrt_foundation::ErrorCategory::Parse(
-                "Empty bytes for AllocationType".into(),
-            )));
+            return Err(wrt_foundation::Error::from(
+                wrt_foundation::ErrorCategory::Parse("Empty bytes for AllocationType".into()),
+            ));
         }
         match bytes[0] {
             0 => Ok(Self::Heap),
@@ -123,9 +123,9 @@ impl wrt_foundation::traits::FromBytes for AllocationType {
             3 => Ok(Self::Shared),
             4 => Ok(Self::Bounded),
             5 => Ok(Self::Provider),
-            _ => Err(wrt_foundation::Error::from(wrt_foundation::ErrorCategory::Parse(
-                "Invalid AllocationType value".into(),
-            ))),
+            _ => Err(wrt_foundation::Error::from(
+                wrt_foundation::ErrorCategory::Parse("Invalid AllocationType value".into()),
+            )),
         }
     }
 }
@@ -461,7 +461,11 @@ impl<'a> MemoryProfiler<'a> {
             }
 
             if confidence >= 50 {
-                let leak = LeakInfo { allocation: alloc.clone(), confidence, reason };
+                let leak = LeakInfo {
+                    allocation: alloc.clone(),
+                    confidence,
+                    reason,
+                };
                 let _ = leaks.push(leak);
             }
         }
@@ -539,7 +543,7 @@ impl<'a> MemoryProfiler<'a> {
                 AccessType::ReadWrite => {
                     read_count += 1;
                     write_count += 1;
-                }
+                },
             }
 
             if i > 0 {
@@ -649,7 +653,10 @@ impl<'a> MemoryProfiler<'a> {
         // Find slowest operations
         let mut slowest_ops =
             BoundedVec::<
-                (BoundedString<64, crate::bounded_debug_infra::DebugProvider>, u64),
+                (
+                    BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
+                    u64,
+                ),
                 5,
                 NoStdProvider<{ 5 * 72 }>,
             >::new(wrt_provider!({ 5 * 72 }, CrateId::Debug).unwrap_or_default())?;
@@ -804,7 +811,10 @@ pub struct PerformanceAnalysis {
     pub memory_churn_rate: u64,
     /// Slowest operations by average time
     pub slowest_operations: BoundedVec<
-        (BoundedString<64, crate::bounded_debug_infra::DebugProvider>, u64),
+        (
+            BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
+            u64,
+        ),
         5,
         NoStdProvider<{ 5 * 72 }>,
     >,
@@ -829,9 +839,9 @@ where
     unsafe {
         match MEMORY_PROFILER.as_mut() {
             Some(profiler) => f(profiler),
-            None => Err(wrt_foundation::Error::from(wrt_foundation::ErrorCategory::Memory(
-                "Memory profiler not initialized".into(),
-            ))),
+            None => Err(wrt_foundation::Error::from(
+                wrt_foundation::ErrorCategory::Memory("Memory profiler not initialized".into()),
+            )),
         }
     }
 }

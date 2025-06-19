@@ -83,7 +83,7 @@ pub use control_ops::BranchTarget;
 
 // Test module for arithmetic operations
 #[cfg(test)]
-mod arithmetic_test;
+// arithmetic tests moved to arithmetic_ops.rs
 
 // Re-exports for convenience
 // Re-export prelude for convenience

@@ -172,12 +172,20 @@ mod component_binary_parser {
     impl ComponentBinaryParser {
         /// Create a new component binary parser
         pub fn new() -> Self {
-            Self { offset: 0, size: 0, validation_level: ValidationLevel::default() }
+            Self {
+                offset: 0,
+                size: 0,
+                validation_level: ValidationLevel::default(),
+            }
         }
 
         /// Create a new parser with specified validation level
         pub fn with_validation_level(validation_level: ValidationLevel) -> Self {
-            Self { offset: 0, size: 0, validation_level }
+            Self {
+                offset: 0,
+                size: 0,
+                validation_level,
+            }
         }
 
         /// Parse a WebAssembly Component Model binary
@@ -254,7 +262,11 @@ mod component_binary_parser {
             ]);
             self.offset += 4;
 
-            Ok(ComponentHeader { magic, version, layer })
+            Ok(ComponentHeader {
+                magic,
+                version,
+                layer,
+            })
         }
 
         /// Parse a single section
@@ -284,7 +296,9 @@ mod component_binary_parser {
 
             // Validate section size
             if self.offset + section_size as usize > self.size {
-                return Err(Error::parse_error("Section size exceeds remaining binary size"));
+                return Err(Error::parse_error(
+                    "Section size exceeds remaining binary size",
+                ));
             }
 
             // Extract section data
@@ -296,43 +310,43 @@ mod component_binary_parser {
             match section_id {
                 ComponentSectionId::Custom => {
                     self.parse_custom_section(section_data, component)?;
-                }
+                },
                 ComponentSectionId::CoreModule => {
                     self.parse_core_module_section(section_data, component)?;
-                }
+                },
                 ComponentSectionId::CoreInstance => {
                     self.parse_core_instance_section(section_data, component)?;
-                }
+                },
                 ComponentSectionId::CoreType => {
                     self.parse_core_type_section(section_data, component)?;
-                }
+                },
                 ComponentSectionId::Component => {
                     self.parse_component_section(section_data, component)?;
-                }
+                },
                 ComponentSectionId::Instance => {
                     self.parse_instance_section(section_data, component)?;
-                }
+                },
                 ComponentSectionId::Alias => {
                     self.parse_alias_section(section_data, component)?;
-                }
+                },
                 ComponentSectionId::Type => {
                     self.parse_type_section(section_data, component)?;
-                }
+                },
                 ComponentSectionId::Canon => {
                     self.parse_canon_section(section_data, component)?;
-                }
+                },
                 ComponentSectionId::Start => {
                     self.parse_start_section(section_data, component)?;
-                }
+                },
                 ComponentSectionId::Import => {
                     self.parse_import_section(section_data, component)?;
-                }
+                },
                 ComponentSectionId::Export => {
                     self.parse_export_section(section_data, component)?;
-                }
+                },
                 ComponentSectionId::Value => {
                     self.parse_value_section(section_data, component)?;
-                }
+                },
             }
 
             // Advance offset to next section
@@ -541,9 +555,18 @@ mod component_binary_parser {
 
         #[test]
         fn test_component_section_id_conversion() {
-            assert_eq!(ComponentSectionId::from_u8(0), Some(ComponentSectionId::Custom));
-            assert_eq!(ComponentSectionId::from_u8(1), Some(ComponentSectionId::CoreModule));
-            assert_eq!(ComponentSectionId::from_u8(12), Some(ComponentSectionId::Value));
+            assert_eq!(
+                ComponentSectionId::from_u8(0),
+                Some(ComponentSectionId::Custom)
+            );
+            assert_eq!(
+                ComponentSectionId::from_u8(1),
+                Some(ComponentSectionId::CoreModule)
+            );
+            assert_eq!(
+                ComponentSectionId::from_u8(12),
+                Some(ComponentSectionId::Value)
+            );
             assert_eq!(ComponentSectionId::from_u8(255), None);
         }
 
@@ -575,12 +598,18 @@ mod component_binary_parser {
             };
             assert!(invalid_magic.validate().is_err());
 
-            let invalid_version =
-                ComponentHeader { magic: COMPONENT_MAGIC, version: 999, layer: COMPONENT_LAYER };
+            let invalid_version = ComponentHeader {
+                magic: COMPONENT_MAGIC,
+                version: 999,
+                layer: COMPONENT_LAYER,
+            };
             assert!(invalid_version.validate().is_err());
 
-            let invalid_layer =
-                ComponentHeader { magic: COMPONENT_MAGIC, version: COMPONENT_VERSION, layer: 0 };
+            let invalid_layer = ComponentHeader {
+                magic: COMPONENT_MAGIC,
+                version: COMPONENT_VERSION,
+                layer: 0,
+            };
             assert!(invalid_layer.validate().is_err());
         }
 

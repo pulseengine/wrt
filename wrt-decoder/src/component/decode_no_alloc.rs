@@ -38,13 +38,14 @@ use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary;
 use wrt_foundation::traits::BoundedCapacity;
 use wrt_foundation::{
-    capabilities::CapabilityAwareProvider,
-    capability_context, safe_capability_alloc, CrateId, NoStdProvider,
+    capabilities::CapabilityAwareProvider, capability_context, safe_capability_alloc, CrateId,
+    NoStdProvider,
 };
 
 // Helper functions to create properly sized providers
 fn create_provider_1024() -> Result<CapabilityAwareProvider<NoStdProvider<1024>>> {
-    let context: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Decoder, 1024));
+    let context: wrt_foundation::WrtResult<_> =
+        capability_context!(dynamic(CrateId::Decoder, 1024));
     let context = context?;
     safe_capability_alloc!(context, CrateId::Decoder, 1024)
 }
@@ -53,7 +54,11 @@ fn create_provider_1024() -> Result<CapabilityAwareProvider<NoStdProvider<1024>>
 /// Returns (name_bytes, total_bytes_read)
 fn read_name(data: &[u8], offset: usize) -> Result<(&[u8], usize)> {
     if offset >= data.len() {
-        return Err(Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Offset beyond data"));
+        return Err(Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Offset beyond data",
+        ));
     }
 
     // Read length as LEB128
@@ -212,11 +217,23 @@ pub struct ComponentHeader {
     /// Number of sections detected in the component
     pub section_count: u8,
     /// Component types
-    pub types: BoundedVec<ComponentType, MAX_COMPONENT_TYPES, CapabilityAwareProvider<NoStdProvider<1024>>>,
+    pub types: BoundedVec<
+        ComponentType,
+        MAX_COMPONENT_TYPES,
+        CapabilityAwareProvider<NoStdProvider<1024>>,
+    >,
     /// Component exports
-    pub exports: BoundedVec<ComponentExport, MAX_COMPONENT_EXPORTS, CapabilityAwareProvider<NoStdProvider<1024>>>,
+    pub exports: BoundedVec<
+        ComponentExport<CapabilityAwareProvider<NoStdProvider<1024>>>,
+        MAX_COMPONENT_EXPORTS,
+        CapabilityAwareProvider<NoStdProvider<1024>>,
+    >,
     /// Component imports
-    pub imports: BoundedVec<ComponentImport, MAX_COMPONENT_IMPORTS, CapabilityAwareProvider<NoStdProvider<1024>>>,
+    pub imports: BoundedVec<
+        ComponentImport<CapabilityAwareProvider<NoStdProvider<1024>>>,
+        MAX_COMPONENT_IMPORTS,
+        CapabilityAwareProvider<NoStdProvider<1024>>,
+    >,
     /// Whether the component contains a start function
     pub has_start: bool,
     /// Whether the component contains core modules
@@ -234,7 +251,11 @@ pub struct ComponentHeader {
 impl ComponentHeader {
     /// Creates a new ComponentHeader with default values
     pub fn new(verification_level: VerificationLevel) -> Self {
-        let provider = create_provider_1024().unwrap_or_else(|_| NoStdProvider::<1024>::new());
+        let provider = create_provider_1024().unwrap_or_else(|_| {
+            // Create capability-aware provider as fallback using default
+            use wrt_foundation::capabilities::CapabilityAwareProvider;
+            CapabilityAwareProvider::default()
+        });
         Self {
             size: 0,
             section_count: 0,
@@ -381,20 +402,20 @@ pub fn decode_component_header(
         match section_id_enum {
             ComponentSectionId::Start => {
                 header.has_start = true;
-            }
+            },
             ComponentSectionId::CoreModule => {
                 header.has_core_modules = true;
-            }
+            },
             ComponentSectionId::Module => {
                 header.has_sub_components = true;
-            }
+            },
             ComponentSectionId::ComponentType => {
                 // Check for resource type usage
                 if check_for_resource_types(bytes, section_data_offset, section_size) {
                     header.uses_resources = true;
                 }
-            }
-            _ => {}
+            },
+            _ => {},
         }
 
         // Move to next section
@@ -464,7 +485,11 @@ fn check_for_resource_types(bytes: &[u8], offset: usize, size: u32) -> bool {
 /// * `Result<()>` - Ok if successful
 fn scan_component_imports(
     section_data: &[u8],
-    imports: &mut BoundedVec<ComponentImport, MAX_COMPONENT_IMPORTS, CapabilityAwareProvider<NoStdProvider<1024>>>,
+    imports: &mut BoundedVec<
+        ComponentImport<CapabilityAwareProvider<NoStdProvider<1024>>>,
+        MAX_COMPONENT_IMPORTS,
+        CapabilityAwareProvider<NoStdProvider<1024>>,
+    >,
 ) -> Result<()> {
     if section_data.is_empty() {
         return Ok(());
@@ -531,7 +556,11 @@ fn scan_component_imports(
 /// * `Result<()>` - Ok if successful
 fn scan_component_exports(
     section_data: &[u8],
-    exports: &mut BoundedVec<ComponentExport, MAX_COMPONENT_EXPORTS, CapabilityAwareProvider<NoStdProvider<1024>>>,
+    exports: &mut BoundedVec<
+        ComponentExport<CapabilityAwareProvider<NoStdProvider<1024>>>,
+        MAX_COMPONENT_EXPORTS,
+        CapabilityAwareProvider<NoStdProvider<1024>>,
+    >,
 ) -> Result<()> {
     if section_data.is_empty() {
         return Ok(());
@@ -599,7 +628,11 @@ fn scan_component_exports(
 /// * `Result<()>` - Ok if successful
 fn scan_component_types(
     section_data: &[u8],
-    types: &mut BoundedVec<ComponentType, MAX_COMPONENT_TYPES, CapabilityAwareProvider<NoStdProvider<1024>>>,
+    types: &mut BoundedVec<
+        ComponentType,
+        MAX_COMPONENT_TYPES,
+        CapabilityAwareProvider<NoStdProvider<1024>>,
+    >,
 ) -> Result<()> {
     if section_data.is_empty() {
         return Ok(());
@@ -952,7 +985,10 @@ mod tests {
     #[test]
     fn test_component_section_id_from_u8() {
         assert_eq!(ComponentSectionId::from(0), ComponentSectionId::Custom);
-        assert_eq!(ComponentSectionId::from(1), ComponentSectionId::ComponentType);
+        assert_eq!(
+            ComponentSectionId::from(1),
+            ComponentSectionId::ComponentType
+        );
         assert_eq!(ComponentSectionId::from(255), ComponentSectionId::Unknown);
     }
 

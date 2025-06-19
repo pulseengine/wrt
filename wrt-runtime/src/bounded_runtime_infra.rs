@@ -9,19 +9,50 @@ use wrt_foundation::{
     bounded_collections::BoundedMap,
     safe_memory::NoStdProvider,
     budget_aware_provider::CrateId,
-    capabilities::{CapabilityAwareProvider, capability_context, safe_capability_alloc},
+    capabilities::CapabilityAwareProvider,
+    capability_context, safe_capability_alloc,
     traits::{Checksummable, ToBytes, FromBytes},
     WrtResult,
 };
 use wrt_error::{Error, ErrorCategory, codes};
 
-/// Budget-aware memory provider for runtime (256KB)
-pub type RuntimeProvider = CapabilityAwareProvider<NoStdProvider<131072>>;
+#[cfg(any(feature = "std", feature = "alloc"))]
+use wrt_foundation::capabilities::factory::CapabilityGuardedProvider;
 
-/// Helper function to create a capability-aware provider for runtime
+// Memory size for runtime provider (128KB)
+pub const RUNTIME_MEMORY_SIZE: usize = 131072;
+
+/// Base memory provider for runtime
+/// Always uses NoStdProvider as the base provider
+pub type BaseRuntimeProvider = NoStdProvider<RUNTIME_MEMORY_SIZE>;
+
+/// Budget-aware memory provider for runtime
+/// Uses CapabilityAwareProvider wrapper in std/alloc environments
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type RuntimeProvider = CapabilityAwareProvider<BaseRuntimeProvider>;
+
+/// Budget-aware memory provider for runtime
+/// Uses CapabilityAwareProvider wrapper in no_std environments too
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub type RuntimeProvider = CapabilityAwareProvider<BaseRuntimeProvider>;
+
+/// Helper function to create a runtime provider
 fn create_runtime_provider() -> WrtResult<RuntimeProvider> {
-    let context = capability_context!(dynamic(CrateId::Runtime, 131072))?;
-    safe_capability_alloc!(context, CrateId::Runtime, 131072)
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    {
+        // In std/alloc environments, safe_capability_alloc! returns CapabilityAwareProvider
+        let context = capability_context!(dynamic(CrateId::Runtime, RUNTIME_MEMORY_SIZE))?;
+        let provider = safe_capability_alloc!(context, CrateId::Runtime, RUNTIME_MEMORY_SIZE)?;
+        Ok(provider)
+    }
+    
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    {
+        // In no_std, safe_capability_alloc! returns the base provider
+        let context = capability_context!(dynamic(CrateId::Runtime, RUNTIME_MEMORY_SIZE))?;
+        let provider = safe_capability_alloc!(context, CrateId::Runtime, RUNTIME_MEMORY_SIZE)?;
+        Ok(provider)
+    }
 }
 
 /// Maximum number of runtime instances

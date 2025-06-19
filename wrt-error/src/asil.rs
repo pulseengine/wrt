@@ -152,7 +152,12 @@ impl AsilErrorContext {
     /// Create a new ASIL error context
     #[must_use]
     pub fn new(error: Error) -> Self {
-        Self { error, asil_level: AsilLevel::current(), timestamp: None, module_id: None }
+        Self {
+            error,
+            asil_level: AsilLevel::current(),
+            timestamp: None,
+            module_id: None,
+        }
     }
 
     /// Add timestamp to context

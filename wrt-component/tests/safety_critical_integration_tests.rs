@@ -173,7 +173,10 @@ mod integration_tests {
 
         // Multiple borrows should be allowed
         assert!(lifecycle_manager.borrow_resource(handle).is_ok());
-        assert_eq!(lifecycle_manager.get_resource(handle).unwrap().borrow_count, 2);
+        assert_eq!(
+            lifecycle_manager.get_resource(handle).unwrap().borrow_count,
+            2
+        );
 
         // Release borrows
         assert!(lifecycle_manager.release_borrow(handle).is_ok());
@@ -283,11 +286,11 @@ mod integration_tests {
             Err(e) => {
                 // Any error should be properly typed
                 match e {
-                    WrtError::OutOfMemory => {}
-                    WrtError::CapacityExceeded => {}
+                    WrtError::OutOfMemory => {},
+                    WrtError::CapacityExceeded => {},
                     _ => panic!("Unexpected error type: {:?}", e),
                 }
-            }
+            },
         }
 
         // Test with excessive depth
@@ -295,7 +298,7 @@ mod integration_tests {
             Ok(_) => panic!("Should have failed with capacity error"),
             Err(WrtError::CapacityExceeded) => {
                 // Expected
-            }
+            },
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
     }
@@ -346,8 +349,9 @@ mod integration_tests {
             }
         }
 
-        let strategy =
-            TestStrategy { allocations: Arc::new(Mutex::new(new_resource_vec().unwrap())) };
+        let strategy = TestStrategy {
+            allocations: Arc::new(Mutex::new(new_resource_vec().unwrap())),
+        };
 
         // Test allocation up to limits
         let mut handles = Vec::new();
@@ -459,7 +463,11 @@ impl CrossComponentCallManager {
     ) -> WrtResult<()> {
         let mut stack = self.call_stack.lock().unwrap();
 
-        let frame = CallFrame { caller_id, callee_id, function: function.to_string() };
+        let frame = CallFrame {
+            caller_id,
+            callee_id,
+            function: function.to_string(),
+        };
 
         stack.try_push(frame)?;
 
@@ -507,8 +515,8 @@ mod safety_critical_integration {
 
         // Even at capacity, operations don't panic
         match overflow_test {
-            Ok(_) => {}
-            Err(WrtError::CapacityExceeded) => {}
+            Ok(_) => {},
+            Err(WrtError::CapacityExceeded) => {},
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
     }

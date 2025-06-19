@@ -79,7 +79,15 @@ fn parse_limits(bytes: &[u8], offset: usize) -> Result<(wrt_format::types::Limit
 
     let shared = flags & 0x02 != 0;
 
-    Ok((wrt_format::types::Limits { min: min as u64, max, shared, memory64: false }, new_offset))
+    Ok((
+        wrt_format::types::Limits {
+            min: min as u64,
+            max,
+            shared,
+            memory64: false,
+        },
+        new_offset,
+    ))
 }
 
 /// Parsers implementation with bounded collections
@@ -220,15 +228,26 @@ pub mod parsers {
             for i in 0..results.len() {
                 if let Ok(result) = results.get(i) {
                     func_type_results.push(result).map_err(|_| {
-                        Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many results")
+                        Error::new(
+                            ErrorCategory::Memory,
+                            codes::MEMORY_ERROR,
+                            "Too many results",
+                        )
                     })?;
                 }
             }
 
-            let func_type = WrtFuncType { params: func_type_params, results: func_type_results };
+            let func_type = WrtFuncType {
+                params: func_type_params,
+                results: func_type_results,
+            };
 
             format_func_types.push(func_type).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many function types")
+                Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ERROR,
+                    "Too many function types",
+                )
             })?;
         }
 
@@ -248,7 +267,11 @@ pub mod parsers {
             offset = new_offset;
 
             func_indices.push(func_idx).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many functions")
+                Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ERROR,
+                    "Too many functions",
+                )
             })?;
         }
 
@@ -293,7 +316,7 @@ pub mod parsers {
                     let (type_idx, new_offset) = binary::read_leb128_u32(bytes, offset)?;
                     offset = new_offset;
                     WrtImportDesc::Function(type_idx)
-                }
+                },
                 0x01 => {
                     // Table import
                     let (table_type, new_offset) =
@@ -301,7 +324,7 @@ pub mod parsers {
                     offset = new_offset;
                     // Convert to WrtTableType - needs implementation
                     WrtImportDesc::Table(table_type)
-                }
+                },
                 0x02 => {
                     // Memory import
                     let (mem_limits, new_offset) = parse_limits(bytes, offset)?;
@@ -315,7 +338,7 @@ pub mod parsers {
                         shared: mem_limits.shared,
                     };
                     WrtImportDesc::Memory(memory_type)
-                }
+                },
                 0x03 => {
                     // Global import
                     let (global_type, new_offset) =
@@ -323,36 +346,60 @@ pub mod parsers {
                     offset = new_offset;
                     // Convert to WrtGlobalType - needs implementation
                     WrtImportDesc::Global(global_type)
-                }
+                },
                 _ => {
                     return Err(Error::new(
                         ErrorCategory::Parse,
                         codes::PARSE_ERROR,
                         "Invalid import descriptor type",
                     ));
-                }
+                },
             };
 
             // Convert to WrtImport
             // Create bounded string from the parsed string
             let provider = DecoderProvider::default();
             let module_str = module_string.as_str().map_err(|_| {
-                Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Invalid module string")
+                Error::new(
+                    ErrorCategory::Parse,
+                    codes::PARSE_ERROR,
+                    "Invalid module string",
+                )
             })?;
             let field_str = field_string.as_str().map_err(|_| {
-                Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Invalid field string")
+                Error::new(
+                    ErrorCategory::Parse,
+                    codes::PARSE_ERROR,
+                    "Invalid field string",
+                )
             })?;
             let module_name = WasmName::from_str(module_str, provider.clone()).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Module name too long")
+                Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ERROR,
+                    "Module name too long",
+                )
             })?;
             let item_name = WasmName::from_str(field_str, provider.clone()).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Item name too long")
+                Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ERROR,
+                    "Item name too long",
+                )
             })?;
 
-            let wrt_import = WrtImport { module_name, item_name, desc: import_desc };
+            let wrt_import = WrtImport {
+                module_name,
+                item_name,
+                desc: import_desc,
+            };
 
             format_imports.push(wrt_import).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many imports")
+                Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ERROR,
+                    "Too many imports",
+                )
             })?;
         }
 
@@ -372,11 +419,17 @@ pub mod parsers {
             offset = new_offset;
 
             // Convert to WrtTableType - needs implementation
-            let wrt_table_type =
-                WrtTableType { element_type: table_type.element_type, limits: table_type.limits };
+            let wrt_table_type = WrtTableType {
+                element_type: table_type.element_type,
+                limits: table_type.limits,
+            };
 
             tables.push(wrt_table_type).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many tables")
+                Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ERROR,
+                    "Too many tables",
+                )
             })?;
         }
 
@@ -400,10 +453,17 @@ pub mod parsers {
                 min: limits.min as u32,
                 max: limits.max.map(|v| v as u32),
             };
-            let memory_type = WrtMemoryType { limits: wrt_limits, shared: limits.shared };
+            let memory_type = WrtMemoryType {
+                limits: wrt_limits,
+                shared: limits.shared,
+            };
 
             memories.push(memory_type).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many memories")
+                Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ERROR,
+                    "Too many memories",
+                )
             })?;
         }
 
@@ -426,11 +486,17 @@ pub mod parsers {
             // In real implementation, we'd parse the init expression here
 
             // Convert to WrtGlobalType
-            let wrt_global_type =
-                WrtGlobalType { value_type: global_type.value_type, mutable: global_type.mutable };
+            let wrt_global_type = WrtGlobalType {
+                value_type: global_type.value_type,
+                mutable: global_type.mutable,
+            };
 
             globals.push(wrt_global_type).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many globals")
+                Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ERROR,
+                    "Too many globals",
+                )
             })?;
         }
 
@@ -470,7 +536,7 @@ pub mod parsers {
                         codes::PARSE_ERROR,
                         "Invalid export kind",
                     ));
-                }
+                },
             };
             offset += 1;
 
@@ -481,16 +547,32 @@ pub mod parsers {
             // Convert string to WasmString with proper provider size
             let string_provider = wrt_foundation::NoStdProvider::<1024>::default();
             let name_str = name_string.as_str().map_err(|_| {
-                Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Invalid export name string")
+                Error::new(
+                    ErrorCategory::Parse,
+                    codes::PARSE_ERROR,
+                    "Invalid export name string",
+                )
             })?;
             let export_name = WasmString::from_str(name_str, string_provider).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Export name too long")
+                Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ERROR,
+                    "Export name too long",
+                )
             })?;
 
-            let export = WrtExport { name: export_name, kind, index };
+            let export = WrtExport {
+                name: export_name,
+                kind,
+                index,
+            };
 
             exports.push(export).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many exports")
+                Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ERROR,
+                    "Too many exports",
+                )
             })?;
         }
 
@@ -520,7 +602,11 @@ pub mod parsers {
             };
 
             elements.push(wrt_element).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many element segments")
+                Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ERROR,
+                    "Too many element segments",
+                )
             })?;
         }
 
@@ -540,7 +626,11 @@ pub mod parsers {
             let (body_size, new_offset) = binary::read_leb128_u32(bytes, offset)?;
             offset = new_offset;
 
-            check_bounds_u32(body_size, MAX_CUSTOM_SECTION_SIZE as u32, "function body size")?;
+            check_bounds_u32(
+                body_size,
+                MAX_CUSTOM_SECTION_SIZE as u32,
+                "function body size",
+            )?;
             let body_size_usize = safe_usize_conversion(body_size, "body size")?;
 
             // Check bounds
@@ -576,7 +666,11 @@ pub mod parsers {
             offset += body_size_usize;
 
             bodies.push(body).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many function bodies")
+                Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ERROR,
+                    "Too many function bodies",
+                )
             })?;
         }
 
@@ -610,7 +704,11 @@ pub mod parsers {
             };
 
             data_segments.push(wrt_data).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many data segments")
+                Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ERROR,
+                    "Too many data segments",
+                )
             })?;
         }
 

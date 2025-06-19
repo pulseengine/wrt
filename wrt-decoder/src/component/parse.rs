@@ -135,7 +135,7 @@ mod std_parsing {
                     wrt_format::component::CoreInstanceExpr::Instantiate { module_idx, args },
                     offset,
                 ))
-            }
+            },
             0x01 => {
                 // Inline exports
                 let (exports_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -161,24 +161,24 @@ mod std_parsing {
                     let sort = match kind_byte {
                         binary::COMPONENT_CORE_SORT_FUNC => {
                             wrt_format::component::CoreSort::Function
-                        }
+                        },
                         binary::COMPONENT_CORE_SORT_TABLE => wrt_format::component::CoreSort::Table,
                         binary::COMPONENT_CORE_SORT_MEMORY => {
                             wrt_format::component::CoreSort::Memory
-                        }
+                        },
                         binary::COMPONENT_CORE_SORT_GLOBAL => {
                             wrt_format::component::CoreSort::Global
-                        }
+                        },
                         binary::COMPONENT_CORE_SORT_TYPE => wrt_format::component::CoreSort::Type,
                         binary::COMPONENT_CORE_SORT_MODULE => {
                             wrt_format::component::CoreSort::Module
-                        }
+                        },
                         binary::COMPONENT_CORE_SORT_INSTANCE => {
                             wrt_format::component::CoreSort::Instance
-                        }
+                        },
                         _ => {
                             return Err(Error::from(kinds::ParseError("Invalid core sort kind")));
-                        }
+                        },
                     };
 
                     // Read index
@@ -188,8 +188,11 @@ mod std_parsing {
                     exports.push(wrt_format::component::CoreInlineExport { name, sort, idx });
                 }
 
-                Ok((wrt_format::component::CoreInstanceExpr::InlineExports(exports), offset))
-            }
+                Ok((
+                    wrt_format::component::CoreInstanceExpr::InlineExports(exports),
+                    offset,
+                ))
+            },
             _ => Err(Error::parse_error("Invalid core instance expression tag")),
         }
     }
@@ -253,7 +256,7 @@ mod std_parsing {
                         binary::EXTERNREF_TYPE => wrt_format::types::ValueType::ExternRef,
                         _ => {
                             return Err(Error::from(kinds::ParseError("Invalid value type")));
-                        }
+                        },
                     };
 
                     params.push(vtype);
@@ -283,7 +286,7 @@ mod std_parsing {
                         binary::EXTERNREF_TYPE => wrt_format::types::ValueType::ExternRef,
                         _ => {
                             return Err(Error::from(kinds::ParseError("Invalid value type")));
-                        }
+                        },
                     };
 
                     results.push(vtype);
@@ -294,7 +297,7 @@ mod std_parsing {
                     wrt_format::component::CoreTypeDefinition::Function { params, results },
                     offset,
                 ))
-            }
+            },
             0x61 => {
                 // Module type
 
@@ -339,8 +342,11 @@ mod std_parsing {
                     exports.push((name, export_type));
                 }
 
-                Ok((wrt_format::component::CoreTypeDefinition::Module { imports, exports }, offset))
-            }
+                Ok((
+                    wrt_format::component::CoreTypeDefinition::Module { imports, exports },
+                    offset,
+                ))
+            },
             _ => Err(Error::from(kinds::ParseError("Invalid core type form"))),
         }
     }
@@ -378,7 +384,7 @@ mod std_parsing {
                     },
                     offset,
                 ))
-            }
+            },
             0x01 => {
                 // Table type
 
@@ -394,7 +400,7 @@ mod std_parsing {
                     binary::EXTERNREF_TYPE => wrt_format::types::ValueType::ExternRef,
                     _ => {
                         return Err(Error::from(kinds::ParseError("Invalid table element type")));
-                    }
+                    },
                 };
                 offset += 1;
 
@@ -422,10 +428,14 @@ mod std_parsing {
                 };
 
                 Ok((
-                    wrt_format::component::CoreExternType::Table { element_type, min, max },
+                    wrt_format::component::CoreExternType::Table {
+                        element_type,
+                        min,
+                        max,
+                    },
                     offset,
                 ))
-            }
+            },
             0x02 => {
                 // Memory type
 
@@ -455,8 +465,11 @@ mod std_parsing {
                     None
                 };
 
-                Ok((wrt_format::component::CoreExternType::Memory { min, max, shared }, offset))
-            }
+                Ok((
+                    wrt_format::component::CoreExternType::Memory { min, max, shared },
+                    offset,
+                ))
+            },
             0x03 => {
                 // Global type
 
@@ -477,7 +490,7 @@ mod std_parsing {
                     binary::EXTERNREF_TYPE => wrt_format::types::ValueType::ExternRef,
                     _ => {
                         return Err(Error::from(kinds::ParseError("Invalid global value type")));
-                    }
+                    },
                 };
                 offset += 1;
 
@@ -491,9 +504,17 @@ mod std_parsing {
                 let mutable = bytes[offset] != 0;
                 offset += 1;
 
-                Ok((wrt_format::component::CoreExternType::Global { value_type, mutable }, offset))
-            }
-            _ => Err(Error::from(kinds::ParseError("Invalid core external type tag"))),
+                Ok((
+                    wrt_format::component::CoreExternType::Global {
+                        value_type,
+                        mutable,
+                    },
+                    offset,
+                ))
+            },
+            _ => Err(Error::from(kinds::ParseError(
+                "Invalid core external type tag",
+            ))),
         }
     }
 
@@ -509,7 +530,9 @@ mod std_parsing {
             offset += bytes_read;
 
             if offset + component_size as usize > bytes.len() {
-                return Err(Error::from(kinds::ParseError("Component size exceeds section size")));
+                return Err(Error::from(kinds::ParseError(
+                    "Component size exceeds section size",
+                )));
             }
 
             // Extract the component binary
@@ -520,8 +543,10 @@ mod std_parsing {
             match crate::component::decode_component(component_bytes) {
                 Ok(component) => components.push(component),
                 Err(_e) => {
-                    return Err(Error::from(kinds::ParseError("Failed to parse nested component")));
-                }
+                    return Err(Error::from(kinds::ParseError(
+                        "Failed to parse nested component",
+                    )));
+                },
             }
 
             offset = component_end;
@@ -597,10 +622,13 @@ mod std_parsing {
                 }
 
                 Ok((
-                    wrt_format::component::InstanceExpr::Instantiate { component_idx, args },
+                    wrt_format::component::InstanceExpr::Instantiate {
+                        component_idx,
+                        args,
+                    },
                     offset,
                 ))
-            }
+            },
             0x01 => {
                 // Inline exports
                 let (exports_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -632,18 +660,23 @@ mod std_parsing {
                     exports.push(wrt_format::component::InlineExport { name, sort, idx });
                 }
 
-                Ok((wrt_format::component::InstanceExpr::InlineExports(exports), offset))
-            }
-            _ => Err(Error::from(kinds::ParseError("Invalid instance expression tag"))),
+                Ok((
+                    wrt_format::component::InstanceExpr::InlineExports(exports),
+                    offset,
+                ))
+            },
+            _ => Err(Error::from(kinds::ParseError(
+                "Invalid instance expression tag",
+            ))),
         }
     }
 
     /// Parse a sort byte
     fn parse_sort(sort_byte: u8) -> Result<wrt_format::component::Sort> {
         match sort_byte {
-            binary::COMPONENT_SORT_CORE => {
-                Ok(wrt_format::component::Sort::Core(wrt_format::component::CoreSort::Function))
-            }
+            binary::COMPONENT_SORT_CORE => Ok(wrt_format::component::Sort::Core(
+                wrt_format::component::CoreSort::Function,
+            )),
             binary::COMPONENT_SORT_FUNC => Ok(wrt_format::component::Sort::Function),
             binary::COMPONENT_SORT_MODULE => Ok(wrt_format::component::Sort::Component),
             binary::COMPONENT_SORT_INSTANCE => Ok(wrt_format::component::Sort::Instance),
@@ -703,10 +736,14 @@ mod std_parsing {
                 offset += bytes_read;
 
                 Ok((
-                    wrt_format::component::CanonOperation::Lift { func_idx, type_idx, options },
+                    wrt_format::component::CanonOperation::Lift {
+                        func_idx,
+                        type_idx,
+                        options,
+                    },
                     offset,
                 ))
-            }
+            },
             0x01 => {
                 // Lower operation
 
@@ -718,8 +755,11 @@ mod std_parsing {
                 let (options, bytes_read) = parse_lower_options(&bytes[offset..])?;
                 offset += bytes_read;
 
-                Ok((wrt_format::component::CanonOperation::Lower { func_idx, options }, offset))
-            }
+                Ok((
+                    wrt_format::component::CanonOperation::Lower { func_idx, options },
+                    offset,
+                ))
+            },
             0x02 => {
                 // Resource operations
 
@@ -731,18 +771,23 @@ mod std_parsing {
                 let format_resource_op = match resource_op {
                     resource::ResourceCanonicalOperation::New(new) => {
                         wrt_format::component::FormatResourceOperation::New(new)
-                    }
+                    },
                     resource::ResourceCanonicalOperation::Drop(drop) => {
                         wrt_format::component::FormatResourceOperation::Drop(drop)
-                    }
+                    },
                     resource::ResourceCanonicalOperation::Rep(rep) => {
                         wrt_format::component::FormatResourceOperation::Rep(rep)
-                    }
+                    },
                 };
 
-                Ok((wrt_format::component::CanonOperation::Resource(format_resource_op), offset))
-            }
-            _ => Err(Error::from(kinds::ParseError("Invalid canon operation tag"))),
+                Ok((
+                    wrt_format::component::CanonOperation::Resource(format_resource_op),
+                    offset,
+                ))
+            },
+            _ => Err(Error::from(kinds::ParseError(
+                "Invalid canon operation tag",
+            ))),
         }
     }
 
@@ -783,7 +828,7 @@ mod std_parsing {
                 0x03 => wrt_format::component::StringEncoding::ASCII,
                 _ => {
                     return Err(Error::from(kinds::ParseError("Invalid string encoding")));
-                }
+                },
             };
 
             Some(encoding)
@@ -845,7 +890,7 @@ mod std_parsing {
                 0x03 => wrt_format::component::StringEncoding::ASCII,
                 _ => {
                     return Err(Error::from(kinds::ParseError("Invalid string encoding")));
-                }
+                },
             };
 
             Some(encoding)
@@ -894,7 +939,7 @@ mod std_parsing {
                     resource::ResourceCanonicalOperation::New(resource::ResourceNew { type_idx }),
                     offset,
                 ))
-            }
+            },
             0x01 => {
                 // Drop operation
                 let (type_idx, type_idx_size) = binary::read_leb128_u32(bytes, offset)?;
@@ -904,7 +949,7 @@ mod std_parsing {
                     resource::ResourceCanonicalOperation::Drop(resource::ResourceDrop { type_idx }),
                     offset,
                 ))
-            }
+            },
             0x02 => {
                 // Rep operation
                 let (type_idx, type_idx_size) = binary::read_leb128_u32(bytes, offset)?;
@@ -914,8 +959,10 @@ mod std_parsing {
                     resource::ResourceCanonicalOperation::Rep(resource::ResourceRep { type_idx }),
                     offset,
                 ))
-            }
-            _ => Err(Error::from(kinds::ParseError("Invalid resource operation tag"))),
+            },
+            _ => Err(Error::from(kinds::ParseError(
+                "Invalid resource operation tag",
+            ))),
         }
     }
 
@@ -1000,7 +1047,7 @@ mod std_parsing {
                     wrt_format::component::ComponentTypeDefinition::Component { imports, exports },
                     offset,
                 ))
-            }
+            },
             0x01 => {
                 // Instance type
 
@@ -1022,8 +1069,11 @@ mod std_parsing {
                     exports.push((name, extern_type));
                 }
 
-                Ok((wrt_format::component::ComponentTypeDefinition::Instance { exports }, offset))
-            }
+                Ok((
+                    wrt_format::component::ComponentTypeDefinition::Instance { exports },
+                    offset,
+                ))
+            },
             0x02 => {
                 // Function type
 
@@ -1072,7 +1122,7 @@ mod std_parsing {
                     },
                     offset,
                 ))
-            }
+            },
             0x03 => {
                 // Value type
 
@@ -1086,7 +1136,7 @@ mod std_parsing {
                     ),
                     offset,
                 ))
-            }
+            },
             0x04 => {
                 // Resource type
 
@@ -1110,8 +1160,10 @@ mod std_parsing {
                     },
                     offset,
                 ))
-            }
-            _ => Err(Error::from(kinds::ParseError("Invalid component type form"))),
+            },
+            _ => Err(Error::from(kinds::ParseError(
+                "Invalid component type form",
+            ))),
         }
     }
 
@@ -1133,11 +1185,11 @@ mod std_parsing {
             0x00 => {
                 // Handle32
                 Ok((resource::ResourceRepresentation::Handle32, offset))
-            }
+            },
             0x01 => {
                 // Handle64
                 Ok((resource::ResourceRepresentation::Handle64, offset))
-            }
+            },
             0x02 => {
                 // Record representation
 
@@ -1148,7 +1200,7 @@ mod std_parsing {
                         return Err(Error::from(kinds::ParseError(
                             "Failed to read field count in resource record representation",
                         )))
-                    }
+                    },
                 };
                 offset += bytes_read;
 
@@ -1161,7 +1213,7 @@ mod std_parsing {
                             return Err(Error::from(kinds::ParseError(
                                 "Failed to read field name in resource record representation",
                             )))
-                        }
+                        },
                     };
                     offset += bytes_read;
                     let name = bytes_to_string(name_bytes);
@@ -1210,7 +1262,7 @@ mod std_parsing {
                     resource::ResourceRepresentation::Record,
                     offset,
                 ))
-            }
+            },
             0x03 => {
                 // Aggregate representation
 
@@ -1221,7 +1273,7 @@ mod std_parsing {
                         return Err(Error::from(kinds::ParseError(
                             "Failed to read index count in resource aggregate representation",
                         )))
-                    }
+                    },
                 };
                 offset += bytes_read;
 
@@ -1260,7 +1312,7 @@ mod std_parsing {
                 let repr = resource::ResourceRepresentation::Record;
 
                 Ok((repr, offset))
-            }
+            },
             _ => Err(Error::parse_error("Invalid resource representation tag")),
         }
     }
@@ -1268,7 +1320,9 @@ mod std_parsing {
     /// Parse an external type
     fn parse_extern_type(bytes: &[u8]) -> Result<(wrt_format::component::ExternType, usize)> {
         if bytes.is_empty() {
-            return Err(Error::parse_error("Unexpected end of input while parsing external type"));
+            return Err(Error::parse_error(
+                "Unexpected end of input while parsing external type",
+            ));
         }
 
         // Read the tag
@@ -1324,7 +1378,7 @@ mod std_parsing {
                     },
                     offset,
                 ))
-            }
+            },
             0x01 => {
                 // Value type
 
@@ -1336,7 +1390,7 @@ mod std_parsing {
                     wrt_format::component::ExternType::Value(val_type_to_format_val_type(val_type)),
                     offset,
                 ))
-            }
+            },
             0x02 => {
                 // Type reference
 
@@ -1345,7 +1399,7 @@ mod std_parsing {
                 offset += bytes_read;
 
                 Ok((wrt_format::component::ExternType::Type(type_idx), offset))
-            }
+            },
             0x03 => {
                 // Instance type
 
@@ -1367,8 +1421,11 @@ mod std_parsing {
                     exports.push((name, extern_type));
                 }
 
-                Ok((wrt_format::component::ExternType::Instance { exports }, offset))
-            }
+                Ok((
+                    wrt_format::component::ExternType::Instance { exports },
+                    offset,
+                ))
+            },
             0x04 => {
                 // Component type
 
@@ -1413,8 +1470,11 @@ mod std_parsing {
                     exports.push((name, extern_type));
                 }
 
-                Ok((wrt_format::component::ExternType::Component { imports, exports }, offset))
-            }
+                Ok((
+                    wrt_format::component::ExternType::Component { imports, exports },
+                    offset,
+                ))
+            },
             _ => Err(Error::parse_error("Invalid external type tag")),
         }
     }
@@ -1422,7 +1482,9 @@ mod std_parsing {
     /// Parse a value type
     fn parse_val_type(bytes: &[u8]) -> Result<(wrt_format::component::FormatValType, usize)> {
         if bytes.is_empty() {
-            return Err(Error::parse_error("Unexpected end of input while parsing value type"));
+            return Err(Error::parse_error(
+                "Unexpected end of input while parsing value type",
+            ));
         }
 
         // Read the type tag
@@ -1448,7 +1510,7 @@ mod std_parsing {
                 let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
                 Ok((wrt_format::component::FormatValType::Ref(idx), offset))
-            }
+            },
             0x71 => {
                 // Record type
                 let (field_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -1469,7 +1531,7 @@ mod std_parsing {
                 }
 
                 Ok((wrt_format::component::FormatValType::Record(fields), offset))
-            }
+            },
             0x70 => {
                 // Variant type
                 let (case_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -1497,13 +1559,16 @@ mod std_parsing {
                 }
 
                 Ok((wrt_format::component::FormatValType::Variant(cases), offset))
-            }
+            },
             0x6F => {
                 // List type
                 let (element_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                 offset += bytes_read;
-                Ok((wrt_format::component::FormatValType::List(Box::new(element_type)), offset))
-            }
+                Ok((
+                    wrt_format::component::FormatValType::List(Box::new(element_type)),
+                    offset,
+                ))
+            },
             0x6E => {
                 // Fixed-length list type (🔧)
                 let (element_type, bytes_read) = parse_val_type(&bytes[offset..])?;
@@ -1517,7 +1582,7 @@ mod std_parsing {
                     wrt_format::component::FormatValType::FixedList(Box::new(element_type), length),
                     offset,
                 ))
-            }
+            },
             0x6D => {
                 // Tuple type
                 let (field_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -1531,7 +1596,7 @@ mod std_parsing {
                 }
 
                 Ok((wrt_format::component::FormatValType::Tuple(fields), offset))
-            }
+            },
             0x6C => {
                 // Flags type
                 let (flag_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -1546,7 +1611,7 @@ mod std_parsing {
                 }
 
                 Ok((wrt_format::component::FormatValType::Flags(flags), offset))
-            }
+            },
             0x6B => {
                 // Enum type
                 let (variant_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -1561,19 +1626,25 @@ mod std_parsing {
                 }
 
                 Ok((wrt_format::component::FormatValType::Enum(variants), offset))
-            }
+            },
             0x6A => {
                 // Option type
                 let (inner_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                 offset += bytes_read;
-                Ok((wrt_format::component::FormatValType::Option(Box::new(inner_type)), offset))
-            }
+                Ok((
+                    wrt_format::component::FormatValType::Option(Box::new(inner_type)),
+                    offset,
+                ))
+            },
             0x69 => {
                 // Result type (ok only)
                 let (ok_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                 offset += bytes_read;
-                Ok((wrt_format::component::FormatValType::Result(Box::new(ok_type)), offset))
-            }
+                Ok((
+                    wrt_format::component::FormatValType::Result(Box::new(ok_type)),
+                    offset,
+                ))
+            },
             0x68 => {
                 // Result type (err only)
                 let (_err_type, bytes_read) = parse_val_type(&bytes[offset..])?;
@@ -1588,7 +1659,7 @@ mod std_parsing {
                     codes::PARSE_ERROR,
                     "ResultErr variant not implemented",
                 ))
-            }
+            },
             0x67 => {
                 // Result type (ok and err)
                 let (_ok_type, bytes_read) = parse_val_type(&bytes[offset..])?;
@@ -1611,23 +1682,23 @@ mod std_parsing {
                     codes::PARSE_ERROR,
                     "ResultBoth variant not implemented",
                 ))
-            }
+            },
             0x66 => {
                 // Own a resource
                 let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
                 Ok((wrt_format::component::FormatValType::Own(idx), offset))
-            }
+            },
             0x65 => {
                 // Borrow a resource
                 let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
                 Ok((wrt_format::component::FormatValType::Borrow(idx), offset))
-            }
+            },
             0x64 => {
                 // Error context type
                 Ok((wrt_format::component::FormatValType::ErrorContext, offset))
-            }
+            },
             _ => Err(Error::parse_error("Invalid value type tag")),
         }
     }
@@ -1657,7 +1728,14 @@ mod std_parsing {
         let (results, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
         offset += bytes_read;
 
-        Ok((Start { func_idx, args, results }, offset))
+        Ok((
+            Start {
+                func_idx,
+                args,
+                results,
+            },
+            offset,
+        ))
     }
 
     /// Parse an import section
@@ -1749,7 +1827,12 @@ mod std_parsing {
 
             // Create the import
             imports.push(Import {
-                name: wrt_format::component::ImportName { namespace, name, nested, package },
+                name: wrt_format::component::ImportName {
+                    namespace,
+                    name,
+                    nested,
+                    package,
+                },
                 ty: extern_type,
             });
         }
@@ -1866,7 +1949,12 @@ mod std_parsing {
             };
 
             // Create the export
-            exports.push(Export { name: export_name, sort, idx, ty });
+            exports.push(Export {
+                name: export_name,
+                sort,
+                idx,
+                ty,
+            });
         }
 
         Ok((exports, offset))
@@ -1888,7 +1976,9 @@ mod std_parsing {
             offset += bytes_read;
 
             if offset + data_size as usize > bytes.len() {
-                return Err(Error::from(kinds::ParseError("Value data size exceeds section size")));
+                return Err(Error::from(kinds::ParseError(
+                    "Value data size exceeds section size",
+                )));
             }
 
             // Extract the value data
@@ -1962,15 +2052,21 @@ mod std_parsing {
                 let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                Ok((wrt_format::component::ValueExpression::ItemRef { sort, idx }, offset))
-            }
+                Ok((
+                    wrt_format::component::ValueExpression::ItemRef { sort, idx },
+                    offset,
+                ))
+            },
             0x01 => {
                 // Global initialization
                 let (global_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                Ok((wrt_format::component::ValueExpression::GlobalInit { global_idx }, offset))
-            }
+                Ok((
+                    wrt_format::component::ValueExpression::GlobalInit { global_idx },
+                    offset,
+                ))
+            },
             0x02 => {
                 // Function call
                 let (func_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -1991,15 +2087,20 @@ mod std_parsing {
                     wrt_format::component::ValueExpression::FunctionCall { func_idx, args },
                     offset,
                 ))
-            }
+            },
             0x03 => {
                 // Constant value
                 let (const_value, bytes_read) = parse_const_value(&bytes[offset..])?;
                 offset += bytes_read;
 
-                Ok((wrt_format::component::ValueExpression::Const(const_value), offset))
-            }
-            _ => Err(Error::from(kinds::ParseError("Invalid value expression tag"))),
+                Ok((
+                    wrt_format::component::ValueExpression::Const(const_value),
+                    offset,
+                ))
+            },
+            _ => Err(Error::from(kinds::ParseError(
+                "Invalid value expression tag",
+            ))),
         }
     }
 
@@ -2021,31 +2122,31 @@ mod std_parsing {
                 let value = bytes[offset] != 0;
                 offset += 1;
                 Ok((wrt_format::component::ConstValue::Bool(value), offset))
-            }
+            },
             0x01 => {
                 // S8 value
                 let value = bytes[offset] as i8;
                 offset += 1;
                 Ok((wrt_format::component::ConstValue::S8(value), offset))
-            }
+            },
             0x02 => {
                 // U8 value
                 let value = bytes[offset];
                 offset += 1;
                 Ok((wrt_format::component::ConstValue::U8(value), offset))
-            }
+            },
             0x03 => {
                 // S16 value
                 let value = i16::from_le_bytes([bytes[offset], bytes[offset + 1]]);
                 offset += 2;
                 Ok((wrt_format::component::ConstValue::S16(value), offset))
-            }
+            },
             0x04 => {
                 // U16 value
                 let value = u16::from_le_bytes([bytes[offset], bytes[offset + 1]]);
                 offset += 2;
                 Ok((wrt_format::component::ConstValue::U16(value), offset))
-            }
+            },
             0x05 => {
                 // S32 value
                 let value = i32::from_le_bytes([
@@ -2056,7 +2157,7 @@ mod std_parsing {
                 ]);
                 offset += 4;
                 Ok((wrt_format::component::ConstValue::S32(value), offset))
-            }
+            },
             0x06 => {
                 // U32 value
                 let value = u32::from_le_bytes([
@@ -2067,7 +2168,7 @@ mod std_parsing {
                 ]);
                 offset += 4;
                 Ok((wrt_format::component::ConstValue::U32(value), offset))
-            }
+            },
             0x07 => {
                 // S64 value
                 let value = i64::from_le_bytes([
@@ -2082,7 +2183,7 @@ mod std_parsing {
                 ]);
                 offset += 8;
                 Ok((wrt_format::component::ConstValue::S64(value), offset))
-            }
+            },
             0x08 => {
                 // U64 value
                 let value = u64::from_le_bytes([
@@ -2097,7 +2198,7 @@ mod std_parsing {
                 ]);
                 offset += 8;
                 Ok((wrt_format::component::ConstValue::U64(value), offset))
-            }
+            },
             0x09 => {
                 // F32 value
                 let value_bits = u32::from_le_bytes([
@@ -2109,7 +2210,7 @@ mod std_parsing {
                 let value = f32::from_bits(value_bits);
                 offset += 4;
                 Ok((wrt_format::component::ConstValue::F32(value), offset))
-            }
+            },
             0x0A => {
                 // F64 value
                 let value_bits = u64::from_le_bytes([
@@ -2125,7 +2226,7 @@ mod std_parsing {
                 let value = f64::from_bits(value_bits);
                 offset += 8;
                 Ok((wrt_format::component::ConstValue::F64(value), offset))
-            }
+            },
             0x0B => {
                 // Char value
                 let (value_str, bytes_read) = binary::read_string(bytes, offset)?;
@@ -2141,7 +2242,9 @@ mod std_parsing {
                 })?;
                 let mut chars = value_string.chars();
                 let first_char = chars.next().ok_or_else(|| {
-                    Error::from(kinds::ParseError("Empty string found when parsing char value"))
+                    Error::from(kinds::ParseError(
+                        "Empty string found when parsing char value",
+                    ))
                 })?;
                 if chars.next().is_some() {
                     return Err(Error::from(kinds::ParseError(
@@ -2150,18 +2253,18 @@ mod std_parsing {
                 }
 
                 Ok((wrt_format::component::ConstValue::Char(first_char), offset))
-            }
+            },
             0x0C => {
                 // String value
                 let (value_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                 offset += bytes_read;
                 let value = bytes_to_string(value_bytes);
                 Ok((wrt_format::component::ConstValue::String(value), offset))
-            }
+            },
             0x0D => {
                 // Null value
                 Ok((wrt_format::component::ConstValue::Null, offset))
-            }
+            },
             _ => Err(Error::from(kinds::ParseError("Invalid constant value tag"))),
         }
     }
@@ -2228,10 +2331,10 @@ mod std_parsing {
                     binary::COMPONENT_CORE_SORT_MODULE => wrt_format::component::CoreSort::Module,
                     binary::COMPONENT_CORE_SORT_INSTANCE => {
                         wrt_format::component::CoreSort::Instance
-                    }
+                    },
                     _ => {
                         return Err(Error::from(kinds::ParseError("Invalid core sort kind")));
-                    }
+                    },
                 };
 
                 Ok((
@@ -2242,7 +2345,7 @@ mod std_parsing {
                     },
                     offset,
                 ))
-            }
+            },
             0x01 => {
                 // Instance export
 
@@ -2268,10 +2371,14 @@ mod std_parsing {
                 let kind = parse_sort(kind_byte)?;
 
                 Ok((
-                    wrt_format::component::AliasTarget::InstanceExport { instance_idx, name, kind },
+                    wrt_format::component::AliasTarget::InstanceExport {
+                        instance_idx,
+                        name,
+                        kind,
+                    },
                     offset,
                 ))
-            }
+            },
             0x02 => {
                 // Outer definition
 
@@ -2295,8 +2402,11 @@ mod std_parsing {
                 let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                Ok((wrt_format::component::AliasTarget::Outer { count, kind, idx }, offset))
-            }
+                Ok((
+                    wrt_format::component::AliasTarget::Outer { count, kind, idx },
+                    offset,
+                ))
+            },
             _ => Err(Error::from(kinds::ParseError("Invalid alias target tag"))),
         }
     }
@@ -2325,7 +2435,7 @@ mod std_parsing {
         match val_type {
             wrt_format::component::FormatValType::Bool => {
                 wrt_format::component::FormatValType::Bool
-            }
+            },
             wrt_format::component::FormatValType::S8 => wrt_format::component::FormatValType::S8,
             wrt_format::component::FormatValType::U8 => wrt_format::component::FormatValType::U8,
             wrt_format::component::FormatValType::S16 => wrt_format::component::FormatValType::S16,
@@ -2338,39 +2448,39 @@ mod std_parsing {
             wrt_format::component::FormatValType::F64 => wrt_format::component::FormatValType::F64,
             wrt_format::component::FormatValType::Char => {
                 wrt_format::component::FormatValType::Char
-            }
+            },
             wrt_format::component::FormatValType::String => {
                 wrt_format::component::FormatValType::String
-            }
+            },
             wrt_format::component::FormatValType::Ref(idx) => {
                 wrt_format::component::FormatValType::Ref(idx)
-            }
+            },
             wrt_format::component::FormatValType::List(inner) => {
                 wrt_format::component::FormatValType::List(Box::new(val_type_to_format_val_type(
                     *inner,
                 )))
-            }
+            },
             wrt_format::component::FormatValType::FixedList(inner, len) => {
                 wrt_format::component::FormatValType::FixedList(
                     Box::new(val_type_to_format_val_type(*inner)),
                     len,
                 )
-            }
+            },
             wrt_format::component::FormatValType::Tuple(items) => {
                 wrt_format::component::FormatValType::Tuple(
                     items.into_iter().map(val_type_to_format_val_type).collect(),
                 )
-            }
+            },
             wrt_format::component::FormatValType::Option(inner) => {
                 wrt_format::component::FormatValType::Option(Box::new(val_type_to_format_val_type(
                     *inner,
                 )))
-            }
+            },
             wrt_format::component::FormatValType::Result(ok) => {
                 wrt_format::component::FormatValType::Result(Box::new(val_type_to_format_val_type(
                     *ok,
                 )))
-            }
+            },
             // TODO: Fix FormatValType enum to support ResultErr and ResultBoth variants
             // wrt_format::component::FormatValType::ResultErr(err) => {
             //     wrt_format::component::FormatValType::Result(Box::new(val_type_to_format_val_type(
@@ -2387,7 +2497,7 @@ mod std_parsing {
                         .map(|(name, ty)| (name, val_type_to_format_val_type(ty)))
                         .collect(),
                 )
-            }
+            },
             wrt_format::component::FormatValType::Variant(cases) => {
                 wrt_format::component::FormatValType::Variant(
                     cases
@@ -2395,25 +2505,25 @@ mod std_parsing {
                         .map(|(name, ty)| (name, ty.map(val_type_to_format_val_type)))
                         .collect(),
                 )
-            }
+            },
             wrt_format::component::FormatValType::Flags(names) => {
                 wrt_format::component::FormatValType::Flags(names)
-            }
+            },
             wrt_format::component::FormatValType::Enum(names) => {
                 wrt_format::component::FormatValType::Enum(names)
-            }
+            },
             wrt_format::component::FormatValType::Own(idx) => {
                 wrt_format::component::FormatValType::Own(idx)
-            }
+            },
             wrt_format::component::FormatValType::Borrow(idx) => {
                 wrt_format::component::FormatValType::Borrow(idx)
-            }
+            },
             wrt_format::component::FormatValType::Void => {
                 wrt_format::component::FormatValType::Void
-            }
+            },
             wrt_format::component::FormatValType::ErrorContext => {
                 wrt_format::component::FormatValType::ErrorContext
-            }
+            },
         }
     }
 } // end std_parsing module

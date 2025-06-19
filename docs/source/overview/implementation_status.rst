@@ -25,37 +25,37 @@ WebAssembly Core Features
      - Implementation Details
    * - **Memory Operations**
      - ✅ IMPLEMENTED
-     - Complete load/store, bounds checking, memory management (wrt-runtime/src/memory.rs)
+     - Provides complete load/store, bounds checking, memory management (wrt-runtime/src/memory.rs)
    * - **Arithmetic Instructions**
      - ✅ IMPLEMENTED
-     - All i32/i64/f32/f64 operations with wrt_math integration (wrt-instructions/src/arithmetic_ops.rs)
+     - Implements all i32/i64/f32/f64 operations with wrt_math integration (wrt-instructions/src/arithmetic_ops.rs)
    * - **Comparison Operations**
      - ✅ IMPLEMENTED
-     - Complete comparison operations for all numeric types (wrt-instructions/src/comparison_ops.rs)
+     - Implements complete comparison operations for all numeric types (wrt-instructions/src/comparison_ops.rs)
    * - **Value Types & Type System**
      - ✅ IMPLEMENTED
-     - WebAssembly Value enum and type validation (wrt-foundation/src/values.rs)
+     - Provides WebAssembly Value enum and type validation (wrt-foundation/src/values.rs)
    * - **Instruction Execution Engine**
      - 🚧 PARTIAL (15%)
-     - Framework exists, main dispatch loop has TODO markers (wrt-runtime/src/stackless/frame.rs:334-500)
+     - Framework exists with main dispatch loop containing TODO markers (wrt-runtime/src/stackless/frame.rs:334-500)
    * - **Control Flow (blocks, loops, if)**
      - 🚧 PARTIAL (40%)
-     - Block/Loop start implemented, termination logic incomplete (wrt-runtime/src/stackless/frame.rs:480,487)
+     - Implements Block/Loop start, termination logic remains incomplete (wrt-runtime/src/stackless/frame.rs:480,487)
    * - **Function Calls**
      - 🚧 PARTIAL (30%)
-     - Call interface exists, execution logic incomplete (wrt-runtime/src/stackless/engine.rs:359-408)
+     - Provides call interface, execution logic remains incomplete (wrt-runtime/src/stackless/engine.rs:359-408)
    * - **Module Loading & Parsing**
      - 🚧 PARTIAL (50%)
-     - Type sections work, element/data segments missing (wrt-decoder/src/sections.rs:41-55)
+     - Type sections function correctly, element/data segments not implemented (wrt-decoder/src/sections.rs:41-55)
    * - **Module Instantiation**
      - 🚧 STUB (25%)
-     - Data structures exist, instantiation process incomplete (wrt-runtime/src/module_instance.rs)
+     - Provides data structures, instantiation process remains incomplete (wrt-runtime/src/module_instance.rs)
    * - **Import/Export Handling**
      - 🚧 STUB (20%)
-     - Type definitions exist, resolution logic missing (wrt-runtime/src/module.rs)
+     - Provides type definitions, resolution logic not implemented (wrt-runtime/src/module.rs)
    * - **Table Operations**
      - 🚧 PARTIAL (60%)
-     - Basic get/set work, advanced operations incomplete (wrt-instructions/src/table_ops.rs)
+     - Basic get/set functions work, advanced operations remain incomplete (wrt-instructions/src/table_ops.rs)
    * - **Global Variables**
      - 🚧 PARTIAL (60%)
      - Basic global access implemented

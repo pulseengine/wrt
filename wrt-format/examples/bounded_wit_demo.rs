@@ -28,10 +28,10 @@ fn main() -> Result<(), wrt_error::Error> {
                     println!("    Exports: {}", world.export_count);
                 }
             }
-        }
+        },
         Err(e) => {
             println!("✗ Failed to parse world: {:?}", e);
-        }
+        },
     }
     println!();
 
@@ -53,10 +53,10 @@ fn main() -> Result<(), wrt_error::Error> {
                     println!("    Functions: {}", interface.function_count);
                 }
             }
-        }
+        },
         Err(e) => {
             println!("✗ Failed to parse interface: {:?}", e);
-        }
+        },
     }
     println!();
 
@@ -95,10 +95,10 @@ fn main() -> Result<(), wrt_error::Error> {
                     println!("  Interface: '{}'", name);
                 }
             }
-        }
+        },
         Err(e) => {
             println!("✗ Failed to parse multiple definitions: {:?}", e);
-        }
+        },
     }
     println!();
 
@@ -111,7 +111,10 @@ fn main() -> Result<(), wrt_error::Error> {
 
     match parse_wit_bounded(&large_input) {
         Ok(parser) => {
-            println!("✓ Parsed {} worlds (capacity limited to 4)", parser.world_count());
+            println!(
+                "✓ Parsed {} worlds (capacity limited to 4)",
+                parser.world_count()
+            );
             assert!(parser.world_count() <= 4);
 
             for world in parser.worlds() {
@@ -119,10 +122,10 @@ fn main() -> Result<(), wrt_error::Error> {
                     println!("  World: '{}'", name);
                 }
             }
-        }
+        },
         Err(e) => {
             println!("✗ Failed to parse large input: {:?}", e);
-        }
+        },
     }
     println!();
 
@@ -134,11 +137,14 @@ fn main() -> Result<(), wrt_error::Error> {
 
     match parser.parse(custom_input) {
         Ok(()) => {
-            println!("✓ Parsed with custom provider: {} worlds", parser.world_count());
-        }
+            println!(
+                "✓ Parsed with custom provider: {} worlds",
+                parser.world_count()
+            );
+        },
         Err(e) => {
             println!("✗ Failed with custom provider: {:?}", e);
-        }
+        },
     }
 
     println!("\n=== Demo Complete ===");

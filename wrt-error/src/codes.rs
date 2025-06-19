@@ -577,7 +577,7 @@ impl TrapCode {
             Self::MemoryOutOfBounds => "out of bounds memory access",
             Self::MemoryGrowOutOfBounds => {
                 "failed to grow memory; limit reached or allocation failed"
-            }
+            },
             Self::UninitializedElement => "uninitialized element",
             Self::TableOutOfBounds => "out of bounds table access",
             Self::GenericTrap => "a WebAssembly trap occurred",

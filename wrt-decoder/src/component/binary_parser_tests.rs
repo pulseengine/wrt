@@ -230,19 +230,58 @@ mod tests {
     #[test]
     fn test_component_section_id_conversions() {
         // Test valid section IDs
-        assert_eq!(ComponentSectionId::from_u8(0), Some(ComponentSectionId::Custom));
-        assert_eq!(ComponentSectionId::from_u8(1), Some(ComponentSectionId::CoreModule));
-        assert_eq!(ComponentSectionId::from_u8(2), Some(ComponentSectionId::CoreInstance));
-        assert_eq!(ComponentSectionId::from_u8(3), Some(ComponentSectionId::CoreType));
-        assert_eq!(ComponentSectionId::from_u8(4), Some(ComponentSectionId::Component));
-        assert_eq!(ComponentSectionId::from_u8(5), Some(ComponentSectionId::Instance));
-        assert_eq!(ComponentSectionId::from_u8(6), Some(ComponentSectionId::Alias));
-        assert_eq!(ComponentSectionId::from_u8(7), Some(ComponentSectionId::Type));
-        assert_eq!(ComponentSectionId::from_u8(8), Some(ComponentSectionId::Canon));
-        assert_eq!(ComponentSectionId::from_u8(9), Some(ComponentSectionId::Start));
-        assert_eq!(ComponentSectionId::from_u8(10), Some(ComponentSectionId::Import));
-        assert_eq!(ComponentSectionId::from_u8(11), Some(ComponentSectionId::Export));
-        assert_eq!(ComponentSectionId::from_u8(12), Some(ComponentSectionId::Value));
+        assert_eq!(
+            ComponentSectionId::from_u8(0),
+            Some(ComponentSectionId::Custom)
+        );
+        assert_eq!(
+            ComponentSectionId::from_u8(1),
+            Some(ComponentSectionId::CoreModule)
+        );
+        assert_eq!(
+            ComponentSectionId::from_u8(2),
+            Some(ComponentSectionId::CoreInstance)
+        );
+        assert_eq!(
+            ComponentSectionId::from_u8(3),
+            Some(ComponentSectionId::CoreType)
+        );
+        assert_eq!(
+            ComponentSectionId::from_u8(4),
+            Some(ComponentSectionId::Component)
+        );
+        assert_eq!(
+            ComponentSectionId::from_u8(5),
+            Some(ComponentSectionId::Instance)
+        );
+        assert_eq!(
+            ComponentSectionId::from_u8(6),
+            Some(ComponentSectionId::Alias)
+        );
+        assert_eq!(
+            ComponentSectionId::from_u8(7),
+            Some(ComponentSectionId::Type)
+        );
+        assert_eq!(
+            ComponentSectionId::from_u8(8),
+            Some(ComponentSectionId::Canon)
+        );
+        assert_eq!(
+            ComponentSectionId::from_u8(9),
+            Some(ComponentSectionId::Start)
+        );
+        assert_eq!(
+            ComponentSectionId::from_u8(10),
+            Some(ComponentSectionId::Import)
+        );
+        assert_eq!(
+            ComponentSectionId::from_u8(11),
+            Some(ComponentSectionId::Export)
+        );
+        assert_eq!(
+            ComponentSectionId::from_u8(12),
+            Some(ComponentSectionId::Value)
+        );
 
         // Test invalid section IDs
         assert_eq!(ComponentSectionId::from_u8(13), None);
@@ -280,18 +319,27 @@ mod tests {
     #[test]
     fn test_component_header_validation() {
         // Valid header
-        let valid_header =
-            ComponentHeader { magic: [0x00, 0x61, 0x73, 0x6D], version: 1, layer: 1 };
+        let valid_header = ComponentHeader {
+            magic: [0x00, 0x61, 0x73, 0x6D],
+            version: 1,
+            layer: 1,
+        };
         assert!(valid_header.validate().is_ok());
 
         // Invalid magic
-        let invalid_magic_header =
-            ComponentHeader { magic: [0xFF, 0xFF, 0xFF, 0xFF], version: 1, layer: 1 };
+        let invalid_magic_header = ComponentHeader {
+            magic: [0xFF, 0xFF, 0xFF, 0xFF],
+            version: 1,
+            layer: 1,
+        };
         assert!(invalid_magic_header.validate().is_err());
 
         // Invalid version
-        let invalid_version_header =
-            ComponentHeader { magic: [0x00, 0x61, 0x73, 0x6D], version: 999, layer: 1 };
+        let invalid_version_header = ComponentHeader {
+            magic: [0x00, 0x61, 0x73, 0x6D],
+            version: 999,
+            layer: 1,
+        };
         assert!(invalid_version_header.validate().is_err());
 
         // Invalid layer

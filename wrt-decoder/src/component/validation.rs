@@ -45,7 +45,10 @@ mod component_validation {
 
     impl Default for ValidationConfig {
         fn default() -> Self {
-            Self { enable_value_section: true, enable_resource_types: true }
+            Self {
+                enable_value_section: true,
+                enable_resource_types: true,
+            }
         }
     }
 
@@ -57,12 +60,18 @@ mod component_validation {
 
         /// Create a validation config with all features enabled
         pub fn all_enabled() -> Self {
-            Self { enable_value_section: true, enable_resource_types: true }
+            Self {
+                enable_value_section: true,
+                enable_resource_types: true,
+            }
         }
 
         /// Create a validation config with only MVP features enabled
         pub fn mvp_only() -> Self {
-            Self { enable_value_section: false, enable_resource_types: false }
+            Self {
+                enable_value_section: false,
+                enable_resource_types: false,
+            }
         }
     }
 
@@ -304,34 +313,41 @@ mod component_validation {
                 // Nested component types are validated recursively
                 _ = (imports, exports); // Suppress unused warnings
                 Ok(())
-            }
+            },
             ComponentTypeDefinition::Instance { exports } => {
                 // Instance types are validated during parsing
                 _ = exports; // Suppress unused warning
                 Ok(())
-            }
+            },
             ComponentTypeDefinition::Function { params, results } => {
                 // Function types are validated during parsing
                 _ = (params, results); // Suppress unused warnings
                 Ok(())
-            }
+            },
             ComponentTypeDefinition::Value(val_type) => {
                 // Value types are validated during parsing
                 _ = val_type; // Suppress unused warning
                 Ok(())
-            }
-            ComponentTypeDefinition::Resource { representation, nullable } => {
+            },
+            ComponentTypeDefinition::Resource {
+                representation,
+                nullable,
+            } => {
                 // Resource types are validated during parsing
                 _ = (representation, nullable); // Suppress unused warnings
                 Ok(())
-            }
+            },
         }
     }
 
     /// Validate an alias
     fn validate_alias(ctx: &ValidationContext, alias: &Alias) -> Result<(), Error> {
         match &alias.target {
-            AliasTarget::CoreInstanceExport { instance_idx, name, kind } => {
+            AliasTarget::CoreInstanceExport {
+                instance_idx,
+                name,
+                kind,
+            } => {
                 if !ctx.is_instance_valid(*instance_idx) {
                     return Err(Error::new(
                         ErrorCategory::Validation,
@@ -341,8 +357,12 @@ mod component_validation {
                 }
                 // Further validation would check if the export exists in the instance
                 _ = (name, kind); // Suppress unused warnings
-            }
-            AliasTarget::InstanceExport { instance_idx, name, kind } => {
+            },
+            AliasTarget::InstanceExport {
+                instance_idx,
+                name,
+                kind,
+            } => {
                 if !ctx.is_instance_valid(*instance_idx) {
                     return Err(Error::new(
                         ErrorCategory::Validation,
@@ -352,12 +372,12 @@ mod component_validation {
                 }
                 // Further validation would check if the export exists in the instance
                 _ = (name, kind); // Suppress unused warnings
-            }
+            },
             AliasTarget::Outer { count, kind, idx } => {
                 // Outer aliases reference parent components
                 // Validation would check if we're nested deep enough
                 _ = (count, kind, idx); // Suppress unused warnings
-            }
+            },
         }
         Ok(())
     }
@@ -385,10 +405,10 @@ mod component_validation {
                         "invalid type index in import",
                     ));
                 }
-            }
+            },
             _ => {
                 // Other extern types are handled separately
-            }
+            },
         }
 
         Ok(())
@@ -418,11 +438,11 @@ mod component_validation {
                         "invalid module index in export",
                     ));
                 }
-            }
+            },
             Sort::Function => {
                 // Function export
                 // Would need to track defined functions
-            }
+            },
             Sort::Type => {
                 // Type export
                 if !ctx.is_type_valid(export.idx) {
@@ -432,7 +452,7 @@ mod component_validation {
                         "invalid type index in export",
                     ));
                 }
-            }
+            },
             Sort::Instance => {
                 // Instance export
                 if !ctx.is_instance_valid(export.idx) {
@@ -442,7 +462,7 @@ mod component_validation {
                         "invalid instance index in export",
                     ));
                 }
-            }
+            },
             Sort::Component => {
                 // Component export
                 if export.idx >= ctx.component.components.len() as u32 {
@@ -452,10 +472,10 @@ mod component_validation {
                         "invalid component index in export",
                     ));
                 }
-            }
+            },
             Sort::Value => {
                 // Value export - validate if needed
-            }
+            },
         }
 
         Ok(())
@@ -476,7 +496,7 @@ mod component_validation {
             _ => {
                 // TODO: Implement proper instance validation once Instance enum structure is clarified
                 _ = instance; // Suppress unused warning
-            }
+            },
         }
         Ok(())
     }
@@ -492,7 +512,9 @@ mod component_validation {
     /// Validate a single canonical function
     fn validate_canonical(ctx: &ValidationContext, canon: &Canon) -> Result<(), Error> {
         match &canon.operation {
-            CanonOperation::Lift { func_idx, type_idx, .. } => {
+            CanonOperation::Lift {
+                func_idx, type_idx, ..
+            } => {
                 // Validate function type index
                 if !ctx.is_type_valid(*type_idx) {
                     return Err(Error::new(
@@ -503,11 +525,11 @@ mod component_validation {
                 }
                 // Would validate func_idx if we had function tracking
                 _ = func_idx; // Suppress unused warning
-            }
+            },
             CanonOperation::Lower { func_idx, options } => {
                 // Would need to track defined functions
                 _ = (func_idx, options); // Suppress unused warnings
-            }
+            },
             CanonOperation::Resource(resource_op) => {
                 if !ctx.config.enable_resource_types {
                     return Err(Error::new(
@@ -518,23 +540,34 @@ mod component_validation {
                 }
                 // Validate resource operation if needed
                 _ = resource_op; // Suppress unused warning for now
-            }
-            CanonOperation::Realloc { alloc_func_idx, memory_idx } => {
+            },
+            CanonOperation::Realloc {
+                alloc_func_idx,
+                memory_idx,
+            } => {
                 // Validate allocation function and memory indices
                 _ = (alloc_func_idx, memory_idx); // Suppress unused warnings for now
-            }
+            },
             CanonOperation::PostReturn { func_idx } => {
                 // Validate post-return function index
                 _ = func_idx; // Suppress unused warning for now
-            }
-            CanonOperation::MemoryCopy { src_memory_idx, dst_memory_idx, func_idx } => {
+            },
+            CanonOperation::MemoryCopy {
+                src_memory_idx,
+                dst_memory_idx,
+                func_idx,
+            } => {
                 // Validate memory copy operation
                 _ = (src_memory_idx, dst_memory_idx, func_idx); // Suppress unused warnings for now
-            }
-            CanonOperation::Async { func_idx, type_idx, options } => {
+            },
+            CanonOperation::Async {
+                func_idx,
+                type_idx,
+                options,
+            } => {
                 // Validate async operation
                 _ = (func_idx, type_idx, options); // Suppress unused warnings for now
-            }
+            },
         }
         Ok(())
     }

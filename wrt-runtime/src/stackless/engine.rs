@@ -14,6 +14,7 @@ use crate::{
     prelude::*,
     stackless::frame::StacklessFrame,
 };
+use wrt_foundation::Value; // Add Value import
 use wrt_instructions::control_ops::{ControlContext, FunctionOperations, BranchTarget};
 use wrt_instructions::control_ops::Block;
 
@@ -29,6 +30,7 @@ use wrt_foundation::traits::DefaultMemoryProvider;
 
 // For no_std, we'll use a simple wrapper instead of Mutex
 #[cfg(not(feature = "std"))]
+#[derive(Debug)]
 pub struct Mutex<T>(core::cell::RefCell<T>);
 
 #[cfg(not(feature = "std"))]
@@ -193,7 +195,7 @@ pub struct StacklessEngine {
     /// Remaining fuel for bounded execution
     fuel: Option<u64>,
     /// Execution statistics
-    stats: ExecutionStats,
+    pub stats: ExecutionStats,
     /// Callback registry for host functions (logging, etc.)
     callbacks: Arc<Mutex<StacklessCallbackRegistry>>,
     /// Maximum call depth for function calls
@@ -202,6 +204,10 @@ pub struct StacklessEngine {
     pub(crate) instance_count: usize,
     /// Verification level for bounded collections
     verification_level: VerificationLevel,
+    /// Operand stack for compatibility with tail_call.rs
+    pub operand_stack: BoundedVec<Value, MAX_VALUES, DefaultMemoryProvider>,
+    /// Call frames count for compatibility with tail_call.rs (simplified)
+    pub call_frames_count: usize,
 }
 
 impl StacklessStack {
@@ -232,6 +238,7 @@ impl Default for StacklessEngine {
 impl StacklessEngine {
     /// Creates a new stackless execution engine.
     pub fn new() -> Self {
+        let provider = DefaultMemoryProvider::default();
         Self {
             exec_stack: StacklessStack::new(Arc::new(Module::new().unwrap()), 0),
             fuel: None,
@@ -240,6 +247,8 @@ impl StacklessEngine {
             max_call_depth: None,
             instance_count: 0,
             verification_level: VerificationLevel::Standard,
+            operand_stack: BoundedVec::new(provider.clone()).unwrap(),
+            call_frames_count: 0,
         }
     }
 
@@ -288,11 +297,13 @@ impl ControlContext for StacklessEngine {
 
     /// Pop a value from the operand stack
     fn pop_control_value(&mut self) -> Result<Value> {
-        match self.exec_stack.values.pop() {
-            Ok(Some(value)) => Ok(value),
-            Ok(None) => Err(Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Operand stack underflow")),
-            Err(_) => Err(Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")),
+        if self.exec_stack.values.is_empty() {
+            return Err(Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Operand stack underflow"));
         }
+        let last_idx = self.exec_stack.values.len() - 1;
+        self.exec_stack.values.remove(last_idx).map_err(|_| {
+            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+        })
     }
 
     /// Get the current block depth (number of labels)
@@ -308,7 +319,7 @@ impl ControlContext for StacklessEngine {
                 Block::Block(_) => LabelKind::Block,
                 Block::Loop(_) => LabelKind::Loop,
                 Block::If(_) => LabelKind::If,
-                Block::Function => LabelKind::Function,
+                Block::Try(_) => LabelKind::Block, // Treat try as block for now
             },
             arity: 0, // TODO: Calculate from block type
             pc: self.exec_stack.pc,
@@ -322,7 +333,11 @@ impl ControlContext for StacklessEngine {
 
     /// Exit the current block
     fn exit_block(&mut self) -> Result<Block> {
-        let label = self.exec_stack.labels.pop().map_err(|_| {
+        if self.exec_stack.labels.is_empty() {
+            return Err(Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "No block to exit"));
+        }
+        let last_idx = self.exec_stack.labels.len() - 1;
+        let label = self.exec_stack.labels.remove(last_idx).map_err(|_| {
             Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "No block to exit")
         })?;
         
@@ -331,7 +346,7 @@ impl ControlContext for StacklessEngine {
             LabelKind::Block => Block::Block(wrt_foundation::BlockType::Value(None)),
             LabelKind::Loop => Block::Loop(wrt_foundation::BlockType::Value(None)),
             LabelKind::If => Block::If(wrt_foundation::BlockType::Value(None)),
-            LabelKind::Function => Block::Function,
+            LabelKind::Function => Block::Block(wrt_foundation::BlockType::Value(None)), // Treat function as block
         };
         
         Ok(block)

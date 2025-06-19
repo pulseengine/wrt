@@ -393,4 +393,65 @@ mod tests {
             assert!(err.context.unwrap().contains("must be non-negative"));
         }
     }
+
+    // ====== TESTS MIGRATED FROM SIMPLE_TEST.RS ======
+
+    #[test]
+    fn test_simple_format_to_types_conversion() {
+        use wrt_format::component::ValType as FormatValType;
+        use wrt_foundation::component_value::ValType as TypesValType;
+
+        let registry = TypeConversionRegistry::with_defaults();
+
+        // Test primitive types
+        let bool_type = FormatValType::Bool;
+        let result = registry.convert::<FormatValType, TypesValType>(&bool_type).unwrap();
+        assert!(matches!(result, TypesValType::Bool));
+
+        let s32_type = FormatValType::S32;
+        let result = registry.convert::<FormatValType, TypesValType>(&s32_type).unwrap();
+        assert!(matches!(result, TypesValType::S32));
+    }
+
+    #[test]
+    fn test_simple_types_to_format_conversion() {
+        use wrt_format::component::ValType as FormatValType;
+        use wrt_foundation::component_value::ValType as TypesValType;
+
+        let registry = TypeConversionRegistry::with_defaults();
+
+        // Test primitive types
+        let bool_type = TypesValType::Bool;
+        let result = registry.convert::<TypesValType, FormatValType>(&bool_type).unwrap();
+        assert!(matches!(result, FormatValType::Bool));
+
+        let s32_type = TypesValType::S32;
+        let result = registry.convert::<TypesValType, FormatValType>(&s32_type).unwrap();
+        assert!(matches!(result, FormatValType::S32));
+    }
+
+    // ====== TESTS MIGRATED FROM REGISTRY_TEST.RS ======
+
+    // Additional test types for registry testing
+    #[derive(Debug, PartialEq)]
+    struct SimpleSource(i32);
+
+    #[derive(Debug, PartialEq)]
+    struct SimpleTarget(i32);
+
+    #[test]
+    fn test_basic_registry_functionality() {
+        // Create a registry
+        let mut registry = TypeConversionRegistry::new();
+
+        // Register a simple conversion
+        registry.register(|src: &SimpleSource| -> core::result::Result<SimpleTarget, ConversionError> {
+            Ok(SimpleTarget(src.0 * 2))
+        });
+
+        // Test the conversion
+        let source = SimpleSource(21);
+        let result = registry.convert::<SimpleSource, SimpleTarget>(&source).unwrap();
+        assert_eq!(result, SimpleTarget(42));
+    }
 }

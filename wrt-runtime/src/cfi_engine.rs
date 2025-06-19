@@ -1,22 +1,27 @@
-// WRT - wrt-runtime
-// Module: CFI-Enhanced Execution Engine
-// SW-REQ-ID: REQ_CFI_RUNTIME_001
+//! CFI-Enhanced Execution Engine
+//!
+//! This module implements Control Flow Integrity (CFI) protection for WebAssembly
+//! execution, providing hardware-enforced security boundaries and preventing
+//! control flow hijacking attacks.
+//!
+//! # Features
+//!
+//! - Shadow stack protection for return addresses
+//! - Indirect call target validation
+//! - Function pointer integrity checking
+//! - Configurable violation policies (trap, log, or continue)
+//! - Integration with platform-specific CFI hardware features
+//!
+//! # Safety
+//!
+//! The CFI engine operates entirely in safe Rust, using type system guarantees
+//! to enforce control flow policies without unsafe code.
+//!
+//! SW-REQ-ID: REQ_CFI_RUNTIME_001
 //
 // Copyright (c) 2025 The WRT Project Developers
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
-
-//! CFI-Enhanced WebAssembly Execution Engine
-//!
-//! This module provides a Control Flow Integrity enhanced execution engine
-//! that protects against ROP/JOP attacks during WebAssembly execution.
-//!
-//! # Key Features
-//! - Shadow stack management for return address protection
-//! - Landing pad validation for indirect calls
-//! - Hardware CFI integration (ARM BTI, RISC-V CFI)
-//! - Software CFI fallback for unsupported platforms
-//! - Real-time CFI violation detection and response
 
 #![allow(dead_code)] // Allow during development
 
@@ -471,7 +476,10 @@ impl CfiExecutionEngine {
                     }
                 }
             }
-
+            crate::prelude::Instruction::Call(func_idx) => {
+                // Handle direct Call instruction variant
+                self.execute_call_with_cfi(*func_idx, execution_context)
+            }
             _ => {
                 // Regular instruction execution without special CFI handling
                 self.execute_regular_instruction(instruction, execution_context)

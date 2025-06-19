@@ -69,11 +69,18 @@ fn test_wast_directive(
 
             // Instantiate the module
             let instance_idx = engine.instantiate(loaded_module)?;
-            println!("DEBUG: instantiate called for module with instance index {}", instance_idx);
+            println!(
+                "DEBUG: instantiate called for module with instance index {}",
+                instance_idx
+            );
 
             Ok(())
-        }
-        WastDirective::AssertReturn { span: _, exec, results } => {
+        },
+        WastDirective::AssertReturn {
+            span: _,
+            exec,
+            results,
+        } => {
             match exec {
                 WastExecute::Invoke(invoke) => {
                     let args: Result<Vec<Value>, _> =
@@ -117,10 +124,10 @@ fn test_wast_directive(
                         invoke.name, actual, expected
                     );
                     Ok(())
-                }
+                },
                 _ => Ok(()), // Skip other types of executions for now
             }
-        }
+        },
         _ => Ok(()), // Skip other directives for now
     }
 }
@@ -139,7 +146,7 @@ fn compare_wasm_values(actual: &Value, expected: &Value) -> bool {
                 // Compare with a suitable tolerance for F32
                 (a - e).abs() < 1e-6 // Use tolerance (e.g., 1e-6)
             }
-        }
+        },
         (Value::F64(a), Value::F64(e)) => {
             // Use tolerance for F64 due to observed precision diffs
             if e.is_nan() {
@@ -150,7 +157,7 @@ fn compare_wasm_values(actual: &Value, expected: &Value) -> bool {
                 // Compare with a slightly larger tolerance for F64
                 (a - e).abs() < 1e-9 // Increased tolerance
             }
-        }
+        },
         // For V128, compare byte arrays directly
         (Value::V128(a), Value::V128(e)) => a == e,
         // For other types, use standard equality
@@ -302,15 +309,19 @@ fn test_wast_files() -> Result<(), Error> {
                     if stats.failed == 0 {
                         tests_passed += 1;
                     }
-                }
+                },
                 Err(e) => {
                     println!("❌ FAIL: {} - {}", rel_display_path.display(), e);
-                }
+                },
             }
         }
     }
 
-    println!("Tests completed: {} passed, {} failed", tests_passed, tests_run - tests_passed);
+    println!(
+        "Tests completed: {} passed, {} failed",
+        tests_passed,
+        tests_run - tests_passed
+    );
     println!("Runner stats: {:?}", runner.stats);
 
     Ok(())
@@ -323,7 +334,14 @@ fn test_external_testsuite(testsuite_dir: &Path) -> Result<(), Error> {
     let mut runner = WastTestRunner::new();
 
     // Basic test files that should work with minimal implementation
-    let basic_tests = ["nop.wast", "const.wast", "i32.wast", "i64.wast", "f32.wast", "f64.wast"];
+    let basic_tests = [
+        "nop.wast",
+        "const.wast",
+        "i32.wast",
+        "i64.wast",
+        "f32.wast",
+        "f64.wast",
+    ];
 
     let mut tests_run = 0;
     let mut tests_passed = 0;
@@ -343,10 +361,10 @@ fn test_external_testsuite(testsuite_dir: &Path) -> Result<(), Error> {
                     if stats.failed == 0 {
                         tests_passed += 1;
                     }
-                }
+                },
                 Err(e) => {
                     println!("❌ {} - Error: {}", test_file, e);
-                }
+                },
             }
         } else {
             println!("⚠️  Test file not found: {}", test_file);
@@ -388,18 +406,25 @@ fn run_basic_wast_tests(runner: &mut WastTestRunner, test_dir: &Path) -> Result<
 
             match runner.run_wast_file(path) {
                 Ok(stats) => {
-                    println!("✅ {} - {} passed, {} failed", file_name, stats.passed, stats.failed);
+                    println!(
+                        "✅ {} - {} passed, {} failed",
+                        file_name, stats.passed, stats.failed
+                    );
                     if stats.failed == 0 {
                         tests_passed += 1;
                     }
-                }
+                },
                 Err(e) => {
                     println!("❌ {} - {}", file_name, e);
-                }
+                },
             }
         }
     }
 
-    println!("Basic tests: {} passed, {} failed", tests_passed, tests_run - tests_passed);
+    println!(
+        "Basic tests: {} passed, {} failed",
+        tests_passed,
+        tests_run - tests_passed
+    );
     Ok(())
 }

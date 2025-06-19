@@ -74,8 +74,14 @@ fn main() {
     }
 
     println!("\nPerformance Metrics:");
-    println!("  Average operation time: {} µs", report.performance_metrics.avg_operation_time);
-    println!("  Memory churn rate: {} bytes/µs", report.performance_metrics.memory_churn_rate);
+    println!(
+        "  Average operation time: {} µs",
+        report.performance_metrics.avg_operation_time
+    );
+    println!(
+        "  Memory churn rate: {} bytes/µs",
+        report.performance_metrics.memory_churn_rate
+    );
 
     // Complete memory system cleanup
     wrt_foundation::memory_system_initializer::complete_global_memory_initialization()
