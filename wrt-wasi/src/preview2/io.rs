@@ -4,7 +4,7 @@
 //! resource management patterns and platform abstractions.
 
 use crate::prelude::*;
-use wrt_foundation::values::Value;
+use crate::Value;
 use core::any::Any;
 
 /// WASI stream read operation
@@ -126,7 +126,7 @@ fn extract_stream_handle(args: &[Value]) -> Result<u32> {
         return Err(Error::new(
             ErrorCategory::Parse,
             codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Missing stream handle argument")
+"Missing stream handle argument"
         ));
     }
     
@@ -137,7 +137,7 @@ fn extract_stream_handle(args: &[Value]) -> Result<u32> {
                 Err(Error::new(
                     ErrorCategory::Parse,
                     codes::WASI_INVALID_FD,
-                    kinds::WasiResourceError("Invalid negative stream handle")
+        "Invalid negative stream handle"
                 ))
             } else {
                 Ok(*handle as u32)
@@ -146,7 +146,7 @@ fn extract_stream_handle(args: &[Value]) -> Result<u32> {
         _ => Err(Error::new(
             ErrorCategory::Parse,
             codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Invalid stream handle type")
+            "Invalid stream handle type"
         )),
     }
 }
@@ -157,7 +157,7 @@ fn extract_read_length(args: &[Value], index: usize) -> Result<u64> {
         return Err(Error::new(
             ErrorCategory::Parse,
             codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Missing read length argument")
+            "Missing read length argument"
         ));
     }
     
@@ -167,7 +167,7 @@ fn extract_read_length(args: &[Value], index: usize) -> Result<u64> {
         _ => Err(Error::new(
             ErrorCategory::Parse,
             codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Invalid read length type")
+            "Invalid read length type"
         )),
     }
 }
@@ -178,7 +178,7 @@ fn extract_write_data(args: &[Value], index: usize) -> Result<Vec<u8>> {
         return Err(Error::new(
             ErrorCategory::Parse,
             codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Missing write data argument")
+            "Missing write data argument"
         ));
     }
     
@@ -191,7 +191,7 @@ fn extract_write_data(args: &[Value], index: usize) -> Result<Vec<u8>> {
                     _ => return Err(Error::new(
                         ErrorCategory::Parse,
                         codes::WASI_INVALID_FD,
-                        kinds::WasiResourceError("Invalid byte data in write")
+                        "Invalid byte data in write"
                     )),
                 }
             }
@@ -200,7 +200,7 @@ fn extract_write_data(args: &[Value], index: usize) -> Result<Vec<u8>> {
         _ => Err(Error::new(
             ErrorCategory::Parse,
             codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Invalid write data type")
+            "Invalid write data type"
         )),
     }
 }
@@ -211,7 +211,7 @@ fn extract_pollable_list(args: &[Value]) -> Result<Vec<u32>> {
         return Err(Error::new(
             ErrorCategory::Parse,
             codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Missing pollables argument")
+            "Missing pollables argument"
         ));
     }
     
@@ -224,7 +224,7 @@ fn extract_pollable_list(args: &[Value]) -> Result<Vec<u32>> {
                     _ => return Err(Error::new(
                         ErrorCategory::Parse,
                         codes::WASI_INVALID_FD,
-                        kinds::WasiResourceError("Invalid pollable handle")
+                        "Invalid pollable handle"
                     )),
                 }
             }
@@ -233,7 +233,7 @@ fn extract_pollable_list(args: &[Value]) -> Result<Vec<u32>> {
         _ => Err(Error::new(
             ErrorCategory::Parse,
             codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Invalid pollables type")
+            "Invalid pollables type"
         )),
     }
 }
@@ -257,7 +257,7 @@ fn perform_stream_read(stream_handle: u32, len: u64) -> Result<Vec<u8>> {
                     .map_err(|_| Error::new(
                         ErrorCategory::Runtime,
                         codes::WASI_CAPABILITY_UNAVAILABLE,
-                        kinds::WasiResourceError("Failed to read from stdin")
+                        "Failed to read from stdin"
                     ))?;
                 buffer.truncate(bytes_read);
                 Ok(buffer)
@@ -293,13 +293,13 @@ fn perform_stream_write(stream_handle: u32, data: &[u8]) -> Result<u64> {
                     .map_err(|_| Error::new(
                         ErrorCategory::Runtime,
                         codes::WASI_CAPABILITY_UNAVAILABLE,
-                        kinds::WasiResourceError("Failed to write to stdout")
+                        "Failed to write to stdout"
                     ))?;
                 io::stdout().flush()
                     .map_err(|_| Error::new(
                         ErrorCategory::Runtime,
                         codes::WASI_CAPABILITY_UNAVAILABLE,
-                        kinds::WasiResourceError("Failed to flush stdout")
+                        "Failed to flush stdout"
                     ))?;
                 Ok(data.len() as u64)
             }
@@ -318,13 +318,13 @@ fn perform_stream_write(stream_handle: u32, data: &[u8]) -> Result<u64> {
                     .map_err(|_| Error::new(
                         ErrorCategory::Runtime,
                         codes::WASI_CAPABILITY_UNAVAILABLE,
-                        kinds::WasiResourceError("Failed to write to stderr")
+                        "Failed to write to stderr"
                     ))?;
                 io::stderr().flush()
                     .map_err(|_| Error::new(
                         ErrorCategory::Runtime,
                         codes::WASI_CAPABILITY_UNAVAILABLE,
-                        kinds::WasiResourceError("Failed to flush stderr")
+                        "Failed to flush stderr"
                     ))?;
                 Ok(data.len() as u64)
             }
@@ -353,7 +353,7 @@ fn perform_stream_flush(stream_handle: u32) -> Result<()> {
                     .map_err(|_| Error::new(
                         ErrorCategory::Runtime,
                         codes::WASI_CAPABILITY_UNAVAILABLE,
-                        kinds::WasiResourceError("Failed to flush stdout")
+                        "Failed to flush stdout"
                     ))?;
             }
             Ok(())
@@ -367,7 +367,7 @@ fn perform_stream_flush(stream_handle: u32) -> Result<()> {
                     .map_err(|_| Error::new(
                         ErrorCategory::Runtime,
                         codes::WASI_CAPABILITY_UNAVAILABLE,
-                        kinds::WasiResourceError("Failed to flush stderr")
+                        "Failed to flush stderr"
                     ))?;
             }
             Ok(())

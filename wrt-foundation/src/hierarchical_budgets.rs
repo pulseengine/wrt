@@ -8,11 +8,14 @@
 
 use crate::{
     budget_aware_provider::CrateId,
+    capabilities::{MemoryCapability, MemoryCapabilityContext, StaticMemoryCapability},
     codes,
     memory_coordinator::CrateIdentifier,
+    verification::VerificationLevel,
     Error, ErrorCategory, Result,
 };
 
+// Legacy imports for backward compatibility
 #[allow(deprecated)]
 use crate::wrt_memory_system::{WrtMemoryGuard, WrtProviderFactory};
 use core::sync::atomic::{AtomicUsize, Ordering};
@@ -202,8 +205,36 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
         if let Some(sub_budget) = &self.sub_budgets[idx] {
             sub_budget.try_allocate(size)?;
 
-            // Create the actual memory allocation
-            let guard = WrtProviderFactory::create_provider::<N>(self.crate_id)?;
+            // Create the actual memory allocation using capability system
+            // First try capability-based allocation
+            let capability_result = if N <= 65536 {
+                // Use static capability for smaller allocations
+                StaticMemoryCapability::<N>::new(self.crate_id, VerificationLevel::Standard)
+                    .allocate_region(N, self.crate_id)
+                    .map(|guard| guard)
+            } else {
+                Err(Error::new(
+                    ErrorCategory::Memory,
+                    codes::CAPACITY_EXCEEDED,
+                    "Allocation size exceeds static capability limit",
+                ))
+            };
+
+            // Fall back to legacy system if capability allocation fails
+            let guard = match capability_result {
+                Ok(cap_guard) => {
+                    // Successfully allocated with capability system
+                    // For now, we'll still use the legacy system since the types don't match
+                    // TODO: Update return type to support capability guards
+                    #[allow(deprecated)]
+                    WrtProviderFactory::create_provider::<N>(self.crate_id)?
+                }
+                Err(_) => {
+                    // Fall back to legacy allocation
+                    #[allow(deprecated)]
+                    WrtProviderFactory::create_provider::<N>(self.crate_id)?
+                }
+            };
 
             Ok((guard, idx))
         } else {

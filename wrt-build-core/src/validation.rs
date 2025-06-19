@@ -18,6 +18,20 @@ pub struct ValidationResults {
     pub errors: Vec<ValidationError>,
     /// List of warnings
     pub warnings: Vec<String>,
+    /// Time taken for validation
+    pub duration: std::time::Duration,
+}
+
+impl ValidationResults {
+    /// Create new validation results
+    pub fn new() -> Self {
+        Self {
+            success: true,
+            errors: Vec::new(),
+            warnings: Vec::new(),
+            duration: std::time::Duration::default(),
+        }
+    }
 }
 
 /// Validation error details
@@ -29,6 +43,20 @@ pub struct ValidationError {
     pub file: PathBuf,
     /// Error message
     pub message: String,
+    /// Severity level
+    pub severity: String,
+}
+
+impl ValidationError {
+    /// Create a new validation error
+    pub fn new(category: impl Into<String>, file: PathBuf, message: impl Into<String>) -> Self {
+        Self {
+            category: category.into(),
+            file,
+            message: message.into(),
+            severity: "error".to_string(),
+        }
+    }
 }
 
 /// Code validator
@@ -78,6 +106,7 @@ impl CodeValidator {
             success,
             errors,
             warnings,
+            duration: std::time::Duration::default(),
         })
     }
     
@@ -110,18 +139,165 @@ impl CodeValidator {
         println!("  Documented: {}/{}", documented_modules, total_modules);
         
         if coverage_percent < 80.0 {
-            errors.push(ValidationError {
-                category: "documentation".to_string(),
-                file: self.workspace_root.clone(),
-                message: format!("Module documentation coverage {:.1}% is below 80% threshold", coverage_percent),
-            });
+            errors.push(ValidationError::new(
+                "documentation",
+                self.workspace_root.clone(),
+                format!("Module documentation coverage {:.1}% is below 80% threshold", coverage_percent),
+            ));
         }
         
         Ok(ValidationResults {
             success: errors.is_empty(),
             errors,
             warnings,
+            duration: std::time::Duration::default(),
         })
+    }
+    
+    /// Comprehensive documentation audit for all crates
+    pub fn audit_crate_documentation(&self) -> BuildResult<ValidationResults> {
+        println!("{} Auditing crate documentation...", "📚".bright_blue());
+        
+        let mut results = ValidationResults::new();
+        let start = std::time::Instant::now();
+        
+        // Find all crate directories
+        let mut crates = Vec::new();
+        for entry in fs::read_dir(&self.workspace_root)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                let cargo_toml = path.join("Cargo.toml");
+                if cargo_toml.exists() {
+                    // Check if it's a crate (has [package] section)
+                    let content = fs::read_to_string(&cargo_toml)?;
+                    if content.contains("[package]") {
+                        crates.push(path);
+                    }
+                }
+            }
+        }
+        
+        println!("    Found {} crates to audit", crates.len());
+        
+        let mut missing_readme = Vec::new();
+        let mut missing_metadata = Vec::new();
+        let mut poor_documentation = Vec::new();
+        
+        for crate_path in &crates {
+            let crate_name = crate_path.file_name().unwrap().to_string_lossy();
+            
+            // Check README.md
+            let readme_path = crate_path.join("README.md");
+            if !readme_path.exists() {
+                missing_readme.push(crate_name.to_string());
+                results.errors.push(ValidationError::new(
+                    "documentation",
+                    readme_path.clone(),
+                    "Missing README.md",
+                ));
+            }
+            
+            // Check Cargo.toml metadata
+            let cargo_toml_path = crate_path.join("Cargo.toml");
+            let cargo_content = fs::read_to_string(&cargo_toml_path)?;
+            
+            let metadata_items = ["description", "documentation", "keywords", "categories"];
+            let mut has_all_metadata = true;
+            
+            for item in &metadata_items {
+                if !cargo_content.contains(&format!("{} =", item)) {
+                    has_all_metadata = false;
+                    results.warnings.push(format!("{}: Missing {} in Cargo.toml", crate_name, item));
+                }
+            }
+            
+            if !cargo_content.contains("[package.metadata.docs.rs]") {
+                has_all_metadata = false;
+                results.warnings.push(format!("{}: Missing docs.rs configuration", crate_name));
+            }
+            
+            if !has_all_metadata {
+                missing_metadata.push(crate_name.to_string());
+            }
+            
+            // Check lib.rs documentation quality
+            let lib_rs_path = crate_path.join("src/lib.rs");
+            if lib_rs_path.exists() {
+                let lib_content = fs::read_to_string(&lib_rs_path)?;
+                let mut has_good_docs = true;
+                
+                // Check for crate-level documentation
+                if !lib_content.lines().any(|line| line.starts_with("//! ")) {
+                    has_good_docs = false;
+                    results.errors.push(ValidationError::new(
+                        "documentation",
+                        lib_rs_path.clone(),
+                        "Missing crate-level documentation (//!)",
+                    ));
+                } else {
+                    // Check for examples in crate docs
+                    let has_examples = lib_content.contains("//! ```rust") || lib_content.contains("//! ```");
+                    if !has_examples {
+                        results.warnings.push(format!("{}: No examples in crate documentation", crate_name));
+                    }
+                    
+                    // Check for features section
+                    if !lib_content.contains("//! ## Features") && !lib_content.contains("//! # Features") {
+                        results.warnings.push(format!("{}: No features section in documentation", crate_name));
+                    }
+                }
+                
+                // Check for missing_docs lint
+                if !lib_content.contains("#![warn(missing_docs)]") && !lib_content.contains("#![deny(missing_docs)]") {
+                    has_good_docs = false;
+                    results.warnings.push(format!("{}: Missing #![warn(missing_docs)] lint", crate_name));
+                }
+                
+                if !has_good_docs {
+                    poor_documentation.push(crate_name.to_string());
+                }
+            }
+        }
+        
+        results.duration = start.elapsed();
+        results.success = results.errors.is_empty();
+        
+        // Print summary
+        println!("\n  {} Summary:", "📊".bright_cyan());
+        println!("    Total crates: {}", crates.len());
+        println!("    Crates missing README: {}", missing_readme.len());
+        println!("    Crates with incomplete metadata: {}", missing_metadata.len());
+        println!("    Crates with poor documentation: {}", poor_documentation.len());
+        
+        if !missing_readme.is_empty() {
+            println!("\n    {} Crates missing README:", "❌".bright_red());
+            for crate_name in &missing_readme {
+                println!("      - {}", crate_name);
+            }
+        }
+        
+        if !missing_metadata.is_empty() {
+            println!("\n    {} Crates with incomplete metadata:", "⚠️".bright_yellow());
+            for crate_name in &missing_metadata {
+                println!("      - {}", crate_name);
+            }
+        }
+        
+        if !poor_documentation.is_empty() {
+            println!("\n    {} Crates with poor documentation:", "⚠️".bright_yellow());
+            for crate_name in &poor_documentation {
+                println!("      - {}", crate_name);
+            }
+        }
+        
+        if results.success {
+            println!("\n  {} All crates have proper documentation!", "✅".bright_green());
+        } else {
+            println!("\n  {} Documentation audit found issues", "❌".bright_red());
+        }
+        
+        Ok(results)
     }
     
     /// Find all workspace crates
@@ -168,11 +344,11 @@ impl CodeValidator {
                        file_name == "test.rs" ||
                        file_name == "tests.rs" ||
                        (file_name.contains("test") && file_name.ends_with(".rs") && !file_name.contains("test_utils")) {
-                        errors.push(ValidationError {
-                            category: "test_file_location".to_string(),
-                            file: path.clone(),
-                            message: format!("Test file '{}' should be in tests/ directory, not in src/", file_name),
-                        });
+                        errors.push(ValidationError::new(
+                            "test_file_location",
+                            path.clone(),
+                            format!("Test file '{}' should be in tests/ directory, not in src/", file_name),
+                        ));
                     }
                 }
             } else if path.is_dir() {
@@ -281,6 +457,14 @@ pub fn run_all_validations(workspace_root: &Path, verbose: bool) -> BuildResult<
     // Check module documentation
     let doc_result = validator.check_module_documentation()?;
     if !doc_result.success {
+        all_passed = false;
+    }
+    
+    println!();
+    
+    // Audit crate documentation
+    let audit_result = validator.audit_crate_documentation()?;
+    if !audit_result.success {
         all_passed = false;
     }
     

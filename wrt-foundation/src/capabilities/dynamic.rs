@@ -19,7 +19,7 @@ use std::boxed::Box;
 use alloc::boxed::Box;
 
 use crate::{
-    budget_aware_provider::CrateId, codes, verification::VerificationLevel, BudgetProvider, Error,
+    budget_aware_provider::CrateId, codes, safe_memory::Provider, verification::VerificationLevel, Error,
     ErrorCategory, Result,
 };
 
@@ -116,6 +116,18 @@ impl DynamicMemoryCapability {
     /// Record a deallocation (internal use)
     fn record_deallocation(&self, size: usize) {
         self.current_allocated.fetch_sub(size, Ordering::AcqRel);
+    }
+}
+
+impl Clone for DynamicMemoryCapability {
+    fn clone(&self) -> Self {
+        Self {
+            max_allocation: self.max_allocation,
+            current_allocated: AtomicUsize::new(self.current_allocated.load(Ordering::Acquire)),
+            allowed_operations: self.allowed_operations,
+            verification_level: self.verification_level,
+            owner_crate: self.owner_crate,
+        }
     }
 }
 
@@ -271,9 +283,15 @@ impl DynamicMemoryRegion {
 
 impl MemoryRegion for DynamicMemoryRegion {
     fn as_ptr(&self) -> NonNull<u8> {
-        // For now, return a null pointer - this would need proper implementation
-        // with actual memory allocation
-        NonNull::dangling()
+        // Get a slice from the provider and use its pointer
+        match self.provider.borrow_slice(0, 1) {
+            Ok(slice) => {
+                // Get the pointer from the slice
+                NonNull::new(slice.as_ref().as_ptr() as *mut u8)
+                    .unwrap_or_else(|| NonNull::dangling())
+            }
+            Err(_) => NonNull::dangling(), // Return dangling pointer if we can't access the memory
+        }
     }
 
     fn size(&self) -> usize {
@@ -332,8 +350,9 @@ impl MemoryGuard for DynamicMemoryGuard {
             ));
         }
 
-        // This would need actual implementation with the provider
-        // For now, return an empty slice
+        // TODO: Implement proper read access to provider memory
+        // This requires a different approach since borrow_slice returns an owned Slice
+        // For now, return an empty slice as a placeholder
         Ok(&[])
     }
 
@@ -349,7 +368,10 @@ impl MemoryGuard for DynamicMemoryGuard {
             ));
         }
 
-        // This would need actual implementation with the provider
+        // Write to the provider using get_slice_mut
+        // Note: This requires mutable access to the region, which we need to enable
+        // For now, this is a conceptual implementation
+        // TODO: Implement proper mutable access pattern for DynamicMemoryRegion
         Ok(())
     }
 

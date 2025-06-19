@@ -77,6 +77,10 @@ pub const fn wasi_max_allocation_size() -> usize {
 
 // Temporary component model values
 pub mod component_values;
+pub mod value_compat;
+
+// Re-export the Value type for compatibility
+pub use value_compat::Value;
 
 // WASI Preview2 interfaces
 #[cfg(feature = "preview2")]
@@ -166,7 +170,7 @@ pub trait WasiHostProvider {
 }
 
 /// Simple host function representation for WASI
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct HostFunction {
     /// Function name
     pub name: String,
@@ -174,6 +178,16 @@ pub struct HostFunction {
     pub handler: HostFunctionHandler,
     /// External type (for component model integration)
     pub extern_type: wrt_format::component::ExternType,
+}
+
+impl core::fmt::Debug for HostFunction {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("HostFunction")
+            .field("name", &self.name)
+            .field("handler", &"<CloneableFn>")
+            .field("extern_type", &"<ExternType>")
+            .finish()
+    }
 }
 
 /// Error types specific to WASI operations

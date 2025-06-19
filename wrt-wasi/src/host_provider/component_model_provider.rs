@@ -61,7 +61,7 @@ impl ComponentModelProvider {
         
         for function in functions {
             let module_name = Self::extract_module_name(&function.name);
-            registry.register_host_function(module_name, &function.name, function.handler)?;
+            registry.register_host_function(module_name, &function.name, function.handler);
         }
         
         Ok(())
@@ -140,9 +140,9 @@ impl ComponentModelProvider {
         // TODO: Implement proper value conversion between component and foundation values
         Ok(HostFunction {
             name: "wasi:filesystem/types.read".to_string(),
-            handler: HostFunctionHandler::new(CloneableFn::new(move |_target: &mut dyn Any| {
+            handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
                 Ok(vec![])
-            })),
+            }),
             extern_type: ExternType::Function { params: vec![], results: vec![] },
         })
     }
@@ -153,9 +153,9 @@ impl ComponentModelProvider {
         
         Ok(HostFunction {
             name: "wasi:filesystem/types.write".to_string(),
-            handler: HostFunctionHandler::new(CloneableFn::new(move |_target: &mut dyn Any| {
+            handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
                 Ok(vec![])
-            })),
+            }),
             extern_type: ExternType::Function { params: vec![], results: vec![] },
         })
     }
@@ -166,9 +166,9 @@ impl ComponentModelProvider {
         
         Ok(HostFunction {
             name: "wasi:filesystem/types.open-at".to_string(),
-            handler: HostFunctionHandler::new(CloneableFn::new(move |_target: &mut dyn Any| {
+            handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
                 Ok(vec![])
-            })),
+            }),
             extern_type: ExternType::Function { params: vec![], results: vec![] },
         })
     }
@@ -179,9 +179,9 @@ impl ComponentModelProvider {
         
         Ok(HostFunction {
             name: "wasi:cli/environment.get-arguments".to_string(),
-            handler: HostFunctionHandler::new(CloneableFn::new(move |_target: &mut dyn Any| {
+            handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
                 Ok(vec![])
-            })),
+            }),
             extern_type: ExternType::Function { params: vec![], results: vec![] },
         })
     }
@@ -192,9 +192,9 @@ impl ComponentModelProvider {
         
         Ok(HostFunction {
             name: "wasi:cli/environment.get-environment".to_string(),
-            handler: HostFunctionHandler::new(CloneableFn::new(move |_target: &mut dyn Any| {
+            handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
                 Ok(vec![])
-            })),
+            }),
             extern_type: ExternType::Function { params: vec![], results: vec![] },
         })
     }
@@ -205,9 +205,9 @@ impl ComponentModelProvider {
         
         Ok(HostFunction {
             name: "wasi:clocks/monotonic-clock.now".to_string(),
-            handler: HostFunctionHandler::new(CloneableFn::new(move |_target: &mut dyn Any| {
+            handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
                 Ok(vec![])
-            })),
+            }),
             extern_type: ExternType::Function { params: vec![], results: vec![] },
         })
     }
@@ -218,9 +218,9 @@ impl ComponentModelProvider {
         
         Ok(HostFunction {
             name: "wasi:io/streams.write".to_string(),
-            handler: HostFunctionHandler::new(CloneableFn::new(move |_target: &mut dyn Any| {
+            handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
                 Ok(vec![])
-            })),
+            }),
             extern_type: ExternType::Function { params: vec![], results: vec![] },
         })
     }
@@ -231,9 +231,9 @@ impl ComponentModelProvider {
         
         Ok(HostFunction {
             name: "wasi:random/random.get-random-bytes".to_string(),
-            handler: HostFunctionHandler::new(CloneableFn::new(move |_target: &mut dyn Any| {
+            handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
                 Ok(vec![])
-            })),
+            }),
             extern_type: ExternType::Function { params: vec![], results: vec![] },
         })
     }

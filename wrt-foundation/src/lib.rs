@@ -225,6 +225,8 @@ pub mod unified_types_simple;
 
 // Capability-driven memory architecture
 pub mod capabilities;
+// Platform abstraction for safe atomic operations
+pub mod platform_atomic;
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]

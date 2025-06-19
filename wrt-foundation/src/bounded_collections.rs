@@ -3369,7 +3369,7 @@ where
     P: Default + Clone + PartialEq + Eq,
 {
     fn default() -> Self {
-        Self::new(P::default()).unwrap()
+        Self::new(P::default()).expect("Default provider should never fail to create BoundedMap")
     }
 }
 
@@ -3380,7 +3380,7 @@ where
     P: Default + Clone + PartialEq + Eq,
 {
     fn clone(&self) -> Self {
-        let mut new_map = Self::new(P::default()).unwrap();
+        let mut new_map = Self::new(P::default()).expect("Default provider should never fail to create BoundedMap");
         new_map.verification_level = self.verification_level;
 
         // Clone all entries

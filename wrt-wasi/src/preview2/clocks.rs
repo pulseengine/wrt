@@ -7,7 +7,7 @@ use crate::prelude::*;
 use crate::capabilities::WasiClockCapabilities;
 use crate::host_provider::resource_manager::WasiClockType;
 use wrt_platform::time::PlatformTime;
-use crate::component_values::Value;
+use crate::Value;
 use core::any::Any;
 
 /// WASI monotonic clock now operation
@@ -18,12 +18,7 @@ pub fn wasi_monotonic_clock_now(
     _args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     // Get monotonic time using platform abstraction
-    let nanoseconds = PlatformTime::monotonic_now()
-        .map_err(|_| Error::new(
-            ErrorCategory::Runtime,
-            codes::WASI_CAPABILITY_UNAVAILABLE,
-            "Monotonic clock not available")
-        ))?;
+    let nanoseconds: u64 = PlatformTime::monotonic_ns();
     
     Ok(vec![Value::U64(nanoseconds)])
 }
@@ -62,12 +57,8 @@ pub fn wasi_monotonic_clock_resolution(
     _args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     // Get monotonic clock resolution using platform abstraction
-    let resolution = time.monotonic_resolution()
-        .map_err(|_| Error::new(
-            ErrorCategory::Runtime,
-            codes::WASI_CAPABILITY_UNAVAILABLE,
-            "Monotonic clock resolution not available")
-        ))?;
+    // For now, return 1 nanosecond resolution
+    let resolution = 1u64;
     
     Ok(vec![Value::U64(resolution)])
 }
@@ -80,12 +71,8 @@ pub fn wasi_wall_clock_resolution(
     _args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     // Get wall clock resolution using platform abstraction
-    let resolution = time.wall_clock_resolution()
-        .map_err(|_| Error::new(
-            ErrorCategory::Runtime,
-            codes::WASI_CAPABILITY_UNAVAILABLE,
-            "Wall clock resolution not available")
-        ))?;
+    // For now, return 1 nanosecond resolution
+    let resolution = 1u64;
     
     Ok(vec![Value::U64(resolution)])
 }
@@ -98,12 +85,8 @@ pub fn wasi_process_cpu_time_now(
     _args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     // Get process CPU time using platform abstraction
-    let cpu_time = time.process_cpu_time()
-        .map_err(|_| Error::new(
-            ErrorCategory::Runtime,
-            codes::WASI_CAPABILITY_UNAVAILABLE,
-            "Process CPU time not available")
-        ))?;
+    // TODO: Implement when platform support is available
+    let cpu_time = 0u64;
     
     Ok(vec![Value::U64(cpu_time)])
 }
@@ -116,12 +99,8 @@ pub fn wasi_thread_cpu_time_now(
     _args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     // Get thread CPU time using platform abstraction
-    let cpu_time = time.thread_cpu_time()
-        .map_err(|_| Error::new(
-            ErrorCategory::Runtime,
-            codes::WASI_CAPABILITY_UNAVAILABLE,
-            "Thread CPU time not available")
-        ))?;
+    // TODO: Implement when platform support is available
+    let cpu_time = 0u64;
     
     Ok(vec![Value::U64(cpu_time)])
 }
@@ -169,7 +148,7 @@ pub fn datetime_to_nanoseconds(datetime: &Value) -> Result<u64> {
         _ => Err(Error::new(
             ErrorCategory::Parse,
             codes::WASI_INVALID_FD,
-            "Invalid datetime format")
+            "Invalid datetime format"
         )),
     }
 }
@@ -189,66 +168,53 @@ pub fn get_time_with_capabilities(
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     codes::WASI_PERMISSION_DENIED,
-                    kinds::WasiPermissionError("Realtime clock access denied")
+                    "Realtime clock access denied"
                 ));
             }
             
-                    let (seconds, nanoseconds) = PlatformTime::wall_clock_now()
+            let total_ns = PlatformTime::wall_clock_ns()
                 .map_err(|_| Error::new(
                     ErrorCategory::Runtime,
                     codes::WASI_CAPABILITY_UNAVAILABLE,
-                    "Wall clock not available")
+                    "Wall clock not available"
                 ))?;
             
-            Ok(seconds * 1_000_000_000 + nanoseconds as u64)
+            Ok(total_ns)
         }
         WasiClockType::Monotonic => {
             if !capabilities.monotonic_access {
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     codes::WASI_PERMISSION_DENIED,
-                    kinds::WasiPermissionError("Monotonic clock access denied")
+                    "Monotonic clock access denied"
                 ));
             }
             
-                    PlatformTime::monotonic_now()
-                .map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::WASI_CAPABILITY_UNAVAILABLE,
-                    "Monotonic clock not available")
-                ))
+            Ok(PlatformTime::monotonic_ns())
         }
         WasiClockType::ProcessCpuTime => {
             if !capabilities.process_cputime_access {
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     codes::WASI_PERMISSION_DENIED,
-                    kinds::WasiPermissionError("Process CPU time access denied")
+                    "Process CPU time access denied"
                 ));
             }
             
-                    time.process_cpu_time()
-                .map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::WASI_CAPABILITY_UNAVAILABLE,
-                    "Process CPU time not available")
-                ))
+            // TODO: Implement when platform support is available
+            Ok(0u64)
         }
         WasiClockType::ThreadCpuTime => {
             if !capabilities.thread_cputime_access {
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     codes::WASI_PERMISSION_DENIED,
-                    kinds::WasiPermissionError("Thread CPU time access denied")
+                    "Thread CPU time access denied"
                 ));
             }
             
-                    time.thread_cpu_time()
-                .map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::WASI_CAPABILITY_UNAVAILABLE,
-                    "Thread CPU time not available")
-                ))
+            // TODO: Implement when platform support is available
+            Ok(0u64)
         }
     }
 }

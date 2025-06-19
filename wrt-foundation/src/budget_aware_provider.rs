@@ -31,6 +31,15 @@ pub enum CrateId {
     WasiComponents,
 }
 
+impl CrateId {
+    /// Create a CrateId from a thread ID for capability mapping
+    pub fn from_thread_id(thread_id: u32) -> Self {
+        // Map thread IDs to crate IDs - for now just use Runtime
+        // In production, this would maintain a proper mapping
+        CrateId::Runtime
+    }
+}
+
 impl CrateIdentifier for CrateId {
     fn as_index(&self) -> usize {
         match self {

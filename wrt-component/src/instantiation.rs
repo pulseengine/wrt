@@ -14,9 +14,10 @@ use wrt_foundation::allocator::{WrtHashMap, WrtVec, CrateId};
 use std::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
 
 use wrt_foundation::{
-    bounded::BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
+    bounded::BoundedVec, prelude::*,
     budget_aware_provider::CrateId,
 };
+use crate::prelude::WrtComponentType;
 
 use crate::{
     canonical_abi::canonical::CanonicalABI,
@@ -42,18 +43,18 @@ pub enum ImportValue {
     /// A function import
     Function(FunctionImport),
     /// A value import (global, memory, table)
-    Value(ComponentValue),
+    Value(WrtComponentValue),
     /// An instance import
     Instance(InstanceImport),
     /// A type import
-    Type(ComponentType),
+    Type(WrtComponentType),
 }
 
 /// Function import descriptor
 #[derive(Debug, Clone)]
 pub struct FunctionImport {
     /// Function signature
-    pub signature: ComponentType,
+    pub signature: WrtComponentType,
     /// Function implementation
     #[cfg(feature = "std")]
     pub implementation: Box<dyn Fn(&[Value]) -> WrtResult<Value>>,
@@ -79,18 +80,18 @@ pub enum ExportValue {
     /// A function export
     Function(FunctionExport),
     /// A value export
-    Value(ComponentValue),
+    Value(WrtComponentValue),
     /// An instance export
     Instance(Box<ComponentInstance>),
     /// A type export
-    Type(ComponentType),
+    Type(WrtComponentType),
 }
 
 /// Function export descriptor
 #[derive(Debug, Clone)]
 pub struct FunctionExport {
     /// Function signature
-    pub signature: ComponentType,
+    pub signature: WrtComponentType,
     /// Function index in the instance
     pub index: u32,
 }
@@ -338,21 +339,21 @@ impl Component {
     }
 
     /// Check if function types are compatible
-    fn is_function_compatible(&self, expected: &ComponentType, actual: &ComponentType) -> bool {
+    fn is_function_compatible(&self, expected: &WrtComponentType, actual: &WrtComponentType) -> bool {
         // Check basic type equality for now
         // In a full implementation, this would check subtyping rules
         match (expected, actual) {
-            (ComponentType::Unit, ComponentType::Unit) => true,
+            (WrtComponentType::Unit, WrtComponentType::Unit) => true,
             // For other types, check structural equality
             _ => expected == actual,
         }
     }
 
     /// Check if value types are compatible
-    fn is_value_compatible(&self, expected: &ComponentType, actual: &ComponentValue) -> bool {
+    fn is_value_compatible(&self, expected: &WrtComponentType, actual: &WrtComponentValue) -> bool {
         // Basic type compatibility check
         match (expected, actual) {
-            (ComponentType::Unit, ComponentValue::Unit) => true,
+            (WrtComponentType::Unit, WrtComponentValue::Unit) => true,
             // For other types, this would need more complex checking
             _ => true, // Allow for now
         }
@@ -603,7 +604,7 @@ impl Component {
                 crate::export::ExportKind::Func(func_idx) => {
                     // Create function export
                     let func_export = FunctionExport {
-                        signature: ComponentType::Unit, // TODO: Get actual signature
+                        signature: WrtComponentType::Unit, // TODO: Get actual signature
                         index: *func_idx,
                     };
                     ResolvedExport {
@@ -615,21 +616,21 @@ impl Component {
                     // Create value export
                     ResolvedExport {
                         name: export.name.clone(),
-                        value: ExportValue::Value(ComponentValue::Unit),
+                        value: ExportValue::Value(WrtComponentValue::Unit),
                     }
                 }
                 crate::export::ExportKind::Type(type_idx) => {
                     // Create type export
                     ResolvedExport {
                         name: export.name.clone(),
-                        value: ExportValue::Type(ComponentType::Unit),
+                        value: ExportValue::Type(WrtComponentType::Unit),
                     }
                 }
                 crate::export::ExportKind::Instance(inst_idx) => {
                     // Create instance export - simplified
                     ResolvedExport {
                         name: export.name.clone(),
-                        value: ExportValue::Value(ComponentValue::Unit),
+                        value: ExportValue::Value(WrtComponentValue::Unit),
                     }
                 }
             };
@@ -660,7 +661,7 @@ impl Component {
                 crate::export::ExportKind::Func(func_idx) => {
                     // Create function export
                     let func_export = FunctionExport {
-                        signature: ComponentType::Unit, // TODO: Get actual signature
+                        signature: WrtComponentType::Unit, // TODO: Get actual signature
                         index: *func_idx,
                     };
                     ResolvedExport {
@@ -672,21 +673,21 @@ impl Component {
                     // Create value export
                     ResolvedExport {
                         name: export.name.clone(),
-                        value: ExportValue::Value(ComponentValue::Unit),
+                        value: ExportValue::Value(WrtComponentValue::Unit),
                     }
                 }
                 crate::export::ExportKind::Type(type_idx) => {
                     // Create type export
                     ResolvedExport {
                         name: export.name.clone(),
-                        value: ExportValue::Type(ComponentType::Unit),
+                        value: ExportValue::Type(WrtComponentType::Unit),
                     }
                 }
                 crate::export::ExportKind::Instance(inst_idx) => {
                     // Create instance export - simplified
                     ResolvedExport {
                         name: export.name.clone(),
-                        value: ExportValue::Value(ComponentValue::Unit),
+                        value: ExportValue::Value(WrtComponentValue::Unit),
                     }
                 }
             };
@@ -708,7 +709,7 @@ impl Component {
             let resolved = match &export.kind {
                 crate::export::ExportKind::Func(func_idx) => {
                     let func_export =
-                        FunctionExport { signature: ComponentType::Unit, index: *func_idx };
+                        FunctionExport { signature: WrtComponentType::Unit, index: *func_idx };
                     ResolvedExport {
                         name: export.name.clone(),
                         value: ExportValue::Function(func_export),
@@ -716,15 +717,15 @@ impl Component {
                 }
                 crate::export::ExportKind::Value(_) => ResolvedExport {
                     name: export.name.clone(),
-                    value: ExportValue::Value(ComponentValue::Unit),
+                    value: ExportValue::Value(WrtComponentValue::Unit),
                 },
                 crate::export::ExportKind::Type(_) => ResolvedExport {
                     name: export.name.clone(),
-                    value: ExportValue::Type(ComponentType::Unit),
+                    value: ExportValue::Type(WrtComponentType::Unit),
                 },
                 crate::export::ExportKind::Instance(_) => ResolvedExport {
                     name: export.name.clone(),
-                    value: ExportValue::Value(ComponentValue::Unit),
+                    value: ExportValue::Value(WrtComponentValue::Unit),
                 },
             };
             exports.push(resolved).map_err(|_| {
@@ -744,9 +745,9 @@ impl Component {
 #[derive(Debug, Clone)]
 pub enum ResolvedImport {
     Function(u32), // Function index in execution engine
-    Value(ComponentValue),
+    Value(WrtComponentValue),
     Instance(InstanceImport),
-    Type(ComponentType),
+    Type(WrtComponentType),
 }
 
 /// Resolved export with actual values
@@ -776,7 +777,7 @@ pub struct ModuleInstance {
 /// Host function wrapper for the execution engine
 #[cfg(feature = "std")]
 struct HostFunctionWrapper {
-    signature: ComponentType,
+    signature: WrtComponentType,
     implementation: Box<dyn Fn(&[Value]) -> WrtResult<Value>>,
 }
 
@@ -786,7 +787,7 @@ impl crate::execution_engine::HostFunction for HostFunctionWrapper {
         (self.implementation)(args)
     }
 
-    fn signature(&self) -> &ComponentType {
+    fn signature(&self) -> &WrtComponentType {
         &self.signature
     }
 }
@@ -802,7 +803,7 @@ mod tests {
         #[cfg(feature = "std")]
         {
             let func = FunctionImport {
-                signature: ComponentType::Unit,
+                signature: WrtComponentType::Unit,
                 implementation: Box::new(|_args| Ok(Value::U32(42))),
             };
             imports.add("test_func".to_string(), ImportValue::Function(func)).unwrap();
@@ -813,7 +814,7 @@ mod tests {
         #[cfg(not(any(feature = "std", )))]
         {
             let func = FunctionImport {
-                signature: ComponentType::Unit,
+                signature: WrtComponentType::Unit,
                 implementation: |_args| Ok(Value::U32(42)),
             };
             let name = BoundedString::from_str("test_func").unwrap();
@@ -837,7 +838,7 @@ mod tests {
     fn test_value_imports() {
         let mut imports = ImportValues::new();
         
-        let value_import = ImportValue::Value(ComponentValue::U32(100));
+        let value_import = ImportValue::Value(WrtComponentValue::U32(100));
         
         #[cfg(feature = "std")]
         {
@@ -848,7 +849,7 @@ mod tests {
             assert!(retrieved.is_some());
             
             match retrieved.unwrap() {
-                ImportValue::Value(ComponentValue::U32(val)) => {
+                ImportValue::Value(WrtComponentValue::U32(val)) => {
                     assert_eq!(*val, 100);
                 }
                 _ => panic!("Expected value import"),
@@ -865,7 +866,7 @@ mod tests {
             assert!(retrieved.is_some());
             
             match retrieved.unwrap() {
-                ImportValue::Value(ComponentValue::U32(val)) => {
+                ImportValue::Value(WrtComponentValue::U32(val)) => {
                     assert_eq!(*val, 100);
                 }
                 _ => panic!("Expected value import"),
@@ -908,8 +909,8 @@ mod tests {
                     Ok(Value::Bool(true))
                 }
                 
-                fn signature(&self) -> &ComponentType {
-                    &ComponentType::Unit
+                fn signature(&self) -> &WrtComponentType {
+                    &WrtComponentType::Unit
                 }
             }
             
@@ -924,7 +925,7 @@ mod tests {
         let mut context = InstantiationContext::new();
         
         // Create a resource
-        let resource_data = ComponentValue::String("test_resource".into());
+        let resource_data = WrtComponentValue::String("test_resource".into());
         let handle = context.resource_manager.create_resource(1, resource_data);
         assert!(handle.is_ok());
         
@@ -935,7 +936,7 @@ mod tests {
         assert!(borrowed.is_ok());
         
         match borrowed.unwrap() {
-            ComponentValue::String(s) => {
+            WrtComponentValue::String(s) => {
                 assert_eq!(s.as_str(), "test_resource");
             }
             _ => panic!("Expected string resource"),

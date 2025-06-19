@@ -3021,6 +3021,7 @@ dependencies = [
  "fs_extra",
  "md5",
  "pathdiff",
+ "regex",
  "serde",
  "serde_json",
  "tempfile",

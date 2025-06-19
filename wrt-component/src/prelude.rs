@@ -242,3 +242,19 @@ pub use crate::{
 pub use crate::{
     // no_alloc,  // Comment out for now
 };
+
+// Global ComponentValue type alias with proper memory provider
+use crate::bounded_component_infra::ComponentProvider;
+use wrt_foundation::component_value::ComponentValue;
+
+/// Unified ComponentValue type with proper memory provider for the entire wrt-component crate
+pub type WrtComponentValue = ComponentValue<ComponentProvider>;
+
+/// Unified ValType with proper memory provider
+pub type WrtValType = wrt_foundation::component_value::ValType<ComponentProvider>;
+
+/// Unified ComponentType with proper memory provider for the entire wrt-component crate
+pub type WrtComponentType = wrt_foundation::component::ComponentType<ComponentProvider>;
+
+/// Unified ExternType with proper memory provider for the entire wrt-component crate
+pub type WrtExternType = wrt_foundation::ExternType<ComponentProvider>;

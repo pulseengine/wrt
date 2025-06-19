@@ -79,6 +79,14 @@ Essential commands include:
 - ``cargo-wrt no-std``: Verify no_std compatibility
 - ``cargo-wrt simulate-ci``: Simulate CI workflow locally
 
+**Tool Management**:
+
+- ``cargo-wrt setup --check``: Check all tool dependencies
+- ``cargo-wrt setup --install``: Install optional development tools
+- ``cargo-wrt setup --all``: Complete environment setup
+- ``cargo-wrt tool-versions check``: Verify tool versions against requirements
+- ``cargo-wrt tool-versions generate``: Generate tool version configuration
+
 Architecture
 ------------
 
@@ -130,6 +138,9 @@ The build system uses multiple configuration sources:
 
 **Environment Variables**:
   CI detection, custom paths, and feature flags
+
+**tool-versions.toml**:
+  Tool version requirements and installation commands for reproducible development environments
 
 Common Workflows
 ----------------

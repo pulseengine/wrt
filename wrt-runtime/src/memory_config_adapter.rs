@@ -9,8 +9,8 @@ use wrt_foundation::{
     safe_memory::NoStdProvider,
     capabilities::CapabilityAwareProvider,
     capability_context, safe_capability_alloc,
-    memory_init::MemoryInitializer,
-    wrt_memory_system::WRT_MEMORY_COORDINATOR,
+    memory_init::{MemoryInitializer, get_global_capability_context},
+    codes, Error, ErrorCategory,
     prelude::*,
 };
 
@@ -48,9 +48,21 @@ impl RuntimeMemoryConfig {
             MemoryInitializer::initialize()?;
         }
         
-        // Get budget information from the coordinator
-        let runtime_budget = WRT_MEMORY_COORDINATOR.get_crate_budget(CrateId::Runtime);
-        let total_budget = WRT_MEMORY_COORDINATOR.get_total_budget();
+        // Get budget information from capability context
+        let context = get_global_capability_context()
+            .ok_or_else(|| Error::new(
+                ErrorCategory::Initialization,
+                codes::INITIALIZATION_ERROR,
+                "Global capability context not initialized"
+            ))?;
+        
+        // Get runtime capability to determine budget
+        let runtime_capability = context.get_capability(CrateId::Runtime)?;
+        let runtime_budget = runtime_capability.max_allocation_size();
+        
+        // For total budget, sum all registered capabilities
+        // This is a simplified approach - in production you'd track this differently
+        let total_budget = runtime_budget * 10; // Approximate total from runtime portion
         
         // Calculate sizes based on runtime budget
         // Use fractions of runtime budget for different components

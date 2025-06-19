@@ -77,7 +77,7 @@ pub trait AnyMemoryCapability: Send + Sync + fmt::Debug {
 /// Blanket implementation for all memory capabilities
 impl<T> AnyMemoryCapability for T
 where
-    T: MemoryCapability + 'static,
+    T: MemoryCapability + Clone + 'static,
 {
     fn verify_access(&self, operation: &MemoryOperation) -> Result<()> {
         MemoryCapability::verify_access(self, operation)
@@ -98,9 +98,7 @@ where
     }
 
     fn clone_capability(&self) -> Box<dyn AnyMemoryCapability> {
-        // This would need proper implementation for each capability type
-        // For now, create a dummy capability
-        unimplemented!("clone_capability needs specific implementation per type")
+        Box::new(self.clone())
     }
 }
 

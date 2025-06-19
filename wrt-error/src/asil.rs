@@ -87,8 +87,16 @@ pub struct SafetyMonitor {
 }
 
 #[cfg(any(feature = "asil-c", feature = "asil-d"))]
+impl Default for SafetyMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(any(feature = "asil-c", feature = "asil-d"))]
 impl SafetyMonitor {
     /// Create a new safety monitor
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             error_count: core::sync::atomic::AtomicU32::new(0),
@@ -151,7 +159,7 @@ pub struct AsilErrorContext {
 impl AsilErrorContext {
     /// Create a new ASIL error context
     #[must_use]
-    pub fn new(error: Error) -> Self {
+    pub const fn new(error: Error) -> Self {
         Self {
             error,
             asil_level: AsilLevel::current(),
@@ -162,21 +170,21 @@ impl AsilErrorContext {
 
     /// Add timestamp to context
     #[must_use]
-    pub fn with_timestamp(mut self, timestamp: u64) -> Self {
+    pub const fn with_timestamp(mut self, timestamp: u64) -> Self {
         self.timestamp = Some(timestamp);
         self
     }
 
     /// Add module ID to context
     #[must_use]
-    pub fn with_module_id(mut self, module_id: u32) -> Self {
+    pub const fn with_module_id(mut self, module_id: u32) -> Self {
         self.module_id = Some(module_id);
         self
     }
 
     /// Check if this error requires immediate action
     #[must_use]
-    pub fn requires_immediate_action(&self) -> bool {
+    pub const fn requires_immediate_action(&self) -> bool {
         matches!(
             self.error.category,
             ErrorCategory::Safety | ErrorCategory::Memory | ErrorCategory::RuntimeTrap
@@ -187,7 +195,7 @@ impl AsilErrorContext {
 /// Validate error consistency for ASIL-D
 #[cfg(feature = "asil-d")]
 #[must_use]
-pub fn validate_error_consistency(error: &Error) -> bool {
+pub const fn validate_error_consistency(error: &Error) -> bool {
     // Check error code is in valid range for category
     let valid_code = match error.category {
         ErrorCategory::Core => error.code >= 1000 && error.code < 2000,
@@ -196,9 +204,8 @@ pub fn validate_error_consistency(error: &Error) -> bool {
         ErrorCategory::Memory => error.code >= 4000 && error.code < 5000,
         ErrorCategory::Validation => error.code >= 5000 && error.code < 6000,
         ErrorCategory::Type => error.code >= 6000 && error.code < 7000,
-        ErrorCategory::Runtime => error.code >= 7000 && error.code < 8000,
+        ErrorCategory::Runtime | ErrorCategory::Safety => error.code >= 7000 && error.code < 8000,
         ErrorCategory::System => error.code >= 8000 && error.code < 9000,
-        ErrorCategory::Safety => error.code >= 7000 && error.code < 8000,
         _ => false,
     };
 
@@ -207,8 +214,15 @@ pub fn validate_error_consistency(error: &Error) -> bool {
 }
 
 /// Create an error with ASIL level validation
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Current ASIL level doesn't meet the required level
+/// - Error consistency validation fails (ASIL-D only)
 #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
-#[must_use]
+#[must_use = "ASIL errors must be handled to maintain safety compliance"]
+#[allow(clippy::missing_const_for_fn)] // Contains control flow not supported in const fn
 pub fn create_asil_error(
     category: ErrorCategory,
     code: u16,

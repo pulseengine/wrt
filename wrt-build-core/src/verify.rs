@@ -2,9 +2,9 @@
 
 use colored::Colorize;
 use std::path::Path;
-use std::process::Command;
 
 use crate::build::BuildSystem;
+use crate::text_search::{TextSearcher, count_production_matches};
 use crate::config::AsilLevel;
 use crate::error::{BuildError, BuildResult};
 
@@ -216,22 +216,9 @@ impl BuildSystem {
 
     /// Check for unsafe code usage
     fn check_unsafe_code_usage(&self) -> BuildResult<VerificationCheck> {
-        // Simplified check - would use more sophisticated analysis in real implementation
-        let mut cmd = Command::new("grep");
-        cmd.arg("-r")
-            .arg("unsafe")
-            .arg("--include=*.rs")
-            .arg(".")
-            .current_dir(&self.workspace.root);
-
-        let output = cmd
-            .output()
-            .map_err(|e| BuildError::Tool(format!("Failed to check unsafe code: {}", e)))?;
-
-        let unsafe_count = String::from_utf8_lossy(&output.stdout)
-            .lines()
-            .filter(|line| !line.contains("//") && line.contains("unsafe"))
-            .count();
+        let searcher = TextSearcher::new();
+        let matches = searcher.search_unsafe_code(&self.workspace.root)?;
+        let unsafe_count = count_production_matches(&matches);
 
         Ok(VerificationCheck {
             name: "Unsafe Code Usage".to_string(),
@@ -247,21 +234,9 @@ impl BuildSystem {
 
     /// Check for panic usage
     fn check_panic_usage(&self) -> BuildResult<VerificationCheck> {
-        let mut cmd = Command::new("grep");
-        cmd.arg("-r")
-            .arg("panic!")
-            .arg("--include=*.rs")
-            .arg(".")
-            .current_dir(&self.workspace.root);
-
-        let output = cmd
-            .output()
-            .map_err(|e| BuildError::Tool(format!("Failed to check panic usage: {}", e)))?;
-
-        let panic_count = String::from_utf8_lossy(&output.stdout)
-            .lines()
-            .filter(|line| !line.contains("//") && line.contains("panic!"))
-            .count();
+        let searcher = TextSearcher::new();
+        let matches = searcher.search_panic_usage(&self.workspace.root)?;
+        let panic_count = count_production_matches(&matches);
 
         Ok(VerificationCheck {
             name: "Panic Usage".to_string(),
@@ -277,23 +252,9 @@ impl BuildSystem {
 
     /// Check for unwrap usage
     fn check_unwrap_usage(&self) -> BuildResult<VerificationCheck> {
-        let mut cmd = Command::new("grep");
-        cmd.arg("-r")
-            .arg("\\.unwrap()")
-            .arg("--include=*.rs")
-            .arg(".")
-            .current_dir(&self.workspace.root);
-
-        let output = cmd
-            .output()
-            .map_err(|e| BuildError::Tool(format!("Failed to check unwrap usage: {}", e)))?;
-
-        let unwrap_count = String::from_utf8_lossy(&output.stdout)
-            .lines()
-            .filter(|line| {
-                !line.contains("//") && !line.contains("#[cfg(test)]") && line.contains(".unwrap()")
-            })
-            .count();
+        let searcher = TextSearcher::new();
+        let matches = searcher.search_unwrap_usage(&self.workspace.root)?;
+        let unwrap_count = count_production_matches(&matches);
 
         Ok(VerificationCheck {
             name: "Unwrap Usage".to_string(),

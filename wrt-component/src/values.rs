@@ -5,7 +5,7 @@
 //! representation.
 
 // Import the various types we need explicitly to avoid confusion
-use wrt_format::component::ValType as FormatValType;
+use wrt_format::component::FormatValType;
 use wrt_foundation::{
     component_value::{ComponentValue, ValType as TypesValType},
     safe_memory::NoStdProvider,
@@ -13,11 +13,14 @@ use wrt_foundation::{
     values::Value,
 };
 use crate::bounded_component_infra::ComponentProvider;
+use crate::prelude::*;
 
 // Define type aliases with the component memory provider
 type ComponentMemoryProvider = ComponentProvider; // Use the shared provider
 type ComponentValType = TypesValType<ComponentMemoryProvider>;
 type ComponentComponentValue = ComponentValue<ComponentMemoryProvider>;
+type WrtFormatValType = FormatValType<ComponentProvider>;
+type WrtTypesValType = TypesValType<ComponentProvider>;
 
 use crate::{
     memory_layout::{calculate_layout, MemoryLayout},
@@ -27,28 +30,28 @@ use crate::{
 type CanonicalValType = ComponentValType;
 
 /// Convert from CanonicalValType to wrt_format::component::ValType
-pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> FormatValType {
+pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> WrtFormatValType {
     match common_type {
-        CanonicalValType::Bool => FormatValType::Bool,
-        CanonicalValType::S8 => FormatValType::S8,
-        CanonicalValType::U8 => FormatValType::U8,
-        CanonicalValType::S16 => FormatValType::S16,
-        CanonicalValType::U16 => FormatValType::U16,
-        CanonicalValType::S32 => FormatValType::S32,
-        CanonicalValType::U32 => FormatValType::U32,
-        CanonicalValType::S64 => FormatValType::S64,
-        CanonicalValType::U64 => FormatValType::U64,
-        CanonicalValType::F32 => FormatValType::F32,
-        CanonicalValType::F64 => FormatValType::F64,
-        CanonicalValType::Char => FormatValType::Char,
-        CanonicalValType::String => FormatValType::String,
-        CanonicalValType::Ref(idx) => FormatValType::Ref(*idx),
+        CanonicalValType::Bool => WrtFormatValType::Bool,
+        CanonicalValType::S8 => WrtFormatValType::S8,
+        CanonicalValType::U8 => WrtFormatValType::U8,
+        CanonicalValType::S16 => WrtFormatValType::S16,
+        CanonicalValType::U16 => WrtFormatValType::U16,
+        CanonicalValType::S32 => WrtFormatValType::S32,
+        CanonicalValType::U32 => WrtFormatValType::U32,
+        CanonicalValType::S64 => WrtFormatValType::S64,
+        CanonicalValType::U64 => WrtFormatValType::U64,
+        CanonicalValType::F32 => WrtFormatValType::F32,
+        CanonicalValType::F64 => WrtFormatValType::F64,
+        CanonicalValType::Char => WrtFormatValType::Char,
+        CanonicalValType::String => WrtFormatValType::String,
+        CanonicalValType::Ref(idx) => WrtFormatValType::Ref(*idx),
         CanonicalValType::Record(fields) => {
             let converted_fields = fields
                 .iter()
                 .map(|(name, val_type)| (name.clone(), convert_common_to_format_valtype(val_type)))
                 .collect();
-            FormatValType::Record(converted_fields)
+            WrtFormatValType::Record(converted_fields)
         }
         CanonicalValType::Variant(cases) => {
             let converted_cases = cases
@@ -62,67 +65,67 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> Forma
                     )
                 })
                 .collect();
-            FormatValType::Variant(converted_cases)
+            WrtFormatValType::Variant(converted_cases)
         }
         CanonicalValType::List(elem_type) => {
-            FormatValType::List(Box::new(convert_common_to_format_valtype(elem_type)))
+            WrtFormatValType::List(Box::new(convert_common_to_format_valtype(elem_type)))
         }
         CanonicalValType::Tuple(types) => {
             let converted_types =
                 types.iter().map(|val_type| convert_common_to_format_valtype(val_type)).collect();
-            FormatValType::Tuple(converted_types)
+            WrtFormatValType::Tuple(converted_types)
         }
-        CanonicalValType::Flags(names) => FormatValType::Flags(names.clone()),
-        CanonicalValType::Enum(variants) => FormatValType::Enum(variants.clone()),
+        CanonicalValType::Flags(names) => WrtFormatValType::Flags(names.clone()),
+        CanonicalValType::Enum(variants) => WrtFormatValType::Enum(variants.clone()),
         CanonicalValType::Option(inner_type) => {
-            FormatValType::Option(Box::new(convert_common_to_format_valtype(inner_type)))
+            WrtFormatValType::Option(Box::new(convert_common_to_format_valtype(inner_type)))
         }
         CanonicalValType::Result(result_type) => {
-            FormatValType::Result(Box::new(convert_common_to_format_valtype(result_type)))
+            WrtFormatValType::Result(Box::new(convert_common_to_format_valtype(result_type)))
         }
-        CanonicalValType::Own(idx) => FormatValType::Own(*idx),
-        CanonicalValType::Borrow(idx) => FormatValType::Borrow(*idx),
+        CanonicalValType::Own(idx) => WrtFormatValType::Own(*idx),
+        CanonicalValType::Borrow(idx) => WrtFormatValType::Borrow(*idx),
         CanonicalValType::FixedList(elem_type, size) => {
-            FormatValType::FixedList(Box::new(convert_common_to_format_valtype(elem_type)), *size)
+            WrtFormatValType::FixedList(Box::new(convert_common_to_format_valtype(elem_type)), *size)
         }
         CanonicalValType::Void => {
             // Void doesn't have a direct mapping, convert to a unit tuple
-            FormatValType::Tuple(Vec::new())
+            WrtFormatValType::Tuple(Vec::new())
         }
-        CanonicalValType::ErrorContext => FormatValType::ErrorContext,
+        CanonicalValType::ErrorContext => WrtFormatValType::ErrorContext,
         CanonicalValType::Result { ok: _, err: _ } => {
-            // For FormatValType, we create a Result with a generic type placeholder
-            // Since FormatValType::Result requires a concrete type, we'll use a default
-            FormatValType::Result(Box::new(FormatValType::Unit))
+            // For WrtFormatValType, we create a Result with a generic type placeholder
+            // Since WrtFormatValType::Result requires a concrete type, we'll use a default
+            WrtFormatValType::Result(Box::new(WrtFormatValType::Unit))
         }
     }
 }
 
 /// Convert from wrt_format::component::ValType to CanonicalValType
-pub fn convert_format_to_common_valtype(format_type: &FormatValType) -> CanonicalValType {
+pub fn convert_format_to_common_valtype(format_type: &WrtFormatValType) -> CanonicalValType {
     match format_type {
-        FormatValType::Bool => CanonicalValType::Bool,
-        FormatValType::S8 => CanonicalValType::S8,
-        FormatValType::U8 => CanonicalValType::U8,
-        FormatValType::S16 => CanonicalValType::S16,
-        FormatValType::U16 => CanonicalValType::U16,
-        FormatValType::S32 => CanonicalValType::S32,
-        FormatValType::U32 => CanonicalValType::U32,
-        FormatValType::S64 => CanonicalValType::S64,
-        FormatValType::U64 => CanonicalValType::U64,
-        FormatValType::F32 => CanonicalValType::F32,
-        FormatValType::F64 => CanonicalValType::F64,
-        FormatValType::Char => CanonicalValType::Char,
-        FormatValType::String => CanonicalValType::String,
-        FormatValType::Ref(idx) => CanonicalValType::Ref(*idx),
-        FormatValType::Record(fields) => {
+        WrtFormatValType::Bool => CanonicalValType::Bool,
+        WrtFormatValType::S8 => CanonicalValType::S8,
+        WrtFormatValType::U8 => CanonicalValType::U8,
+        WrtFormatValType::S16 => CanonicalValType::S16,
+        WrtFormatValType::U16 => CanonicalValType::U16,
+        WrtFormatValType::S32 => CanonicalValType::S32,
+        WrtFormatValType::U32 => CanonicalValType::U32,
+        WrtFormatValType::S64 => CanonicalValType::S64,
+        WrtFormatValType::U64 => CanonicalValType::U64,
+        WrtFormatValType::F32 => CanonicalValType::F32,
+        WrtFormatValType::F64 => CanonicalValType::F64,
+        WrtFormatValType::Char => CanonicalValType::Char,
+        WrtFormatValType::String => CanonicalValType::String,
+        WrtFormatValType::Ref(idx) => CanonicalValType::Ref(*idx),
+        WrtFormatValType::Record(fields) => {
             let converted_fields = fields
                 .iter()
                 .map(|(name, val_type)| (name.clone(), convert_format_to_common_valtype(val_type)))
                 .collect();
             CanonicalValType::Record(converted_fields)
         }
-        FormatValType::Variant(cases) => {
+        WrtFormatValType::Variant(cases) => {
             let converted_cases = cases
                 .iter()
                 .map(|(name, opt_type)| {
@@ -136,34 +139,34 @@ pub fn convert_format_to_common_valtype(format_type: &FormatValType) -> Canonica
                 .collect();
             CanonicalValType::Variant(converted_cases)
         }
-        FormatValType::List(elem_type) => {
+        WrtFormatValType::List(elem_type) => {
             CanonicalValType::List(Box::new(convert_format_to_common_valtype(elem_type)))
         }
-        FormatValType::Tuple(types) => {
+        WrtFormatValType::Tuple(types) => {
             let converted_types =
                 types.iter().map(|val_type| convert_format_to_common_valtype(val_type)).collect();
             CanonicalValType::Tuple(converted_types)
         }
-        FormatValType::Flags(names) => CanonicalValType::Flags(names.clone()),
-        FormatValType::Enum(variants) => CanonicalValType::Enum(variants.clone()),
-        FormatValType::Option(inner_type) => {
+        WrtFormatValType::Flags(names) => CanonicalValType::Flags(names.clone()),
+        WrtFormatValType::Enum(variants) => CanonicalValType::Enum(variants.clone()),
+        WrtFormatValType::Option(inner_type) => {
             CanonicalValType::Option(Box::new(convert_format_to_common_valtype(inner_type)))
         }
-        FormatValType::Result(result_type) => {
+        WrtFormatValType::Result(result_type) => {
             // Convert to CanonicalValType::Result with both ok and err as None for now
-            // This is a simplified mapping since FormatValType::Result doesn't distinguish ok/err
+            // This is a simplified mapping since WrtFormatValType::Result doesn't distinguish ok/err
             CanonicalValType::Result { 
                 ok: Some(Box::new(CanonicalValType::Ref(0))), // Placeholder reference
                 err: None 
             }
         }
-        FormatValType::Own(idx) => CanonicalValType::Own(*idx),
-        FormatValType::Borrow(idx) => CanonicalValType::Borrow(*idx),
-        FormatValType::FixedList(elem_type, size) => CanonicalValType::FixedList(
+        WrtFormatValType::Own(idx) => CanonicalValType::Own(*idx),
+        WrtFormatValType::Borrow(idx) => CanonicalValType::Borrow(*idx),
+        WrtFormatValType::FixedList(elem_type, size) => CanonicalValType::FixedList(
             Box::new(convert_format_to_common_valtype(elem_type)),
             *size,
         ),
-        FormatValType::ErrorContext => CanonicalValType::ErrorContext,
+        WrtFormatValType::ErrorContext => CanonicalValType::ErrorContext,
         // Map any unhandled types to Void
         _ => CanonicalValType::Void,
     }
@@ -578,11 +581,11 @@ pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvid
 // Simplified deserialization function
 pub fn deserialize_component_value(
     data: &[u8],
-    format_type: &FormatValType,
+    format_type: &WrtFormatValType,
 ) -> Result<ComponentComponentValue, Error> {
     let mut offset = 0;
     match format_type {
-        FormatValType::Bool => {
+        WrtFormatValType::Bool => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -593,7 +596,7 @@ pub fn deserialize_component_value(
             let value = data[offset] != 0;
             Ok(ComponentComponentValue::Bool(value))
         }
-        FormatValType::S8 => {
+        WrtFormatValType::S8 => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -604,7 +607,7 @@ pub fn deserialize_component_value(
             let value = data[offset] as i8;
             Ok(ComponentComponentValue::S8(value))
         }
-        FormatValType::U8 => {
+        WrtFormatValType::U8 => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -615,7 +618,7 @@ pub fn deserialize_component_value(
             let value = data[offset];
             Ok(ComponentComponentValue::U8(value))
         }
-        FormatValType::S16 => {
+        WrtFormatValType::S16 => {
             if offset + 2 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -626,7 +629,7 @@ pub fn deserialize_component_value(
             let value = i16::from_le_bytes([data[offset], data[offset + 1]]);
             Ok(ComponentComponentValue::S16(value))
         }
-        FormatValType::U16 => {
+        WrtFormatValType::U16 => {
             if offset + 2 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -637,7 +640,7 @@ pub fn deserialize_component_value(
             let value = u16::from_le_bytes([data[offset], data[offset + 1]]);
             Ok(ComponentComponentValue::U16(value))
         }
-        FormatValType::S32 => {
+        WrtFormatValType::S32 => {
             if offset + 4 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -653,7 +656,7 @@ pub fn deserialize_component_value(
             ]);
             Ok(ComponentComponentValue::S32(value))
         }
-        FormatValType::U32 => {
+        WrtFormatValType::U32 => {
             if offset + 4 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -669,7 +672,7 @@ pub fn deserialize_component_value(
             ]);
             Ok(ComponentComponentValue::U32(value))
         }
-        FormatValType::S64 => {
+        WrtFormatValType::S64 => {
             if offset + 8 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -689,7 +692,7 @@ pub fn deserialize_component_value(
             ]);
             Ok(ComponentComponentValue::S64(value))
         }
-        FormatValType::U64 => {
+        WrtFormatValType::U64 => {
             if offset + 8 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -709,7 +712,7 @@ pub fn deserialize_component_value(
             ]);
             Ok(ComponentComponentValue::U64(value))
         }
-        FormatValType::F32 => {
+        WrtFormatValType::F32 => {
             if offset + 4 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -725,7 +728,7 @@ pub fn deserialize_component_value(
             ]));
             Ok(ComponentComponentValue::F32(value))
         }
-        FormatValType::F64 => {
+        WrtFormatValType::F64 => {
             if offset + 8 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -745,7 +748,7 @@ pub fn deserialize_component_value(
             ]));
             Ok(ComponentComponentValue::F64(value))
         }
-        FormatValType::Char => {
+        WrtFormatValType::Char => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -756,7 +759,7 @@ pub fn deserialize_component_value(
             let value = data[offset] as char;
             Ok(ComponentComponentValue::Char(value))
         }
-        FormatValType::String => {
+        WrtFormatValType::String => {
             if offset + 4 > data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -788,7 +791,7 @@ pub fn deserialize_component_value(
                 })?;
             Ok(ComponentComponentValue::String(value))
         }
-        FormatValType::List(elem_type) => {
+        WrtFormatValType::List(elem_type) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -818,7 +821,7 @@ pub fn deserialize_component_value(
             }
             Ok(ComponentComponentValue::List(values))
         }
-        FormatValType::Record(fields) => {
+        WrtFormatValType::Record(fields) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -834,7 +837,7 @@ pub fn deserialize_component_value(
             }
             Ok(ComponentComponentValue::Record(values))
         }
-        FormatValType::Tuple(types) => {
+        WrtFormatValType::Tuple(types) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -850,7 +853,7 @@ pub fn deserialize_component_value(
             }
             Ok(ComponentComponentValue::Tuple(values))
         }
-        FormatValType::Variant(cases) => {
+        WrtFormatValType::Variant(cases) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -915,7 +918,7 @@ pub fn deserialize_component_value(
                 }
             }
         }
-        FormatValType::Enum(variants) => {
+        WrtFormatValType::Enum(variants) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -941,7 +944,7 @@ pub fn deserialize_component_value(
             // No need to update offset anymore as we return immediately
             Ok(ComponentComponentValue::Enum(variants[value as usize].clone()))
         }
-        FormatValType::Option(inner_type) => {
+        WrtFormatValType::Option(inner_type) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -958,7 +961,7 @@ pub fn deserialize_component_value(
                 Ok(ComponentComponentValue::Option(None))
             }
         }
-        FormatValType::Result(result_type) => {
+        WrtFormatValType::Result(result_type) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -976,7 +979,7 @@ pub fn deserialize_component_value(
                 Ok(ComponentComponentValue::Result(Err(Box::new(ComponentComponentValue::Void))))
             }
         }
-        FormatValType::Own(idx) => {
+        WrtFormatValType::Own(idx) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -988,7 +991,7 @@ pub fn deserialize_component_value(
             // No need to update offset anymore as we return immediately
             Ok(ComponentComponentValue::Handle(value))
         }
-        FormatValType::Borrow(idx) => {
+        WrtFormatValType::Borrow(idx) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -1000,7 +1003,7 @@ pub fn deserialize_component_value(
             // No need to update offset anymore as we return immediately
             Ok(ComponentComponentValue::Borrow(value))
         }
-        FormatValType::Flags(names) => {
+        WrtFormatValType::Flags(names) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -1023,7 +1026,7 @@ pub fn deserialize_component_value(
 
             Ok(ComponentComponentValue::Flags(flags))
         }
-        FormatValType::FixedList(elem_type, size) => {
+        WrtFormatValType::FixedList(elem_type, size) => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -1053,7 +1056,7 @@ pub fn deserialize_component_value(
             }
             Ok(ComponentComponentValue::FixedList(values, *size))
         }
-        FormatValType::ErrorContext => {
+        WrtFormatValType::ErrorContext => {
             if offset >= data.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -1078,55 +1081,55 @@ pub fn deserialize_component_value(
 /// Deserialize a component value using the ReadStream interface
 pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvider>(
     reader: &mut ReadStream<'a>,
-    format_type: &FormatValType,
+    format_type: &WrtFormatValType,
     provider: &P,
 ) -> Result<ComponentComponentValue, Error> {
     match format_type {
-        FormatValType::Bool => {
+        WrtFormatValType::Bool => {
             let value = reader.read_bool()?;
             Ok(ComponentComponentValue::Bool(value))
         }
-        FormatValType::S8 => {
+        WrtFormatValType::S8 => {
             let value = reader.read_i8()?;
             Ok(ComponentComponentValue::S8(value))
         }
-        FormatValType::U8 => {
+        WrtFormatValType::U8 => {
             let value = reader.read_u8()?;
             Ok(ComponentComponentValue::U8(value))
         }
-        FormatValType::S16 => {
+        WrtFormatValType::S16 => {
             let value = reader.read_i16_le()?;
             Ok(ComponentComponentValue::S16(value))
         }
-        FormatValType::U16 => {
+        WrtFormatValType::U16 => {
             let value = reader.read_u16_le()?;
             Ok(ComponentComponentValue::U16(value))
         }
-        FormatValType::S32 => {
+        WrtFormatValType::S32 => {
             let value = reader.read_i32_le()?;
             Ok(ComponentComponentValue::S32(value))
         }
-        FormatValType::U32 => {
+        WrtFormatValType::U32 => {
             let value = reader.read_u32_le()?;
             Ok(ComponentComponentValue::U32(value))
         }
-        FormatValType::S64 => {
+        WrtFormatValType::S64 => {
             let value = reader.read_i64_le()?;
             Ok(ComponentComponentValue::S64(value))
         }
-        FormatValType::U64 => {
+        WrtFormatValType::U64 => {
             let value = reader.read_u64_le()?;
             Ok(ComponentComponentValue::U64(value))
         }
-        FormatValType::F32 => {
+        WrtFormatValType::F32 => {
             let value = reader.read_f32_le()?;
             Ok(ComponentComponentValue::F32(value))
         }
-        FormatValType::F64 => {
+        WrtFormatValType::F64 => {
             let value = reader.read_f64_le()?;
             Ok(ComponentComponentValue::F64(value))
         }
-        FormatValType::Char => {
+        WrtFormatValType::Char => {
             let value_u32 = reader.read_u32_le()?;
             let value = char::from_u32(value_u32).ok_or_else(|| {
                 Error::new(
@@ -1137,7 +1140,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
             })?;
             Ok(ComponentComponentValue::Char(value))
         }
-        FormatValType::String => {
+        WrtFormatValType::String => {
             // Read the string length
             let len = reader.read_u32_le()? as usize;
 
@@ -1156,7 +1159,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             Ok(ComponentComponentValue::String(value))
         }
-        FormatValType::List(elem_type) => {
+        WrtFormatValType::List(elem_type) => {
             // Read the number of items
             let count = reader.read_u32_le()? as usize;
 
@@ -1169,7 +1172,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             Ok(ComponentComponentValue::List(items))
         }
-        FormatValType::Record(fields) => {
+        WrtFormatValType::Record(fields) => {
             // Read the number of fields
             let count = reader.read_u32_le()? as usize;
 
@@ -1205,7 +1208,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             Ok(ComponentComponentValue::Record(values))
         }
-        FormatValType::Tuple(types) => {
+        WrtFormatValType::Tuple(types) => {
             // Read the number of items
             let count = reader.read_u32_le()? as usize;
 
@@ -1226,7 +1229,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             Ok(ComponentComponentValue::Tuple(items))
         }
-        FormatValType::Variant(cases) => {
+        WrtFormatValType::Variant(cases) => {
             // Read the case name length
             let name_len = reader.read_u32_le()? as usize;
 
@@ -1272,7 +1275,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 Ok(ComponentComponentValue::Variant(case_name, None))
             }
         }
-        FormatValType::Enum(variants) => {
+        WrtFormatValType::Enum(variants) => {
             // Read the variant name length
             let name_len = reader.read_u32_le()? as usize;
 
@@ -1298,7 +1301,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             Ok(ComponentComponentValue::Enum(variant_name))
         }
-        FormatValType::Option(inner_type) => {
+        WrtFormatValType::Option(inner_type) => {
             // Read presence flag
             let has_value = reader.read_bool()?;
 
@@ -1309,7 +1312,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 Ok(ComponentComponentValue::Option(None))
             }
         }
-        FormatValType::Result(result_type) => {
+        WrtFormatValType::Result(result_type) => {
             // Read success flag
             let is_ok = reader.read_bool()?;
 
@@ -1321,15 +1324,15 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 Ok(ComponentComponentValue::Result(Err(Box::new(ComponentComponentValue::Void))))
             }
         }
-        FormatValType::Own(idx) => {
+        WrtFormatValType::Own(idx) => {
             let value = reader.read_u32_le()?;
             Ok(ComponentComponentValue::Handle(value))
         }
-        FormatValType::Borrow(idx) => {
+        WrtFormatValType::Borrow(idx) => {
             let value = reader.read_u32_le()?;
             Ok(ComponentComponentValue::Borrow(value))
         }
-        FormatValType::Flags(names) => {
+        WrtFormatValType::Flags(names) => {
             // Read the number of flags
             let count = reader.read_u32_le()? as usize;
 
@@ -1368,7 +1371,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             Ok(ComponentComponentValue::Flags(flags))
         }
-        FormatValType::FixedList(elem_type, size) => {
+        WrtFormatValType::FixedList(elem_type, size) => {
             // Read the number of items
             let count = reader.read_u32_le()? as usize;
 
@@ -1392,7 +1395,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             Ok(ComponentComponentValue::FixedList(items, *size))
         }
-        FormatValType::ErrorContext => {
+        WrtFormatValType::ErrorContext => {
             // Read the number of context items
             let count = reader.read_u32_le()? as usize;
 
@@ -1415,7 +1418,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             Ok(ComponentComponentValue::ErrorContext(items))
         }
-        FormatValType::Void => {
+        WrtFormatValType::Void => {
             // Just read a marker byte
             let _ = reader.read_u8()?;
             Ok(ComponentComponentValue::Void)
@@ -1430,7 +1433,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 }
 
 /// Serialize multiple component values
-pub fn serialize_component_values(values: &[ComponentValue]) -> Result<Vec<u8>, Error> {
+pub fn serialize_component_values(values: &[ComponentComponentValue]) -> Result<Vec<u8>, Error> {
     let mut buffer = Vec::new();
 
     // Write the number of values
@@ -1454,7 +1457,7 @@ pub fn serialize_component_values(values: &[ComponentValue]) -> Result<Vec<u8>, 
 
 /// Serialize multiple component values using a WriteStream
 pub fn serialize_component_values_with_stream<'a, P: wrt_foundation::MemoryProvider>(
-    values: &[ComponentValue],
+    values: &[ComponentComponentValue],
     writer: &mut WriteStream<'a>,
     provider: &P,
 ) -> Result<(), Error> {
@@ -1472,7 +1475,7 @@ pub fn serialize_component_values_with_stream<'a, P: wrt_foundation::MemoryProvi
 /// Deserialize multiple component values
 pub fn deserialize_component_values(
     data: &[u8],
-    types: &[FormatValType],
+    types: &[WrtFormatValType],
 ) -> Result<Vec<ComponentComponentValue>, Error> {
     // Need at least 4 bytes for the count
     if data.len() < 4 {
@@ -1542,7 +1545,7 @@ pub fn deserialize_component_values(
 /// Deserialize multiple component values using a ReadStream
 pub fn deserialize_component_values_with_stream<'a, P: wrt_foundation::MemoryProvider>(
     reader: &mut ReadStream<'a>,
-    types: &[FormatValType],
+    types: &[WrtFormatValType],
     provider: &P,
 ) -> Result<Vec<ComponentComponentValue>, Error> {
     // Read the count
@@ -1568,7 +1571,7 @@ pub fn deserialize_component_values_with_stream<'a, P: wrt_foundation::MemoryPro
 }
 
 // Core value conversion functions
-pub fn core_to_component_value(value: &Value, ty: &FormatValType) -> crate::WrtResult<ComponentComponentValue> {
+pub fn core_to_component_value(value: &Value, ty: &WrtFormatValType) -> crate::WrtResult<ComponentComponentValue> {
     use crate::type_conversion::{
         core_value_to_types_componentvalue, format_valtype_to_types_valtype,
     };
@@ -1618,34 +1621,34 @@ pub fn component_to_core_value(value: &ComponentComponentValue) -> crate::WrtRes
 }
 
 // Size calculation for component values
-pub fn size_in_bytes(ty: &FormatValType<ComponentProvider>) -> usize {
+pub fn size_in_bytes(ty: &WrtFormatValType) -> usize {
     match ty {
-        FormatValType::Bool => 1,
-        FormatValType::S8 => 1,
-        FormatValType::U8 => 1,
-        FormatValType::S16 => 2,
-        FormatValType::U16 => 2,
-        FormatValType::S32 => 4,
-        FormatValType::U32 => 4,
-        FormatValType::S64 => 8,
-        FormatValType::U64 => 8,
-        FormatValType::F32 => 4,
-        FormatValType::F64 => 8,
-        FormatValType::Char => 4,
-        FormatValType::String => 8, // Pointer size
-        FormatValType::Ref(_) => 4,
-        FormatValType::Record(_) => 8,
-        FormatValType::Variant(_) => 8,
-        FormatValType::List(_) => 8,
-        FormatValType::Tuple(_) => 8,
-        FormatValType::Flags(_) => 8,
-        FormatValType::Enum(_) => 4,
-        FormatValType::Option(_) => 8,
-        FormatValType::Result(_) => 8,
-        FormatValType::Own(_) => 4,
-        FormatValType::Borrow(_) => 4,
-        FormatValType::FixedList(_, _) => 8,
-        FormatValType::ErrorContext => 4,
+        WrtFormatValType::Bool => 1,
+        WrtFormatValType::S8 => 1,
+        WrtFormatValType::U8 => 1,
+        WrtFormatValType::S16 => 2,
+        WrtFormatValType::U16 => 2,
+        WrtFormatValType::S32 => 4,
+        WrtFormatValType::U32 => 4,
+        WrtFormatValType::S64 => 8,
+        WrtFormatValType::U64 => 8,
+        WrtFormatValType::F32 => 4,
+        WrtFormatValType::F64 => 8,
+        WrtFormatValType::Char => 4,
+        WrtFormatValType::String => 8, // Pointer size
+        WrtFormatValType::Ref(_) => 4,
+        WrtFormatValType::Record(_) => 8,
+        WrtFormatValType::Variant(_) => 8,
+        WrtFormatValType::List(_) => 8,
+        WrtFormatValType::Tuple(_) => 8,
+        WrtFormatValType::Flags(_) => 8,
+        WrtFormatValType::Enum(_) => 4,
+        WrtFormatValType::Option(_) => 8,
+        WrtFormatValType::Result(_) => 8,
+        WrtFormatValType::Own(_) => 4,
+        WrtFormatValType::Borrow(_) => 4,
+        WrtFormatValType::FixedList(_, _) => 8,
+        WrtFormatValType::ErrorContext => 4,
         // Default size for any unhandled types
         _ => 4,
     }
@@ -1700,7 +1703,7 @@ mod tests {
         let mut reader = ReadStream::new(slice);
 
         // Deserialize using stream
-        let format_type = FormatValType::Bool;
+        let format_type = WrtFormatValType::Bool;
         let decoded =
             deserialize_component_value_with_stream(&mut reader, &format_type, &handler).unwrap();
 
@@ -1736,7 +1739,7 @@ mod tests {
         let mut reader = ReadStream::new(slice);
 
         // Prepare format types
-        let format_types = vec![FormatValType::Bool, FormatValType::S32, FormatValType::String];
+        let format_types = vec![WrtFormatValType::Bool, WrtFormatValType::S32, WrtFormatValType::String];
 
         // Deserialize using stream
         let decoded =

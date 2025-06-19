@@ -9,7 +9,7 @@ use wrt_foundation::{
 };
 
 #[cfg(feature = "std")]
-use wrt_foundation::component_value::ComponentValue;
+use crate::prelude::WrtComponentValue;
 
 use crate::types::Value;
 
@@ -42,7 +42,7 @@ impl ResourceLifecycleManager {
         Self { next_handle: 1 }
     }
     
-    pub fn create_resource(&mut self, _type_id: u32, _data: ComponentValue) -> WrtResult<ResourceHandle> {
+    pub fn create_resource(&mut self, _type_id: u32, _data: WrtComponentValue) -> WrtResult<ResourceHandle> {
         let handle = ResourceHandle(self.next_handle);
         self.next_handle += 1;
         Ok(handle)
@@ -52,9 +52,9 @@ impl ResourceLifecycleManager {
         Ok(())
     }
     
-    pub fn borrow_resource(&mut self, _handle: ResourceHandle) -> WrtResult<&ComponentValue> {
+    pub fn borrow_resource(&mut self, _handle: ResourceHandle) -> WrtResult<&WrtComponentValue> {
         // Return a dummy value - in real implementation this would be tracked
-        static DUMMY: ComponentValue = ComponentValue::Bool(false);
+        static DUMMY: WrtComponentValue = WrtComponentValue::Bool(false);
         Ok(&DUMMY)
     }
     
@@ -84,10 +84,10 @@ impl ComponentRuntimeBridge {
         &mut self,
         _instance_id: u32,
         _function_name: &str,
-        _args: &[wrt_foundation::component_value::ComponentValue],
-    ) -> core::result::Result<wrt_foundation::component_value::ComponentValue, wrt_error::Error> {
+        _args: &[WrtComponentValue],
+    ) -> core::result::Result<WrtComponentValue, wrt_error::Error> {
         // Return a dummy successful result
-        Ok(wrt_foundation::component_value::ComponentValue::U32(42))
+        Ok(WrtComponentValue::U32(42))
     }
     
     pub fn register_component_instance(
@@ -108,7 +108,7 @@ impl ComponentRuntimeBridge {
         _func: F,
     ) -> core::result::Result<usize, wrt_error::Error>
     where
-        F: Fn(&[ComponentValue]) -> core::result::Result<ComponentValue, wrt_error::Error> + Send + Sync + 'static,
+        F: Fn(&[WrtComponentValue]) -> core::result::Result<WrtComponentValue, wrt_error::Error> + Send + Sync + 'static,
     {
         Ok(0)
     }
@@ -118,51 +118,51 @@ impl ComponentRuntimeBridge {
         &mut self,
         _name: BoundedString<64, NoStdProvider::<65536>>,
         _signature: crate::component_instantiation::FunctionSignature,
-        _func: fn(&[ComponentValue]) -> core::result::Result<ComponentValue, wrt_error::Error>,
+        _func: fn(&[WrtComponentValue]) -> core::result::Result<WrtComponentValue, wrt_error::Error>,
     ) -> core::result::Result<usize, wrt_error::Error> {
         Ok(0)
     }
 }
 
 /// Component value conversion stubs
-impl From<wrt_foundation::component_value::ComponentValue> for Value {
-    fn from(cv: wrt_foundation::component_value::ComponentValue) -> Self {
+impl From<WrtComponentValue> for Value {
+    fn from(cv: WrtComponentValue) -> Self {
         match cv {
-            wrt_foundation::component_value::ComponentValue::Bool(b) => Value::Bool(b),
-            wrt_foundation::component_value::ComponentValue::U8(v) => Value::U8(v),
-            wrt_foundation::component_value::ComponentValue::U16(v) => Value::U16(v),
-            wrt_foundation::component_value::ComponentValue::U32(v) => Value::U32(v),
-            wrt_foundation::component_value::ComponentValue::U64(v) => Value::U64(v),
-            wrt_foundation::component_value::ComponentValue::S8(v) => Value::S8(v),
-            wrt_foundation::component_value::ComponentValue::S16(v) => Value::S16(v),
-            wrt_foundation::component_value::ComponentValue::S32(v) => Value::S32(v),
-            wrt_foundation::component_value::ComponentValue::S64(v) => Value::S64(v),
-            wrt_foundation::component_value::ComponentValue::F32(v) => Value::F32(v),
-            wrt_foundation::component_value::ComponentValue::F64(v) => Value::F64(v),
-            wrt_foundation::component_value::ComponentValue::Char(c) => Value::Char(c),
-            wrt_foundation::component_value::ComponentValue::String(s) => Value::String(s),
+            WrtComponentValue::Bool(b) => Value::Bool(b),
+            WrtComponentValue::U8(v) => Value::U8(v),
+            WrtComponentValue::U16(v) => Value::U16(v),
+            WrtComponentValue::U32(v) => Value::U32(v),
+            WrtComponentValue::U64(v) => Value::U64(v),
+            WrtComponentValue::S8(v) => Value::S8(v),
+            WrtComponentValue::S16(v) => Value::S16(v),
+            WrtComponentValue::S32(v) => Value::S32(v),
+            WrtComponentValue::S64(v) => Value::S64(v),
+            WrtComponentValue::F32(v) => Value::F32(v),
+            WrtComponentValue::F64(v) => Value::F64(v),
+            WrtComponentValue::Char(c) => Value::Char(c),
+            WrtComponentValue::String(s) => Value::String(s),
             _ => Value::Bool(false), // Fallback
         }
     }
 }
 
-impl From<Value> for wrt_foundation::component_value::ComponentValue {
+impl From<Value> for WrtComponentValue {
     fn from(v: Value) -> Self {
         match v {
-            Value::Bool(b) => wrt_foundation::component_value::ComponentValue::Bool(b),
-            Value::U8(v) => wrt_foundation::component_value::ComponentValue::U8(v),
-            Value::U16(v) => wrt_foundation::component_value::ComponentValue::U16(v),
-            Value::U32(v) => wrt_foundation::component_value::ComponentValue::U32(v),
-            Value::U64(v) => wrt_foundation::component_value::ComponentValue::U64(v),
-            Value::S8(v) => wrt_foundation::component_value::ComponentValue::S8(v),
-            Value::S16(v) => wrt_foundation::component_value::ComponentValue::S16(v),
-            Value::S32(v) => wrt_foundation::component_value::ComponentValue::S32(v),
-            Value::S64(v) => wrt_foundation::component_value::ComponentValue::S64(v),
-            Value::F32(v) => wrt_foundation::component_value::ComponentValue::F32(v),
-            Value::F64(v) => wrt_foundation::component_value::ComponentValue::F64(v),
-            Value::Char(c) => wrt_foundation::component_value::ComponentValue::Char(c),
-            Value::String(s) => wrt_foundation::component_value::ComponentValue::String(s),
-            _ => wrt_foundation::component_value::ComponentValue::Bool(false), // Fallback
+            Value::Bool(b) => WrtComponentValue::Bool(b),
+            Value::U8(v) => WrtComponentValue::U8(v),
+            Value::U16(v) => WrtComponentValue::U16(v),
+            Value::U32(v) => WrtComponentValue::U32(v),
+            Value::U64(v) => WrtComponentValue::U64(v),
+            Value::S8(v) => WrtComponentValue::S8(v),
+            Value::S16(v) => WrtComponentValue::S16(v),
+            Value::S32(v) => WrtComponentValue::S32(v),
+            Value::S64(v) => WrtComponentValue::S64(v),
+            Value::F32(v) => WrtComponentValue::F32(v),
+            Value::F64(v) => WrtComponentValue::F64(v),
+            Value::Char(c) => WrtComponentValue::Char(c),
+            Value::String(s) => WrtComponentValue::String(s),
+            _ => WrtComponentValue::Bool(false), // Fallback
         }
     }
 }

@@ -142,15 +142,15 @@ pub struct BorrowFlags {
 #[derive(Default)]
 pub struct LifecycleHooks {
     /// Called when a resource is created
-    pub on_create: Option<fn(&Resource) -> Result<()>>,
+    pub on_create: Option<fn(&Resource) -> Result<(), Error>>,
     /// Called when a resource is destroyed
-    pub on_destroy: Option<fn(&Resource) -> Result<()>>,
+    pub on_destroy: Option<fn(&Resource) -> Result<(), Error>>,
     /// Called when a resource is borrowed
-    pub on_borrow: Option<fn(&Resource, &BorrowInfo) -> Result<()>>,
+    pub on_borrow: Option<fn(&Resource, &BorrowInfo) -> Result<(), Error>>,
     /// Called when a borrow is released
-    pub on_release: Option<fn(&Resource, &BorrowInfo) -> Result<()>>,
+    pub on_release: Option<fn(&Resource, &BorrowInfo) -> Result<(), Error>>,
     /// Called when ownership is transferred
-    pub on_transfer: Option<fn(&Resource, u32, u32) -> Result<()>>,
+    pub on_transfer: Option<fn(&Resource, u32, u32) -> Result<(), Error>>,
 }
 
 /// Resource lifecycle metrics

@@ -12,7 +12,7 @@ use std::{fmt, mem};
 use std::{boxed::Box, vec::Vec};
 
 use wrt_foundation::{
-    bounded::BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
+    bounded::BoundedVec, component::WrtComponentType, component_value::ComponentValue, prelude::*,
 };
 
 use crate::{
@@ -61,7 +61,7 @@ pub struct CallTarget {
     /// Target function index within the component
     pub function_index: u32,
     /// Function signature
-    pub signature: ComponentType,
+    pub signature: WrtComponentType,
     /// Call permissions
     pub permissions: CallPermissions,
     /// Resource transfer policy
@@ -489,7 +489,7 @@ impl CallTarget {
     pub fn new(
         target_instance: u32,
         function_index: u32,
-        signature: ComponentType,
+        signature: WrtComponentType,
         permissions: CallPermissions,
         resource_policy: ResourceTransferPolicy,
     ) -> Self {
@@ -543,7 +543,7 @@ mod tests {
         let target = CallTarget::new(
             1,
             0,
-            ComponentType::Unit,
+            WrtComponentType::Unit,
             CallPermissions::default(),
             ResourceTransferPolicy::None,
         );
@@ -575,7 +575,7 @@ mod tests {
         let target = CallTarget::new(
             1,
             0,
-            ComponentType::Unit,
+            WrtComponentType::Unit,
             CallPermissions::default(),
             ResourceTransferPolicy::Borrow,
         );
@@ -596,7 +596,7 @@ mod tests {
         let target = CallTarget::new(
             1,
             0,
-            ComponentType::Unit,
+            WrtComponentType::Unit,
             CallPermissions::default(),
             ResourceTransferPolicy::None,
         );

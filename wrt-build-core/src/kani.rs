@@ -487,11 +487,10 @@ impl KaniVerifier {
 
 /// Check if KANI is available
 pub fn is_kani_available() -> bool {
-    Command::new("kani")
-        .arg("--version")
-        .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false)
+    use crate::tools::ToolManager;
+    
+    let manager = ToolManager::new();
+    manager.check_tool("kani").available
 }
 
 /// Get KANI version information

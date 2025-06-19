@@ -25,11 +25,13 @@ use wrt_sync::Mutex;
 use wrt_foundation::{bounded::{BoundedVec, BoundedString}, safe_memory::NoStdProvider};
 
 use wrt_error::{Error, Result};
+use crate::prelude::*;
 #[cfg(feature = "std")]
-use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
+use wrt_foundation::builtin::BuiltinType;
+use crate::prelude::WrtComponentValue;
 
 #[cfg(not(feature = "std"))]
-use crate::types::Value as ComponentValue;
+use crate::types::Value;
 
 // Define a unified BuiltinType for no_std
 #[cfg(not(feature = "std"))]
@@ -79,14 +81,14 @@ impl InterceptContext {
 #[cfg(not(feature = "std"))]
 #[derive(Debug)]
 pub enum BeforeBuiltinResult {
-    Continue(BoundedVec<ComponentValue, 16, NoStdProvider<65536>>),
-    Override(BoundedVec<ComponentValue, 16, NoStdProvider<65536>>),
+    Continue(BoundedVec<WrtComponentValue, 16, NoStdProvider<65536>>),
+    Override(BoundedVec<WrtComponentValue, 16, NoStdProvider<65536>>),
     Deny,
 }
 
 #[cfg(not(feature = "std"))]
 pub trait BuiltinInterceptor {
-    fn before_builtin(&self, context: &InterceptContext, args: &[ComponentValue]) -> Result<BeforeBuiltinResult>;
+    fn before_builtin(&self, context: &InterceptContext, args: &[WrtComponentValue]) -> Result<BeforeBuiltinResult>;
 }
 
 // Import the real types for std
@@ -132,7 +134,7 @@ pub trait BuiltinHandler: Send + Sync {
     /// # Returns
     ///
     /// A `Result` containing the function results or an error
-    fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>>;
+    fn execute(&self, args: &[WrtComponentValue]) -> Result<Vec<WrtComponentValue>>;
 
     /// Clone this handler
     ///
@@ -148,7 +150,7 @@ pub trait BuiltinHandler {
     fn builtin_type(&self) -> BuiltinType;
 
     /// Execute the built-in function with the given arguments (no_std version)
-    fn execute(&self, args: &[ComponentValue]) -> core::result::Result<BoundedVec<ComponentValue, 16, NoStdProvider<65536>>>;
+    fn execute(&self, args: &[WrtComponentValue]) -> core::result::Result<BoundedVec<WrtComponentValue, 16, NoStdProvider<65536>>>;
 
     /// Clone this handler
     fn clone_handler(&self) -> Box<dyn BuiltinHandler>;
@@ -157,7 +159,7 @@ pub trait BuiltinHandler {
 /// Function executor type for threading built-ins
 #[cfg(feature = "component-model-threading")]
 pub type FunctionExecutor =
-    Arc<dyn Fn(u32, Vec<ComponentValue>) -> Result<Vec<ComponentValue>> + Send + Sync>;
+    Arc<dyn Fn(u32, Vec<WrtComponentValue>) -> Result<Vec<WrtComponentValue>> + Send + Sync>;
 
 /// Registry of built-in handlers
 ///
@@ -319,8 +321,8 @@ impl BuiltinRegistry {
     pub fn call(
         &self,
         builtin_type: BuiltinType,
-        args: &[ComponentValue],
-    ) -> Result<Vec<ComponentValue>> {
+        args: &[WrtComponentValue],
+    ) -> Result<Vec<WrtComponentValue>> {
         // Find the handler for this built-in
         let handler = self
             .handlers
@@ -411,7 +413,7 @@ impl Clone for BuiltinRegistry {
 
 #[cfg(test)]
 mod tests {
-    use wrt_foundation::component_value::ComponentValue;
+    use wrt_foundation::component_value::WrtComponentValue;
 
     use super::*;
     use crate::resources::ResourceManager;
@@ -426,7 +428,7 @@ mod tests {
             self.builtin_type
         }
 
-        fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
+        fn execute(&self, args: &[WrtComponentValue]) -> Result<Vec<WrtComponentValue>> {
             // Simple echo implementation for testing
             Ok(args.to_vec())
         }
@@ -469,7 +471,7 @@ mod tests {
             .register_handler(Box::new(TestHandler { builtin_type: BuiltinType::ResourceCreate }));
 
         // Call the built-in
-        let args = vec![ComponentValue::S32(42)];
+        let args = vec![WrtComponentValue::S32(42)];
         let result = registry.call(BuiltinType::ResourceCreate, &args);
 
         // Verify result
@@ -500,7 +502,7 @@ mod tests {
         assert!(cloned.supports_builtin(BuiltinType::ResourceCreate));
 
         // Call a built-in on the clone
-        let args = vec![ComponentValue::S32(42)];
+        let args = vec![WrtComponentValue::S32(42)];
         let result = cloned.call(BuiltinType::ResourceCreate, &args);
 
         // Verify result
@@ -532,26 +534,26 @@ mod tests {
         assert_eq!(result.len(), 1);
 
         match &result[0] {
-            ComponentValue::U32(id) => {
+            WrtComponentValue::U32(id) => {
                 // Test polling it (should be pending)
                 let poll_result =
-                    registry.call(BuiltinType::AsyncPoll, &[ComponentValue::U32(*id)]).unwrap();
-                assert_eq!(poll_result, vec![ComponentValue::U32(0)]);
+                    registry.call(BuiltinType::AsyncPoll, &[WrtComponentValue::U32(*id)]).unwrap();
+                assert_eq!(poll_result, vec![WrtComponentValue::U32(0)]);
 
                 // Complete the async value
                 let store = registry.async_store();
                 let mut async_store = store.lock().unwrap();
-                async_store.set_result(*id, vec![ComponentValue::U32(42)]).unwrap();
+                async_store.set_result(*id, vec![WrtComponentValue::U32(42)]).unwrap();
 
                 // Test polling again (should be ready)
                 let poll_result =
-                    registry.call(BuiltinType::AsyncPoll, &[ComponentValue::U32(*id)]).unwrap();
-                assert_eq!(poll_result, vec![ComponentValue::U32(1)]);
+                    registry.call(BuiltinType::AsyncPoll, &[WrtComponentValue::U32(*id)]).unwrap();
+                assert_eq!(poll_result, vec![WrtComponentValue::U32(1)]);
 
                 // Test getting the result
                 let get_result =
-                    registry.call(BuiltinType::AsyncGet, &[ComponentValue::U32(*id)]).unwrap();
-                assert_eq!(get_result, vec![ComponentValue::U32(42)]);
+                    registry.call(BuiltinType::AsyncGet, &[WrtComponentValue::U32(*id)]).unwrap();
+                assert_eq!(get_result, vec![WrtComponentValue::U32(42)]);
             }
             _ => panic!("Expected U32 result"),
         }

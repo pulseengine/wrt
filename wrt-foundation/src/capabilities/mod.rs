@@ -30,6 +30,7 @@ use crate::{
     Result,
 };
 
+pub mod atomic;
 pub mod context;
 pub mod dynamic;
 pub mod factory;

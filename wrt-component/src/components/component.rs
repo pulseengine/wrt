@@ -8,7 +8,8 @@ use log::{debug, error, info, trace, warn};
 // Import wrt_decoder types for decode and parse
 // use wrt_decoder::component::decode::Component as DecodedComponent;
 // Additional imports that aren't in the prelude
-use wrt_format::component::ExternType as FormatExternType;
+use wrt_format::component::{ExternType as FormatExternType, FormatValType};
+use crate::bounded_component_infra::ComponentProvider;
 use wrt_foundation::resource::ResourceOperation as FormatResourceOperation;
 
 // HashMap imports
@@ -16,6 +17,8 @@ use wrt_foundation::resource::ResourceOperation as FormatResourceOperation;
 use std::collections::HashMap;
 #[cfg(not(feature = "std"))]
 use alloc::format;
+
+use crate::prelude::*;
 use wrt_foundation::{bounded::BoundedVec, safe_memory::NoStdProvider};
 
 // Simple HashMap substitute for no_std using BoundedVec
@@ -365,7 +368,7 @@ struct ModuleInstance {
 }
 
 /// Helper function to convert FormatValType to ValueType
-fn convert_to_valuetype(val_type_pair: &(String, FormatValType)) -> ValueType {
+fn convert_to_valuetype(val_type_pair: &(String, FormatValType<ComponentProvider>)) -> ValueType {
     format_val_type_to_value_type(&val_type_pair.1).expect("Failed to convert format value type")
 }
 
@@ -926,7 +929,7 @@ fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
 
 /// Convert a component value to a runtime value
 pub fn component_value_to_value(
-    component_value: &wrt_foundation::ComponentValue,
+    component_value: &wrt_foundation::WrtComponentValue,
 ) -> wrt_intercept::Value {
     use wrt_intercept::Value;
 
@@ -938,18 +941,18 @@ pub fn component_value_to_value(
 }
 
 /// Convert a runtime value to a component value
-pub fn value_to_component_value(value: &wrt_intercept::Value) -> wrt_foundation::ComponentValue {
-    use wrt_foundation::ComponentValue;
+pub fn value_to_component_value(value: &wrt_intercept::Value) -> wrt_foundation::WrtComponentValue {
+    // WrtComponentValue is already imported from prelude
 
     use crate::type_conversion::core_value_to_types_componentvalue;
 
     // Use the new conversion function
-    core_value_to_types_componentvalue(value).unwrap_or(ComponentValue::Void) // Provide a sensible default on error
+    core_value_to_types_componentvalue(value).unwrap_or(WrtComponentValue::Void) // Provide a sensible default on error
 }
 
 /// Convert parameter to value type
 pub fn convert_param_to_value_type(
-    param: &wrt_format::component::ValType,
+    param: &FormatValType<ComponentProvider>,
 ) -> wrt_foundation::types::ValueType {
     crate::type_conversion::format_val_type_to_value_type(param)
         .unwrap_or(wrt_foundation::types::ValueType::I32)

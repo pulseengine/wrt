@@ -51,10 +51,11 @@ jobs:
           profile: minimal
           toolchain: stable # Or match your rust-toolchain.toml for building cargo-wrt
           override: true
-      - name: Install cargo-wrt dependencies
+      - name: Install and setup cargo-wrt with all tools
         run: |
           cargo build --package cargo-wrt # Ensures cargo-wrt and its direct deps are built/cached
           cargo install --path cargo-wrt # Install cargo-wrt for use in subsequent steps
+          cargo-wrt setup --all # Setup all development tools automatically
       - name: Run CI Integrity Checks (lint, fmt, deny, spell, headers, etc.)
         run: cargo-wrt verify --detailed
       - name: Setup Java for PlantUML (if CheckDocsStrict Dagger pipeline needs it from host - unlikely)
@@ -88,10 +89,11 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt, clippy
-      - name: Install cargo-wrt
+      - name: Install and setup cargo-wrt
         run: |
           cargo build --package cargo-wrt
           cargo install --path cargo-wrt
+          cargo-wrt setup --check # Verify tools are available
       - name: Check for test files in src/
         run: cargo-wrt validate --check-test-files
       - name: Check module documentation coverage
@@ -128,10 +130,11 @@ jobs:
           toolchain: stable # For cargo-wrt. Nightly for UDeps should be handled internally.
           override: true
           components: llvm-tools-preview # For coverage
-      - name: Install cargo-wrt dependencies
+      - name: Install and setup cargo-wrt with tools
         run: |
           cargo build --package cargo-wrt
           cargo install --path cargo-wrt
+          cargo-wrt setup --all # Setup all required tools for testing and analysis
       - name: Run Tests
         run: cargo-wrt test
       - name: Run Code Validation Checks
@@ -182,10 +185,11 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - name: Install cargo-wrt dependencies
+      - name: Install and setup cargo-wrt for safety verification
         run: |
           cargo build --package cargo-wrt
           cargo install --path cargo-wrt
+          cargo-wrt setup --check # Verify required tools for safety verification
       - name: Check Requirements File
         run: cargo-wrt verify --asil c
         continue-on-error: true
@@ -245,10 +249,11 @@ jobs:
           override: true
           # Add components if they can be installed via rustup and cargo-wrt doesn't handle it
           # components: miri, kani # (kani might need manual install steps)
-      - name: Install cargo-wrt dependencies
+      - name: Install and setup cargo-wrt for extended analysis
         run: |
           cargo build --package cargo-wrt
           cargo install --path cargo-wrt
+          cargo-wrt setup --all # Setup all tools including Kani and Miri
       # Run advanced static analysis
       - name: Run Miri Checks
         run: cargo-wrt verify --asil d --no-kani

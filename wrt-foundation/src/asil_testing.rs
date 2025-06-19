@@ -130,7 +130,7 @@ fn init_test_registry() {
 pub fn register_asil_test(metadata: AsilTestMetadata) {
     #[cfg(feature = "std")]
     {
-        let mut registry = TEST_REGISTRY.lock().unwrap();
+        let mut registry = TEST_REGISTRY.lock().expect("Failed to lock test registry");
         if registry.is_none() {
             *registry = Some(Vec::new());
         }
@@ -171,7 +171,7 @@ pub fn register_asil_test(metadata: AsilTestMetadata) {
 pub fn get_asil_tests() -> Vec<AsilTestMetadata> {
     #[cfg(feature = "std")]
     {
-        let registry = TEST_REGISTRY.lock().unwrap();
+        let registry = TEST_REGISTRY.lock().expect("Failed to lock test registry");
         registry.as_ref().map_or_else(Vec::new, |reg| reg.clone())
     }
 

@@ -43,6 +43,8 @@ pub mod clean_runtime_test;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub mod atomic_execution;
 #[cfg(any(feature = "std", feature = "alloc"))]
+pub mod atomic_execution_safe;
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod atomic_memory_model;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub mod branch_prediction;

@@ -12,7 +12,7 @@ use std::{fmt, mem};
 use std::{boxed::Box, string::String, vec::Vec};
 
 use wrt_foundation::{
-    bounded::BoundedVec, component::ComponentType, prelude::*,
+    bounded::BoundedVec, prelude::*,
 };
 
 use crate::execution_engine::ComponentExecutionEngine;
@@ -76,7 +76,7 @@ pub struct FunctionAdapter {
     /// Core function index
     pub core_index: u32,
     /// Component function signature
-    pub component_signature: ComponentType,
+    pub component_signature: WrtComponentType,
     /// Core function signature (WebAssembly types)
     pub core_signature: CoreFunctionSignature,
     /// Adaptation mode
@@ -295,7 +295,7 @@ impl CoreModuleAdapter {
 
     /// Convert this adapter to a component
     pub fn to_component(&self) -> Result<Component> {
-        let mut component = Component::new(ComponentType::default());
+        let mut component = Component::new(WrtComponentType::default());
 
         // Convert function adapters to component functions
         for func_adapter in &self.functions {
@@ -330,15 +330,15 @@ impl CoreModuleAdapter {
     }
 
     /// Convert core type to component type
-    fn core_type_to_component_type(&self, core_type: CoreValType) -> ComponentType {
+    fn core_type_to_component_type(&self, core_type: CoreValType) -> WrtComponentType {
         match core_type {
-            CoreValType::I32 => ComponentType::Unit, // Simplified
-            CoreValType::I64 => ComponentType::Unit,
-            CoreValType::F32 => ComponentType::Unit,
-            CoreValType::F64 => ComponentType::Unit,
-            CoreValType::V128 => ComponentType::Unit,
-            CoreValType::FuncRef => ComponentType::Unit,
-            CoreValType::ExternRef => ComponentType::Unit,
+            CoreValType::I32 => WrtComponentType::Unit, // Simplified
+            CoreValType::I64 => WrtComponentType::Unit,
+            CoreValType::F32 => WrtComponentType::Unit,
+            CoreValType::F64 => WrtComponentType::Unit,
+            CoreValType::V128 => WrtComponentType::Unit,
+            CoreValType::FuncRef => WrtComponentType::Unit,
+            CoreValType::ExternRef => WrtComponentType::Unit,
         }
     }
 
@@ -421,7 +421,7 @@ impl CoreModuleAdapter {
     fn lift_result_to_component(
         &self,
         result: Value,
-        _component_signature: &ComponentType,
+        _component_signature: &WrtComponentType,
     ) -> Result<Value> {
         // Simplified lifting - in reality would use canonical ABI
         Ok(result)
@@ -432,7 +432,7 @@ impl FunctionAdapter {
     /// Create a new function adapter
     pub fn new(
         core_index: u32,
-        component_signature: ComponentType,
+        component_signature: WrtComponentType,
         core_signature: CoreFunctionSignature,
         mode: AdaptationMode,
     ) -> Self {
@@ -619,7 +619,7 @@ mod tests {
         core_sig.add_result(CoreValType::I32).unwrap();
 
         let adapter =
-            FunctionAdapter::new(0, ComponentType::Unit, core_sig, AdaptationMode::Direct);
+            FunctionAdapter::new(0, WrtComponentType::Unit, core_sig, AdaptationMode::Direct);
 
         assert_eq!(adapter.core_index, 0);
         assert_eq!(adapter.mode, AdaptationMode::Direct);

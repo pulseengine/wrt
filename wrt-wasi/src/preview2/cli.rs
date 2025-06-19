@@ -5,7 +5,7 @@
 
 use crate::prelude::*;
 use crate::capabilities::WasiEnvironmentCapabilities;
-use crate::component_values::Value;
+use crate::Value;
 use core::any::Any;
 
 /// WASI get arguments operation

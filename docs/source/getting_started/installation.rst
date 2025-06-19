@@ -84,6 +84,38 @@ Verify installation:
    cargo-wrt --help
    rustc --version
 
+Development Tool Setup
+~~~~~~~~~~~~~~~~~~~~~~
+
+After installing cargo-wrt, set up your development environment:
+
+.. code-block:: bash
+
+   # Check all tool dependencies
+   cargo-wrt setup --check
+
+   # Install optional development tools (kani, cargo-fuzz, etc.)
+   cargo-wrt setup --install
+
+   # Complete setup (tools + git hooks)
+   cargo-wrt setup --all
+
+   # Verify tool versions against requirements
+   cargo-wrt tool-versions check --verbose
+
+The build system includes sophisticated tool version management:
+
+- **tool-versions.toml**: Configuration file specifying exact tool version requirements
+- **Automated tool detection**: Missing tools trigger helpful installation messages  
+- **Reproducible environments**: Consistent tool versions across all contributors
+
+Optional development tools include:
+
+- **kani**: Formal verification tool for safety-critical code
+- **cargo-fuzz**: Fuzzing framework for security testing
+- **llvm-tools**: Coverage analysis and profiling
+- **mdbook**: Documentation generation
+
 WebAssembly Targets
 ~~~~~~~~~~~~~~~~~~~
 

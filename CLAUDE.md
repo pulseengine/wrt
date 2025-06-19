@@ -22,6 +22,16 @@ cargo-wrt --help
 - Only use placeholders when absolutely necessary and clearly document them.
 
 ## Build Commands
+
+The WRT project uses a unified build system with `cargo-wrt` as the single entry point for all build operations. All legacy shell scripts have been migrated to this unified system.
+
+**Usage Patterns:**
+- Direct: `cargo-wrt <COMMAND>`
+- Cargo subcommand: `cargo wrt <COMMAND>`
+
+Both patterns work identically and use the same binary.
+
+### Core Commands
 - Build all: `cargo-wrt build` or `cargo build`
 - Build specific crate: `cargo-wrt build --package wrt|wrtd|example`
 - Clean: `cargo-wrt clean` or `cargo clean`
@@ -32,6 +42,29 @@ cargo-wrt --help
 - Main CI checks: `cargo-wrt ci`
 - Full CI suite: `cargo-wrt verify --asil d`
 - Typecheck: `cargo check`
+
+### Advanced Commands
+- Setup and tool management: `cargo-wrt setup --check` or `cargo-wrt setup --all`
+- Fuzzing: `cargo-wrt fuzz --list` to see targets, `cargo-wrt fuzz` to run all
+- Verification: `cargo-wrt validate --all` for comprehensive validation
+- Platform verification: `cargo-wrt verify --asil <level>` with ASIL compliance
+- Requirements traceability: automatically checked during verification
+- No-std validation: `cargo-wrt no-std` 
+- KANI formal verification: `cargo-wrt kani-verify --asil-profile <level>`
+
+### Tool Management
+The build system includes sophisticated tool version management with configurable requirements:
+
+- Check tool status: `cargo-wrt setup --check`
+- Install optional tools: `cargo-wrt setup --install` 
+- Complete setup: `cargo-wrt setup --all`
+
+**Tool Version Management:**
+- Check all tool versions: `cargo-wrt tool-versions check --verbose`
+- Generate tool configuration: `cargo-wrt tool-versions generate`
+- Check specific tool: `cargo-wrt tool-versions check --tool kani`
+
+Tool versions are managed via `tool-versions.toml` in the workspace root, specifying exact/minimum version requirements and installation commands. This ensures reproducible builds and consistent development environments.
 
 ## Build Matrix Verification
 - **Comprehensive verification**: `cargo-wrt verify-matrix --report`
@@ -139,9 +172,26 @@ The build matrix verification performs deep architectural analysis:
 
 If architectural issues are detected, they must be resolved before merging, as they directly impact ASIL compliance and safety certification.
 
+## Architecture Notes
+
+### Build System Migration (Completed)
+The WRT project has completed its migration to a unified build system:
+
+- **cargo-wrt**: Single CLI entry point for all build operations
+- **wrt-build-core**: Core library containing all build logic and functionality
+- **Legacy cleanup**: All shell scripts and fragmented build tools have been removed
+- **Integration**: Former wrt-verification-tool functionality integrated into wrt-build-core
+- **API consistency**: All commands follow consistent patterns and error handling
+
+### Removed Legacy Components
+- Shell scripts: `verify_build.sh`, `fuzz_all.sh`, `verify_no_std.sh`, `test_features.sh`, `documentation_audit.sh`
+- Kani verification scripts: `test_kani_phase4.sh`, `validate_kani_phase4.sh`
+- justfile and xtask references (functionality ported to wrt-build-core)
+
 ## Memories
 - can you build and test it
 - Use `cargo-wrt` for all build operations instead of just/xtask
+- Build system migration completed - no more shell scripts or fragmented tools
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
 NEVER create files unless they're absolutely necessary for achieving your goal.

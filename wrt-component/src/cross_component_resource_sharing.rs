@@ -13,7 +13,7 @@ use core::{
 };
 use wrt_foundation::{
     bounded_collections::{BoundedHashMap, BoundedVec},
-    component_value::ComponentValue,
+    component_value::WrtComponentValue,
     safe_memory::SafeMemory,
 };
 
@@ -155,7 +155,7 @@ pub struct ResourceTransferRequest {
     pub target_component: ComponentInstanceId,
     pub transfer_type: TransferType,
     pub access_rights: AccessRights,
-    pub metadata: Option<ComponentValue>,
+    pub metadata: Option<WrtComponentValue>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -424,7 +424,7 @@ impl CrossComponentResourceSharingManager {
         component_id: ComponentInstanceId,
         resource_handle: ResourceHandle,
         operation: HandleOperation,
-    ) -> ResourceSharingResult<Option<ComponentValue>> {
+    ) -> ResourceSharingResult<Option<WrtComponentValue>> {
         // Check if resource is shared
         let shared_resource =
             self.shared_resources.get(&resource_handle).ok_or_else(|| ResourceSharingError {

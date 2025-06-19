@@ -5,10 +5,10 @@
 
 extern crate alloc;
 
-use crate::platform_runtime::{PlatformMemoryAdapter, create_platform_memory_adapter};
+use crate::unified_types::{PlatformMemoryAdapter, UnifiedMemoryAdapter};
 
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-use crate::platform_runtime::GenericMemoryAdapter;
+use crate::unified_types::PlatformMemoryAdapter as GenericMemoryAdapter;
 use crate::unified_types::{ExportMap, ImportMap, MemoryBuffer, RuntimeString, DefaultMediumVec, DefaultRuntimeTypes};
 use wrt_foundation::{
     component::{ComponentType, ExternType},
@@ -67,11 +67,11 @@ where
     
     /// Memory adapter for this component's allocations
     #[cfg(any(feature = "std", feature = "alloc"))]
-    pub memory_adapter: Box<dyn PlatformMemoryAdapter>,
+    pub memory_adapter: PlatformMemoryAdapter<DefaultRuntimeProvider>,
     
     /// Memory adapter for this component's allocations (no_std version)
     #[cfg(not(any(feature = "std", feature = "alloc")))]
-    pub memory_adapter: GenericMemoryAdapter,
+    pub memory_adapter: PlatformMemoryAdapter<DefaultRuntimeProvider>,
     
     /// Exported functions and types from this component
     pub exports: ExportMap<ExternType<Provider>>,
@@ -94,19 +94,26 @@ where
     fn clone(&self) -> Self {
         // Note: This creates a placeholder memory adapter since Box<dyn Trait> can't be cloned
         #[cfg(any(feature = "std", feature = "alloc"))]
-        let memory_adapter = create_platform_memory_adapter(64 * 1024 * 1024)
+        let memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
             .unwrap_or_else(|e| {
                 // Log the error if logging is available
                 #[cfg(feature = "std")]
                 eprintln!("Warning: Failed to create memory adapter during clone: {}", e);
                 
                 // Create a minimal fallback adapter
-                create_platform_memory_adapter(1024 * 1024) // Try with 1MB
+                PlatformMemoryAdapter::new(1024 * 1024) // Try with 1MB
                     .unwrap_or_else(|_| panic!("Critical: Unable to allocate even minimal memory adapter"))
             });
         
         #[cfg(not(any(feature = "std", feature = "alloc")))]
-        let memory_adapter = self.memory_adapter.clone();
+        let memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
+            .unwrap_or_else(|_| {
+                // Fallback to cloning the existing adapter
+                match PlatformMemoryAdapter::new(1024 * 1024) {
+                    Ok(adapter) => adapter,
+                    Err(_) => PlatformMemoryAdapter::new(64 * 1024).unwrap_or_else(|_| panic!("Critical: Cannot create minimal memory adapter"))
+                }
+            });
         
         Self {
             id: self.id,
@@ -125,7 +132,7 @@ where
     Provider: MemoryProvider + Default + Clone + PartialEq + Eq,
 {
     pub fn new_default() -> Result<Self> {
-        let memory_adapter = create_platform_memory_adapter(64 * 1024 * 1024)
+        let memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
             .map_err(|_e| Error::new(
                 ErrorCategory::Resource,
                 wrt_error::codes::MEMORY_ALLOCATION_ERROR,
@@ -170,11 +177,11 @@ where
             
             // Create a minimal instance with reduced memory requirements
             #[cfg(any(feature = "std", feature = "alloc"))]
-            let memory_adapter = create_platform_memory_adapter(1024 * 1024) // 1MB fallback
+            let memory_adapter = PlatformMemoryAdapter::new(1024 * 1024) // 1MB fallback
                 .unwrap_or_else(|_| panic!("Critical: Cannot create even minimal component instance"));
             
             #[cfg(not(any(feature = "std", feature = "alloc")))]
-            let memory_adapter = create_platform_memory_adapter(1024 * 1024)
+            let memory_adapter = PlatformMemoryAdapter::new(1024 * 1024)
                 .unwrap_or_else(|_| panic!("Critical: Cannot create component instance in no_std"));
             
             Self {
@@ -244,7 +251,12 @@ where
         let exports = ExportMap::from_bytes_with_provider(reader, provider)?;
         let imports = ImportMap::from_bytes_with_provider(reader, provider)?;
         
-        let memory_adapter = create_platform_memory_adapter(64 * 1024 * 1024)?;
+        let memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
+            .map_err(|e| wrt_error::Error::new(
+                wrt_error::ErrorCategory::Memory,
+                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
+                "Failed to create memory adapter"
+            ))?;
         
         Ok(Self {
             id,
@@ -283,9 +295,9 @@ where
     pub fn new(
         component_type: ComponentType<Provider>,
         #[cfg(any(feature = "std", feature = "alloc"))]
-        memory_adapter: Box<dyn PlatformMemoryAdapter>,
+        memory_adapter: PlatformMemoryAdapter<DefaultRuntimeProvider>,
         #[cfg(not(any(feature = "std", feature = "alloc")))]
-        memory_adapter: GenericMemoryAdapter,
+        memory_adapter: PlatformMemoryAdapter<DefaultRuntimeProvider>,
     ) -> Result<Self> {
         let exports = ExportMap::new(DefaultRuntimeProvider::default())?;
         let imports = ImportMap::new(DefaultRuntimeProvider::default())?;
@@ -373,10 +385,10 @@ where
     
     /// Global memory adapter for cross-component resources
     #[cfg(any(feature = "std", feature = "alloc"))]
-    global_memory_adapter: Box<dyn PlatformMemoryAdapter>,
+    global_memory_adapter: PlatformMemoryAdapter<DefaultRuntimeProvider>,
     
     #[cfg(not(any(feature = "std", feature = "alloc")))]
-    global_memory_adapter: GenericMemoryAdapter,
+    global_memory_adapter: PlatformMemoryAdapter<DefaultRuntimeProvider>,
 }
 
 impl<Provider> UnifiedComponentRuntime<Provider>
@@ -387,7 +399,12 @@ where
     #[cfg(feature = "comprehensive-limits")]
     pub fn new(limits: wrt_platform::ComprehensivePlatformLimits) -> core::result::Result<Self, wrt_error::Error> {
         let memory_budget = ComponentMemoryBudget::calculate_from_limits(&limits)?;
-        let global_memory_adapter = create_platform_memory_adapter(64 * 1024 * 1024)?;
+        let global_memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
+            .map_err(|_| wrt_error::Error::new(
+                wrt_error::ErrorCategory::Memory,
+                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
+                "Failed to create memory adapter"
+            ))?;
         
         Ok(Self {
             #[cfg(any(feature = "std", feature = "alloc"))]
@@ -404,7 +421,12 @@ where
     #[cfg(not(feature = "comprehensive-limits"))]
     pub fn new_default() -> core::result::Result<Self, wrt_error::Error> {
         let memory_budget = ComponentMemoryBudget::default();
-        let global_memory_adapter = create_platform_memory_adapter(64 * 1024 * 1024)?; // 64MB default
+        let global_memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
+            .map_err(|_| wrt_error::Error::new(
+                wrt_error::ErrorCategory::Memory,
+                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
+                "Failed to create memory adapter"
+            ))?; // 64MB default
         
         Ok(Self {
             #[cfg(any(feature = "std", feature = "alloc"))]
@@ -436,7 +458,12 @@ where
         
         // Create memory adapter for this component
         let component_memory_limit = self.memory_budget.component_overhead / 4; // Conservative allocation
-        let memory_adapter = create_platform_memory_adapter(component_memory_limit)?;
+        let memory_adapter = PlatformMemoryAdapter::new(component_memory_limit)
+            .map_err(|_| wrt_error::Error::new(
+                wrt_error::ErrorCategory::Memory,
+                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
+                "Failed to create memory adapter"
+            ))?;
         
         // Parse component type from bytes (simplified)
         let component_type = ComponentType::default(); // TODO: Parse from bytes

@@ -13,7 +13,7 @@ impl PlatformFilesystem {
         Self
     }
 }
-use crate::component_values::Value;
+use crate::Value;
 use wrt_foundation::{
     safe_managed_alloc, BoundedVec, BoundedString,
     safe_memory::NoStdProvider,
@@ -51,7 +51,13 @@ pub fn wasi_filesystem_read(
     validate_file_descriptor_readable(fd)?;
     
     // Create safety-aware buffer for read operation
-    let provider = CapabilityAwareProvider::new(NoStdProvider::<8192>::new());
+    let base_provider = NoStdProvider::<8192>::new();
+    let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
+        8192,
+        WASI_CRATE_ID,
+        wrt_foundation::verification::VerificationLevel::Standard,
+    ));
+    let provider = CapabilityAwareProvider::new(base_provider, capability, WASI_CRATE_ID);
     let mut buffer = FileBuffer::new(provider)?;
     
     // TODO: Implement actual file reading when platform filesystem support is available
@@ -220,12 +226,12 @@ fn create_file_metadata_record() -> Result<Value> {
     // Return a WASI descriptor-stat record
     // This would be populated from actual file metadata
     let metadata_fields = vec![
-        ("type", Value::U8(4)), // Regular file
-        ("link-count", Value::U64(1)),
-        ("size", Value::U64(1024)),
-        ("data-access-timestamp", Value::U64(0)),
-        ("data-modification-timestamp", Value::U64(0)),
-        ("status-change-timestamp", Value::U64(0)),
+        ("type".to_string(), Value::U8(4)), // Regular file
+        ("link-count".to_string(), Value::U64(1)),
+        ("size".to_string(), Value::U64(1024)),
+        ("data-access-timestamp".to_string(), Value::U64(0)),
+        ("data-modification-timestamp".to_string(), Value::U64(0)),
+        ("status-change-timestamp".to_string(), Value::U64(0)),
     ];
     
     Ok(Value::Record(metadata_fields))

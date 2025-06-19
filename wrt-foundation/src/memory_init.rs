@@ -1,26 +1,73 @@
 //! Modern Memory Initialization System
 //!
 //! This module provides automatic memory system initialization that works
-//! across all crates in the WRT ecosystem with zero boilerplate.
+//! across all crates in the WRT ecosystem with zero boilerplate using the
+//! new capability-based memory management system.
 //!
 //! SW-REQ-ID: REQ_MEM_001 - Memory bounds checking
 //! SW-REQ-ID: REQ_MEM_002 - Budget enforcement
+//! SW-REQ-ID: REQ_CAP_001 - Capability-based access control
 
 use crate::{
     budget_aware_provider::CrateId,
     budget_verification::{CRATE_BUDGETS, TOTAL_MEMORY_BUDGET},
+    capabilities::MemoryCapabilityContext,
+    verification::VerificationLevel,
     Error, Result,
 };
 
+// Legacy imports for backward compatibility
 #[allow(deprecated)]
 use crate::wrt_memory_system::{WrtMemoryCoordinator, WRT_MEMORY_COORDINATOR};
 use core::sync::atomic::{AtomicBool, Ordering};
+
+#[cfg(feature = "std")]
+use std::sync::OnceLock;
 
 /// Global initialization state
 static MEMORY_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 /// Initialization error storage
 static mut INIT_ERROR: Option<&'static str> = None;
+
+/// Global capability context for modern memory management
+#[cfg(feature = "std")]
+static GLOBAL_CAPABILITY_CONTEXT: OnceLock<MemoryCapabilityContext> = OnceLock::new();
+
+#[cfg(not(feature = "std"))]
+static mut GLOBAL_CAPABILITY_CONTEXT: Option<MemoryCapabilityContext> = None;
+
+/// Get access to the global capability context
+pub fn get_global_capability_context() -> Result<&'static MemoryCapabilityContext> {
+    if !MEMORY_INITIALIZED.load(Ordering::Acquire) {
+        return Err(Error::new(
+            crate::ErrorCategory::Initialization,
+            crate::codes::INITIALIZATION_ERROR,
+            "Memory system not initialized",
+        ));
+    }
+    
+    #[cfg(feature = "std")]
+    {
+        GLOBAL_CAPABILITY_CONTEXT.get().ok_or_else(|| Error::new(
+            crate::ErrorCategory::Initialization,
+            crate::codes::INITIALIZATION_ERROR,
+            "Global capability context not available",
+        ))
+    }
+    
+    #[cfg(not(feature = "std"))]
+    {
+        #[allow(unsafe_code, static_mut_refs)] // Safe: Read-only access to static after initialization
+        unsafe {
+            GLOBAL_CAPABILITY_CONTEXT.as_ref().ok_or_else(|| Error::new(
+                crate::ErrorCategory::Initialization,
+                crate::codes::INITIALIZATION_ERROR,
+                "Global capability context not available",
+            ))
+        }
+    }
+}
 
 /// Modern memory system initializer
 pub struct MemoryInitializer;
@@ -56,8 +103,55 @@ impl MemoryInitializer {
             (CrateId::Unknown, CRATE_BUDGETS[16]),
         ];
 
-        // Initialize coordinator
-        match WRT_MEMORY_COORDINATOR.initialize(budgets.iter().copied(), TOTAL_MEMORY_BUDGET) {
+        // Initialize legacy coordinator for backward compatibility
+        #[allow(deprecated)]
+        let legacy_result = WRT_MEMORY_COORDINATOR.initialize(budgets.iter().copied(), TOTAL_MEMORY_BUDGET);
+        
+        // Initialize new capability context
+        let mut context = MemoryCapabilityContext::new(VerificationLevel::Standard, false);
+        
+        // Register capabilities for all crates based on their budgets
+        for (crate_id, budget) in budgets.iter() {
+            if *budget > 0 {
+                // Register dynamic capabilities for all crates
+                if let Err(_) = context.register_dynamic_capability(*crate_id, *budget) {
+                    #[allow(unsafe_code)]
+                    unsafe {
+                        INIT_ERROR = Some("Failed to register capability for crate");
+                    }
+                    MEMORY_INITIALIZED.store(false, Ordering::Release);
+                    return Err(Error::new(
+                        crate::ErrorCategory::Initialization,
+                        crate::codes::INITIALIZATION_ERROR,
+                        "Failed to register crate capability",
+                    ));
+                }
+            }
+        }
+        
+        // Store the global context
+        #[cfg(feature = "std")]
+        {
+            if let Err(_) = GLOBAL_CAPABILITY_CONTEXT.set(context) {
+                MEMORY_INITIALIZED.store(false, Ordering::Release);
+                return Err(Error::new(
+                    crate::ErrorCategory::Initialization,
+                    crate::codes::INITIALIZATION_ERROR,
+                    "Failed to store global capability context",
+                ));
+            }
+        }
+        
+        #[cfg(not(feature = "std"))]
+        {
+            #[allow(unsafe_code)] // Safe: Single-threaded write during initialization
+            unsafe {
+                GLOBAL_CAPABILITY_CONTEXT = Some(context);
+            }
+        }
+        
+        // Check legacy initialization
+        match legacy_result {
             Ok(()) => Ok(()),
             Err(e) => {
                 // Store error for debugging
@@ -137,15 +231,17 @@ pub fn init_crate_memory(crate_id: CrateId) -> Result<()> {
     // Ensure global system is initialized
     MemoryInitializer::initialize()?;
 
-    // Verify crate is properly configured
-    let budget = WRT_MEMORY_COORDINATOR.get_crate_budget(crate_id);
-    if budget == 0 {
+    // Verify crate is properly configured in capability system
+    let context = get_global_capability_context()?;
+    if !context.has_capability(crate_id) {
         return Err(Error::new(
             crate::ErrorCategory::Initialization,
             crate::codes::INITIALIZATION_ERROR,
-            "Crate has zero budget",
+            "Crate has no registered capability",
         ));
     }
+
+    // Legacy check removed - capability system is authoritative
 
     Ok(())
 }

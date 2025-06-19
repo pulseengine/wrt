@@ -9,6 +9,7 @@
 
 #[cfg(any(doc, kani))]
 pub mod kani_verification {
+    #[cfg(kani)]
     use kani;
 
     #[cfg(feature = "std")]

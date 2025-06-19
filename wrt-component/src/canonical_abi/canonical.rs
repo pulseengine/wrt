@@ -4,10 +4,13 @@
 //! in the WebAssembly Component Model to interface between components.
 
 // Import error kinds from wrt-error
-use wrt_error::kinds::{
+use wrt_error::{Error, Result, kinds::{
     InvalidValue, NotImplementedError, OutOfBoundsAccess, ValueOutOfRangeError,
-};
+}};
 use wrt_foundation::resource::ResourceOperation as FormatResourceOperation;
+use wrt_format::component::FormatValType;
+use wrt_foundation::component_value::ValType as FoundationValType;
+use crate::bounded_component_infra::ComponentProvider;
 // Additional dependencies not in prelude
 use wrt_runtime::Memory;
 
@@ -37,7 +40,10 @@ use crate::{
     string_encoding::{
         lift_string_with_options, lower_string_with_options, CanonicalStringOptions, StringEncoding,
     },
+    types::ValType,
 };
+
+use crate::prelude::*;
 
 // Binary std/no_std choice
 const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024; // 10MB
@@ -1432,14 +1438,14 @@ mod tests {
 /// Result containing the converted Value
 pub fn convert_value_for_canonical_abi(
     value: &wrt_foundation::values::Value,
-    target_type: &wrt_format::component::ValType,
+    target_type: &FormatValType<ComponentProvider>,
 ) -> Result<wrt_foundation::values::Value> {
     // First convert the format ValType to a component-friendly ValType
     let component_type = crate::values::convert_format_to_common_valtype(target_type);
 
     // Now convert the value based on the component type
     match &component_type {
-        wrt_foundation::component_value::ValType::Bool => {
+        FoundationValType::<ComponentProvider>::Bool => {
             if let Some(b) = value.as_bool() {
                 Ok(wrt_foundation::values::Value::Bool(b))
             } else {
@@ -1450,7 +1456,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::S8 => {
+        FoundationValType::<ComponentProvider>::S8 => {
             if let Some(v) = value.as_i8() {
                 Ok(wrt_foundation::values::Value::S8(v))
             } else if let Some(i) = value.as_i32() {
@@ -1471,7 +1477,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::U8 => {
+        FoundationValType::<ComponentProvider>::U8 => {
             if let Some(v) = value.as_u8() {
                 Ok(wrt_foundation::values::Value::U8(v))
             } else if let Some(i) = value.as_i32() {
@@ -1492,7 +1498,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::S16 => {
+        FoundationValType::<ComponentProvider>::S16 => {
             if let Some(v) = value.as_i16() {
                 Ok(wrt_foundation::values::Value::S16(v))
             } else if let Some(i) = value.as_i32() {
@@ -1513,7 +1519,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::U16 => {
+        FoundationValType::<ComponentProvider>::U16 => {
             if let Some(v) = value.as_u16() {
                 Ok(wrt_foundation::values::Value::U16(v))
             } else if let Some(i) = value.as_i32() {
@@ -1534,7 +1540,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::S32 => {
+        FoundationValType::<ComponentProvider>::S32 => {
             if let Some(v) = value.as_i32() {
                 Ok(wrt_foundation::values::Value::S32(v))
             } else if let Some(v) = value.as_i64() {
@@ -1555,7 +1561,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::U32 => {
+        FoundationValType::<ComponentProvider>::U32 => {
             if let Some(v) = value.as_u32() {
                 Ok(wrt_foundation::values::Value::U32(v))
             } else if let Some(i) = value.as_i64() {
@@ -1576,7 +1582,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::S64 => {
+        FoundationValType::<ComponentProvider>::S64 => {
             if let Some(v) = value.as_i64() {
                 Ok(wrt_foundation::values::Value::S64(v))
             } else if let Some(v) = value.as_i32() {
@@ -1589,7 +1595,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::U64 => {
+        FoundationValType::<ComponentProvider>::U64 => {
             if let Some(v) = value.as_u64() {
                 Ok(wrt_foundation::values::Value::U64(v))
             } else if let Some(i) = value.as_i64() {
@@ -1610,7 +1616,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::F32 => {
+        FoundationValType::<ComponentProvider>::F32 => {
             if let Some(v) = value.as_f32() {
                 Ok(wrt_foundation::values::Value::F32(v))
             } else if let Some(v) = value.as_f64() {
@@ -1627,7 +1633,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::F64 => {
+        FoundationValType::<ComponentProvider>::F64 => {
             if let Some(v) = value.as_f64() {
                 Ok(wrt_foundation::values::Value::F64(v))
             } else if let Some(v) = value.as_f32() {
@@ -1644,7 +1650,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::Char => {
+        FoundationValType::<ComponentProvider>::Char => {
             if let Some(c) = value.as_char() {
                 Ok(wrt_foundation::values::Value::Char(c))
             } else if let Some(i) = value.as_i32() {
@@ -1668,7 +1674,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::String => {
+        FoundationValType::<ComponentProvider>::String => {
             if let Some(s) = value.as_str() {
                 Ok(wrt_foundation::values::Value::String(s.to_string()))
             } else {
@@ -1679,7 +1685,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::List(inner_type) => {
+        FoundationValType::<ComponentProvider>::List(inner_type) => {
             if let Some(list) = value.as_list() {
                 #[cfg(feature = "safety-critical")]
                 let mut converted_list: WrtVec<Value, {CrateId::Component as u8}, 1024> = WrtVec::new();
@@ -1704,7 +1710,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::Record(fields) => {
+        FoundationValType::<ComponentProvider>::Record(fields) => {
             if let Some(record) = value.as_record() {
                 #[cfg(feature = "safety-critical")]
                 let mut converted_record: WrtHashMap<String, Value, {CrateId::Component as u8}, 64> = WrtHashMap::new();
@@ -1738,7 +1744,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::Tuple(types) => {
+        FoundationValType::<ComponentProvider>::Tuple(types) => {
             if let Some(tuple) = value.as_tuple() {
                 if tuple.len() != types.len() {
                     return Err(Error::new(
@@ -1774,7 +1780,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::Flags(names) => {
+        FoundationValType::<ComponentProvider>::Flags(names) => {
             if let Some(flags) = value.as_flags() {
                 // Verify all required flags are present
                 for name in names {
@@ -1827,7 +1833,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::Variant(cases) => {
+        FoundationValType::<ComponentProvider>::Variant(cases) => {
             if let Some((discriminant, payload)) = value.as_variant() {
                 if discriminant < cases.len() as u32 {
                     Ok(wrt_foundation::values::Value::Variant(discriminant, payload.map(Box::new)))
@@ -1849,7 +1855,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_foundation::component_value::ValType::Void => Ok(wrt_foundation::values::Value::Void),
+        FoundationValType::<ComponentProvider>::Void => Ok(wrt_foundation::values::Value::Void),
         // All types are now handled
         _ => Ok(value.clone()),
     }

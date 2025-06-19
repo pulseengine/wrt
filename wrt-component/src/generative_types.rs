@@ -8,11 +8,12 @@ use core::sync::atomic::{AtomicU32, Ordering};
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_GENERATIVE_TYPES},
     component_value::ComponentValue,
-    resource::{ResourceType},
+    resource::ResourceType,
     safe_memory::NoStdProvider,
 };
 
 use crate::{
+    bounded_component_infra::ComponentProvider,
     resource_management::ResourceHandle,
     type_bounds::{RelationResult, TypeBoundsChecker},
     types::{ComponentError, ComponentInstanceId, ResourceId, TypeId},
@@ -20,7 +21,7 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GenerativeResourceType {
-    pub base_type: ResourceType,
+    pub base_type: ResourceType<ComponentProvider>,
     pub instance_id: ComponentInstanceId,
     pub unique_type_id: TypeId,
     pub generation: u32,
@@ -61,7 +62,7 @@ impl GenerativeTypeRegistry {
 
     pub fn create_generative_type(
         &mut self,
-        base_type: ResourceType,
+        base_type: ResourceType<ComponentProvider>,
         instance_id: ComponentInstanceId,
     ) -> core::result::Result<GenerativeResourceType, ComponentError> {
         let unique_type_id = TypeId(self.next_type_id.fetch_add(1, Ordering::SeqCst));
@@ -237,9 +238,9 @@ impl GenerativeTypeRegistry {
         false
     }
 
-    fn is_resource_subtype(&self, sub_type: &ResourceType, super_type: &ResourceType) -> bool {
+    fn is_resource_subtype(&self, sub_type: &ResourceType<ComponentProvider>, super_type: &ResourceType<ComponentProvider>) -> bool {
         match (sub_type, super_type) {
-            (ResourceType::Handle(sub_h), ResourceType::Handle(super_h)) => {
+            (ResourceType<ComponentProvider>::Handle(sub_h), ResourceType<ComponentProvider>::Handle(super_h)) => {
                 sub_h.type_name() == super_h.type_name()
             }
             _ => false,
@@ -261,7 +262,7 @@ mod tests {
     #[test]
     fn test_generative_type_registry_creation() {
         let mut registry = GenerativeTypeRegistry::new();
-        let base_type = ResourceType::Handle(ResourceHandle::new(42));
+        let base_type = ResourceType<ComponentProvider>::Handle(ResourceHandle::new(42));
         let instance_id = ComponentInstanceId(1);
 
         let result = registry.create_generative_type(base_type.clone(), instance_id);
@@ -277,7 +278,7 @@ mod tests {
     #[test]
     fn test_unique_type_ids_across_instances() {
         let mut registry = GenerativeTypeRegistry::new();
-        let base_type = ResourceType::Handle(ResourceHandle::new(42));
+        let base_type = ResourceType<ComponentProvider>::Handle(ResourceHandle::new(42));
         let instance1 = ComponentInstanceId(1);
         let instance2 = ComponentInstanceId(2);
 
@@ -306,7 +307,7 @@ mod tests {
     #[test]
     fn test_resource_handle_registration() {
         let mut registry = GenerativeTypeRegistry::new();
-        let base_type = ResourceType::Handle(ResourceHandle::new(42));
+        let base_type = ResourceType<ComponentProvider>::Handle(ResourceHandle::new(42));
         let instance_id = ComponentInstanceId(1);
         let handle = ResourceHandle::new(100);
 
@@ -319,7 +320,7 @@ mod tests {
     #[test]
     fn test_instance_cleanup() {
         let mut registry = GenerativeTypeRegistry::new();
-        let base_type = ResourceType::Handle(ResourceHandle::new(42));
+        let base_type = ResourceType<ComponentProvider>::Handle(ResourceHandle::new(42));
         let instance_id = ComponentInstanceId(1);
 
         let gen_type = registry.create_generative_type(base_type, instance_id).unwrap();

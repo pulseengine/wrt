@@ -7,6 +7,7 @@ use wrt_error::kinds::{OutOfBoundsAccess, ResourceLimitExceeded};
 
 use crate::{
     resources::{BoundedBufferPool, MemoryStrategy},
+    prelude::*,
 };
 
 /// Trait defining a memory optimization strategy

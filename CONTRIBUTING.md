@@ -22,8 +22,14 @@ For complete contribution guidelines, please see our comprehensive documentation
 cargo install --path cargo-wrt
 
 # Setup development environment
+cargo-wrt setup --check             # Check tool dependencies
+cargo-wrt setup --all               # Install tools and setup git hooks
 cargo-wrt build
 cargo-wrt test
+
+# Tool version management
+cargo-wrt tool-versions check       # Verify tool versions
+cargo-wrt tool-versions check --verbose  # Detailed version information
 
 # Before submitting PR
 cargo-wrt check

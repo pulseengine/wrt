@@ -155,6 +155,12 @@ pub struct PanicContextBuilder<P: MemoryProvider> {
     memory_budget: usize,
 }
 
+impl<P: MemoryProvider> Default for PanicContextBuilder<P> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<P: MemoryProvider> PanicContextBuilder<P> {
     /// Create a new panic context builder with ASIL-D defaults
     pub const fn new() -> Self {

@@ -269,7 +269,7 @@ impl Error {
     /// Get the ASIL level of this error (ASIL-B and above)
     #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
     #[must_use]
-    pub fn asil_level(&self) -> &'static str {
+    pub const fn asil_level(&self) -> &'static str {
         match self.category {
             ErrorCategory::Safety => "ASIL-D", // Safety errors require highest level
             ErrorCategory::Memory | ErrorCategory::RuntimeTrap => "ASIL-C", // Memory/trap errors are ASIL-C
@@ -281,7 +281,7 @@ impl Error {
     /// Check if error requires immediate safe state transition (ASIL-C and above)
     #[cfg(any(feature = "asil-c", feature = "asil-d"))]
     #[must_use]
-    pub fn requires_safe_state(&self) -> bool {
+    pub const fn requires_safe_state(&self) -> bool {
         matches!(
             self.category,
             ErrorCategory::Safety | ErrorCategory::Memory | ErrorCategory::RuntimeTrap
@@ -291,7 +291,7 @@ impl Error {
     /// Validate error integrity (ASIL-D only)
     #[cfg(feature = "asil-d")]
     #[must_use]
-    pub fn validate_integrity(&self) -> bool {
+    pub const fn validate_integrity(&self) -> bool {
         // Check that error code is within valid range for category
         let valid_range = match self.category {
             ErrorCategory::Core => self.code >= 1000 && self.code < 2000,
@@ -300,9 +300,8 @@ impl Error {
             ErrorCategory::Memory => self.code >= 4000 && self.code < 5000,
             ErrorCategory::Validation => self.code >= 5000 && self.code < 6000,
             ErrorCategory::Type => self.code >= 6000 && self.code < 7000,
-            ErrorCategory::Runtime => self.code >= 7000 && self.code < 8000,
+            ErrorCategory::Runtime | ErrorCategory::Safety => self.code >= 7000 && self.code < 8000,
             ErrorCategory::System => self.code >= 8000 && self.code < 9000,
-            ErrorCategory::Safety => self.code >= 7000 && self.code < 8000,
             _ => self.code >= 9000 && self.code <= 9999,
         };
 

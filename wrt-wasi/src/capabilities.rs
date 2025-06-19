@@ -8,6 +8,7 @@ use wrt_foundation::{
     BoundedVec, BoundedString, safe_managed_alloc,
     safe_memory::NoStdProvider,
     capabilities::CapabilityAwareProvider,
+    traits::BoundedCapacity,
 };
 use crate::{prelude::*, WASI_CRATE_ID};
 
@@ -97,7 +98,13 @@ pub struct WasiFileSystemCapabilities {
 impl WasiFileSystemCapabilities {
     /// Create minimal filesystem capabilities (no access)
     pub fn minimal() -> Result<Self> {
-        let provider = safe_managed_alloc!(8192, WASI_CRATE_ID)?;
+        let base_provider = NoStdProvider::<8192>::new();
+        let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
+            8192,
+            WASI_CRATE_ID,
+            wrt_foundation::verification::VerificationLevel::Standard,
+        ));
+        let provider = CapabilityAwareProvider::new(base_provider, capability, WASI_CRATE_ID);
         Ok(Self {
             allowed_paths: BoundedVec::new(provider)?,
             read_access: false,
@@ -109,7 +116,13 @@ impl WasiFileSystemCapabilities {
     
     /// Create read-only filesystem capabilities
     pub fn read_only() -> Result<Self> {
-        let provider = safe_managed_alloc!(8192, WASI_CRATE_ID)?;
+        let base_provider = NoStdProvider::<8192>::new();
+        let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
+            8192,
+            WASI_CRATE_ID,
+            wrt_foundation::verification::VerificationLevel::Standard,
+        ));
+        let provider = CapabilityAwareProvider::new(base_provider, capability, WASI_CRATE_ID);
         Ok(Self {
             allowed_paths: BoundedVec::new(provider)?,
             read_access: true,
@@ -121,7 +134,13 @@ impl WasiFileSystemCapabilities {
     
     /// Create full filesystem access capabilities
     pub fn full_access() -> Result<Self> {
-        let provider = safe_managed_alloc!(8192, WASI_CRATE_ID)?;
+        let base_provider = NoStdProvider::<8192>::new();
+        let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
+            8192,
+            WASI_CRATE_ID,
+            wrt_foundation::verification::VerificationLevel::Standard,
+        ));
+        let provider = CapabilityAwareProvider::new(base_provider, capability, WASI_CRATE_ID);
         Ok(Self {
             allowed_paths: BoundedVec::new(provider)?,
             read_access: true,
@@ -133,18 +152,25 @@ impl WasiFileSystemCapabilities {
     
     /// Add an allowed filesystem path
     pub fn add_allowed_path(&mut self, path: &str) -> Result<()> {
-        let bounded_path = BoundedString::from_str(path)
+        let base_provider = NoStdProvider::<8192>::new();
+        let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
+            8192,
+            WASI_CRATE_ID,
+            wrt_foundation::verification::VerificationLevel::Standard,
+        ));
+        let provider = CapabilityAwareProvider::new(base_provider, capability, WASI_CRATE_ID);
+        let bounded_path = BoundedString::from_str(path, provider)
             .map_err(|_| Error::new(
                 ErrorCategory::Resource,
                 codes::WASI_RESOURCE_LIMIT,
-                kinds::WasiResourceError("Path too long")
+                "Path too long"
             ))?;
             
         self.allowed_paths.push(bounded_path)
             .map_err(|_| Error::new(
                 ErrorCategory::Resource,
                 codes::WASI_RESOURCE_LIMIT,
-                kinds::WasiResourceError("Too many allowed paths")
+                "Too many allowed paths"
             ))?;
             
         Ok(())
@@ -181,7 +207,13 @@ pub struct WasiEnvironmentCapabilities {
 impl WasiEnvironmentCapabilities {
     /// Create minimal environment capabilities (no access)
     pub fn minimal() -> Result<Self> {
-        let provider = safe_managed_alloc!(8192, WASI_CRATE_ID)?;
+        let base_provider = NoStdProvider::<8192>::new();
+        let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
+            8192,
+            WASI_CRATE_ID,
+            wrt_foundation::verification::VerificationLevel::Standard,
+        ));
+        let provider = CapabilityAwareProvider::new(base_provider, capability, WASI_CRATE_ID);
         Ok(Self {
             args_access: false,
             environ_access: false,
@@ -191,7 +223,13 @@ impl WasiEnvironmentCapabilities {
     
     /// Create args-only environment capabilities
     pub fn args_only() -> Result<Self> {
-        let provider = safe_managed_alloc!(8192, WASI_CRATE_ID)?;
+        let base_provider = NoStdProvider::<8192>::new();
+        let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
+            8192,
+            WASI_CRATE_ID,
+            wrt_foundation::verification::VerificationLevel::Standard,
+        ));
+        let provider = CapabilityAwareProvider::new(base_provider, capability, WASI_CRATE_ID);
         Ok(Self {
             args_access: true,
             environ_access: false,
@@ -201,7 +239,13 @@ impl WasiEnvironmentCapabilities {
     
     /// Create full environment access capabilities
     pub fn full_access() -> Result<Self> {
-        let provider = safe_managed_alloc!(8192, WASI_CRATE_ID)?;
+        let base_provider = NoStdProvider::<8192>::new();
+        let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
+            8192,
+            WASI_CRATE_ID,
+            wrt_foundation::verification::VerificationLevel::Standard,
+        ));
+        let provider = CapabilityAwareProvider::new(base_provider, capability, WASI_CRATE_ID);
         Ok(Self {
             args_access: true,
             environ_access: true,
@@ -211,18 +255,25 @@ impl WasiEnvironmentCapabilities {
     
     /// Add an allowed environment variable
     pub fn add_allowed_var(&mut self, var_name: &str) -> Result<()> {
-        let bounded_var = BoundedString::from_str(var_name)
+        let base_provider = NoStdProvider::<8192>::new();
+        let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
+            8192,
+            WASI_CRATE_ID,
+            wrt_foundation::verification::VerificationLevel::Standard,
+        ));
+        let provider = CapabilityAwareProvider::new(base_provider, capability, WASI_CRATE_ID);
+        let bounded_var = BoundedString::from_str(var_name, provider)
             .map_err(|_| Error::new(
                 ErrorCategory::Resource,
                 codes::WASI_RESOURCE_LIMIT,
-                kinds::WasiResourceError("Environment variable name too long")
+                "Environment variable name too long"
             ))?;
             
         self.allowed_env_vars.push(bounded_var)
             .map_err(|_| Error::new(
                 ErrorCategory::Resource,
                 codes::WASI_RESOURCE_LIMIT,
-                kinds::WasiResourceError("Too many allowed environment variables")
+                "Too many allowed environment variables"
             ))?;
             
         Ok(())

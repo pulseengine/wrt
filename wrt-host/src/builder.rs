@@ -89,8 +89,8 @@ impl Default for HostBuilder {
             
             let context_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, 65536));
             let context = context_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
-            let provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
-            let provider: HostProvider = provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory"));
+            let provider_result: wrt_foundation::WrtResult<wrt_foundation::capabilities::CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<HOST_MEMORY_SIZE>>> = safe_capability_alloc!(context, CrateId::Host, HOST_MEMORY_SIZE);
+            let provider: wrt_foundation::capabilities::CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<HOST_MEMORY_SIZE>> = provider_result.expect("Failed to allocate memory");
             Self {
                 registry: CallbackRegistry::new(),
                 required_builtins: wrt_foundation::BoundedSet::new(provider).unwrap_or_else(|_| panic!("Failed to create builtins set")),
@@ -187,8 +187,8 @@ impl HostBuilder {
                 use wrt_foundation::{safe_managed_alloc, safe_capability_alloc, capability_context, CrateId};
                 let context_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, 65536));
                 let context = context_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
-                let provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, 65536);
-                let provider: HostProvider = provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory"));
+                let provider_result: wrt_foundation::WrtResult<wrt_foundation::capabilities::CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<65536>>> = safe_capability_alloc!(context, CrateId::Host, 65536);
+                let provider: wrt_foundation::capabilities::CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<65536>> = provider_result.expect("Failed to allocate memory");
                 ValueVec::new(provider).unwrap()
             };
             handler(target, args)
@@ -322,8 +322,8 @@ impl HostBuilder {
                 use wrt_foundation::{safe_managed_alloc, safe_capability_alloc, capability_context, CrateId};
                 let context_result: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Host, 65536));
                 let context = context_result.unwrap_or_else(|_| panic!("Failed to create capability context"));
-                let provider_result: wrt_foundation::WrtResult<HostProvider> = safe_capability_alloc!(context, CrateId::Host, 65536);
-                let provider: HostProvider = provider_result.unwrap_or_else(|_| panic!("Failed to allocate memory"));
+                let provider_result: wrt_foundation::WrtResult<wrt_foundation::capabilities::CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<65536>>> = safe_capability_alloc!(context, CrateId::Host, 65536);
+                let provider: wrt_foundation::capabilities::CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<65536>> = provider_result.expect("Failed to allocate memory");
                 ValueVec::new(provider).unwrap()
             };
             handler(target, args)

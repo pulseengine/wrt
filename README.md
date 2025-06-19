@@ -100,11 +100,18 @@ cargo-wrt coverage --html --open
 Setup development environment:
 
 ```bash
+# Check development tool dependencies
+cargo-wrt setup --check
+
 # Setup git hooks for code quality checks
 cargo-wrt setup --hooks
 
 # Setup all development tools
 cargo-wrt setup --all
+
+# Manage tool version requirements
+cargo-wrt tool-versions check --verbose    # Check all tool versions
+cargo-wrt tool-versions generate           # Generate tool-versions.toml
 ```
 
 See the [Developer Guide](docs/source/development/) for detailed development instructions.

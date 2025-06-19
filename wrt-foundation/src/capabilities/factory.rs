@@ -168,7 +168,11 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
             self.provider = Some(provider);
         }
 
-        Ok(self.provider.as_mut().unwrap())
+        self.provider.as_mut().ok_or_else(|| Error::new(
+            ErrorCategory::Memory,
+            codes::MEMORY_ERROR,
+            "Provider not initialized",
+        ))
     }
 
     /// Read data with capability verification
@@ -189,7 +193,7 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
 
         // Return a slice from the provider's buffer
         let slice = provider.borrow_slice(offset, len)?;
-        Ok(slice.data()?)
+        slice.data()
     }
 
     /// Write data with capability verification

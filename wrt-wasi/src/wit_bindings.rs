@@ -173,7 +173,7 @@ pub mod sockets_types {
 /// Convert WIT types to WRT component values
 pub mod conversions {
     use super::*;
-    use wrt_foundation::values::Value;
+    use crate::Value;
     
     /// Convert filesystem descriptor to Value
     pub fn descriptor_to_value(desc: filesystem_types::Descriptor) -> Value {
@@ -187,7 +187,7 @@ pub mod conversions {
             _ => Err(Error::new(
                 ErrorCategory::Parse,
                 codes::WASI_INVALID_FD,
-                kinds::WasiResourceError("Invalid descriptor type")
+                "Invalid descriptor type"
             )),
         }
     }
@@ -228,7 +228,7 @@ pub mod conversions {
             _ => Err(Error::new(
                 ErrorCategory::Parse,
                 codes::WASI_INVALID_FD,
-                kinds::WasiResourceError("Invalid timestamp format")
+                "Invalid timestamp format"
             )),
         }
     }
@@ -261,7 +261,7 @@ pub mod conversions {
             _ => Err(Error::new(
                 ErrorCategory::Parse,
                 codes::WASI_INVALID_FD,
-                kinds::WasiResourceError("Invalid descriptor type")
+                "Invalid descriptor type"
             )),
         }
     }
@@ -270,7 +270,7 @@ pub mod conversions {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wrt_foundation::values::Value;
+    use crate::Value;
     
     #[test]
     fn test_descriptor_conversions() -> Result<()> {

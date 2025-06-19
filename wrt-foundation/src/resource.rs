@@ -210,17 +210,15 @@ impl core::str::FromStr for ResourceRepresentation {
                 #[cfg(feature = "std")]
                 {
                     use crate::budget_aware_provider::CrateId;
-                    use crate::safe_managed_alloc;
+                    use crate::safe_allocation::capability_factories;
+                    use crate::verification::VerificationLevel;
 
-                    let provider = safe_managed_alloc!(4096, CrateId::Foundation)?;
-
-                    Ok(ResourceRepresentation::Record(BoundedVec::new(provider).map_err(|_e| {
-                        wrt_error::Error::new(
-                            wrt_error::ErrorCategory::Memory,
-                            wrt_error::codes::MEMORY_ALLOCATION_ERROR,
-                            "Failed to create BoundedVec for ResourceRepresentation::Record",
-                        )
-                    })?))
+                    let (vec, _capability) = capability_factories::safe_static_bounded_vec::<
+                        BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, crate::safe_memory::NoStdProvider<4096>>, 
+                        MAX_RESOURCE_FIELDS, 
+                        4096
+                    >(CrateId::Foundation, VerificationLevel::Standard)?;
+                    Ok(ResourceRepresentation::Record(vec))
                 }
                 #[cfg(not(feature = "std"))]
                 {
@@ -231,19 +229,15 @@ impl core::str::FromStr for ResourceRepresentation {
                 #[cfg(feature = "std")]
                 {
                     use crate::budget_aware_provider::CrateId;
-                    use crate::safe_managed_alloc;
+                    use crate::safe_allocation::capability_factories;
+                    use crate::verification::VerificationLevel;
 
-                    let provider = safe_managed_alloc!(4096, CrateId::Foundation)?;
-
-                    Ok(ResourceRepresentation::Aggregate(BoundedVec::new(provider).map_err(
-                        |_e| {
-                            wrt_error::Error::new(
-                                wrt_error::ErrorCategory::Memory,
-                                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
-                                "Failed to create BoundedVec for ResourceRepresentation::Aggregate",
-                            )
-                        },
-                    )?))
+                    let (vec, _capability) = capability_factories::safe_static_bounded_vec::<
+                        u32, 
+                        MAX_RESOURCE_AGGREGATE_IDS, 
+                        4096
+                    >(CrateId::Foundation, VerificationLevel::Standard)?;
+                    Ok(ResourceRepresentation::Aggregate(vec))
                 }
                 #[cfg(not(feature = "std"))]
                 {

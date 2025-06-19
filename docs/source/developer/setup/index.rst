@@ -64,6 +64,13 @@ Quick Setup
    # Install unified build tool
    cargo install --path cargo-wrt
 
+   # Setup development environment and tools
+   cargo-wrt setup --check       # Check tool dependencies
+   cargo-wrt setup --all         # Install tools and setup git hooks
+
+   # Verify tool versions (optional)
+   cargo-wrt tool-versions check --verbose
+
    # Verify build
    cargo-wrt build
 
@@ -72,6 +79,34 @@ Quick Setup
 
    # Format code and run checks
    cargo-wrt check
+
+Tool Version Management
+=======================
+
+WRT uses a sophisticated tool version management system to ensure reproducible development environments:
+
+.. code-block:: bash
+
+   # Check all tool versions against requirements
+   cargo-wrt tool-versions check
+
+   # Show detailed version information
+   cargo-wrt tool-versions check --verbose
+
+   # Check specific tool
+   cargo-wrt tool-versions check --tool kani
+
+   # Generate tool-versions.toml configuration file
+   cargo-wrt tool-versions generate
+
+The ``tool-versions.toml`` file in the workspace root specifies:
+
+* **Exact version requirements** (e.g., kani must be exactly 0.63.0)
+* **Minimum version requirements** (e.g., git must be at least 2.30.0) 
+* **Installation commands** for each tool
+* **Command mapping** - which cargo-wrt commands require each tool
+
+This ensures all contributors use compatible tool versions for consistent builds and testing.
 
 Next Steps
 ==========

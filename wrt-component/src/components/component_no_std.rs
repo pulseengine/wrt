@@ -90,7 +90,7 @@ pub enum ExternValue {
     /// Global value
     Global(GlobalValue),
     /// Trap value
-    Trap(BoundedString<MAX_WASM_NAME_LENGTH>),
+    Trap(BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>),
 }
 
 /// Represents a function value
@@ -99,7 +99,7 @@ pub struct FunctionValue {
     /// Function type
     pub ty: FuncType,
     /// Export name that this function refers to
-    pub export_name: BoundedString<MAX_WASM_NAME_LENGTH>,
+    pub export_name: BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>,
 }
 
 /// Represents a table value
@@ -121,7 +121,7 @@ pub struct MemoryValue {
     /// Memory access count
     pub access_count: u64,
     /// Debug name
-    pub debug_name: Option<BoundedString<MAX_WASM_NAME_LENGTH>>,
+    pub debug_name: Option<BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>>,
 }
 
 impl MemoryValue {
@@ -323,13 +323,13 @@ pub const MAX_BINARY_SIZE: usize = 1024 * 1024; // 1 MB
 pub struct WrtComponentType {
     /// Component imports
     pub imports: BoundedVec<
-        (BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<65536>>, BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<65536>>, ExternType<NoStdProvider<65536>>),
+        (BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<65536>>, BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<65536>>, ExternType>),
         MAX_COMPONENT_IMPORTS,
         NoStdProvider<65536>,
     >,
     /// Component exports
     pub exports:
-        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<65536>>, ExternType<NoStdProvider<65536>>), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
+        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<65536>>, ExternType>), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
     /// Component instances
     pub instances:
         BoundedVec<wrt_format::component::ComponentTypeDefinition, MAX_COMPONENT_INSTANCES, NoStdProvider<65536>>,
@@ -540,7 +540,7 @@ pub struct BuiltinRequirements {
     pub required: BoundedVec<BuiltinType, MAX_COMPONENT_TYPES, NoStdProvider<65536>>,
     /// Map of required builtin instances
     pub instances:
-        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, BuiltinType), MAX_COMPONENT_INSTANCES, NoStdProvider<65536>>,
+        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>, BuiltinType), MAX_COMPONENT_INSTANCES, NoStdProvider<65536>>,
 }
 
 /// Runtime instance type for no_std
@@ -548,13 +548,13 @@ pub struct BuiltinRequirements {
 pub struct RuntimeInstance {
     /// Functions exported by this runtime
     functions:
-        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, ExternValue), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
+        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>, ExternValue), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
     /// Memory exported by this runtime
-    memories: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, MemoryValue), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
+    memories: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>, MemoryValue), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
     /// Tables exported by this runtime
-    tables: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, TableValue), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
+    tables: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>, TableValue), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
     /// Globals exported by this runtime
-    globals: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, GlobalValue), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
+    globals: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>, GlobalValue), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
     /// Verification level for memory operations
     verification_level: VerificationLevel,
 }
@@ -652,7 +652,7 @@ pub struct Component {
     pub instances: BoundedVec<InstanceValue, MAX_COMPONENT_INSTANCES, NoStdProvider<65536>>,
     /// Linked components with their namespaces (names and component IDs)
     pub linked_components:
-        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH>, usize), MAX_LINKED_COMPONENTS, NoStdProvider<65536>>,
+        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>, usize), MAX_LINKED_COMPONENTS, NoStdProvider<65536>>,
     /// Runtime instance
     pub runtime: Option<RuntimeInstance>,
     /// Resource table for managing component resources

@@ -7,6 +7,7 @@ use wrt_error::kinds::PoisonedLockError;
 use wrt_foundation::bounded::BoundedVec;
 
 use super::{ResourceId, ResourceTable};
+use crate::prelude::*;
 
 /// Maximum number of resources that can be managed by a ResourceArena
 pub const MAX_ARENA_RESOURCES: usize = 64;

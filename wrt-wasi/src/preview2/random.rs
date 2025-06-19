@@ -5,7 +5,7 @@
 
 use crate::prelude::*;
 use crate::capabilities::WasiRandomCapabilities;
-use crate::component_values::Value;
+use crate::Value;
 use core::any::Any;
 
 /// WASI get random bytes operation
@@ -23,7 +23,7 @@ pub fn wasi_get_random_bytes(
         return Err(Error::new(
             ErrorCategory::Resource,
             codes::WASI_RESOURCE_LIMIT,
-            kinds::WasiResourceError("Random bytes request exceeds limit")
+            "Random bytes request exceeds limit"
         ));
     }
     
@@ -50,7 +50,7 @@ pub fn wasi_get_insecure_random_bytes(
         return Err(Error::new(
             ErrorCategory::Resource,
             codes::WASI_RESOURCE_LIMIT,
-            kinds::WasiResourceError("Insecure random bytes request exceeds limit")
+            "Insecure random bytes request exceeds limit"
         ));
     }
     
@@ -104,7 +104,7 @@ fn extract_length(args: &[Value]) -> Result<usize> {
         return Err(Error::new(
             ErrorCategory::Parse,
             codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Missing length argument")
+            "Missing length argument"
         ));
     }
     
@@ -116,7 +116,7 @@ fn extract_length(args: &[Value]) -> Result<usize> {
                 Err(Error::new(
                     ErrorCategory::Parse,
                     codes::WASI_INVALID_FD,
-                    kinds::WasiResourceError("Invalid negative length")
+                    "Invalid negative length"
                 ))
             } else {
                 Ok(*len as usize)
@@ -125,7 +125,7 @@ fn extract_length(args: &[Value]) -> Result<usize> {
         _ => Err(Error::new(
             ErrorCategory::Parse,
             codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Invalid length type")
+            "Invalid length type"
         )),
     }
 }
@@ -141,7 +141,7 @@ fn generate_secure_random(len: usize) -> Result<Vec<u8>> {
             .map_err(|_| Error::new(
                 ErrorCategory::Runtime,
                 codes::WASI_CAPABILITY_UNAVAILABLE,
-                kinds::WasiResourceError("Failed to open /dev/urandom")
+                "Failed to open /dev/urandom"
             ))?;
         
         let mut buffer = vec![0u8; len];
@@ -149,7 +149,7 @@ fn generate_secure_random(len: usize) -> Result<Vec<u8>> {
             .map_err(|_| Error::new(
                 ErrorCategory::Runtime,
                 codes::WASI_CAPABILITY_UNAVAILABLE,
-                kinds::WasiResourceError("Failed to read from /dev/urandom")
+                "Failed to read from /dev/urandom"
             ))?;
         
         Ok(buffer)
@@ -177,8 +177,7 @@ fn generate_secure_random(len: usize) -> Result<Vec<u8>> {
         {
             // Simple fallback using platform time as seed
             use wrt_platform::time::PlatformTime;
-            let time = PlatformTime::new();
-            let seed = time.monotonic_now().unwrap_or(0);
+            let seed = PlatformTime::monotonic_ns();
             
             // Simple LCG for demonstration (not cryptographically secure!)
             let mut state = seed;
@@ -219,7 +218,7 @@ fn generate_secure_random(len: usize) -> Result<Vec<u8>> {
         Err(Error::new(
             ErrorCategory::Runtime,
             codes::WASI_CAPABILITY_UNAVAILABLE,
-            kinds::WasiResourceError("Secure random not available in no_std environment")
+            "Secure random not available in no_std environment"
         ))
     }
     
@@ -248,15 +247,14 @@ fn generate_secure_random(len: usize) -> Result<Vec<u8>> {
 fn generate_pseudo_random(len: usize) -> Result<Vec<u8>> {
     // Use platform time as seed
     use wrt_platform::time::PlatformTime;
-    let time = PlatformTime::new();
-    let seed = time.monotonic_now().unwrap_or(42);
+    let seed = PlatformTime::monotonic_ns();
     
     let mut buffer = vec![0u8; len];
     
     // Xorshift64* algorithm for fast pseudo-random generation
     let mut state = seed;
     if state == 0 {
-        state = 0xBAD_C0FFEE_DEAD_BEEF; // Non-zero seed
+        state = 0xBAD_C0FFEE_DEAD_BEEFu128 as u64; // Non-zero seed
     }
     
     for chunk in buffer.chunks_mut(8) {
@@ -289,7 +287,7 @@ pub fn validate_random_capabilities(
         return Err(Error::new(
             ErrorCategory::Resource,
             codes::WASI_PERMISSION_DENIED,
-            kinds::WasiPermissionError("Secure random access denied")
+"Secure random access denied"
         ));
     }
     
@@ -297,7 +295,7 @@ pub fn validate_random_capabilities(
         return Err(Error::new(
             ErrorCategory::Resource,
             codes::WASI_PERMISSION_DENIED,
-            kinds::WasiPermissionError("Pseudo-random access denied")
+"Pseudo-random access denied"
         ));
     }
     

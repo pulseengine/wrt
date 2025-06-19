@@ -38,7 +38,6 @@ on:
 env:
   RUST_BACKTRACE: 1
   CARGO_TERM_COLOR: always
-  KANI_VERSION: '0.54.0'
 
 jobs:
   # Quick verification for all PRs
@@ -66,14 +65,14 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-kani-${{ hashFiles('**/Cargo.lock') }}
       
-      - name: Install KANI and cargo-wrt
+      - name: Install and setup cargo-wrt with Kani
         run: |
-          if ! command -v kani &> /dev/null; then
-            cargo install --version ${KANI_VERSION} --locked kani-verifier
-            cargo kani setup
-          fi
           cargo build --package cargo-wrt
           cargo install --path cargo-wrt
+          cargo-wrt setup --all # Setup all tools including Kani automatically
+      
+      - name: Verify tool setup
+        run: cargo-wrt setup --check
       
       - name: Run Quick Verification
         run: |
@@ -128,14 +127,14 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-kani-${{ matrix.package }}-${{ hashFiles('**/Cargo.lock') }}
       
-      - name: Install KANI and cargo-wrt
+      - name: Install and setup cargo-wrt with Kani
         run: |
-          if ! command -v kani &> /dev/null; then
-            cargo install --version ${KANI_VERSION} --locked kani-verifier
-            cargo kani setup
-          fi
           cargo build --package cargo-wrt
           cargo install --path cargo-wrt
+          cargo-wrt setup --all # Setup all tools including Kani automatically
+      
+      - name: Verify tool setup
+        run: cargo-wrt setup --check
       
       - name: Run Verification
         run: |
@@ -180,12 +179,14 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-kani-comprehensive-${{ hashFiles('**/Cargo.lock') }}
       
-      - name: Install KANI and cargo-wrt
+      - name: Install and setup cargo-wrt with Kani
         run: |
-          cargo install --version ${KANI_VERSION} --locked kani-verifier
-          cargo kani setup
           cargo build --package cargo-wrt
           cargo install --path cargo-wrt
+          cargo-wrt setup --all # Setup all tools including Kani automatically
+      
+      - name: Verify tool setup
+        run: cargo-wrt setup --check
       
       - name: Run Comprehensive Verification
         run: |
