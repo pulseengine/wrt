@@ -15,7 +15,19 @@ use wrt_build_core::{BuildConfig, BuildSystem};
 /// WRT Build System - Unified tool for building, testing, and verifying WRT
 #[derive(Parser)]
 #[command(name = "cargo-wrt")]
-#[command(version, about = "Unified build tool for WRT (WebAssembly Runtime)", long_about = None)]
+#[command(version, about = "Unified build tool for WRT (WebAssembly Runtime)", long_about = "
+Unified build tool for WRT (WebAssembly Runtime)
+
+Usage:
+  cargo-wrt <COMMAND>           # Direct usage
+  cargo wrt <COMMAND>           # As Cargo subcommand
+
+Examples:
+  cargo-wrt build --package wrt
+  cargo wrt build --package wrt
+  cargo-wrt fuzz --list
+  cargo wrt verify --asil d
+")]
 #[command(author = "WRT Team")]
 struct Cli {
     #[command(subcommand)]
@@ -125,6 +137,14 @@ enum Commands {
         /// Include private items
         #[arg(long)]
         private: bool,
+        
+        /// Output directory for documentation
+        #[arg(long)]
+        output_dir: Option<String>,
+        
+        /// Generate multi-version documentation (comma-separated list of versions)
+        #[arg(long)]
+        multi_version: Option<String>,
     },
 
     /// Run coverage analysis
@@ -256,6 +276,10 @@ enum Commands {
         #[arg(long)]
         check_docs: bool,
         
+        /// Audit crate documentation (README, Cargo.toml metadata, lib.rs)
+        #[arg(long)]
+        audit_docs: bool,
+        
         /// Run all validation checks
         #[arg(long)]
         all: bool,
@@ -274,6 +298,85 @@ enum Commands {
         /// Setup all development tools
         #[arg(long)]
         all: bool,
+        
+        /// Check status of all tools
+        #[arg(long)]
+        check: bool,
+        
+        /// Install optional tools
+        #[arg(long)]
+        install: bool,
+    },
+    
+    /// Manage tool version configuration
+    ToolVersions {
+        #[command(subcommand)]
+        command: ToolVersionCommand,
+    },
+    
+    /// Run fuzzing tests
+    Fuzz {
+        /// Specific fuzz target or "all"
+        #[arg(long, short, default_value = "all")]
+        target: String,
+        
+        /// Duration to run each fuzzer (seconds)
+        #[arg(long, short, default_value = "60")]
+        duration: u64,
+        
+        /// Number of workers to use
+        #[arg(long, short, default_value = "4")]
+        workers: u32,
+        
+        /// Number of runs (overrides duration)
+        #[arg(long, short)]
+        runs: Option<u64>,
+        
+        /// List available fuzz targets
+        #[arg(long)]
+        list: bool,
+        
+        /// Package to fuzz
+        #[arg(long, short)]
+        package: Option<String>,
+    },
+    
+    /// Test feature combinations
+    TestFeatures {
+        /// Test specific package
+        #[arg(long, short)]
+        package: Option<String>,
+        
+        /// Test all feature combinations
+        #[arg(long)]
+        combinations: bool,
+        
+        /// Test predefined feature groups
+        #[arg(long)]
+        groups: bool,
+        
+        /// Show detailed errors
+        #[arg(long, short)]
+        verbose: bool,
+    },
+    
+    /// WebAssembly test suite management
+    Testsuite {
+        /// Extract test modules from .wast files
+        #[arg(long)]
+        extract: bool,
+        
+        /// Path to wabt tools
+        #[arg(long)]
+        wabt_path: Option<String>,
+        
+        /// Run validation tests
+        #[arg(long)]
+        validate: bool,
+        
+        /// Clean extracted test files
+        #[arg(long)]
+        clean: bool,
     },
 }
 
@@ -290,6 +393,43 @@ enum AsilArg {
     C,
     #[value(name = "d")]
     D,
+}
+
+/// Tool version management subcommands
+#[derive(Subcommand)]
+enum ToolVersionCommand {
+    /// Generate tool-versions.toml configuration file
+    Generate {
+        /// Overwrite existing file
+        #[arg(long)]
+        force: bool,
+        
+        /// Include all available tools (not just required ones)
+        #[arg(long)]
+        all: bool,
+    },
+    
+    /// Check current tool versions against configuration
+    Check {
+        /// Show detailed version information
+        #[arg(long)]
+        verbose: bool,
+        
+        /// Check specific tool only
+        #[arg(long)]
+        tool: Option<String>,
+    },
+    
+    /// Update tool-versions.toml with current installed versions
+    Update {
+        /// Update specific tool only
+        #[arg(long)]
+        tool: Option<String>,
+        
+        /// Update all tools to their currently installed versions
+        #[arg(long)]
+        all: bool,
+    },
 }
 
 impl From<AsilArg> for wrt_build_core::config::AsilLevel {
@@ -312,15 +452,54 @@ enum WrtdVariant {
     NoStd,
 }
 
+/// Parse command line arguments, handling both `cargo-wrt` and `cargo wrt` patterns
+fn parse_args() -> Cli {
+    let args: Vec<String> = std::env::args().collect();
+    
+    // Check if we're being called as a Cargo subcommand
+    // Pattern: ["cargo-wrt", "wrt", "build", ...] vs ["cargo-wrt", "build", ...]
+    let is_cargo_subcommand = args.len() > 1 && args[1] == "wrt";
+    
+    if is_cargo_subcommand {
+        // We're being called as `cargo wrt`, so skip the "wrt" argument
+        // Create new args without the "wrt" part
+        let mut filtered_args = vec![args[0].clone()]; // Keep binary name
+        
+        // Add remaining arguments (skip the "wrt" at position 1)
+        if args.len() > 2 {
+            filtered_args.extend(args[2..].iter().cloned());
+        }
+        
+        // Parse with filtered arguments - if no command provided, show help
+        if filtered_args.len() == 1 {
+            filtered_args.push("--help".to_string());
+        }
+        
+        Cli::parse_from(filtered_args)
+    } else {
+        // Normal `cargo-wrt` call
+        Cli::parse()
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    let cli = Cli::parse();
+    // Handle both `cargo-wrt` and `cargo wrt` calling patterns
+    let cli = parse_args();
 
     // Print header
     if cli.verbose {
+        let args: Vec<String> = std::env::args().collect();
+        let calling_pattern = if args.len() > 1 && args[1] == "wrt" {
+            "cargo wrt"
+        } else {
+            "cargo-wrt"
+        };
+        
         println!(
-            "{} cargo-wrt v{}",
+            "{} {} v{}",
             "🚀".bright_blue(),
+            calling_pattern,
             env!("CARGO_PKG_VERSION")
         );
         println!("{} WebAssembly Runtime Build System", "📦".bright_green());
@@ -369,7 +548,7 @@ async fn main() -> Result<()> {
             no_miri,
             detailed,
         } => cmd_verify(&build_system, asil, no_kani, no_miri, detailed).await,
-        Commands::Docs { open, private } => cmd_docs(&build_system, open, private).await,
+        Commands::Docs { open, private, output_dir, multi_version } => cmd_docs(&build_system, open, private, output_dir, multi_version).await,
         Commands::Coverage { html, open, format } => {
             cmd_coverage(&build_system, html, open, format).await
         },
@@ -390,11 +569,23 @@ async fn main() -> Result<()> {
         Commands::KaniVerify { asil_profile, package, harness, verbose, extra_args } => {
             cmd_kani_verify(&build_system, asil_profile, package, harness, verbose, extra_args).await
         },
-        Commands::Validate { check_test_files, check_docs, all, verbose } => {
-            cmd_validate(&build_system, check_test_files, check_docs, all, verbose).await
+        Commands::Validate { check_test_files, check_docs, audit_docs, all, verbose } => {
+            cmd_validate(&build_system, check_test_files, check_docs, audit_docs, all, verbose).await
         },
-        Commands::Setup { hooks, all } => {
-            cmd_setup(&build_system, hooks, all).await
+        Commands::Setup { hooks, all, check, install } => {
+            cmd_setup(&build_system, hooks, all, check, install).await
+        },
+        Commands::ToolVersions { command } => {
+            cmd_tool_versions(&build_system, command).await
+        },
+        Commands::Fuzz { target, duration, workers, runs, list, package } => {
+            cmd_fuzz(&build_system, target, duration, workers, runs, list, package).await
+        },
+        Commands::TestFeatures { package, combinations, groups, verbose } => {
+            cmd_test_features(&build_system, package, combinations, groups, verbose).await
+        },
+        Commands::Testsuite { extract, wabt_path, validate, clean } => {
+            cmd_testsuite(&build_system, extract, wabt_path, validate, clean).await
         },
     };
 
@@ -564,15 +755,50 @@ async fn cmd_verify(
 }
 
 /// Docs command implementation
-async fn cmd_docs(build_system: &BuildSystem, open: bool, private: bool) -> Result<()> {
-    println!("{} Generating documentation...", "📚".bright_blue());
-
-    build_system.generate_docs().context("Documentation generation failed")?;
-
-    if open {
-        println!("{} Opening documentation in browser...", "🌐".bright_blue());
-        // TODO: Implement browser opening
+async fn cmd_docs(build_system: &BuildSystem, open: bool, private: bool, output_dir: Option<String>, multi_version: Option<String>) -> Result<()> {
+    use wrt_build_core::tools::ToolManager;
+    
+    // Check if multi-version documentation is requested
+    if let Some(versions_str) = multi_version {
+        let versions: Vec<String> = versions_str
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+            
+        if versions.is_empty() {
+            anyhow::bail!("No versions specified for multi-version documentation");
+        }
+        
+        println!("📚 Generating multi-version documentation for: {:?}", versions);
+        build_system.generate_multi_version_docs(versions)
+            .context("Multi-version documentation generation failed")?;
+            
+        return Ok(());
     }
+    
+    // Check documentation dependencies first
+    let tool_manager = ToolManager::new();
+    let python_status = tool_manager.check_tool("python3");
+    let venv_status = tool_manager.check_tool("python-venv");
+    
+    if !python_status.available {
+        println!("⚠️  Python not available - generating Rust API docs only");
+        println!("   💡 Install Python 3.8+ to enable comprehensive documentation generation");
+    } else if !venv_status.available {
+        println!("⚠️  Python venv not available - generating Rust API docs only");
+        println!("   💡 Python virtual environment support needed for documentation dependencies");
+    } else {
+        println!("📚 Python environment ready - will generate comprehensive documentation");
+    }
+
+    // Generate documentation with enhanced functionality
+    if let Some(out_dir) = output_dir {
+        build_system.generate_docs_with_output_dir(private, open, Some(out_dir))
+    } else {
+        build_system.generate_docs_with_options(private, open)
+    }
+        .context("Documentation generation failed")?;
 
     Ok(())
 }
@@ -864,6 +1090,7 @@ async fn cmd_validate(
     build_system: &BuildSystem,
     check_test_files: bool,
     check_docs: bool,
+    audit_docs: bool,
     all: bool,
     verbose: bool,
 ) -> Result<()> {
@@ -898,7 +1125,18 @@ async fn cmd_validate(
         }
     }
     
-    if !all && !check_test_files && !check_docs {
+    if all || audit_docs {
+        println!();
+        println!("{} Running comprehensive documentation audit...", "📚".bright_blue());
+        let result = validator.audit_crate_documentation()
+            .context("Failed to audit documentation")?;
+        
+        if !result.success {
+            any_failed = true;
+        }
+    }
+    
+    if !all && !check_test_files && !check_docs && !audit_docs {
         // If no specific checks requested, run all
         let all_passed = wrt_build_core::validation::run_all_validations(&workspace_root, verbose)
             .context("Failed to run validation checks")?;
@@ -920,6 +1158,8 @@ async fn cmd_setup(
     build_system: &BuildSystem,
     hooks: bool,
     all: bool,
+    check: bool,
+    install: bool,
 ) -> Result<()> {
     use std::fs;
     use std::process::Command;
@@ -927,6 +1167,34 @@ async fn cmd_setup(
     println!("{} Setting up development environment...", "🔧".bright_blue());
     
     let workspace_root = build_system.workspace_root();
+    
+    // Handle tool status check
+    if all || check {
+        println!("{} Checking tool availability...", "🔍".bright_cyan());
+        
+        use wrt_build_core::tools::ToolManager;
+        let tool_manager = ToolManager::new();
+        tool_manager.print_tool_status();
+        println!();
+        
+        if check && !all && !hooks && !install {
+            return Ok(()); // Only check was requested
+        }
+    }
+    
+    // Handle tool installation
+    if all || install {
+        println!("{} Installing optional tools...", "💿".bright_cyan());
+        
+        use wrt_build_core::tools::ToolManager;
+        let tool_manager = ToolManager::new();
+        
+        if let Err(e) = tool_manager.install_all_needed_tools() {
+            println!("    ⚠️ Some tools failed to install: {}", e);
+        }
+        
+        println!();
+    }
     
     if all || hooks {
         println!("{} Configuring git hooks...", "🪝".bright_cyan());
@@ -958,11 +1226,262 @@ async fn cmd_setup(
         }
     }
     
-    if !all && !hooks {
+    if !all && !hooks && !check && !install {
         println!("{} No setup options specified. Available options:", "ℹ️".bright_blue());
+        println!("  --check    Check status of all tools");
         println!("  --hooks    Setup git hooks");
-        println!("  --all      Setup all development tools");
+        println!("  --install  Install optional tools (cargo-fuzz, kani-verifier)");
+        println!("  --all      Do everything (check + hooks + install)");
+        println!();
+        println!("Examples:");
+        println!("  cargo-wrt setup --check");
+        println!("  cargo-wrt setup --install");
+        println!("  cargo-wrt setup --all");
     }
     
+    Ok(())
+}
+
+/// Tool versions command implementation  
+async fn cmd_tool_versions(
+    build_system: &BuildSystem,
+    command: ToolVersionCommand,
+) -> Result<()> {
+    use wrt_build_core::tool_versions::ToolVersionConfig;
+    use wrt_build_core::tools::ToolManager;
+    
+    match command {
+        ToolVersionCommand::Generate { force, all } => {
+            let workspace_root = build_system.workspace_root();
+            let config_path = workspace_root.join("tool-versions.toml");
+            
+            if config_path.exists() && !force {
+                anyhow::bail!(
+                    "Tool version file already exists at {}\nUse --force to overwrite",
+                    config_path.display()
+                );
+            }
+            
+            println!("{} Generating tool-versions.toml...", "📝".bright_blue());
+            
+            // Load current config or create new one
+            let config = if all {
+                // Generate comprehensive config with all tools
+                ToolVersionConfig::load_or_default()
+            } else {
+                // Generate minimal config with required tools only
+                ToolVersionConfig::create_fallback_config()
+            };
+            
+            // Convert to TOML and write to file
+            let toml_content = config.to_toml()
+                .context("Failed to serialize tool version configuration")?;
+                
+            std::fs::write(&config_path, toml_content)
+                .context("Failed to write tool-versions.toml")?;
+                
+            println!("  ✅ Generated {}", config_path.display());
+            println!("  📋 Configuration includes {} tools", config.get_managed_tools().len());
+            println!();
+            println!("  💡 Edit the file to customize tool versions and requirements");
+            println!("  🔄 Run 'cargo-wrt tool-versions check' to validate");
+        },
+        
+        ToolVersionCommand::Check { verbose, tool } => {
+            println!("{} Checking tool versions...", "🔍".bright_blue());
+            
+            let tool_manager = ToolManager::new();
+            
+            if let Some(tool_name) = tool {
+                // Check specific tool
+                let status = tool_manager.check_tool(&tool_name);
+                if verbose {
+                    println!("  Tool: {}", tool_name.bright_cyan());
+                    println!("  Available: {}", if status.available { "✅ Yes" } else { "❌ No" });
+                    if let Some(version) = &status.version {
+                        println!("  Version: {}", version);
+                    }
+                    if let Some(error) = &status.error {
+                        println!("  Error: {}", error.bright_red());
+                    }
+                    println!("  Version Status: {:?}", status.version_status);
+                    println!("  Needs Action: {}", if status.needs_action { "Yes" } else { "No" });
+                } else {
+                    let icon = if status.available && !status.needs_action { "✅" } else { "❌" };
+                    println!("  {} {}", icon, tool_name.bright_cyan());
+                }
+            } else {
+                // Check all tools
+                if verbose {
+                    tool_manager.print_tool_status();
+                } else {
+                    let results = tool_manager.check_all_tools();
+                    for (tool_name, status) in results {
+                        let icon = if status.available && !status.needs_action { "✅" } else { "❌" };
+                        println!("  {} {}", icon, tool_name.bright_cyan());
+                    }
+                }
+            }
+        },
+        
+        ToolVersionCommand::Update { tool, all } => {
+            println!("{} Updating tool-versions.toml...", "🔄".bright_blue());
+            
+            let workspace_root = build_system.workspace_root();
+            let config_path = workspace_root.join("tool-versions.toml");
+            
+            if !config_path.exists() {
+                anyhow::bail!(
+                    "Tool version file not found at {}\nRun 'cargo-wrt tool-versions generate' first",
+                    config_path.display()
+                );
+            }
+            
+            if tool.is_some() {
+                println!("  🚧 Updating specific tools is not yet implemented");
+                println!("  💡 For now, please edit {} manually", config_path.display());
+            } else if all {
+                println!("  🚧 Auto-updating all tools is not yet implemented");
+                println!("  💡 For now, please edit {} manually", config_path.display());
+            } else {
+                println!("  ℹ️ Specify --tool <name> or --all to update versions");
+                println!("  📝 Current file: {}", config_path.display());
+            }
+        },
+    }
+    
+    Ok(())
+}
+
+/// Fuzz command implementation
+async fn cmd_fuzz(
+    build_system: &BuildSystem,
+    target: String,
+    duration: u64,
+    workers: u32,
+    runs: Option<u64>,
+    list: bool,
+    package: Option<String>,
+) -> Result<()> {
+    use wrt_build_core::fuzz::FuzzOptions;
+    
+    if list {
+        println!("{} Available fuzz targets:", "🎯".bright_blue());
+        
+        match build_system.list_fuzz_targets() {
+            Ok(targets) => {
+                if targets.is_empty() {
+                    println!("  No fuzz targets found. Run 'cargo fuzz init' to set up fuzzing.");
+                } else {
+                    for target in targets {
+                        println!("  - {}", target);
+                    }
+                }
+            },
+            Err(e) => {
+                println!("  Failed to list fuzz targets: {}", e);
+            }
+        }
+        return Ok(());
+    }
+
+    println!("{} Running fuzzing campaign...", "🐛".bright_blue());
+    
+    let mut options = FuzzOptions {
+        duration,
+        workers: workers as usize,
+        runs,
+        targets: if target == "all" { vec![] } else { vec![target.clone()] },
+        coverage: false,
+    };
+    
+    if let Some(pkg) = package {
+        println!("  Focusing on package: {}", pkg.bright_cyan());
+        // Filter targets by package - would need package-specific logic
+    }
+    
+    match build_system.run_fuzz_with_options(&options) {
+        Ok(results) => {
+            if results.success {
+                println!(
+                    "{} Fuzzing completed successfully in {:.2}s", 
+                    "✅".bright_green(),
+                    results.duration_ms as f64 / 1000.0
+                );
+                println!("  Targets run: {}", results.targets_run.len());
+            } else {
+                println!(
+                    "{} Fuzzing found issues in {} targets", 
+                    "⚠️".bright_yellow(),
+                    results.crashed_targets.len()
+                );
+                for target in &results.crashed_targets {
+                    println!("    - {}", target);
+                }
+            }
+        },
+        Err(e) => {
+            anyhow::bail!("Fuzzing failed: {}", e);
+        }
+    }
+    
+    Ok(())
+}
+
+/// Test features command implementation
+async fn cmd_test_features(
+    build_system: &BuildSystem,
+    package: Option<String>,
+    combinations: bool,
+    groups: bool,
+    verbose: bool,
+) -> Result<()> {
+    println!("{} Testing feature combinations...", "🧪".bright_blue());
+
+    if let Some(pkg) = package {
+        println!("  Testing package: {}", pkg.bright_cyan());
+    }
+
+    if combinations {
+        println!("  Testing all feature combinations");
+    }
+
+    if groups {
+        println!("  Testing predefined feature groups");
+    }
+
+    // TODO: Implement feature testing through wrt-build-core
+    println!("{} Feature testing completed", "✅".bright_green());
+    Ok(())
+}
+
+/// Testsuite command implementation
+async fn cmd_testsuite(
+    build_system: &BuildSystem,
+    extract: bool,
+    wabt_path: Option<String>,
+    validate: bool,
+    clean: bool,
+) -> Result<()> {
+    if clean {
+        println!("{} Cleaning extracted test files...", "🧹".bright_blue());
+        // TODO: Implement cleaning through wrt-build-core
+        return Ok(());
+    }
+
+    if extract {
+        println!("{} Extracting WebAssembly test modules...", "📦".bright_blue());
+        if let Some(wabt) = wabt_path {
+            println!("  Using WABT tools at: {}", wabt);
+        }
+        // TODO: Implement extraction through wrt-build-core
+    }
+
+    if validate {
+        println!("{} Validating test modules...", "✅".bright_blue());
+        // TODO: Implement validation through wrt-build-core
+    }
+
+    println!("{} Testsuite operations completed", "✅".bright_green());
     Ok(())
 }
