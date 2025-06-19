@@ -42,13 +42,18 @@ pub mod build;
 pub mod ci;
 pub mod config;
 pub mod error;
+pub mod fuzz;
 pub mod kani;
 pub mod matrix;
 pub mod memory;
 pub mod requirements;
 pub mod test;
+pub mod tools;
+pub mod text_search;
+pub mod tool_versions;
 pub mod validation;
 pub mod verify;
+pub mod verification_tool;
 
 // Public API
 pub use build::BuildSystem;
