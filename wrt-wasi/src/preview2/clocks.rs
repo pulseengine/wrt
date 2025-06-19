@@ -18,12 +18,11 @@ pub fn wasi_monotonic_clock_now(
     _args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     // Get monotonic time using platform abstraction
-    let time = PlatformTime::new();
-    let nanoseconds = time.monotonic_now()
+    let nanoseconds = PlatformTime::monotonic_now()
         .map_err(|_| Error::new(
             ErrorCategory::Runtime,
             codes::WASI_CAPABILITY_UNAVAILABLE,
-            kinds::WasiResourceError("Monotonic clock not available")
+            "Monotonic clock not available")
         ))?;
     
     Ok(vec![Value::U64(nanoseconds)])
@@ -37,13 +36,16 @@ pub fn wasi_wall_clock_now(
     _args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     // Get wall clock time using platform abstraction
-    let time = PlatformTime::new();
-    let (seconds, nanoseconds) = time.wall_clock_now()
+    let total_ns = PlatformTime::wall_clock_ns()
         .map_err(|_| Error::new(
             ErrorCategory::Runtime,
             codes::WASI_CAPABILITY_UNAVAILABLE,
-            kinds::WasiResourceError("Wall clock not available")
+            "Wall clock not available"
         ))?;
+    
+    // Convert to seconds and nanoseconds
+    let seconds = total_ns / 1_000_000_000;
+    let nanoseconds = (total_ns % 1_000_000_000) as u32;
     
     // Return as tuple (seconds, nanoseconds)
     Ok(vec![Value::Tuple(vec![
@@ -60,12 +62,11 @@ pub fn wasi_monotonic_clock_resolution(
     _args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     // Get monotonic clock resolution using platform abstraction
-    let time = PlatformTime::new();
     let resolution = time.monotonic_resolution()
         .map_err(|_| Error::new(
             ErrorCategory::Runtime,
             codes::WASI_CAPABILITY_UNAVAILABLE,
-            kinds::WasiResourceError("Monotonic clock resolution not available")
+            "Monotonic clock resolution not available")
         ))?;
     
     Ok(vec![Value::U64(resolution)])
@@ -79,12 +80,11 @@ pub fn wasi_wall_clock_resolution(
     _args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     // Get wall clock resolution using platform abstraction
-    let time = PlatformTime::new();
     let resolution = time.wall_clock_resolution()
         .map_err(|_| Error::new(
             ErrorCategory::Runtime,
             codes::WASI_CAPABILITY_UNAVAILABLE,
-            kinds::WasiResourceError("Wall clock resolution not available")
+            "Wall clock resolution not available")
         ))?;
     
     Ok(vec![Value::U64(resolution)])
@@ -98,12 +98,11 @@ pub fn wasi_process_cpu_time_now(
     _args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     // Get process CPU time using platform abstraction
-    let time = PlatformTime::new();
     let cpu_time = time.process_cpu_time()
         .map_err(|_| Error::new(
             ErrorCategory::Runtime,
             codes::WASI_CAPABILITY_UNAVAILABLE,
-            kinds::WasiResourceError("Process CPU time not available")
+            "Process CPU time not available")
         ))?;
     
     Ok(vec![Value::U64(cpu_time)])
@@ -117,12 +116,11 @@ pub fn wasi_thread_cpu_time_now(
     _args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     // Get thread CPU time using platform abstraction
-    let time = PlatformTime::new();
     let cpu_time = time.thread_cpu_time()
         .map_err(|_| Error::new(
             ErrorCategory::Runtime,
             codes::WASI_CAPABILITY_UNAVAILABLE,
-            kinds::WasiResourceError("Thread CPU time not available")
+            "Thread CPU time not available")
         ))?;
     
     Ok(vec![Value::U64(cpu_time)])
@@ -171,7 +169,7 @@ pub fn datetime_to_nanoseconds(datetime: &Value) -> Result<u64> {
         _ => Err(Error::new(
             ErrorCategory::Parse,
             codes::WASI_INVALID_FD,
-            kinds::WasiResourceError("Invalid datetime format")
+            "Invalid datetime format")
         )),
     }
 }
@@ -195,12 +193,11 @@ pub fn get_time_with_capabilities(
                 ));
             }
             
-            let time = PlatformTime::new();
-            let (seconds, nanoseconds) = time.wall_clock_now()
+                    let (seconds, nanoseconds) = PlatformTime::wall_clock_now()
                 .map_err(|_| Error::new(
                     ErrorCategory::Runtime,
                     codes::WASI_CAPABILITY_UNAVAILABLE,
-                    kinds::WasiResourceError("Wall clock not available")
+                    "Wall clock not available")
                 ))?;
             
             Ok(seconds * 1_000_000_000 + nanoseconds as u64)
@@ -214,12 +211,11 @@ pub fn get_time_with_capabilities(
                 ));
             }
             
-            let time = PlatformTime::new();
-            time.monotonic_now()
+                    PlatformTime::monotonic_now()
                 .map_err(|_| Error::new(
                     ErrorCategory::Runtime,
                     codes::WASI_CAPABILITY_UNAVAILABLE,
-                    kinds::WasiResourceError("Monotonic clock not available")
+                    "Monotonic clock not available")
                 ))
         }
         WasiClockType::ProcessCpuTime => {
@@ -231,12 +227,11 @@ pub fn get_time_with_capabilities(
                 ));
             }
             
-            let time = PlatformTime::new();
-            time.process_cpu_time()
+                    time.process_cpu_time()
                 .map_err(|_| Error::new(
                     ErrorCategory::Runtime,
                     codes::WASI_CAPABILITY_UNAVAILABLE,
-                    kinds::WasiResourceError("Process CPU time not available")
+                    "Process CPU time not available")
                 ))
         }
         WasiClockType::ThreadCpuTime => {
@@ -248,12 +243,11 @@ pub fn get_time_with_capabilities(
                 ));
             }
             
-            let time = PlatformTime::new();
-            time.thread_cpu_time()
+                    time.thread_cpu_time()
                 .map_err(|_| Error::new(
                     ErrorCategory::Runtime,
                     codes::WASI_CAPABILITY_UNAVAILABLE,
-                    kinds::WasiResourceError("Thread CPU time not available")
+                    "Thread CPU time not available")
                 ))
         }
     }
