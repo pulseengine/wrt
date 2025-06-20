@@ -76,11 +76,16 @@ pub const fn wasi_max_allocation_size() -> usize {
 }
 
 // Temporary component model values
+#[cfg(feature = "std")]
 pub mod component_values;
 pub mod value_compat;
+// Capability-aware value system
+pub mod value_capability_aware;
 
 // Re-export the Value type for compatibility
 pub use value_compat::Value;
+// Re-export the capability-aware value type
+pub use value_capability_aware::CapabilityAwareValue;
 
 // WASI Preview2 interfaces
 #[cfg(feature = "preview2")]
@@ -92,6 +97,9 @@ pub mod preview2 {
     
     #[cfg(feature = "wasi-cli")]
     pub mod cli;
+    
+    #[cfg(feature = "wasi-cli")]
+    pub mod cli_capability_aware;
     
     #[cfg(feature = "wasi-clocks")]
     pub mod clocks;
@@ -121,6 +129,10 @@ pub mod host_provider {
     pub mod component_model_provider;
     pub mod resource_manager;
 }
+
+// Import ExternType for no_std  
+#[cfg(not(feature = "std"))]
+use host_provider::component_model_provider::ExternType;
 
 // WASI capabilities and security model
 pub mod capabilities;
@@ -156,9 +168,6 @@ impl Default for WasiVersion {
 
 /// WASI host provider trait for integration with different execution engines
 pub trait WasiHostProvider {
-    /// Get all host functions provided by this WASI implementation
-    fn get_host_functions(&self) -> Result<Vec<HostFunction>>;
-    
     /// Get the number of functions provided
     fn function_count(&self) -> usize;
     
@@ -173,11 +182,17 @@ pub trait WasiHostProvider {
 #[derive(Clone)]
 pub struct HostFunction {
     /// Function name
+    #[cfg(feature = "std")]
     pub name: String,
+    #[cfg(not(feature = "std"))]
+    pub name: wrt_foundation::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Function handler
     pub handler: HostFunctionHandler,
     /// External type (for component model integration)
+    #[cfg(feature = "std")]
     pub extern_type: wrt_format::component::ExternType,
+    #[cfg(not(feature = "std"))]
+    pub extern_type: ExternType,
 }
 
 impl core::fmt::Debug for HostFunction {

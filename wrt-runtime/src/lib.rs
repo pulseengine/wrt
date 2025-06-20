@@ -74,6 +74,8 @@ pub mod module;
 pub mod module_builder;
 pub mod module_instance;
 pub mod prelude;
+/// SIMD execution integration adapter
+pub mod simd_execution_adapter;
 pub mod stackless;
 pub mod table;
 #[cfg(any(feature = "std", feature = "alloc"))]

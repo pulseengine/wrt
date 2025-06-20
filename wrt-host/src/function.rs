@@ -200,7 +200,8 @@ impl Default for CloneableFn {
 #[cfg(test)]
 mod tests {
     use super::*;
-use wrt_foundation::safe_managed_alloc;
+use wrt_foundation::{safe_memory::NoStdProvider, capabilities::context::get_global_capability_context};
+use wrt_foundation::allocator::CrateId;
 
     #[test]
     fn test_cloneable_fn() {
@@ -210,11 +211,8 @@ use wrt_foundation::safe_managed_alloc;
             
             #[cfg(not(feature = "std"))]
             {
-                // TODO: Specify appropriate size for this allocation
-
-                let guard = safe_managed_alloc!(8192, CrateId::Host)?;
-
-                let provider = unsafe { guard.release() };
+                // Use capability-aware allocation for safety-critical code
+                let provider = crate::bounded_host_infra::create_host_provider()?;
                 let mut vec = ValueVec::new(provider).unwrap();
                 vec.push(Value::I32(42)).unwrap();
                 Ok(vec)
@@ -258,11 +256,8 @@ use wrt_foundation::safe_managed_alloc;
             
             #[cfg(not(feature = "std"))]
             {
-                // TODO: Specify appropriate size for this allocation
-
-                let guard = safe_managed_alloc!(8192, CrateId::Host)?;
-
-                let provider = unsafe { guard.release() };
+                // Use capability-aware allocation for safety-critical code
+                let provider = crate::bounded_host_infra::create_host_provider()?;
                 let mut vec = ValueVec::new(provider).unwrap();
                 vec.push(Value::I32(42)).unwrap();
                 Ok(vec)

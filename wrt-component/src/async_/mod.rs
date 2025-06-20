@@ -4,6 +4,7 @@
 //! Component Model, including async runtimes, execution engines, and async
 //! canonical ABI implementations.
 
+pub mod async_builtins;
 pub mod async_canonical;
 pub mod async_canonical_lifting;
 pub mod async_context_builtins;
@@ -13,6 +14,7 @@ pub mod async_runtime;
 pub mod async_runtime_bridge;
 pub mod async_types;
 
+pub use async_builtins::*;
 pub use async_canonical::*;
 pub use async_canonical_lifting::*;
 pub use async_context_builtins::*;

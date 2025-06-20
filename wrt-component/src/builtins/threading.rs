@@ -40,6 +40,36 @@ pub enum BuiltinType {
 
 use super::BuiltinHandler;
 
+/// Helper function to handle RwLock read operations safely for ASIL-D compliance
+#[cfg(feature = "std")]
+fn safe_read_lock<T>(lock: &RwLock<T>) -> Result<std::sync::RwLockReadGuard<T>> {
+    lock.read().map_err(|_| Error::new(
+        wrt_error::ErrorCategory::Threading,
+        wrt_error::codes::THREADING_ERROR,
+        "Lock poisoned"
+    ))
+}
+
+/// Helper function to handle RwLock write operations safely for ASIL-D compliance
+#[cfg(feature = "std")]
+fn safe_write_lock<T>(lock: &RwLock<T>) -> Result<std::sync::RwLockWriteGuard<T>> {
+    lock.write().map_err(|_| Error::new(
+        wrt_error::ErrorCategory::Threading,
+        wrt_error::codes::THREADING_ERROR,
+        "Lock poisoned"
+    ))
+}
+
+/// Helper function to handle Mutex operations safely for ASIL-D compliance
+#[cfg(feature = "std")]
+fn safe_mutex_lock<T>(mutex: &Mutex<T>) -> Result<std::sync::MutexGuard<T>> {
+    mutex.lock().map_err(|_| Error::new(
+        wrt_error::ErrorCategory::Threading,
+        wrt_error::codes::THREADING_ERROR,
+        "Mutex poisoned"
+    ))
+}
+
 /// Thread handle identifier
 type ThreadId = u64;
 
@@ -158,14 +188,26 @@ impl ThreadManager {
             match fn_result {
                 Ok(values) => {
                     // Store the result
-                    *thread_result.write().unwrap() = Some(values);
-                    *thread_state.write().unwrap() = ThreadState::Completed;
-                    Ok(thread_result.read().unwrap().clone().unwrap())
+                    if let Ok(mut guard) = thread_result.write() {
+                        *guard = Some(values);
+                    }
+                    if let Ok(mut guard) = thread_state.write() {
+                        *guard = ThreadState::Completed;
+                    }
+                    let result = thread_result.read()
+                        .ok()
+                        .and_then(|guard| guard.clone())
+                        .unwrap_or_default();
+                    Ok(result)
                 }
                 Err(e) => {
                     // Store the error
-                    *thread_error.write().unwrap() = Some(e.to_string());
-                    *thread_state.write().unwrap() = ThreadState::Error;
+                    if let Ok(mut guard) = thread_error.write() {
+                        *guard = Some(e.to_string());
+                    }
+                    if let Ok(mut guard) = thread_state.write() {
+                        *guard = ThreadState::Error;
+                    }
                     Err(e)
                 }
             }
@@ -174,7 +216,7 @@ impl ThreadManager {
         // Store the thread handle
         let thread_handle = ThreadHandle { handle: Some(handle), state, result, error };
 
-        self.threads.write().unwrap().insert(thread_id, thread_handle);
+        if let Ok(mut threads) = self.threads.write() {\n            threads.insert(thread_id, thread_handle);\n        } else {\n            return Err(Error::new(\n                wrt_error::ErrorCategory::Threading,\n                wrt_error::codes::THREADING_ERROR,\n                \"Failed to store thread handle - thread manager corrupted\"\n            ));\n        }
 
         Ok(thread_id)
     }

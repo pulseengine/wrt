@@ -143,14 +143,36 @@ impl SafeAtomicMemoryContext {
                 let value = self.atomic_ops.load_u64(addr, convert_memory_ordering(MemoryOrdering::SeqCst))?;
                 Ok(vec![value as u32, (value >> 32) as u32])
             },
-            _ => {
-                // Handle narrower loads - for brevity, just error for now
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::NOT_IMPLEMENTED,
-                    "Narrow atomic loads not yet implemented in safe version"
-                ))
-            }
+            AtomicLoadOp::I32AtomicLoad8U { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read(thread_id, addr, 1)?;
+                let value = self.atomic_ops.load_u8(addr, convert_memory_ordering(MemoryOrdering::SeqCst))?;
+                Ok(vec![value as u32])
+            },
+            AtomicLoadOp::I32AtomicLoad16U { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read(thread_id, addr, 2)?;
+                let value = self.atomic_ops.load_u16(addr, convert_memory_ordering(MemoryOrdering::SeqCst))?;
+                Ok(vec![value as u32])
+            },
+            AtomicLoadOp::I64AtomicLoad8U { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read(thread_id, addr, 1)?;
+                let value = self.atomic_ops.load_u8(addr, convert_memory_ordering(MemoryOrdering::SeqCst))?;
+                Ok(vec![value as u32, 0])
+            },
+            AtomicLoadOp::I64AtomicLoad16U { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read(thread_id, addr, 2)?;
+                let value = self.atomic_ops.load_u16(addr, convert_memory_ordering(MemoryOrdering::SeqCst))?;
+                Ok(vec![value as u32, 0])
+            },
+            AtomicLoadOp::I64AtomicLoad32U { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read(thread_id, addr, 4)?;
+                let value = self.atomic_ops.load_u32(addr, convert_memory_ordering(MemoryOrdering::SeqCst))?;
+                Ok(vec![value, 0])
+            },
         }
     }
     
@@ -169,50 +191,304 @@ impl SafeAtomicMemoryContext {
                 self.verify_capability_for_write(thread_id, addr, 8)?;
                 self.atomic_ops.store_u64(addr, value, convert_memory_ordering(MemoryOrdering::SeqCst))
             },
-            _ => {
-                // Handle narrower stores
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::NOT_IMPLEMENTED,
-                    "Narrow atomic stores not yet implemented in safe version"
-                ))
-            }
+            AtomicStoreOp::I32AtomicStore8 { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_write(thread_id, addr, 1)?;
+                self.atomic_ops.store_u8(addr, value as u8, convert_memory_ordering(MemoryOrdering::SeqCst))
+            },
+            AtomicStoreOp::I32AtomicStore16 { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_write(thread_id, addr, 2)?;
+                self.atomic_ops.store_u16(addr, value as u16, convert_memory_ordering(MemoryOrdering::SeqCst))
+            },
+            AtomicStoreOp::I64AtomicStore8 { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_write(thread_id, addr, 1)?;
+                self.atomic_ops.store_u8(addr, value as u8, convert_memory_ordering(MemoryOrdering::SeqCst))
+            },
+            AtomicStoreOp::I64AtomicStore16 { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_write(thread_id, addr, 2)?;
+                self.atomic_ops.store_u16(addr, value as u16, convert_memory_ordering(MemoryOrdering::SeqCst))
+            },
+            AtomicStoreOp::I64AtomicStore32 { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_write(thread_id, addr, 4)?;
+                self.atomic_ops.store_u32(addr, value as u32, convert_memory_ordering(MemoryOrdering::SeqCst))
+            },
         }
     }
     
     /// Execute atomic read-modify-write operation
     fn execute_atomic_rmw(&mut self, thread_id: ThreadId, rmw_op: AtomicRMWInstr, value: u64) -> Result<Vec<u32>> {
         self.stats.rmw_operations += 1;
+        let ordering = convert_memory_ordering(MemoryOrdering::SeqCst);
         
         match rmw_op {
+            // 32-bit and 64-bit ADD operations
             AtomicRMWInstr::I32AtomicRmwAdd { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 self.verify_capability_for_read_write(thread_id, addr, 4)?;
-                let old_value = self.atomic_ops.fetch_add_u32(
-                    addr, 
-                    value as u32, 
-                    convert_memory_ordering(MemoryOrdering::SeqCst)
-                )?;
+                let old_value = self.atomic_ops.fetch_add_u32(addr, value as u32, ordering)?;
                 Ok(vec![old_value])
             },
             AtomicRMWInstr::I64AtomicRmwAdd { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 self.verify_capability_for_read_write(thread_id, addr, 8)?;
-                let old_value = self.atomic_ops.fetch_add_u64(
-                    addr, 
-                    value, 
-                    convert_memory_ordering(MemoryOrdering::SeqCst)
-                )?;
+                let old_value = self.atomic_ops.fetch_add_u64(addr, value, ordering)?;
                 Ok(vec![old_value as u32, (old_value >> 32) as u32])
             },
-            _ => {
-                // Handle other RMW operations
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::NOT_IMPLEMENTED,
-                    "Other atomic RMW operations not yet implemented in safe version"
-                ))
-            }
+            // Narrow ADD operations
+            AtomicRMWInstr::I32AtomicRmw8AddU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 1)?;
+                let old_value = self.atomic_ops.fetch_add_u8(addr, value as u8, ordering)?;
+                Ok(vec![old_value as u32])
+            },
+            AtomicRMWInstr::I32AtomicRmw16AddU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 2)?;
+                let old_value = self.atomic_ops.fetch_add_u16(addr, value as u16, ordering)?;
+                Ok(vec![old_value as u32])
+            },
+            AtomicRMWInstr::I64AtomicRmw8AddU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 1)?;
+                let old_value = self.atomic_ops.fetch_add_u8(addr, value as u8, ordering)?;
+                Ok(vec![old_value as u32, 0])
+            },
+            AtomicRMWInstr::I64AtomicRmw16AddU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 2)?;
+                let old_value = self.atomic_ops.fetch_add_u16(addr, value as u16, ordering)?;
+                Ok(vec![old_value as u32, 0])
+            },
+            AtomicRMWInstr::I64AtomicRmw32AddU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 4)?;
+                let old_value = self.atomic_ops.fetch_add_u32(addr, value as u32, ordering)?;
+                Ok(vec![old_value, 0])
+            },
+            
+            // SUB operations
+            AtomicRMWInstr::I32AtomicRmwSub { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 4)?;
+                let old_value = self.atomic_ops.fetch_sub_u32(addr, value as u32, ordering)?;
+                Ok(vec![old_value])
+            },
+            AtomicRMWInstr::I64AtomicRmwSub { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 8)?;
+                let old_value = self.atomic_ops.fetch_sub_u64(addr, value, ordering)?;
+                Ok(vec![old_value as u32, (old_value >> 32) as u32])
+            },
+            AtomicRMWInstr::I32AtomicRmw8SubU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 1)?;
+                let old_value = self.atomic_ops.fetch_sub_u8(addr, value as u8, ordering)?;
+                Ok(vec![old_value as u32])
+            },
+            AtomicRMWInstr::I32AtomicRmw16SubU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 2)?;
+                let old_value = self.atomic_ops.fetch_sub_u16(addr, value as u16, ordering)?;
+                Ok(vec![old_value as u32])
+            },
+            AtomicRMWInstr::I64AtomicRmw8SubU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 1)?;
+                let old_value = self.atomic_ops.fetch_sub_u8(addr, value as u8, ordering)?;
+                Ok(vec![old_value as u32, 0])
+            },
+            AtomicRMWInstr::I64AtomicRmw16SubU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 2)?;
+                let old_value = self.atomic_ops.fetch_sub_u16(addr, value as u16, ordering)?;
+                Ok(vec![old_value as u32, 0])
+            },
+            AtomicRMWInstr::I64AtomicRmw32SubU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 4)?;
+                let old_value = self.atomic_ops.fetch_sub_u32(addr, value as u32, ordering)?;
+                Ok(vec![old_value, 0])
+            },
+            
+            // AND operations
+            AtomicRMWInstr::I32AtomicRmwAnd { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 4)?;
+                let old_value = self.atomic_ops.fetch_and_u32(addr, value as u32, ordering)?;
+                Ok(vec![old_value])
+            },
+            AtomicRMWInstr::I64AtomicRmwAnd { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 8)?;
+                let old_value = self.atomic_ops.fetch_and_u64(addr, value, ordering)?;
+                Ok(vec![old_value as u32, (old_value >> 32) as u32])
+            },
+            AtomicRMWInstr::I32AtomicRmw8AndU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 1)?;
+                let old_value = self.atomic_ops.fetch_and_u8(addr, value as u8, ordering)?;
+                Ok(vec![old_value as u32])
+            },
+            AtomicRMWInstr::I32AtomicRmw16AndU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 2)?;
+                let old_value = self.atomic_ops.fetch_and_u16(addr, value as u16, ordering)?;
+                Ok(vec![old_value as u32])
+            },
+            AtomicRMWInstr::I64AtomicRmw8AndU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 1)?;
+                let old_value = self.atomic_ops.fetch_and_u8(addr, value as u8, ordering)?;
+                Ok(vec![old_value as u32, 0])
+            },
+            AtomicRMWInstr::I64AtomicRmw16AndU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 2)?;
+                let old_value = self.atomic_ops.fetch_and_u16(addr, value as u16, ordering)?;
+                Ok(vec![old_value as u32, 0])
+            },
+            AtomicRMWInstr::I64AtomicRmw32AndU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 4)?;
+                let old_value = self.atomic_ops.fetch_and_u32(addr, value as u32, ordering)?;
+                Ok(vec![old_value, 0])
+            },
+            
+            // OR operations
+            AtomicRMWInstr::I32AtomicRmwOr { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 4)?;
+                let old_value = self.atomic_ops.fetch_or_u32(addr, value as u32, ordering)?;
+                Ok(vec![old_value])
+            },
+            AtomicRMWInstr::I64AtomicRmwOr { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 8)?;
+                let old_value = self.atomic_ops.fetch_or_u64(addr, value, ordering)?;
+                Ok(vec![old_value as u32, (old_value >> 32) as u32])
+            },
+            AtomicRMWInstr::I32AtomicRmw8OrU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 1)?;
+                let old_value = self.atomic_ops.fetch_or_u8(addr, value as u8, ordering)?;
+                Ok(vec![old_value as u32])
+            },
+            AtomicRMWInstr::I32AtomicRmw16OrU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 2)?;
+                let old_value = self.atomic_ops.fetch_or_u16(addr, value as u16, ordering)?;
+                Ok(vec![old_value as u32])
+            },
+            AtomicRMWInstr::I64AtomicRmw8OrU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 1)?;
+                let old_value = self.atomic_ops.fetch_or_u8(addr, value as u8, ordering)?;
+                Ok(vec![old_value as u32, 0])
+            },
+            AtomicRMWInstr::I64AtomicRmw16OrU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 2)?;
+                let old_value = self.atomic_ops.fetch_or_u16(addr, value as u16, ordering)?;
+                Ok(vec![old_value as u32, 0])
+            },
+            AtomicRMWInstr::I64AtomicRmw32OrU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 4)?;
+                let old_value = self.atomic_ops.fetch_or_u32(addr, value as u32, ordering)?;
+                Ok(vec![old_value, 0])
+            },
+            
+            // XOR operations
+            AtomicRMWInstr::I32AtomicRmwXor { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 4)?;
+                let old_value = self.atomic_ops.fetch_xor_u32(addr, value as u32, ordering)?;
+                Ok(vec![old_value])
+            },
+            AtomicRMWInstr::I64AtomicRmwXor { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 8)?;
+                let old_value = self.atomic_ops.fetch_xor_u64(addr, value, ordering)?;
+                Ok(vec![old_value as u32, (old_value >> 32) as u32])
+            },
+            AtomicRMWInstr::I32AtomicRmw8XorU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 1)?;
+                let old_value = self.atomic_ops.fetch_xor_u8(addr, value as u8, ordering)?;
+                Ok(vec![old_value as u32])
+            },
+            AtomicRMWInstr::I32AtomicRmw16XorU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 2)?;
+                let old_value = self.atomic_ops.fetch_xor_u16(addr, value as u16, ordering)?;
+                Ok(vec![old_value as u32])
+            },
+            AtomicRMWInstr::I64AtomicRmw8XorU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 1)?;
+                let old_value = self.atomic_ops.fetch_xor_u8(addr, value as u8, ordering)?;
+                Ok(vec![old_value as u32, 0])
+            },
+            AtomicRMWInstr::I64AtomicRmw16XorU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 2)?;
+                let old_value = self.atomic_ops.fetch_xor_u16(addr, value as u16, ordering)?;
+                Ok(vec![old_value as u32, 0])
+            },
+            AtomicRMWInstr::I64AtomicRmw32XorU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 4)?;
+                let old_value = self.atomic_ops.fetch_xor_u32(addr, value as u32, ordering)?;
+                Ok(vec![old_value, 0])
+            },
+            
+            // XCHG (exchange) operations
+            AtomicRMWInstr::I32AtomicRmwXchg { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 4)?;
+                let old_value = self.atomic_ops.swap_u32(addr, value as u32, ordering)?;
+                Ok(vec![old_value])
+            },
+            AtomicRMWInstr::I64AtomicRmwXchg { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 8)?;
+                let old_value = self.atomic_ops.swap_u64(addr, value, ordering)?;
+                Ok(vec![old_value as u32, (old_value >> 32) as u32])
+            },
+            AtomicRMWInstr::I32AtomicRmw8XchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 1)?;
+                let old_value = self.atomic_ops.swap_u8(addr, value as u8, ordering)?;
+                Ok(vec![old_value as u32])
+            },
+            AtomicRMWInstr::I32AtomicRmw16XchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 2)?;
+                let old_value = self.atomic_ops.swap_u16(addr, value as u16, ordering)?;
+                Ok(vec![old_value as u32])
+            },
+            AtomicRMWInstr::I64AtomicRmw8XchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 1)?;
+                let old_value = self.atomic_ops.swap_u8(addr, value as u8, ordering)?;
+                Ok(vec![old_value as u32, 0])
+            },
+            AtomicRMWInstr::I64AtomicRmw16XchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 2)?;
+                let old_value = self.atomic_ops.swap_u16(addr, value as u16, ordering)?;
+                Ok(vec![old_value as u32, 0])
+            },
+            AtomicRMWInstr::I64AtomicRmw32XchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 4)?;
+                let old_value = self.atomic_ops.swap_u32(addr, value as u32, ordering)?;
+                Ok(vec![old_value, 0])
+            },
         }
     }
     
@@ -225,6 +501,7 @@ impl SafeAtomicMemoryContext {
         replacement: u64
     ) -> Result<Vec<u32>> {
         self.stats.cmpxchg_operations += 1;
+        let ordering = convert_memory_ordering(MemoryOrdering::SeqCst);
         
         match cmpxchg_op {
             AtomicCmpxchgInstr::I32AtomicRmwCmpxchg { memarg } => {
@@ -234,8 +511,8 @@ impl SafeAtomicMemoryContext {
                     addr,
                     expected as u32,
                     replacement as u32,
-                    convert_memory_ordering(MemoryOrdering::SeqCst),
-                    convert_memory_ordering(MemoryOrdering::SeqCst),
+                    ordering,
+                    ordering,
                 )?;
                 Ok(vec![old_value])
             },
@@ -246,18 +523,72 @@ impl SafeAtomicMemoryContext {
                     addr,
                     expected,
                     replacement,
-                    convert_memory_ordering(MemoryOrdering::SeqCst),
-                    convert_memory_ordering(MemoryOrdering::SeqCst),
+                    ordering,
+                    ordering,
                 )?;
                 Ok(vec![old_value as u32, (old_value >> 32) as u32])
             },
-            _ => {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::NOT_IMPLEMENTED,
-                    "Narrow atomic cmpxchg not yet implemented in safe version"
-                ))
-            }
+            // Narrow compare-and-exchange operations
+            AtomicCmpxchgInstr::I32AtomicRmw8CmpxchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 1)?;
+                let old_value = self.atomic_ops.cmpxchg_u8(
+                    addr,
+                    expected as u8,
+                    replacement as u8,
+                    ordering,
+                    ordering,
+                )?;
+                Ok(vec![old_value as u32])
+            },
+            AtomicCmpxchgInstr::I32AtomicRmw16CmpxchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 2)?;
+                let old_value = self.atomic_ops.cmpxchg_u16(
+                    addr,
+                    expected as u16,
+                    replacement as u16,
+                    ordering,
+                    ordering,
+                )?;
+                Ok(vec![old_value as u32])
+            },
+            AtomicCmpxchgInstr::I64AtomicRmw8CmpxchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 1)?;
+                let old_value = self.atomic_ops.cmpxchg_u8(
+                    addr,
+                    expected as u8,
+                    replacement as u8,
+                    ordering,
+                    ordering,
+                )?;
+                Ok(vec![old_value as u32, 0])
+            },
+            AtomicCmpxchgInstr::I64AtomicRmw16CmpxchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 2)?;
+                let old_value = self.atomic_ops.cmpxchg_u16(
+                    addr,
+                    expected as u16,
+                    replacement as u16,
+                    ordering,
+                    ordering,
+                )?;
+                Ok(vec![old_value as u32, 0])
+            },
+            AtomicCmpxchgInstr::I64AtomicRmw32CmpxchgU { memarg } => {
+                let addr = self.calculate_address(memarg)?;
+                self.verify_capability_for_read_write(thread_id, addr, 4)?;
+                let old_value = self.atomic_ops.cmpxchg_u32(
+                    addr,
+                    expected as u32,
+                    replacement as u32,
+                    ordering,
+                    ordering,
+                )?;
+                Ok(vec![old_value, 0])
+            },
         }
     }
     

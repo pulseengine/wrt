@@ -12,8 +12,9 @@ use crate::{
     Error, Result,
 };
 
-#[allow(deprecated)]
-use crate::wrt_memory_system::{WrtMemoryGuard, WrtProviderFactory};
+use crate::{
+    capabilities::{MemoryCapabilityContext, context::CapabilityGuardedProvider},
+};
 
 /// Sealed trait to prevent external implementation
 mod sealed {
@@ -24,19 +25,24 @@ mod sealed {
 pub trait MemoryManaged: sealed::Sealed {
     type Guard<const N: usize>;
 
-    /// Create a managed allocation
-    fn allocate<const N: usize>(crate_id: CrateId) -> Result<Self::Guard<N>>;
+    /// Create a managed allocation with capability context
+    fn allocate<const N: usize>(
+        context: &MemoryCapabilityContext,
+        crate_id: CrateId,
+    ) -> Result<Self::Guard<N>>;
 }
 
-/// Only WrtProviderFactory can implement MemoryManaged
-impl sealed::Sealed for WrtProviderFactory {}
+/// Only MemoryCapabilityContext can implement MemoryManaged
+impl sealed::Sealed for MemoryCapabilityContext {}
 
-#[allow(deprecated)]
-impl MemoryManaged for WrtProviderFactory {
-    type Guard<const N: usize> = WrtMemoryGuard<N>;
+impl MemoryManaged for MemoryCapabilityContext {
+    type Guard<const N: usize> = CapabilityGuardedProvider<N>;
 
-    fn allocate<const N: usize>(crate_id: CrateId) -> Result<Self::Guard<N>> {
-        Self::create_provider::<N>(crate_id)
+    fn allocate<const N: usize>(
+        context: &MemoryCapabilityContext,
+        crate_id: CrateId,
+    ) -> Result<Self::Guard<N>> {
+        context.create_provider::<N>(crate_id)
     }
 }
 
@@ -55,8 +61,11 @@ impl<const SIZE: usize, const CRATE: usize> EnforcedAllocation<SIZE, CRATE> {
     }
 
     /// Materialize the allocation (only possible through managed system)
-    #[allow(deprecated)]
-    pub fn materialize(self, crate_id: CrateId) -> Result<WrtMemoryGuard<SIZE>> {
+    pub fn materialize(
+        self, 
+        context: &MemoryCapabilityContext,
+        crate_id: CrateId,
+    ) -> Result<CapabilityGuardedProvider<SIZE>> {
         // Verify crate ID matches compile-time constant
         if crate_id.as_index() != CRATE {
             return Err(Error::new(
@@ -66,7 +75,7 @@ impl<const SIZE: usize, const CRATE: usize> EnforcedAllocation<SIZE, CRATE> {
             ));
         }
 
-        WrtProviderFactory::create_provider::<SIZE>(crate_id)
+        context.create_provider::<SIZE>(crate_id)
     }
 }
 
@@ -83,9 +92,8 @@ impl<const SIZE: usize> AllocationToken<SIZE> {
     }
 
     /// Use the token to allocate memory
-    #[allow(deprecated)]
-    pub fn allocate(self) -> Result<WrtMemoryGuard<SIZE>> {
-        WrtProviderFactory::create_provider::<SIZE>(self.crate_id)
+    pub fn allocate(self, context: &MemoryCapabilityContext) -> Result<CapabilityGuardedProvider<SIZE>> {
+        context.create_provider::<SIZE>(self.crate_id)
     }
 }
 
@@ -129,9 +137,13 @@ mod tests {
     #[test]
     fn test_token_allocation() {
         crate::memory_init::MemoryInitializer::initialize().unwrap();
+        
+        // Create a capability context for testing
+        let mut context = MemoryCapabilityContext::default();
+        context.register_dynamic_capability(CrateId::Foundation, 1024).unwrap();
 
         let token = AllocationToken::<512>::new(CrateId::Foundation);
-        let guard = token.allocate().unwrap();
+        let guard = token.allocate(&context).unwrap();
         assert_eq!(guard.size(), 512);
     }
 

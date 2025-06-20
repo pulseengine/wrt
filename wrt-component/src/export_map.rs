@@ -10,13 +10,33 @@ extern crate alloc;
 use crate::{export::Export, prelude::*};
 use wrt_foundation::bounded::{BoundedMap, BoundedString};
 use wrt_foundation::budget_aware_provider::CrateId;
-use wrt_foundation::capabilities::{CapabilityAwareProvider, safe_capability_alloc, capability_context};
+use wrt_foundation::capabilities::{CapabilityAwareProvider, MemoryCapabilityContext};
+use wrt_error::{Error, ErrorCategory, codes};
 
 /// Maximum number of exports in a component
 const MAX_EXPORTS: usize = 512;
 
 /// Maximum length for export names
 const MAX_EXPORT_NAME_LEN: usize = 128;
+
+/// Helper function to create component provider using capability-driven design
+fn create_component_provider() -> Result<CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<4096>>> {
+    use wrt_foundation::memory_init::get_global_capability_context;
+    
+    let context = get_global_capability_context()
+        .map_err(|_| Error::new(
+            ErrorCategory::Initialization,
+            codes::INITIALIZATION_ERROR,
+            "Global capability context not available"
+        ))?;
+    
+    context.create_provider(CrateId::Component, 4096)
+        .map_err(|_| Error::new(
+            ErrorCategory::Memory,
+            codes::MEMORY_OUT_OF_BOUNDS,
+            "Failed to create component capability provider"
+        ))
+}
 
 /// Map of export names to exports using bounded collections
 #[derive(Debug)]
@@ -81,33 +101,27 @@ impl<P: MemoryProvider + Default + Clone> ExportMap<P> {
     }
 
     /// Get all export names as bounded strings
-    pub fn names(&self) -> BoundedVec<BoundedString<MAX_EXPORT_NAME_LEN, P>, MAX_EXPORTS, P> {
-        let mut names = BoundedVec::new(self.exports.provider().clone()).unwrap_or_else(|_| {
-            // Fallback to empty collection if creation fails
-            unsafe { core::mem::zeroed() }
-        });
+    pub fn names(&self) -> Result<BoundedVec<BoundedString<MAX_EXPORT_NAME_LEN, P>, MAX_EXPORTS, P>> {
+        let mut names = BoundedVec::new(self.exports.provider().clone())?;
         
         for (name, _) in self.exports.iter() {
             if names.push(name.clone()).is_err() {
                 break; // Stop if we can't add more names
             }
         }
-        names
+        Ok(names)
     }
 
     /// Get all exports as bounded collection of (name, export) pairs
-    pub fn get_all(&self) -> BoundedVec<(BoundedString<MAX_EXPORT_NAME_LEN, P>, Arc<Export>), MAX_EXPORTS, P> {
-        let mut pairs = BoundedVec::new(self.exports.provider().clone()).unwrap_or_else(|_| {
-            // Fallback to empty collection if creation fails
-            unsafe { core::mem::zeroed() }
-        });
+    pub fn get_all(&self) -> Result<BoundedVec<(BoundedString<MAX_EXPORT_NAME_LEN, P>, Arc<Export>), MAX_EXPORTS, P>> {
+        let mut pairs = BoundedVec::new(self.exports.provider().clone())?;
         
         for (name, export) in self.exports.iter() {
             if pairs.push((name.clone(), export.clone())).is_err() {
                 break; // Stop if we can't add more pairs
             }
         }
-        pairs
+        Ok(pairs)
     }
 
     /// Convert this export map to one using SafeMemory containers
@@ -199,8 +213,7 @@ impl SafeExportMap {
 
     /// Get all export names
     pub fn names(&self) -> Result<BoundedVec<String, MAX_EXPORTS, CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<4096>>>> {
-        let context = capability_context!(dynamic(CrateId::Component, 4096))?;
-        let provider = safe_capability_alloc!(context, CrateId::Component, 4096)?;
+        let provider = create_component_provider()?;
         let mut names = BoundedVec::new(provider)?;
         for i in 0..self.exports.len() {
             if let Ok((name, _)) = self.exports.get(i) {
@@ -212,8 +225,7 @@ impl SafeExportMap {
 
     /// Get all exports as bounded collection of (name, export) pairs
     pub fn get_all(&self) -> Result<BoundedVec<(String, Arc<Export>), MAX_EXPORTS, CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<4096>>>> {
-        let context = capability_context!(dynamic(CrateId::Component, 4096))?;
-        let provider = safe_capability_alloc!(context, CrateId::Component, 4096)?;
+        let provider = create_component_provider()?;
         let mut pairs = BoundedVec::new(provider)?;
         let items = self.exports.to_vec()?;
         for item in items {

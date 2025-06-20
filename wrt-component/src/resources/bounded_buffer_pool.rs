@@ -6,11 +6,30 @@
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::bounded::BoundedVec;
 use wrt_foundation::budget_aware_provider::CrateId;
-use wrt_foundation::capabilities::{CapabilityAwareProvider, safe_capability_alloc, capability_context};
+use wrt_foundation::capabilities::{CapabilityAwareProvider};
 use wrt_foundation::safe_memory::NoStdProvider;
 
 /// Type alias for capability-aware buffer provider
 type BufferProvider = CapabilityAwareProvider<NoStdProvider<65536>>;
+
+/// Helper function to create buffer pool provider using capability-driven design
+fn create_buffer_provider() -> Result<BufferProvider> {
+    use wrt_foundation::memory_init::get_global_capability_context;
+    
+    let context = get_global_capability_context()
+        .map_err(|_| Error::new(
+            ErrorCategory::Initialization,
+            codes::INITIALIZATION_ERROR,
+            "Global capability context not available"
+        ))?;
+    
+    context.create_provider(CrateId::Component, 65536)
+        .map_err(|_| Error::new(
+            ErrorCategory::Memory,
+            codes::MEMORY_OUT_OF_BOUNDS,
+            "Failed to create component buffer provider"
+        ))
+}
 
 /// Maximum number of buffer size classes
 pub const MAX_BUFFER_SIZE_CLASSES: usize = 8;
@@ -41,8 +60,7 @@ pub struct BufferSizeClass {
 impl BufferSizeClass {
     /// Create a new buffer size class
     pub fn new(size: usize) -> Result<Self> {
-        let context = capability_context!(dynamic(CrateId::Component, 65536))?;
-        let provider = safe_capability_alloc!(context, CrateId::Component, 65536)?;
+        let provider = create_buffer_provider()?;
         Ok(Self { 
             size, 
             buffers: BoundedVec::new(provider).map_err(|_| Error::new(
@@ -126,13 +144,7 @@ impl BoundedBufferPool {
         }
 
         // No suitable buffer found, create a new one
-        let context = capability_context!(dynamic(CrateId::Component, 65536))
-            .map_err(|_| Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ERROR,
-                "Failed to create capability context for buffer"
-            ))?;
-        let provider = safe_capability_alloc!(context, CrateId::Component, 65536)
+        let provider = create_buffer_provider()
             .map_err(|_| Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ERROR,

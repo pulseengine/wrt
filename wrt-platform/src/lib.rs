@@ -85,7 +85,7 @@ extern crate wrt_panic;
         feature = "asil-d-panic-handler"
     ))
 ))]
-#[panic_handler]
+// #[panic_handler] // Disabled to avoid conflicts with wrt-panic
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     // Simple infinite loop for minimal panic handling
     loop {

@@ -37,6 +37,8 @@ pub struct CanonicalOptions {
     pub instance_id: ComponentInstanceId,
     /// Binary std/no_std choice
     pub realloc_manager: Option<Arc<RwLock<ReallocManager>>>,
+    /// Memory.grow function index (MVP spec addition)
+    pub memory_grow: Option<u32>,
 }
 
 /// Canonical lift context with full memory management
@@ -80,6 +82,7 @@ impl CanonicalOptions {
             string_encoding: StringEncoding::Utf8,
             instance_id,
             realloc_manager: None,
+            memory_grow: None,
         }
     }
 
@@ -108,6 +111,12 @@ impl CanonicalOptions {
         self
     }
 
+    /// Set memory.grow function (MVP spec addition)
+    pub fn with_memory_grow(mut self, func_index: u32) -> Self {
+        self.memory_grow = Some(func_index);
+        self
+    }
+
     /// Binary std/no_std choice
     pub fn has_realloc(&self) -> bool {
         self.realloc.is_some() && self.realloc_manager.is_some()
@@ -116,6 +125,11 @@ impl CanonicalOptions {
     /// Check if post-return is available
     pub fn has_post_return(&self) -> bool {
         self.post_return.is_some()
+    }
+
+    /// Check if memory.grow is available (MVP spec addition)
+    pub fn has_memory_grow(&self) -> bool {
+        self.memory_grow.is_some()
     }
 }
 
@@ -296,6 +310,7 @@ pub struct CanonicalOptionsBuilder {
     string_encoding: StringEncoding,
     instance_id: ComponentInstanceId,
     realloc_manager: Option<Arc<RwLock<ReallocManager>>>,
+    memory_grow: Option<u32>,
 }
 
 impl CanonicalOptionsBuilder {
@@ -307,6 +322,7 @@ impl CanonicalOptionsBuilder {
             string_encoding: StringEncoding::Utf8,
             instance_id,
             realloc_manager: None,
+            memory_grow: None,
         }
     }
 
@@ -326,6 +342,11 @@ impl CanonicalOptionsBuilder {
         self
     }
 
+    pub fn with_memory_grow(mut self, func_index: u32) -> Self {
+        self.memory_grow = Some(func_index);
+        self
+    }
+
     pub fn build(self) -> CanonicalOptions {
         let mut options = CanonicalOptions::new(self.memory, self.instance_id);
 
@@ -335,6 +356,10 @@ impl CanonicalOptionsBuilder {
 
         if let Some(func_index) = self.post_return {
             options = options.with_post_return(func_index);
+        }
+
+        if let Some(func_index) = self.memory_grow {
+            options = options.with_memory_grow(func_index);
         }
 
         options.with_string_encoding(self.string_encoding)

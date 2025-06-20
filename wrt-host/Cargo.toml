@@ -38,7 +38,7 @@ qm = ["wrt-foundation/dynamic-allocation"]
 asil-a = ["wrt-foundation/bounded-collections"]
 asil-b = ["wrt-foundation/bounded-collections"]
 asil-c = ["wrt-foundation/static-memory-safety"]
-asil-d = ["wrt-foundation/maximum-safety"]
+asil-d = ["wrt-foundation/asil-d"]
 
 # Legacy compatibility features
 safe-memory = ["asil-b"]

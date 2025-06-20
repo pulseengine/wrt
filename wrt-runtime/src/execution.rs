@@ -47,6 +47,8 @@ pub struct ExecutionStats {
     pub gas_used: u64,
     /// Gas limit (if metering is enabled)
     pub gas_limit: u64,
+    /// Number of SIMD operations executed
+    pub simd_operations_executed: u64,
 }
 
 impl ExecutionStats {

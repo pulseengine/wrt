@@ -2,6 +2,9 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
+// Import core traits
+use core::default::Default;
+
 // Re-export the main component types from wrt-format for convenience
 #[cfg(feature = "std")]
 pub use wrt_format::component::{
@@ -35,14 +38,13 @@ mod no_std_types {
 
     impl Component {
         pub fn new() -> Self {
-            #[allow(deprecated)] // Using deprecated API to avoid unsafe code
             let provider = crate::prelude::create_decoder_provider::<8192>()
                 .unwrap_or_else(|_| BoundedProvider::default());
             Self {
                 magic: *b"\0asm",
                 version: [0x0a, 0x00, 0x01, 0x00], // Component format
-                exports: ComponentVec::new(provider.clone()).unwrap_or_default(),
-                imports: ComponentVec::new(provider).unwrap_or_default(),
+                exports: ComponentVec::new(BoundedProvider::default()).unwrap_or_default(),
+                imports: ComponentVec::new(BoundedProvider::default()).unwrap_or_default(),
             }
         }
     }
@@ -291,38 +293,119 @@ pub trait ComponentAnalyzer {
 }
 
 /// Export information
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExportInfo {
     /// Export name
-    pub name: String,
+    #[cfg(feature = "std")]
+    pub name: std::string::String,
+    #[cfg(not(feature = "std"))]
+    pub name: crate::prelude::DecoderString,
+    
     /// Type of export (function, memory, etc.)
-    pub kind: String,
+    #[cfg(feature = "std")]
+    pub kind: std::string::String,
+    #[cfg(not(feature = "std"))]
+    pub kind: crate::prelude::DecoderString,
+    
     /// Type information (as string)
-    pub type_info: String,
+    #[cfg(feature = "std")]
+    pub type_info: std::string::String,
+    #[cfg(not(feature = "std"))]
+    pub type_info: crate::prelude::DecoderString,
+}
+
+impl Default for ExportInfo {
+    fn default() -> Self {
+        #[cfg(feature = "std")]
+        return Self {
+            name: std::string::String::new(),
+            kind: std::string::String::new(),
+            type_info: std::string::String::new(),
+        };
+        
+        #[cfg(not(feature = "std"))]
+        {
+            let provider = crate::prelude::create_decoder_provider::<4096>().unwrap_or_default();
+            Self {
+                name: crate::prelude::DecoderString::from_str("", provider.clone()).unwrap_or_default(),
+                kind: crate::prelude::DecoderString::from_str("", provider.clone()).unwrap_or_default(),
+                type_info: crate::prelude::DecoderString::from_str("", provider).unwrap_or_default(),
+            }
+        }
+    }
 }
 
 /// Import information
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportInfo {
     /// Import module
-    pub module: String,
+    #[cfg(feature = "std")]
+    pub module: std::string::String,
+    #[cfg(not(feature = "std"))]
+    pub module: crate::prelude::DecoderString,
+    
     /// Import name
-    pub name: String,
+    #[cfg(feature = "std")]
+    pub name: std::string::String,
+    #[cfg(not(feature = "std"))]
+    pub name: crate::prelude::DecoderString,
+    
     /// Type of import (function, memory, etc.)
-    pub kind: String,
+    #[cfg(feature = "std")]
+    pub kind: std::string::String,
+    #[cfg(not(feature = "std"))]
+    pub kind: crate::prelude::DecoderString,
+    
     /// Type information (as string)
-    pub type_info: String,
+    #[cfg(feature = "std")]
+    pub type_info: std::string::String,
+    #[cfg(not(feature = "std"))]
+    pub type_info: crate::prelude::DecoderString,
+}
+
+impl Default for ImportInfo {
+    fn default() -> Self {
+        #[cfg(feature = "std")]
+        return Self {
+            module: std::string::String::new(),
+            name: std::string::String::new(),
+            kind: std::string::String::new(),
+            type_info: std::string::String::new(),
+        };
+        
+        #[cfg(not(feature = "std"))]
+        {
+            let provider = crate::prelude::create_decoder_provider::<4096>().unwrap_or_default();
+            Self {
+                module: crate::prelude::DecoderString::from_str("", provider.clone()).unwrap_or_default(),
+                name: crate::prelude::DecoderString::from_str("", provider.clone()).unwrap_or_default(),
+                kind: crate::prelude::DecoderString::from_str("", provider.clone()).unwrap_or_default(),
+                type_info: crate::prelude::DecoderString::from_str("", provider).unwrap_or_default(),
+            }
+        }
+    }
 }
 
 /// Component binary metadata
 #[derive(Debug, Clone)]
 pub struct ComponentMetadata {
     /// Component name or identifier
-    pub name: String,
+    #[cfg(feature = "std")]
+    pub name: std::string::String,
+    #[cfg(not(feature = "std"))]
+    pub name: crate::prelude::DecoderString,
+    
     /// Component version (if available)
-    pub version: Option<String>,
+    #[cfg(feature = "std")]
+    pub version: Option<std::string::String>,
+    #[cfg(not(feature = "std"))]
+    pub version: Option<crate::prelude::DecoderString>,
+    
     /// Custom sections contained in the component
-    pub custom_sections: Vec<String>,
+    #[cfg(feature = "std")]
+    pub custom_sections: std::vec::Vec<std::string::String>,
+    #[cfg(not(feature = "std"))]
+    pub custom_sections: crate::prelude::DecoderVec<crate::prelude::DecoderString>,
 }
 
 /// Module information within a component
@@ -348,13 +431,13 @@ impl ComponentAnalyzer for Component {
     fn analyze(&self) -> crate::component::analysis::ComponentSummary {
         // Create a basic summary directly from the component
         crate::component::analysis::ComponentSummary {
-            name: String::new(),
+            name: String::new(), // Keep as std String for now as this is used in analysis
             core_modules_count: self.modules.len() as u32,
             core_instances_count: self.core_instances.len() as u32,
             imports_count: self.imports.len() as u32,
             exports_count: self.exports.len() as u32,
             aliases_count: self.aliases.len() as u32,
-            module_info: Vec::new(),
+            module_info: Vec::new(), // Keep as std Vec for analysis compatibility
             export_info: Vec::new(),
             import_info: Vec::new(),
         }

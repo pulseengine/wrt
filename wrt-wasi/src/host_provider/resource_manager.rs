@@ -7,16 +7,42 @@ use crate::prelude::*;
 use wrt_foundation::{
     safe_memory::NoStdProvider,
     resource::{Resource, ResourceRepr, ResourceOperation},
-    capabilities::CapabilityAwareProvider,
     traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream},
     verification::Checksum,
     CrateId, Result as WrtResult,
     BoundedMap, BoundedVec, BoundedString,
 };
+
+#[cfg(feature = "std")]
+use wrt_foundation::capabilities::CapabilityAwareProvider;
 use core::any::Any;
 
 /// Maximum number of WASI resources per manager
 const MAX_WASI_RESOURCES: usize = 256;
+
+// Type alias for provider
+#[cfg(feature = "std")]
+type WasiProvider = CapabilityAwareProvider<NoStdProvider<8192>>;
+#[cfg(not(feature = "std"))]
+type WasiProvider = NoStdProvider<8192>;
+
+// Helper function to create provider
+fn create_wasi_provider() -> WasiProvider {
+    #[cfg(feature = "std")]
+    {
+        let base_provider = NoStdProvider::<8192>::new();
+        let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
+            8192,
+            wrt_foundation::CrateId::Wasi,
+            wrt_foundation::verification::VerificationLevel::Standard,
+        ));
+        CapabilityAwareProvider::new(base_provider, capability, wrt_foundation::CrateId::Wasi)
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        NoStdProvider::<8192>::new()
+    }
+}
 
 /// WASI resource handle type
 pub type WasiHandle = u32;
@@ -29,22 +55,34 @@ pub enum WasiResourceType {
     Null,
     /// File descriptor
     FileDescriptor {
+        #[cfg(feature = "std")]
         path: BoundedString<256, CapabilityAwareProvider<NoStdProvider<8192>>>,
+        #[cfg(not(feature = "std"))]
+        path: BoundedString<256, NoStdProvider<8192>>,
         readable: bool,
         writable: bool,
     },
     /// Directory handle
     DirectoryHandle {
+        #[cfg(feature = "std")]
         path: BoundedString<256, CapabilityAwareProvider<NoStdProvider<8192>>>,
+        #[cfg(not(feature = "std"))]
+        path: BoundedString<256, NoStdProvider<8192>>,
     },
     /// Input stream
     InputStream {
+        #[cfg(feature = "std")]
         name: BoundedString<64, CapabilityAwareProvider<NoStdProvider<8192>>>,
+        #[cfg(not(feature = "std"))]
+        name: BoundedString<64, NoStdProvider<8192>>,
         position: u64,
     },
     /// Output stream
     OutputStream {
+        #[cfg(feature = "std")]
         name: BoundedString<64, CapabilityAwareProvider<NoStdProvider<8192>>>,
+        #[cfg(not(feature = "std"))]
+        name: BoundedString<64, NoStdProvider<8192>>,
         position: u64,
     },
     /// Clock handle
@@ -77,18 +115,21 @@ pub enum WasiClockType {
 #[derive(Debug)]
 pub struct WasiResourceManager {
     /// Resource table using WRT foundation patterns
-    resources: BoundedMap<WasiHandle, WasiResource, MAX_WASI_RESOURCES, CapabilityAwareProvider<NoStdProvider<8192>>>,
+    resources: BoundedMap<WasiHandle, WasiResource, MAX_WASI_RESOURCES, WasiProvider>,
     /// Next available handle ID
     next_handle: WasiHandle,
     /// Memory provider for allocations
-    provider: CapabilityAwareProvider<NoStdProvider<8192>>,
+    provider: WasiProvider,
 }
 
 /// WASI resource wrapper using WRT Resource<P> pattern
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WasiResource {
     /// Base WRT resource
+    #[cfg(feature = "std")]
     base: Resource<CapabilityAwareProvider<NoStdProvider<8192>>>,
+    #[cfg(not(feature = "std"))]
+    base: Resource<NoStdProvider<8192>>,
     /// WASI-specific resource type
     resource_type: WasiResourceType,
     /// Resource capabilities
@@ -126,15 +167,14 @@ pub struct WasiResourceCapabilities {
 impl WasiResourceManager {
     /// Create a new WASI resource manager
     pub fn new() -> Result<Self> {
-        // TODO: Replace with proper capability context when available
-        let base_provider = NoStdProvider::<8192>::new();
-        let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
-            8192,
-            wrt_foundation::CrateId::Wasi,
-            wrt_foundation::verification::VerificationLevel::Standard,
-        ));
-        let provider = CapabilityAwareProvider::new(base_provider, capability, wrt_foundation::CrateId::Wasi);
+        let provider = create_wasi_provider();
+        #[cfg(feature = "std")]
         let resources = BoundedMap::new(provider.clone())?;
+        #[cfg(not(feature = "std"))]
+        let resources = {
+            let provider2 = create_wasi_provider();
+            BoundedMap::new(provider2)?
+        };
         
         Ok(Self {
             resources,

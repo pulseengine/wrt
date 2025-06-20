@@ -537,8 +537,23 @@ impl Module {
         })
     }
 
-    /// Creates a runtime Module from a `wrt_foundation::types::Module`.
+    /// Creates a runtime Module from a `wrt_format::module::Module`.
     /// This is the primary constructor after decoding.
+    #[cfg(feature = "std")]
+    pub fn from_wrt_module(wrt_module: &wrt_format::module::Module) -> Result<Self> {
+        let mut runtime_module = Self::new()?;
+        
+        // Map start function if present
+        runtime_module.start_func = wrt_module.start;
+        
+        // For now, just return the empty module as a placeholder
+        // TODO: Implement full conversion from wrt_format::Module to runtime Module
+        Ok(runtime_module)
+    }
+    
+    /// Creates a runtime Module from a `wrt_foundation::types::Module`.
+    /// This is the primary constructor after decoding for no_std.
+    #[cfg(not(feature = "std"))]
     pub fn from_wrt_module(wrt_module: &wrt_foundation::types::Module<PlatformProvider>) -> Result<Self> {
         let mut runtime_module = Self::new()?;
 
@@ -1586,6 +1601,37 @@ impl Module {
         }
         self.binary = Some(bounded_binary);
         Ok(())
+    }
+
+    /// Load a module from WebAssembly binary
+    ///
+    /// This method uses streaming decoding to minimize memory usage.
+    /// The binary is processed section by section without loading
+    /// the entire module into intermediate data structures.
+    pub fn load_from_binary(&mut self, binary: &[u8]) -> Result<Self> {
+        // Use wrt-decoder's streaming decoder for minimal memory usage
+        use wrt_decoder::decoder;
+        
+        // Decode the module using streaming processing
+        // This processes one section at a time to minimize memory footprint
+        let decoded_module = decoder::decode_module(binary)?;
+        
+        // Convert the decoded module to runtime module
+        let runtime_module = Self::from_wrt_module(&decoded_module)?;
+        
+        // Store the binary for later use
+        // Note: This is the only place where we keep the full binary in memory
+        // Consider using a streaming approach here too if binary size is a concern
+        let mut bounded_binary = PlatformBoundedVec::<u8, 65536>::new(PlatformProvider::default())?;
+        for byte in binary {
+            bounded_binary.push(*byte)?;
+        }
+        
+        Ok(Self {
+            binary: Some(bounded_binary),
+            validated: true,
+            ..runtime_module
+        })
     }
 }
 

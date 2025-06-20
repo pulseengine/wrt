@@ -113,6 +113,21 @@ pub mod bounded_wrt_infra;
 #[cfg(feature = "safety-critical")]
 pub mod memory_limits;
 
+// Bulk memory operations runtime
+pub mod bulk_memory_runtime;
+
+// Atomic operations runtime
+pub mod atomic_runtime;
+
+// Shared memory runtime for WebAssembly 3.0 threads
+pub mod shared_memory_runtime;
+
+// Multi-memory runtime for WebAssembly 3.0 multi-memory proposal
+pub mod multi_memory_runtime;
+
+// Unified WebAssembly 3.0 features runtime integration
+pub mod webassembly_3_runtime;
+
 // Module adapters for integration between specialized crates - temporarily disabled due to runtime dependencies
 // #[cfg(feature = "std")] // CFI integration requires std features currently
 // pub mod cfi_integration;

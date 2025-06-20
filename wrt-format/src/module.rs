@@ -18,7 +18,7 @@ use std::{string::String, vec, vec::Vec};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
-use wrt_foundation::{RefType, ValueType, types::{TableType as WrtTableType, MemoryType as WrtMemoryType, Import as WrtImport, ImportDesc as WrtImportDesc}};
+use wrt_foundation::{RefType, ValueType, types::{FuncType, TableType as WrtTableType, MemoryType as WrtMemoryType, Import as WrtImport, ImportDesc as WrtImportDesc}};
 
 #[cfg(not(any(feature = "std")))]
 use wrt_foundation::traits::BoundedCapacity;
@@ -1431,7 +1431,7 @@ pub struct Module<
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
 > {
     /// Function type signatures
-    pub types: crate::WasmVec<ValueType, P>,
+    pub types: crate::WasmVec<FuncType<P>, P>,
     /// Function definitions (code)
     pub functions: crate::WasmVec<Function, P>,
     /// Table definitions
@@ -1505,7 +1505,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Module<P> {
 #[derive(Debug, Clone)]
 pub struct Module {
     /// Function type signatures
-    pub types: Vec<ValueType>,
+    pub types: Vec<wrt_foundation::CleanFuncType>,
     /// Function definitions (code)
     pub functions: Vec<Function>,
     /// Table definitions

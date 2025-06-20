@@ -66,7 +66,7 @@ qm = ["wrt-foundation/dynamic-allocation", "wrt-logging/qm"]
 asil-a = ["wrt-foundation/bounded-collections", "wrt-logging/asil-a"]
 asil-b = ["wrt-foundation/bounded-collections", "wrt-logging/asil-b"]
 asil-c = ["wrt-foundation/static-memory-safety", "wrt-logging/asil-c"]
-asil-d = ["wrt-foundation/maximum-safety", "wrt-logging/asil-d"]
+asil-d = ["wrt-foundation/asil-d", "wrt-logging/asil-d"]
 
 # Legacy compatibility features
 safe-memory = ["asil-b"]

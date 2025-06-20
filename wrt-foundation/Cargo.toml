@@ -60,8 +60,8 @@ maximum-safety = [
 qm = ["dynamic-allocation"]
 asil-a = ["runtime-bounds-checking", "basic-monitoring"]
 asil-b = ["runtime-bounds-checking", "basic-monitoring", "bounded-collections"]
-asil-c = ["runtime-bounds-checking", "basic-monitoring", "bounded-collections", "memory-budget-enforcement", "component-isolation"]
-asil-d = ["runtime-bounds-checking", "basic-monitoring", "bounded-collections", "memory-budget-enforcement", "component-isolation", "compile-time-memory-layout", "mathematical-proofs", "redundant-safety-checks", "hardware-isolation"]
+asil-c = ["static-allocation", "runtime-bounds-checking", "basic-monitoring", "memory-budget-enforcement", "component-isolation"]
+asil-d = ["verified-static-allocation", "runtime-bounds-checking", "basic-monitoring", "memory-budget-enforcement", "memory-isolation", "component-isolation", "compile-time-memory-layout", "mathematical-proofs", "redundant-safety-checks", "hardware-isolation", "formal-verification-required"]
 
 # Legacy compatibility features
 std = ["wrt-sync/std", "dynamic-allocation"]

@@ -158,7 +158,6 @@ mod no_std_utils {
         })?;
 
         // Create the properly sized bounded string for the return type
-        #[allow(deprecated)] // Using deprecated API to avoid unsafe code
         let provider = crate::prelude::create_decoder_provider::<512>()
             .unwrap_or_else(|_| wrt_foundation::safe_memory::NoStdProvider::<512>::default());
         let name_string = BoundedString::<256, _>::from_str(name_str, provider).unwrap_or_default();

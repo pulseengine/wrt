@@ -70,9 +70,9 @@ impl CustomSectionHandler {
     pub fn new() -> Self {
         Self {
             #[cfg(all(feature = "std", feature = "safety-critical"))]
-            sections: WrtHashMap::new(),
+            sections: WrtHashMap::with_capacity(0),
             #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-            sections: HashMap::new(),
+            sections: HashMap::with_capacity(0),
             #[cfg(not(feature = "std"))]
             sections: BTreeMap::new(),
         }
@@ -184,9 +184,9 @@ fn parse_name_section(_data: &[u8]) -> Result<CustomSection> {
     Ok(CustomSection::Name {
         module_name: None,
         #[cfg(all(feature = "std", feature = "safety-critical"))]
-        function_names: WrtHashMap::new(),
+        function_names: WrtHashMap::with_capacity(0),
         #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-        function_names: HashMap::new(),
+        function_names: HashMap::with_capacity(0),
         #[cfg(not(feature = "std"))]
         function_names: BTreeMap::new(),
     })
@@ -196,7 +196,7 @@ impl Default for CustomSection {
     fn default() -> Self {
         CustomSection::Unknown {
             name: String::new(),
-            data: Vec::new(),
+            data: Vec::with_capacity(0),
         }
     }
 }
@@ -274,7 +274,7 @@ mod tests {
     #[test]
     fn test_extract_custom_section() {
         // Create test custom section data: name length + name + data
-        let mut section_data = Vec::new();
+        let mut section_data = Vec::with_capacity(0);
         let name = "test";
         section_data.push(name.len() as u8); // LEB128 encoding of length
         section_data.extend_from_slice(name.as_bytes());

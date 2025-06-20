@@ -38,7 +38,7 @@ use wrt_foundation::BoundedString;
 
 // Type aliases for no_std compatibility
 #[cfg(not(feature = "std"))]
-type String = BoundedString<256, NoStdProvider<65536>>;
+type ThreadingString = BoundedString<256, NoStdProvider<65536>>;
 
 #[cfg(not(feature = "std"))]
 // For no_std, use a simpler ComponentValue representation

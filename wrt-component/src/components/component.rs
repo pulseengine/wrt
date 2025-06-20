@@ -56,7 +56,7 @@ impl<K: PartialEq + Clone, V: Clone> SimpleMap<K, V> {
 }
 
 #[cfg(not(feature = "std"))]
-type HashMap<K, V> = SimpleMap<K, V>;
+type ComponentMap<K, V> = SimpleMap<K, V>;
 
 // Runtime types with explicit namespacing
 use wrt_runtime::types::{MemoryType, TableType};
@@ -106,9 +106,24 @@ impl WrtComponentType {
     /// Creates a new empty component type
     pub fn new() -> Self {
         Self {
-            imports: Vec::new(),
-            exports: Vec::new(),
-            instances: Vec::new(),
+            imports: {
+                #[cfg(feature = "std")]
+                { std::vec::Vec::new() }
+                #[cfg(not(feature = "std"))]
+                { wrt_foundation::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap_or_default() }
+            },
+            exports: {
+                #[cfg(feature = "std")]
+                { std::vec::Vec::new() }
+                #[cfg(not(feature = "std"))]
+                { wrt_foundation::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap_or_default() }
+            },
+            instances: {
+                #[cfg(feature = "std")]
+                { std::vec::Vec::new() }
+                #[cfg(not(feature = "std"))]
+                { wrt_foundation::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap_or_default() }
+            },
             verification_level: wrt_foundation::verification::VerificationLevel::Standard,
         }
     }
@@ -116,9 +131,24 @@ impl WrtComponentType {
     /// Create a new empty component type
     pub fn empty() -> Self {
         Self {
-            imports: Vec::new(),
-            exports: Vec::new(),
-            instances: Vec::new(),
+            imports: {
+                #[cfg(feature = "std")]
+                { std::vec::Vec::new() }
+                #[cfg(not(feature = "std"))]
+                { wrt_foundation::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap_or_default() }
+            },
+            exports: {
+                #[cfg(feature = "std")]
+                { std::vec::Vec::new() }
+                #[cfg(not(feature = "std"))]
+                { wrt_foundation::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap_or_default() }
+            },
+            instances: {
+                #[cfg(feature = "std")]
+                { std::vec::Vec::new() }
+                #[cfg(not(feature = "std"))]
+                { wrt_foundation::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap_or_default() }
+            },
             verification_level: wrt_foundation::verification::VerificationLevel::Standard,
         }
     }
@@ -828,18 +858,26 @@ pub fn scan_builtins(bytes: &[u8]) -> Result<BuiltinRequirements> {
     let mut requirements = BuiltinRequirements::new();
 
     // Try to decode as component or module
-    match wrt_decoder::component::decode_component(bytes) {
-        Ok(component) => {
-            scan_functions_for_builtins(&component, &mut requirements)?;
-            Ok(requirements)
+    #[cfg(feature = "decoder")]
+    {
+        match wrt_decoder::component::decode_component(bytes) {
+            Ok(component) => {
+                scan_functions_for_builtins(&component, &mut requirements)?;
+                return Ok(requirements);
+            }
+            Err(err) => {
+                return Err(Error::new(
+                    ErrorCategory::Parse,
+                    codes::DECODING_ERROR,
+                    "Component not found",
+                ));
+            }
         }
-        Err(err) => {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::DECODING_ERROR,
-                "Component not found",
-            ));
-        }
+    }
+    #[cfg(not(feature = "decoder"))]
+    {
+        // Without decoder, return empty requirements
+        Ok(requirements)
     }
 }
 
@@ -909,21 +947,39 @@ fn scan_functions_for_builtins(
 /// Extracts embedded modules from a binary
 fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
     // Try to decode as component
-    match wrt_decoder::component::decode_component(bytes) {
-        Ok(component) => {
-            // Extract modules from component
-            // Let's create a simple mock implementation since component doesn't have
-            // modules()
-            let modules = Vec::new(); // Create an empty vector as a placeholder
-            Ok(modules)
+    #[cfg(feature = "decoder")]
+    {
+        match wrt_decoder::component::decode_component(bytes) {
+            Ok(component) => {
+                // Extract modules from component
+                // Let's create a simple mock implementation since component doesn't have
+                // modules()
+                let modules = {
+                    #[cfg(feature = "std")]
+                    { std::vec::Vec::new() }
+                    #[cfg(not(feature = "std"))]
+                    { wrt_foundation::BoundedVec::<_, 16, _>::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap_or_default() }
+                }; // Create an empty vector as a placeholder
+                return Ok(modules);
+            }
+            Err(err) => {
+                return Err(Error::new(
+                    ErrorCategory::Parse,
+                    codes::DECODING_ERROR,
+                    "Component not found",
+                ));
+            }
         }
-        Err(err) => {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::DECODING_ERROR,
-                "Component not found",
-            ));
-        }
+    }
+    #[cfg(not(feature = "decoder"))]
+    {
+        // Without decoder, return empty modules list
+        Ok({
+            #[cfg(feature = "std")]
+            { std::vec::Vec::new() }
+            #[cfg(not(feature = "std"))]
+            { wrt_foundation::BoundedVec::<_, 16, _>::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap_or_default() }
+        })
     }
 }
 

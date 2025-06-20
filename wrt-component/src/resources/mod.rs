@@ -12,6 +12,7 @@ use std::sync::Weak;
 pub mod bounded_buffer_pool;
 #[cfg(feature = "std")]
 pub mod buffer_pool;
+pub mod dynamic_quota_manager;
 #[cfg(feature = "std")]
 pub mod memory_access;
 pub mod memory_strategy;
@@ -88,6 +89,11 @@ pub use resource_table_no_std::{
 // Export size class buffer pool for std environment
 #[cfg(feature = "std")]
 pub use size_class_buffer_pool::{BufferPoolStats, SizeClassBufferPool};
+// Export dynamic quota management
+pub use dynamic_quota_manager::{
+    DynamicQuotaManager, QuotaNode, QuotaRequest, QuotaResponse, QuotaWatcher,
+    QuotaNodeType, ResourceType as QuotaResourceType, QuotaPolicy, QuotaStrategy, QuotaStatus,
+};
 
 /// Timestamp implementation for no_std
 #[derive(Debug, Clone, Copy)]

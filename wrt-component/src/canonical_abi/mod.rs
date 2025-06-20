@@ -8,11 +8,13 @@ pub mod canonical;
 pub mod canonical_abi;
 pub mod canonical_options;
 pub mod canonical_realloc;
+pub mod post_return;
 
 pub use canonical::*;
 pub use canonical_abi::*;
 pub use canonical_options::*;
 pub use canonical_realloc::*;
+pub use post_return::*;
 
 // Tests moved from canonical_abi_tests.rs
 #[cfg(test)]

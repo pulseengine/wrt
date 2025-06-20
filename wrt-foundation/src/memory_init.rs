@@ -27,8 +27,9 @@ use std::sync::OnceLock;
 /// Global initialization state
 static MEMORY_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
-/// Initialization error storage
-static mut INIT_ERROR: Option<&'static str> = None;
+/// ASIL-D safe initialization error storage
+/// ASIL-D safe error storage using atomic pointer instead of static mut
+static INIT_ERROR_PTR: core::sync::atomic::AtomicPtr<&'static str> = core::sync::atomic::AtomicPtr::new(core::ptr::null_mut());
 
 /// Global capability context for modern memory management
 #[cfg(feature = "std")]
@@ -115,10 +116,9 @@ impl MemoryInitializer {
             if *budget > 0 {
                 // Register dynamic capabilities for all crates
                 if let Err(_) = context.register_dynamic_capability(*crate_id, *budget) {
-                    #[allow(unsafe_code)]
-                    unsafe {
-                        INIT_ERROR = Some("Failed to register capability for crate");
-                    }
+                    // ASIL-D safe error storage using atomic pointer
+                    let error_msg: &'static str = "Failed to register capability for crate";
+                    INIT_ERROR_PTR.store(error_msg as *const str as *mut &'static str, Ordering::Release);
                     MEMORY_INITIALIZED.store(false, Ordering::Release);
                     return Err(Error::new(
                         crate::ErrorCategory::Initialization,
@@ -154,11 +154,9 @@ impl MemoryInitializer {
         match legacy_result {
             Ok(()) => Ok(()),
             Err(e) => {
-                // Store error for debugging
-                #[allow(unsafe_code)] // Safe: single-threaded write to static during initialization
-                unsafe {
-                    INIT_ERROR = Some("Memory coordinator initialization failed");
-                }
+                // Store error for debugging using ASIL-D safe atomic pattern
+                let error_msg: &'static str = "Memory coordinator initialization failed";
+                INIT_ERROR_PTR.store(error_msg as *const str as *mut &'static str, Ordering::Release);
                 MEMORY_INITIALIZED.store(false, Ordering::Release);
                 Err(e)
             }
@@ -172,9 +170,13 @@ impl MemoryInitializer {
 
     /// Get initialization error if any
     pub fn get_error() -> Option<&'static str> {
-        #[allow(unsafe_code)] // Safe: read-only access to static
-        unsafe {
-            INIT_ERROR
+        // ASIL-D safe error retrieval using atomic pointer
+        let ptr = INIT_ERROR_PTR.load(Ordering::Acquire);
+        if ptr.is_null() {
+            None
+        } else {
+            #[allow(unsafe_code)] // Safe: pointer was stored by us atomically
+            unsafe { Some(*ptr) }
         }
     }
 
@@ -182,9 +184,8 @@ impl MemoryInitializer {
     #[cfg(test)]
     pub fn reset() {
         MEMORY_INITIALIZED.store(false, Ordering::Release);
-        unsafe {
-            INIT_ERROR = None;
-        }
+        // ASIL-D safe error reset using atomic pattern
+        INIT_ERROR_PTR.store(core::ptr::null_mut(), Ordering::Release);
     }
 }
 

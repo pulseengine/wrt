@@ -18,7 +18,7 @@ wrt-format = { workspace = true, default-features = false }
 wrt-host = { workspace = true, default-features = false }
 wrt-foundation = { workspace = true, default-features = false }
 wrt-intercept = { workspace = true, default-features = false }
-wrt-decoder = { workspace = true, default-features = false }
+wrt-decoder = { workspace = true, default-features = false, optional = true }
 wrt-runtime = { workspace = true, default-features = false }
 wrt-sync = { workspace = true, default-features = false }
 
@@ -62,7 +62,7 @@ qm = ["wrt-foundation/dynamic-allocation", "wrt-format/qm", "wrt-host/qm", "wrt-
 asil-a = ["wrt-foundation/bounded-collections", "wrt-format/asil-a", "wrt-host/asil-a", "wrt-decoder/asil-a", "wrt-runtime/asil-a", "wrt-intercept/asil-a"]
 asil-b = ["wrt-foundation/bounded-collections", "wrt-format/asil-b", "wrt-host/asil-b", "wrt-decoder/asil-b", "wrt-runtime/asil-b", "wrt-intercept/asil-b"]
 asil-c = ["wrt-foundation/static-memory-safety", "wrt-format/asil-c", "wrt-host/asil-c", "wrt-decoder/asil-c", "wrt-runtime/asil-c", "wrt-intercept/asil-c"]
-asil-d = ["wrt-foundation/maximum-safety", "wrt-format/asil-d", "wrt-host/asil-d", "wrt-decoder/asil-d", "wrt-runtime/asil-d", "wrt-intercept/asil-d"]
+asil-d = ["wrt-foundation/asil-d", "wrt-format/asil-d", "wrt-host/asil-d", "wrt-decoder/asil-d", "wrt-runtime/asil-d", "wrt-intercept/asil-d"]
 
 # Legacy compatibility features
 safe-memory = ["asil-b"]
@@ -104,6 +104,9 @@ component-model-all = [
     "component-model-error-context",
     "component-model-threading"
 ]
+
+# Decoder support
+decoder = ["dep:wrt-decoder"]
 
 
 [[example]]

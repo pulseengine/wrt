@@ -8,100 +8,44 @@ use crate::capabilities::WasiEnvironmentCapabilities;
 use crate::Value;
 use core::any::Any;
 
+// Import capability-aware functions
+use crate::preview2::cli_capability_aware::{
+    wasi_cli_get_arguments_bridge,
+    wasi_cli_get_environment_bridge,
+    wasi_get_initial_cwd_bridge,
+};
+
 /// WASI get arguments operation
 ///
-/// Implements `wasi:cli/environment.get-arguments` using platform abstractions
+/// Implements `wasi:cli/environment.get-arguments` using capability-aware allocation
 pub fn wasi_cli_get_arguments(
-    _target: &mut dyn Any,
-    _args: Vec<Value>,
+    target: &mut dyn Any,
+    args: Vec<Value>,
 ) -> Result<Vec<Value>> {
-    // Get command line arguments using platform abstraction
-    #[cfg(feature = "std")]
-    {
-        use std::env;
-        let args: Vec<String> = env::args().collect();
-        
-        // Convert to WASI list<string>
-        let wasi_args: Vec<Value> = args.into_iter()
-            .map(Value::String)
-            .collect();
-            
-        Ok(vec![Value::List(wasi_args)])
-    }
-    
-    #[cfg(not(feature = "std"))]
-    {
-        // In no_std environment, return empty args or predefined args
-        // This would typically be configured at compile time or through
-        // embedded system configuration
-        let empty_args = Vec::new();
-        Ok(vec![Value::List(empty_args)])
-    }
+    // Use capability-aware bridge function for memory safety
+    wasi_cli_get_arguments_bridge(target, args)
 }
 
 /// WASI get environment operation
 ///
-/// Implements `wasi:cli/environment.get-environment` for environment variables
+/// Implements `wasi:cli/environment.get-environment` using capability-aware allocation
 pub fn wasi_cli_get_environment(
-    _target: &mut dyn Any,
-    _args: Vec<Value>,
+    target: &mut dyn Any,
+    args: Vec<Value>,
 ) -> Result<Vec<Value>> {
-    // Get environment variables using platform abstraction
-    #[cfg(feature = "std")]
-    {
-        use std::env;
-        
-        let mut env_vars = Vec::new();
-        
-        // Iterate through environment variables
-        for (key, value) in env::vars() {
-            // Create tuple of (key, value)
-            let env_tuple = Value::Tuple(vec![
-                Value::String(key),
-                Value::String(value),
-            ]);
-            env_vars.push(env_tuple);
-        }
-        
-        Ok(vec![Value::List(env_vars)])
-    }
-    
-    #[cfg(not(feature = "std"))]
-    {
-        // In no_std environment, return empty environment or predefined vars
-        let empty_env = Vec::new();
-        Ok(vec![Value::List(empty_env)])
-    }
+    // Use capability-aware bridge function for memory safety
+    wasi_cli_get_environment_bridge(target, args)
 }
 
 /// WASI get initial working directory operation
 ///
-/// Implements `wasi:cli/environment.initial-cwd` for current working directory
+/// Implements `wasi:cli/environment.initial-cwd` using capability-aware allocation
 pub fn wasi_get_initial_cwd(
-    _target: &mut dyn Any,
-    _args: Vec<Value>,
+    target: &mut dyn Any,
+    args: Vec<Value>,
 ) -> Result<Vec<Value>> {
-    #[cfg(feature = "std")]
-    {
-        use std::env;
-        
-        match env::current_dir() {
-            Ok(cwd) => {
-                let cwd_string = cwd.to_string_lossy().to_string();
-                Ok(vec![Value::Option(Some(Box::new(Value::String(cwd_string))))])
-            }
-            Err(_) => {
-                // Return None if current directory cannot be determined
-                Ok(vec![Value::Option(None)])
-            }
-        }
-    }
-    
-    #[cfg(not(feature = "std"))]
-    {
-        // In no_std environment, return None or a predefined directory
-        Ok(vec![Value::Option(None)])
-    }
+    // Use capability-aware bridge function for memory safety
+    wasi_get_initial_cwd_bridge(target, args)
 }
 
 /// WASI get terminal stdin information
@@ -195,7 +139,7 @@ pub fn wasi_get_terminal_stderr(
 ///
 /// Helper function to filter environment variables based on WASI capabilities
 pub fn get_filtered_environment(capabilities: &WasiEnvironmentCapabilities) -> Result<Vec<(String, String)>> {
-    let mut filtered_vars = Vec::new();
+    let mut filtered_vars = Vec::with_capacity(0);
     
     if !capabilities.environ_access {
         return Ok(filtered_vars);
@@ -220,7 +164,7 @@ pub fn get_filtered_environment(capabilities: &WasiEnvironmentCapabilities) -> R
 /// Helper function to filter arguments based on WASI capabilities
 pub fn get_filtered_arguments(capabilities: &WasiEnvironmentCapabilities) -> Result<Vec<String>> {
     if !capabilities.args_access {
-        return Ok(Vec::new());
+        return Ok(Vec::with_capacity(0));
     }
     
     #[cfg(feature = "std")]
@@ -231,7 +175,7 @@ pub fn get_filtered_arguments(capabilities: &WasiEnvironmentCapabilities) -> Res
     
     #[cfg(not(feature = "std"))]
     {
-        Ok(Vec::new())
+        Ok(Vec::with_capacity(0))
     }
 }
 

@@ -261,7 +261,7 @@ impl ComponentHeader {
             section_count: 0,
             types: BoundedVec::new(provider.clone()).unwrap_or_default(),
             exports: BoundedVec::new(provider.clone()).unwrap_or_default(),
-            imports: BoundedVec::new(provider).unwrap_or_default(),
+            imports: BoundedVec::new(provider.clone()).unwrap_or_default(),
             has_start: false,
             has_core_modules: false,
             has_sub_components: false,

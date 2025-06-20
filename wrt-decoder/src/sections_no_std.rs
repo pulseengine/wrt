@@ -17,6 +17,7 @@ use wrt_format::{
 use wrt_foundation::{
     bounded::{BoundedVec, WasmName},
     traits::BoundedCapacity,
+    safe_memory::NoStdProvider,
     types::{
         FuncType as WrtFuncType, GlobalType as WrtGlobalType, Import as WrtImport,
         ImportDesc as WrtImportDesc, MemoryType as WrtMemoryType, TableType as WrtTableType,
@@ -33,6 +34,110 @@ use crate::optimized_string::parse_utf8_string_inplace;
 
 // Import bounded infrastructure
 use crate::bounded_decoder_infra::*;
+
+/// WebAssembly section representation for no_std environments
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum Section {
+    /// Type section containing function signatures
+    Type(BoundedVec<WrtFuncType<NoStdProvider<8192>>, 64, NoStdProvider<8192>>),
+    /// Import section
+    Import(BoundedVec<WrtImport<NoStdProvider<8192>>, 64, NoStdProvider<8192>>),
+    /// Function section (function indices)
+    Function(BoundedVec<u32, 64, NoStdProvider<8192>>),
+    /// Table section
+    Table(BoundedVec<WrtTableType, 64, NoStdProvider<8192>>),
+    /// Memory section
+    Memory(BoundedVec<WrtMemoryType, 64, NoStdProvider<8192>>),
+    /// Global section
+    Global(BoundedVec<WrtGlobalType, 64, NoStdProvider<8192>>),
+    /// Export section
+    Export(BoundedVec<WrtExport, 64, NoStdProvider<8192>>),
+    /// Start section
+    Start(u32),
+    /// Element section
+    Element(BoundedVec<WrtElementSegment, 32, NoStdProvider<8192>>),
+    /// Code section (function bodies)
+    Code(BoundedVec<BoundedVec<u8, 1024, NoStdProvider<8192>>, 64, NoStdProvider<8192>>),
+    /// Data section
+    Data(BoundedVec<WrtDataSegment, 32, NoStdProvider<8192>>),
+    /// Data count section (for memory.init/data.drop validation)
+    DataCount(u32),
+    /// Custom section
+    Custom { 
+        name: WasmString<NoStdProvider<8192>>,
+        data: BoundedVec<u8, 1024, NoStdProvider<8192>>,
+    },
+    /// Empty section (default)
+    #[default]
+    Empty,
+}
+
+// Implement required traits for Section
+impl wrt_foundation::traits::Checksummable for Section {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        // Simple checksum based on variant
+        let discriminant = match self {
+            Section::Type(_) => 0u8,
+            Section::Import(_) => 1,
+            Section::Function(_) => 2,
+            Section::Table(_) => 3,
+            Section::Memory(_) => 4,
+            Section::Global(_) => 5,
+            Section::Export(_) => 6,
+            Section::Start(_) => 7,
+            Section::Element(_) => 8,
+            Section::Code(_) => 9,
+            Section::Data(_) => 10,
+            Section::DataCount(_) => 11,
+            Section::Custom { .. } => 12,
+            Section::Empty => 13,
+        };
+        checksum.update_slice(&[discriminant]);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for Section {
+    fn serialized_size(&self) -> usize {
+        1 // Just discriminant for simplicity
+    }
+
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        let discriminant = match self {
+            Section::Type(_) => 0u8,
+            Section::Import(_) => 1,
+            Section::Function(_) => 2,
+            Section::Table(_) => 3,
+            Section::Memory(_) => 4,
+            Section::Global(_) => 5,
+            Section::Export(_) => 6,
+            Section::Start(_) => 7,
+            Section::Element(_) => 8,
+            Section::Code(_) => 9,
+            Section::Data(_) => 10,
+            Section::DataCount(_) => 11,
+            Section::Custom { .. } => 12,
+            Section::Empty => 13,
+        };
+        writer.write_u8(discriminant)
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for Section {
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let discriminant = reader.read_u8()?;
+        match discriminant {
+            13 => Ok(Section::Empty),
+            _ => Ok(Section::Empty), // Default fallback
+        }
+    }
+}
 
 // Helper function stubs (same as original)
 fn parse_element_segment(

@@ -47,6 +47,7 @@ pub mod bounded_component_infra;
 // Core component modules
 pub mod adapter;
 pub mod agent_registry;
+pub mod blast_zone;
 pub mod builtins;
 pub mod call_context;
 pub mod canonical_abi;
@@ -95,8 +96,10 @@ pub mod threading;
 pub mod verify;
 
 // Essential re-exports only
+pub use blast_zone::{BlastZoneManager, BlastZoneConfig, IsolationLevel, ContainmentPolicy, ZoneHealth};
 pub use builtins::{BuiltinHandler, BuiltinRegistry};
 pub use canonical_abi::canonical::CanonicalABI;
+pub use resources::{DynamicQuotaManager, QuotaNode, QuotaRequest, QuotaResponse, QuotaNodeType, QuotaResourceType, QuotaPolicy, QuotaStatus};
 
 // Canonical type definitions for ASIL-D compliance
 pub use types::{ComponentInstance, ComponentInstanceId, ComponentInstanceState};

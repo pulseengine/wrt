@@ -41,7 +41,7 @@ use alloc::format;
 #[cfg(feature = "std")]
 type String = std::string::String;
 #[cfg(not(feature = "std"))]
-type String = wrt_foundation::bounded::BoundedString<256, wrt_foundation::NoStdProvider<1024>>;
+type String = wrt_foundation::bounded::BoundedString<256, crate::bounded_runtime_infra::BaseRuntimeProvider>;
 
 // Define trait locally if not available from wrt_decoder
 pub trait RuntimeModuleBuilder {
@@ -54,14 +54,14 @@ pub trait RuntimeModuleBuilder {
     fn add_function_type(&mut self, func_type: FuncType<StdMemoryProvider>) -> Result<u32>;
     fn add_import(&mut self, import: WrtImport) -> Result<u32>;
     fn add_function(&mut self, type_idx: u32) -> Result<u32>;
-    fn add_function_body(&mut self, func_idx: u32, type_idx: u32, body: wrt_foundation::bounded::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<1024>>) -> Result<()>;
+    fn add_function_body(&mut self, func_idx: u32, type_idx: u32, body: wrt_foundation::bounded::BoundedVec<u8, 4096, crate::bounded_runtime_infra::BaseRuntimeProvider>) -> Result<()>;
     fn add_memory(&mut self, memory_type: WrtMemoryType) -> Result<u32>;
     fn add_table(&mut self, table_type: WrtTableType) -> Result<u32>;
     fn add_global(&mut self, global_type: WrtGlobalType) -> Result<u32>;
     fn add_export(&mut self, export: WrtExport) -> Result<()>;
     fn add_element(&mut self, element: WrtElementSegment) -> Result<u32>;
     fn add_data(&mut self, data: WrtDataSegment) -> Result<u32>;
-    fn add_custom_section(&mut self, section: WrtCustomSection<wrt_foundation::safe_memory::NoStdProvider<1024>>) -> Result<()>;
+    fn add_custom_section(&mut self, section: WrtCustomSection<crate::bounded_runtime_infra::BaseRuntimeProvider>) -> Result<()>;
     fn build(self) -> Result<Self::Module>;
 }
 
@@ -125,7 +125,7 @@ impl RuntimeModuleBuilder for ModuleBuilder {
         Ok(0)
     }
     
-    fn add_custom_section(&mut self, _section: WrtCustomSection<wrt_foundation::safe_memory::NoStdProvider<1024>>) -> Result<()> {
+    fn add_custom_section(&mut self, _section: WrtCustomSection<crate::bounded_runtime_infra::BaseRuntimeProvider>) -> Result<()> {
         // Custom section handling not implemented
         Ok(())
     }
@@ -135,7 +135,7 @@ impl RuntimeModuleBuilder for ModuleBuilder {
         Ok(0)
     }
     
-    fn add_function_body(&mut self, _func_idx: u32, _type_idx: u32, _body: wrt_foundation::bounded::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<1024>>) -> Result<()> {
+    fn add_function_body(&mut self, _func_idx: u32, _type_idx: u32, _body: wrt_foundation::bounded::BoundedVec<u8, 4096, crate::bounded_runtime_infra::BaseRuntimeProvider>) -> Result<()> {
         // Function body addition not implemented
         Ok(())
     }

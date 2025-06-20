@@ -31,7 +31,52 @@ use wrt_format::{
 
 use crate::memory_optimized::{check_bounds_u32, safe_usize_conversion};
 use crate::optimized_string::parse_utf8_string_inplace;
-use crate::prelude::Vec;
+// Type aliases to make Vec/String usage explicit
+#[cfg(feature = "std")]
+type SectionVec<T> = std::vec::Vec<T>;
+#[cfg(not(feature = "std"))]
+type SectionVec<T> = wrt_foundation::BoundedVec<T, 256, wrt_foundation::NoStdProvider<4096>>;
+
+#[cfg(feature = "std")]
+type SectionString = std::string::String;
+#[cfg(not(feature = "std"))]
+type SectionString = wrt_foundation::BoundedString<256, wrt_foundation::NoStdProvider<4096>>;
+
+/// WebAssembly section representation
+#[derive(Debug, Clone)]
+pub enum Section {
+    /// Type section containing function signatures
+    Type(SectionVec<WrtFuncType>),
+    /// Import section
+    Import(SectionVec<WrtFoundationImport>),
+    /// Function section (function indices)
+    Function(SectionVec<u32>),
+    /// Table section
+    Table(SectionVec<WrtTableType>),
+    /// Memory section
+    Memory(SectionVec<WrtMemoryType>),
+    /// Global section
+    Global(SectionVec<WrtGlobalType>),
+    /// Export section
+    Export(SectionVec<WrtExport>),
+    /// Start section (function index)
+    Start(u32),
+    /// Element section
+    Element(SectionVec<WrtElementSegment>),
+    /// Code section (function bodies)
+    Code(SectionVec<wrt_foundation::bounded::BoundedVec<u8, 65536, NoStdProvider<65536>>>),
+    /// Data section
+    Data(SectionVec<WrtDataSegment>),
+    /// Data count section
+    DataCount(u32),
+    /// Custom section
+    Custom {
+        /// Section name
+        name: SectionString,
+        /// Section data
+        data: wrt_foundation::bounded::BoundedVec<u8, 65536, NoStdProvider<65536>>,
+    },
+}
 
 // Helper functions for missing imports
 fn parse_element_segment(

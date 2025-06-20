@@ -576,14 +576,12 @@ pub struct NoStdProviderBuilder<const N: usize> {
     _migration_marker: core::marker::PhantomData<()>,
 }
 
-#[allow(deprecated)]
 impl<const N: usize> Default for NoStdProviderBuilder<N> {
     fn default() -> Self {
         Self { _migration_marker: core::marker::PhantomData }
     }
 }
 
-#[allow(deprecated)]
 impl<const N: usize> NoStdProviderBuilder<N> {
     /// Creates a new builder with default settings for NoStdProvider<N>.
     #[deprecated(
@@ -646,14 +644,12 @@ pub struct NoStdProviderBuilder1 {
     _migration_marker: core::marker::PhantomData<()>,
 }
 
-#[allow(deprecated)]
 impl Default for NoStdProviderBuilder1 {
     fn default() -> Self {
         Self { _migration_marker: core::marker::PhantomData }
     }
 }
 
-#[allow(deprecated)]
 impl NoStdProviderBuilder1 {
     /// Creates a new builder with default settings.
     #[deprecated(
@@ -795,7 +791,6 @@ mod tests {
     #[test]
     fn test_no_std_provider_builder_migration() {
         // Test that deprecated builder now returns an error directing to new API
-        #[allow(deprecated)]
         let builder = NoStdProviderBuilder::<512>::new()
             .with_init_size(256)
             .with_verification_level(VerificationLevel::Full);
@@ -814,7 +809,6 @@ mod tests {
     #[test]
     fn test_no_std_provider_builder_legacy_migration() {
         // Test the legacy (non-generic) builder migration
-        #[allow(deprecated)]
         let builder = NoStdProviderBuilder1::new()
             .with_size(1024)
             .with_verification_level(VerificationLevel::Full);

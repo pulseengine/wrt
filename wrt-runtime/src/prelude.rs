@@ -320,7 +320,7 @@ pub use wrt_foundation::types::{
 };
 
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-pub type CoreFuncType = wrt_foundation::types::FuncType<wrt_foundation::NoStdProvider<1024>>;
+pub type CoreFuncType = wrt_foundation::types::FuncType<crate::bounded_runtime_infra::BaseRuntimeProvider>;
 
 // Public type aliases using clean CORE types (not component types)
 /// Type alias for WebAssembly function types
@@ -376,6 +376,9 @@ pub type RuntimeString = wrt_foundation::bounded::BoundedString<256, wrt_foundat
 
 // Safety-critical wrapper types for runtime (deterministic, verifiable)
 pub use crate::module::{TableWrapper as RuntimeTable, MemoryWrapper as RuntimeMemory, GlobalWrapper as RuntimeGlobal};
+
+// SIMD execution integration
+pub use crate::simd_execution_adapter::SimdExecutionAdapter;
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]

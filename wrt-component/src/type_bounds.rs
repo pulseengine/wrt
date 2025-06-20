@@ -6,7 +6,7 @@ use wrt_foundation::{BoundedMap as BTreeMap, BoundedVec as Vec, safe_memory::NoS
 
 // Type aliases for no_std compatibility
 #[cfg(not(feature = "std"))]
-type HashMap<K, V> = BTreeMap<K, V, 64, NoStdProvider<65536>>;
+type TypeBoundsMap<K, V> = BTreeMap<K, V, 64, NoStdProvider<65536>>;
 
 use core::fmt;
 

@@ -59,6 +59,8 @@ pub mod memory_optimized;
 pub mod optimized_string;
 pub mod prelude;
 pub mod streaming_validator;
+pub mod decoder;
+pub mod streaming_decoder;
 
 // Bounded infrastructure for static memory allocation
 #[cfg(not(feature = "std"))]

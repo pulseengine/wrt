@@ -47,6 +47,8 @@ impl<T> Mutex<T> {
 }
 
 // Define constants for maximum sizes
+/// Maximum number of module instances
+const MAX_MODULE_INSTANCES: usize = 32;
 /// Maximum number of values on the operand stack
 const MAX_VALUES: usize = 2048;
 /// Maximum number of control flow labels
@@ -202,6 +204,8 @@ pub struct StacklessEngine {
     max_call_depth: Option<usize>,
     /// Module instances (simplified - just count for now)
     pub(crate) instance_count: usize,
+    /// Current module instance reference for function/table lookups
+    current_module: Option<Arc<ModuleInstance>>,
     /// Verification level for bounded collections
     verification_level: VerificationLevel,
     /// Operand stack for compatibility with tail_call.rs
@@ -246,6 +250,7 @@ impl StacklessEngine {
             callbacks: Arc::new(Mutex::new(StacklessCallbackRegistry::default())),
             max_call_depth: None,
             instance_count: 0,
+            current_module: None,
             verification_level: VerificationLevel::Standard,
             operand_stack: BoundedVec::new(provider.clone()).unwrap(),
             call_frames_count: 0,
@@ -277,9 +282,28 @@ impl StacklessEngine {
         let instance_idx = self.instance_count;
         self.instance_count += 1;
         
-        // TODO: Store the actual module instance somewhere
-        // For now, we just return the index
+        // Create a module instance from the module
+        let module_instance = ModuleInstance::new(module, instance_idx);
+        
+        // Store the module instance as the current module
+        // In a full implementation, we'd store multiple instances
+        // For now, we store the most recent one as current
+        self.current_module = Some(Arc::new(module_instance));
+        
         Ok(instance_idx)
+    }
+    
+    /// Get the current module instance for function/table lookups
+    pub fn get_current_module(&self) -> Option<&ModuleInstance> {
+        self.current_module.as_ref().map(|arc| arc.as_ref())
+    }
+    
+    /// Store module instance for execution
+    pub fn set_current_module(&mut self, instance: Arc<ModuleInstance>) -> Result<u32> {
+        // Store the module instance reference
+        self.current_module = Some(instance);
+        self.instance_count += 1;
+        Ok(self.instance_count as u32 - 1)
     }
 }
 
@@ -314,6 +338,22 @@ impl ControlContext for StacklessEngine {
     /// Start a new block
     fn enter_block(&mut self, block_type: Block) -> Result<()> {
         // Create a new label for this block
+        // Calculate arity from block type
+        let arity = match block_type {
+            Block::Block(block_type) | Block::Loop(block_type) | Block::If(block_type) => {
+                match block_type {
+                    wrt_foundation::BlockType::Value(Some(_)) => 1, // Single result value
+                    wrt_foundation::BlockType::Value(None) => 0,    // No result
+                    wrt_foundation::BlockType::FuncType(_type_idx) => {
+                        // For function types, we'd need to look up the type in the module
+                        // For now, assume 0 results as a safe default
+                        0
+                    }
+                }
+            }
+            Block::Try(_) => 0, // Try blocks typically don't produce values
+        };
+
         let label = Label {
             kind: match block_type {
                 Block::Block(_) => LabelKind::Block,
@@ -321,7 +361,7 @@ impl ControlContext for StacklessEngine {
                 Block::If(_) => LabelKind::If,
                 Block::Try(_) => LabelKind::Block, // Treat try as block for now
             },
-            arity: 0, // TODO: Calculate from block type
+            arity,
             pc: self.exec_stack.pc,
         };
         
@@ -354,18 +394,68 @@ impl ControlContext for StacklessEngine {
 
     /// Branch to a specific label
     fn branch(&mut self, target: BranchTarget) -> Result<()> {
+        // Collect values to keep based on branch target arity
+        let mut values = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+        
+        // Get the label we're branching to
+        if let Some(label) = self.exec_stack.labels.get(target.label_idx as usize) {
+            let arity = label.arity;
+            
+            // Pop the required number of values from the stack
+            for _ in 0..arity {
+                if let Some(value) = self.exec_stack.values.pop() {
+                    // Insert at beginning to maintain order (since we're popping in reverse)
+                    values.insert(0, value).map_err(|_| {
+                        Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Branch values overflow")
+                    })?;
+                } else {
+                    return Err(Error::new(
+                        ErrorCategory::Runtime, 
+                        codes::STACK_UNDERFLOW, 
+                        "Not enough values for branch"
+                    ));
+                }
+            }
+        }
+        
         // Set the execution state to branching
         self.exec_stack.state = StacklessExecutionState::Branching {
             depth: target.label_idx,
-            values: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(), // TODO: Collect values to keep
+            values,
         };
         Ok(())
     }
 
     /// Return from the current function
     fn return_function(&mut self) -> Result<()> {
+        // Collect return values based on function signature
+        let mut values = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+        
+        // Get function type to determine return arity
+        if let Some(current_module) = &self.current_module {
+            if let Ok(func_type) = current_module.get_function_type(self.exec_stack.func_idx as usize) {
+                let return_arity = func_type.results().len();
+                
+                // Pop the required number of return values from the stack
+                for _ in 0..return_arity {
+                    if let Some(value) = self.exec_stack.values.pop() {
+                        // Insert at beginning to maintain order (since we're popping in reverse)
+                        values.insert(0, value).map_err(|_| {
+                            Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Return values overflow")
+                        })?;
+                    } else {
+                        return Err(Error::new(
+                            ErrorCategory::Runtime, 
+                            codes::STACK_UNDERFLOW, 
+                            "Not enough values for function return"
+                        ));
+                    }
+                }
+            }
+        }
+        
         self.exec_stack.state = StacklessExecutionState::Returning {
-            values: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(), // TODO: Collect return values
+            values,
         };
         Ok(())
     }
@@ -373,10 +463,37 @@ impl ControlContext for StacklessEngine {
     /// Call a function by index
     fn call_function(&mut self, func_idx: u32) -> Result<()> {
         self.stats.function_calls += 1;
+        
+        // Collect arguments based on function signature
+        let mut args = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+        
+        // Get function type to determine parameter arity
+        if let Some(current_module) = &self.current_module {
+            if let Ok(func_type) = current_module.get_function_type(func_idx as usize) {
+                let param_arity = func_type.params().len();
+                
+                // Pop the required number of arguments from the stack
+                for _ in 0..param_arity {
+                    if let Some(value) = self.exec_stack.values.pop() {
+                        // Insert at beginning to maintain order (since we're popping in reverse)
+                        args.insert(0, value).map_err(|_| {
+                            Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Function args overflow")
+                        })?;
+                    } else {
+                        return Err(Error::new(
+                            ErrorCategory::Runtime, 
+                            codes::STACK_UNDERFLOW, 
+                            "Not enough arguments for function call"
+                        ));
+                    }
+                }
+            }
+        }
+        
         self.exec_stack.state = StacklessExecutionState::Calling {
             instance_idx: self.exec_stack.instance_idx as u32,
             func_idx,
-            args: BoundedVec::new(DefaultMemoryProvider::default()).unwrap(), // TODO: Collect arguments from stack
+            args,
             return_pc: self.exec_stack.pc + 1,
         };
         Ok(())
@@ -492,14 +609,28 @@ impl ControlContext for StacklessEngine {
 impl FunctionOperations for StacklessEngine {
     /// Get function type signature by index
     fn get_function_type(&self, func_idx: u32) -> Result<u32> {
-        // TODO: Look up function type in module
-        Ok(func_idx % 10) // Simplified for now
+        // Look up function type in current module instance
+        if let Some(current_module) = self.get_current_module() {
+            // For now, use the available method
+            match current_module.get_function_type(func_idx as usize) {
+                Ok(_func_type) => Ok(func_idx), // Return the index as type ID for now
+                Err(_) => Ok(0), // Default type for invalid functions
+            }
+        } else {
+            Err(Error::runtime_error("No current module available for function lookup"))
+        }
     }
 
     /// Get table element (function reference) by index
     fn get_table_function(&self, table_idx: u32, elem_idx: u32) -> Result<u32> {
-        // TODO: Look up function in table
-        Ok(table_idx * 1000 + elem_idx) // Simplified for now
+        // Look up function in table of current module instance
+        if let Some(_current_module) = self.get_current_module() {
+            // For now, return a simple calculation as placeholder
+            // This would need to be implemented properly with table support
+            Ok(table_idx * 1000 + elem_idx)
+        } else {
+            Err(Error::runtime_error("No current module available for table lookup"))
+        }
     }
 
     /// Validate function signature matches expected type

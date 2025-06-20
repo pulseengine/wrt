@@ -18,7 +18,7 @@ wrt-error = { workspace = true, default-features = false }
 wrt-foundation = { workspace = true, default-features = false }
 wrt-format = { workspace = true, default-features = false }
 wrt-sync = { workspace = true, default-features = false }
-# wrt-decoder = { workspace = true, default-features = false }
+wrt-decoder = { workspace = true, default-features = false }
 wrt-instructions = { workspace = true, default-features = false }
 wrt-host = { workspace = true, default-features = false, optional = true }
 wrt-intercept = { workspace = true, default-features = false }
@@ -69,7 +69,7 @@ qm = ["wrt-foundation/dynamic-allocation"]
 asil-a = ["wrt-foundation/bounded-collections"]
 asil-b = ["wrt-foundation/bounded-collections"]
 asil-c = ["wrt-foundation/static-memory-safety"]
-asil-d = ["wrt-foundation/maximum-safety"]
+asil-d = ["wrt-foundation/asil-d"]
 
 # Legacy compatibility features
 safe-memory = ["asil-b"]

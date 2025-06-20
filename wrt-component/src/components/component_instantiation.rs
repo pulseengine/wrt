@@ -44,10 +44,10 @@ use std::{boxed::Box, collections::HashMap, format, string::String, vec::Vec};
 use wrt_foundation::{bounded::{BoundedString, BoundedVec}, safe_memory::NoStdProvider};
 
 #[cfg(not(feature = "std"))]
-type String = BoundedString<256, NoStdProvider<65536>>;
+type InstantiationString = BoundedString<256, NoStdProvider<65536>>;
 
 #[cfg(not(feature = "std"))]
-type Vec<T> = BoundedVec<T, 64, NoStdProvider<65536>>;
+type InstantiationVec<T> = BoundedVec<T, 64, NoStdProvider<65536>>;
 
 // Enable vec! and format! macros for no_std
 #[cfg(not(feature = "std"))]

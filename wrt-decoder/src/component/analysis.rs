@@ -17,6 +17,17 @@ use wrt_foundation::BoundedCapacity;
 use super::types::ModuleInfo;
 use crate::prelude::*;
 
+// Type aliases for clarity
+#[cfg(feature = "std")]
+type AnalysisString = std::string::String;
+#[cfg(not(feature = "std"))]
+type AnalysisString = wrt_foundation::BoundedString<256, wrt_foundation::NoStdProvider<4096>>;
+
+#[cfg(feature = "std")]
+type AnalysisVec<T> = std::vec::Vec<T>;
+#[cfg(not(feature = "std"))]
+type AnalysisVec<T> = wrt_foundation::BoundedVec<T, 64, wrt_foundation::NoStdProvider<4096>>;
+
 // Compatibility trait to provide as_bytes() for BoundedString
 #[cfg(not(feature = "std"))]
 pub trait BoundedStringExt {
@@ -36,8 +47,8 @@ impl<const N: usize, P: wrt_foundation::MemoryProvider + Default + Clone + Parti
 
 /// Extract embedded WebAssembly modules from a component binary
 #[cfg(feature = "std")]
-pub fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
-    let mut modules = Vec::new();
+pub fn extract_embedded_modules(bytes: &[u8]) -> Result<std::vec::Vec<std::vec::Vec<u8>>> {
+    let mut modules = std::vec::Vec::new();
     let mut offset = 8; // Skip magic and version
 
     // Parse sections
@@ -99,7 +110,22 @@ pub fn extract_embedded_modules(
 }
 
 /// Extract a module from a core module section
-fn extract_module_from_section(_section_bytes: &[u8]) -> Option<Vec<u8>> {
+#[cfg(feature = "std")]
+fn extract_module_from_section(_section_bytes: &[u8]) -> Option<std::vec::Vec<u8>> {
+    // This is a simplified version - the real implementation would parse the
+    // section structure to extract the module bytes
+
+    // In a real implementation, we would:
+    // 1. Parse the count of modules in the section
+    // 2. For each module, extract its size and binary content
+    // 3. Return the module binary
+
+    None
+}
+
+/// Extract a module from a core module section (no_std version)
+#[cfg(not(feature = "std"))]
+fn extract_module_from_section(_section_bytes: &[u8]) -> Option<wrt_foundation::BoundedVec<u8, 128, wrt_foundation::safe_memory::NoStdProvider<2048>>> {
     // This is a simplified version - the real implementation would parse the
     // section structure to extract the module bytes
 
@@ -209,15 +235,39 @@ pub fn analyze_component(bytes: &[u8]) -> Result<ComponentSummary> {
 
     #[cfg(feature = "std")]
     return Ok(ComponentSummary {
+        #[cfg(feature = "std")]
         name: "".to_string(),
+        #[cfg(not(feature = "std"))]
+        name: {
+            let provider = wrt_foundation::NoStdProvider::default();
+            AnalysisString::from_str("", provider).unwrap_or_default()
+        },
         core_modules_count: component.modules.len() as u32,
         core_instances_count: component.core_instances.len() as u32,
         imports_count: component.imports.len() as u32,
         exports_count: component.exports.len() as u32,
         aliases_count: component.aliases.len() as u32,
-        module_info: Vec::new(),
-        export_info: Vec::new(),
-        import_info: Vec::new(),
+        #[cfg(feature = "std")]
+        module_info: std::vec::Vec::new(),
+        #[cfg(feature = "std")]
+        export_info: std::vec::Vec::new(),
+        #[cfg(feature = "std")]
+        import_info: std::vec::Vec::new(),
+        #[cfg(not(feature = "std"))]
+        module_info: {
+            let provider = wrt_foundation::NoStdProvider::default();
+            AnalysisVec::new(provider).unwrap_or_default()
+        },
+        #[cfg(not(feature = "std"))]
+        export_info: {
+            let provider = wrt_foundation::NoStdProvider::default();
+            AnalysisVec::new(provider).unwrap_or_default()
+        },
+        #[cfg(not(feature = "std"))]
+        import_info: {
+            let provider = wrt_foundation::NoStdProvider::default();
+            AnalysisVec::new(provider).unwrap_or_default()
+        },
     });
 
     #[cfg(not(feature = "std"))]
@@ -228,20 +278,20 @@ pub fn analyze_component(bytes: &[u8]) -> Result<ComponentSummary> {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ExtendedImportInfo {
     /// Import namespace
-    pub namespace: String,
+    pub namespace: AnalysisString,
     /// Import name
-    pub name: String,
+    pub name: AnalysisString,
     /// Kind of import (as string representation)
-    pub kind: String,
+    pub kind: AnalysisString,
 }
 
 /// Extended export information
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ExtendedExportInfo {
     /// Export name
-    pub name: String,
+    pub name: AnalysisString,
     /// Kind of export (as string representation)
-    pub kind: String,
+    pub kind: AnalysisString,
     /// Export index
     pub index: u32,
 }
@@ -250,11 +300,11 @@ pub struct ExtendedExportInfo {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ModuleImportInfo {
     /// Module name (namespace)
-    pub module: String,
+    pub module: AnalysisString,
     /// Import name
-    pub name: String,
+    pub name: AnalysisString,
     /// Kind of import (as string representation)
-    pub kind: String,
+    pub kind: AnalysisString,
     /// Index within the type
     pub index: u32,
     /// Module index that contains this import
@@ -265,9 +315,9 @@ pub struct ModuleImportInfo {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ModuleExportInfo {
     /// Export name
-    pub name: String,
+    pub name: AnalysisString,
     /// Kind of export (as string representation)
-    pub kind: String,
+    pub kind: AnalysisString,
     /// Index within the type
     pub index: u32,
     /// Module index that contains this export
@@ -289,18 +339,18 @@ pub struct CoreInstanceInfo {
     /// Index of the module instantiated
     pub module_idx: u32,
     /// Arguments passed to the instantiation
-    pub args: Vec<String>,
+    pub args: AnalysisVec<AnalysisString>,
 }
 
 /// Alias information
 #[derive(Debug, Clone)]
 pub struct AliasInfo {
     /// Kind of alias
-    pub kind: String,
+    pub kind: AnalysisString,
     /// Index of the instance being aliased
     pub instance_idx: u32,
     /// Name of the export being aliased
-    pub export_name: String,
+    pub export_name: AnalysisString,
 }
 
 /// Analyze a component with extended information
@@ -334,10 +384,10 @@ pub fn analyze_component_extended(
         let provider = NoStdProvider::<4096>::default();
         Ok((
             summary,
-            wrt_foundation::BoundedVec::new(provider.clone()).unwrap_or_default(), // Import info
-            wrt_foundation::BoundedVec::new(provider.clone()).unwrap_or_default(), // Export info
-            wrt_foundation::BoundedVec::new(provider.clone()).unwrap_or_default(), // Module import info
-            wrt_foundation::BoundedVec::new(provider).unwrap_or_default(), // Module export info
+            wrt_foundation::BoundedVec::new().unwrap_or_default(), // Import info
+            wrt_foundation::BoundedVec::new().unwrap_or_default(), // Export info
+            wrt_foundation::BoundedVec::new().unwrap_or_default(), // Module import info
+            wrt_foundation::BoundedVec::new().unwrap_or_default(), // Module export info
         ))
     }
 }
@@ -631,7 +681,7 @@ impl wrt_foundation::traits::FromBytes for ModuleImportInfo {
         let mut bytes = {
             use wrt_foundation::safe_memory::NoStdProvider;
             let provider = NoStdProvider::<8192>::default();
-            wrt_foundation::BoundedVec::new(provider).unwrap_or_default()
+            wrt_foundation::BoundedVec::new().unwrap_or_default()
         };
         loop {
             match stream.read_u8() {
@@ -711,7 +761,7 @@ impl wrt_foundation::traits::FromBytes for ModuleExportInfo {
         let mut bytes = {
             use wrt_foundation::safe_memory::NoStdProvider;
             let provider = NoStdProvider::<8192>::default();
-            wrt_foundation::BoundedVec::new(provider).unwrap_or_default()
+            wrt_foundation::BoundedVec::new().unwrap_or_default()
         };
         loop {
             match stream.read_u8() {
