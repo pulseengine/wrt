@@ -237,7 +237,7 @@ macro_rules! capability_context {
 macro_rules! safe_managed_alloc_deprecated {
     ($crate_id:expr, $size:expr) => {{
         // Use the old implementation but warn about deprecation
-        $crate::wrt_memory_system::WrtProviderFactory::create_provider::<$size>($crate_id)
+        $crate::wrt_memory_system::CapabilityWrtFactory::create_provider::<$size>($crate_id)
     }};
 }
 

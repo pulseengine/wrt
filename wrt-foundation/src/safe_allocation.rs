@@ -24,7 +24,7 @@ use crate::{
 
 // Legacy imports for backward compatibility (deprecated)
 #[allow(deprecated)]
-use crate::wrt_memory_system::{NoStdProviderFactory, WrtMemoryGuard, WrtProviderFactory};
+use crate::wrt_memory_system::{NoStdProviderFactory, WrtMemoryGuard, CapabilityWrtFactory};
 
 /// Capability-based safe factory for memory providers
 pub struct CapabilityProviderFactory;
@@ -95,18 +95,16 @@ impl SafeProviderFactory {
     /// requiring unsafe code to extract the provider.
     #[deprecated(note = "Use CapabilityProviderFactory::create_context_managed_provider instead")]
     pub fn create_managed_provider<const N: usize>(crate_id: CrateId) -> Result<NoStdProvider<N>> {
-        // Register the allocation with the coordinator first
-        use crate::generic_memory_guard::MemoryCoordinator;
-        use crate::wrt_memory_system::WRT_MEMORY_COORDINATOR;
-
-        let _allocation_id = WRT_MEMORY_COORDINATOR.register_allocation(crate_id, N)?;
-
-        // Create the provider safely
-        Self::create_provider_safe::<N>()
-
-        // Note: We're not implementing Drop for automatic cleanup here since
-        // this is a transitional API. In the future, this should be redesigned
-        // to use RAII properly.
+        // MIGRATION: Use capability system instead of legacy coordinator
+        use crate::memory_init::get_global_capability_context;
+        let context = get_global_capability_context()?;
+        
+        // Verify capability and create provider through modern system
+        let capability_provider = context.create_provider::<N>(crate_id)?;
+        
+        // Extract the underlying provider for backward compatibility
+        // Note: This breaks the capability isolation but maintains API compatibility
+        Ok(capability_provider.extract_provider())
     }
     
     /// Create a context-managed provider using capability context

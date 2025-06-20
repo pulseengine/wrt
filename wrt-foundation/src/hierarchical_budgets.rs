@@ -15,9 +15,8 @@ use crate::{
     Error, ErrorCategory, Result,
 };
 
-// Legacy imports for backward compatibility
-#[allow(deprecated)]
-use crate::wrt_memory_system::{WrtMemoryGuard, WrtProviderFactory};
+// Capability-based imports
+use crate::wrt_memory_system::{WrtMemoryGuard, CapabilityWrtFactory};
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// Priority levels for memory allocation
@@ -220,19 +219,16 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
                 ))
             };
 
-            // Fall back to legacy system if capability allocation fails
+            // If static capability fails, use global capability context
             let guard = match capability_result {
                 Ok(cap_guard) => {
-                    // Successfully allocated with capability system
-                    // For now, we'll still use the legacy system since the types don't match
-                    // TODO: Update return type to support capability guards
-                    #[allow(deprecated)]
-                    WrtProviderFactory::create_provider::<N>(self.crate_id)?
+                    cap_guard
                 }
                 Err(_) => {
-                    // Fall back to legacy allocation
-                    #[allow(deprecated)]
-                    WrtProviderFactory::create_provider::<N>(self.crate_id)?
+                    // Use global capability context as fallback
+                    use crate::memory_init::get_global_capability_context;
+                    let context = get_global_capability_context()?;
+                    context.create_provider::<N>(self.crate_id)?
                 }
             };
 

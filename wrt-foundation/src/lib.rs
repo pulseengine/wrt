@@ -334,9 +334,11 @@ pub use compile_time_bounds::{
 pub use generic_memory_guard::{GenericMemoryGuard, ManagedMemoryProvider, MemoryCoordinator};
 pub use memory_coordinator::{AllocationId, CrateIdentifier, GenericMemoryCoordinator};
 
-// Re-export deprecated types for backward compatibility
+// Re-export capability-based memory factory and deprecated coordinator for compatibility
+pub use wrt_memory_system::CapabilityWrtFactory;
 #[allow(deprecated)]
-pub use wrt_memory_system::{WrtProviderFactory, WRT_MEMORY_COORDINATOR};
+// REMOVED: Legacy WRT_MEMORY_COORDINATOR eliminated in favor of capability-based system
+// Use memory_init::get_global_capability_context() for modern memory management
 
 // Macros are automatically available at crate root due to #[macro_export]
 // Validated collections disabled - use standard bounded collections instead
