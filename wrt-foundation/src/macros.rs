@@ -71,7 +71,7 @@ macro_rules! create_provider {
         drop($crate::memory_init::MemoryInitializer::initialize());
         // MIGRATION NOTE: create_typed_provider moved to capability system
         // This macro now requires explicit size specification in provider type
-        $crate::wrt_memory_system::WrtProviderFactory::create_typed_provider::<$provider_type, 1024>($crate_id)
+        $crate::wrt_memory_system::CapabilityWrtFactory::create_provider::<1024>($crate_id)
     }};
 }
 

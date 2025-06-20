@@ -1,7 +1,7 @@
 //! Capability-driven Memory Provider Factory
 //!
-//! This module provides the new capability-driven factory that replaces
-//! the global WRT_MEMORY_COORDINATOR with explicit capability injection.
+//! This module provides capability-driven memory allocation with explicit
+//! capability verification and authorization for all memory operations.
 //!
 //! NOTE: This factory requires alloc feature for proper operation.
 
@@ -30,8 +30,8 @@ use super::{context::MemoryCapabilityContext, MemoryCapability, MemoryOperation}
 
 /// Capability-driven memory provider factory
 ///
-/// This factory replaces the global WRT_MEMORY_COORDINATOR with explicit
-/// capability injection, ensuring all memory operations are capability-gated.
+/// This factory provides explicit capability injection for memory allocation,
+/// ensuring all memory operations are properly verified and authorized.
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub struct CapabilityMemoryFactory {
     context: MemoryCapabilityContext,
@@ -131,7 +131,7 @@ impl CapabilityMemoryFactory {
 
 /// A memory provider that is protected by capability verification
 ///
-/// This replaces the old WrtMemoryGuard with capability-gated access.
+/// This provides capability-gated access to memory allocation.
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub struct CapabilityGuardedProvider<const N: usize> {
     capability: Box<dyn super::AnyMemoryCapability>,

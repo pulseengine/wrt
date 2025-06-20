@@ -119,7 +119,7 @@ where
         self.size
     }
 
-    // REMOVED: unsafe fn release() - This method violated capability-based design principles
+    // Memory providers are managed through capability system with automatic RAII cleanup
     // Use capability-driven memory management through CapabilityMemoryFactory instead
 }
 

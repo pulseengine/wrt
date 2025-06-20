@@ -606,9 +606,9 @@ pub fn create_component_metadata(
         binary_start,
         binary_end,
         #[allow(deprecated)]
-        exports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
+        exports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::default())?,
         #[allow(deprecated)] 
-        imports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
+        imports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::default())?,
     })
 }
 
@@ -628,9 +628,9 @@ pub fn create_function_metadata(
         source_span,
         binary_offset,
         #[allow(deprecated)]
-        param_types: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
+        param_types: Vec::new(wrt_foundation::safe_memory::NoStdProvider::default())?,
         #[allow(deprecated)]
-        return_types: Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?,
+        return_types: Vec::new(wrt_foundation::safe_memory::NoStdProvider::default())?,
         is_async,
     })
 }

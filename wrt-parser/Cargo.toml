@@ -1,0 +1,61 @@
+[package]
+name = "wrt-parser"
+version.workspace = true
+edition.workspace = true
+description = "Unified WebAssembly binary parser for wrt runtime"
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["wasm", "webassembly", "parser", "decoder", "streaming"]
+categories = ["wasm", "parsing", "no-std", "embedded"]
+
+[lints]
+workspace = true
+
+[dependencies]
+# Error handling
+wrt-error = { workspace = true, default-features = false }
+# Foundation library 
+wrt-foundation = { workspace = true, default-features = false }
+
+# Core dependencies
+log = { version = "0.4", optional = true }
+
+[dev-dependencies]
+criterion = "0.6"
+tempfile = "3.8"
+proptest = "1.4"
+hex = "0.4"
+wat = "1.231.0"
+
+[features]
+default = []
+# Binary choice: std OR no_std (no alloc middle ground)
+std = ["wrt-foundation/std", "wrt-foundation/wrt-allocator"]
+# For compatibility with verification script
+no_std = []
+
+# Allocation support for no_std environments
+alloc = ["wrt-foundation/alloc"]
+
+# Safety level presets using capability-based features
+qm = ["wrt-foundation/dynamic-allocation"]
+asil-a = ["wrt-foundation/bounded-collections"]
+asil-b = ["wrt-foundation/bounded-collections"]
+asil-c = ["wrt-foundation/static-memory-safety"]
+asil-d = ["wrt-foundation/asil-d"]
+
+# Legacy compatibility features
+safe-memory = ["asil-b"]
+safety-asil-b = ["asil-b"]
+safety-asil-c = ["asil-c"]
+safety-asil-d = ["asil-d"]
+
+# Component Model support (built-in, not feature-gated)
+component-model = []
+
+# Type conversion feature
+conversion = []
+
+# Disable panic handler for library builds to avoid conflicts
+kani = []

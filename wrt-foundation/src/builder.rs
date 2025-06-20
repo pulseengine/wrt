@@ -566,7 +566,7 @@ impl<P: MemoryProvider + Default + Clone> MemoryBuilder<P> {
 /// ```
 #[deprecated(
     since = "0.3.0",
-    note = "Use WrtProviderFactory::create_provider() for budget-aware allocation. See type documentation for migration guide."
+    note = "Use safe_managed_alloc!() for budget-aware allocation. See type documentation for migration guide."
 )]
 pub struct NoStdProviderBuilder<const N: usize> {
     _migration_marker: core::marker::PhantomData<()>,
@@ -604,7 +604,7 @@ impl<const N: usize> NoStdProviderBuilder<N> {
     /// Use `WrtProviderFactory::create_provider_with_verification()` instead.
     #[deprecated(
         since = "0.3.0",
-        note = "Use WrtProviderFactory::create_provider_with_verification() for new code."
+        note = "Use safe_managed_alloc!() for new code."
     )]
     pub fn with_verification_level(self, _level: VerificationLevel) -> Self {
         self
@@ -617,13 +617,13 @@ impl<const N: usize> NoStdProviderBuilder<N> {
     /// Use `WrtProviderFactory::create_provider::<N>(crate_id)` instead.
     #[deprecated(
         since = "0.3.0",
-        note = "Use WrtProviderFactory::create_provider() for budget-aware allocation."
+        note = "Use safe_managed_alloc!() for budget-aware allocation."
     )]
     pub fn build(self) -> WrtResult<NoStdProvider<N>> {
         Err(crate::Error::new(
             crate::ErrorCategory::Runtime,
             wrt_error::codes::DEPRECATED_API,
-            "NoStdProviderBuilder::build() is deprecated. Use WrtProviderFactory::create_provider() instead."
+            "NoStdProviderBuilder::build() is deprecated. Use safe_managed_alloc!() instead."
         ))
     }
 }
@@ -634,7 +634,7 @@ impl<const N: usize> NoStdProviderBuilder<N> {
 /// Use `WrtProviderFactory::create_provider()` instead.
 #[deprecated(
     since = "0.3.0",
-    note = "Use WrtProviderFactory::create_provider() for budget-aware allocation."
+    note = "Use safe_managed_alloc!() for budget-aware allocation."
 )]
 pub struct NoStdProviderBuilder1 {
     _migration_marker: core::marker::PhantomData<()>,
@@ -668,7 +668,7 @@ impl NoStdProviderBuilder1 {
     /// Sets the verification level (MIGRATION REQUIRED).
     #[deprecated(
         since = "0.3.0",
-        note = "Use WrtProviderFactory::create_provider_with_verification() for new code."
+        note = "Use safe_managed_alloc!() for new code."
     )]
     pub fn with_verification_level(self, _level: VerificationLevel) -> Self {
         self
@@ -677,13 +677,13 @@ impl NoStdProviderBuilder1 {
     /// Builds a provider (MIGRATION REQUIRED).
     #[deprecated(
         since = "0.3.0",
-        note = "Use WrtProviderFactory::create_provider() for budget-aware allocation."
+        note = "Use safe_managed_alloc!() for budget-aware allocation."
     )]
     pub fn build(self) -> WrtResult<DefaultNoStdProvider> {
         Err(crate::Error::new(
             crate::ErrorCategory::Runtime,
             wrt_error::codes::DEPRECATED_API,
-            "NoStdProviderBuilder1::build() is deprecated. Use WrtProviderFactory::create_provider() instead."
+            "NoStdProviderBuilder1::build() is deprecated. Use safe_managed_alloc!() instead."
         ))
     }
 }

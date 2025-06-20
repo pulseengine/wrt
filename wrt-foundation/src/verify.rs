@@ -133,7 +133,7 @@ pub mod kani_verification {
     pub fn verify_bounded_collections_memory_safety() {
         // Use DefaultNoStdProvider for verification
         #[allow(deprecated)]
-        let memory_provider = DefaultNoStdProvider::new();
+        let memory_provider = DefaultNoStdProvider::default();
         let handler = SafeMemoryHandler::new(memory_provider);
 
         // Generate constrained capacity for verification
@@ -189,7 +189,7 @@ pub mod kani_verification {
         kani::assume(size > 0 && size <= 256); // Constrained for verification
 
         #[allow(deprecated)]
-        let mut memory_provider = DefaultNoStdProvider::new();
+        let mut memory_provider = DefaultNoStdProvider::default();
         memory_provider.resize(size).unwrap();
 
         // Verify access within bounds
@@ -226,7 +226,7 @@ pub mod kani_verification {
     pub fn verify_atomic_memory_operations() {
         // Create AtomicMemoryOps with a DefaultNoStdProvider
         #[allow(deprecated)]
-        let memory_provider = DefaultNoStdProvider::new();
+        let memory_provider = DefaultNoStdProvider::default();
         let handler = SafeMemoryHandler::new(memory_provider);
         let atomic_mem_ops = AtomicMemoryOps::new(handler);
 
@@ -359,7 +359,7 @@ pub mod kani_verification {
         kani::assume(buffer_size > 0 && buffer_size <= 64);
 
         #[allow(deprecated)]
-        let mut memory_provider = DefaultNoStdProvider::new();
+        let mut memory_provider = DefaultNoStdProvider::default();
         memory_provider.resize(buffer_size).unwrap();
 
         // Test valid accesses

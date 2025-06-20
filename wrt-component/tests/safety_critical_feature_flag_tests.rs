@@ -200,8 +200,8 @@ mod feature_flag_tests {
         // ComponentProvider should work consistently
         type TestVec = BoundedVec<u32, 100, ComponentProvider>;
 
-        // Direct provider usage should also work
-        let provider = unsafe { ComponentProvider::new().release() };
+        // Direct provider usage with modern safe pattern
+        let provider = ComponentProvider::default();
         let vec_result = TestVec::new(provider);
         assert!(vec_result.is_ok());
 

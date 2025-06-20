@@ -265,7 +265,7 @@ mod budget_enforcement_integration_tests {
 
         // The following would fail to compile with our enforcement:
         // let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
-        // let bad_provider = unsafe { guard.release() }; // Deprecated!
+        // Modern system: no unsafe memory extraction possible
         // let bad_vec = BoundedVec::<u32, 10, _>::new(bad_provider)?;
 
         assert_eq!(vec1.capacity(), vec2.capacity());
@@ -375,7 +375,7 @@ mod budget_enforcement_integration_tests {
         // Example of deprecated pattern (commented out):
         // #[allow(deprecated)]
         // let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
-        // let direct = unsafe { guard.release() };
+        // Modern system: direct provider extraction not possible
         // This compiles but is deprecated
 
         // 2. Migration providers are tracked

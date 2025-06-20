@@ -24,7 +24,7 @@ use crate::{
 
 // Legacy imports for backward compatibility (deprecated)
 #[allow(deprecated)]
-use crate::wrt_memory_system::{NoStdProviderFactory, WrtMemoryGuard, CapabilityWrtFactory};
+use crate::wrt_memory_system::{NoStdProviderFactory, CapabilityWrtFactory};
 
 /// Capability-based safe factory for memory providers
 pub struct CapabilityProviderFactory;

@@ -10,7 +10,7 @@ use crate::{
     budget_aware_provider::CrateId,
     budget_verification::CRATE_BUDGETS,
     memory_coordinator::{CrateIdentifier, GenericMemoryCoordinator},
-    wrt_memory_system::{WrtMemoryCoordinator, WrtProviderFactory},
+    wrt_memory_system::CapabilityWrtFactory,
     Error, Result,
 };
 

@@ -17,7 +17,7 @@ use crate::{
 };
 
 // Capability-based imports
-use crate::wrt_memory_system::{WrtMemoryGuard, CapabilityWrtFactory};
+use crate::wrt_memory_system::CapabilityWrtFactory;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// Priority levels for memory allocation

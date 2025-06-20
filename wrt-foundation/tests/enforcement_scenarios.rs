@@ -207,10 +207,9 @@ mod enforcement_scenario_tests {
         let capacity = process_with_provider(provider)?;
         assert_eq!(capacity, 100);
 
-        // This would not compile:
-        // let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
-        // let bad = unsafe { guard.release() };
-        // let _ = process_with_provider(bad); // Error!
+        // The modern system prevents unsafe memory extraction:
+        // Providers are automatically cleaned up via RAII
+        // No manual release() method exists
 
         Ok(())
     }

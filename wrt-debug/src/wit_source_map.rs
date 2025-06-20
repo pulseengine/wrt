@@ -329,8 +329,6 @@ impl WitSourceMap {
             SourceSpan::empty()
         };
 
-        // TODO: Specify appropriate size for this allocation
-
         let provider = safe_managed_alloc!(8192, CrateId::Debug)?;
         let message =
             BoundedString::from_str(&format!("Runtime error: {}", error), provider.clone())
@@ -388,8 +386,6 @@ impl WitSourceFile {
     /// Create a new source file from content
     #[cfg(feature = "wit-integration")]
     pub fn new(path: &str, content: &str) -> Result<Self> {
-        // TODO: Specify appropriate size for this allocation
-
         let provider = safe_managed_alloc!(8192, CrateId::Debug)?;
         let path_bounded = BoundedString::from_str(path, provider.clone())
             .map_err(|_| Error::parse_error("Path too long"))?;

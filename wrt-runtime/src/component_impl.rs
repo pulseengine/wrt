@@ -701,7 +701,7 @@ mod tests {
         ) -> Result<Box<dyn HostFunction>> {
             // Create a simple echo function
             #[allow(deprecated)]
-            let func_type = match FuncType::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default(), Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?, Vec::new(wrt_foundation::safe_memory::NoStdProvider::new())?) {
+            let func_type = match FuncType::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default(), Vec::new(wrt_foundation::safe_memory::NoStdProvider::default())?, Vec::new(wrt_foundation::safe_memory::NoStdProvider::default())?) {
                 Ok(ty) => ty,
                 Err(e) => return Err(e.into()),
             };

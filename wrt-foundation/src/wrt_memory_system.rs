@@ -62,12 +62,9 @@ pub struct NoStdProviderFactory;
 
 impl NoStdProviderFactory {
     /// Create a provider with deprecated constructor (temporary)
-    #[allow(deprecated)]
     fn create_provider_internal<const N: usize>() -> NoStdProvider<N> {
-        let mut provider = NoStdProvider::new();
-        // Initialize provider to full capacity
-        let _ = provider.resize(N);
-        provider
+        // Use safe default construction
+        NoStdProvider::<N>::default()
     }
 }
 

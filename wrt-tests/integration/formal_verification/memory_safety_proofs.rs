@@ -29,7 +29,7 @@ use kani;
 #[cfg(feature = "kani")]
 use wrt_foundation::{
     bounded::BoundedVec,
-    wrt_memory_system::WrtProviderFactory,
+    safe_managed_alloc,
     budget_aware_provider::CrateId,
     safe_memory::NoStdProvider,
     MemoryProvider,
@@ -58,7 +58,7 @@ pub fn verify_memory_budget_never_exceeded() {
     let crate_id = unsafe { core::mem::transmute::<u8, CrateId>(crate_id) };
     
     // Test provider creation with budget verification
-    match WrtProviderFactory::create_provider::<65536>(crate_id) {
+    match safe_managed_alloc!(65536, crate_id) {
         Ok(provider) => {
             // Verify provider respects its budget
             assert!(provider.available_memory() <= 65536);
@@ -108,7 +108,7 @@ pub fn verify_hierarchical_budget_consistency() {
     kani::assume(parent_budget >= child_budget); // Child can't exceed parent
     
     // Create parent provider
-    match WrtProviderFactory::create_provider::<65536>(CrateId::Foundation) {
+    match safe_managed_alloc!(65536, CrateId::Foundation) {
         Ok(parent_provider) => {
             // Verify parent has expected capacity
             assert!(parent_provider.available_memory() <= 65536);
@@ -145,8 +145,8 @@ pub fn verify_hierarchical_budget_consistency() {
 #[cfg(kani)]
 pub fn verify_cross_component_isolation() {
     // Create providers for different components
-    let component_a_result = WrtProviderFactory::create_provider::<32768>(CrateId::Component);
-    let component_b_result = WrtProviderFactory::create_provider::<32768>(CrateId::Runtime);
+    let component_a_result = safe_managed_alloc!(32768, CrateId::Component);
+    let component_b_result = safe_managed_alloc!(32768, CrateId::Runtime);
     
     match (component_a_result, component_b_result) {
         (Ok(provider_a), Ok(provider_b)) => {
@@ -187,7 +187,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     // Register traditional test versions of the KANI proofs
     registry.register_test("memory_budget_basic", || {
         // Basic memory budget test that doesn't require KANI
-        let provider = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation)?;
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
         assert!(provider.available_memory() <= 1024);
         
         // Test simple allocation
@@ -199,7 +199,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("hierarchical_budget_basic", || {
         // Basic hierarchical budget test
-        let parent = WrtProviderFactory::create_provider::<2048>(CrateId::Foundation)?;
+        let parent = safe_managed_alloc!(2048, CrateId::Foundation)?;
         let child = BoundedVec::<u32, 32, _>::new(parent)?;
         
         assert!(child.capacity() <= 32);
@@ -208,8 +208,8 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("cross_component_isolation_basic", || {
         // Basic cross-component isolation test
-        let provider_a = WrtProviderFactory::create_provider::<1024>(CrateId::Component)?;
-        let provider_b = WrtProviderFactory::create_provider::<1024>(CrateId::Runtime)?;
+        let provider_a = safe_managed_alloc!(1024, CrateId::Component)?;
+        let provider_b = safe_managed_alloc!(1024, CrateId::Runtime)?;
         
         // These should be independent
         assert!(provider_a.available_memory() <= 1024);
@@ -282,7 +282,7 @@ mod tests {
     
     #[test]
     fn test_provider_creation() {
-        let provider = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation);
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation);
         assert!(provider.is_ok());
         
         if let Ok(p) = provider {
@@ -292,7 +292,7 @@ mod tests {
     
     #[test]
     fn test_bounded_allocation() {
-        let provider = WrtProviderFactory::create_provider::<2048>(CrateId::Foundation).unwrap();
+        let provider = safe_managed_alloc!(2048, CrateId::Foundation).unwrap();
         let vec = BoundedVec::<u32, 64, _>::new(provider);
         
         assert!(vec.is_ok());
