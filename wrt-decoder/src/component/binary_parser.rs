@@ -15,6 +15,7 @@ mod component_binary_parser {
     use core::fmt;
     use wrt_error::{codes, Error, ErrorCategory, Result};
     use wrt_format::component::Component;
+    use wrt_format::Validatable;
 
     // Import ValidationLevel from foundation if available, otherwise define locally
     pub use wrt_foundation::VerificationLevel as ValidationLevel;
@@ -411,14 +412,52 @@ mod component_binary_parser {
             Ok(())
         }
 
-        /// Parse core module section (placeholder implementation)
+        /// Parse core module section using streaming parser
         fn parse_core_module_section(
             &mut self,
-            _data: &[u8],
-            _component: &mut Component,
+            data: &[u8],
+            component: &mut Component,
         ) -> Result<()> {
-            // This would parse embedded WebAssembly modules
-            // For now, we'll defer to existing module parsing logic
+            use crate::component::streaming_core_module_parser::StreamingCoreModuleParser;
+            
+            // Create unified streaming parser (works for all ASIL levels)
+            let mut parser = StreamingCoreModuleParser::new(
+                data,
+                self.validation_level,
+            )?;
+            
+            // Parse the core module section
+            let core_module_section = parser.parse()?;
+            
+            // Store parsed modules in component
+            for (i, module) in core_module_section.iter_modules().enumerate() {
+                // Validate module at the requested verification level
+                if self.validation_level >= VerificationLevel::Standard {
+                    module.validate()?;
+                }
+                
+                // Add to component's modules collection
+                // Note: This is a simplified integration - in practice you might
+                // want to store modules differently based on your component model
+                self.record_core_module_parsed(component, i, module)?;
+            }
+            
+            // Update our parsing offset
+            self.offset += core_module_section.bytes_consumed();
+            
+            Ok(())
+        }
+        
+        /// Record that a core module has been parsed (helper method)
+        fn record_core_module_parsed(
+            &self,
+            _component: &mut Component,
+            _index: usize,
+            _module: &wrt_format::module::Module,
+        ) -> Result<()> {
+            // For now, just validate that parsing succeeded
+            // In a full implementation, you would integrate this with
+            // your component's module storage system
             Ok(())
         }
 
@@ -468,9 +507,51 @@ mod component_binary_parser {
             Ok(())
         }
 
-        /// Parse type section (placeholder implementation)
-        fn parse_type_section(&mut self, _data: &[u8], _component: &mut Component) -> Result<()> {
-            // This would parse component type definitions
+        /// Parse type section using streaming parser
+        fn parse_type_section(&mut self, data: &[u8], component: &mut Component) -> Result<()> {
+            use crate::component::streaming_type_parser::StreamingTypeParser;
+            
+            // Create unified streaming parser (works for all ASIL levels)
+            let mut parser = StreamingTypeParser::new(
+                data,
+                self.validation_level,
+            )?;
+            
+            // Parse the component type section
+            let type_section = parser.parse()?;
+            
+            // Store parsed types in component
+            for (i, comp_type) in type_section.iter_types().enumerate() {
+                // Validate type at the requested verification level
+                if self.validation_level >= VerificationLevel::Standard {
+                    comp_type.validate()?;
+                }
+                
+                // Add to component's types collection
+                self.record_component_type_parsed(component, i, comp_type)?;
+            }
+            
+            // Update our parsing offset is handled by the caller
+            
+            Ok(())
+        }
+        
+        /// Record that a component type has been parsed (helper method)
+        fn record_component_type_parsed(
+            &self,
+            component: &mut Component,
+            _index: usize,
+            comp_type: &wrt_format::component::ComponentType,
+        ) -> Result<()> {
+            // Store the type in the component's types vector
+            if let Err(_) = component.types.push(comp_type.clone()) {
+                return Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::CAPACITY_EXCEEDED,
+                    "Component types collection capacity exceeded",
+                ));
+            }
+            
             Ok(())
         }
 
