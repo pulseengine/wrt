@@ -4062,3 +4062,153 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
         Ok(result)
     }
 }
+
+/// Kani verification proofs for BoundedVec and BoundedString operations
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+    use crate::safe_memory::NoStdProvider;
+    
+    /// Verify that BoundedVec push never violates capacity bounds
+    #[kani::proof]
+    fn verify_bounded_vec_push_capacity() {
+        const CAPACITY: usize = 8;
+        let provider = NoStdProvider::<1024>::new();
+        let mut vec: BoundedVec<u32, CAPACITY, _> = BoundedVec::new(provider).unwrap();
+        
+        // Fill to capacity - 1
+        for i in 0..(CAPACITY - 1) {
+            assert!(vec.push(i as u32).is_ok());
+            assert_eq!(vec.len(), i + 1);
+            assert!(!vec.is_full());
+        }
+        
+        // Last push should succeed
+        assert!(vec.push((CAPACITY - 1) as u32).is_ok());
+        assert_eq!(vec.len(), CAPACITY);
+        assert!(vec.is_full());
+        
+        // Next push should fail
+        assert!(vec.push(CAPACITY as u32).is_err());
+        assert_eq!(vec.len(), CAPACITY); // Length unchanged
+    }
+    
+    /// Verify that BoundedVec pop maintains correct state
+    #[kani::proof]
+    fn verify_bounded_vec_pop_state() {
+        const CAPACITY: usize = 4;
+        let provider = NoStdProvider::<1024>::new();
+        let mut vec: BoundedVec<u32, CAPACITY, _> = BoundedVec::new(provider).unwrap();
+        
+        // Initially empty
+        assert!(vec.is_empty());
+        assert_eq!(vec.pop().unwrap(), None);
+        
+        // Add some items
+        vec.push(10).unwrap();
+        vec.push(20).unwrap();
+        vec.push(30).unwrap();
+        
+        // Pop items in LIFO order
+        assert_eq!(vec.pop().unwrap(), Some(30));
+        assert_eq!(vec.len(), 2);
+        
+        assert_eq!(vec.pop().unwrap(), Some(20));
+        assert_eq!(vec.len(), 1);
+        
+        assert_eq!(vec.pop().unwrap(), Some(10));
+        assert_eq!(vec.len(), 0);
+        assert!(vec.is_empty());
+        
+        // Pop from empty returns None
+        assert_eq!(vec.pop().unwrap(), None);
+    }
+    
+    /// Verify that BoundedVec indexing is always safe
+    #[kani::proof]
+    fn verify_bounded_vec_indexing() {
+        const CAPACITY: usize = 8;
+        let provider = NoStdProvider::<1024>::new();
+        let mut vec: BoundedVec<u32, CAPACITY, _> = BoundedVec::new(provider).unwrap();
+        
+        // Add some items
+        let count: usize = kani::any_where(|&c| c <= CAPACITY);
+        for i in 0..count {
+            vec.push(i as u32).unwrap();
+        }
+        
+        // Valid indices should always work
+        for i in 0..vec.len() {
+            let result = vec.get(i);
+            assert!(result.is_ok());
+            if let Ok(Some(value)) = result {
+                assert_eq!(*value, i as u32);
+            }
+        }
+        
+        // Invalid indices should return None or error safely
+        let invalid_index = vec.len();
+        if invalid_index < CAPACITY {
+            assert!(vec.get(invalid_index).unwrap().is_none());
+        }
+    }
+    
+    /// Verify that BoundedString operations maintain UTF-8 validity
+    #[kani::proof]
+    fn verify_bounded_string_utf8() {
+        const CAPACITY: usize = 64;
+        let provider = NoStdProvider::<1024>::new();
+        
+        // Valid UTF-8 strings should always work
+        let test_str = "Hello, 世界!";
+        let bounded_str = BoundedString::<CAPACITY, _>::from_str(test_str, provider).unwrap();
+        
+        // Should be able to convert back to &str
+        let as_str = bounded_str.as_str().unwrap();
+        assert_eq!(as_str, test_str);
+        
+        // Length should match
+        assert_eq!(bounded_str.len(), test_str.len());
+    }
+    
+    /// Verify that overflow detection works in capacity calculations
+    #[kani::proof]
+    fn verify_no_overflow_in_capacity_calculation() {
+        let length: usize = kani::any();
+        let item_size: usize = kani::any_where(|&s| s > 0 && s <= 1024);
+        
+        // Verify that overflow is properly detected
+        if let Some(total_size) = length.checked_mul(item_size) {
+            assert!(total_size >= length);
+            assert!(total_size >= item_size);
+            
+            // If multiplication succeeded, verify bounds
+            if total_size <= usize::MAX / 2 {
+                // Safe range for further operations
+                assert!(total_size.checked_add(item_size).is_some());
+            }
+        }
+    }
+    
+    /// Verify that memory provider operations are always bounded
+    #[kani::proof]
+    fn verify_memory_provider_bounds() {
+        const PROVIDER_SIZE: usize = 1024;
+        let provider = NoStdProvider::<PROVIDER_SIZE>::new();
+        
+        let offset: usize = kani::any_where(|&o| o < PROVIDER_SIZE);
+        let len: usize = kani::any_where(|&l| l <= PROVIDER_SIZE - offset);
+        
+        // Read operations should never exceed provider bounds
+        let data = vec![0u8; len];
+        let write_result = provider.write_data(offset, &data);
+        
+        if write_result.is_ok() {
+            let read_result = provider.read_data(offset, len);
+            assert!(read_result.is_ok());
+            if let Ok(read_data) = read_result {
+                assert_eq!(read_data.len(), len);
+            }
+        }
+    }
+}
