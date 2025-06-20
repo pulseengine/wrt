@@ -263,39 +263,37 @@ Bounded Collections Framework
 Memory Provider Architecture
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Provider Factory Pattern**:
+**Capability-Based Factory Pattern**:
 
 .. code-block:: rust
 
-   pub struct WrtProviderFactory;
+   pub struct CapabilityWrtFactory;
    
-   impl WrtProviderFactory {
+   impl CapabilityWrtFactory {
        pub fn create_provider<const SIZE: usize>(
            crate_id: CrateId
-       ) -> WrtResult<GenericMemoryGuard<NoStdProvider<SIZE>>> {
-           // Validate against budget
-           let validator = CompileTimeBoundsValidator::<SIZE, {crate_id as usize}>::validate();
+       ) -> WrtResult<NoStdProvider<SIZE>> {
+           // Validate against budget with capability verification
+           let context = get_global_capability_context()?;
+           context.verify_allocation(crate_id, SIZE)?;
            
-           // Create managed provider
-           Ok(GenericMemoryGuard::new(NoStdProvider::default()))
+           // Create safe provider through capability system
+           Ok(NoStdProvider::<SIZE>::default())
        }
    }
 
-**Memory Guard System**:
+**Capability-Based Memory System**:
 
 .. code-block:: rust
 
-   pub struct GenericMemoryGuard<P: MemoryProvider> {
-       provider: P,
-       allocation_id: AllocationId,
-   }
+   // Safe allocation through macro system
+   let provider = safe_managed_alloc!(4096, CrateId::Component)?;
    
-   impl<P: MemoryProvider> Drop for GenericMemoryGuard<P> {
-       fn drop(&mut self) {
-           // Automatic cleanup guaranteed
-           self.coordinator.deallocate(self.allocation_id);
-       }
-   }
+   // Capability verification integrated into allocation
+   // No manual guard management needed - RAII ensures cleanup
+   
+   // Provider automatically handles budget tracking
+   // Capability context ensures allocation permissions
 
 Comparative Analysis
 -------------------
