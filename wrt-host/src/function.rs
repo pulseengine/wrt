@@ -228,9 +228,7 @@ use wrt_foundation::allocator::CrateId;
         let empty_args = {
             // TODO: Specify appropriate size for this allocation
 
-            let guard = safe_managed_alloc!(8192, CrateId::Host)?;
-
-            let provider = unsafe { guard.release() };
+            let provider = safe_managed_alloc!(8192, CrateId::Host)?;
             ValueVec::new(provider).unwrap()
         };
         
@@ -272,9 +270,7 @@ use wrt_foundation::allocator::CrateId;
         let empty_args = {
             // TODO: Specify appropriate size for this allocation
 
-            let guard = safe_managed_alloc!(8192, CrateId::Host)?;
-
-            let provider = unsafe { guard.release() };
+            let provider = safe_managed_alloc!(8192, CrateId::Host)?;
             ValueVec::new(provider).unwrap()
         };
         

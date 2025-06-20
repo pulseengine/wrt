@@ -297,3 +297,31 @@ pub fn new_code_bodies_vec() -> WrtResult<BoundedFunctionVec<BoundedCustomData>>
     let provider = DecoderProvider::default();
     BoundedVec::new(provider)
 }
+
+// Component Model specific constants and types
+
+/// Maximum number of modules in a component
+pub const MAX_MODULES_PER_COMPONENT: usize = 64;
+
+/// Maximum number of types in a component
+pub const MAX_TYPES_PER_COMPONENT: usize = 512;
+
+/// Maximum number of instances in a component
+pub const MAX_INSTANCES_PER_COMPONENT: usize = 128;
+
+/// Maximum number of aliases in a component
+pub const MAX_ALIASES_PER_COMPONENT: usize = 256;
+
+/// Bounded vector for component modules
+pub type BoundedModuleVec<T> = BoundedVec<T, MAX_MODULES_PER_COMPONENT, DecoderProvider>;
+
+/// Bounded vector for component instances  
+pub type BoundedInstanceVec<T> = BoundedVec<T, MAX_INSTANCES_PER_COMPONENT, DecoderProvider>;
+
+/// Bounded vector for component aliases
+pub type BoundedAliasVec<T> = BoundedVec<T, MAX_ALIASES_PER_COMPONENT, DecoderProvider>;
+
+/// Create a decoder provider with the specified size
+pub fn create_decoder_provider<const N: usize>() -> WrtResult<NoStdProvider<N>> {
+    Ok(NoStdProvider::<N>::default())
+}

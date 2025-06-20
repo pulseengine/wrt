@@ -16,9 +16,7 @@ use crate::{
     Error, Result,
 };
 
-// Legacy imports for backward compatibility
-#[allow(deprecated)]
-use crate::wrt_memory_system::{WrtMemoryCoordinator, WRT_MEMORY_COORDINATOR};
+// Legacy imports removed - migrated to capability-only system
 use core::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(feature = "std")]
@@ -104,9 +102,7 @@ impl MemoryInitializer {
             (CrateId::Unknown, CRATE_BUDGETS[16]),
         ];
 
-        // Initialize legacy coordinator for backward compatibility
-        #[allow(deprecated)]
-        let legacy_result = WRT_MEMORY_COORDINATOR.initialize(budgets.iter().copied(), TOTAL_MEMORY_BUDGET);
+        // Legacy coordinator removed - using capability-only system
         
         // Initialize new capability context
         let mut context = MemoryCapabilityContext::new(VerificationLevel::Standard, false);
@@ -150,17 +146,8 @@ impl MemoryInitializer {
             }
         }
         
-        // Check legacy initialization
-        match legacy_result {
-            Ok(()) => Ok(()),
-            Err(e) => {
-                // Store error for debugging using ASIL-D safe atomic pattern
-                let error_msg: &'static str = "Memory coordinator initialization failed";
-                INIT_ERROR_PTR.store(error_msg as *const str as *mut &'static str, Ordering::Release);
-                MEMORY_INITIALIZED.store(false, Ordering::Release);
-                Err(e)
-            }
-        }
+        // Capability system initialization completed successfully
+        Ok(())
     }
 
     /// Check if memory system is initialized
@@ -242,8 +229,6 @@ pub fn init_crate_memory(crate_id: CrateId) -> Result<()> {
         ));
     }
 
-    // Legacy check removed - capability system is authoritative
-
     Ok(())
 }
 
@@ -269,6 +254,9 @@ mod tests {
         init_crate_memory(CrateId::Component).unwrap();
 
         assert!(MemoryInitializer::is_initialized());
-        assert!(WRT_MEMORY_COORDINATOR.get_crate_budget(CrateId::Component) > 0);
+        
+        // Verify capability system is working
+        let context = get_global_capability_context().unwrap();
+        assert!(context.has_capability(CrateId::Component));
     }
 }

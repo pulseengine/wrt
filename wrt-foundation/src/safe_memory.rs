@@ -1767,7 +1767,7 @@ impl<P: Provider> SafeMemoryHandler<P> {
     ) -> Result<crate::bounded::BoundedVec<u8, 4096, crate::safe_memory::NoStdProvider<4096>>> {
         use crate::budget_aware_provider::CrateId;
         #[allow(deprecated)]
-        use crate::wrt_memory_system::WrtProviderFactory;
+        use crate::wrt_memory_system::CapabilityWrtFactory;
 
         let size = self.provider.size();
         if size == 0 {

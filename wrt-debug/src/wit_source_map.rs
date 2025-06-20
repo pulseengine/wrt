@@ -331,9 +331,7 @@ impl WitSourceMap {
 
         // TODO: Specify appropriate size for this allocation
 
-        let guard = safe_managed_alloc!(8192, CrateId::Debug)?;
-
-        let provider = unsafe { guard.release() };
+        let provider = safe_managed_alloc!(8192, CrateId::Debug)?;
         let message =
             BoundedString::from_str(&format!("Runtime error: {}", error), provider.clone())
                 .unwrap_or_else(|_| {
@@ -392,9 +390,7 @@ impl WitSourceFile {
     pub fn new(path: &str, content: &str) -> Result<Self> {
         // TODO: Specify appropriate size for this allocation
 
-        let guard = safe_managed_alloc!(8192, CrateId::Debug)?;
-
-        let provider = unsafe { guard.release() };
+        let provider = safe_managed_alloc!(8192, CrateId::Debug)?;
         let path_bounded = BoundedString::from_str(path, provider.clone())
             .map_err(|_| Error::parse_error("Path too long"))?;
 

@@ -19,6 +19,8 @@ mod encode;
 pub mod name_section;
 mod parse;
 pub mod section;
+pub mod streaming_core_module_parser;
+pub mod streaming_type_parser;
 pub mod types;
 pub mod utils;
 pub mod val_type;
