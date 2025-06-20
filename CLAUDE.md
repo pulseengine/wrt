@@ -21,6 +21,33 @@ cargo-wrt --help
 - The runtime should be able to execute real WebAssembly modules without special-casing specific files.
 - Only use placeholders when absolutely necessary and clearly document them.
 
+## Memory System Architecture
+
+### Unified Capability-Based Memory System
+The WRT project uses a **single, unified memory management system** based on capabilities:
+
+- **Primary API**: `safe_managed_alloc!(size, crate_id)` - All memory allocation goes through this macro
+- **Provider Construction**: `NoStdProvider::default()` - Safe default construction only
+- **Factory System**: `CapabilityWrtFactory` - Capability-based factory for advanced use cases
+- **Automatic Cleanup**: RAII-based automatic memory management
+
+### Memory Allocation Pattern
+```rust
+use wrt_foundation::{safe_managed_alloc, CrateId};
+
+// Standard allocation pattern
+let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+let mut vec = BoundedVec::new(provider)?;
+
+// Memory is automatically cleaned up when provider goes out of scope
+```
+
+### Important Memory Guidelines
+- **NO legacy patterns**: The codebase has been completely cleaned of all legacy memory patterns
+- **NO direct construction**: Never use `NoStdProvider::new()` - always use `::default()`
+- **NO unsafe extraction**: There is no `unsafe { guard.release() }` pattern anymore
+- **NO dual systems**: Only one memory system exists - capability-based allocation
+
 ## Build Commands
 
 The WRT project uses a unified build system with `cargo-wrt` as the single entry point for all build operations. All legacy shell scripts have been migrated to this unified system.
@@ -174,6 +201,15 @@ If architectural issues are detected, they must be resolved before merging, as t
 
 ## Architecture Notes
 
+### Memory System Migration (Completed)
+The WRT project has successfully migrated to a unified capability-based memory system:
+
+- **Unified allocation**: All memory goes through `safe_managed_alloc!` macro
+- **Capability verification**: Every allocation is capability-checked
+- **Budget enforcement**: Automatic per-crate budget tracking
+- **RAII cleanup**: Automatic memory management via Drop
+- **Zero legacy patterns**: All old patterns have been eliminated
+
 ### Build System Migration (Completed)
 The WRT project has completed its migration to a unified build system:
 
@@ -187,13 +223,25 @@ The WRT project has completed its migration to a unified build system:
 - Shell scripts: `verify_build.sh`, `fuzz_all.sh`, `verify_no_std.sh`, `test_features.sh`, `documentation_audit.sh`
 - Kani verification scripts: `test_kani_phase4.sh`, `validate_kani_phase4.sh`
 - justfile and xtask references (functionality ported to wrt-build-core)
+- Legacy memory patterns: `WRT_MEMORY_COORDINATOR`, `WrtProviderFactory`, `unsafe { guard.release() }`
+
+## Current System Status
+
+### Memory Architecture
+- **Single System**: 100% capability-based memory management
+- **Consistent API**: `safe_managed_alloc!()` throughout
+- **Safe Construction**: `NoStdProvider::default()` only
+- **Modern Factory**: `CapabilityWrtFactory` for advanced use
+- **Automatic Cleanup**: RAII-based memory management
+
+### Build System
+- **Unified Tool**: `cargo-wrt` for all operations
+- **Consistent Commands**: Same patterns across all functionality
+- **Tool Management**: Automated version checking and installation
+- **ASIL Verification**: Built-in safety compliance checking
 
 ## Memories
-- can you build and test it
-- Use `cargo-wrt` for all build operations instead of just/xtask
-- Build system migration completed - no more shell scripts or fragmented tools
-# important-instruction-reminders
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+- Build and test with `cargo-wrt` commands
+- Memory allocation uses `safe_managed_alloc!` macro only
+- Legacy patterns have been completely eliminated
+- All builds must pass ASIL verification before merging
