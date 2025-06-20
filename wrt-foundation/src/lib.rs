@@ -418,6 +418,13 @@ pub use clean_types::{
     Tuple as CleanTuple, ValType as CleanValType, Value as CleanValue, Variant as CleanVariant,
 };
 
+// Re-export clean core types (provider-free core WebAssembly types)
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use clean_core_types::{
+    CoreFuncType as CleanCoreFuncType, CoreGlobalType as CleanCoreGlobalType,
+    CoreMemoryType as CleanCoreMemoryType, CoreTableType as CleanCoreTableType,
+};
+
 // Re-export type factory types - only when allocation is available
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use type_factory::{

@@ -31,9 +31,8 @@ type DecoderProvider = NoStdProvider<65536>;
 /// * A decoded Module ready for runtime use
 #[cfg(feature = "std")]
 pub fn decode_module(binary: &[u8]) -> Result<WrtModule> {
-    // Parse sections directly and build module with correct provider
-    let sections = crate::sections::parse_all_sections(binary)?;
-    build_module_from_sections(sections)
+    // Use streaming decoder for std builds
+    crate::streaming_decoder::decode_module_streaming(binary)
 }
 
 /// Decode a WebAssembly module from binary format (no_std version)
@@ -92,6 +91,14 @@ fn convert_import_desc(desc: wrt_foundation::types::ImportDesc<DecoderProvider>)
             // For now, treat extern as function
             wrt_format::module::ImportDesc::Function(0)
         }
+        wrt_foundation::types::ImportDesc::Resource(_) => {
+            // For now, treat resource as function
+            wrt_format::module::ImportDesc::Function(0)
+        }
+        wrt_foundation::types::ImportDesc::_Phantom(_) => {
+            // This should never occur in practice, but we need to handle it
+            wrt_format::module::ImportDesc::Function(0)
+        }
     }
 }
 
@@ -120,7 +127,12 @@ fn build_module_from_sections(
         match section {
             crate::sections::Section::Type(types) => {
                 for func_type in types {
-                    module.types.push(func_type);
+                    // Convert FuncType to CleanCoreFuncType
+                    let clean_func_type = wrt_foundation::CleanCoreFuncType {
+                        params: func_type.params.into_iter().collect(),
+                        results: func_type.results.into_iter().collect(),
+                    };
+                    module.types.push(clean_func_type);
                 }
             }
             crate::sections::Section::Import(imports) => {

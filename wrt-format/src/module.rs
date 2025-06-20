@@ -1505,7 +1505,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Module<P> {
 #[derive(Debug, Clone)]
 pub struct Module {
     /// Function type signatures
-    pub types: Vec<wrt_foundation::CleanFuncType>,
+    pub types: Vec<wrt_foundation::CleanCoreFuncType>,
     /// Function definitions (code)
     pub functions: Vec<Function>,
     /// Table definitions

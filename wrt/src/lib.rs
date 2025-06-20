@@ -149,6 +149,9 @@ pub use resource_nostd as resource; // Use resource_nostd as resource when no_st
 // Re-export all public types and functionality through the prelude
 pub use crate::prelude::*;
 
+// Export the StacklessEngine for direct use
+pub use wrt_runtime::stackless::StacklessEngine;
+
 /// Version of the WebAssembly Core specification implemented
 pub const CORE_VERSION: &str = "1.0";
 

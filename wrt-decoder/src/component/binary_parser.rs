@@ -432,7 +432,7 @@ mod component_binary_parser {
             // Store parsed modules in component
             for (i, module) in core_module_section.iter_modules().enumerate() {
                 // Validate module at the requested verification level
-                if self.validation_level >= VerificationLevel::Standard {
+                if self.validation_level >= ValidationLevel::Standard {
                     module.validate()?;
                 }
                 
@@ -523,12 +523,12 @@ mod component_binary_parser {
             // Store parsed types in component
             for (i, comp_type) in type_section.iter_types().enumerate() {
                 // Validate type at the requested verification level
-                if self.validation_level >= VerificationLevel::Standard {
+                if self.validation_level >= ValidationLevel::Standard {
                     comp_type.validate()?;
                 }
                 
                 // Add to component's types collection
-                self.record_component_type_parsed(component, i, comp_type)?;
+                self.record_component_type_parsed(component, i, &comp_type)?;
             }
             
             // Update our parsing offset is handled by the caller
@@ -544,14 +544,7 @@ mod component_binary_parser {
             comp_type: &wrt_format::component::ComponentType,
         ) -> Result<()> {
             // Store the type in the component's types vector
-            if let Err(_) = component.types.push(comp_type.clone()) {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::CAPACITY_EXCEEDED,
-                    "Component types collection capacity exceeded",
-                ));
-            }
-            
+            component.types.push(comp_type.clone());
             Ok(())
         }
 

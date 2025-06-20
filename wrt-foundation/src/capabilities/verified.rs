@@ -633,7 +633,6 @@ pub type LargeVerifiedCapability = VerifiedMemoryCapability<1048576>; // 1MB
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::formal_verification::FormalProof;
 
     fn create_test_proofs() -> VerificationProofs {
         VerificationProofs::asil_d_complete(

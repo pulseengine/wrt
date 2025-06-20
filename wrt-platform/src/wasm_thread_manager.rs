@@ -116,8 +116,8 @@ impl ExecutionMonitor for SimpleExecutionMonitor {
         let threads = self.threads.read();
         let info = threads.get(&id).ok_or_else(|| {
             Error::new(
-                ErrorCategory::Validation, 1,
-                ErrorCategory::Validation, 1,
+                ErrorCategory::Validation,
+                1,
                 "Thread not found in monitor",
             )
         })?;
@@ -194,7 +194,7 @@ impl WasmThreadManager {
             dyn Fn(u32, Vec<u8>) -> Result<Vec<u8>> + Send + Sync,
         >,
     ) -> Result<Self> {
-        let pool = create_thread_pool(config)?;
+        let pool = create_thread_pool(&config)?;
         let resource_tracker = Arc::new(ResourceTracker::new(limits));
         let monitor = Arc::new(SimpleExecutionMonitor::new());
 
@@ -231,8 +231,8 @@ impl WasmThreadManager {
         // Check if shutting down
         if *self.shutdown.lock() {
             return Err(Error::new(
-                ErrorCategory::Runtime, 1,
-                ErrorCategory::Runtime, 1,
+                ErrorCategory::Runtime,
+                1,
                 "Thread manager is shutting down",
             ));
         }
@@ -242,8 +242,8 @@ impl WasmThreadManager {
             let modules = self.modules.read();
             modules.get(&request.module_id).cloned().ok_or_else(|| {
                 Error::new(
-                    ErrorCategory::Validation, 1,
-                    ErrorCategory::Validation, 1,
+                    ErrorCategory::Validation,
+                    1,
                     "Module not registered",
                 )
             })?
@@ -252,8 +252,8 @@ impl WasmThreadManager {
         // Binary std/no_std choice
         if !self.resource_tracker.can_allocate_thread(&request)? {
             return Err(Error::new(
-                ErrorCategory::Resource, 1,
-                ErrorCategory::Resource, 1,
+                ErrorCategory::Resource,
+                1,
                 "Cannot allocate thread: resource limits exceeded",
             ));
         }
@@ -325,8 +325,8 @@ impl WasmThreadManager {
             let mut threads = self.threads.write();
             threads.remove(&thread_id).ok_or_else(|| {
                 Error::new(
-                    ErrorCategory::Validation, 1,
-                    ErrorCategory::Validation, 1,
+                    ErrorCategory::Validation,
+                    1,
                     "Thread not found",
                 )
             })?

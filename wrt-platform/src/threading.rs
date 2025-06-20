@@ -176,6 +176,14 @@ impl core::fmt::Debug for ThreadHandle {
 }
 
 impl ThreadHandle {
+    /// Create a new thread handle
+    pub fn new(id: u64, platform_handle: Box<dyn PlatformThreadHandle>) -> Self {
+        Self {
+            id,
+            platform_handle,
+        }
+    }
+
     /// Get thread ID
     pub fn id(&self) -> u64 {
         self.id
@@ -456,7 +464,7 @@ pub fn create_thread_pool(_config: &ThreadPoolConfig) -> Result<Box<dyn Platform
     
     #[cfg(all(feature = "threading", not(target_os = "nto"), not(target_os = "linux")))]
     {
-        super::generic_threading::GenericThreadPool::new(_config)
+        super::generic_threading::GenericThreadPool::new(_config.clone())
             .map(|pool| Box::new(pool) as Box<dyn PlatformThreadPool>)
     }
     

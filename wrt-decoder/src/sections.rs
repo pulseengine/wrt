@@ -21,8 +21,8 @@ use wrt_foundation::types::{
 use wrt_foundation::NoStdProvider;
 
 // Type aliases with specific provider
-type WrtFuncType = FuncType<NoStdProvider<1024>>;
-type WrtFoundationImport = WrtImport<NoStdProvider<1024>>;
+type WrtFuncType = FuncType<NoStdProvider<65536>>;
+type WrtFoundationImport = WrtImport<NoStdProvider<65536>>;
 
 // Import segment types from wrt-format
 use wrt_format::{
@@ -230,7 +230,7 @@ pub mod parsers {
             }
 
             format_func_types.push(wrt_format::types::FuncType::new(
-                wrt_foundation::NoStdProvider::<1024>::default(),
+                wrt_foundation::NoStdProvider::<65536>::default(),
                 params,
                 results,
             )?);
@@ -333,7 +333,7 @@ pub mod parsers {
         // Convert wrt_format::Import to wrt_foundation::Import
         // Since Table and Memory are now type aliases to foundation types, this should work directly
         let mut wrt_imports = Vec::with_capacity(format_imports.len());
-        let provider = wrt_foundation::NoStdProvider::<1024>::default();
+        let provider = wrt_foundation::NoStdProvider::<65536>::default();
 
         for format_import in format_imports {
             let module_name = wrt_foundation::bounded::WasmName::from_str(

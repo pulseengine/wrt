@@ -30,7 +30,7 @@ type WasiProvider = NoStdProvider<8192>;
 fn create_wasi_provider() -> WasiProvider {
     #[cfg(feature = "std")]
     {
-        let base_provider = NoStdProvider::<8192>::new();
+        let base_provider = NoStdProvider::<8192>::default();
         let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
             8192,
             wrt_foundation::CrateId::Wasi,
@@ -40,7 +40,7 @@ fn create_wasi_provider() -> WasiProvider {
     }
     #[cfg(not(feature = "std"))]
     {
-        NoStdProvider::<8192>::new()
+        NoStdProvider::<8192>::default()
     }
 }
 

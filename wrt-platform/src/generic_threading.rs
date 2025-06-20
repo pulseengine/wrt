@@ -61,6 +61,17 @@ impl PlatformThreadHandle for GenericThreadHandle {
     fn get_stats(&self) -> Result<ThreadStats> {
         Ok(self.stats.lock().clone())
     }
+
+    fn terminate(&self) -> Result<()> {
+        self.running.store(false, Ordering::Release);
+        Ok(())
+    }
+
+    fn join_timeout(&self, timeout: Duration) -> Result<Option<Vec<u8>>> {
+        // For generic implementation, we can't easily implement timeout join
+        // Return None to indicate timeout not supported
+        Ok(None)
+    }
 }
 
 /// Generic thread pool implementation
@@ -190,10 +201,7 @@ impl PlatformThreadPool for GenericThreadPool {
             stats.total_spawned += 1;
         }
 
-        Ok(ThreadHandle {
-            id: thread_id,
-            platform_handle,
-        })
+        Ok(ThreadHandle::new(thread_id, platform_handle))
     }
 
     fn get_stats(&self) -> ThreadPoolStats {

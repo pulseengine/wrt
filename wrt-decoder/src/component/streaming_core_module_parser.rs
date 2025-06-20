@@ -39,7 +39,7 @@ use wrt_format::{
 };
 
 // Use the same provider size as the streaming decoder
-type CoreModule = Module<wrt_foundation::safe_memory::NoStdProvider<8192>>;
+type CoreModule = Module;
 
 #[cfg(feature = "std")]
 use wrt_format::component::Component;
@@ -52,11 +52,16 @@ use wrt_foundation::{
 };
 
 // Import the unified bounded decoder infrastructure
+#[cfg(not(feature = "std"))]
 use crate::bounded_decoder_infra::{
     create_decoder_provider,
     BoundedModuleVec,
     MAX_MODULES_PER_COMPONENT,
 };
+
+// For std mode, provide basic constants
+#[cfg(feature = "std")]
+const MAX_MODULES_PER_COMPONENT: usize = 1024;
 
 /// Maximum size of a single core module (16MB, ASIL constraint)
 pub const MAX_CORE_MODULE_SIZE: usize = 16 * 1024 * 1024;
@@ -230,7 +235,24 @@ impl<'a> StreamingCoreModuleParser<'a> {
     /// Parse core module using streaming decoder
     fn parse_core_module_streaming(&self, module_data: &[u8]) -> Result<CoreModule> {
         // Use the existing streaming decoder infrastructure
-        crate::streaming_decoder::decode_module_streaming(module_data)
+        // Convert the result type to match our unified Module type
+        #[cfg(feature = "std")]
+        {
+            crate::streaming_decoder::decode_module_streaming(module_data)
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            // For no_std, we need to convert from the specific provider type
+            // to the unified Module type
+            let module_with_provider = crate::streaming_decoder::decode_module_streaming(module_data)?;
+            // Convert to unified Module type (this might require implementing conversion)
+            // For now, return error indicating this needs proper conversion
+            Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::NOT_IMPLEMENTED,
+                "Core module parsing in no_std requires type conversion implementation",
+            ))
+        }
     }
 
     /// Store a parsed module in the storage

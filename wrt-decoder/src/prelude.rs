@@ -110,6 +110,12 @@ pub type DecoderVec<T> = BoundedVec<T, 256, wrt_foundation::NoStdProvider<4096>>
 #[cfg(not(feature = "std"))]
 pub type DecoderString = BoundedString<256, wrt_foundation::NoStdProvider<4096>>;
 
+// For std mode, provide the same types but using std collections
+#[cfg(feature = "std")]
+pub type DecoderVec<T> = Vec<T>;
+#[cfg(feature = "std")]
+pub type DecoderString = String;
+
 // Factory function for creating providers using capability system
 #[cfg(not(feature = "std"))]
 pub fn create_decoder_provider<const N: usize>(

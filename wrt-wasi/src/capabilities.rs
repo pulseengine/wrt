@@ -38,7 +38,7 @@ type EnvProvider = NoStdProvider<8192>;
 fn create_provider() -> PathProvider {
     #[cfg(feature = "std")]
     {
-        let base_provider = NoStdProvider::<8192>::new();
+        let base_provider = NoStdProvider::<8192>::default();
         let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
             8192,
             WASI_CRATE_ID,
@@ -48,7 +48,7 @@ fn create_provider() -> PathProvider {
     }
     #[cfg(not(feature = "std"))]
     {
-        NoStdProvider::<8192>::new()
+        NoStdProvider::<8192>::default()
     }
 }
 
@@ -244,7 +244,7 @@ impl WasiEnvironmentCapabilities {
     
     /// Add an allowed environment variable
     pub fn add_allowed_var(&mut self, var_name: &str) -> Result<()> {
-        let provider = NoStdProvider::<8192>::new();
+        let provider = create_provider();
         let bounded_var = BoundedString::from_str(var_name, provider)
             .map_err(|_| Error::new(
                 ErrorCategory::Resource,

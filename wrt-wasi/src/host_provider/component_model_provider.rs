@@ -25,10 +25,10 @@ type WasiHostString = BoundedString<256, wrt_foundation::safe_memory::NoStdProvi
 // Helper to create strings
 #[cfg(not(feature = "std"))]
 fn make_string(s: &str) -> WasiHostString {
-    let provider = wrt_foundation::safe_memory::NoStdProvider::<1024>::new();
+    let provider = wrt_foundation::safe_memory::NoStdProvider::<1024>::default();
     BoundedString::from_str(s, provider).unwrap_or_else(|_| {
         // Fallback to empty string on error
-        let provider2 = wrt_foundation::safe_memory::NoStdProvider::<1024>::new();
+        let provider2 = wrt_foundation::safe_memory::NoStdProvider::<1024>::default();
         BoundedString::from_str("", provider2).unwrap()
     })
 }
@@ -211,7 +211,7 @@ impl ComponentModelProvider {
             
             for function in functions {
                 let module_name = Self::extract_module_name(&function.name);
-                registry.register_host_function(module_name, &function.name, function.handler);
+                registry.register_host_function(module_name, &function.name, function.handler.clone());
             }
         }
         

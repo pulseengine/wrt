@@ -245,10 +245,13 @@ macro_rules! safe_managed_alloc_deprecated {
 mod tests {
     use crate::{
         budget_aware_provider::CrateId,
-        capabilities::{CapabilityFactoryBuilder, DynamicMemoryCapability},
+        capabilities::DynamicMemoryCapability,
         safe_memory::NoStdProvider,
         verification::VerificationLevel,
     };
+    
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    use crate::capabilities::CapabilityFactoryBuilder;
 
     #[test]
     fn test_capability_context_macro() {
@@ -261,7 +264,7 @@ mod tests {
 
     #[test]
     fn test_capability_wrap_provider_macro() {
-        let provider = NoStdProvider::<1024>::new();
+        let provider = NoStdProvider::<1024>::default();
         let capability = Box::new(DynamicMemoryCapability::new(
             1024,
             CrateId::Foundation,

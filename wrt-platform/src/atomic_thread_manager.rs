@@ -9,7 +9,7 @@ use core::time::Duration;
 use std::{collections::BTreeMap, sync::Arc};
 
 use wrt_sync::WrtRwLock;
-use wrt_error::{Result, ErrorCategory, ErrorSource};
+use wrt_error::{Result, ErrorCategory, ErrorSource, ToErrorCategory};
 
 use crate::threading::{
     ThreadSpawnRequest, ThreadPriority, WasmTask, ThreadHandle,

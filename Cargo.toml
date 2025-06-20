@@ -7,6 +7,7 @@ members = [
     "wrt-format",
     "wrt-foundation",
     "wrt-decoder",
+    "wrt-parser",
     "wrt-debug",
     "wrt-component",
     "wrt-math",
@@ -45,6 +46,7 @@ wrt-sync = { path = "wrt-sync", version = "0.2.0", default-features = false }
 wrt-format = { path = "wrt-format", version = "0.2.0", default-features = false }
 wrt-foundation = { path = "wrt-foundation", version = "0.2.0", default-features = false }
 wrt-decoder = { path = "wrt-decoder", version = "0.2.0", default-features = false, features = ["std"] }
+wrt-parser = { path = "wrt-parser", version = "0.2.0", default-features = false }
 wrt-debug = { path = "wrt-debug", version = "0.2.0", default-features = false }
 wrt-runtime = { path = "wrt-runtime", version = "0.2.0", default-features = false }
 wrt-logging = { path = "wrt-logging", version = "0.2.0", default-features = false }

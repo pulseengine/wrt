@@ -29,7 +29,7 @@ hex = "0.4"
 wat = "1.231.0"
 
 [features]
-default = []
+default = ["std"]
 # Binary choice: std OR no_std (no alloc middle ground)
 std = ["wrt-foundation/std", "wrt-foundation/wrt-allocator"]
 # For compatibility with verification script

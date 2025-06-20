@@ -27,10 +27,10 @@
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
+use alloc::{vec::Vec, boxed::Box};
 
 #[cfg(feature = "std")]
-use std::vec::Vec;
+use std::{vec::Vec, boxed::Box};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 #[cfg(feature = "std")]
@@ -38,6 +38,19 @@ use wrt_format::{
     binary::{read_leb128_u32, read_string},
     component::{ComponentType, ComponentTypeDefinition, ExternType, FormatValType},
 };
+
+#[cfg(feature = "std")]
+struct ComponentImport {
+    pub namespace: crate::prelude::DecoderString,
+    pub name: crate::prelude::DecoderString,
+    pub extern_type: ExternType,
+}
+
+#[cfg(feature = "std")]
+struct ComponentExport {
+    pub name: crate::prelude::DecoderString,
+    pub extern_type: ExternType,
+}
 
 #[cfg(not(feature = "std"))]
 use wrt_format::binary::{read_leb128_u32, read_string};
@@ -54,24 +67,47 @@ mod placeholder_types {
         pub definition: ComponentTypeDefinition,
     }
     
-    #[derive(Debug, Clone, Default, PartialEq, Eq)]
+    #[derive(Debug, Clone, PartialEq, Eq, Default)]
+    pub struct ComponentImport {
+        pub namespace: crate::prelude::DecoderString,
+        pub name: crate::prelude::DecoderString,
+        pub extern_type: ExternType,
+    }
+    
+    #[derive(Debug, Clone, PartialEq, Eq, Default)]
+    pub struct ComponentExport {
+        pub name: crate::prelude::DecoderString,
+        pub extern_type: ExternType,
+    }
+    
+    #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum ComponentTypeDefinition {
-        Component { imports: DecoderVec<ExternType>, exports: DecoderVec<ExternType> },
-        Instance { exports: DecoderVec<ExternType> },
-        Function { params: DecoderVec<FormatValType>, results: DecoderVec<FormatValType> },
-        #[default]
+        Component { imports: DecoderVec<ComponentImport>, exports: DecoderVec<ComponentExport> },
+        Instance { exports: DecoderVec<ComponentExport> },
+        Function { params: DecoderVec<(crate::prelude::DecoderString, FormatValType)>, results: DecoderVec<FormatValType> },
         Value(FormatValType),
         Resource { name: Option<crate::prelude::DecoderString>, functions: DecoderVec<u32> },
     }
     
-    #[derive(Debug, Clone, Default, PartialEq, Eq)]
+    impl Default for ComponentTypeDefinition {
+        fn default() -> Self {
+            Self::Value(FormatValType::default())
+        }
+    }
+    
+    #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum ExternType {
-        Function { params: DecoderVec<FormatValType>, results: DecoderVec<FormatValType> },
-        #[default]
+        Function { params: DecoderVec<(crate::prelude::DecoderString, FormatValType)>, results: DecoderVec<FormatValType> },
         Value(FormatValType),
         Type(u32),
-        Instance { exports: DecoderVec<ExternType> },
-        Component { imports: DecoderVec<ExternType>, exports: DecoderVec<ExternType> },
+        Instance { exports: DecoderVec<ComponentExport> },
+        Component { imports: DecoderVec<ComponentImport>, exports: DecoderVec<ComponentExport> },
+    }
+    
+    impl Default for ExternType {
+        fn default() -> Self {
+            Self::Value(FormatValType::default())
+        }
     }
     
     #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -96,19 +132,150 @@ mod placeholder_types {
     use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes};
     
     impl Checksummable for ComponentType {
-        fn checksum(&self) -> u32 {
-            0 // Placeholder implementation
+        fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+            checksum.update_slice(&[0]); // Placeholder implementation
         }
     }
     
     impl ToBytes for ComponentType {
-        fn to_bytes(&self) -> core::result::Result<alloc::vec::Vec<u8>, wrt_foundation::bounded::SerializationError> {
-            Ok(alloc::vec::Vec::new()) // Placeholder implementation
+        fn serialized_size(&self) -> usize {
+            0 // Placeholder implementation
+        }
+        
+        fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+            &self,
+            _writer: &mut wrt_foundation::traits::WriteStream<'_>,
+            _provider: &P,
+        ) -> wrt_foundation::Result<()> {
+            Ok(()) // Placeholder implementation
         }
     }
     
     impl FromBytes for ComponentType {
-        fn from_bytes(_data: &[u8]) -> core::result::Result<Self, wrt_foundation::bounded::SerializationError> {
+        fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+            _reader: &mut wrt_foundation::traits::ReadStream<'_>,
+            _provider: &P,
+        ) -> wrt_foundation::Result<Self> {
+            Ok(Self::default()) // Placeholder implementation
+        }
+    }
+    
+    // Implement required traits for FormatValType
+    impl Checksummable for FormatValType {
+        fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+            checksum.update_slice(&[0]); // Placeholder implementation
+        }
+    }
+    
+    impl ToBytes for FormatValType {
+        fn serialized_size(&self) -> usize {
+            0 // Placeholder implementation
+        }
+        
+        fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+            &self,
+            _writer: &mut wrt_foundation::traits::WriteStream<'_>,
+            _provider: &P,
+        ) -> wrt_foundation::Result<()> {
+            Ok(()) // Placeholder implementation
+        }
+    }
+    
+    impl FromBytes for FormatValType {
+        fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+            _reader: &mut wrt_foundation::traits::ReadStream<'_>,
+            _provider: &P,
+        ) -> wrt_foundation::Result<Self> {
+            Ok(Self::default()) // Placeholder implementation
+        }
+    }
+    
+    // Implement required traits for ComponentImport
+    impl Checksummable for ComponentImport {
+        fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+            checksum.update_slice(&[0]); // Placeholder implementation
+        }
+    }
+    
+    impl ToBytes for ComponentImport {
+        fn serialized_size(&self) -> usize {
+            0 // Placeholder implementation
+        }
+        
+        fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+            &self,
+            _writer: &mut wrt_foundation::traits::WriteStream<'_>,
+            _provider: &P,
+        ) -> wrt_foundation::Result<()> {
+            Ok(()) // Placeholder implementation
+        }
+    }
+    
+    impl FromBytes for ComponentImport {
+        fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+            _reader: &mut wrt_foundation::traits::ReadStream<'_>,
+            _provider: &P,
+        ) -> wrt_foundation::Result<Self> {
+            Ok(Self::default()) // Placeholder implementation
+        }
+    }
+    
+    // Implement required traits for ComponentExport
+    impl Checksummable for ComponentExport {
+        fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+            checksum.update_slice(&[0]); // Placeholder implementation
+        }
+    }
+    
+    impl ToBytes for ComponentExport {
+        fn serialized_size(&self) -> usize {
+            0 // Placeholder implementation
+        }
+        
+        fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+            &self,
+            _writer: &mut wrt_foundation::traits::WriteStream<'_>,
+            _provider: &P,
+        ) -> wrt_foundation::Result<()> {
+            Ok(()) // Placeholder implementation
+        }
+    }
+    
+    impl FromBytes for ComponentExport {
+        fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+            _reader: &mut wrt_foundation::traits::ReadStream<'_>,
+            _provider: &P,
+        ) -> wrt_foundation::Result<Self> {
+            Ok(Self::default()) // Placeholder implementation
+        }
+    }
+    
+    // Implement required traits for ExternType
+    impl Checksummable for ExternType {
+        fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+            checksum.update_slice(&[0]); // Placeholder implementation
+        }
+    }
+    
+    impl ToBytes for ExternType {
+        fn serialized_size(&self) -> usize {
+            0 // Placeholder implementation
+        }
+        
+        fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+            &self,
+            _writer: &mut wrt_foundation::traits::WriteStream<'_>,
+            _provider: &P,
+        ) -> wrt_foundation::Result<()> {
+            Ok(()) // Placeholder implementation
+        }
+    }
+    
+    impl FromBytes for ExternType {
+        fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+            _reader: &mut wrt_foundation::traits::ReadStream<'_>,
+            _provider: &P,
+        ) -> wrt_foundation::Result<Self> {
             Ok(Self::default()) // Placeholder implementation
         }
     }
@@ -120,16 +287,30 @@ use placeholder_types::{ComponentType, ComponentTypeDefinition, ExternType, Form
 use wrt_foundation::{
     budget_aware_provider::CrateId,
     safe_memory::NoStdProvider,
+    traits::BoundedCapacity,
     BoundedVec,
     VerificationLevel,
 };
 
 // Import the unified bounded decoder infrastructure
+#[cfg(not(feature = "std"))]
 use crate::bounded_decoder_infra::{
     create_decoder_provider,
     BoundedTypeVec,
     MAX_TYPES_PER_COMPONENT,
 };
+
+// For std mode, provide basic constants and functions
+#[cfg(feature = "std")]
+const MAX_TYPES_PER_COMPONENT: usize = 1024;
+
+#[cfg(feature = "std")]
+fn create_decoder_provider<const N: usize>() -> wrt_foundation::WrtResult<wrt_foundation::NoStdProvider<N>> {
+    Ok(wrt_foundation::NoStdProvider::default())
+}
+
+#[cfg(feature = "std")]
+type BoundedTypeVec<T> = Vec<T>;
 
 // Import bounded types from prelude
 use crate::prelude::{DecoderVec, DecoderString};
@@ -141,7 +322,7 @@ pub const MAX_TYPE_DEFINITION_SIZE: usize = 64 * 1024;
 pub const MAX_TYPE_RECURSION_DEPTH: usize = 32;
 
 /// Decoder provider type for consistent allocation
-type DecoderProvider = NoStdProvider<32768>;
+type DecoderProvider = NoStdProvider<65536>;
 
 /// Component Type Section streaming parser
 ///
@@ -247,15 +428,8 @@ impl<'a> StreamingTypeParser<'a> {
 
     /// Create type storage using unified provider system
     fn create_type_storage(&self) -> Result<BoundedTypeVec<ComponentType>> {
-        // Use the unified provider factory that adapts to ASIL level
-        let provider = create_decoder_provider::<32768>()?;
-        BoundedVec::new(provider).map_err(|e| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::MEMORY_ERROR,
-                "Failed to create type storage",
-            )
-        })
+        // Use std Vec for BoundedTypeVec
+        Ok(Vec::new())
     }
 
     /// Parse a single component type from the binary stream
@@ -309,36 +483,54 @@ impl<'a> StreamingTypeParser<'a> {
         let (import_count, bytes_read) = read_leb128_u32(self.data, self.offset)?;
         self.offset += bytes_read;
 
-        let provider = create_decoder_provider::<4096>()?;
-        let mut imports = DecoderVec::new(provider.clone())?;
+        #[cfg(not(feature = "std"))]
+        let mut imports = {
+            let provider = create_decoder_provider::<4096>()?;
+            DecoderVec::new(provider.clone())?
+        };
+        #[cfg(feature = "std")]
+        let mut imports = DecoderVec::new();
         for _ in 0..import_count {
             let namespace = self.read_string()?;
             let name = self.read_string()?;
             let extern_type = self.parse_extern_type()?;
-            imports.push((namespace, name, extern_type)).map_err(|_| {
+            // Create tuple format expected by ComponentTypeDefinition::Component
+            let import = (namespace, name, extern_type);
+            #[cfg(not(feature = "std"))]
+            imports.push(import).map_err(|_| {
                 Error::new(
                     ErrorCategory::Resource,
                     codes::CAPACITY_EXCEEDED,
                     "Too many imports in component type",
                 )
             })?;
+            #[cfg(feature = "std")]
+            imports.push(import);
         }
 
         // Read export count
         let (export_count, bytes_read) = read_leb128_u32(self.data, self.offset)?;
         self.offset += bytes_read;
 
+        #[cfg(not(feature = "std"))]
         let mut exports = DecoderVec::new(provider)?;
+        #[cfg(feature = "std")]
+        let mut exports = DecoderVec::new();
         for _ in 0..export_count {
             let name = self.read_string()?;
             let extern_type = self.parse_extern_type()?;
-            exports.push((name, extern_type)).map_err(|_| {
+            // Create tuple format expected by ComponentTypeDefinition::Component
+            let export = (name, extern_type);
+            #[cfg(not(feature = "std"))]
+            exports.push(export).map_err(|_| {
                 Error::new(
                     ErrorCategory::Resource,
                     codes::CAPACITY_EXCEEDED,
                     "Too many exports in component type",
                 )
             })?;
+            #[cfg(feature = "std")]
+            exports.push(export);
         }
 
         Ok(ComponentTypeDefinition::Component { imports, exports })
@@ -350,18 +542,28 @@ impl<'a> StreamingTypeParser<'a> {
         let (export_count, bytes_read) = read_leb128_u32(self.data, self.offset)?;
         self.offset += bytes_read;
 
-        let provider = create_decoder_provider::<4096>()?;
-        let mut exports = DecoderVec::new(provider)?;
+        #[cfg(not(feature = "std"))]
+        let mut exports = {
+            let provider = create_decoder_provider::<4096>()?;
+            DecoderVec::new(provider)?
+        };
+        #[cfg(feature = "std")]
+        let mut exports = DecoderVec::new();
         for _ in 0..export_count {
             let name = self.read_string()?;
             let extern_type = self.parse_extern_type()?;
-            exports.push((name, extern_type)).map_err(|_| {
+            // Create tuple format expected by ComponentTypeDefinition::Instance
+            let export = (name, extern_type);
+            #[cfg(not(feature = "std"))]
+            exports.push(export).map_err(|_| {
                 Error::new(
                     ErrorCategory::Resource,
                     codes::CAPACITY_EXCEEDED,
                     "Too many exports in instance type",
                 )
             })?;
+            #[cfg(feature = "std")]
+            exports.push(export);
         }
 
         Ok(ComponentTypeDefinition::Instance { exports })
@@ -373,11 +575,17 @@ impl<'a> StreamingTypeParser<'a> {
         let (param_count, bytes_read) = read_leb128_u32(self.data, self.offset)?;
         self.offset += bytes_read;
 
-        let provider = create_decoder_provider::<4096>()?;
-        let mut params = DecoderVec::new(provider.clone())?;
+        #[cfg(not(feature = "std"))]
+        let mut params = {
+            let provider = create_decoder_provider::<4096>()?;
+            DecoderVec::new(provider.clone())?
+        };
+        #[cfg(feature = "std")]
+        let mut params = DecoderVec::new();
         for _ in 0..param_count {
             let name = self.read_string()?;
             let val_type = self.parse_value_type()?;
+            #[cfg(not(feature = "std"))]
             params.push((name, val_type)).map_err(|_| {
                 Error::new(
                     ErrorCategory::Resource,
@@ -385,15 +593,24 @@ impl<'a> StreamingTypeParser<'a> {
                     "Too many parameters in function type",
                 )
             })?;
+            #[cfg(feature = "std")]
+            params.push((name, val_type));
         }
 
         // Read result count
         let (result_count, bytes_read) = read_leb128_u32(self.data, self.offset)?;
         self.offset += bytes_read;
 
-        let mut results = DecoderVec::new(provider)?;
+        #[cfg(not(feature = "std"))]
+        let mut results = {
+            let provider = create_decoder_provider::<4096>()?;
+            DecoderVec::new(provider)?
+        };
+        #[cfg(feature = "std")]
+        let mut results = DecoderVec::new();
         for _ in 0..result_count {
             let val_type = self.parse_value_type()?;
+            #[cfg(not(feature = "std"))]
             results.push(val_type).map_err(|_| {
                 Error::new(
                     ErrorCategory::Resource,
@@ -401,6 +618,8 @@ impl<'a> StreamingTypeParser<'a> {
                     "Too many results in function type",
                 )
             })?;
+            #[cfg(feature = "std")]
+            results.push(val_type);
         }
 
         Ok(ComponentTypeDefinition::Function { params, results })
@@ -427,10 +646,21 @@ impl<'a> StreamingTypeParser<'a> {
             self.offset += 1;
         }
 
-        Ok(ComponentTypeDefinition::Resource {
-            representation,
-            nullable,
-        })
+        #[cfg(feature = "std")]
+        {
+            Ok(ComponentTypeDefinition::Resource {
+                representation,
+                nullable,
+            })
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let provider = create_decoder_provider::<4096>()?;
+            Ok(ComponentTypeDefinition::Resource {
+                name: None, // Placeholder for now
+                functions: DecoderVec::new(provider)?,
+            })
+        }
     }
 
     /// Parse extern type
@@ -452,11 +682,17 @@ impl<'a> StreamingTypeParser<'a> {
                 let (param_count, bytes_read) = read_leb128_u32(self.data, self.offset)?;
                 self.offset += bytes_read;
 
-                let provider = create_decoder_provider::<4096>()?;
-                let mut params = DecoderVec::new(provider.clone())?;
+                #[cfg(not(feature = "std"))]
+                let mut params = {
+                    let provider = create_decoder_provider::<4096>()?;
+                    DecoderVec::new(provider.clone())?
+                };
+                #[cfg(feature = "std")]
+                let mut params = DecoderVec::new();
                 for _ in 0..param_count {
                     let name = self.read_string()?;
                     let val_type = self.parse_value_type()?;
+                    #[cfg(not(feature = "std"))]
                     params.push((name, val_type)).map_err(|_| {
                         Error::new(
                             ErrorCategory::Resource,
@@ -464,14 +700,23 @@ impl<'a> StreamingTypeParser<'a> {
                             "Too many parameters in extern function type",
                         )
                     })?;
+                    #[cfg(feature = "std")]
+                    params.push((name, val_type));
                 }
 
                 let (result_count, bytes_read) = read_leb128_u32(self.data, self.offset)?;
                 self.offset += bytes_read;
 
-                let mut results = DecoderVec::new(provider)?;
+                #[cfg(not(feature = "std"))]
+                let mut results = {
+                    let provider = create_decoder_provider::<4096>()?;
+                    DecoderVec::new(provider)?
+                };
+                #[cfg(feature = "std")]
+                let mut results = DecoderVec::new();
                 for _ in 0..result_count {
                     let val_type = self.parse_value_type()?;
+                    #[cfg(not(feature = "std"))]
                     results.push(val_type).map_err(|_| {
                         Error::new(
                             ErrorCategory::Resource,
@@ -479,6 +724,8 @@ impl<'a> StreamingTypeParser<'a> {
                             "Too many results in extern function type",
                         )
                     })?;
+                    #[cfg(feature = "std")]
+                    results.push(val_type);
                 }
 
                 Ok(ExternType::Function { params, results })
@@ -573,8 +820,13 @@ impl<'a> StreamingTypeParser<'a> {
                 }
                 
                 // Use bounded vec for empty record - allocation will be handled by capability system
-                let provider = create_decoder_provider::<4096>()?;
-                let empty_fields = DecoderVec::new(provider)?;
+                #[cfg(not(feature = "std"))]
+                let empty_fields = {
+                    let provider = create_decoder_provider::<4096>()?;
+                    DecoderVec::new(provider)?
+                };
+                #[cfg(feature = "std")]
+                let empty_fields = DecoderVec::new();
                 return Ok(FormatValType::Record(empty_fields));
             }
             0x71 => {
@@ -595,15 +847,30 @@ impl<'a> StreamingTypeParser<'a> {
                 }
                 
                 // Use bounded vec for empty variant - allocation will be handled by capability system
-                let provider = create_decoder_provider::<4096>()?;
-                let empty_cases = DecoderVec::new(provider)?;
+                #[cfg(not(feature = "std"))]
+                let empty_cases = {
+                    let provider = create_decoder_provider::<4096>()?;
+                    DecoderVec::new(provider)?
+                };
+                #[cfg(feature = "std")]
+                let empty_cases = DecoderVec::new();
                 return Ok(FormatValType::Variant(empty_cases));
                 
             }
             0x70 => {
                 // List type
-                let element_type_ref = self.parse_type_ref()?;
-                Ok(FormatValType::List(element_type_ref))
+                #[cfg(feature = "std")]
+                {
+                    let element_type = self.parse_value_type()?;
+                    // For std, we use Box<FormatValType>
+                    Ok(FormatValType::List(Box::new(element_type)))
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    let element_type_ref = self.parse_type_ref()?;
+                    // For no_std placeholder, we use u32 type reference
+                    Ok(FormatValType::List(element_type_ref))
+                }
             }
             0x6F => {
                 // Tuple type - simplified for streaming
@@ -616,8 +883,13 @@ impl<'a> StreamingTypeParser<'a> {
                 }
                 
                 // Use bounded vec for empty tuple - allocation will be handled by capability system
-                let provider = create_decoder_provider::<4096>()?;
-                let empty_elements = DecoderVec::new(provider)?;
+                #[cfg(not(feature = "std"))]
+                let empty_elements = {
+                    let provider = create_decoder_provider::<4096>()?;
+                    DecoderVec::new(provider)?
+                };
+                #[cfg(feature = "std")]
+                let empty_elements = DecoderVec::new();
                 return Ok(FormatValType::Tuple(empty_elements));
                 
             }
@@ -678,7 +950,6 @@ impl<'a> StreamingTypeParser<'a> {
         self.offset += bytes_read;
         
         // Convert to bounded string  
-        let provider = create_decoder_provider::<4096>()?;
         // Convert bytes to string first
         let string_str = core::str::from_utf8(&string).map_err(|_| {
             Error::new(
@@ -688,13 +959,19 @@ impl<'a> StreamingTypeParser<'a> {
             )
         })?;
         
-        let bounded_string = DecoderString::from_str(string_str, provider).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::CAPACITY_EXCEEDED,
-                "String too long for bounded storage",
-            )
-        })?;
+        #[cfg(not(feature = "std"))]
+        let bounded_string = {
+            let provider = create_decoder_provider::<4096>()?;
+            DecoderString::from_str(string_str, provider).map_err(|_| {
+                Error::new(
+                    ErrorCategory::Resource,
+                    codes::CAPACITY_EXCEEDED,
+                    "String too long for bounded storage",
+                )
+            })?
+        };
+        #[cfg(feature = "std")]
+        let bounded_string = DecoderString::from(string_str);
         
         Ok(bounded_string)
     }
@@ -705,13 +982,19 @@ impl<'a> StreamingTypeParser<'a> {
         types: &mut BoundedTypeVec<ComponentType>,
         comp_type: ComponentType,
     ) -> Result<()> {
+        #[cfg(not(feature = "std"))]
         types.push(comp_type).map_err(|_| {
             Error::new(
                 ErrorCategory::Resource,
                 codes::CAPACITY_EXCEEDED,
                 "Component type storage capacity exceeded",
             )
-        })
+        })?;
+        #[cfg(feature = "std")]
+        {
+            types.push(comp_type);
+            Ok(())
+        }
     }
 
     /// Get current parsing offset
@@ -737,12 +1020,12 @@ impl ComponentTypeSection {
     }
 
     /// Get a type by index (ASIL-safe)
-    pub fn get_type(&self, index: usize) -> Option<&ComponentType> {
-        self.types.get(index)
+    pub fn get_type(&self, index: usize) -> Option<ComponentType> {
+        self.types.get(index).cloned()
     }
 
     /// Iterate over all types (ASIL-safe)
-    pub fn iter_types(&self) -> impl Iterator<Item = &ComponentType> + ExactSizeIterator {
+    pub fn iter_types(&self) -> impl Iterator<Item = &ComponentType> + '_ {
         self.types.iter()
     }
 
@@ -777,18 +1060,29 @@ mod tests {
     }
 
     #[test]
-    fn test_invalid_type_count() {
+    fn test_invalid_type_count() -> Result<()> {
         // Create data with too many types
         let type_count = (MAX_TYPES_PER_COMPONENT + 1) as u32;
-        let provider = create_decoder_provider::<4096>()?;
-        let mut data = DecoderVec::new(provider)?;
+        #[cfg(not(feature = "std"))]
+        let mut data = {
+            let provider = create_decoder_provider::<4096>()?;
+            DecoderVec::new(provider)?
+        };
+        #[cfg(feature = "std")]
+        let mut data = DecoderVec::new();
         
         // Write LEB128 encoded type count
         let mut count = type_count;
         while count >= 0x80 {
+            #[cfg(not(feature = "std"))]
+            data.push((count & 0x7F) as u8 | 0x80).unwrap();
+            #[cfg(feature = "std")]
             data.push((count & 0x7F) as u8 | 0x80);
             count >>= 7;
         }
+        #[cfg(not(feature = "std"))]
+        data.push(count as u8).unwrap();
+        #[cfg(feature = "std")]
         data.push(count as u8);
 
         let mut parser = StreamingTypeParser::new(
@@ -797,6 +1091,7 @@ mod tests {
         ).unwrap();
         
         assert!(parser.parse().is_err());
+        Ok(())
     }
 
     #[test]

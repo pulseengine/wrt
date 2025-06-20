@@ -245,3 +245,16 @@ The WRT project has completed its migration to a unified build system:
 - Memory allocation uses `safe_managed_alloc!` macro only
 - Legacy patterns have been completely eliminated
 - All builds must pass ASIL verification before merging
+- Legacy memory system migration completed - single unified capability-based allocation system
+- All NoStdProvider::new() calls replaced with ::default()
+- All legacy patterns removed from code, comments, and documentation
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.

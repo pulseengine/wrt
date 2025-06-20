@@ -35,19 +35,19 @@ extern crate alloc;
 // Core modules
 pub mod binary_constants;
 pub mod leb128;
-pub mod streaming_parser;
-pub mod module_builder;
-pub mod section_parser;
-pub mod component_parser;
-pub mod validation;
+pub mod bounded_types;
+pub mod simple_module;
+pub mod simple_parser;
 pub mod types;
-pub mod prelude;
+pub mod expression_parser;
+pub mod validation;
 
 // Re-export core functionality
-pub use streaming_parser::{StreamingParser, ParseResult};
-pub use module_builder::{ModuleBuilder, Module};
-pub use types::{ValueType, BlockType, FuncType, GlobalType, MemoryType, TableType};
-pub use validation::{ValidationConfig, ValidationError};
+pub use simple_module::{SimpleModule, Export, Import, FunctionBody};
+pub use simple_parser::SimpleParser;
+pub use types::{ValueType, FuncType, GlobalType, MemoryType, TableType};
+pub use validation::{ModuleValidator, ValidationConfig, ValidationError, validate_name};
+pub use expression_parser::{ExpressionParser, ConstExpr, ConstValue};
 pub use wrt_error::{Error, Result};
 
 // Memory provider type alias for consistent usage
@@ -55,14 +55,8 @@ use wrt_foundation::safe_memory::NoStdProvider;
 pub type ParserProvider = NoStdProvider<8192>;
 
 /// Parse a WebAssembly binary into a runtime module
-pub fn parse_wasm(binary: &[u8]) -> Result<Module<ParserProvider>> {
-    let mut parser = StreamingParser::new()?;
-    parser.parse(binary)
-}
-
-/// Parse a WebAssembly Component binary into a runtime component
-pub fn parse_component(binary: &[u8]) -> Result<component_parser::Component<ParserProvider>> {
-    let mut parser = streaming_parser::ComponentStreamingParser::new()?;
+pub fn parse_wasm(binary: &[u8]) -> Result<SimpleModule> {
+    let mut parser = SimpleParser::new();
     parser.parse(binary)
 }
 
