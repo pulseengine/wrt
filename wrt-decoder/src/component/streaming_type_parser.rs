@@ -33,10 +33,89 @@ use alloc::vec::Vec;
 use std::vec::Vec;
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
+#[cfg(feature = "std")]
 use wrt_format::{
     binary::{read_leb128_u32, read_string},
     component::{ComponentType, ComponentTypeDefinition, ExternType, FormatValType},
 };
+
+#[cfg(not(feature = "std"))]
+use wrt_format::binary::{read_leb128_u32, read_string};
+
+// Define placeholder types for no_std environments where component types aren't available
+#[cfg(not(feature = "std"))]
+mod placeholder_types {
+    use core::fmt;
+    use wrt_error::Result;
+    use crate::prelude::DecoderVec;
+    
+    #[derive(Debug, Clone, Default, PartialEq, Eq)]
+    pub struct ComponentType {
+        pub definition: ComponentTypeDefinition,
+    }
+    
+    #[derive(Debug, Clone, Default, PartialEq, Eq)]
+    pub enum ComponentTypeDefinition {
+        Component { imports: DecoderVec<ExternType>, exports: DecoderVec<ExternType> },
+        Instance { exports: DecoderVec<ExternType> },
+        Function { params: DecoderVec<FormatValType>, results: DecoderVec<FormatValType> },
+        #[default]
+        Value(FormatValType),
+        Resource { name: Option<crate::prelude::DecoderString>, functions: DecoderVec<u32> },
+    }
+    
+    #[derive(Debug, Clone, Default, PartialEq, Eq)]
+    pub enum ExternType {
+        Function { params: DecoderVec<FormatValType>, results: DecoderVec<FormatValType> },
+        #[default]
+        Value(FormatValType),
+        Type(u32),
+        Instance { exports: DecoderVec<ExternType> },
+        Component { imports: DecoderVec<ExternType>, exports: DecoderVec<ExternType> },
+    }
+    
+    #[derive(Debug, Clone, Default, PartialEq, Eq)]
+    pub enum FormatValType {
+        #[default]
+        Bool, S8, U8, S16, U16, S32, U32, S64, U64, F32, F64, Char, String,
+        Record(DecoderVec<(crate::prelude::DecoderString, FormatValType)>),
+        Variant(DecoderVec<(crate::prelude::DecoderString, Option<FormatValType>)>),
+        List(u32),
+        Tuple(DecoderVec<FormatValType>),
+        Own(u32),
+        Borrow(u32),
+    }
+    
+    impl wrt_format::Validatable for ComponentType {
+        fn validate(&self) -> Result<()> {
+            Ok(())
+        }
+    }
+    
+    // Implement required traits for BoundedVec compatibility
+    use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes};
+    
+    impl Checksummable for ComponentType {
+        fn checksum(&self) -> u32 {
+            0 // Placeholder implementation
+        }
+    }
+    
+    impl ToBytes for ComponentType {
+        fn to_bytes(&self) -> core::result::Result<alloc::vec::Vec<u8>, wrt_foundation::bounded::SerializationError> {
+            Ok(alloc::vec::Vec::new()) // Placeholder implementation
+        }
+    }
+    
+    impl FromBytes for ComponentType {
+        fn from_bytes(_data: &[u8]) -> core::result::Result<Self, wrt_foundation::bounded::SerializationError> {
+            Ok(Self::default()) // Placeholder implementation
+        }
+    }
+}
+
+#[cfg(not(feature = "std"))]
+use placeholder_types::{ComponentType, ComponentTypeDefinition, ExternType, FormatValType};
 
 use wrt_foundation::{
     budget_aware_provider::CrateId,
@@ -493,16 +572,10 @@ impl<'a> StreamingTypeParser<'a> {
                     let _field_type = self.parse_value_type()?;
                 }
                 
-                #[cfg(feature = "std")]
-                return Ok(FormatValType::Record(Vec::new()));
-                
-                #[cfg(not(feature = "std"))]
-                {
-                    use wrt_foundation::WasmVec;
-                    let provider = create_decoder_provider::<1024>()?;
-                    let fields = WasmVec::new(provider)?;
-                    Ok(FormatValType::Record(fields))
-                }
+                // Use bounded vec for empty record - allocation will be handled by capability system
+                let provider = create_decoder_provider::<4096>()?;
+                let empty_fields = DecoderVec::new(provider)?;
+                return Ok(FormatValType::Record(empty_fields));
             }
             0x71 => {
                 // Variant type - simplified for streaming
@@ -521,16 +594,11 @@ impl<'a> StreamingTypeParser<'a> {
                     }
                 }
                 
-                #[cfg(feature = "std")]
-                return Ok(FormatValType::Variant(Vec::new()));
+                // Use bounded vec for empty variant - allocation will be handled by capability system
+                let provider = create_decoder_provider::<4096>()?;
+                let empty_cases = DecoderVec::new(provider)?;
+                return Ok(FormatValType::Variant(empty_cases));
                 
-                #[cfg(not(feature = "std"))]
-                {
-                    use wrt_foundation::WasmVec;
-                    let provider = create_decoder_provider::<1024>()?;
-                    let cases = WasmVec::new(provider)?;
-                    Ok(FormatValType::Variant(cases))
-                }
             }
             0x70 => {
                 // List type
@@ -547,16 +615,11 @@ impl<'a> StreamingTypeParser<'a> {
                     let _element_type = self.parse_value_type()?;
                 }
                 
-                #[cfg(feature = "std")]
-                return Ok(FormatValType::Tuple(Vec::new()));
+                // Use bounded vec for empty tuple - allocation will be handled by capability system
+                let provider = create_decoder_provider::<4096>()?;
+                let empty_elements = DecoderVec::new(provider)?;
+                return Ok(FormatValType::Tuple(empty_elements));
                 
-                #[cfg(not(feature = "std"))]
-                {
-                    use wrt_foundation::WasmVec;
-                    let provider = create_decoder_provider::<512>()?;
-                    let elements = WasmVec::new(provider)?;
-                    Ok(FormatValType::Tuple(elements))
-                }
             }
             0x6E => {
                 // Own resource
@@ -614,9 +677,18 @@ impl<'a> StreamingTypeParser<'a> {
         let (string, bytes_read) = read_string(self.data, self.offset)?;
         self.offset += bytes_read;
         
-        // Convert to bounded string
-        let provider = create_decoder_provider::<1024>()?;
-        let bounded_string = DecoderString::from_str(&string, provider).map_err(|_| {
+        // Convert to bounded string  
+        let provider = create_decoder_provider::<4096>()?;
+        // Convert bytes to string first
+        let string_str = core::str::from_utf8(&string).map_err(|_| {
+            Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Invalid UTF-8 in string",
+            )
+        })?;
+        
+        let bounded_string = DecoderString::from_str(string_str, provider).map_err(|_| {
             Error::new(
                 ErrorCategory::Resource,
                 codes::CAPACITY_EXCEEDED,
@@ -708,7 +780,8 @@ mod tests {
     fn test_invalid_type_count() {
         // Create data with too many types
         let type_count = (MAX_TYPES_PER_COMPONENT + 1) as u32;
-        let mut data = Vec::new();
+        let provider = create_decoder_provider::<4096>()?;
+        let mut data = DecoderVec::new(provider)?;
         
         // Write LEB128 encoded type count
         let mut count = type_count;

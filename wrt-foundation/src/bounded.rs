@@ -1353,8 +1353,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
     /// # vec.push(1).unwrap();
     /// # vec.push(2).unwrap();
@@ -1407,8 +1406,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
     /// # vec.push(1).unwrap();
     /// # vec.push(2).unwrap();
@@ -1440,8 +1438,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
     /// # vec.push(1).unwrap();
     /// # vec.push(2).unwrap();
@@ -1551,8 +1548,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
     /// # vec.push(1).unwrap();
     /// # vec.push(3).unwrap();
@@ -1700,8 +1696,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
     /// # vec.push(1).unwrap();
     /// # vec.push(2).unwrap();
@@ -1828,8 +1823,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
     /// # vec.push(1).unwrap();
     /// # vec.push(2).unwrap();
@@ -1873,8 +1867,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
     /// # vec.push(1).unwrap();
     /// # vec.push(2).unwrap();
@@ -1933,8 +1926,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
     /// # vec.push(1).unwrap();
     /// # vec.push(2).unwrap();
@@ -1999,8 +1991,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
     /// # vec.push(1).unwrap();
     /// # vec.push(2).unwrap();
@@ -2046,8 +2037,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
     /// # vec.push(1).unwrap();
     /// # vec.push(2).unwrap();
@@ -2122,8 +2112,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
     /// # vec.push(1).unwrap();
     /// # vec.push(3).unwrap();
@@ -2212,8 +2201,7 @@ where
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// # use core::cmp::Ordering;
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<(u32, u32), 10, _>::new(provider).unwrap();
     /// # vec.push((1, 2)).unwrap();
     /// # vec.push((3, 4)).unwrap();
@@ -2308,8 +2296,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<(u32, u32), 10, _>::new(provider).unwrap();
     /// # vec.push((1, 42)).unwrap();
     /// # vec.push((3, 100)).unwrap();
@@ -2340,8 +2327,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap();
     /// # vec.push(5).unwrap();
     /// # vec.push(3).unwrap();
@@ -2374,8 +2360,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap();
     /// # vec.push(5).unwrap();
     /// # vec.push(3).unwrap();
@@ -2449,8 +2434,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<(i32, &str), 10, _>::new(provider).unwrap();
     /// # vec.push((5, "five")).unwrap();
     /// # vec.push((3, "three")).unwrap();
@@ -2485,8 +2469,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap();
     /// # vec.push(1).unwrap();
     /// # vec.push(2).unwrap();
@@ -2523,8 +2506,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap();
     /// # vec.push(10).unwrap();
     /// # vec.push(20).unwrap();
@@ -2612,8 +2594,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<(i32, &str), 10, _>::new(provider).unwrap();
     /// # vec.push((1, "one")).unwrap();
     /// # vec.push((2, "two")).unwrap();
@@ -2652,8 +2633,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap();
     /// # vec.push(1).unwrap();
     /// # vec.push(2).unwrap();
@@ -2776,8 +2756,7 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap();
     /// # vec.push(1).unwrap();
     /// let items = [2, 3, 4, 5];
@@ -3513,8 +3492,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut s = BoundedString::<10, _>::from_str_truncate("Hello", provider).unwrap();
     /// s.push_str(", World!").unwrap();
     /// assert_eq!(s.as_str().unwrap(), "Hello, Wor"); // Truncated to fit capacity
@@ -3551,8 +3529,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut s = BoundedString::<10, _>::from_str_truncate("Hello", provider).unwrap();
     /// s.clear().unwrap();
     /// assert!(s.is_empty());
@@ -3569,8 +3546,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let s = BoundedString::<10, _>::from_str_truncate("Hello, World", provider).unwrap();
     /// assert!(s.starts_with("Hello").unwrap());
     /// assert!(!s.starts_with("World").unwrap());
@@ -3588,8 +3564,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let s = BoundedString::<10, _>::from_str_truncate("Hello, Wor", provider).unwrap();
     /// assert!(s.ends_with("Wor").unwrap());
     /// assert!(!s.ends_with("World").unwrap());
@@ -3607,8 +3582,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let s = BoundedString::<10, _>::from_str_truncate("Hello, World", provider).unwrap();
     /// let substring = s.substring(0, 5).unwrap();
     /// assert_eq!(substring.as_str().unwrap(), "Hello");
@@ -3655,8 +3629,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let mut s = BoundedString::<10, _>::from_str_truncate("Hello", provider).unwrap();
     /// s.push_char('!').unwrap();
     /// assert_eq!(s.as_str().unwrap(), "Hello!");
@@ -3677,8 +3650,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let s = BoundedString::<20, _>::from_str_truncate("  Hello  ", provider).unwrap();
     /// let trimmed = s.trim().unwrap();
     /// assert_eq!(trimmed.as_str().unwrap(), "Hello");
@@ -3701,8 +3673,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let s = BoundedString::<20, _>::from_str_truncate("Hello WORLD", provider).unwrap();
     /// let lowercase = s.to_lowercase().unwrap();
     /// assert_eq!(lowercase.as_str().unwrap(), "hello world");
@@ -3730,8 +3701,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let s = BoundedString::<20, _>::from_str_truncate("Hello World", provider).unwrap();
     /// let uppercase = s.to_uppercase().unwrap();
     /// assert_eq!(uppercase.as_str().unwrap(), "HELLO WORLD");
@@ -3755,8 +3725,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let s = BoundedString::<10, _>::from_str_truncate("Hello", provider).unwrap();
     /// assert_eq!(s.capacity(), 10);
     /// ```
@@ -3772,8 +3741,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let s = BoundedString::<20, _>::from_str_truncate("Hello World", provider).unwrap();
     /// assert!(s.contains("World").unwrap());
     /// assert!(!s.contains("Rust").unwrap());
@@ -4038,8 +4006,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let s = BoundedString::<20, _>::from_str_truncate("Hello,World,Rust", provider).unwrap();
     /// let parts = s.split(',').unwrap();
     /// assert_eq!(parts.len(), 3);

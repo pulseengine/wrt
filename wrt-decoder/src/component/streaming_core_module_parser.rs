@@ -34,9 +34,12 @@ use std::vec::Vec;
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::{
-    module::Module as CoreModule,
+    module::Module,
     binary::{read_leb128_u32, WASM_MAGIC, WASM_VERSION},
 };
+
+// Use the same provider size as the streaming decoder
+type CoreModule = Module<wrt_foundation::safe_memory::NoStdProvider<8192>>;
 
 #[cfg(feature = "std")]
 use wrt_format::component::Component;
@@ -207,11 +210,10 @@ impl<'a> StreamingCoreModuleParser<'a> {
         }
 
         let version_bytes = [module_data[4], module_data[5], module_data[6], module_data[7]];
-        let version = u32::from_le_bytes(version_bytes);
-        if version != WASM_VERSION {
+        if version_bytes != WASM_VERSION {
             return Err(Error::new(
                 ErrorCategory::Parse,
-                codes::UNSUPPORTED_VERSION,
+                codes::UNSUPPORTED_OPERATION,
                 "Unsupported WASM version in core module",
             ));
         }

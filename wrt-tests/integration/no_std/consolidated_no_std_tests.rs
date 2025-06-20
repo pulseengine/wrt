@@ -313,11 +313,7 @@ mod tests {
 
         #[test]
         fn test_nostd_memory_provider() {
-            let guard = WrtProviderFactory::create_provider_with_verification::<2048>(
-                CrateId::Platform, 
-                VerificationLevel::Standard
-            ).expect("Failed to create provider");
-            let provider = unsafe { guard.release() };
+            let provider = safe_managed_alloc!(2048, CrateId::Platform).expect("Failed to create provider");
 
             assert_eq!(provider.verification_level(), VerificationLevel::Standard);
             assert!(provider.capacity() <= 4096); // Capped at 4096 in stub implementation

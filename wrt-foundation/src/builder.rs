@@ -562,11 +562,7 @@ impl<P: MemoryProvider + Default + Clone> MemoryBuilder<P> {
 ///     .build()?;
 ///
 /// // NEW (recommended):
-/// let guard = WrtProviderFactory::create_provider_with_verification::<1024>(
-///     CrateId::YourCrate,
-///     VerificationLevel::Full
-/// )?;
-/// let provider = unsafe { guard.release() };
+/// let provider = safe_managed_alloc!(1024, CrateId::YourCrate)?;
 /// ```
 #[deprecated(
     since = "0.3.0",

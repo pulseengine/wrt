@@ -2,7 +2,7 @@
 //!
 //! This module provides a completely safe alternative to the unsafe memory allocation
 //! patterns using the new capability-based memory management system. It eliminates the 
-//! need for `unsafe { guard.release() }` by providing a safe factory pattern that creates 
+//! need for unsafe patterns by providing a safe factory pattern that creates 
 //! collections directly with capability-managed providers.
 //!
 //! SW-REQ-ID: REQ_SAFETY_001 - No unsafe code in allocation

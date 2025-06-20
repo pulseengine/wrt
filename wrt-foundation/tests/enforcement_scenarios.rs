@@ -209,7 +209,7 @@ mod enforcement_scenario_tests {
 
         // This would not compile:
         // let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
-        let bad = unsafe { guard.release() };
+        // let bad = unsafe { guard.release() };
         // let _ = process_with_provider(bad); // Error!
 
         Ok(())

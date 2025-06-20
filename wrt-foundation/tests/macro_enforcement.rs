@@ -134,7 +134,7 @@ mod macro_enforcement_tests {
 
         // This would not compile:
         // let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
-        let bad_provider = unsafe { guard.release() };
+        // let bad_provider = unsafe { guard.release() };
         // let _ = only_budget_aware(bad_provider); // Error: doesn't implement BudgetProviderOnly
 
         Ok(())

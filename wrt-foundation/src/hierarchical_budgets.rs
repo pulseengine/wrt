@@ -205,22 +205,7 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
         if let Some(sub_budget) = &self.sub_budgets[idx] {
             sub_budget.try_allocate(size)?;
 
-            // Create the actual memory allocation using capability system
-            // First try capability-based allocation
-            let capability_result = if N <= 65536 {
-                // Use static capability for smaller allocations
-                StaticMemoryCapability::<N>::new(self.crate_id, VerificationLevel::Standard)
-                    .allocate_region(N, self.crate_id)
-                    .map(|guard| guard)
-            } else {
-                Err(Error::new(
-                    ErrorCategory::Memory,
-                    codes::CAPACITY_EXCEEDED,
-                    "Allocation size exceeds static capability limit",
-                ))
-            };
-
-            // Create capability-guarded provider directly
+            // Create capability-guarded provider through the WRT factory
             let guard = CapabilityWrtFactory::create_provider::<N>(self.crate_id)?;
 
             Ok((guard, idx))

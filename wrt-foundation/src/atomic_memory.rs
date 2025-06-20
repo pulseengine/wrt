@@ -271,9 +271,7 @@ mod tests {
     #[test]
     fn test_atomic_write() {
         // Create a NoStdProvider with a buffer of 1024 bytes
-        let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
-
-        let provider = unsafe { guard.release() };
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
         // Create an AtomicMemoryOps from the provider
         let atomic_ops = AtomicMemoryOps::from_provider(provider).unwrap();
@@ -303,9 +301,7 @@ mod tests {
     #[test]
     fn test_checksum_integrity() {
         // Create a NoStdProvider with a buffer of 1024 bytes
-        let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
-
-        let provider = unsafe { guard.release() };
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
         // Create an AtomicMemoryOps from the provider
         let atomic_ops = AtomicMemoryOps::from_provider(provider).unwrap();
@@ -334,9 +330,7 @@ mod tests {
     #[test]
     fn test_atomic_copy_within() {
         // Create a NoStdProvider with a buffer of 1024 bytes
-        let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
-
-        let provider = unsafe { guard.release() };
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
         // Create an AtomicMemoryOps from the provider
         let atomic_ops = AtomicMemoryOps::from_provider(provider).unwrap();

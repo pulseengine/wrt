@@ -3149,8 +3149,7 @@ mod tests {
     #[test]
     fn test_bounded_queue() {
         init_test_memory_system();
-        let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-        let provider = unsafe { guard.release() };
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
         let mut queue = BoundedQueue::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test enqueue
@@ -3194,8 +3193,7 @@ mod tests {
     #[test]
     fn test_bounded_map() {
         init_test_memory_system();
-        let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-        let provider = unsafe { guard.release() };
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
         let mut map = BoundedMap::<u32, u32, 3, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test insert
@@ -3234,8 +3232,7 @@ mod tests {
     #[test]
     fn test_bounded_set() {
         init_test_memory_system();
-        let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-        let provider = unsafe { guard.release() };
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
         let mut set = BoundedSet::<u32, 3, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test insert
@@ -3269,8 +3266,7 @@ mod tests {
     #[test]
     fn test_bounded_deque() {
         init_test_memory_system();
-        let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-        let provider = unsafe { guard.release() };
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
         let mut deque = BoundedDeque::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test push_back

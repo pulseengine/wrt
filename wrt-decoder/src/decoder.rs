@@ -215,7 +215,7 @@ fn build_module_from_sections(
     sections: crate::bounded_decoder_infra::BoundedSectionVec<crate::sections::Section>
 ) -> Result<WrtModule<DecoderProvider>> {
     let provider = DecoderProvider::default();
-    let mut module: WrtModule = WrtModule::default();
+    let mut module: WrtModule<DecoderProvider> = WrtModule::new();
     
     for section in sections {
         match section {

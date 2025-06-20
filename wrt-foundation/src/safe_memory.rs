@@ -1738,10 +1738,9 @@ impl<P: Provider> SafeMemoryHandler<P> {
     ///
     /// ```
     /// # use wrt_foundation::safe_memory::{SafeMemoryHandler, NoStdProvider};
-    /// # use wrt_foundation::{WrtProviderFactory, budget_aware_provider::CrateId};
+    /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let guard = WrtProviderFactory::create_provider::<1024>(CrateId::Foundation).unwrap();
-    /// # let provider = unsafe { guard.release() };
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     /// # let handler = SafeMemoryHandler::new(provider);
     /// let data = handler.to_vec().unwrap();
     /// assert!(data.is_empty()); // Empty handler has no data

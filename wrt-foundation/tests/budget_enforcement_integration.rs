@@ -265,8 +265,8 @@ mod budget_enforcement_integration_tests {
 
         // The following would fail to compile with our enforcement:
         // let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
-        let bad_provider = unsafe { guard.release() }; // Deprecated!
-                                                       // let bad_vec = BoundedVec::<u32, 10, _>::new(bad_provider)?;
+        // let bad_provider = unsafe { guard.release() }; // Deprecated!
+        // let bad_vec = BoundedVec::<u32, 10, _>::new(bad_provider)?;
 
         assert_eq!(vec1.capacity(), vec2.capacity());
 
@@ -372,10 +372,10 @@ mod budget_enforcement_integration_tests {
         // Test that various bypass attempts are caught
 
         // 1. Direct NoStdProvider creation should be deprecated
-        #[allow(deprecated)]
-        let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
-
-        let direct = unsafe { guard.release() };
+        // Example of deprecated pattern (commented out):
+        // #[allow(deprecated)]
+        // let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
+        // let direct = unsafe { guard.release() };
         // This compiles but is deprecated
 
         // 2. Migration providers are tracked
