@@ -6,11 +6,107 @@
 
 use crate::{prelude::*, WASI_CRATE_ID, wasi_safety_level};
 use crate::capabilities::WasiCapabilities;
+use crate::host_provider::resource_manager::WasiResourceManager;
 use wrt_host::{HostFunctionHandler, CloneableFn};
 use crate::HostFunction;
+#[cfg(feature = "std")]
 use wrt_format::component::ExternType;
-use wrt_foundation::safe_managed_alloc;
+use wrt_foundation::{safe_managed_alloc, BoundedVec, BoundedString};
 use core::any::Any;
+// Use foundation Value type for compatibility with host functions
+use wrt_foundation::values::Value;
+
+// Import String type
+#[cfg(feature = "std")]
+use std::string::String;
+#[cfg(not(feature = "std"))]
+type WasiHostString = BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+
+// Helper to create strings
+#[cfg(not(feature = "std"))]
+fn make_string(s: &str) -> WasiHostString {
+    let provider = wrt_foundation::safe_memory::NoStdProvider::<1024>::new();
+    BoundedString::from_str(s, provider).unwrap_or_else(|_| {
+        // Fallback to empty string on error
+        let provider2 = wrt_foundation::safe_memory::NoStdProvider::<1024>::new();
+        BoundedString::from_str("", provider2).unwrap()
+    })
+}
+
+#[cfg(feature = "std")]
+fn make_string(s: &str) -> String {
+    s.to_string()
+}
+
+// Simple ExternType replacement for no_std mode
+#[cfg(not(feature = "std"))]
+#[derive(Debug, Clone, PartialEq)]
+pub enum ExternType {
+    Function {
+        params: wrt_foundation::BoundedVec<ValType, 16, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+        results: wrt_foundation::BoundedVec<ValType, 16, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+    },
+}
+
+// Simple ValType for no_std mode
+#[cfg(not(feature = "std"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ValType {
+    I32,
+    I64,
+    F32,
+    F64,
+}
+
+#[cfg(not(feature = "std"))]
+impl Default for ValType {
+    fn default() -> Self {
+        ValType::I32
+    }
+}
+
+// Implement required traits for BoundedVec compatibility
+#[cfg(not(feature = "std"))]
+impl wrt_foundation::traits::Checksummable for ValType {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&[*self as u8]);
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl wrt_foundation::traits::ToBytes for ValType {
+    fn serialized_size(&self) -> usize {
+        1
+    }
+
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'_>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_u8(*self as u8)
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl wrt_foundation::traits::FromBytes for ValType {
+    fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'_>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        match reader.read_u8()? {
+            0 => Ok(ValType::I32),
+            1 => Ok(ValType::I64),
+            2 => Ok(ValType::F32),
+            3 => Ok(ValType::F64),
+            _ => Err(wrt_foundation::Error::new(
+                wrt_error::ErrorCategory::Parse,
+                wrt_error::codes::PARSE_ERROR,
+                "Invalid ValType discriminant",
+            )),
+        }
+    }
+}
 
 /// Component model provider for WASI Preview2
 ///
@@ -29,6 +125,57 @@ pub struct ComponentModelProvider {
     cached_functions: Option<u8>, // Simplified for no_std mode
 }
 
+// Helper types for no_std mode
+#[cfg(not(feature = "std"))]
+type ValueVec = wrt_foundation::BoundedVec<Value, 16, wrt_foundation::safe_memory::NoStdProvider<65536>>;
+
+#[cfg(not(feature = "std"))]
+type TypeVec = wrt_foundation::BoundedVec<ValType, 16, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+
+// Helper function to create empty value vector
+#[cfg(not(feature = "std"))]
+fn empty_value_vec() -> Result<ValueVec> {
+    use wrt_foundation::safe_memory::NoStdProvider;
+    let provider = NoStdProvider::<65536>::new();
+    ValueVec::new(provider).map_err(|_| Error::new(
+        ErrorCategory::Memory,
+        wrt_error::codes::MEMORY_ALLOCATION_FAILED,
+        "Failed to create empty value vector"
+    ))
+}
+
+// Helper function to create empty type vector
+#[cfg(not(feature = "std"))]
+fn empty_type_vec() -> Result<TypeVec> {
+    use wrt_foundation::safe_memory::NoStdProvider;
+    let provider = NoStdProvider::<1024>::new();
+    TypeVec::new(provider).map_err(|_| Error::new(
+        ErrorCategory::Memory,
+        wrt_error::codes::MEMORY_ALLOCATION_FAILED,
+        "Failed to create empty type vector"
+    ))
+}
+
+// Macro to create value vector in both std and no_std modes
+macro_rules! value_vec {
+    () => {{
+        #[cfg(feature = "std")]
+        { vec![] }
+        #[cfg(not(feature = "std"))]
+        { empty_value_vec()? }
+    }};
+}
+
+// Macro to create type vector in both std and no_std modes
+macro_rules! type_vec {
+    () => {{
+        #[cfg(feature = "std")]
+        { vec![] }
+        #[cfg(not(feature = "std"))]
+        { empty_type_vec()? }
+    }};
+}
+
 impl ComponentModelProvider {
     /// Create a new component model provider with the given capabilities
     /// Allocates function cache using safety-aware allocation
@@ -37,7 +184,7 @@ impl ComponentModelProvider {
         
         // Initialize function cache
         #[cfg(feature = "std")]
-        let cached_functions = Some(Vec::new());
+        let cached_functions = Some(Vec::with_capacity(0));
         #[cfg(not(feature = "std"))]
         let cached_functions = Some(0);
         
@@ -56,12 +203,23 @@ impl ComponentModelProvider {
     /// Register all WASI functions with a callback registry
     ///
     /// This follows the same pattern as other WRT host providers
-    pub fn register_with_registry(&self, registry: &mut CallbackRegistry) -> Result<()> {
-        let functions = self.get_host_functions()?;
+    pub fn register_with_registry(&mut self, registry: &mut CallbackRegistry) -> Result<()> {
+        // Build functions if not already cached
+        #[cfg(feature = "std")]
+        {
+            let functions = self.build_host_functions()?;
+            
+            for function in functions {
+                let module_name = Self::extract_module_name(&function.name);
+                registry.register_host_function(module_name, &function.name, function.handler);
+            }
+        }
         
-        for function in functions {
-            let module_name = Self::extract_module_name(&function.name);
-            registry.register_host_function(module_name, &function.name, function.handler);
+        #[cfg(not(feature = "std"))]
+        {
+            // In no_std mode, we can't build dynamic functions
+            let _count = self.build_host_functions()?;
+            // TODO: Register static functions in no_std mode
         }
         
         Ok(())
@@ -74,7 +232,7 @@ impl ComponentModelProvider {
             return Ok(self.cached_functions.as_ref().unwrap());
         }
         
-        let mut functions = Vec::new();
+        let mut functions = Vec::with_capacity(0);
         
         // Add filesystem functions if capabilities allow
         if self.capabilities.filesystem.read_access {
@@ -137,13 +295,17 @@ impl ComponentModelProvider {
     fn create_filesystem_read_function(&self) -> Result<HostFunction> {
         // use crate::preview2::filesystem::wasi_filesystem_read;
         
-        // TODO: Implement proper value conversion between component and foundation values
+        // Use capability-aware value conversion
+        use crate::value_capability_aware::CapabilityAwareValue;
+        
         Ok(HostFunction {
-            name: "wasi:filesystem/types.read".to_string(),
+            name: make_string("wasi:filesystem/types.read"),
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(vec![])
+                // Return capability-aware empty result
+                // Return empty result vector
+                Ok(value_vec!())
             }),
-            extern_type: ExternType::Function { params: vec![], results: vec![] },
+            extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
     }
     
@@ -152,11 +314,11 @@ impl ComponentModelProvider {
         // use crate::preview2::filesystem::wasi_filesystem_write;
         
         Ok(HostFunction {
-            name: "wasi:filesystem/types.write".to_string(),
+            name: make_string("wasi:filesystem/types.write"),
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(vec![])
+                Ok(value_vec!())
             }),
-            extern_type: ExternType::Function { params: vec![], results: vec![] },
+            extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
     }
     
@@ -165,37 +327,59 @@ impl ComponentModelProvider {
         // use crate::preview2::filesystem::wasi_filesystem_open_at;
         
         Ok(HostFunction {
-            name: "wasi:filesystem/types.open-at".to_string(),
+            name: make_string("wasi:filesystem/types.open-at"),
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(vec![])
+                Ok(value_vec!())
             }),
-            extern_type: ExternType::Function { params: vec![], results: vec![] },
+            extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
     }
     
     /// Create host function for WASI CLI arguments
     fn create_cli_args_function(&self) -> Result<HostFunction> {
-        // use crate::preview2::cli::wasi_cli_get_arguments;
-        
         Ok(HostFunction {
-            name: "wasi:cli/environment.get-arguments".to_string(),
+            name: make_string("wasi:cli/environment.get-arguments"),
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(vec![])
+                // Placeholder implementation for no_std
+                #[cfg(feature = "wasi-cli")]
+                {
+                    use crate::preview2::cli_capability_aware::wasi_cli_get_arguments_capability_aware;
+                    let empty_args = value_vec!();
+                    match wasi_cli_get_arguments_capability_aware(_target, empty_args) {
+                        Ok(_) => Ok(value_vec!()),
+                        Err(_) => Ok(value_vec!()),
+                    }
+                }
+                #[cfg(not(feature = "wasi-cli"))]
+                {
+                    Ok(value_vec!())
+                }
             }),
-            extern_type: ExternType::Function { params: vec![], results: vec![] },
+            extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
     }
     
     /// Create host function for WASI CLI environment variables
     fn create_cli_environ_function(&self) -> Result<HostFunction> {
-        // use crate::preview2::cli::wasi_cli_get_environment;
-        
         Ok(HostFunction {
-            name: "wasi:cli/environment.get-environment".to_string(),
+            name: make_string("wasi:cli/environment.get-environment"),
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(vec![])
+                // Placeholder implementation for no_std
+                #[cfg(feature = "wasi-cli")]
+                {
+                    use crate::preview2::cli_capability_aware::wasi_cli_get_environment_capability_aware;
+                    let empty_args = value_vec!();
+                    match wasi_cli_get_environment_capability_aware(_target, empty_args) {
+                        Ok(_) => Ok(value_vec!()),
+                        Err(_) => Ok(value_vec!()),
+                    }
+                }
+                #[cfg(not(feature = "wasi-cli"))]
+                {
+                    Ok(value_vec!())
+                }
             }),
-            extern_type: ExternType::Function { params: vec![], results: vec![] },
+            extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
     }
     
@@ -204,11 +388,11 @@ impl ComponentModelProvider {
         // use crate::preview2::clocks::wasi_monotonic_clock_now;
         
         Ok(HostFunction {
-            name: "wasi:clocks/monotonic-clock.now".to_string(),
+            name: make_string("wasi:clocks/monotonic-clock.now"),
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(vec![])
+                Ok(value_vec!())
             }),
-            extern_type: ExternType::Function { params: vec![], results: vec![] },
+            extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
     }
     
@@ -217,11 +401,11 @@ impl ComponentModelProvider {
         // use crate::preview2::io::wasi_stream_write;
         
         Ok(HostFunction {
-            name: "wasi:io/streams.write".to_string(),
+            name: make_string("wasi:io/streams.write"),
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(vec![])
+                Ok(value_vec!())
             }),
-            extern_type: ExternType::Function { params: vec![], results: vec![] },
+            extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
     }
     
@@ -230,11 +414,11 @@ impl ComponentModelProvider {
         // use crate::preview2::random::wasi_get_random_bytes;
         
         Ok(HostFunction {
-            name: "wasi:random/random.get-random-bytes".to_string(),
+            name: make_string("wasi:random/random.get-random-bytes"),
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(vec![])
+                Ok(value_vec!())
             }),
-            extern_type: ExternType::Function { params: vec![], results: vec![] },
+            extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
     }
     
@@ -250,23 +434,6 @@ impl ComponentModelProvider {
 }
 
 impl WasiHostProvider for ComponentModelProvider {
-    /// Get all host functions provided by this WASI implementation
-    fn get_host_functions(&self) -> Result<Vec<HostFunction>> {
-        #[cfg(feature = "std")]
-        {
-            if let Some(ref functions) = self.cached_functions {
-                Ok(functions.clone())
-            } else {
-                Ok(Vec::new())
-            }
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            // In no_std mode, return empty vector since we can't store dynamic functions
-            Ok(Vec::new())
-        }
-    }
-    
     /// Get the number of functions provided
     fn function_count(&self) -> usize {
         #[cfg(feature = "std")]

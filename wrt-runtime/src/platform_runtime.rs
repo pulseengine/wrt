@@ -37,7 +37,7 @@ use alloc::{boxed::Box, vec, vec::Vec};
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 use wrt_foundation::bounded::BoundedVec;
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-type Vec<T> = BoundedVec<T, 16, wrt_foundation::NoStdProvider<1024>>;
+type PlatformVec<T> = BoundedVec<T, 16, wrt_foundation::NoStdProvider<1024>>;
 
 // Import Value type
 use wrt_foundation::Value;

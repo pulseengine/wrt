@@ -18,8 +18,23 @@ mod std_parsing {
     use wrt_foundation::resource;
 
     // Helper function to convert &[u8] to String
+    fn bytes_to_string_safe(bytes: &[u8]) -> Result<String> {
+        match core::str::from_utf8(bytes) {
+            Ok(s) => Ok(s.to_string()),
+            Err(_) => Err(Error::new(
+                wrt_error::ErrorCategory::Validation,
+                wrt_error::codes::VALIDATION_ERROR,
+                "Invalid UTF-8 string"
+            )),
+        }
+    }
+
+    // Backward compatible wrapper for standard String
     fn bytes_to_string(bytes: &[u8]) -> String {
-        String::from_utf8(bytes.to_vec()).unwrap_or_else(|_| String::new())
+        match core::str::from_utf8(bytes) {
+            Ok(s) => s.to_string(),
+            Err(_) => String::new(),
+        }
     }
 
     // Define a helper function for converting format strings to String
@@ -36,13 +51,20 @@ mod std_parsing {
 
         #[cfg(not(any(feature = "std",)))]
         {
-            let mut s = String::new();
-            s.push_str(message);
-            s.push_str(": ");
-            // Binary std/no_std choice
-            // Binary std/no_std choice
-            s.push_str("[value]");
-            s
+            // Use capability-aware string creation
+            let provider = match crate::prelude::create_decoder_provider::<256>() {
+                Ok(p) => p,
+                Err(_) => return "[allocation_error]".to_string(),
+            };
+            let mut s = match crate::prelude::String::from_str(message, provider.clone()) {
+                Ok(s) => s,
+                Err(_) => return "[string_error]".to_string(),
+            };
+            if s.push_str(": ").is_ok() && s.push_str("[value]").is_ok() {
+                s.into_string()
+            } else {
+                "[concat_error]".to_string()
+            }
         }
     }
 
@@ -377,13 +399,32 @@ mod std_parsing {
                 // params/results In a real implementation, this would look up the
                 // type in the type section For now, we'll just return an empty
                 // function type
-                Ok((
-                    wrt_format::component::CoreExternType::Function {
-                        params: Vec::new(),
-                        results: Vec::new(),
-                    },
-                    offset,
-                ))
+                {
+                    let provider = crate::prelude::create_decoder_provider::<512>()?;
+                    // Use standard Vec for std mode, explicit types for no_std
+                    #[cfg(feature = "std")]
+                    let empty_params = Vec::new();
+                    #[cfg(feature = "std")]
+                    let empty_results = Vec::new();
+                    
+                    #[cfg(not(feature = "std"))]
+                    let empty_params = {
+                        let provider = crate::prelude::create_decoder_provider::<1024>()?;
+                        crate::prelude::DecoderVec::new(provider)?
+                    };
+                    #[cfg(not(feature = "std"))]
+                    let empty_results = {
+                        let provider = crate::prelude::create_decoder_provider::<1024>()?;
+                        crate::prelude::DecoderVec::new(provider)?
+                    };
+                    Ok((
+                        wrt_format::component::CoreExternType::Function {
+                            params: empty_params.to_vec(),
+                            results: empty_results.to_vec(),
+                        },
+                        offset,
+                    ))
+                }
             },
             0x01 => {
                 // Table type
@@ -1229,7 +1270,7 @@ mod std_parsing {
                         NoStdProvider,
                     };
                     let provider = NoStdProvider::<4096>::default();
-                    let mut bounded = BoundedVec::new(provider)?;
+                    let mut bounded = BoundedVec::new(provider.clone())?;
                     for field in fields {
                         let bounded_string = BoundedString::<
                             MAX_RESOURCE_FIELD_NAME_LEN,
@@ -1252,8 +1293,8 @@ mod std_parsing {
                             ));
                         }
                     }
-                    bounded
-                };
+                    Ok::<BoundedVec<BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<4096>>, 16, wrt_foundation::safe_memory::NoStdProvider<4096>>, wrt_error::Error>(bounded)
+                }?;
 
                 Ok((
                     #[cfg(feature = "std")]
@@ -1755,7 +1796,8 @@ mod std_parsing {
             let name = bytes_to_string(name_bytes);
 
             // Check if there are nested namespaces or package information
-            let mut nested = Vec::new();
+            let provider = crate::prelude::create_decoder_provider::<1024>()?;
+            let mut nested = crate::prelude::Vec::new();
             let mut package = None;
 
             // Read nested namespace flag if present
@@ -1893,7 +1935,7 @@ mod std_parsing {
                 let (nested_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut nested_names = Vec::with_capacity(nested_count as usize);
+                let mut nested_names = Vec::new();
                 for _ in 0..nested_count {
                     let (nested_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
@@ -2635,7 +2677,7 @@ mod no_std_parsing {
             + Eq,
     {
         let provider = create_parse_provider()?;
-        ParseVec::new(provider)
+        ParseVec::new()
             .map_err(|_| Error::parse_error("Failed to create empty parse vector"))
     }
 
