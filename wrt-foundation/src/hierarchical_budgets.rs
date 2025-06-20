@@ -11,6 +11,7 @@ use crate::{
     capabilities::{MemoryCapability, MemoryCapabilityContext, StaticMemoryCapability},
     codes,
     memory_coordinator::CrateIdentifier,
+    safe_memory::NoStdProvider,
     verification::VerificationLevel,
     Error, ErrorCategory, Result,
 };
@@ -176,7 +177,7 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
         &self,
         size: usize,
         min_priority: MemoryPriority,
-    ) -> Result<(WrtMemoryGuard<N>, usize)> {
+    ) -> Result<(crate::capabilities::CapabilityGuardedProvider<N>, usize)> {
         // Find the best sub-budget based on priority and availability
         let mut best_idx = None;
         let mut best_priority = MemoryPriority::Low;
@@ -219,18 +220,8 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
                 ))
             };
 
-            // If static capability fails, use global capability context
-            let guard = match capability_result {
-                Ok(cap_guard) => {
-                    cap_guard
-                }
-                Err(_) => {
-                    // Use global capability context as fallback
-                    use crate::memory_init::get_global_capability_context;
-                    let context = get_global_capability_context()?;
-                    context.create_provider::<N>(self.crate_id)?
-                }
-            };
+            // Create capability-guarded provider directly
+            let guard = CapabilityWrtFactory::create_provider::<N>(self.crate_id)?;
 
             Ok((guard, idx))
         } else {
@@ -320,7 +311,7 @@ impl HierarchicalStats {
 
 /// Hierarchical memory guard that tracks sub-budget
 pub struct HierarchicalGuard<const N: usize> {
-    guard: WrtMemoryGuard<N>,
+    guard: crate::capabilities::CapabilityGuardedProvider<N>,
     sub_budget_idx: usize,
     budget: *const HierarchicalBudget<16>, // Max 16 sub-budgets
 }
@@ -328,7 +319,7 @@ pub struct HierarchicalGuard<const N: usize> {
 impl<const N: usize> HierarchicalGuard<N> {
     /// Create a new hierarchical guard
     pub fn new(
-        guard: WrtMemoryGuard<N>,
+        guard: crate::capabilities::CapabilityGuardedProvider<N>,
         sub_budget_idx: usize,
         budget: *const HierarchicalBudget<16>,
     ) -> Self {
@@ -336,7 +327,7 @@ impl<const N: usize> HierarchicalGuard<N> {
     }
 
     /// Get the underlying memory guard
-    pub fn guard(&self) -> &WrtMemoryGuard<N> {
+    pub fn guard(&self) -> &crate::capabilities::CapabilityGuardedProvider<N> {
         &self.guard
     }
 }

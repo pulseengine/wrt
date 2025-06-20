@@ -102,9 +102,9 @@ impl SafeProviderFactory {
         // Verify capability and create provider through modern system
         let capability_provider = context.create_provider::<N>(crate_id)?;
         
-        // Extract the underlying provider for backward compatibility
-        // Note: This breaks the capability isolation but maintains API compatibility
-        Ok(capability_provider.extract_provider())
+        // For backward compatibility, return a default provider
+        // The capability provider ensures the allocation is allowed
+        Ok(NoStdProvider::<N>::default())
     }
     
     /// Create a context-managed provider using capability context

@@ -181,7 +181,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "std", feature = "dynamic-allocation"))]
     fn test_mutex_modification() {
+        use crate::prelude::*;
+        
         let mutex = WrtMutex::new(vec![1, 2, 3]);
         {
             let mut guard = mutex.lock();
@@ -192,7 +195,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "std", feature = "dynamic-allocation"))]
     fn test_mutex_multiple_locks() {
+        use crate::prelude::*;
+        
         let mutex = WrtMutex::new(String::from("test"));
         {
             let mut guard = mutex.lock();
