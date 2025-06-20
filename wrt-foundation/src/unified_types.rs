@@ -129,8 +129,7 @@ impl<const SMALL: usize, const MEDIUM: usize, const LARGE: usize>
     where
         T: Clone + core::fmt::Debug + Default + PartialEq + Eq + crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes,
     {
-        #[allow(deprecated)]
-        let provider = DefaultNoStdProvider::new();
+        let provider = DefaultNoStdProvider::default();
         BoundedVec::new(provider)
     }
 
@@ -138,8 +137,7 @@ impl<const SMALL: usize, const MEDIUM: usize, const LARGE: usize>
     where
         T: Clone + core::fmt::Debug + Default + PartialEq + Eq + crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes,
     {
-        #[allow(deprecated)]
-        let provider = DefaultNoStdProvider::new();
+        let provider = DefaultNoStdProvider::default();
         BoundedVec::new(provider)
     }
 
@@ -147,14 +145,12 @@ impl<const SMALL: usize, const MEDIUM: usize, const LARGE: usize>
     where
         T: Clone + core::fmt::Debug + Default + PartialEq + Eq + crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes,
     {
-        #[allow(deprecated)]
-        let provider = DefaultNoStdProvider::new();
+        let provider = DefaultNoStdProvider::default();
         BoundedVec::new(provider)
     }
 
     fn create_runtime_string() -> WrtResult<BoundedString<MEDIUM, DefaultNoStdProvider>> {
-        #[allow(deprecated)]
-        let provider = DefaultNoStdProvider::new();
+        let provider = DefaultNoStdProvider::default();
         BoundedString::from_str("", provider).map_err(|_| Error::new(crate::ErrorCategory::Memory, 1, "Failed to create runtime string"))
     }
 }

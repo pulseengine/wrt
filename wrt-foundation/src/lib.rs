@@ -337,7 +337,7 @@ pub use memory_coordinator::{AllocationId, CrateIdentifier, GenericMemoryCoordin
 // Re-export capability-based memory factory and deprecated coordinator for compatibility
 pub use wrt_memory_system::CapabilityWrtFactory;
 #[allow(deprecated)]
-// REMOVED: Legacy WRT_MEMORY_COORDINATOR eliminated in favor of capability-based system
+// Capability-based memory system replaces legacy global coordinator
 // Use memory_init::get_global_capability_context() for modern memory management
 
 // Macros are automatically available at crate root due to #[macro_export]

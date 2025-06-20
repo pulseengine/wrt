@@ -79,7 +79,7 @@ impl CapabilityMemoryFactory {
         capability.verify_access(&operation)?;
 
         // Create the underlying NoStdProvider
-        let provider = NoStdProvider::<N>::new();
+        let provider = NoStdProvider::<N>::default();
 
         // Wrap with capability verification
         Ok(super::provider_bridge::CapabilityAwareProvider::new(

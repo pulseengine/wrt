@@ -77,16 +77,8 @@ impl SafeProviderFactory {
     #[deprecated(note = "Use CapabilityProviderFactory::create_static_provider instead")]
     #[allow(deprecated)] // We're using the safe internal method
     fn create_provider_safe<const N: usize>() -> Result<NoStdProvider<N>> {
-        // Use the internal safe creation method that NoStdProviderFactory uses
-        let mut provider = NoStdProvider::new();
-        provider.resize(N).map_err(|_| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ERROR,
-                "Failed to resize provider to requested capacity",
-            )
-        })?;
-        Ok(provider)
+        // Use the safe default construction without resize
+        Ok(NoStdProvider::<N>::default())
     }
 
     /// Create a provider with budget tracking through the memory coordinator
@@ -142,10 +134,8 @@ pub mod capability_factories {
     {
         let capability = CapabilityProviderFactory::create_static_provider::<PROVIDER_SIZE>(crate_id, verification_level)?;
         
-        // For now, create a legacy provider for compatibility
-        // TODO: Update BoundedVec to work directly with capabilities
-        #[allow(deprecated)]
-        let provider = SafeProviderFactory::create_provider_safe::<PROVIDER_SIZE>()?;
+        // Create provider using safe default construction
+        let provider = NoStdProvider::<PROVIDER_SIZE>::default();
         
         let vec = BoundedVec::new(provider).map_err(|_| {
             Error::new(

@@ -57,7 +57,7 @@ impl BudgetProvider {
         use crate::capabilities::DynamicMemoryCapability;
         use crate::verification::VerificationLevel;
 
-        let provider = NoStdProvider::<N>::new();
+        let provider = NoStdProvider::<N>::default();
         let capability =
             Box::new(DynamicMemoryCapability::new(N, crate_id, VerificationLevel::Standard));
 
@@ -72,7 +72,7 @@ impl BudgetProvider {
     pub fn new<const N: usize>(
         _crate_id: CrateId,
     ) -> Result<NoStdProvider<N>> {
-        Ok(NoStdProvider::<N>::new())
+        Ok(NoStdProvider::<N>::default())
     }
 
     /// DEPRECATED: Use capability-driven allocation instead
@@ -98,6 +98,6 @@ impl BudgetProvider {
         _crate_id: CrateId,
         _size: usize,
     ) -> Result<NoStdProvider<N>> {
-        Ok(NoStdProvider::<N>::new())
+        Ok(NoStdProvider::<N>::default())
     }
 }
