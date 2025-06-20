@@ -19,9 +19,7 @@ use std::string::String;
 
 #[test]
 fn test_bounded_queue_operations() {
-    let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
-
-    let provider = unsafe { guard.release() };
+    let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     let mut queue = BoundedQueue::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
     // Check empty queue properties
@@ -94,9 +92,7 @@ fn test_bounded_queue_operations() {
 
 #[test]
 fn test_bounded_map_operations() {
-    let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
-
-    let provider = unsafe { guard.release() };
+    let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     let mut map = BoundedMap::<u32, String, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
     // Check empty map properties
@@ -418,12 +414,8 @@ fn test_bounded_builder_pattern() {
     let name = name_builder.build_wasm_name().unwrap();
     assert_eq!(name.as_str().unwrap(), "function_name");
 
-    // Test modern provider factory
-    let guard = WrtProviderFactory::create_provider_with_verification::<4096>(
-        CrateId::Foundation,
-        VerificationLevel::Critical
-    ).expect("Failed to create provider");
-    let provider = unsafe { guard.release() };
+    // Test modern provider factory - using safe_managed_alloc for simplicity
+    let provider = safe_managed_alloc!(4096, CrateId::Foundation).unwrap();
     assert!(provider.capacity() <= 4096); // Capacity may be capped
     // Note: verification level testing would need provider API enhancement
 
@@ -440,12 +432,8 @@ fn test_bounded_builder_pattern() {
 fn test_interoperability() {
     // Test interoperability between different bounded collections
 
-    // Build a BoundedMap using modern provider factory
-    let guard = WrtProviderFactory::create_provider_with_verification::<2048>(
-        CrateId::Foundation,
-        VerificationLevel::Critical
-    ).expect("Failed to create provider");
-    let provider = unsafe { guard.release() };
+    // Build a BoundedMap using safe modern allocation
+    let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
 
     let mut map = BoundedMap::<u32, String, 5, NoStdProvider<1024>>::new(provider).unwrap();
 

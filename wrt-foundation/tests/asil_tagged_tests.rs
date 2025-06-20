@@ -19,9 +19,7 @@ asil_d_test! {
     description: "Verify memory bounds checking prevents buffer overflows (ASIL-D)",
     test: {
         // Create a bounded vector with strict capacity
-        let guard = safe_managed_alloc!(64, CrateId::Foundation)?;
-
-        let provider = unsafe { guard.release() };
+        let provider = safe_managed_alloc!(64, CrateId::Foundation)?;
         let mut vec = BoundedVec::<u32, 4, _>::new(provider).unwrap();
         
         // Test that we can add up to capacity
@@ -74,9 +72,7 @@ asil_c_test! {
     category: TestCategory::Resource,
     description: "Verify graceful handling of resource exhaustion (ASIL-C)",
     test: {
-        let guard = safe_managed_alloc!(32, CrateId::Foundation)?;
-
-        let provider = unsafe { guard.release() };
+        let provider = safe_managed_alloc!(32, CrateId::Foundation)?;
         let mut deque = BoundedDeque::<u64, 2, _>::new(provider).unwrap();
         
         // Fill to capacity
@@ -140,10 +136,7 @@ resource_safety_test! {
     test: {
         use wrt_foundation::SafeStack;
         
-        let guard = safe_managed_alloc!(128, CrateId::Foundation)?;
-
-        
-        let provider = unsafe { guard.release() };
+        let provider = safe_managed_alloc!(128, CrateId::Foundation)?;
         let mut stack = SafeStack::<u32, 8, _>::new(provider).unwrap();
         
         // Test normal stack operations
@@ -199,10 +192,7 @@ asil_test! {
         // This test would verify that multiple safety systems work together
         // For example: memory safety + resource limits + verification
         
-        let guard = safe_managed_alloc!(256, CrateId::Foundation)?;
-
-        
-        let provider = unsafe { guard.release() };
+        let provider = safe_managed_alloc!(256, CrateId::Foundation)?;
         let mut bounded_vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
         
         // Test that resource limits and memory safety work together
