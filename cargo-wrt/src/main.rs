@@ -272,6 +272,10 @@ enum Commands {
         /// Output format (text, json, html)
         #[arg(long, default_value = "text")]
         format: String,
+
+        /// Continue on errors and generate coverage for what works
+        #[arg(long)]
+        best_effort: bool,
     },
 
     /// Run static analysis (clippy + formatting)
@@ -743,8 +747,8 @@ async fn main() -> Result<()> {
             detailed,
         } => cmd_verify(&build_system, *asil, *no_kani, *no_miri, *detailed, &output_format, use_colors, &cli).await,
         Commands::Docs { open, private, output_dir, multi_version } => cmd_docs(&build_system, *open, *private, output_dir.clone(), multi_version.clone()).await,
-        Commands::Coverage { html, open, format } => {
-            cmd_coverage(&build_system, *html, *open, format.clone()).await
+        Commands::Coverage { html, open, format, best_effort } => {
+            cmd_coverage(&build_system, *html, *open, format.clone(), *best_effort).await
         },
         Commands::Check { strict, fix } => cmd_check(&build_system, *strict, *fix, &output_format, use_colors, &cli).await,
         Commands::NoStd {
@@ -1242,10 +1246,28 @@ async fn cmd_coverage(
     html: bool,
     open: bool,
     format: String,
+    best_effort: bool,
 ) -> Result<()> {
-    println!("{} Running coverage analysis...", "📊".bright_blue());
+    if best_effort {
+        println!("{} Running coverage analysis in best-effort mode...", "📊".bright_blue());
+        println!("{} Will continue on errors and generate coverage for working components", "ℹ️".bright_yellow());
+    } else {
+        println!("{} Running coverage analysis...", "📊".bright_blue());
+    }
 
-    build_system.run_coverage().context("Coverage analysis failed")?;
+    if best_effort {
+        // In best-effort mode, try to run coverage but continue on failures
+        match build_system.run_coverage() {
+            Ok(_) => println!("{} Coverage analysis completed successfully", "✅".bright_green()),
+            Err(e) => {
+                println!("{} Coverage analysis failed: {}", "⚠️".bright_yellow(), e);
+                println!("{} Continuing in best-effort mode - partial results may be available", "ℹ️".bright_yellow());
+            }
+        }
+    } else {
+        // Normal mode - fail on errors
+        build_system.run_coverage().context("Coverage analysis failed")?;
+    }
 
     if open {
         println!(

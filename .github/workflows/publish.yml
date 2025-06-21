@@ -118,8 +118,9 @@ jobs:
           # Add Dagger to PATH
           export PATH="$HOME/.dagger/bin:$(pwd)/bin:$PATH"
           echo $PATH
-          # Run quick coverage analysis to generate coverage.json for docs
-          cargo-wrt coverage --html
+          # Run coverage analysis in best-effort mode for documentation
+          echo "Running coverage analysis in best-effort mode..."
+          cargo-wrt coverage --html --best-effort
         env:
           RUST_LOG: info
           RUST_BACKTRACE: 1
