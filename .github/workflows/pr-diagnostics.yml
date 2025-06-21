@@ -28,7 +28,7 @@ jobs:
         components: clippy, rustfmt
         
     - name: Cache cargo registry
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
@@ -222,7 +222,7 @@ jobs:
         echo '```' >> pr_comment.md
         
     - name: Upload diagnostic artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: pr-diagnostics
         path: |
