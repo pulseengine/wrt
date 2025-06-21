@@ -523,6 +523,9 @@ pub const FUNCTION_NOT_FOUND: u16 = 2010;
 /// Invalid binary format error
 pub const INVALID_BINARY: u16 = 8200;
 
+/// Null reference error
+pub const NULL_REFERENCE: u16 = 8201;
+
 // RESOURCE_EXHAUSTED already defined above as 3008
 
 // INVALID_ARGUMENT already defined above as 5002

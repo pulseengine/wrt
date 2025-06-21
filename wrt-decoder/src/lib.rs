@@ -61,6 +61,9 @@ pub mod prelude;
 pub mod streaming_validator;
 pub mod decoder;
 pub mod streaming_decoder;
+pub mod unified_loader;
+pub mod shared_cache;
+pub mod lazy_detection;
 
 // Bounded infrastructure for static memory allocation
 #[cfg(not(feature = "std"))]
@@ -104,6 +107,21 @@ pub use streaming_validator::{
     WasmRequirements,
 };
 pub use wrt_error::{codes, kinds, Error, Result};
+// Unified loader exports
+pub use unified_loader::{
+    load_wasm_unified, WasmInfo, WasmFormat, ModuleInfo, ComponentInfo, 
+    ImportInfo, ExportInfo, ImportType, ExportType
+};
+// Shared cache exports
+pub use shared_cache::{
+    DecodedCache, CacheManager, CacheStats, SectionData,
+    create_default_cache, create_cache_with_size
+};
+// Lazy detection exports
+pub use lazy_detection::{
+    LazyDetector, ComponentDetection, DetectionConfig,
+    create_fast_detector, create_thorough_detector
+};
 // Essential re-exports only
 #[cfg(feature = "std")]
 pub use wrt_foundation::safe_memory::StdProvider as StdMemoryProvider;

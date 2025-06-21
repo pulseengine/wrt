@@ -133,7 +133,7 @@ mod std_encoding {
         // Encode each instance
         for instance in instances {
             match &instance.instance_expr {
-                wrt_format::component::CoreInstanceExpr::Instantiate { module_idx, args } => {
+                wrt_format::component::CoreInstanceExpr::ModuleReference { module_idx, arg_refs } => {
                     // Write instantiate tag
                     data.push(binary::CORE_INSTANCE_INSTANTIATE_TAG);
 
@@ -141,10 +141,10 @@ mod std_encoding {
                     data.extend_from_slice(&write_leb128_u32(*module_idx));
 
                     // Write count of arguments
-                    data.extend_from_slice(&write_leb128_u32(args.len() as u32));
+                    data.extend_from_slice(&write_leb128_u32(arg_refs.len() as u32));
 
                     // Write each argument
-                    for arg in args {
+                    for arg in arg_refs {
                         // Write argument name
                         data.extend_from_slice(&write_string(&arg.name));
                         // Write instance index

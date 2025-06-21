@@ -68,6 +68,7 @@ impl From<ValidationError> for Error {
 }
 
 /// Module validator
+#[derive(Debug)]
 pub struct ModuleValidator {
     config: ValidationConfig,
 }

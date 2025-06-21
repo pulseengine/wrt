@@ -71,7 +71,7 @@ pub use wrt_format::{
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
-pub use wrt_format::state::{create_state_section, extract_state_section, StateSection};
+// pub use wrt_format::state::{create_state_section, extract_state_section, StateSection};
 // Binary std/no_std choice
 #[cfg(feature = "std")]
 pub use wrt_foundation::component_value::{ComponentValue, ValType};
@@ -120,9 +120,8 @@ pub type DecoderString = String;
 #[cfg(not(feature = "std"))]
 pub fn create_decoder_provider<const N: usize>(
 ) -> wrt_foundation::WrtResult<wrt_foundation::NoStdProvider<N>> {
-    use wrt_foundation::{CrateId, memory_init::get_global_capability_context, safe_allocation::SafeProviderFactory};
-    let context = get_global_capability_context()?;
-    SafeProviderFactory::create_context_managed_provider::<N>(context, CrateId::Decoder)
+    use wrt_foundation::{CrateId, capabilities::MemoryFactory};
+    MemoryFactory::create::<N>(CrateId::Decoder)
 }
 
 // For std mode, provide a simple version

@@ -13,6 +13,7 @@ use crate::validation::{ModuleValidator, ValidationConfig};
 use wrt_error::{Error, ErrorCategory, Result, codes};
 
 /// Simple WebAssembly parser
+#[derive(Debug)]
 pub struct SimpleParser {
     module: SimpleModule,
     expr_parser: ExpressionParser,

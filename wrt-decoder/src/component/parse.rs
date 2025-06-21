@@ -150,11 +150,11 @@ mod std_parsing {
                     let (instance_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                     offset += bytes_read;
 
-                    args.push(wrt_format::component::CoreInstantiateArg { name, instance_idx });
+                    args.push(wrt_format::component::CoreArgReference { name, instance_idx });
                 }
 
                 Ok((
-                    wrt_format::component::CoreInstanceExpr::Instantiate { module_idx, args },
+                    wrt_format::component::CoreInstanceExpr::ModuleReference { module_idx, arg_refs: args },
                     offset,
                 ))
             },
@@ -659,13 +659,13 @@ mod std_parsing {
                     let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                     offset += bytes_read;
 
-                    args.push(wrt_format::component::InstantiateArg { name, sort, idx });
+                    args.push(wrt_format::component::InstantiateArgReference { name, sort, idx });
                 }
 
                 Ok((
-                    wrt_format::component::InstanceExpr::Instantiate {
+                    wrt_format::component::InstanceExpr::ComponentReference {
                         component_idx,
-                        args,
+                        arg_refs: args,
                     },
                     offset,
                 ))

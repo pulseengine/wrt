@@ -33,6 +33,7 @@ pub enum ConstExpr {
 }
 
 /// Constant expression parser
+#[derive(Debug)]
 pub struct ExpressionParser;
 
 impl ExpressionParser {
