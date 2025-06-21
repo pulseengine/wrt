@@ -4,12 +4,16 @@
 //! debugging information for the WRT runtime system.
 
 use crate::{Error, ErrorCategory, Result, codes};
+use crate::errors::ErrorSource;
 
 #[cfg(feature = "std")]
 use std::{collections::HashMap, string::String, vec::Vec, format};
 
 #[cfg(not(feature = "std"))]
 use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec, format};
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
 
 /// Error recovery strategy
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,7 +25,10 @@ pub enum RecoveryStrategy {
     /// Use a default value and continue
     UseDefault,
     /// Retry with different parameters
-    Retry { max_attempts: u32 },
+    Retry { 
+        /// Maximum number of retry attempts allowed
+        max_attempts: u32 
+    },
     /// Log error and continue
     LogAndContinue,
 }
@@ -193,7 +200,10 @@ pub enum RecoveryResult {
     /// Use a default value
     UseDefault,
     /// Retry the operation
-    Retry { attempts_left: u32 },
+    Retry { 
+        /// Number of retry attempts remaining
+        attempts_left: u32 
+    },
     /// Continue execution
     Continue,
 }
@@ -308,7 +318,7 @@ impl DebugUtils {
         ErrorContext::new(format!("{}:{} in {}", module, line, function_name))
             .with_context("function", function_name)
             .with_context("module", module)
-            .with_context("line", line.to_string())
+            .with_context("line", format!("{}", line))
     }
 
     /// Create error context for WASM operations
@@ -319,10 +329,10 @@ impl DebugUtils {
     ) -> ErrorContext {
         let mut ctx = ErrorContext::new(format!("WASM {} at offset {}", operation, instruction_offset))
             .with_context("operation", operation)
-            .with_context("offset", instruction_offset.to_string());
+            .with_context("offset", format!("{}", instruction_offset));
             
         if let Some(func_idx) = function_index {
-            ctx = ctx.with_context("function_index", func_idx.to_string());
+            ctx = ctx.with_context("function_index", format!("{}", func_idx));
         }
         
         ctx
@@ -335,13 +345,13 @@ macro_rules! error_context {
     ($location:expr) => {
         $crate::recovery::ErrorContext::new(format!("{}:{} in {}", file!(), line!(), $location))
             .with_context("file", file!())
-            .with_context("line", line!().to_string())
+            .with_context("line", format!("{}", line!()))
     };
     ($location:expr, $($key:expr => $value:expr),+ $(,)?) => {
         {
             let mut ctx = $crate::recovery::ErrorContext::new(format!("{}:{} in {}", file!(), line!(), $location))
                 .with_context("file", file!())
-                .with_context("line", line!().to_string());
+                .with_context("line", format!("{}", line!()));
             $(
                 ctx = ctx.with_context($key, $value);
             )+
