@@ -246,6 +246,10 @@ enum Commands {
         /// Generate detailed report
         #[arg(long)]
         detailed: bool,
+        
+        /// Path to allowed unsafe configuration file
+        #[arg(long, default_value = "allowed-unsafe.toml")]
+        allowed_unsafe: String,
     },
 
     /// Generate documentation
@@ -755,6 +759,7 @@ async fn main() -> Result<()> {
             no_kani,
             no_miri,
             detailed,
+            allowed_unsafe: _,
         } => cmd_verify(&build_system, *asil, *no_kani, *no_miri, *detailed, &output_format, use_colors, &cli).await,
         Commands::Docs { open, private, output_dir, multi_version } => cmd_docs(&build_system, *open, *private, output_dir.clone(), multi_version.clone()).await,
         Commands::Coverage { html, open, format, best_effort } => {
@@ -1107,6 +1112,33 @@ async fn cmd_verify(
     options.kani = !no_kani;
     options.miri = !no_miri;
     options.detailed_reports = detailed;
+    
+    // Load allowed unsafe configuration if it exists
+    let allowed_unsafe_path = build_system.workspace_root().join("allowed-unsafe.toml");
+    if allowed_unsafe_path.exists() {
+        match wrt_build_core::verify::AllowedUnsafeConfig::load_from_file(&allowed_unsafe_path) {
+            Ok(config) => {
+                options.allowed_unsafe = Some(config);
+                if use_colors {
+                    println!("  {} Loaded allowed unsafe configuration from {}", 
+                        "📋".bright_cyan(), 
+                        allowed_unsafe_path.display());
+                } else {
+                    println!("  Loaded allowed unsafe configuration from {}", 
+                        allowed_unsafe_path.display());
+                }
+            }
+            Err(e) => {
+                if use_colors {
+                    eprintln!("  {} Failed to load allowed unsafe configuration: {}", 
+                        "⚠️".bright_yellow(), 
+                        e);
+                } else {
+                    eprintln!("  Warning: Failed to load allowed unsafe configuration: {}", e);
+                }
+            }
+        }
+    }
 
     match output_format {
         OutputFormat::Json | OutputFormat::JsonLines => {

@@ -380,6 +380,20 @@ pub const DUPLICATE_OPERATION: u16 = 9500;
 /// System or component not initialized
 pub const UNINITIALIZED: u16 = 9501;
 
+// Async error codes (9600-9699)
+/// Generic async error
+pub const ASYNC_ERROR: u16 = 9600;
+/// Async task cancelled
+pub const ASYNC_CANCELLED: u16 = 9601;
+/// Async deadlock detected
+pub const ASYNC_DEADLOCK: u16 = 9602;
+/// Async task panicked
+pub const ASYNC_PANIC: u16 = 9603;
+/// Async stream closed
+pub const ASYNC_STREAM_CLOSED: u16 = 9604;
+/// Async operation timeout
+pub const ASYNC_TIMEOUT: u16 = 9605;
+
 /// Unknown error
 pub const UNKNOWN: u16 = 9999;
 

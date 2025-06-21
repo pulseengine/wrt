@@ -1,15 +1,68 @@
 //! Safety verification and compliance checking
 
 use colored::Colorize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::collections::HashSet;
+use serde::{Deserialize, Serialize};
 
 use crate::build::BuildSystem;
-use crate::text_search::{TextSearcher, count_production_matches};
+use crate::text_search::{TextSearcher, count_production_matches, SearchMatch};
 use crate::config::AsilLevel;
 use crate::diagnostics::{Diagnostic, DiagnosticCollection, Position, Range, Severity, ToolOutputParser};
 use crate::parsers::{CargoOutputParser, KaniOutputParser, MiriOutputParser, CargoAuditOutputParser};
 use crate::error::{BuildError, BuildResult};
+
+/// Configuration for allowed unsafe blocks
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AllowedUnsafeConfig {
+    /// List of allowed unsafe blocks
+    pub allowed: Vec<AllowedUnsafeBlock>,
+}
+
+/// Represents an allowed unsafe block
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AllowedUnsafeBlock {
+    /// File path (relative to workspace root)
+    pub file: String,
+    /// Line number (optional, if not specified, allows all unsafe in file)
+    pub line: Option<usize>,
+    /// Function name (optional, for better targeting)
+    pub function: Option<String>,
+    /// Reason why this unsafe block is allowed
+    pub reason: String,
+    /// ASIL justification (required for ASIL-B and above)
+    pub asil_justification: Option<String>,
+}
+
+impl AllowedUnsafeConfig {
+    /// Load allowed unsafe configuration from a TOML file
+    pub fn load_from_file(path: &Path) -> BuildResult<Self> {
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| BuildError::Verification(format!("Failed to read allowed unsafe config: {}", e)))?;
+        
+        toml::from_str(&content)
+            .map_err(|e| BuildError::Verification(format!("Failed to parse allowed unsafe config: {}", e)))
+    }
+    
+    /// Check if an unsafe block is allowed
+    pub fn is_allowed(&self, file_path: &Path, line_number: usize) -> Option<&AllowedUnsafeBlock> {
+        self.allowed.iter().find(|block| {
+            // Check file path match
+            if !file_path.to_string_lossy().contains(&block.file) {
+                return false;
+            }
+            
+            // If line is specified, check it matches
+            if let Some(allowed_line) = block.line {
+                allowed_line == line_number
+            } else {
+                // If no line specified, allow all unsafe in this file
+                true
+            }
+        })
+    }
+}
 
 /// Safety verification results
 #[derive(Debug)]
@@ -67,10 +120,24 @@ pub struct VerificationOptions {
     pub audit: bool,
     /// Generate detailed reports
     pub detailed_reports: bool,
+    /// Allowed unsafe blocks configuration
+    pub allowed_unsafe: Option<AllowedUnsafeConfig>,
 }
 
 impl Default for VerificationOptions {
     fn default() -> Self {
+        // Try to load allowed-unsafe.toml if it exists
+        let allowed_unsafe = std::env::current_dir()
+            .ok()
+            .and_then(|cwd| {
+                let config_path = cwd.join("allowed-unsafe.toml");
+                if config_path.exists() {
+                    AllowedUnsafeConfig::load_from_file(&config_path).ok()
+                } else {
+                    None
+                }
+            });
+            
         Self {
             target_asil: AsilLevel::QM,
             kani: true,
@@ -78,6 +145,7 @@ impl Default for VerificationOptions {
             memory_safety: true,
             audit: true,
             detailed_reports: true,
+            allowed_unsafe,
         }
     }
 }
@@ -100,7 +168,7 @@ impl BuildSystem {
         );
 
         // 1. Basic safety checks with structured output
-        let basic_diagnostics = self.run_basic_safety_checks_with_diagnostics()?;
+        let basic_diagnostics = self.run_basic_safety_checks_with_diagnostics_and_options(options)?;
         collection.add_diagnostics(basic_diagnostics);
 
         // 2. Memory safety verification
@@ -176,7 +244,7 @@ impl BuildSystem {
         let mut report_sections: Vec<String> = Vec::new();
 
         // 1. Basic safety checks
-        checks.extend(self.run_basic_safety_checks()?);
+        checks.extend(self.run_basic_safety_checks_with_options(options)?);
 
         // 2. Memory safety verification
         if options.memory_safety {
@@ -273,10 +341,15 @@ impl BuildSystem {
 
     /// Run basic safety checks
     fn run_basic_safety_checks(&self) -> BuildResult<Vec<VerificationCheck>> {
+        self.run_basic_safety_checks_with_options(&VerificationOptions::default())
+    }
+    
+    /// Run basic safety checks with options
+    fn run_basic_safety_checks_with_options(&self, options: &VerificationOptions) -> BuildResult<Vec<VerificationCheck>> {
         let mut checks = Vec::new();
 
         // Check for unsafe code usage
-        checks.push(self.check_unsafe_code_usage()?);
+        checks.push(self.check_unsafe_code_usage_with_options(options)?);
 
         // Check for panic usage
         checks.push(self.check_panic_usage()?);
@@ -292,17 +365,33 @@ impl BuildSystem {
 
     /// Check for unsafe code usage
     fn check_unsafe_code_usage(&self) -> BuildResult<VerificationCheck> {
+        self.check_unsafe_code_usage_with_options(&VerificationOptions::default())
+    }
+    
+    /// Check for unsafe code usage with allowed exceptions
+    fn check_unsafe_code_usage_with_options(&self, options: &VerificationOptions) -> BuildResult<VerificationCheck> {
         let searcher = TextSearcher::new();
         let matches = searcher.search_unsafe_code(&self.workspace.root)?;
-        let unsafe_count = count_production_matches(&matches);
+        
+        // Filter out allowed unsafe blocks if configuration is provided
+        let filtered_matches = if let Some(allowed_config) = &options.allowed_unsafe {
+            matches.into_iter().filter(|m| {
+                // Check if this unsafe block is in the allowed list
+                allowed_config.is_allowed(&m.file_path, m.line_number).is_none()
+            }).collect()
+        } else {
+            matches
+        };
+        
+        let unsafe_count = count_production_matches(&filtered_matches);
 
         Ok(VerificationCheck {
             name: "Unsafe Code Usage".to_string(),
             passed: unsafe_count == 0,
             details: if unsafe_count == 0 {
-                "No unsafe code blocks found".to_string()
+                "No unsafe code blocks found (excluding allowed exceptions)".to_string()
             } else {
-                format!("Found {} unsafe code blocks", unsafe_count)
+                format!("Found {} unsafe code blocks not in allowed list", unsafe_count)
             },
             severity: VerificationSeverity::Critical,
         })
@@ -401,15 +490,31 @@ impl BuildSystem {
 
     /// Run basic safety checks with diagnostic output
     fn run_basic_safety_checks_with_diagnostics(&self) -> BuildResult<Vec<Diagnostic>> {
+        self.run_basic_safety_checks_with_diagnostics_and_options(&VerificationOptions::default())
+    }
+    
+    /// Run basic safety checks with diagnostic output and options
+    fn run_basic_safety_checks_with_diagnostics_and_options(&self, options: &VerificationOptions) -> BuildResult<Vec<Diagnostic>> {
         let mut diagnostics = Vec::new();
 
         // Check for unsafe code usage
         let searcher = TextSearcher::new();
         let matches = searcher.search_unsafe_code(&self.workspace.root)?;
-        let unsafe_count = count_production_matches(&matches);
+        
+        // Filter matches based on allowed unsafe configuration
+        let filtered_matches: Vec<SearchMatch> = if let Some(allowed_config) = &options.allowed_unsafe {
+            matches.into_iter().filter(|m| {
+                // Only include matches that are NOT allowed
+                allowed_config.is_allowed(&m.file_path, m.line_number).is_none()
+            }).collect()
+        } else {
+            matches
+        };
+        
+        let unsafe_count = count_production_matches(&filtered_matches);
 
         if unsafe_count > 0 {
-            for search_match in matches.iter().take(10) { // Limit to first 10 matches
+            for search_match in filtered_matches.iter().take(10) { // Limit to first 10 matches
                 let relative_path = search_match.file_path
                     .strip_prefix(&self.workspace.root)
                     .unwrap_or(&search_match.file_path)

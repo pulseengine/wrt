@@ -3222,20 +3222,6 @@ name = "wrt-panic"
 version = "0.2.0"
 
 [[package]]
-name = "wrt-parser"
-version = "0.2.0"
-dependencies = [
- "criterion 0.6.0",
- "hex",
- "log",
- "proptest",
- "tempfile",
- "wat",
- "wrt-error",
- "wrt-foundation",
-]
-
-[[package]]
 name = "wrt-platform"
 version = "0.2.0"
 dependencies = [

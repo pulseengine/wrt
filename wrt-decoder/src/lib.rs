@@ -64,6 +64,8 @@ pub mod streaming_decoder;
 pub mod unified_loader;
 pub mod shared_cache;
 pub mod lazy_detection;
+pub mod streaming_validation;
+pub mod format_detection_tests;
 
 // Bounded infrastructure for static memory allocation
 #[cfg(not(feature = "std"))]

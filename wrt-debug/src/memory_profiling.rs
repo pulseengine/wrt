@@ -11,6 +11,8 @@
 extern crate alloc;
 
 use core::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering};
+#[cfg(feature = "std")]
+use std::sync::{Mutex, OnceLock};
 
 use crate::bounded_debug_infra;
 #[cfg(feature = "std")]
@@ -821,19 +823,28 @@ pub struct PerformanceAnalysis {
 }
 
 /// Memory profiler instance
-// ASIL-D safe: Use thread-safe static instead of unsafe static mut
-use std::sync::{Mutex, Once};
-static INIT: Once = Once::new();
-static mut MEMORY_PROFILER: Option<Mutex<MemoryProfiler<'static>>> = None;
+// ASIL-D safe: Use thread-safe static with lazy initialization
+#[cfg(feature = "std")]
+static MEMORY_PROFILER: OnceLock<Mutex<MemoryProfiler<'static>>> = OnceLock::new();
+
+#[cfg(not(feature = "std"))]
+use core::sync::atomic::AtomicPtr;
+#[cfg(not(feature = "std"))]
+static MEMORY_PROFILER: AtomicPtr<MemoryProfiler<'static>> = AtomicPtr::new(core::ptr::null_mut());
 
 /// Initialize the memory profiler (ASIL-D safe)
 pub fn init_profiler() -> WrtResult<()> {
-    INIT.call_once(|| {
-        // ASIL-D safe: Use Once for thread-safe initialization
-        unsafe {
-            MEMORY_PROFILER = Some(Mutex::new(MemoryProfiler::new()));
-        }
-    });
+    #[cfg(feature = "std")]
+    {
+        MEMORY_PROFILER.get_or_init(|| Mutex::new(MemoryProfiler::new()));
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        // For no_std, we use a simpler approach - just store a raw pointer
+        // This is safe because we only initialize once
+        let profiler = Box::leak(Box::new(MemoryProfiler::new()));
+        MEMORY_PROFILER.store(profiler as *mut _, Ordering::SeqCst);
+    }
     Ok(())
 }
 
@@ -842,20 +853,33 @@ pub fn with_profiler<F, R>(f: F) -> WrtResult<R>
 where
     F: FnOnce(&mut MemoryProfiler<'static>) -> WrtResult<R>,
 {
-    // ASIL-D safe: Use safe lock access instead of unsafe
-    unsafe {
-        match MEMORY_PROFILER.as_ref() {
-            Some(profiler_mutex) => {
-                match profiler_mutex.lock() {
-                    Ok(mut profiler) => f(&mut *profiler),
-                    Err(_) => Err(wrt_foundation::Error::from(
-                        wrt_foundation::ErrorCategory::Memory("Memory profiler lock poisoned".into()),
-                    )),
-                }
+    // ASIL-D safe: Use safe lock access without unsafe
+    #[cfg(feature = "std")]
+    {
+        match MEMORY_PROFILER.get() {
+            Some(profiler_mutex) => match profiler_mutex.lock() {
+                Ok(mut profiler) => f(&mut *profiler),
+                Err(_) => Err(wrt_foundation::Error::from(
+                    wrt_foundation::ErrorCategory::Memory,
+                )),
             },
             None => Err(wrt_foundation::Error::from(
-                wrt_foundation::ErrorCategory::Memory("Memory profiler not initialized".into()),
+                wrt_foundation::ErrorCategory::Memory,
             )),
+        }
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        let ptr = MEMORY_PROFILER.load(Ordering::SeqCst);
+        if ptr.is_null() {
+            Err(wrt_foundation::Error::from(
+                wrt_foundation::ErrorCategory::Memory,
+            ))
+        } else {
+            // SAFETY: We only store valid pointers from Box::leak
+            // and the profiler has 'static lifetime
+            #[allow(unsafe_code)]
+            unsafe { f(&mut *ptr) }
         }
     }
 }

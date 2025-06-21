@@ -66,7 +66,7 @@ asil-d = ["verified-static-allocation", "mathematical-proofs", "redundant-safety
 # Legacy compatibility features
 std = ["wrt-sync/std", "dynamic-allocation"]
 no_std = []
-alloc = ["no_std", "dynamic-allocation"]
+alloc = ["no_std"]
 safety-asil-b = ["asil-b"]
 safety-asil-c = ["asil-c"]
 safety-asil-d = ["asil-d"]

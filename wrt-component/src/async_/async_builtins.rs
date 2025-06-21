@@ -448,26 +448,12 @@ impl TaskRegistry {
 }
 
 /// ASIL-D safe global task registry
-use std::sync::{Mutex, Once};
-static REGISTRY_INIT: Once = Once::new();
-static mut GLOBAL_TASK_REGISTRY: Option<Mutex<TaskRegistry>> = None;
+use std::sync::{Mutex, OnceLock};
+static GLOBAL_TASK_REGISTRY: OnceLock<Mutex<TaskRegistry>> = OnceLock::new();
 
 /// Get the global task registry (ASIL-D safe)
 fn get_task_registry() -> Result<&'static Mutex<TaskRegistry>, Error> {
-    REGISTRY_INIT.call_once(|| {
-        // ASIL-D safe: Use Once for thread-safe initialization
-        unsafe {
-            GLOBAL_TASK_REGISTRY = Some(Mutex::new(TaskRegistry::new()));
-        }
-    });
-    
-    unsafe {
-        GLOBAL_TASK_REGISTRY.as_ref().ok_or_else(|| Error::new(
-            ErrorCategory::Runtime,
-            codes::INITIALIZATION_ERROR,
-            "Global task registry not initialized"
-        ))
-    }
+    Ok(GLOBAL_TASK_REGISTRY.get_or_init(|| Mutex::new(TaskRegistry::new())))
 }
 
 /// Async built-in function implementations

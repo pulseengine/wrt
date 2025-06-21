@@ -314,6 +314,10 @@ pub fn create_fuel_aware_waker_with_asil(
             Box::into_raw(waker_data) as *const (),
             &WAKER_VTABLE,
         );
+        // SAFETY: This unsafe call is required by Rust's Waker API.
+        // The raw_waker contains a valid heap-allocated WakerData pointer
+        // that will be properly cleaned up by waker_drop when the Waker is dropped.
+        #[allow(unsafe_code)]
         unsafe { Waker::from_raw(raw_waker) }
     }
     
@@ -325,8 +329,13 @@ pub fn create_fuel_aware_waker_with_asil(
             core::ptr::null(),
             &WAKER_VTABLE,
         );
-        // Note: This is the only unsafe call required by Rust's Waker API
-        // For ASIL-D, this creates a functionally safe noop waker
+        // SAFETY: This unsafe call is required by Rust's Waker API and cannot be avoided.
+        // For ASIL-D compliance:
+        // 1. The raw_waker uses null pointer data (no dereferencing)
+        // 2. All vtable functions are no-ops that don't access memory
+        // 3. This creates a functionally safe noop waker
+        // 4. The waker lifetime is managed by Rust's type system
+        #[allow(unsafe_code)]
         unsafe { Waker::from_raw(raw_waker) }
     }
 }

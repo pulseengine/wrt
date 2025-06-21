@@ -119,6 +119,12 @@ pub enum Type {
     WasmSimdOperation,
     /// Atomic operations (i32.atomic.load, i32.atomic.rmw.add)
     WasmAtomicOperation,
+    /// Stream operations (create, poll, yield, close)
+    StreamOperation,
+    /// Stream creation
+    StreamCreate,
+    /// Future operations (compose, chain, select)
+    FutureOperation,
 }
 
 impl Type {
@@ -171,6 +177,9 @@ impl Type {
             Type::WasmTypeConversion => 2,     // type casts and conversions
             Type::WasmSimdOperation => 6,      // SIMD operations - parallel execution
             Type::WasmAtomicOperation => 15,   // atomic ops - synchronization overhead
+            Type::StreamOperation => 5,        // General stream operations
+            Type::StreamCreate => 10,          // Stream creation
+            Type::FutureOperation => 8,        // Future composition operations
         }
     }
 
@@ -224,6 +233,10 @@ impl Type {
             Type::WasmMemoryStore
             | Type::WasmMemoryManagement
             | Type::WasmAtomicOperation => importance::CRITICAL,
+            
+            Type::StreamOperation
+            | Type::StreamCreate
+            | Type::FutureOperation => importance::MUTATION,
         }
     }
 
@@ -494,6 +507,12 @@ impl Counter {
             }
             Type::WasmAtomicOperation => {
                 self.memory_writes.fetch_add(1, Ordering::Relaxed);
+            }
+            Type::StreamOperation | Type::StreamCreate => {
+                self.other_ops.fetch_add(1, Ordering::Relaxed);
+            }
+            Type::FutureOperation => {
+                self.other_ops.fetch_add(1, Ordering::Relaxed);
             }
         };
 

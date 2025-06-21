@@ -7,7 +7,6 @@ members = [
     "wrt-format",
     "wrt-foundation",
     "wrt-decoder",
-    "wrt-parser",
     "wrt-debug",
     "wrt-component",
     "wrt-math",

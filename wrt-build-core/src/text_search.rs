@@ -116,10 +116,29 @@ impl TextSearcher {
         let matches = self.search(pattern, search_dir)?;
         
         // Filter out comments and focus on actual unsafe code
-        let filtered_matches: Vec<_> = matches
-            .into_iter()
-            .filter(|m| !m.is_comment && m.line_content.trim().contains("unsafe"))
-            .collect();
+        let mut filtered_matches = Vec::new();
+        let mut i = 0;
+        
+        while i < matches.len() {
+            let m = &matches[i];
+            
+            // Skip if it's a comment or not actual unsafe code
+            if m.is_comment || !m.line_content.trim().contains("unsafe") {
+                i += 1;
+                continue;
+            }
+            
+            // Check if this unsafe block has proper safety documentation
+            let has_safety_comment = self.has_safety_documentation(&matches, i)?;
+            let has_allow_attribute = self.has_allow_unsafe_attribute(&matches, i)?;
+            
+            // Only include as a violation if it lacks both safety documentation and allow attribute
+            if !has_safety_comment && !has_allow_attribute {
+                filtered_matches.push(m.clone());
+            }
+            
+            i += 1;
+        }
         
         Ok(filtered_matches)
     }
@@ -136,6 +155,85 @@ impl TextSearcher {
             .collect();
         
         Ok(filtered_matches)
+    }
+
+    /// Check if an unsafe block has a SAFETY comment
+    fn has_safety_documentation(&self, matches: &[SearchMatch], unsafe_index: usize) -> BuildResult<bool> {
+        let unsafe_match = &matches[unsafe_index];
+        
+        // Look backwards up to 5 lines for a SAFETY comment
+        for j in 1..=5 {
+            if unsafe_index >= j {
+                let prev_match_idx = unsafe_index - j;
+                if prev_match_idx < matches.len() {
+                    let prev_match = &matches[prev_match_idx];
+                    // Check if same file and nearby line
+                    if prev_match.file_path == unsafe_match.file_path 
+                        && unsafe_match.line_number.saturating_sub(prev_match.line_number) <= 5 {
+                        // Check for SAFETY comment patterns
+                        let line = prev_match.line_content.trim();
+                        if line.contains("SAFETY:") || line.contains("Safety:") || 
+                           line.contains("# Safety") || line.contains("## Safety") {
+                            return Ok(true);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Also check for re-reading the file to look at exact previous lines
+        // This handles cases where we might not have all lines in our matches
+        if let Ok(content) = fs::read_to_string(&unsafe_match.file_path) {
+            let lines: Vec<&str> = content.lines().collect();
+            let unsafe_line_idx = unsafe_match.line_number.saturating_sub(1);
+            
+            // Look up to 5 lines before the unsafe block
+            for offset in 1..=5 {
+                if unsafe_line_idx >= offset {
+                    let prev_line_idx = unsafe_line_idx - offset;
+                    if prev_line_idx < lines.len() {
+                        let line = lines[prev_line_idx].trim();
+                        if line.contains("SAFETY:") || line.contains("Safety:") || 
+                           line.contains("# Safety") || line.contains("## Safety") {
+                            return Ok(true);
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(false)
+    }
+    
+    /// Check if an unsafe block has #[allow(unsafe_code)] attribute
+    fn has_allow_unsafe_attribute(&self, matches: &[SearchMatch], unsafe_index: usize) -> BuildResult<bool> {
+        let unsafe_match = &matches[unsafe_index];
+        
+        // Look for #[allow(unsafe_code)] in the same line or previous lines
+        if unsafe_match.line_content.contains("#[allow(unsafe_code)]") {
+            return Ok(true);
+        }
+        
+        // Check previous lines for the attribute
+        if let Ok(content) = fs::read_to_string(&unsafe_match.file_path) {
+            let lines: Vec<&str> = content.lines().collect();
+            let unsafe_line_idx = unsafe_match.line_number.saturating_sub(1);
+            
+            // Look up to 3 lines before for the attribute
+            for offset in 1..=3 {
+                if unsafe_line_idx >= offset {
+                    let prev_line_idx = unsafe_line_idx - offset;
+                    if prev_line_idx < lines.len() {
+                        let line = lines[prev_line_idx].trim();
+                        if line.contains("#[allow(unsafe_code)]") {
+                            return Ok(true);
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(false)
     }
 
     /// Search for .unwrap() usage

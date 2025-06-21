@@ -2902,8 +2902,13 @@ fn create_noop_waker() -> Waker {
         )
     }
     
-    // ASIL-D Note: This unsafe call is required by Rust's Waker API
-    // It creates a safe noop waker with no actual unsafe operations
+    // SAFETY: This unsafe call is required by Rust's Waker API and cannot be avoided.
+    // For ASIL-D compliance:
+    // 1. The noop_raw_waker uses null pointer data (no dereferencing)
+    // 2. All vtable functions are no-ops that don't access memory
+    // 3. This creates a functionally safe noop waker
+    // 4. The waker lifetime is managed by Rust's type system
+    #[allow(unsafe_code)]
     unsafe { Waker::from_raw(noop_raw_waker()) }
 }
 

@@ -21,7 +21,7 @@ use crate::{
 };
 
 /// `Error` categories for WRT operations
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ErrorCategory {
     /// Core WebAssembly errors
     Core = 1,
