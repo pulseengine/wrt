@@ -9,10 +9,10 @@ use crate::prelude::*;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-#[cfg(feature = "std")]
-use std::vec;
 #[cfg(not(feature = "std"))]
 use alloc::vec;
+#[cfg(feature = "std")]
+use std::vec;
 
 /// Demonstrates clean separation between format and runtime
 pub struct InterfaceDemo;
@@ -28,7 +28,7 @@ impl InterfaceDemo {
             separation_achieved: true,
         }
     }
-    
+
     /// Show the benefits of clean separation
     pub fn demonstrate_separation_benefits() -> SeparationBenefits {
         SeparationBenefits {
@@ -116,11 +116,12 @@ pub fn architectural_summary() -> ArchitecturalPattern {
         },
         improvements: [
             "Clear separation of concerns",
-            "Pure format types (PureDataMode, PureElementMode)", 
+            "Pure format types (PureDataMode, PureElementMode)",
             "Runtime types moved to wrt-runtime",
             "Clean bridge interfaces",
             "ASIL-D compliant architecture",
-        ].into_iter(),
+        ]
+        .into_iter(),
     }
 }
 

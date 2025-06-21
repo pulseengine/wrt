@@ -9,10 +9,10 @@ extern crate alloc;
 use crate::prelude::*;
 
 // Import Vec type explicitly
-#[cfg(feature = "std")]
-use std::vec::Vec;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use std::vec::Vec;
 use wrt_format::module::Module as WrtModule;
 use wrt_foundation::safe_memory::NoStdProvider;
 
@@ -47,18 +47,14 @@ pub fn decode_module(binary: &[u8]) -> Result<WrtModule<DecoderProvider>> {
 
 /// Convert a module from one provider to another (std version)
 #[cfg(feature = "std")]
-fn convert_module_provider(
-    source: WrtModule
-) -> WrtModule {
+fn convert_module_provider(source: WrtModule) -> WrtModule {
     // In std mode, no conversion needed
     source
 }
 
 /// Convert a module from one provider to another (no_std version)
 #[cfg(not(feature = "std"))]
-fn convert_module_provider(
-    _source: WrtModule<NoStdProvider<8192>>
-) -> WrtModule<DecoderProvider> {
+fn convert_module_provider(_source: WrtModule<NoStdProvider<8192>>) -> WrtModule<DecoderProvider> {
     // For now, create a new empty module
     // In a real implementation, we would copy all fields
     let provider = DecoderProvider::default();
@@ -70,42 +66,44 @@ fn convert_module_provider(
 #[cfg(feature = "std")]
 /// Convert import descriptor from foundation to format types
 #[cfg(feature = "std")]
-fn convert_import_desc(desc: wrt_foundation::types::ImportDesc<DecoderProvider>) -> wrt_format::module::ImportDesc {
+fn convert_import_desc(
+    desc: wrt_foundation::types::ImportDesc<DecoderProvider>,
+) -> wrt_format::module::ImportDesc {
     match desc {
-        wrt_foundation::types::ImportDesc::Function(idx) => wrt_format::module::ImportDesc::Function(idx),
+        wrt_foundation::types::ImportDesc::Function(idx) => {
+            wrt_format::module::ImportDesc::Function(idx)
+        },
         wrt_foundation::types::ImportDesc::Table(table_type) => {
             // wrt_format::module::Table is a type alias for WrtTableType
             wrt_format::module::ImportDesc::Table(table_type)
-        }
+        },
         wrt_foundation::types::ImportDesc::Memory(mem_type) => {
             // wrt_format::module::Memory is a type alias for WrtMemoryType
             wrt_format::module::ImportDesc::Memory(mem_type)
-        }
+        },
         wrt_foundation::types::ImportDesc::Global(global_type) => {
             wrt_format::module::ImportDesc::Global(wrt_format::types::FormatGlobalType {
                 value_type: global_type.value_type,
                 mutable: global_type.mutable,
             })
-        }
+        },
         wrt_foundation::types::ImportDesc::Extern(_) => {
             // For now, treat extern as function
             wrt_format::module::ImportDesc::Function(0)
-        }
+        },
         wrt_foundation::types::ImportDesc::Resource(_) => {
             // For now, treat resource as function
             wrt_format::module::ImportDesc::Function(0)
-        }
+        },
         wrt_foundation::types::ImportDesc::_Phantom(_) => {
             // This should never occur in practice, but we need to handle it
             wrt_format::module::ImportDesc::Function(0)
-        }
+        },
     }
 }
 
 #[cfg(feature = "std")]
-fn build_module_from_sections(
-    sections: Vec<crate::sections::Section>
-) -> Result<WrtModule> {
+fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result<WrtModule> {
     let mut module = WrtModule {
         types: Vec::new(),
         functions: Vec::new(),
@@ -122,7 +120,7 @@ fn build_module_from_sections(
         core_version: wrt_format::types::CoreWasmVersion::default(),
         type_info_section: None,
     };
-    
+
     for section in sections {
         match section {
             crate::sections::Section::Type(types) => {
@@ -134,7 +132,7 @@ fn build_module_from_sections(
                     };
                     module.types.push(clean_func_type);
                 }
-            }
+            },
             crate::sections::Section::Import(imports) => {
                 for import in imports {
                     // Convert from wrt_foundation Import to wrt_format Import
@@ -145,7 +143,7 @@ fn build_module_from_sections(
                     };
                     module.imports.push(format_import);
                 }
-            }
+            },
             crate::sections::Section::Function(func_indices) => {
                 for type_idx in func_indices {
                     let func = wrt_format::module::Function {
@@ -155,17 +153,17 @@ fn build_module_from_sections(
                     };
                     module.functions.push(func);
                 }
-            }
+            },
             crate::sections::Section::Table(tables) => {
                 for table in tables {
                     module.tables.push(table);
                 }
-            }
+            },
             crate::sections::Section::Memory(memories) => {
                 for memory in memories {
                     module.memories.push(memory);
                 }
-            }
+            },
             crate::sections::Section::Global(globals) => {
                 for global_type in globals {
                     // Convert from GlobalType to Global
@@ -178,25 +176,25 @@ fn build_module_from_sections(
                     };
                     module.globals.push(global);
                 }
-            }
+            },
             crate::sections::Section::Export(exports) => {
                 for export in exports {
                     module.exports.push(export);
                 }
-            }
+            },
             crate::sections::Section::Start(start_idx) => {
                 module.start = Some(start_idx);
-            }
+            },
             crate::sections::Section::Element(elements) => {
                 for element in elements {
                     module.elements.push(element);
                 }
-            }
+            },
             crate::sections::Section::Data(data_segments) => {
                 for data in data_segments {
                     module.data.push(data);
                 }
-            }
+            },
             crate::sections::Section::Code(code_bodies) => {
                 // Update function bodies
                 for (idx, body) in code_bodies.into_iter().enumerate() {
@@ -204,43 +202,43 @@ fn build_module_from_sections(
                         func.code = body.into_iter().collect();
                     }
                 }
-            }
+            },
             crate::sections::Section::Custom { name, data } => {
                 let custom = wrt_format::section::CustomSection {
                     name: name.clone(),
                     data: data.into_iter().collect(),
                 };
                 module.custom_sections.push(custom);
-            }
+            },
             crate::sections::Section::DataCount(_) => {
                 // Data count is used for validation only
-            }
+            },
         }
     }
-    
+
     Ok(module)
 }
 
 /// Build a module from parsed sections (no_std version)
 #[cfg(not(feature = "std"))]
 fn build_module_from_sections(
-    sections: crate::bounded_decoder_infra::BoundedSectionVec<crate::sections::Section>
+    sections: crate::bounded_decoder_infra::BoundedSectionVec<crate::sections::Section>,
 ) -> Result<WrtModule<DecoderProvider>> {
     let provider = DecoderProvider::default();
     let mut module: WrtModule<DecoderProvider> = WrtModule::new();
-    
+
     for section in sections {
         match section {
             crate::sections::Section::Type(types) => {
                 for func_type in types {
                     // TODO: Fix type conversion from WrtFuncType to ValueType
                 }
-            }
+            },
             crate::sections::Section::Import(imports) => {
                 for import in imports {
                     // TODO: Fix type conversion for imports
                 }
-            }
+            },
             crate::sections::Section::Function(func_indices) => {
                 for type_idx in func_indices {
                     #[cfg(feature = "std")]
@@ -257,40 +255,40 @@ fn build_module_from_sections(
                     };
                     let _ = module.functions.push(func);
                 }
-            }
+            },
             crate::sections::Section::Table(tables) => {
                 for table in tables {
                     let _ = module.tables.push(table);
                 }
-            }
+            },
             crate::sections::Section::Memory(memories) => {
                 for memory in memories {
                     let _ = module.memories.push(memory);
                 }
-            }
+            },
             crate::sections::Section::Global(globals) => {
                 for global in globals {
                     // TODO: Fix type conversion for globals
                 }
-            }
+            },
             crate::sections::Section::Export(exports) => {
                 for export in exports {
                     // TODO: Fix type conversion for exports
                 }
-            }
+            },
             crate::sections::Section::Start(start_idx) => {
                 module.start = Some(start_idx);
-            }
+            },
             crate::sections::Section::Element(elements) => {
                 for element in elements {
                     // TODO: Fix type conversion for elements
                 }
-            }
+            },
             crate::sections::Section::Data(data_segments) => {
                 for data in data_segments {
                     // TODO: Fix type conversion for data
                 }
-            }
+            },
             crate::sections::Section::Code(code_bodies) => {
                 // Update function bodies
                 for (idx, body) in code_bodies.into_iter().enumerate() {
@@ -306,21 +304,22 @@ fn build_module_from_sections(
                         }
                     }
                 }
-            }
+            },
             crate::sections::Section::Custom { name, data } => {
                 let custom = wrt_format::section::CustomSection {
                     name: alloc::string::String::from(name.as_str().unwrap_or("")),
                     data: data.into_iter().collect(),
                 };
                 let _ = module.custom_sections.push(custom);
-            }
+            },
             crate::sections::Section::DataCount(_) => {
                 // Data count is used for validation only
-            }
+            },
             crate::sections::Section::Empty => {
                 // Empty section, nothing to do
-            }        }
+            },
+        }
     }
-    
+
     Ok(module)
 }

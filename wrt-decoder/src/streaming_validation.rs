@@ -3,8 +3,8 @@
 //! This module provides real-time validation capabilities that operate during
 //! the parsing process, enabling early error detection and recovery.
 
-use wrt_error::{Error, ErrorCategory, Result, codes};
-use wrt_foundation::{WrtVec, DefaultMemoryProvider};
+use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_foundation::{DefaultMemoryProvider, WrtVec};
 
 #[cfg(feature = "std")]
 use std::{collections::HashMap, string::String, vec::Vec};
@@ -42,11 +42,7 @@ pub struct ValidationIssue {
 
 impl ValidationIssue {
     /// Create a new validation issue
-    pub fn new(
-        severity: ValidationSeverity,
-        offset: usize,
-        message: impl Into<String>
-    ) -> Self {
+    pub fn new(severity: ValidationSeverity, offset: usize, message: impl Into<String>) -> Self {
         Self {
             severity,
             offset,
@@ -70,7 +66,10 @@ impl ValidationIssue {
 
     /// Check if this is an error or critical issue
     pub fn is_error(&self) -> bool {
-        matches!(self.severity, ValidationSeverity::Error | ValidationSeverity::Critical)
+        matches!(
+            self.severity,
+            ValidationSeverity::Error | ValidationSeverity::Critical
+        )
     }
 }
 
@@ -162,7 +161,7 @@ impl StreamingValidator {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ALLOCATION_FAILED,
-                "Context stack overflow"
+                "Context stack overflow",
             )
         })
     }
@@ -173,7 +172,7 @@ impl StreamingValidator {
             Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                "Context stack underflow"
+                "Context stack underflow",
             )
         })?;
         Ok(())
@@ -185,18 +184,18 @@ impl StreamingValidator {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                "Too many validation issues"
+                "Too many validation issues",
             ));
         }
 
-        let should_abort = issue.severity == ValidationSeverity::Critical && 
-                          !self.config.continue_after_critical;
+        let should_abort =
+            issue.severity == ValidationSeverity::Critical && !self.config.continue_after_critical;
 
         self.issues.push(issue).map_err(|_| {
             Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ALLOCATION_FAILED,
-                "Cannot store validation issue"
+                "Cannot store validation issue",
             )
         })?;
 
@@ -204,7 +203,7 @@ impl StreamingValidator {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                "Critical validation error"
+                "Critical validation error",
             ));
         }
 
@@ -217,25 +216,36 @@ impl StreamingValidator {
         self.stats.bytes_validated += 8;
 
         if data.len() < 8 {
-            self.add_issue(ValidationIssue::new(
-                ValidationSeverity::Critical,
-                offset,
-                "Insufficient data for WASM header"
-            ).with_context("expected_size", "8")
-             .with_context("actual_size", data.len().to_string()))?;
+            self.add_issue(
+                ValidationIssue::new(
+                    ValidationSeverity::Critical,
+                    offset,
+                    "Insufficient data for WASM header",
+                )
+                .with_context("expected_size", "8")
+                .with_context("actual_size", data.len().to_string()),
+            )?;
             return Ok(());
         }
 
         // Check magic number
         if &data[0..4] != &[0x00, 0x61, 0x73, 0x6d] {
-            self.add_issue(ValidationIssue::new(
-                ValidationSeverity::Critical,
-                offset,
-                "Invalid WASM magic number"
-            ).with_context("expected", "00 61 73 6d")
-             .with_context("actual", format!("{:02x} {:02x} {:02x} {:02x}", 
-                data[0], data[1], data[2], data[3]))
-             .with_fix("Ensure the file is a valid WebAssembly binary"))?;
+            self.add_issue(
+                ValidationIssue::new(
+                    ValidationSeverity::Critical,
+                    offset,
+                    "Invalid WASM magic number",
+                )
+                .with_context("expected", "00 61 73 6d")
+                .with_context(
+                    "actual",
+                    format!(
+                        "{:02x} {:02x} {:02x} {:02x}",
+                        data[0], data[1], data[2], data[3]
+                    ),
+                )
+                .with_fix("Ensure the file is a valid WebAssembly binary"),
+            )?;
         }
 
         // Check version
@@ -246,7 +256,7 @@ impl StreamingValidator {
                 self.add_issue(ValidationIssue::new(
                     ValidationSeverity::Info,
                     offset + 4,
-                    "Core WebAssembly module (version 1)"
+                    "Core WebAssembly module (version 1)",
                 ))?;
             },
             0x0a => {
@@ -254,17 +264,20 @@ impl StreamingValidator {
                 self.add_issue(ValidationIssue::new(
                     ValidationSeverity::Info,
                     offset + 4,
-                    "WebAssembly Component (version 0x0a)"
+                    "WebAssembly Component (version 0x0a)",
                 ))?;
             },
             _ => {
-                self.add_issue(ValidationIssue::new(
-                    ValidationSeverity::Warning,
-                    offset + 4,
-                    format!("Unknown WASM version: {}", version)
-                ).with_context("version", version.to_string())
-                 .with_fix("Consider updating to a supported version"))?;
-            }
+                self.add_issue(
+                    ValidationIssue::new(
+                        ValidationSeverity::Warning,
+                        offset + 4,
+                        format!("Unknown WASM version: {}", version),
+                    )
+                    .with_context("version", version.to_string())
+                    .with_fix("Consider updating to a supported version"),
+                )?;
+            },
         }
 
         self.exit_context()?;
@@ -272,18 +285,26 @@ impl StreamingValidator {
     }
 
     /// Validate section header
-    pub fn validate_section_header(&mut self, section_id: u8, size: u32, offset: usize) -> Result<()> {
+    pub fn validate_section_header(
+        &mut self,
+        section_id: u8,
+        size: u32,
+        offset: usize,
+    ) -> Result<()> {
         self.enter_context(format!("section_{}", section_id))?;
         self.stats.sections_validated += 1;
 
         // Check for reasonable section size
         if size > self.config.max_module_size as u32 {
-            self.add_issue(ValidationIssue::new(
-                ValidationSeverity::Error,
-                offset,
-                format!("Section too large: {} bytes", size)
-            ).with_context("section_id", section_id.to_string())
-             .with_context("max_size", self.config.max_module_size.to_string()))?;
+            self.add_issue(
+                ValidationIssue::new(
+                    ValidationSeverity::Error,
+                    offset,
+                    format!("Section too large: {} bytes", size),
+                )
+                .with_context("section_id", section_id.to_string())
+                .with_context("max_size", self.config.max_module_size.to_string()),
+            )?;
         }
 
         // Validate known section IDs
@@ -291,12 +312,12 @@ impl StreamingValidator {
             0 => self.add_issue(ValidationIssue::new(
                 ValidationSeverity::Info,
                 offset,
-                "Custom section"
+                "Custom section",
             ))?,
             1..=12 => {
                 let section_name = match section_id {
                     1 => "Type",
-                    2 => "Import", 
+                    2 => "Import",
                     3 => "Function",
                     4 => "Table",
                     5 => "Memory",
@@ -312,17 +333,20 @@ impl StreamingValidator {
                 self.add_issue(ValidationIssue::new(
                     ValidationSeverity::Info,
                     offset,
-                    format!("{} section", section_name)
+                    format!("{} section", section_name),
                 ))?;
             },
             _ => {
-                self.add_issue(ValidationIssue::new(
-                    ValidationSeverity::Warning,
-                    offset,
-                    format!("Unknown section ID: {}", section_id)
-                ).with_context("section_id", section_id.to_string())
-                 .with_fix("Consider using a custom section (ID 0) for non-standard data"))?;
-            }
+                self.add_issue(
+                    ValidationIssue::new(
+                        ValidationSeverity::Warning,
+                        offset,
+                        format!("Unknown section ID: {}", section_id),
+                    )
+                    .with_context("section_id", section_id.to_string())
+                    .with_fix("Consider using a custom section (ID 0) for non-standard data"),
+                )?;
+            },
         }
 
         self.exit_context()?;
@@ -330,92 +354,120 @@ impl StreamingValidator {
     }
 
     /// Validate LEB128 encoding
-    pub fn validate_leb128(&mut self, data: &[u8], offset: usize, signed: bool) -> Result<(u64, usize)> {
+    pub fn validate_leb128(
+        &mut self,
+        data: &[u8],
+        offset: usize,
+        signed: bool,
+    ) -> Result<(u64, usize)> {
         let mut result = 0u64;
         let mut shift = 0;
         let mut bytes_read = 0;
-        
+
         for &byte in data {
             bytes_read += 1;
-            
+
             if bytes_read > 10 {
-                self.add_issue(ValidationIssue::new(
-                    ValidationSeverity::Error,
-                    offset,
-                    "LEB128 encoding too long"
-                ).with_context("max_bytes", "10")
-                 .with_context("bytes_read", bytes_read.to_string()))?;
+                self.add_issue(
+                    ValidationIssue::new(
+                        ValidationSeverity::Error,
+                        offset,
+                        "LEB128 encoding too long",
+                    )
+                    .with_context("max_bytes", "10")
+                    .with_context("bytes_read", bytes_read.to_string()),
+                )?;
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
-                    "Invalid LEB128 encoding"
+                    "Invalid LEB128 encoding",
                 ));
             }
-            
+
             result |= ((byte & 0x7F) as u64) << shift;
             shift += 7;
-            
+
             if byte & 0x80 == 0 {
                 // End of LEB128
                 break;
             }
         }
-        
+
         self.stats.bytes_validated += bytes_read;
-        
+
         if signed && shift < 64 && (data[bytes_read - 1] & 0x40) != 0 {
             // Sign extend for signed LEB128
             result |= !0u64 << shift;
         }
-        
+
         Ok((result, bytes_read))
     }
 
     /// Validate function signature
-    pub fn validate_function_signature(&mut self, params: &[u8], results: &[u8], offset: usize) -> Result<()> {
+    pub fn validate_function_signature(
+        &mut self,
+        params: &[u8],
+        results: &[u8],
+        offset: usize,
+    ) -> Result<()> {
         self.enter_context("function_signature")?;
         self.stats.functions_validated += 1;
 
         // Check parameter count
         if params.len() > 1000 {
-            self.add_issue(ValidationIssue::new(
-                ValidationSeverity::Warning,
-                offset,
-                format!("Function has many parameters: {}", params.len())
-            ).with_context("param_count", params.len().to_string()))?;
+            self.add_issue(
+                ValidationIssue::new(
+                    ValidationSeverity::Warning,
+                    offset,
+                    format!("Function has many parameters: {}", params.len()),
+                )
+                .with_context("param_count", params.len().to_string()),
+            )?;
         }
 
         // Check result count (WASM 1.0 allows at most 1 result)
         if results.len() > 1 {
-            self.add_issue(ValidationIssue::new(
-                ValidationSeverity::Warning,
-                offset,
-                format!("Function has multiple results: {}", results.len())
-            ).with_context("result_count", results.len().to_string())
-             .with_fix("Multiple results require WASM multi-value proposal"))?;
+            self.add_issue(
+                ValidationIssue::new(
+                    ValidationSeverity::Warning,
+                    offset,
+                    format!("Function has multiple results: {}", results.len()),
+                )
+                .with_context("result_count", results.len().to_string())
+                .with_fix("Multiple results require WASM multi-value proposal"),
+            )?;
         }
 
         // Validate parameter types
         for (i, &param_type) in params.iter().enumerate() {
             if !self.is_valid_value_type(param_type) {
-                self.add_issue(ValidationIssue::new(
-                    ValidationSeverity::Error,
-                    offset,
-                    format!("Invalid parameter type at index {}: 0x{:02x}", i, param_type)
-                ).with_context("param_index", i.to_string())
-                 .with_context("type_value", format!("0x{:02x}", param_type)))?;
+                self.add_issue(
+                    ValidationIssue::new(
+                        ValidationSeverity::Error,
+                        offset,
+                        format!(
+                            "Invalid parameter type at index {}: 0x{:02x}",
+                            i, param_type
+                        ),
+                    )
+                    .with_context("param_index", i.to_string())
+                    .with_context("type_value", format!("0x{:02x}", param_type)),
+                )?;
             }
         }
 
         // Validate result types
         for (i, &result_type) in results.iter().enumerate() {
             if !self.is_valid_value_type(result_type) {
-                self.add_issue(ValidationIssue::new(
-                    ValidationSeverity::Error,
-                    offset,
-                    format!("Invalid result type at index {}: 0x{:02x}", i, result_type)
-                ).with_context("result_index", i.to_string())
-                 .with_context("type_value", format!("0x{:02x}", result_type)))?;
+                self.add_issue(
+                    ValidationIssue::new(
+                        ValidationSeverity::Error,
+                        offset,
+                        format!("Invalid result type at index {}: 0x{:02x}", i, result_type),
+                    )
+                    .with_context("result_index", i.to_string())
+                    .with_context("type_value", format!("0x{:02x}", result_type)),
+                )?;
             }
         }
 
@@ -522,11 +574,11 @@ mod tests {
     #[test]
     fn test_header_validation() {
         let mut validator = StreamingValidator::new().unwrap();
-        
+
         // Valid WASM header
         let valid_header = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
         validator.validate_header(&valid_header, 0).unwrap();
-        
+
         let report = validator.generate_report();
         assert_eq!(report.info_count, 1); // Should have info about core module
         assert!(report.validation_passed);
@@ -535,11 +587,11 @@ mod tests {
     #[test]
     fn test_invalid_magic() {
         let mut validator = StreamingValidator::new().unwrap();
-        
+
         // Invalid magic number
         let invalid_header = [0xFF, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
         validator.validate_header(&invalid_header, 0).unwrap();
-        
+
         let report = validator.generate_report();
         assert!(report.critical_count > 0);
         assert!(!report.validation_passed);
@@ -548,7 +600,7 @@ mod tests {
     #[test]
     fn test_leb128_validation() {
         let mut validator = StreamingValidator::new().unwrap();
-        
+
         // Valid LEB128: 42 (0x2A)
         let leb_data = [0x2A];
         let (value, bytes_read) = validator.validate_leb128(&leb_data, 0, false).unwrap();
@@ -559,12 +611,12 @@ mod tests {
     #[test]
     fn test_context_management() {
         let mut validator = StreamingValidator::new().unwrap();
-        
+
         validator.enter_context("test").unwrap();
         validator.enter_context("nested").unwrap();
         validator.exit_context().unwrap();
         validator.exit_context().unwrap();
-        
+
         // Should not panic or error
     }
 }

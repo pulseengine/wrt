@@ -125,7 +125,9 @@ fn extract_module_from_section(_section_bytes: &[u8]) -> Option<std::vec::Vec<u8
 
 /// Extract a module from a core module section (no_std version)
 #[cfg(not(feature = "std"))]
-fn extract_module_from_section(_section_bytes: &[u8]) -> Option<wrt_foundation::BoundedVec<u8, 128, wrt_foundation::safe_memory::NoStdProvider<2048>>> {
+fn extract_module_from_section(
+    _section_bytes: &[u8],
+) -> Option<wrt_foundation::BoundedVec<u8, 128, wrt_foundation::safe_memory::NoStdProvider<2048>>> {
     // This is a simplified version - the real implementation would parse the
     // section structure to extract the module bytes
 

@@ -101,14 +101,14 @@ impl LazyDetector {
 
         // Check version
         let version = u32::from_le_bytes([binary[4], binary[5], binary[6], binary[7]]);
-        
+
         // Component Model typically uses different version numbers
         match version {
             1 => {
                 // Version 1 could be core module or component
                 // Need to examine sections
                 self.examine_sections(binary)
-            }
+            },
             _ => {
                 // Non-standard version, likely component or invalid
                 if self.config.use_heuristics {
@@ -116,7 +116,7 @@ impl LazyDetector {
                 } else {
                     Ok(ComponentDetection::Ambiguous)
                 }
-            }
+            },
         }
     }
 
@@ -126,11 +126,8 @@ impl LazyDetector {
         let mut sections_examined = 0;
         let mut component_indicators = 0;
         let mut core_indicators = 0;
-        
-        let scan_limit = core::cmp::min(
-            binary.len(),
-            8 + self.config.max_scan_bytes
-        );
+
+        let scan_limit = core::cmp::min(binary.len(), 8 + self.config.max_scan_bytes);
 
         while offset < scan_limit && sections_examined < self.config.max_sections {
             if offset + 1 >= binary.len() {
@@ -152,51 +149,62 @@ impl LazyDetector {
             // Analyze section ID
             match section_id {
                 // Component-specific sections
-                COMPONENT_COMPONENT_SECTION | COMPONENT_INSTANCE_SECTION | 
-                COMPONENT_ALIAS_SECTION | COMPONENT_CANONICAL_SECTION => {
+                COMPONENT_COMPONENT_SECTION
+                | COMPONENT_INSTANCE_SECTION
+                | COMPONENT_ALIAS_SECTION
+                | COMPONENT_CANONICAL_SECTION => {
                     component_indicators += 2; // Strong indicator
-                }
-                
+                },
+
                 // Core-specific sections
-                CORE_TABLE_SECTION | CORE_MEMORY_SECTION | CORE_GLOBAL_SECTION |
-                CORE_ELEMENT_SECTION | CORE_CODE_SECTION | CORE_DATA_SECTION |
-                CORE_DATA_COUNT_SECTION => {
+                CORE_TABLE_SECTION
+                | CORE_MEMORY_SECTION
+                | CORE_GLOBAL_SECTION
+                | CORE_ELEMENT_SECTION
+                | CORE_CODE_SECTION
+                | CORE_DATA_SECTION
+                | CORE_DATA_COUNT_SECTION => {
                     core_indicators += 2; // Strong indicator
-                }
-                
+                },
+
                 // Shared sections (could be either)
-                CORE_TYPE_SECTION | CORE_IMPORT_SECTION | CORE_FUNCTION_SECTION |
-                CORE_EXPORT_SECTION | CORE_START_SECTION => {
+                CORE_TYPE_SECTION
+                | CORE_IMPORT_SECTION
+                | CORE_FUNCTION_SECTION
+                | CORE_EXPORT_SECTION
+                | CORE_START_SECTION => {
                     // Examine content for more clues
                     if self.config.use_heuristics {
-                        match self.examine_section_content(section_id, &binary[offset..section_end]) {
+                        match self.examine_section_content(section_id, &binary[offset..section_end])
+                        {
                             SectionHint::Component => component_indicators += 1,
                             SectionHint::Core => core_indicators += 1,
-                            SectionHint::Neutral => {}
+                            SectionHint::Neutral => {},
                         }
                     }
-                }
-                
+                },
+
                 // Custom sections
                 0 => {
                     // Custom sections might contain component-specific data
                     if self.config.use_heuristics {
-                        if let Ok(hint) = self.examine_custom_section(&binary[offset..section_end]) {
+                        if let Ok(hint) = self.examine_custom_section(&binary[offset..section_end])
+                        {
                             match hint {
                                 SectionHint::Component => component_indicators += 1,
                                 SectionHint::Core => core_indicators += 1,
-                                SectionHint::Neutral => {}
+                                SectionHint::Neutral => {},
                             }
                         }
                     }
-                }
-                
+                },
+
                 // Unknown sections (likely component)
                 13..=255 => {
                     component_indicators += 1;
-                }
-                
-                _ => {} // Other sections
+                },
+
+                _ => {}, // Other sections
             }
 
             offset = section_end;
@@ -226,20 +234,25 @@ impl LazyDetector {
     fn examine_import_section(&self, data: &[u8]) -> SectionHint {
         // Look for component-style imports
         let mut offset = 0;
-        
+
         // Read count
         if let Ok((count, bytes_read)) = read_leb128_u32(data, offset) {
             offset += bytes_read;
-            
-            for _ in 0..core::cmp::min(count, 5) { // Examine first few imports
+
+            for _ in 0..core::cmp::min(count, 5) {
+                // Examine first few imports
                 // Read module name
                 if let Ok((module_len, bytes_read)) = read_leb128_u32(data, offset) {
                     offset += bytes_read;
-                    
+
                     if offset + module_len as usize <= data.len() {
-                        if let Ok(module_name) = core::str::from_utf8(&data[offset..offset + module_len as usize]) {
+                        if let Ok(module_name) =
+                            core::str::from_utf8(&data[offset..offset + module_len as usize])
+                        {
                             // Component-style module names
-                            if module_name.contains("component:") || module_name.contains("interface:") {
+                            if module_name.contains("component:")
+                                || module_name.contains("interface:")
+                            {
                                 return SectionHint::Component;
                             }
                             // Core-style module names
@@ -248,14 +261,14 @@ impl LazyDetector {
                             }
                         }
                         offset += module_len as usize;
-                        
+
                         // Skip name and type for now
                         break;
                     }
                 }
             }
         }
-        
+
         SectionHint::Neutral
     }
 
@@ -263,31 +276,34 @@ impl LazyDetector {
     fn examine_export_section(&self, data: &[u8]) -> SectionHint {
         // Look for component-style exports
         let mut offset = 0;
-        
+
         // Read count
         if let Ok((count, bytes_read)) = read_leb128_u32(data, offset) {
             offset += bytes_read;
-            
-            for _ in 0..core::cmp::min(count, 5) { // Examine first few exports
+
+            for _ in 0..core::cmp::min(count, 5) {
+                // Examine first few exports
                 // Read export name
                 if let Ok((name_len, bytes_read)) = read_leb128_u32(data, offset) {
                     offset += bytes_read;
-                    
+
                     if offset + name_len as usize <= data.len() {
-                        if let Ok(export_name) = core::str::from_utf8(&data[offset..offset + name_len as usize]) {
+                        if let Ok(export_name) =
+                            core::str::from_utf8(&data[offset..offset + name_len as usize])
+                        {
                             // Component-style export names
                             if export_name.contains(":") && export_name.len() > 10 {
                                 return SectionHint::Component;
                             }
                         }
-                        
+
                         // Skip type info
                         break;
                     }
                 }
             }
         }
-        
+
         SectionHint::Neutral
     }
 
@@ -297,29 +313,31 @@ impl LazyDetector {
         let mut offset = 0;
         let (name_len, bytes_read) = read_leb128_u32(data, offset)?;
         offset += bytes_read;
-        
+
         if offset + name_len as usize > data.len() {
             return Ok(SectionHint::Neutral);
         }
-        
-        let section_name = core::str::from_utf8(&data[offset..offset + name_len as usize])
-            .unwrap_or("");
-        
+
+        let section_name =
+            core::str::from_utf8(&data[offset..offset + name_len as usize]).unwrap_or("");
+
         // Check for component-specific custom sections
-        if section_name == "component-type" || 
-           section_name == "component-import" ||
-           section_name.starts_with("component:") ||
-           section_name.starts_with("interface:") {
+        if section_name == "component-type"
+            || section_name == "component-import"
+            || section_name.starts_with("component:")
+            || section_name.starts_with("interface:")
+        {
             return Ok(SectionHint::Component);
         }
-        
+
         // Check for core-specific custom sections
-        if section_name == "name" || 
-           section_name == "producers" ||
-           section_name == "target_features" {
+        if section_name == "name"
+            || section_name == "producers"
+            || section_name == "target_features"
+        {
             return Ok(SectionHint::Core);
         }
-        
+
         Ok(SectionHint::Neutral)
     }
 
@@ -383,12 +401,13 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
     let mut shift = 0;
     let mut bytes_read = 0;
 
-    for i in 0..5 { // Max 5 bytes for u32
+    for i in 0..5 {
+        // Max 5 bytes for u32
         if offset + i >= data.len() {
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::PARSE_ERROR,
-                "Unexpected end of data while reading LEB128"
+                "Unexpected end of data while reading LEB128",
             ));
         }
 
@@ -406,7 +425,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::PARSE_ERROR,
-                "LEB128 value too large for u32"
+                "LEB128 value too large for u32",
             ));
         }
     }
@@ -421,12 +440,15 @@ mod tests {
     #[test]
     fn test_basic_detection() {
         let detector = LazyDetector::new();
-        
+
         // Core module header
         let core_module = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
         let result = detector.detect_format(&core_module).unwrap();
         // Without sections, should be ambiguous
-        assert!(matches!(result, ComponentDetection::Ambiguous | ComponentDetection::CoreModule));
+        assert!(matches!(
+            result,
+            ComponentDetection::Ambiguous | ComponentDetection::CoreModule
+        ));
     }
 
     #[test]
@@ -465,7 +487,7 @@ mod tests {
     fn test_needs_component_processing() {
         let detector = LazyDetector::new();
         let core_module = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
-        
+
         // Should handle safely even with ambiguous detection
         let result = detector.needs_component_processing(&core_module).unwrap();
         assert!(result || !result); // Either result is acceptable for empty module

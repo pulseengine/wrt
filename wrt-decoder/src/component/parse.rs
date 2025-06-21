@@ -24,7 +24,7 @@ mod std_parsing {
             Err(_) => Err(Error::new(
                 wrt_error::ErrorCategory::Validation,
                 wrt_error::codes::VALIDATION_ERROR,
-                "Invalid UTF-8 string"
+                "Invalid UTF-8 string",
             )),
         }
     }
@@ -154,7 +154,10 @@ mod std_parsing {
                 }
 
                 Ok((
-                    wrt_format::component::CoreInstanceExpr::ModuleReference { module_idx, arg_refs: args },
+                    wrt_format::component::CoreInstanceExpr::ModuleReference {
+                        module_idx,
+                        arg_refs: args,
+                    },
                     offset,
                 ))
             },
@@ -406,7 +409,7 @@ mod std_parsing {
                     let empty_params = Vec::new();
                     #[cfg(feature = "std")]
                     let empty_results = Vec::new();
-                    
+
                     #[cfg(not(feature = "std"))]
                     let empty_params = {
                         let provider = crate::prelude::create_decoder_provider::<1024>()?;
@@ -1293,7 +1296,14 @@ mod std_parsing {
                             ));
                         }
                     }
-                    Ok::<BoundedVec<BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<4096>>, 16, wrt_foundation::safe_memory::NoStdProvider<4096>>, wrt_error::Error>(bounded)
+                    Ok::<
+                        BoundedVec<
+                            BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<4096>>,
+                            16,
+                            wrt_foundation::safe_memory::NoStdProvider<4096>,
+                        >,
+                        wrt_error::Error,
+                    >(bounded)
                 }?;
 
                 Ok((
@@ -2677,8 +2687,7 @@ mod no_std_parsing {
             + Eq,
     {
         let provider = create_parse_provider()?;
-        ParseVec::new()
-            .map_err(|_| Error::parse_error("Failed to create empty parse vector"))
+        ParseVec::new().map_err(|_| Error::parse_error("Failed to create empty parse vector"))
     }
 
     /// No_std parse core module section with safety bounds

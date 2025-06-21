@@ -5,7 +5,7 @@
 //! system and operates without loading entire modules into memory.
 //!
 //! # ASIL Compliance
-//! 
+//!
 //! This implementation works across all ASIL levels using the unified provider system:
 //! - The BoundedVec types adapt their behavior based on the current ASIL level
 //! - The NoStdProvider internally chooses appropriate allocation strategies
@@ -34,8 +34,8 @@ use std::vec::Vec;
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::{
-    module::Module,
     binary::{read_leb128_u32, WASM_MAGIC, WASM_VERSION},
+    module::Module,
 };
 
 // Use the same provider size as the streaming decoder
@@ -45,18 +45,13 @@ type CoreModule = Module;
 use wrt_format::component::Component;
 
 use wrt_foundation::{
-    budget_aware_provider::CrateId,
-    safe_memory::NoStdProvider,
-    BoundedVec,
-    VerificationLevel,
+    budget_aware_provider::CrateId, safe_memory::NoStdProvider, BoundedVec, VerificationLevel,
 };
 
 // Import the unified bounded decoder infrastructure
 #[cfg(not(feature = "std"))]
 use crate::bounded_decoder_infra::{
-    create_decoder_provider,
-    BoundedModuleVec,
-    MAX_MODULES_PER_COMPONENT,
+    create_decoder_provider, BoundedModuleVec, MAX_MODULES_PER_COMPONENT,
 };
 
 // For std mode, provide basic constants
@@ -72,7 +67,7 @@ type DecoderProvider = NoStdProvider<65536>;
 /// Core Module Section streaming parser
 ///
 /// This parser processes Core Module sections within Component binaries using
-/// a streaming approach that minimizes memory allocation and provides 
+/// a streaming approach that minimizes memory allocation and provides
 /// deterministic behavior across all ASIL levels using the unified provider system.
 pub struct StreamingCoreModuleParser<'a> {
     /// Binary data being parsed
@@ -103,10 +98,7 @@ impl<'a> StreamingCoreModuleParser<'a> {
     ///
     /// # Returns
     /// A new parser instance ready to process core modules
-    pub fn new(
-        data: &'a [u8],
-        verification_level: VerificationLevel,
-    ) -> Result<Self> {
+    pub fn new(data: &'a [u8], verification_level: VerificationLevel) -> Result<Self> {
         if data.is_empty() {
             return Err(Error::new(
                 ErrorCategory::Validation,
@@ -196,7 +188,7 @@ impl<'a> StreamingCoreModuleParser<'a> {
 
         // Extract module binary data
         let module_data = &self.data[self.offset..self.offset + module_size as usize];
-        
+
         // Validate WASM header
         if module_data.len() < 8 {
             return Err(Error::new(
@@ -214,7 +206,12 @@ impl<'a> StreamingCoreModuleParser<'a> {
             ));
         }
 
-        let version_bytes = [module_data[4], module_data[5], module_data[6], module_data[7]];
+        let version_bytes = [
+            module_data[4],
+            module_data[5],
+            module_data[6],
+            module_data[7],
+        ];
         if version_bytes != WASM_VERSION {
             return Err(Error::new(
                 ErrorCategory::Parse,
@@ -225,7 +222,7 @@ impl<'a> StreamingCoreModuleParser<'a> {
 
         // Use existing streaming decoder for the core module
         let module = self.parse_core_module_streaming(module_data)?;
-        
+
         // Update offset
         self.offset += module_size as usize;
 
@@ -244,7 +241,8 @@ impl<'a> StreamingCoreModuleParser<'a> {
         {
             // For no_std, we need to convert from the specific provider type
             // to the unified Module type
-            let module_with_provider = crate::streaming_decoder::decode_module_streaming(module_data)?;
+            let module_with_provider =
+                crate::streaming_decoder::decode_module_streaming(module_data)?;
             // Convert to unified Module type (this might require implementing conversion)
             // For now, return error indicating this needs proper conversion
             Err(Error::new(
@@ -256,11 +254,7 @@ impl<'a> StreamingCoreModuleParser<'a> {
     }
 
     /// Store a parsed module in the storage
-    fn store_module(
-        &self,
-        modules: &mut Vec<CoreModule>,
-        module: CoreModule,
-    ) -> Result<()> {
+    fn store_module(&self, modules: &mut Vec<CoreModule>, module: CoreModule) -> Result<()> {
         modules.push(module);
         Ok(())
     }
@@ -315,12 +309,9 @@ mod tests {
     #[test]
     fn test_empty_section() {
         let data = &[0u8]; // Zero modules
-        
-        let mut parser = StreamingCoreModuleParser::new(
-            data,
-            VerificationLevel::Standard,
-        ).unwrap();
-        
+
+        let mut parser = StreamingCoreModuleParser::new(data, VerificationLevel::Standard).unwrap();
+
         let result = parser.parse().unwrap();
         assert_eq!(result.module_count(), 0);
         assert_eq!(result.bytes_consumed(), 1);
@@ -332,7 +323,7 @@ mod tests {
         // Create data with too many modules
         let module_count = (MAX_MODULES_PER_COMPONENT + 1) as u32;
         let mut data = Vec::new();
-        
+
         // Write LEB128 encoded module count
         let mut count = module_count;
         while count >= 0x80 {
@@ -341,11 +332,9 @@ mod tests {
         }
         data.push(count as u8);
 
-        let mut parser = StreamingCoreModuleParser::new(
-            &data,
-            VerificationLevel::Standard,
-        ).unwrap();
-        
+        let mut parser =
+            StreamingCoreModuleParser::new(&data, VerificationLevel::Standard).unwrap();
+
         assert!(parser.parse().is_err());
     }
 
@@ -353,7 +342,7 @@ mod tests {
     fn test_invalid_module_size() {
         let mut data = Vec::new();
         data.push(1); // One module
-        
+
         // Write oversized module size
         let oversized = MAX_CORE_MODULE_SIZE as u32 + 1;
         let mut size = oversized;
@@ -363,26 +352,21 @@ mod tests {
         }
         data.push(size as u8);
 
-        let mut parser = StreamingCoreModuleParser::new(
-            &data,
-            VerificationLevel::Standard,
-        ).unwrap();
-        
+        let mut parser =
+            StreamingCoreModuleParser::new(&data, VerificationLevel::Standard).unwrap();
+
         assert!(parser.parse().is_err());
     }
 
     #[test]
     fn test_parser_offset_tracking() {
         let data = &[0u8]; // Zero modules
-        
-        let mut parser = StreamingCoreModuleParser::new(
-            data,
-            VerificationLevel::Standard,
-        ).unwrap();
-        
+
+        let mut parser = StreamingCoreModuleParser::new(data, VerificationLevel::Standard).unwrap();
+
         assert_eq!(parser.offset(), 0);
         assert_eq!(parser.remaining(), 1);
-        
+
         let result = parser.parse().unwrap();
         assert_eq!(parser.offset(), 1);
         assert_eq!(parser.remaining(), 0);

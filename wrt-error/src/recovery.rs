@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use alloc::collections::BTreeMap as HashMap;
 
 #[cfg(not(feature = "std"))]
-use alloc::{string::String, vec::Vec, format};
+use alloc::{format, string::String, vec::Vec};
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
@@ -27,9 +27,9 @@ pub enum RecoveryStrategy {
     /// Use a default value and continue
     UseDefault,
     /// Retry with different parameters
-    Retry { 
+    Retry {
         /// Maximum number of retry attempts allowed
-        max_attempts: u32 
+        max_attempts: u32,
     },
     /// Log error and continue
     LogAndContinue,
@@ -105,14 +105,14 @@ impl ErrorRecoveryManager {
     /// Create a new error recovery manager
     pub fn new() -> Self {
         let mut strategies = HashMap::new();
-        
+
         // Set default recovery strategies
         strategies.insert(ErrorCategory::Parse, RecoveryStrategy::Skip);
         strategies.insert(ErrorCategory::Type, RecoveryStrategy::LogAndContinue);
         strategies.insert(ErrorCategory::Runtime, RecoveryStrategy::Abort);
         strategies.insert(ErrorCategory::Memory, RecoveryStrategy::Abort);
         strategies.insert(ErrorCategory::Validation, RecoveryStrategy::UseDefault);
-        
+
         Self {
             strategies,
             error_history: Vec::new(),
@@ -127,15 +127,13 @@ impl ErrorRecoveryManager {
 
     /// Get recovery strategy for an error category
     pub fn get_strategy(&self, category: &ErrorCategory) -> RecoveryStrategy {
-        self.strategies.get(category)
-            .cloned()
-            .unwrap_or_default()
+        self.strategies.get(category).cloned().unwrap_or_default()
     }
 
     /// Record an error with context
     pub fn record_error(&mut self, error: Error, context: ErrorContext) {
         self.error_history.push((error, context));
-        
+
         // Limit history size
         if self.error_history.len() > self.max_history {
             self.error_history.remove(0);
@@ -151,10 +149,10 @@ impl ErrorRecoveryManager {
         for (error, context) in &self.error_history {
             // Count by category
             *category_counts.entry(error.category).or_insert(0) += 1;
-            
+
             // Count by location
             *location_counts.entry(context.location.clone()).or_insert(0) += 1;
-            
+
             // Collect recent errors (last 10)
             if recent_errors.len() < 10 {
                 recent_errors.push((error.clone(), context.clone()));
@@ -180,8 +178,8 @@ impl ErrorRecoveryManager {
             RecoveryStrategy::Abort => RecoveryResult::Abort,
             RecoveryStrategy::Skip => RecoveryResult::Skip,
             RecoveryStrategy::UseDefault => RecoveryResult::UseDefault,
-            RecoveryStrategy::Retry { max_attempts } => RecoveryResult::Retry { 
-                attempts_left: *max_attempts 
+            RecoveryStrategy::Retry { max_attempts } => RecoveryResult::Retry {
+                attempts_left: *max_attempts,
             },
             RecoveryStrategy::LogAndContinue => {
                 #[cfg(feature = "std")]
@@ -205,9 +203,9 @@ pub enum RecoveryResult {
     /// Use a default value
     UseDefault,
     /// Retry the operation
-    Retry { 
+    Retry {
         /// Number of retry attempts remaining
-        attempts_left: u32 
+        attempts_left: u32,
     },
     /// Continue execution
     Continue,
@@ -229,22 +227,23 @@ pub struct ErrorPatternAnalysis {
 impl ErrorPatternAnalysis {
     /// Get the most frequent error category
     pub fn most_frequent_category(&self) -> Option<ErrorCategory> {
-        self.category_counts.iter()
+        self.category_counts
+            .iter()
             .max_by_key(|(_, count)| *count)
             .map(|(category, _)| *category)
     }
 
     /// Get the most problematic location
     pub fn most_problematic_location(&self) -> Option<String> {
-        self.location_counts.iter()
+        self.location_counts
+            .iter()
             .max_by_key(|(_, count)| *count)
             .map(|(location, _)| location.clone())
     }
 
     /// Check if error rate is concerning
     pub fn is_error_rate_high(&self) -> bool {
-        self.total_errors > 50 || 
-        self.category_counts.values().any(|&count| count > 10)
+        self.total_errors > 50 || self.category_counts.values().any(|&count| count > 10)
     }
 }
 
@@ -264,7 +263,7 @@ impl RecoverableError {
     pub fn new(error: Error, context: ErrorContext) -> Self {
         let manager = ErrorRecoveryManager::new();
         let recovery_suggestion = manager.recover(&error, &context);
-        
+
         Self {
             error,
             context,
@@ -290,36 +289,38 @@ impl DebugUtils {
     /// Format error with full debugging information
     pub fn format_detailed_error(error: &Error, context: &ErrorContext) -> String {
         let mut output = String::new();
-        
-        output.push_str(&format!("Error: {} (Code: {})\n", error.message, error.code));
+
+        output.push_str(&format!(
+            "Error: {} (Code: {})\n",
+            error.message, error.code
+        ));
         output.push_str(&format!("Category: {:?}\n", error.category));
         output.push_str(&format!("Location: {}\n", context.location));
-        
+
         if !context.context.is_empty() {
             output.push_str("Context:\n");
             for (key, value) in &context.context {
                 output.push_str(&format!("  {}: {}\n", key, value));
             }
         }
-        
+
         if !context.stack_trace.is_empty() {
             output.push_str("Stack trace:\n");
             for (i, frame) in context.stack_trace.iter().enumerate() {
                 output.push_str(&format!("  {}: {}\n", i, frame));
             }
         }
-        
-        output.push_str(&format!("Recovery strategy: {:?}\n", context.recovery_strategy));
-        
+
+        output.push_str(&format!(
+            "Recovery strategy: {:?}\n",
+            context.recovery_strategy
+        ));
+
         output
     }
 
     /// Create error context for a function
-    pub fn function_context(
-        function_name: &str, 
-        module: &str,
-        line: u32
-    ) -> ErrorContext {
+    pub fn function_context(function_name: &str, module: &str, line: u32) -> ErrorContext {
         ErrorContext::new(format!("{}:{} in {}", module, line, function_name))
             .with_context("function", function_name)
             .with_context("module", module)
@@ -330,16 +331,19 @@ impl DebugUtils {
     pub fn wasm_context(
         operation: &str,
         instruction_offset: usize,
-        function_index: Option<u32>
+        function_index: Option<u32>,
     ) -> ErrorContext {
-        let mut ctx = ErrorContext::new(format!("WASM {} at offset {}", operation, instruction_offset))
-            .with_context("operation", operation)
-            .with_context("offset", format!("{}", instruction_offset));
-            
+        let mut ctx = ErrorContext::new(format!(
+            "WASM {} at offset {}",
+            operation, instruction_offset
+        ))
+        .with_context("operation", operation)
+        .with_context("offset", format!("{}", instruction_offset));
+
         if let Some(func_idx) = function_index {
             ctx = ctx.with_context("function_index", format!("{}", func_idx));
         }
-        
+
         ctx
     }
 }
@@ -374,8 +378,8 @@ macro_rules! recoverable {
             Err(error) => {
                 let recoverable = $crate::recovery::RecoverableError::new(error, $context);
                 match recoverable.recovery_suggestion {
-                    $crate::recovery::RecoveryResult::Continue | 
-                    $crate::recovery::RecoveryResult::Skip => {
+                    $crate::recovery::RecoveryResult::Continue
+                    | $crate::recovery::RecoveryResult::Skip => {
                         // Log and continue
                         #[cfg(feature = "std")]
                         eprintln!("Recovered from error: {}", recoverable.error.message);
@@ -383,7 +387,7 @@ macro_rules! recoverable {
                     },
                     _ => Err(recoverable.error),
                 }
-            }
+            },
         }
     };
 }
@@ -392,23 +396,26 @@ macro_rules! recoverable {
 mod tests {
     use super::*;
     use crate::codes;
-    
+
     #[cfg(not(feature = "std"))]
     use alloc::string::ToString;
 
     #[test]
     fn test_error_recovery_manager() {
         let mut manager = ErrorRecoveryManager::new();
-        
+
         // Test setting and getting strategies
         manager.set_strategy(ErrorCategory::Parse, RecoveryStrategy::Skip);
-        assert_eq!(manager.get_strategy(&ErrorCategory::Parse), RecoveryStrategy::Skip);
-        
+        assert_eq!(
+            manager.get_strategy(&ErrorCategory::Parse),
+            RecoveryStrategy::Skip
+        );
+
         // Test error recording
         let error = Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Test error");
         let context = ErrorContext::new("test_location");
         manager.record_error(error, context);
-        
+
         assert_eq!(manager.error_history.len(), 1);
     }
 
@@ -418,7 +425,7 @@ mod tests {
             .with_context("param", "value")
             .with_stack_frame("frame1")
             .with_recovery(RecoveryStrategy::Skip);
-            
+
         assert_eq!(context.location, "test_function");
         assert_eq!(context.context.get("param"), Some(&"value".to_string()));
         assert_eq!(context.stack_trace.len(), 1);
@@ -428,16 +435,19 @@ mod tests {
     #[test]
     fn test_pattern_analysis() {
         let mut manager = ErrorRecoveryManager::new();
-        
+
         // Add multiple errors
         for i in 0..5 {
             let error = Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Test error");
             let context = ErrorContext::new(format!("location_{}", i % 2));
             manager.record_error(error, context);
         }
-        
+
         let analysis = manager.analyze_patterns();
         assert_eq!(analysis.total_errors, 5);
-        assert_eq!(analysis.category_counts.get(&ErrorCategory::Parse), Some(&5));
+        assert_eq!(
+            analysis.category_counts.get(&ErrorCategory::Parse),
+            Some(&5)
+        );
     }
 }

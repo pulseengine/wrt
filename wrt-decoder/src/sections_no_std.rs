@@ -16,8 +16,8 @@ use wrt_format::{
 
 use wrt_foundation::{
     bounded::{BoundedVec, WasmName},
-    traits::BoundedCapacity,
     safe_memory::NoStdProvider,
+    traits::BoundedCapacity,
     types::{
         FuncType as WrtFuncType, GlobalType as WrtGlobalType, Import as WrtImport,
         ImportDesc as WrtImportDesc, MemoryType as WrtMemoryType, TableType as WrtTableType,
@@ -63,7 +63,7 @@ pub enum Section {
     /// Data count section (for memory.init/data.drop validation)
     DataCount(u32),
     /// Custom section
-    Custom { 
+    Custom {
         name: WasmString<NoStdProvider<8192>>,
         data: BoundedVec<u8, 1024, NoStdProvider<8192>>,
     },

@@ -227,10 +227,13 @@ impl ModuleArena {
         Self {
             buffer: {
                 #[cfg(feature = "std")]
-                { std::vec::Vec::with_capacity(capacity) }
+                {
+                    std::vec::Vec::with_capacity(capacity)
+                }
                 #[cfg(not(feature = "std"))]
-                { 
-                    let provider = crate::prelude::create_decoder_provider::<4096>().unwrap_or_default();
+                {
+                    let provider =
+                        crate::prelude::create_decoder_provider::<4096>().unwrap_or_default();
                     let mut vec = crate::prelude::DecoderVec::new(provider).unwrap_or_default();
                     // Pre-allocate by pushing zeros up to capacity
                     for _ in 0..capacity.min(4096) {

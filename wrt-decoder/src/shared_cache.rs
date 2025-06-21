@@ -8,12 +8,12 @@
 extern crate alloc;
 
 use crate::prelude::*;
-use crate::unified_loader::{ImportInfo, ExportInfo, WasmFormat};
+use crate::unified_loader::{ExportInfo, ImportInfo, WasmFormat};
 
-#[cfg(feature = "std")]
-use std::collections::HashMap;
 #[cfg(not(feature = "std"))]
 use alloc::collections::BTreeMap as HashMap;
+#[cfg(feature = "std")]
+use std::collections::HashMap;
 
 /// Cached section data to avoid re-parsing
 #[derive(Debug, Clone)]
@@ -79,13 +79,13 @@ impl DecodedCache {
         if self.import_cache.is_none() {
             let imports = parse_imports_from_binary(binary)?;
             self.import_cache = Some(imports);
-            
+
             // Also cache as section data
             if let Some(ref imports) = self.import_cache {
                 self.sections.insert(2, SectionData::Imports(imports.clone()));
             }
         }
-        
+
         Ok(self.import_cache.as_ref().unwrap())
     }
 
@@ -94,13 +94,13 @@ impl DecodedCache {
         if self.export_cache.is_none() {
             let exports = parse_exports_from_binary(binary)?;
             self.export_cache = Some(exports);
-            
+
             // Also cache as section data
             if let Some(ref exports) = self.export_cache {
                 self.sections.insert(7, SectionData::Exports(exports.clone()));
             }
         }
-        
+
         Ok(self.export_cache.as_ref().unwrap())
     }
 
@@ -115,7 +115,7 @@ impl DecodedCache {
                 .collect();
             self.builtin_imports = Some(builtins);
         }
-        
+
         Ok(self.builtin_imports.as_ref().unwrap())
     }
 
@@ -172,7 +172,7 @@ impl DecodedCache {
     /// Get cache memory usage estimate
     pub fn cache_size_estimate(&self) -> usize {
         let mut size = core::mem::size_of::<Self>();
-        
+
         // Estimate section data size
         for (_, section) in &self.sections {
             size += match section {
@@ -190,7 +190,7 @@ impl DecodedCache {
                 SectionData::Custom { name, data } => name.len() + data.len(),
             };
         }
-        
+
         // Add cache data
         if let Some(ref imports) = self.import_cache {
             size += imports.len() * 100;
@@ -201,7 +201,7 @@ impl DecodedCache {
         if let Some(ref builtins) = self.builtin_imports {
             size += builtins.len() * 50;
         }
-        
+
         size
     }
 }
@@ -233,7 +233,7 @@ impl CacheManager {
     /// Get or create cache for a binary
     pub fn get_cache(&mut self, binary: &[u8]) -> Result<&mut DecodedCache> {
         let hash = calculate_hash(binary);
-        
+
         if !self.caches.contains_key(&hash) {
             // Detect format
             let format_type = if binary.len() >= 8 && &binary[0..4] == b"\0asm" {
@@ -246,19 +246,21 @@ impl CacheManager {
             } else {
                 WasmFormat::Unknown
             };
-            
+
             let cache = DecodedCache::new(format_type, binary.len());
             let cache_size = cache.cache_size_estimate();
-            
+
             // Check if we need to evict entries
-            while self.current_cache_size + cache_size > self.max_cache_size && !self.caches.is_empty() {
+            while self.current_cache_size + cache_size > self.max_cache_size
+                && !self.caches.is_empty()
+            {
                 self.evict_lru_entry();
             }
-            
+
             self.current_cache_size += cache_size;
             self.caches.insert(hash, cache);
         }
-        
+
         Ok(self.caches.get_mut(&hash).unwrap())
     }
 
@@ -284,7 +286,8 @@ impl CacheManager {
         if let Some((&key, _)) = self.caches.iter().next() {
             let key = key;
             if let Some(cache) = self.caches.remove(&key) {
-                self.current_cache_size = self.current_cache_size.saturating_sub(cache.cache_size_estimate());
+                self.current_cache_size =
+                    self.current_cache_size.saturating_sub(cache.cache_size_estimate());
             }
         }
     }
@@ -325,7 +328,7 @@ fn calculate_hash(data: &[u8]) -> u64 {
 /// Parse imports from binary without full module parsing
 fn parse_imports_from_binary(binary: &[u8]) -> Result<Vec<ImportInfo>> {
     use crate::unified_loader::parse_import_section_info;
-    
+
     let mut offset = 8; // Skip header
     let mut imports = Vec::new();
 
@@ -346,11 +349,12 @@ fn parse_imports_from_binary(binary: &[u8]) -> Result<Vec<ImportInfo>> {
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::PARSE_ERROR,
-                "Section extends beyond binary"
+                "Section extends beyond binary",
             ));
         }
 
-        if section_id == 2 { // Import section
+        if section_id == 2 {
+            // Import section
             let section_data = &binary[offset..section_end];
             let mut dummy_info = crate::unified_loader::ModuleInfo {
                 function_types: Vec::new(),
@@ -373,7 +377,7 @@ fn parse_imports_from_binary(binary: &[u8]) -> Result<Vec<ImportInfo>> {
 /// Parse exports from binary without full module parsing
 fn parse_exports_from_binary(binary: &[u8]) -> Result<Vec<ExportInfo>> {
     use crate::unified_loader::parse_export_section_info;
-    
+
     let mut offset = 8; // Skip header
     let mut exports = Vec::new();
 
@@ -394,11 +398,12 @@ fn parse_exports_from_binary(binary: &[u8]) -> Result<Vec<ExportInfo>> {
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::PARSE_ERROR,
-                "Section extends beyond binary"
+                "Section extends beyond binary",
             ));
         }
 
-        if section_id == 7 { // Export section
+        if section_id == 7 {
+            // Export section
             let section_data = &binary[offset..section_end];
             let mut dummy_info = crate::unified_loader::ModuleInfo {
                 function_types: Vec::new(),
@@ -424,12 +429,13 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
     let mut shift = 0;
     let mut bytes_read = 0;
 
-    for i in 0..5 { // Max 5 bytes for u32
+    for i in 0..5 {
+        // Max 5 bytes for u32
         if offset + i >= data.len() {
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::PARSE_ERROR,
-                "Unexpected end of data while reading LEB128"
+                "Unexpected end of data while reading LEB128",
             ));
         }
 
@@ -447,7 +453,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::PARSE_ERROR,
-                "LEB128 value too large for u32"
+                "LEB128 value too large for u32",
             ));
         }
     }
@@ -471,10 +477,10 @@ mod tests {
     fn test_cache_manager() {
         let mut manager = CacheManager::new(1024 * 1024);
         let binary = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
-        
+
         let cache1 = manager.get_cache(&binary).unwrap();
         assert_eq!(cache1.format_type, WasmFormat::CoreModule);
-        
+
         // Should return same cache for same binary
         let cache2 = manager.get_cache(&binary).unwrap();
         assert_eq!(cache2.format_type, WasmFormat::CoreModule);
@@ -485,7 +491,7 @@ mod tests {
         let data1 = [1, 2, 3, 4];
         let data2 = [1, 2, 3, 4];
         let data3 = [4, 3, 2, 1];
-        
+
         assert_eq!(calculate_hash(&data1), calculate_hash(&data2));
         assert_ne!(calculate_hash(&data1), calculate_hash(&data3));
     }

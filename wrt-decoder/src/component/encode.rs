@@ -133,7 +133,10 @@ mod std_encoding {
         // Encode each instance
         for instance in instances {
             match &instance.instance_expr {
-                wrt_format::component::CoreInstanceExpr::ModuleReference { module_idx, arg_refs } => {
+                wrt_format::component::CoreInstanceExpr::ModuleReference {
+                    module_idx,
+                    arg_refs,
+                } => {
                     // Write instantiate tag
                     data.push(binary::CORE_INSTANCE_INSTANTIATE_TAG);
 

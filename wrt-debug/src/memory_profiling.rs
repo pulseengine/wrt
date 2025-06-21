@@ -879,7 +879,9 @@ where
             // SAFETY: We only store valid pointers from Box::leak
             // and the profiler has 'static lifetime
             #[allow(unsafe_code)]
-            unsafe { f(&mut *ptr) }
+            unsafe {
+                f(&mut *ptr)
+            }
         }
     }
 }

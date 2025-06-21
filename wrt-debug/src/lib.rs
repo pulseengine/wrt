@@ -165,7 +165,9 @@ impl<'a> DwarfDebugInfo<'a> {
             module_bytes,
             sections: DwarfSections::default(),
             #[cfg(feature = "abbrev")]
-            abbrev_cache: BoundedVec::new(NoStdProvider::<{ MAX_DWARF_ABBREV_CACHE * 128 }>::default()),
+            abbrev_cache: BoundedVec::new(
+                NoStdProvider::<{ MAX_DWARF_ABBREV_CACHE * 128 }>::default(),
+            ),
             #[cfg(feature = "line-info")]
             line_state: LineNumberState::new(),
             #[cfg(feature = "debug-info")]

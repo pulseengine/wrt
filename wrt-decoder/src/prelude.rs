@@ -120,7 +120,7 @@ pub type DecoderString = String;
 #[cfg(not(feature = "std"))]
 pub fn create_decoder_provider<const N: usize>(
 ) -> wrt_foundation::WrtResult<wrt_foundation::NoStdProvider<N>> {
-    use wrt_foundation::{CrateId, capabilities::MemoryFactory};
+    use wrt_foundation::{capabilities::MemoryFactory, CrateId};
     MemoryFactory::create::<N>(CrateId::Decoder)
 }
 
@@ -190,7 +190,8 @@ pub mod binary {
     /// Write LEB128 u32 in no_std mode
     pub fn write_leb128_u32(value: u32) -> BoundedVec<u8, 10, NoStdProvider<64>> {
         if let Ok(provider) = create_decoder_provider::<64>() {
-            let mut result = BoundedVec::new(provider).expect("Failed to create bounded vec for LEB128");
+            let mut result =
+                BoundedVec::new(provider).expect("Failed to create bounded vec for LEB128");
             let mut buffer = [0u8; 10];
             // Simple LEB128 encoding for no_std
             let mut bytes_written = 0;

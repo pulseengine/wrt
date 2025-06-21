@@ -300,13 +300,13 @@ pub struct ExportInfo {
     pub name: std::string::String,
     #[cfg(not(feature = "std"))]
     pub name: crate::prelude::DecoderString,
-    
+
     /// Type of export (function, memory, etc.)
     #[cfg(feature = "std")]
     pub kind: std::string::String,
     #[cfg(not(feature = "std"))]
     pub kind: crate::prelude::DecoderString,
-    
+
     /// Type information (as string)
     #[cfg(feature = "std")]
     pub type_info: std::string::String,
@@ -322,14 +322,17 @@ impl Default for ExportInfo {
             kind: std::string::String::new(),
             type_info: std::string::String::new(),
         };
-        
+
         #[cfg(not(feature = "std"))]
         {
             let provider = crate::prelude::create_decoder_provider::<4096>().unwrap_or_default();
             Self {
-                name: crate::prelude::DecoderString::from_str("", provider.clone()).unwrap_or_default(),
-                kind: crate::prelude::DecoderString::from_str("", provider.clone()).unwrap_or_default(),
-                type_info: crate::prelude::DecoderString::from_str("", provider).unwrap_or_default(),
+                name: crate::prelude::DecoderString::from_str("", provider.clone())
+                    .unwrap_or_default(),
+                kind: crate::prelude::DecoderString::from_str("", provider.clone())
+                    .unwrap_or_default(),
+                type_info: crate::prelude::DecoderString::from_str("", provider)
+                    .unwrap_or_default(),
             }
         }
     }
@@ -343,19 +346,19 @@ pub struct ImportInfo {
     pub module: std::string::String,
     #[cfg(not(feature = "std"))]
     pub module: crate::prelude::DecoderString,
-    
+
     /// Import name
     #[cfg(feature = "std")]
     pub name: std::string::String,
     #[cfg(not(feature = "std"))]
     pub name: crate::prelude::DecoderString,
-    
+
     /// Type of import (function, memory, etc.)
     #[cfg(feature = "std")]
     pub kind: std::string::String,
     #[cfg(not(feature = "std"))]
     pub kind: crate::prelude::DecoderString,
-    
+
     /// Type information (as string)
     #[cfg(feature = "std")]
     pub type_info: std::string::String,
@@ -372,15 +375,19 @@ impl Default for ImportInfo {
             kind: std::string::String::new(),
             type_info: std::string::String::new(),
         };
-        
+
         #[cfg(not(feature = "std"))]
         {
             let provider = crate::prelude::create_decoder_provider::<4096>().unwrap_or_default();
             Self {
-                module: crate::prelude::DecoderString::from_str("", provider.clone()).unwrap_or_default(),
-                name: crate::prelude::DecoderString::from_str("", provider.clone()).unwrap_or_default(),
-                kind: crate::prelude::DecoderString::from_str("", provider.clone()).unwrap_or_default(),
-                type_info: crate::prelude::DecoderString::from_str("", provider).unwrap_or_default(),
+                module: crate::prelude::DecoderString::from_str("", provider.clone())
+                    .unwrap_or_default(),
+                name: crate::prelude::DecoderString::from_str("", provider.clone())
+                    .unwrap_or_default(),
+                kind: crate::prelude::DecoderString::from_str("", provider.clone())
+                    .unwrap_or_default(),
+                type_info: crate::prelude::DecoderString::from_str("", provider)
+                    .unwrap_or_default(),
             }
         }
     }
@@ -394,13 +401,13 @@ pub struct ComponentMetadata {
     pub name: std::string::String,
     #[cfg(not(feature = "std"))]
     pub name: crate::prelude::DecoderString,
-    
+
     /// Component version (if available)
     #[cfg(feature = "std")]
     pub version: Option<std::string::String>,
     #[cfg(not(feature = "std"))]
     pub version: Option<crate::prelude::DecoderString>,
-    
+
     /// Custom sections contained in the component
     #[cfg(feature = "std")]
     pub custom_sections: std::vec::Vec<std::string::String>,

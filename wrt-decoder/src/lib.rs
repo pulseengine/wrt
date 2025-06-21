@@ -55,17 +55,17 @@ extern crate alloc;
 
 // Module exports
 // Core memory optimization modules (always available)
+pub mod decoder;
+pub mod format_detection_tests;
+pub mod lazy_detection;
 pub mod memory_optimized;
 pub mod optimized_string;
 pub mod prelude;
-pub mod streaming_validator;
-pub mod decoder;
-pub mod streaming_decoder;
-pub mod unified_loader;
 pub mod shared_cache;
-pub mod lazy_detection;
+pub mod streaming_decoder;
 pub mod streaming_validation;
-pub mod format_detection_tests;
+pub mod streaming_validator;
+pub mod unified_loader;
 
 // Bounded infrastructure for static memory allocation
 #[cfg(not(feature = "std"))]
@@ -111,18 +111,18 @@ pub use streaming_validator::{
 pub use wrt_error::{codes, kinds, Error, Result};
 // Unified loader exports
 pub use unified_loader::{
-    load_wasm_unified, WasmInfo, WasmFormat, ModuleInfo, ComponentInfo, 
-    ImportInfo, ExportInfo, ImportType, ExportType
+    load_wasm_unified, ComponentInfo, ExportInfo, ExportType, ImportInfo, ImportType, ModuleInfo,
+    WasmFormat, WasmInfo,
 };
 // Shared cache exports
 pub use shared_cache::{
-    DecodedCache, CacheManager, CacheStats, SectionData,
-    create_default_cache, create_cache_with_size
+    create_cache_with_size, create_default_cache, CacheManager, CacheStats, DecodedCache,
+    SectionData,
 };
 // Lazy detection exports
 pub use lazy_detection::{
-    LazyDetector, ComponentDetection, DetectionConfig,
-    create_fast_detector, create_thorough_detector
+    create_fast_detector, create_thorough_detector, ComponentDetection, DetectionConfig,
+    LazyDetector,
 };
 // Essential re-exports only
 #[cfg(feature = "std")]

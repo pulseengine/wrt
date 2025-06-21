@@ -37,22 +37,22 @@ use std::collections::HashMap;
 pub struct ContainerConfig {
     /// Base container image to use
     pub base_image: String,
-    
+
     /// Rust version to install
     pub rust_version: String,
-    
+
     /// Additional system packages to install
     pub system_packages: Vec<String>,
-    
+
     /// Environment variables to set in container
     pub environment: HashMap<String, String>,
-    
+
     /// Working directory in container
     pub work_dir: String,
-    
+
     /// Whether to cache dependencies
     pub cache_dependencies: bool,
-    
+
     /// Timeout for build operations (in seconds)
     pub timeout: u64,
 }
@@ -62,7 +62,7 @@ impl Default for ContainerConfig {
         let mut environment = HashMap::new();
         environment.insert("RUST_LOG".to_string(), "info".to_string());
         environment.insert("CARGO_INCREMENTAL".to_string(), "0".to_string());
-        
+
         Self {
             base_image: "ubuntu:22.04".to_string(),
             rust_version: "1.86.0".to_string(),
@@ -94,10 +94,12 @@ impl DaggerPipeline {
         {
             // Note: Dagger connection disabled due to API changes
             // Falling back to local execution even with dagger feature enabled
-            eprintln!("⚠️  Dagger SDK integration disabled due to API changes. Using local fallback.");
+            eprintln!(
+                "⚠️  Dagger SDK integration disabled due to API changes. Using local fallback."
+            );
             Ok(Self { config })
         }
-        
+
         #[cfg(not(feature = "dagger"))]
         {
             Ok(Self { config })
@@ -135,7 +137,7 @@ impl DaggerPipeline {
         {
             self.run_dagger_command(args).await
         }
-        
+
         #[cfg(not(feature = "dagger"))]
         {
             self.run_local_fallback(args).await
@@ -150,7 +152,7 @@ impl DaggerPipeline {
             "Dagger integration is currently disabled due to API changes in dagger-sdk v0.11+. \
              Please use the local fallback mode or help update the integration."
         );
-        
+
         // TODO: Implement updated Dagger SDK v0.11+ integration
         // The previous implementation was based on older API that has changed significantly
     }
@@ -158,20 +160,19 @@ impl DaggerPipeline {
     #[cfg(not(feature = "dagger"))]
     async fn run_local_fallback(&self, args: &[&str]) -> Result<String> {
         use std::process::Command;
-        
+
         eprintln!("⚠️  Dagger feature not enabled, falling back to local cargo-wrt execution");
-        
+
         let mut cmd = Command::new("cargo-wrt");
         cmd.args(args);
-        
-        let output = cmd.output()
-            .context("Failed to execute cargo-wrt locally")?;
-        
+
+        let output = cmd.output().context("Failed to execute cargo-wrt locally")?;
+
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             anyhow::bail!("cargo-wrt failed: {}", stderr);
         }
-        
+
         let stdout = String::from_utf8_lossy(&output.stdout);
         Ok(stdout.to_string())
     }

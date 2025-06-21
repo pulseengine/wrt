@@ -178,7 +178,10 @@ pub struct CoreInstance {
 impl Validatable for CoreInstance {
     fn validate(&self) -> Result<()> {
         match &self.instance_expr {
-            CoreInstanceExpr::ModuleReference { module_idx, arg_refs } => {
+            CoreInstanceExpr::ModuleReference {
+                module_idx,
+                arg_refs,
+            } => {
                 // Basic validation: module_idx should be reasonable
                 if *module_idx > 10000 {
                     // Arbitrary reasonable limit

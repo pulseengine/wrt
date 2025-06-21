@@ -3,8 +3,8 @@
 //! This module provides extensive testing for WebAssembly format detection,
 //! ensuring robust identification of Core Modules vs Component Model binaries.
 
+use crate::lazy_detection::{DetectionConfig, LazyDetector};
 use crate::unified_loader::{load_wasm_unified, WasmFormat};
-use crate::lazy_detection::{LazyDetector, DetectionConfig};
 use wrt_error::Result;
 
 /// Test data for various WASM formats
@@ -15,12 +15,9 @@ impl FormatTestData {
     pub fn minimal_core_module() -> Vec<u8> {
         vec![
             // WASM magic number
-            0x00, 0x61, 0x73, 0x6d,
-            // Version 1
-            0x01, 0x00, 0x00, 0x00,
-            // Type section (section 1)
-            0x01, 0x04, 0x01,
-            // Function type: () -> ()
+            0x00, 0x61, 0x73, 0x6d, // Version 1
+            0x01, 0x00, 0x00, 0x00, // Type section (section 1)
+            0x01, 0x04, 0x01, // Function type: () -> ()
             0x60, 0x00, 0x00,
         ]
     }
@@ -29,12 +26,9 @@ impl FormatTestData {
     pub fn minimal_component() -> Vec<u8> {
         vec![
             // WASM magic number
-            0x00, 0x61, 0x73, 0x6d,
-            // Component version (0x0a)
-            0x0a, 0x00, 0x01, 0x00,
-            // Component type section
-            0x01, 0x03, 0x00, 0x01,
-            // Empty component type
+            0x00, 0x61, 0x73, 0x6d, // Component version (0x0a)
+            0x0a, 0x00, 0x01, 0x00, // Component type section
+            0x01, 0x03, 0x00, 0x01, // Empty component type
             0x60, 0x00, 0x00,
         ]
     }
@@ -43,8 +37,7 @@ impl FormatTestData {
     pub fn invalid_magic() -> Vec<u8> {
         vec![
             // Wrong magic number
-            0xFF, 0x61, 0x73, 0x6d,
-            // Version 1
+            0xFF, 0x61, 0x73, 0x6d, // Version 1
             0x01, 0x00, 0x00, 0x00,
         ]
     }
@@ -58,26 +51,14 @@ impl FormatTestData {
     pub fn complex_core_module() -> Vec<u8> {
         vec![
             // WASM magic and version
-            0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
-            
-            // Type section
-            0x01, 0x07, 0x02,
-            // Function type 0: () -> ()
-            0x60, 0x00, 0x00,
-            // Function type 1: (i32) -> (i32)
-            0x60, 0x01, 0x7f, 0x01, 0x7f,
-            
-            // Function section
-            0x03, 0x02, 0x01, 0x00,
-            
-            // Export section
-            0x07, 0x07, 0x01,
-            // Export "test" as function 0
-            0x04, b't', b'e', b's', b't', 0x00, 0x00,
-            
-            // Code section
-            0x0a, 0x04, 0x01,
-            // Function body
+            0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, // Type section
+            0x01, 0x07, 0x02, // Function type 0: () -> ()
+            0x60, 0x00, 0x00, // Function type 1: (i32) -> (i32)
+            0x60, 0x01, 0x7f, 0x01, 0x7f, // Function section
+            0x03, 0x02, 0x01, 0x00, // Export section
+            0x07, 0x07, 0x01, // Export "test" as function 0
+            0x04, b't', b'e', b's', b't', 0x00, 0x00, // Code section
+            0x0a, 0x04, 0x01, // Function body
             0x02, 0x00, 0x0b,
         ]
     }
@@ -86,29 +67,16 @@ impl FormatTestData {
     pub fn complex_component() -> Vec<u8> {
         vec![
             // WASM magic and component version
-            0x00, 0x61, 0x73, 0x6d, 0x0a, 0x00, 0x01, 0x00,
-            
-            // Component type section
-            0x01, 0x0a, 0x03,
-            // Core function type
-            0x50, 0x00, 0x60, 0x00, 0x00,
-            // Component function type
-            0x40, 0x00, 0x00,
-            // Interface type
-            0x41, 0x01, 0x00,
-            
-            // Import section
-            0x02, 0x08, 0x01,
-            // Import "env" "func"
-            0x03, b'e', b'n', b'v',
-            0x04, b'f', b'u', b'n', b'c',
-            0x03, 0x00, 0x00,
-            
+            0x00, 0x61, 0x73, 0x6d, 0x0a, 0x00, 0x01, 0x00, // Component type section
+            0x01, 0x0a, 0x03, // Core function type
+            0x50, 0x00, 0x60, 0x00, 0x00, // Component function type
+            0x40, 0x00, 0x00, // Interface type
+            0x41, 0x01, 0x00, // Import section
+            0x02, 0x08, 0x01, // Import "env" "func"
+            0x03, b'e', b'n', b'v', 0x04, b'f', b'u', b'n', b'c', 0x03, 0x00, 0x00,
             // Export section
-            0x07, 0x08, 0x01,
-            // Export "main"
-            0x04, b'm', b'a', b'i', b'n',
-            0x03, 0x00, 0x00,
+            0x07, 0x08, 0x01, // Export "main"
+            0x04, b'm', b'a', b'i', b'n', 0x03, 0x00, 0x00,
         ]
     }
 
@@ -116,8 +84,7 @@ impl FormatTestData {
     pub fn unsupported_version() -> Vec<u8> {
         vec![
             // WASM magic number
-            0x00, 0x61, 0x73, 0x6d,
-            // Unsupported version (99)
+            0x00, 0x61, 0x73, 0x6d, // Unsupported version (99)
             0x63, 0x00, 0x00, 0x00,
         ]
     }
@@ -154,16 +121,35 @@ impl FormatDetectionTests {
 
         // Test various binaries
         let test_cases = vec![
-            (FormatTestData::minimal_core_module(), WasmFormat::CoreModule, "minimal core"),
-            (FormatTestData::minimal_component(), WasmFormat::Component, "minimal component"),
-            (FormatTestData::complex_core_module(), WasmFormat::CoreModule, "complex core"),
-            (FormatTestData::complex_component(), WasmFormat::Component, "complex component"),
+            (
+                FormatTestData::minimal_core_module(),
+                WasmFormat::CoreModule,
+                "minimal core",
+            ),
+            (
+                FormatTestData::minimal_component(),
+                WasmFormat::Component,
+                "minimal component",
+            ),
+            (
+                FormatTestData::complex_core_module(),
+                WasmFormat::CoreModule,
+                "complex core",
+            ),
+            (
+                FormatTestData::complex_component(),
+                WasmFormat::Component,
+                "complex component",
+            ),
         ];
 
         for (binary, expected_format, description) in test_cases {
             let detected_format = detector.detect_format(&binary)?;
-            assert_eq!(detected_format, expected_format, 
-                      "Failed detection for {}", description);
+            assert_eq!(
+                detected_format, expected_format,
+                "Failed detection for {}",
+                description
+            );
             println!("✓ Lazy detection: {} -> {:?}", description, detected_format);
         }
 
@@ -198,19 +184,19 @@ impl FormatDetectionTests {
     pub fn test_performance() -> Result<()> {
         // Create a larger binary for performance testing
         let mut large_binary = FormatTestData::complex_core_module();
-        
+
         // Add a large custom section to simulate real-world size
         let custom_section_data = vec![0u8; 10000]; // 10KB of data
         large_binary.push(0x00); // Custom section ID
-        
+
         // Add size (LEB128 encoded)
         let size = custom_section_data.len() + 5; // +5 for name length and name
         large_binary.extend_from_slice(&Self::encode_leb128(size as u32));
-        
+
         // Add name length and name
         large_binary.push(4); // name length
         large_binary.extend_from_slice(b"test"); // name
-        
+
         // Add data
         large_binary.extend_from_slice(&custom_section_data);
 
@@ -219,15 +205,20 @@ impl FormatDetectionTests {
             let start = std::time::Instant::now();
             let _info = load_wasm_unified(&large_binary)?;
             let duration = start.elapsed();
-            println!("✓ Performance test: {}KB binary processed in {:?}", 
-                    large_binary.len() / 1024, duration);
+            println!(
+                "✓ Performance test: {}KB binary processed in {:?}",
+                large_binary.len() / 1024,
+                duration
+            );
         }
 
         #[cfg(not(feature = "std"))]
         {
             let _info = load_wasm_unified(&large_binary)?;
-            println!("✓ Performance test: {}KB binary processed successfully", 
-                    large_binary.len() / 1024);
+            println!(
+                "✓ Performance test: {}KB binary processed successfully",
+                large_binary.len() / 1024
+            );
         }
 
         Ok(())
@@ -261,12 +252,12 @@ impl FormatDetectionTests {
     /// Test caching behavior
     pub fn test_caching_behavior() -> Result<()> {
         let binary = FormatTestData::complex_core_module();
-        
+
         // Load the same binary multiple times to test caching
         for i in 0..5 {
             let info = load_wasm_unified(&binary)?;
             assert_eq!(info.format, WasmFormat::CoreModule);
-            
+
             // Check that builtin imports are consistent
             if i > 0 {
                 // On subsequent loads, should hit cache

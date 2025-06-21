@@ -229,6 +229,8 @@ pub mod error;
 /// Incremental parser for efficient WIT re-parsing
 #[cfg(feature = "std")]
 pub mod incremental_parser;
+/// Interface demonstration (clean separation)
+pub mod interface_demo;
 /// Basic LSP (Language Server Protocol) infrastructure
 #[cfg(all(any(feature = "std"), feature = "lsp"))]
 pub mod lsp_server;
@@ -243,8 +245,6 @@ pub mod prelude;
 pub mod pure_format_types;
 /// Runtime bridge interface
 pub mod runtime_bridge;
-/// Interface demonstration (clean separation)
-pub mod interface_demo;
 /// Safe memory operations
 pub mod safe_memory;
 pub mod section;
