@@ -5,7 +5,9 @@ use std::path::Path;
 use std::process::Command;
 
 use crate::build::BuildSystem;
+use crate::diagnostics::{Diagnostic, DiagnosticCollection, Range, Severity, ToolOutputParser};
 use crate::error::{BuildError, BuildResult};
+use crate::parsers::CargoOutputParser;
 
 /// Test execution results
 #[derive(Debug)]
@@ -55,6 +57,108 @@ impl BuildSystem {
     /// Run all tests in the workspace
     pub fn run_tests(&self) -> BuildResult<TestResults> {
         self.run_tests_with_options(&TestOptions::default())
+    }
+
+    /// Run tests with diagnostic output
+    pub fn run_tests_with_diagnostics(&self, options: &TestOptions) -> BuildResult<DiagnosticCollection> {
+        let start_time = std::time::Instant::now();
+        let mut collection = DiagnosticCollection::new(
+            self.workspace.root.clone(),
+            "test".to_string(),
+        );
+
+        // Run tests with JSON output
+        let mut cmd = Command::new("cargo");
+        cmd.arg("test")
+            .arg("--workspace")
+            .arg("--message-format=json")
+            .current_dir(&self.workspace.root);
+
+        // Add test filter if provided
+        if let Some(filter) = &options.filter {
+            cmd.arg(filter);
+        }
+
+        // Add nocapture if requested
+        if options.nocapture {
+            cmd.arg("--").arg("--nocapture");
+        }
+
+        // Disable parallel execution if requested
+        if !options.parallel {
+            cmd.arg("--").arg("--test-threads=1");
+        }
+
+        // Add features if specified
+        if !self.config.features.is_empty() {
+            cmd.arg("--features").arg(self.config.features.join(","));
+        }
+
+        let output = cmd
+            .output()
+            .map_err(|e| BuildError::Tool(format!("Failed to execute cargo test: {}", e)))?;
+
+        // Parse cargo output for diagnostics
+        let parser = CargoOutputParser::new(&self.workspace.root);
+        match parser.parse_output(
+            &String::from_utf8_lossy(&output.stdout),
+            &String::from_utf8_lossy(&output.stderr),
+            &self.workspace.root,
+        ) {
+            Ok(diagnostics) => collection.add_diagnostics(diagnostics),
+            Err(e) => {
+                collection.add_diagnostic(Diagnostic::new(
+                    "<test>".to_string(),
+                    Range::entire_line(0),
+                    Severity::Error,
+                    format!("Failed to parse test output: {}", e),
+                    "cargo-wrt".to_string(),
+                ));
+            }
+        }
+
+        // Parse test results from output
+        let stdout_str = String::from_utf8_lossy(&output.stdout);
+        let mut test_passed = 0;
+        let mut test_failed = 0;
+        
+        for line in stdout_str.lines() {
+            if line.contains("test result:") {
+                // Parse test result line like: "test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out"
+                if line.contains(" passed;") {
+                    if let Some(passed_str) = line.split("ok. ").nth(1).and_then(|s| s.split(" passed;").next()) {
+                        test_passed = passed_str.trim().parse::<usize>().unwrap_or(0);
+                    }
+                }
+                if line.contains(" failed;") {
+                    if let Some(failed_str) = line.split(" passed; ").nth(1).and_then(|s| s.split(" failed;").next()) {
+                        test_failed = failed_str.trim().parse::<usize>().unwrap_or(0);
+                    }
+                }
+            }
+        }
+
+        // Add overall test status
+        if !output.status.success() || test_failed > 0 {
+            collection.add_diagnostic(Diagnostic::new(
+                "<test>".to_string(),
+                Range::entire_line(0),
+                Severity::Error,
+                format!("Tests failed: {} passed, {} failed", test_passed, test_failed),
+                "cargo-wrt".to_string(),
+            ));
+        } else {
+            collection.add_diagnostic(Diagnostic::new(
+                "<test>".to_string(),
+                Range::entire_line(0),
+                Severity::Info,
+                format!("All tests passed: {} tests", test_passed),
+                "cargo-wrt".to_string(),
+            ));
+        }
+
+        let duration = start_time.elapsed();
+        Ok(collection.finalize(duration.as_millis() as u64))
     }
 
     /// Run tests with specific options

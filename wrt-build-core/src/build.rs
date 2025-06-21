@@ -6,7 +6,9 @@ use std::process::Command;
 use std::io::Write;
 
 use crate::config::{BuildConfig, WorkspaceConfig};
+use crate::diagnostics::{Diagnostic, DiagnosticCollection, Range, Severity, ToolOutputParser};
 use crate::error::{BuildError, BuildResult};
+use crate::parsers::CargoOutputParser;
 
 /// Ported functions from xtask for build operations
 pub mod xtask_port {
@@ -839,6 +841,110 @@ impl BuildSystem {
         xtask_port::run_static_analysis()
     }
 
+    /// Run static analysis with diagnostic output
+    pub fn run_static_analysis_with_diagnostics(&self, strict: bool) -> BuildResult<DiagnosticCollection> {
+        let start_time = std::time::Instant::now();
+        let mut collection = DiagnosticCollection::new(
+            self.workspace.root.clone(),
+            "check".to_string(),
+        );
+
+        // Run clippy with JSON output
+        let mut clippy_cmd = Command::new("cargo");
+        clippy_cmd.args(["clippy", "--workspace", "--all-targets", "--message-format=json"])
+            .current_dir(&self.workspace.root);
+
+        if strict {
+            // Add strict clippy lints
+            clippy_cmd.args(["--", "-W", "clippy::all", "-W", "clippy::pedantic"]);
+        }
+
+        let clippy_output = clippy_cmd
+            .output()
+            .map_err(|e| BuildError::Tool(format!("Failed to run clippy: {}", e)))?;
+
+        // Parse clippy output for diagnostics
+        let parser = CargoOutputParser::new(&self.workspace.root);
+        match parser.parse_output(
+            &String::from_utf8_lossy(&clippy_output.stdout),
+            &String::from_utf8_lossy(&clippy_output.stderr),
+            &self.workspace.root,
+        ) {
+            Ok(diagnostics) => collection.add_diagnostics(diagnostics),
+            Err(e) => {
+                collection.add_diagnostic(Diagnostic::new(
+                    "<clippy>".to_string(),
+                    Range::entire_line(0),
+                    Severity::Error,
+                    format!("Failed to parse clippy output: {}", e),
+                    "cargo-wrt".to_string(),
+                ));
+            }
+        }
+
+        // Check formatting
+        let mut fmt_cmd = Command::new("cargo");
+        fmt_cmd.args(["fmt", "--check", "--message-format=json"])
+            .current_dir(&self.workspace.root);
+
+        let fmt_output = fmt_cmd
+            .output()
+            .map_err(|e| BuildError::Tool(format!("Failed to check formatting: {}", e)))?;
+
+        if !fmt_output.status.success() {
+            let stderr = String::from_utf8_lossy(&fmt_output.stderr);
+            if stderr.contains("not installed") || stderr.contains("not found") {
+                collection.add_diagnostic(Diagnostic::new(
+                    "<fmt>".to_string(),
+                    Range::entire_line(0),
+                    Severity::Warning,
+                    "cargo fmt not available, skipping format check".to_string(),
+                    "cargo-wrt".to_string(),
+                ));
+            } else {
+                // Parse unformatted files from stderr
+                for line in stderr.lines() {
+                    if line.contains("Diff in") {
+                        if let Some(file_path) = line.split("Diff in ").nth(1).and_then(|s| s.split(" at").next()) {
+                            let relative_path = if let Ok(path) = std::path::Path::new(file_path).strip_prefix(&self.workspace.root) {
+                                path.to_string_lossy().to_string()
+                            } else {
+                                file_path.to_string()
+                            };
+                            
+                            collection.add_diagnostic(Diagnostic::new(
+                                relative_path,
+                                Range::entire_line(0),
+                                Severity::Warning,
+                                "File is not formatted according to rustfmt rules".to_string(),
+                                "rustfmt".to_string(),
+                            ).with_code("FORMAT001".to_string()));
+                        }
+                    }
+                }
+                
+                collection.add_diagnostic(Diagnostic::new(
+                    "<fmt>".to_string(),
+                    Range::entire_line(0),
+                    Severity::Error,
+                    "Code formatting check failed".to_string(),
+                    "rustfmt".to_string(),
+                ));
+            }
+        } else {
+            collection.add_diagnostic(Diagnostic::new(
+                "<fmt>".to_string(),
+                Range::entire_line(0),
+                Severity::Info,
+                "All files are properly formatted".to_string(),
+                "rustfmt".to_string(),
+            ));
+        }
+
+        let duration = start_time.elapsed();
+        Ok(collection.finalize(duration.as_millis() as u64))
+    }
+
     /// Run advanced tests using ported xtask logic
     pub fn run_advanced_tests(&self) -> BuildResult<()> {
         xtask_port::run_advanced_tests()
@@ -990,6 +1096,160 @@ impl BuildSystem {
 
         // Return artifacts (simplified - would parse cargo output in real implementation)
         Ok(vec![crate_path.join("target")])
+    }
+
+    /// Build a specific package by name with diagnostic output
+    pub fn build_package_with_diagnostics(&self, package_name: &str) -> BuildResult<DiagnosticCollection> {
+        let start_time = std::time::Instant::now();
+        let mut collection = DiagnosticCollection::new(
+            self.workspace.root.clone(),
+            "build".to_string(),
+        );
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("build")
+            .arg("--message-format=json")
+            .current_dir(&self.workspace.root);
+
+        // Add package selector
+        cmd.arg("-p").arg(package_name);
+
+        // Add profile
+        match self.config.profile {
+            crate::config::BuildProfile::Release => {
+                cmd.arg("--release");
+            },
+            crate::config::BuildProfile::Test => {
+                cmd.arg("--tests");
+            },
+            _ => {}, // Dev is default
+        }
+
+        // Add features if specified
+        if !self.config.features.is_empty() {
+            cmd.arg("--features").arg(self.config.features.join(","));
+        }
+
+        let output = cmd
+            .output()
+            .map_err(|e| BuildError::Tool(format!("Failed to execute cargo build: {}", e)))?;
+
+        // Parse cargo output for diagnostics
+        let parser = CargoOutputParser::new(&self.workspace.root);
+        match parser.parse_output(
+            &String::from_utf8_lossy(&output.stdout),
+            &String::from_utf8_lossy(&output.stderr),
+            &self.workspace.root,
+        ) {
+            Ok(diagnostics) => collection.add_diagnostics(diagnostics),
+            Err(e) => {
+                collection.add_diagnostic(Diagnostic::new(
+                    "<build>".to_string(),
+                    Range::entire_line(0),
+                    Severity::Error,
+                    format!("Failed to parse build output: {}", e),
+                    "cargo-wrt".to_string(),
+                ));
+            }
+        }
+
+        // Add overall build status
+        if !output.status.success() {
+            collection.add_diagnostic(Diagnostic::new(
+                "<build>".to_string(),
+                Range::entire_line(0),
+                Severity::Error,
+                format!("Build failed for package {}", package_name),
+                "cargo-wrt".to_string(),
+            ));
+        } else {
+            collection.add_diagnostic(Diagnostic::new(
+                "<build>".to_string(),
+                Range::entire_line(0),
+                Severity::Info,
+                format!("Build succeeded for package {}", package_name),
+                "cargo-wrt".to_string(),
+            ));
+        }
+
+        let duration = start_time.elapsed();
+        Ok(collection.finalize(duration.as_millis() as u64))
+    }
+
+    /// Build all components with diagnostic output
+    pub fn build_all_with_diagnostics(&self) -> BuildResult<DiagnosticCollection> {
+        let start_time = std::time::Instant::now();
+        let mut collection = DiagnosticCollection::new(
+            self.workspace.root.clone(),
+            "build".to_string(),
+        );
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("build")
+            .arg("--workspace")
+            .arg("--message-format=json")
+            .current_dir(&self.workspace.root);
+
+        // Add profile
+        match self.config.profile {
+            crate::config::BuildProfile::Release => {
+                cmd.arg("--release");
+            },
+            crate::config::BuildProfile::Test => {
+                cmd.arg("--tests");
+            },
+            _ => {}, // Dev is default
+        }
+
+        // Add features if specified
+        if !self.config.features.is_empty() {
+            cmd.arg("--features").arg(self.config.features.join(","));
+        }
+
+        let output = cmd
+            .output()
+            .map_err(|e| BuildError::Tool(format!("Failed to execute cargo build: {}", e)))?;
+
+        // Parse cargo output for diagnostics
+        let parser = CargoOutputParser::new(&self.workspace.root);
+        match parser.parse_output(
+            &String::from_utf8_lossy(&output.stdout),
+            &String::from_utf8_lossy(&output.stderr),
+            &self.workspace.root,
+        ) {
+            Ok(diagnostics) => collection.add_diagnostics(diagnostics),
+            Err(e) => {
+                collection.add_diagnostic(Diagnostic::new(
+                    "<build>".to_string(),
+                    Range::entire_line(0),
+                    Severity::Error,
+                    format!("Failed to parse build output: {}", e),
+                    "cargo-wrt".to_string(),
+                ));
+            }
+        }
+
+        // Add overall build status
+        if !output.status.success() {
+            collection.add_diagnostic(Diagnostic::new(
+                "<build>".to_string(),
+                Range::entire_line(0),
+                Severity::Error,
+                "Workspace build failed".to_string(),
+                "cargo-wrt".to_string(),
+            ));
+        } else {
+            collection.add_diagnostic(Diagnostic::new(
+                "<build>".to_string(),
+                Range::entire_line(0),
+                Severity::Info,
+                "Workspace build succeeded".to_string(),
+                "cargo-wrt".to_string(),
+            ));
+        }
+
+        let duration = start_time.elapsed();
+        Ok(collection.finalize(duration.as_millis() as u64))
     }
 
     /// Build a specific package by name
