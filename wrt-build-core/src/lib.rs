@@ -39,13 +39,18 @@ pub use std::path::{Path, PathBuf};
 
 // Core modules
 pub mod build;
+pub mod cache;
 pub mod ci;
 pub mod config;
+pub mod diagnostics;
 pub mod error;
+pub mod filtering;
+pub mod formatters;
 pub mod fuzz;
 pub mod kani;
 pub mod matrix;
 pub mod memory;
+pub mod parsers;
 pub mod requirements;
 pub mod test;
 pub mod tools;
