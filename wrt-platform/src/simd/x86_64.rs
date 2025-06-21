@@ -1616,80 +1616,90 @@ impl SimdProvider for X86SimdProvider {
     }
 
     fn v128_i16x8_shl(&self, a: &[u8; 16], count: u32) -> [u8; 16] {
-        unsafe {
-            let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let result = _mm_slli_epi16(a_vec, count as i32);
-            
-            let mut output = [0u8; 16];
-            _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
-            output
+        let mut result = [0u8; 16];
+        let shift = count & 15; // Limit to valid range for i16
+        for i in 0..8 {
+            let offset = i * 2;
+            let val = i16::from_le_bytes([a[offset], a[offset + 1]]);
+            let shifted = val.wrapping_shl(shift);
+            result[offset..offset + 2].copy_from_slice(&shifted.to_le_bytes());
         }
+        result
     }
 
     fn v128_i16x8_shr_s(&self, a: &[u8; 16], count: u32) -> [u8; 16] {
-        unsafe {
-            let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let result = _mm_srai_epi16(a_vec, count as i32);
-            
-            let mut output = [0u8; 16];
-            _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
-            output
+        let mut result = [0u8; 16];
+        let shift = count & 15; // Limit to valid range for i16
+        for i in 0..8 {
+            let offset = i * 2;
+            let val = i16::from_le_bytes([a[offset], a[offset + 1]]);
+            let shifted = val.wrapping_shr(shift);
+            result[offset..offset + 2].copy_from_slice(&shifted.to_le_bytes());
         }
+        result
     }
 
     fn v128_i16x8_shr_u(&self, a: &[u8; 16], count: u32) -> [u8; 16] {
-        unsafe {
-            let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let result = _mm_srli_epi16(a_vec, count as i32);
-            
-            let mut output = [0u8; 16];
-            _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
-            output
+        let mut result = [0u8; 16];
+        let shift = count & 15; // Limit to valid range for u16
+        for i in 0..8 {
+            let offset = i * 2;
+            let val = u16::from_le_bytes([a[offset], a[offset + 1]]);
+            let shifted = val.wrapping_shr(shift);
+            result[offset..offset + 2].copy_from_slice(&shifted.to_le_bytes());
         }
+        result
     }
 
     fn v128_i32x4_shl(&self, a: &[u8; 16], count: u32) -> [u8; 16] {
-        unsafe {
-            let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let result = _mm_slli_epi32(a_vec, count as i32);
-            
-            let mut output = [0u8; 16];
-            _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
-            output
+        let mut result = [0u8; 16];
+        let shift = count & 31; // Limit to valid range for i32
+        for i in 0..4 {
+            let offset = i * 4;
+            let val = i32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]]);
+            let shifted = val.wrapping_shl(shift);
+            result[offset..offset + 4].copy_from_slice(&shifted.to_le_bytes());
         }
+        result
     }
 
     fn v128_i32x4_shr_s(&self, a: &[u8; 16], count: u32) -> [u8; 16] {
-        unsafe {
-            let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let result = _mm_srai_epi32(a_vec, count as i32);
-            
-            let mut output = [0u8; 16];
-            _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
-            output
+        let mut result = [0u8; 16];
+        let shift = count & 31; // Limit to valid range for i32
+        for i in 0..4 {
+            let offset = i * 4;
+            let val = i32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]]);
+            let shifted = val.wrapping_shr(shift);
+            result[offset..offset + 4].copy_from_slice(&shifted.to_le_bytes());
         }
+        result
     }
 
     fn v128_i32x4_shr_u(&self, a: &[u8; 16], count: u32) -> [u8; 16] {
-        unsafe {
-            let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let result = _mm_srli_epi32(a_vec, count as i32);
-            
-            let mut output = [0u8; 16];
-            _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
-            output
+        let mut result = [0u8; 16];
+        let shift = count & 31; // Limit to valid range for u32
+        for i in 0..4 {
+            let offset = i * 4;
+            let val = u32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]]);
+            let shifted = val.wrapping_shr(shift);
+            result[offset..offset + 4].copy_from_slice(&shifted.to_le_bytes());
         }
+        result
     }
 
     fn v128_i64x2_shl(&self, a: &[u8; 16], count: u32) -> [u8; 16] {
-        unsafe {
-            let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let result = _mm_slli_epi64(a_vec, count as i32);
-            
-            let mut output = [0u8; 16];
-            _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
-            output
+        let mut result = [0u8; 16];
+        let shift = count & 63; // Limit to valid range for i64
+        for i in 0..2 {
+            let offset = i * 8;
+            let val = i64::from_le_bytes([
+                a[offset], a[offset + 1], a[offset + 2], a[offset + 3],
+                a[offset + 4], a[offset + 5], a[offset + 6], a[offset + 7]
+            ]);
+            let shifted = val.wrapping_shl(shift);
+            result[offset..offset + 8].copy_from_slice(&shifted.to_le_bytes());
         }
+        result
     }
 
     fn v128_i64x2_shr_s(&self, a: &[u8; 16], count: u32) -> [u8; 16] {
@@ -1708,14 +1718,18 @@ impl SimdProvider for X86SimdProvider {
     }
 
     fn v128_i64x2_shr_u(&self, a: &[u8; 16], count: u32) -> [u8; 16] {
-        unsafe {
-            let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let result = _mm_srli_epi64(a_vec, count as i32);
-            
-            let mut output = [0u8; 16];
-            _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
-            output
+        let mut result = [0u8; 16];
+        let shift = count & 63; // Limit to valid range for u64
+        for i in 0..2 {
+            let offset = i * 8;
+            let val = u64::from_le_bytes([
+                a[offset], a[offset + 1], a[offset + 2], a[offset + 3],
+                a[offset + 4], a[offset + 5], a[offset + 6], a[offset + 7]
+            ]);
+            let shifted = val.wrapping_shr(shift);
+            result[offset..offset + 8].copy_from_slice(&shifted.to_le_bytes());
         }
+        result
     }
 
     // Advanced shuffle operations

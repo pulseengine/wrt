@@ -456,7 +456,7 @@ pub fn create_thread_pool(_config: &ThreadPoolConfig) -> Result<Box<dyn Platform
             .map(|pool| Box::new(pool) as Box<dyn PlatformThreadPool>)
     }
     
-    #[cfg(target_os = "linux")]
+    #[cfg(all(feature = "threading", target_os = "linux"))]
     {
         super::linux_threading::LinuxThreadPool::new(_config)
             .map(|pool| Box::new(pool) as Box<dyn PlatformThreadPool>)
