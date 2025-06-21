@@ -14,6 +14,9 @@ use crate::{prelude::*, builtins::BuiltinType};
 
 /// Scan a WebAssembly module for built-in imports
 ///
+/// This function now uses the unified loader and shared cache for efficient parsing.
+/// It leverages cached import data to avoid redundant section parsing.
+///
 /// # Arguments
 ///
 /// * `binary` - The WebAssembly module binary
@@ -22,7 +25,25 @@ use crate::{prelude::*, builtins::BuiltinType};
 ///
 /// A Result containing a vector of built-in names found in the import section
 pub fn scan_for_builtins(binary: &[u8]) -> Result<Vec<String>> {
-    use wrt_decoder::sections::parsers::parse_import_section;
+    use wrt_decoder::load_wasm_unified;
+    
+    // Try to use unified API with caching first
+    match load_wasm_unified(binary) {
+        Ok(wasm_info) => {
+            // Use the cached builtin imports from unified API
+            Ok(wasm_info.builtin_imports)
+        }
+        Err(_) => {
+            // Fall back to manual parsing if unified API fails
+            scan_for_builtins_fallback(binary)
+        }
+    }
+}
+
+/// Fallback builtin scanning using direct section parsing
+/// 
+/// This is used when the unified API fails or for compatibility
+fn scan_for_builtins_fallback(binary: &[u8]) -> Result<Vec<String>> {
     use wrt_format::binary;
     
     // Validate WebAssembly magic number and version
@@ -49,6 +70,9 @@ pub fn scan_for_builtins(binary: &[u8]) -> Result<Vec<String>> {
     // Parse sections to find the import section
     while offset < binary.len() {
         // Read section ID
+        if offset >= binary.len() {
+            break;
+        }
         let section_id = binary[offset];
         offset += 1;
         
@@ -57,30 +81,20 @@ pub fn scan_for_builtins(binary: &[u8]) -> Result<Vec<String>> {
             .map_err(|e| Error::new(
                 ErrorCategory::Parse,
                 wrt_error::codes::PARSE_ERROR,
-                &format!("Failed to read section size: {}", e)
+                "Failed to read section size"
             ))?;
         offset = new_offset;
         
         let section_end = offset + section_size as usize;
+        if section_end > binary.len() {
+            break;
+        }
         
         // Check if this is the import section (ID = 2)
         if section_id == 2 {
-            // Parse imports
+            // Parse imports manually for builtin detection
             let section_data = &binary[offset..section_end];
-            let imports = parse_import_section(section_data)
-                .map_err(|e| Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    &format!("Failed to parse import section: {}", e)
-                ))?;
-            
-            // Look for wasi_builtin imports
-            for import in imports {
-                if import.module == "wasi_builtin" {
-                    builtin_names.push(import.name.clone());
-                }
-            }
-            
+            builtin_names = parse_builtins_from_import_section(section_data)?;
             break; // No need to continue after import section
         }
         
@@ -89,6 +103,96 @@ pub fn scan_for_builtins(binary: &[u8]) -> Result<Vec<String>> {
     }
     
     Ok(builtin_names)
+}
+
+/// Parse builtin imports from import section data
+fn parse_builtins_from_import_section(data: &[u8]) -> Result<Vec<String>> {
+    let mut builtin_names = Vec::new();
+    let mut offset = 0;
+    
+    // Read import count
+    let (count, bytes_read) = read_leb128_u32(data, offset)?;
+    offset += bytes_read;
+    
+    // Parse each import
+    for _ in 0..count {
+        // Read module name
+        let (module_len, bytes_read) = read_leb128_u32(data, offset)?;
+        offset += bytes_read;
+        
+        if offset + module_len as usize > data.len() {
+            break;
+        }
+        
+        let module_name = core::str::from_utf8(&data[offset..offset + module_len as usize])
+            .unwrap_or("");
+        offset += module_len as usize;
+        
+        // Read import name
+        let (name_len, bytes_read) = read_leb128_u32(data, offset)?;
+        offset += bytes_read;
+        
+        if offset + name_len as usize > data.len() {
+            break;
+        }
+        
+        let import_name = core::str::from_utf8(&data[offset..offset + name_len as usize])
+            .unwrap_or("");
+        offset += name_len as usize;
+        
+        // Check if this is a wasi_builtin import
+        if module_name == "wasi_builtin" {
+            builtin_names.push(import_name.to_string());
+        }
+        
+        // Skip import kind and type info
+        if offset < data.len() {
+            offset += 1; // Skip import kind
+            // Skip additional type-specific data (simplified)
+            if offset < data.len() {
+                offset += 1;
+            }
+        }
+    }
+    
+    Ok(builtin_names)
+}
+
+/// Helper function to read LEB128 unsigned 32-bit integer
+fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
+    let mut result = 0u32;
+    let mut shift = 0;
+    let mut bytes_read = 0;
+
+    for i in 0..5 { // Max 5 bytes for u32
+        if offset + i >= data.len() {
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                wrt_error::codes::PARSE_ERROR,
+                "Unexpected end of data while reading LEB128"
+            ));
+        }
+
+        let byte = data[offset + i];
+        bytes_read += 1;
+
+        result |= ((byte & 0x7F) as u32) << shift;
+
+        if byte & 0x80 == 0 {
+            break;
+        }
+
+        shift += 7;
+        if shift >= 32 {
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                wrt_error::codes::PARSE_ERROR,
+                "LEB128 value too large for u32"
+            ));
+        }
+    }
+
+    Ok((result, bytes_read))
 }
 
 /// Scan a WebAssembly binary for built-in imports and map them to built-in

@@ -2060,29 +2060,25 @@ pub fn convert_value_for_type(
         }
     }
     
-    /// SIMD-optimized i32 array lowering
+    /// ASIL-D safe i32 array lowering (unsafe SIMD disabled for safety compliance)
     #[cfg(all(feature = "std", target_arch = "x86_64", target_feature = "sse2"))]
     fn simd_lower_i32_array(&self, values: &[i32], start_addr: usize, memory_bytes: &mut [u8]) -> Result<()> {
-        use std::arch::x86_64::*;
-        
-        let chunks = values.chunks_exact(4);
-        let remainder = chunks.remainder();
+        // ASIL-D safe: Use safe array operations instead of unsafe SIMD
         let mut offset = start_addr;
         
-        // Process 4 i32 values at a time using SIMD
-        unsafe {
-            for chunk in chunks {
-                let vec = _mm_loadu_si128(chunk.as_ptr() as *const __m128i);
-                let bytes_ptr = memory_bytes.as_mut_ptr().add(offset);
-                _mm_storeu_si128(bytes_ptr as *mut __m128i, vec);
-                offset += 16; // 4 * 4 bytes
-            }
-        }
-        
-        // Handle remaining values with standard approach
-        for (i, &value) in remainder.iter().enumerate() {
+        // Process values safely without unsafe operations
+        for &value in values {
             let bytes = value.to_le_bytes();
-            memory_bytes[offset + i * 4..offset + (i + 1) * 4].copy_from_slice(&bytes);
+            if offset + 4 <= memory_bytes.len() {
+                memory_bytes[offset..offset + 4].copy_from_slice(&bytes);
+                offset += 4;
+            } else {
+                return Err(Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ACCESS_ERROR,
+                    "Array lowering exceeded memory bounds"
+                ));
+            }
         }
         
         Ok(())
@@ -2124,41 +2120,27 @@ pub fn convert_value_for_type(
         }
     }
     
-    /// SIMD-optimized i32 array lifting
+    /// ASIL-D safe i32 array lifting (unsafe SIMD disabled for safety compliance)  
     #[cfg(all(feature = "std", target_arch = "x86_64", target_feature = "sse2"))]
     fn simd_lift_i32_array(&self, start_addr: usize, count: usize, memory_bytes: &[u8]) -> Result<Vec<i32>> {
-        use std::arch::x86_64::*;
-        
+        // ASIL-D safe: Use safe array operations instead of unsafe SIMD
         let mut result = Vec::with_capacity(count);
-        let chunks = count / 4;
-        let remainder = count % 4;
         let mut offset = start_addr;
         
-        // Process 4 i32 values at a time using SIMD
-        unsafe {
-            for _ in 0..chunks {
-                let bytes_ptr = memory_bytes.as_ptr().add(offset);
-                let vec = _mm_loadu_si128(bytes_ptr as *const __m128i);
-                
-                // Extract i32 values from SIMD register
-                let mut temp: [i32; 4] = [0; 4];
-                _mm_storeu_si128(temp.as_mut_ptr() as *mut __m128i, vec);
-                
-                result.extend_from_slice(&temp);
-                offset += 16; // 4 * 4 bytes
+        // Process values safely without unsafe operations
+        for _ in 0..count {
+            if offset + 4 <= memory_bytes.len() {
+                let mut bytes = [0u8; 4];
+                bytes.copy_from_slice(&memory_bytes[offset..offset + 4]);
+                result.push(i32::from_le_bytes(bytes));
+                offset += 4;
+            } else {
+                return Err(Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ACCESS_ERROR,
+                    "Array lifting exceeded memory bounds"
+                ));
             }
-        }
-        
-        // Handle remaining values
-        for i in 0..remainder {
-            let value_offset = offset + i * 4;
-            let bytes = [
-                memory_bytes[value_offset],
-                memory_bytes[value_offset + 1],
-                memory_bytes[value_offset + 2],
-                memory_bytes[value_offset + 3],
-            ];
-            result.push(i32::from_le_bytes(bytes));
         }
         
         Ok(result)

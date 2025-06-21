@@ -425,12 +425,10 @@ fn current_time_us() -> u64 {
     }
     #[cfg(not(feature = "std"))]
     {
-        // For no_std, use a simple counter (would be replaced with platform-specific timing)
-        static mut COUNTER: u64 = 0;
-        unsafe {
-            COUNTER += 1;
-            COUNTER
-        }
+        // ASIL-D safe: Use atomic counter instead of unsafe static mut
+        use core::sync::atomic::{AtomicU64, Ordering};
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        COUNTER.fetch_add(1, Ordering::Relaxed)
     }
 }
 

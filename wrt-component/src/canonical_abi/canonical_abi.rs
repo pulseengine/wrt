@@ -1113,7 +1113,11 @@ impl CanonicalABI {
             1 => memory.write_u8(offset, discriminant as u8)?,
             2 => memory.write_u16_le(offset, discriminant as u16)?,
             4 => memory.write_u32_le(offset, discriminant as u32)?,
-            _ => return Err(Error::new(\n                ErrorCategory::Type,\n                codes::TYPE_ERROR,\n                \"Invalid discriminant size calculated\"\n            )),
+            _ => return Err(Error::new(
+                ErrorCategory::Type,
+                codes::TYPE_ERROR,
+                "Invalid discriminant size calculated"
+            )),
         }
         
         // If there's a payload, lower it after the discriminant with proper alignment
@@ -1155,7 +1159,11 @@ impl CanonicalABI {
             1 => memory.write_u8(offset, discriminant as u8),
             2 => memory.write_u16_le(offset, discriminant as u16),
             4 => memory.write_u32_le(offset, discriminant as u32),
-            _ => return Err(Error::new(\n                ErrorCategory::Type,\n                codes::TYPE_ERROR,\n                \"Invalid discriminant size calculated\"\n            )),
+            _ => return Err(Error::new(
+                ErrorCategory::Type,
+                codes::TYPE_ERROR,
+                "Invalid discriminant size calculated"
+            )),
         }
     }
 
