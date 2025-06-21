@@ -7,13 +7,11 @@
 //! - `cargo run --example asil_demo --features asil-c`
 //! - `cargo run --example asil_demo --features asil-d`
 
-use wrt_error::{codes, Error, ErrorCategory};
-
-#[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
-use wrt_error::{AsilErrorContext, AsilLevel};
-
 #[cfg(any(feature = "asil-c", feature = "asil-d"))]
 use wrt_error::SafetyMonitor;
+use wrt_error::{codes, Error, ErrorCategory};
+#[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
+use wrt_error::{AsilErrorContext, AsilLevel};
 
 fn main() {
     println!("WRT Error ASIL Demo");

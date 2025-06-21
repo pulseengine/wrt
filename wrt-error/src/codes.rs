@@ -247,7 +247,8 @@ pub const DEPRECATED_API: u16 = 10007;
 pub const INVALID_VALUE: u16 = 1019;
 /// Unimplemented feature error
 pub const UNIMPLEMENTED: u16 = 1020;
-/// Conversion error (general) - moved to system error codes section as `CONVERSION_ERROR`: u16 = 8002
+/// Conversion error (general) - moved to system error codes section as
+/// `CONVERSION_ERROR`: u16 = 8002
 // WIT parsing error codes (11000-11999)
 /// WIT input too large error
 pub const WIT_INPUT_TOO_LARGE: u16 = 11000;

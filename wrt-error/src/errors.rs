@@ -90,15 +90,72 @@ pub struct Error {
 }
 
 impl Error {
+    /// Component not found error
+    pub const COMPONENT_NOT_FOUND: Self = Self::new(
+        ErrorCategory::Component,
+        codes::COMPONENT_NOT_FOUND,
+        "Component not found",
+    );
+    /// Insufficient memory error
+    pub const INSUFFICIENT_MEMORY: Self = Self::new(
+        ErrorCategory::Resource,
+        codes::INSUFFICIENT_MEMORY,
+        "Insufficient memory for operation",
+    );
+    /// No WIT definitions found error
+    pub const NO_WIT_DEFINITIONS_FOUND: Self = Self::new(
+        ErrorCategory::Parse,
+        codes::NO_WIT_DEFINITIONS_FOUND,
+        "No WIT worlds or interfaces found in input",
+    );
+    /// Out of memory error
+    pub const OUT_OF_MEMORY: Self = Self::new(
+        ErrorCategory::Resource,
+        codes::OUT_OF_MEMORY,
+        "Out of memory",
+    );
+    /// Stack overflow error
+    pub const STACK_OVERFLOW: Self = Self::new(
+        ErrorCategory::Runtime,
+        codes::STACK_OVERFLOW,
+        "Stack overflow",
+    );
+    /// Too many components error
+    pub const TOO_MANY_COMPONENTS: Self = Self::new(
+        ErrorCategory::Component,
+        codes::TOO_MANY_COMPONENTS,
+        "Too many components instantiated",
+    );
+    // Agent C constant error instances
+    /// WIT input too large error
+    pub const WIT_INPUT_TOO_LARGE: Self = Self::new(
+        ErrorCategory::Parse,
+        codes::WIT_INPUT_TOO_LARGE,
+        "WIT input too large for parser buffer",
+    );
+    /// WIT interface limit exceeded error
+    pub const WIT_INTERFACE_LIMIT_EXCEEDED: Self = Self::new(
+        ErrorCategory::Parse,
+        codes::WIT_INTERFACE_LIMIT_EXCEEDED,
+        "Too many WIT interfaces for parser limits",
+    );
+    /// WIT world limit exceeded error
+    pub const WIT_WORLD_LIMIT_EXCEEDED: Self = Self::new(
+        ErrorCategory::Parse,
+        codes::WIT_WORLD_LIMIT_EXCEEDED,
+        "Too many WIT worlds for parser limits",
+    );
+
     /// Create a new error.
     #[must_use]
     pub const fn new(category: ErrorCategory, code: u16, message: &'static str) -> Self {
         // ASIL-D: Validate error category and code ranges at compile time
         #[cfg(feature = "asil-d")]
         {
-            // Note: const fn limitations prevent runtime assertions, but this documents
-            // the expected ranges for each category. In a full implementation, these
-            // would be enforced through the type system or compile-time checks.
+            // Note: const fn limitations prevent runtime assertions, but this
+            // documents the expected ranges for each category. In a
+            // full implementation, these would be enforced through
+            // the type system or compile-time checks.
         }
 
         Self {
@@ -107,70 +164,6 @@ impl Error {
             message,
         }
     }
-
-    // Agent C constant error instances
-    /// WIT input too large error
-    pub const WIT_INPUT_TOO_LARGE: Self = Self::new(
-        ErrorCategory::Parse,
-        codes::WIT_INPUT_TOO_LARGE,
-        "WIT input too large for parser buffer",
-    );
-
-    /// WIT world limit exceeded error
-    pub const WIT_WORLD_LIMIT_EXCEEDED: Self = Self::new(
-        ErrorCategory::Parse,
-        codes::WIT_WORLD_LIMIT_EXCEEDED,
-        "Too many WIT worlds for parser limits",
-    );
-
-    /// WIT interface limit exceeded error
-    pub const WIT_INTERFACE_LIMIT_EXCEEDED: Self = Self::new(
-        ErrorCategory::Parse,
-        codes::WIT_INTERFACE_LIMIT_EXCEEDED,
-        "Too many WIT interfaces for parser limits",
-    );
-
-    /// No WIT definitions found error
-    pub const NO_WIT_DEFINITIONS_FOUND: Self = Self::new(
-        ErrorCategory::Parse,
-        codes::NO_WIT_DEFINITIONS_FOUND,
-        "No WIT worlds or interfaces found in input",
-    );
-
-    /// Insufficient memory error
-    pub const INSUFFICIENT_MEMORY: Self = Self::new(
-        ErrorCategory::Resource,
-        codes::INSUFFICIENT_MEMORY,
-        "Insufficient memory for operation",
-    );
-
-    /// Out of memory error
-    pub const OUT_OF_MEMORY: Self = Self::new(
-        ErrorCategory::Resource,
-        codes::OUT_OF_MEMORY,
-        "Out of memory",
-    );
-
-    /// Too many components error
-    pub const TOO_MANY_COMPONENTS: Self = Self::new(
-        ErrorCategory::Component,
-        codes::TOO_MANY_COMPONENTS,
-        "Too many components instantiated",
-    );
-
-    /// Component not found error
-    pub const COMPONENT_NOT_FOUND: Self = Self::new(
-        ErrorCategory::Component,
-        codes::COMPONENT_NOT_FOUND,
-        "Component not found",
-    );
-
-    /// Stack overflow error
-    pub const STACK_OVERFLOW: Self = Self::new(
-        ErrorCategory::Runtime,
-        codes::STACK_OVERFLOW,
-        "Stack overflow",
-    );
 
     /// Create a component error with dynamic context (using static fallback)
     #[must_use]
@@ -192,7 +185,8 @@ impl Error {
         )
     }
 
-    /// Create an invalid input error with dynamic message (using static fallback)
+    /// Create an invalid input error with dynamic message (using static
+    /// fallback)
     #[must_use]
     pub const fn invalid_input(_message: &'static str) -> Self {
         Self::new(
@@ -272,13 +266,15 @@ impl Error {
     pub const fn asil_level(&self) -> &'static str {
         match self.category {
             ErrorCategory::Safety => "ASIL-D", // Safety errors require highest level
-            ErrorCategory::Memory | ErrorCategory::RuntimeTrap => "ASIL-C", // Memory/trap errors are ASIL-C
-            ErrorCategory::Validation | ErrorCategory::Type => "ASIL-B",    // Type safety is ASIL-B
+            ErrorCategory::Memory | ErrorCategory::RuntimeTrap => "ASIL-C", /* Memory/trap errors are ASIL-C */
+            ErrorCategory::Validation | ErrorCategory::Type => "ASIL-B",    /* Type safety is
+            * ASIL-B */
             _ => "QM", // Other errors are Quality Management level
         }
     }
 
-    /// Check if error requires immediate safe state transition (ASIL-C and above)
+    /// Check if error requires immediate safe state transition (ASIL-C and
+    /// above)
     #[cfg(any(feature = "asil-c", feature = "asil-d"))]
     #[must_use]
     pub const fn requires_safe_state(&self) -> bool {

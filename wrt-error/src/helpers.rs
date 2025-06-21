@@ -13,10 +13,9 @@
 //! including foundation-specific errors for the new unified type system,
 //! memory providers, and safety primitives.
 
-use crate::{codes, Error, ErrorCategory};
-
 // Re-export error kind creation functions
 pub use crate::kinds::*;
+use crate::{codes, Error, ErrorCategory};
 
 /// Create a safety violation error
 #[must_use]

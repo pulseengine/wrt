@@ -28,7 +28,7 @@
 /// ```
 #[macro_export]
 macro_rules! asil_error {
-    ($category:expr, $code:expr, $message:expr, "asil-d") => {{
+    ($category:expr, $code:expr, $message:expr,"asil-d") => {{
         #[cfg(not(feature = "asil-d"))]
         compile_error!("This error requires ASIL-D safety level");
 
@@ -45,14 +45,14 @@ macro_rules! asil_error {
             error
         }
     }};
-    ($category:expr, $code:expr, $message:expr, "asil-c") => {{
+    ($category:expr, $code:expr, $message:expr,"asil-c") => {{
         #[cfg(not(any(feature = "asil-c", feature = "asil-d")))]
         compile_error!("This error requires ASIL-C safety level or higher");
 
         #[cfg(any(feature = "asil-c", feature = "asil-d"))]
         $crate::Error::new($category, $code, $message)
     }};
-    ($category:expr, $code:expr, $message:expr, "asil-b") => {{
+    ($category:expr, $code:expr, $message:expr,"asil-b") => {{
         #[cfg(not(any(feature = "asil-b", feature = "asil-c", feature = "asil-d")))]
         compile_error!("This error requires ASIL-B safety level or higher");
 

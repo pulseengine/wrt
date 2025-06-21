@@ -3,16 +3,14 @@
 //! This module provides comprehensive error recovery mechanisms and detailed
 //! debugging information for the WRT runtime system.
 
-use crate::{Error, ErrorCategory, Result};
-
+#[cfg(not(feature = "std"))]
+use alloc::collections::BTreeMap as HashMap;
+#[cfg(not(feature = "std"))]
+use alloc::{format, string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
-#[cfg(not(feature = "std"))]
-use alloc::collections::BTreeMap as HashMap;
-
-#[cfg(not(feature = "std"))]
-use alloc::{format, string::String, vec::Vec};
+use crate::{Error, ErrorCategory, Result};
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
@@ -394,11 +392,11 @@ macro_rules! recoverable {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::codes;
-
     #[cfg(not(feature = "std"))]
     use alloc::string::ToString;
+
+    use super::*;
+    use crate::codes;
 
     #[test]
     fn test_error_recovery_manager() {
