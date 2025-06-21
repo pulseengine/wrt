@@ -1,0 +1,306 @@
+name: PR Diagnostic Analysis
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  diagnostic-analysis:
+    name: Analyze Build Diagnostics
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout PR
+      uses: actions/checkout@v4
+      with:
+        # Fetch full history for diff analysis
+        fetch-depth: 0
+        
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy, rustfmt
+        
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+          
+    - name: Install cargo-wrt
+      run: |
+        cargo install --path cargo-wrt --force
+        
+    - name: Get base branch diagnostics
+      id: base-diagnostics
+      run: |
+        # Checkout base branch to get baseline
+        git checkout ${{ github.event.pull_request.base.sha }}
+        
+        # Run analysis on base branch
+        cargo-wrt build --output json --cache --clear-cache > base-diagnostics.json || true
+        cargo-wrt check --output json --cache > base-check.json || true
+        
+        # Store baseline
+        cp base-diagnostics.json baseline-build.json
+        cp base-check.json baseline-check.json
+        
+        echo "base_errors=$(jq '.summary.errors' baseline-build.json)" >> $GITHUB_OUTPUT
+        echo "base_warnings=$(jq '.summary.warnings' baseline-build.json)" >> $GITHUB_OUTPUT
+        
+    - name: Return to PR branch
+      run: |
+        git checkout ${{ github.event.pull_request.head.sha }}
+        
+    - name: Analyze PR diagnostics
+      id: pr-diagnostics  
+      run: |
+        # Run full analysis on PR branch
+        cargo-wrt build --output json --cache --clear-cache > pr-diagnostics.json || true
+        cargo-wrt check --output json --cache > pr-check.json || true
+        
+        # Extract metrics
+        PR_ERRORS=$(jq '.summary.errors' pr-diagnostics.json)
+        PR_WARNINGS=$(jq '.summary.warnings' pr-diagnostics.json)
+        
+        echo "pr_errors=$PR_ERRORS" >> $GITHUB_OUTPUT
+        echo "pr_warnings=$PR_WARNINGS" >> $GITHUB_OUTPUT
+        
+        # Calculate differences
+        BASE_ERRORS=${{ steps.base-diagnostics.outputs.base_errors }}
+        BASE_WARNINGS=${{ steps.base-diagnostics.outputs.base_warnings }}
+        
+        ERROR_DIFF=$((PR_ERRORS - BASE_ERRORS))
+        WARNING_DIFF=$((PR_WARNINGS - BASE_WARNINGS))
+        
+        echo "error_diff=$ERROR_DIFF" >> $GITHUB_OUTPUT
+        echo "warning_diff=$WARNING_DIFF" >> $GITHUB_OUTPUT
+        
+    - name: Generate diff analysis
+      id: diff-analysis
+      run: |
+        # Create a script to find diagnostics in changed files only
+        cat > analyze_pr_changes.py << 'EOF'
+        import json
+        import subprocess
+        import sys
+        
+        def get_changed_files():
+            """Get list of files changed in this PR"""
+            result = subprocess.run([
+                'git', 'diff', '--name-only', 
+                '${{ github.event.pull_request.base.sha }}..HEAD'
+            ], capture_output=True, text=True)
+            return result.stdout.strip().split('\n') if result.stdout.strip() else []
+        
+        def filter_diagnostics_for_changed_files(diagnostics_file, changed_files):
+            """Filter diagnostics to only include changed files"""
+            with open(diagnostics_file, 'r') as f:
+                data = json.load(f)
+            
+            changed_diagnostics = []
+            for diag in data['diagnostics']:
+                # Check if diagnostic is in a changed file
+                if any(diag['file'].startswith(changed_file) for changed_file in changed_files):
+                    changed_diagnostics.append(diag)
+            
+            return {
+                'diagnostics': changed_diagnostics,
+                'summary': {
+                    'total': len(changed_diagnostics),
+                    'errors': len([d for d in changed_diagnostics if d['severity'] == 'error']),
+                    'warnings': len([d for d in changed_diagnostics if d['severity'] == 'warning']),
+                    'files_affected': len(set(d['file'] for d in changed_diagnostics))
+                }
+            }
+        
+        # Get changed files
+        changed_files = get_changed_files()
+        print(f"Changed files: {changed_files}")
+        
+        # Filter diagnostics for changed files only
+        pr_filtered = filter_diagnostics_for_changed_files('pr-diagnostics.json', changed_files)
+        
+        # Save filtered results
+        with open('pr-changed-diagnostics.json', 'w') as f:
+            json.dump(pr_filtered, f, indent=2)
+        
+        print(f"Diagnostics in changed files: {pr_filtered['summary']}")
+        EOF
+        
+        python analyze_pr_changes.py
+        
+        # Store results
+        CHANGED_ERRORS=$(jq '.summary.errors' pr-changed-diagnostics.json)
+        CHANGED_WARNINGS=$(jq '.summary.warnings' pr-changed-diagnostics.json)
+        FILES_AFFECTED=$(jq '.summary.files_affected' pr-changed-diagnostics.json)
+        
+        echo "changed_errors=$CHANGED_ERRORS" >> $GITHUB_OUTPUT
+        echo "changed_warnings=$CHANGED_WARNINGS" >> $GITHUB_OUTPUT
+        echo "files_affected=$FILES_AFFECTED" >> $GITHUB_OUTPUT
+        
+    - name: Generate PR comment
+      id: generate-comment
+      run: |
+        cat > pr_comment.md << EOF
+        ## 🔍 Build Diagnostics Report
+        
+        ### Summary
+        | Metric | Base Branch | This PR | Change |
+        |--------|-------------|---------|---------|
+        | **Errors** | ${{ steps.base-diagnostics.outputs.base_errors }} | ${{ steps.pr-diagnostics.outputs.pr_errors }} | **${{ steps.pr-diagnostics.outputs.error_diff }}** |
+        | **Warnings** | ${{ steps.base-diagnostics.outputs.base_warnings }} | ${{ steps.pr-diagnostics.outputs.pr_warnings }} | **${{ steps.pr-diagnostics.outputs.warning_diff }}** |
+        
+        ### 🎯 Issues in Changed Files
+        - **${{ steps.diff-analysis.outputs.changed_errors }}** errors in your changes
+        - **${{ steps.diff-analysis.outputs.changed_warnings }}** warnings in your changes  
+        - **${{ steps.diff-analysis.outputs.files_affected }}** files affected
+        
+        EOF
+        
+        # Add error details if there are errors in changed files
+        if [ "${{ steps.diff-analysis.outputs.changed_errors }}" -gt 0 ]; then
+          echo "### ❌ Errors in Your Changes" >> pr_comment.md
+          echo "" >> pr_comment.md
+          
+          # Extract errors and format them
+          jq -r '.diagnostics[] | select(.severity == "error") | "**\(.file):\(.range.start.line + 1):\(.range.start.character + 1)** - \(.message) (\(.code // "no-code"))"' pr-changed-diagnostics.json | head -10 >> pr_comment.md
+          
+          if [ "$(jq '.diagnostics | map(select(.severity == "error")) | length' pr-changed-diagnostics.json)" -gt 10 ]; then
+            echo "" >> pr_comment.md
+            echo "_... and $(( $(jq '.diagnostics | map(select(.severity == "error")) | length' pr-changed-diagnostics.json) - 10 )) more errors_" >> pr_comment.md
+          fi
+        fi
+        
+        # Add warning details if there are warnings in changed files
+        if [ "${{ steps.diff-analysis.outputs.changed_warnings }}" -gt 0 ]; then
+          echo "" >> pr_comment.md
+          echo "### ⚠️ Warnings in Your Changes" >> pr_comment.md
+          echo "" >> pr_comment.md
+          
+          # Extract warnings and format them
+          jq -r '.diagnostics[] | select(.severity == "warning") | "**\(.file):\(.range.start.line + 1):\(.range.start.character + 1)** - \(.message) (\(.code // "no-code"))"' pr-changed-diagnostics.json | head -5 >> pr_comment.md
+          
+          if [ "$(jq '.diagnostics | map(select(.severity == "warning")) | length' pr-changed-diagnostics.json)" -gt 5 ]; then
+            echo "" >> pr_comment.md
+            echo "_... and $(( $(jq '.diagnostics | map(select(.severity == "warning")) | length' pr-changed-diagnostics.json) - 5 )) more warnings_" >> pr_comment.md
+          fi
+        fi
+        
+        # Add success message if no issues in changed files
+        if [ "${{ steps.diff-analysis.outputs.changed_errors }}" -eq 0 ] && [ "${{ steps.diff-analysis.outputs.changed_warnings }}" -eq 0 ]; then
+          echo "" >> pr_comment.md
+          echo "### ✅ No Issues in Your Changes" >> pr_comment.md
+          echo "Great job! Your changes don't introduce any new errors or warnings." >> pr_comment.md
+        fi
+        
+        # Add detailed analysis info
+        echo "" >> pr_comment.md
+        echo "---" >> pr_comment.md
+        echo "" >> pr_comment.md
+        echo "📊 **Full diagnostic data available in workflow artifacts**" >> pr_comment.md
+        echo "" >> pr_comment.md
+        echo "🔧 **To reproduce locally:**" >> pr_comment.md
+        echo '```bash' >> pr_comment.md
+        echo "# Install cargo-wrt" >> pr_comment.md
+        echo "cargo install --path cargo-wrt" >> pr_comment.md
+        echo "" >> pr_comment.md
+        echo "# Analyze your changes" >> pr_comment.md
+        echo "cargo-wrt build --output json --filter-severity error" >> pr_comment.md
+        echo "cargo-wrt check --output json --filter-severity warning" >> pr_comment.md
+        echo '```' >> pr_comment.md
+        
+    - name: Upload diagnostic artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: pr-diagnostics
+        path: |
+          pr-diagnostics.json
+          pr-check.json
+          pr-changed-diagnostics.json
+          baseline-build.json
+          baseline-check.json
+        retention-days: 30
+        
+    - name: Comment on PR
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const comment = fs.readFileSync('pr_comment.md', 'utf8');
+          
+          // Check if we already have a comment from this workflow
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          
+          const botComment = comments.find(comment => 
+            comment.user.type === 'Bot' && 
+            comment.body.includes('🔍 Build Diagnostics Report')
+          );
+          
+          if (botComment) {
+            // Update existing comment
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: comment
+            });
+          } else {
+            // Create new comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+          }
+          
+    - name: Set check status
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const errors = ${{ steps.diff-analysis.outputs.changed_errors }};
+          const warnings = ${{ steps.diff-analysis.outputs.changed_warnings }};
+          
+          let conclusion = 'success';
+          let title = '✅ No build issues in changes';
+          let summary = 'Your changes don\'t introduce any new build errors or warnings.';
+          
+          if (errors > 0) {
+            conclusion = 'failure';
+            title = `❌ ${errors} error(s) in changes`;
+            summary = `Your changes introduce ${errors} build error(s) that need to be fixed.`;
+          } else if (warnings > 0) {
+            conclusion = 'neutral';
+            title = `⚠️ ${warnings} warning(s) in changes`;
+            summary = `Your changes introduce ${warnings} warning(s) that should be reviewed.`;
+          }
+          
+          await github.rest.checks.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            name: 'Build Diagnostics',
+            head_sha: context.sha,
+            status: 'completed',
+            conclusion: conclusion,
+            output: {
+              title: title,
+              summary: summary,
+              text: `Errors: ${errors}\nWarnings: ${warnings}\n\nSee PR comments for detailed breakdown.`
+            }
+          });
