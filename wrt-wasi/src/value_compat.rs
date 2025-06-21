@@ -230,10 +230,10 @@ impl Value {
                 { String::new() }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = NoStdProvider::<1024>::new();
+                    let provider = NoStdProvider::<1024>::default();
                     BoundedString::from_str("", provider).unwrap_or_else(|_| {
                         // This should never fail for empty string
-                        let provider2 = NoStdProvider::<1024>::new();
+                        let provider2 = NoStdProvider::<1024>::default();
                         BoundedString::from_str("", provider2).unwrap()
                     })
                 }

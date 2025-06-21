@@ -55,7 +55,7 @@ pub const MAX_ENV_VARS: usize = 256;
 /// Create a provider for host operations (unified implementation)
 pub fn create_host_provider() -> WrtResult<HostProvider> {
     // Use the standardized provider for consistency
-    Ok(NoStdProvider::<HOST_MEMORY_SIZE>::new())
+    Ok(NoStdProvider::<HOST_MEMORY_SIZE>::default())
 }
 
 /// Maximum environment variable name length

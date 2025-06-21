@@ -136,7 +136,7 @@ type TypeVec = wrt_foundation::BoundedVec<ValType, 16, wrt_foundation::safe_memo
 #[cfg(not(feature = "std"))]
 fn empty_value_vec() -> Result<ValueVec> {
     use wrt_foundation::safe_memory::NoStdProvider;
-    let provider = NoStdProvider::<65536>::new();
+    let provider = NoStdProvider::<65536>::default();
     ValueVec::new(provider).map_err(|_| Error::new(
         ErrorCategory::Memory,
         wrt_error::codes::MEMORY_ALLOCATION_FAILED,
@@ -148,7 +148,7 @@ fn empty_value_vec() -> Result<ValueVec> {
 #[cfg(not(feature = "std"))]
 fn empty_type_vec() -> Result<TypeVec> {
     use wrt_foundation::safe_memory::NoStdProvider;
-    let provider = NoStdProvider::<1024>::new();
+    let provider = NoStdProvider::<1024>::default();
     TypeVec::new(provider).map_err(|_| Error::new(
         ErrorCategory::Memory,
         wrt_error::codes::MEMORY_ALLOCATION_FAILED,

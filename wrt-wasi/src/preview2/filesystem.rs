@@ -51,7 +51,7 @@ pub fn wasi_filesystem_read(
     validate_file_descriptor_readable(fd)?;
     
     // Create safety-aware buffer for read operation
-    let base_provider = NoStdProvider::<8192>::new();
+    let base_provider = NoStdProvider::<8192>::default();
     let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
         8192,
         WASI_CRATE_ID,

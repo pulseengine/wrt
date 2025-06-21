@@ -821,24 +821,38 @@ pub struct PerformanceAnalysis {
 }
 
 /// Memory profiler instance
-static mut MEMORY_PROFILER: Option<MemoryProfiler<'static>> = None;
+// ASIL-D safe: Use thread-safe static instead of unsafe static mut
+use std::sync::{Mutex, Once};
+static INIT: Once = Once::new();
+static mut MEMORY_PROFILER: Option<Mutex<MemoryProfiler<'static>>> = None;
 
-/// Initialize the memory profiler
+/// Initialize the memory profiler (ASIL-D safe)
 pub fn init_profiler() -> WrtResult<()> {
-    unsafe {
-        MEMORY_PROFILER = Some(MemoryProfiler::new());
-    }
+    INIT.call_once(|| {
+        // ASIL-D safe: Use Once for thread-safe initialization
+        unsafe {
+            MEMORY_PROFILER = Some(Mutex::new(MemoryProfiler::new()));
+        }
+    });
     Ok(())
 }
 
-/// Get mutable reference to profiler
+/// Get mutable reference to profiler (ASIL-D safe)
 pub fn with_profiler<F, R>(f: F) -> WrtResult<R>
 where
     F: FnOnce(&mut MemoryProfiler<'static>) -> WrtResult<R>,
 {
+    // ASIL-D safe: Use safe lock access instead of unsafe
     unsafe {
-        match MEMORY_PROFILER.as_mut() {
-            Some(profiler) => f(profiler),
+        match MEMORY_PROFILER.as_ref() {
+            Some(profiler_mutex) => {
+                match profiler_mutex.lock() {
+                    Ok(mut profiler) => f(&mut *profiler),
+                    Err(_) => Err(wrt_foundation::Error::from(
+                        wrt_foundation::ErrorCategory::Memory("Memory profiler lock poisoned".into()),
+                    )),
+                }
+            },
             None => Err(wrt_foundation::Error::from(
                 wrt_foundation::ErrorCategory::Memory("Memory profiler not initialized".into()),
             )),
