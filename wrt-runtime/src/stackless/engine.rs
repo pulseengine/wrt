@@ -730,67 +730,94 @@ impl StacklessEngine {
             }
             0x7E => {
                 // i64.mul
+                self.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)?;
                 ArithmeticOp::I64Mul.execute(self)
             }
             0x7F => {
                 // i64.div_s
+                self.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)?;
                 ArithmeticOp::I64DivS.execute(self)
             }
             0x80 => {
                 // i64.div_u
+                self.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)?;
                 ArithmeticOp::I64DivU.execute(self)
             }
             0x81 => {
                 // i64.rem_s
+                self.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)?;
                 ArithmeticOp::I64RemS.execute(self)
             }
             0x82 => {
                 // i64.rem_u
+                self.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)?;
                 ArithmeticOp::I64RemU.execute(self)
             }
             0x83 => {
                 // i64.and
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
                 ArithmeticOp::I64And.execute(self)
             }
             0x84 => {
                 // i64.or
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
                 ArithmeticOp::I64Or.execute(self)
             }
             0x85 => {
                 // i64.xor
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
                 ArithmeticOp::I64Xor.execute(self)
             }
             0x86 => {
                 // i64.shl
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
                 ArithmeticOp::I64Shl.execute(self)
             }
             0x87 => {
                 // i64.shr_s
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
                 ArithmeticOp::I64ShrS.execute(self)
             }
             0x88 => {
                 // i64.shr_u
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
                 ArithmeticOp::I64ShrU.execute(self)
             }
             0x89 => {
                 // i64.rotl
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
                 ArithmeticOp::I64Rotl.execute(self)
             }
             0x8A => {
                 // i64.rotr
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
                 ArithmeticOp::I64Rotr.execute(self)
             }
             
             // Constants (read immediate values)
             0x41 => {
                 // i32.const - read i32 immediate value
+                self.consume_instruction_fuel(InstructionFuelType::SimpleConstant)?;
                 let value = self.read_leb128_i32(code)?;
                 self.push_control_value(Value::I32(value))
             }
             0x42 => {
                 // i64.const - read i64 immediate value
+                self.consume_instruction_fuel(InstructionFuelType::SimpleConstant)?;
                 let value = self.read_leb128_i64(code)?;
                 self.push_control_value(Value::I64(value))
+            }
+            0x43 => {
+                // f32.const - read f32 immediate value
+                self.consume_instruction_fuel(InstructionFuelType::SimpleConstant)?;
+                let value = self.read_f32(code)?;
+                self.push_control_value(Value::F32(value))
+            }
+            0x44 => {
+                // f64.const - read f64 immediate value
+                self.consume_instruction_fuel(InstructionFuelType::SimpleConstant)?;
+                let value = self.read_f64(code)?;
+                self.push_control_value(Value::F64(value))
             }
             
             // Function end
