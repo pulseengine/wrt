@@ -449,6 +449,7 @@ impl ResourceTracker {
 }
 
 /// Create platform-specific thread pool
+#[cfg(feature = "threading")]
 pub fn create_thread_pool(_config: &ThreadPoolConfig) -> Result<Box<dyn PlatformThreadPool>> {
     #[cfg(target_os = "nto")]
     {
