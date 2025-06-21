@@ -11,8 +11,7 @@ use wrt_foundation::{
     safe_memory::NoStdProvider,
     budget_provider::BudgetProvider,
     budget_aware_provider::CrateId,
-    safe_allocation::SafeProviderFactory,
-    memory_init::get_global_capability_context,
+    capabilities::MemoryFactory,
     WrtResult,
     safe_managed_alloc,
 };
@@ -186,8 +185,7 @@ pub type BoundedPostReturnVec<T> = BoundedVec<T, MAX_POST_RETURN_CALLBACKS, Comp
 
 /// Helper function to create a safe component provider using capability context
 fn create_safe_component_provider() -> WrtResult<ComponentProvider> {
-    let context = get_global_capability_context()?;
-    SafeProviderFactory::create_context_managed_provider::<131072>(context, CrateId::Component)
+    MemoryFactory::create::<131072>(CrateId::Component)
 }
 
 /// Create a new bounded component vector

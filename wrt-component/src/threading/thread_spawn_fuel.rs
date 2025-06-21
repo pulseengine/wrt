@@ -64,7 +64,7 @@ impl FuelTrackedThreadContext {
             self.fuel_exhausted.store(true, Ordering::Release);
             return Err(ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
-                message: "Component not found",
+                message: "Thread fuel exhausted",
             });
         }
 
@@ -81,6 +81,67 @@ impl FuelTrackedThreadContext {
         }
 
         Ok(())
+    }
+
+    /// Consume fuel for specific WebAssembly instruction types
+    /// This integrates with the instruction-level fuel system
+    pub fn consume_instruction_fuel(
+        &self, 
+        instruction_type: wrt_runtime::stackless::engine::InstructionFuelType,
+        verification_level: wrt_foundation::verification::VerificationLevel,
+    ) -> core::result::Result<(), ThreadSpawnError> {
+        // Map instruction type to operation type for fuel calculation
+        let op_type = match instruction_type {
+            wrt_runtime::stackless::engine::InstructionFuelType::SimpleConstant => 
+                wrt_foundation::operations::Type::WasmSimpleConstant,
+            wrt_runtime::stackless::engine::InstructionFuelType::LocalAccess => 
+                wrt_foundation::operations::Type::WasmLocalAccess,
+            wrt_runtime::stackless::engine::InstructionFuelType::GlobalAccess => 
+                wrt_foundation::operations::Type::WasmGlobalAccess,
+            wrt_runtime::stackless::engine::InstructionFuelType::SimpleArithmetic => 
+                wrt_foundation::operations::Type::WasmSimpleArithmetic,
+            wrt_runtime::stackless::engine::InstructionFuelType::ComplexArithmetic => 
+                wrt_foundation::operations::Type::WasmComplexArithmetic,
+            wrt_runtime::stackless::engine::InstructionFuelType::FloatArithmetic => 
+                wrt_foundation::operations::Type::WasmFloatArithmetic,
+            wrt_runtime::stackless::engine::InstructionFuelType::Comparison => 
+                wrt_foundation::operations::Type::WasmComparison,
+            wrt_runtime::stackless::engine::InstructionFuelType::SimpleControl => 
+                wrt_foundation::operations::Type::WasmSimpleControl,
+            wrt_runtime::stackless::engine::InstructionFuelType::ComplexControl => 
+                wrt_foundation::operations::Type::WasmComplexControl,
+            wrt_runtime::stackless::engine::InstructionFuelType::FunctionCall => 
+                wrt_foundation::operations::Type::WasmFunctionCall,
+            wrt_runtime::stackless::engine::InstructionFuelType::MemoryLoad => 
+                wrt_foundation::operations::Type::WasmMemoryLoad,
+            wrt_runtime::stackless::engine::InstructionFuelType::MemoryStore => 
+                wrt_foundation::operations::Type::WasmMemoryStore,
+            wrt_runtime::stackless::engine::InstructionFuelType::MemoryManagement => 
+                wrt_foundation::operations::Type::WasmMemoryManagement,
+            wrt_runtime::stackless::engine::InstructionFuelType::TableAccess => 
+                wrt_foundation::operations::Type::WasmTableAccess,
+            wrt_runtime::stackless::engine::InstructionFuelType::TypeConversion => 
+                wrt_foundation::operations::Type::WasmTypeConversion,
+            wrt_runtime::stackless::engine::InstructionFuelType::SimdOperation => 
+                wrt_foundation::operations::Type::WasmSimdOperation,
+            wrt_runtime::stackless::engine::InstructionFuelType::AtomicOperation => 
+                wrt_foundation::operations::Type::WasmAtomicOperation,
+        };
+
+        // Calculate fuel cost with verification level
+        let fuel_cost = wrt_foundation::operations::Type::fuel_cost_for_operation(
+            op_type, 
+            verification_level
+        ).map_err(|_| ThreadSpawnError {
+            kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
+            message: "Fuel calculation error",
+        })?;
+
+        // Record the operation for tracking
+        wrt_foundation::operations::record_global_operation(op_type, verification_level);
+
+        // Consume the calculated fuel
+        self.consume_fuel(fuel_cost)
     }
 
     pub fn check_fuel_status(&self) -> core::result::Result<(), ThreadSpawnError> {
