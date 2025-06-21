@@ -3,19 +3,23 @@
 //! These tests verify that the fuel-based async executor, scheduler, and bridge
 //! work together correctly for deterministic WebAssembly Component Model execution.
 
+use core::{
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+};
 use wrt_component::{
     async_::{
-        fuel_async_executor::{FuelAsyncExecutor, AsyncTaskState},
+        fuel_async_bridge::{AsyncBridgeConfig, FuelAsyncBridge},
+        fuel_async_executor::{AsyncTaskState, FuelAsyncExecutor},
         fuel_async_scheduler::{FuelAsyncScheduler, SchedulingPolicy},
-        fuel_async_bridge::{FuelAsyncBridge, AsyncBridgeConfig},
     },
+    prelude::*,
     task_manager::TaskId,
     ComponentInstanceId,
-    prelude::*,
 };
 use wrt_foundation::verification::VerificationLevel;
 use wrt_platform::advanced_sync::Priority;
-use core::{future::Future, pin::Pin, task::{Context, Poll}};
 
 /// Simple test future that completes after a certain number of polls
 struct TestFuture {
@@ -70,29 +74,26 @@ mod tests {
     #[test]
     fn test_fuel_async_scheduler_policies() {
         // Test cooperative scheduling
-        let scheduler = FuelAsyncScheduler::new(
-            SchedulingPolicy::Cooperative,
-            VerificationLevel::Standard,
-        ).unwrap();
+        let scheduler =
+            FuelAsyncScheduler::new(SchedulingPolicy::Cooperative, VerificationLevel::Standard)
+                .unwrap();
 
         let stats = scheduler.get_statistics();
         assert_eq!(stats.policy, SchedulingPolicy::Cooperative);
         assert_eq!(stats.total_tasks, 0);
 
         // Test priority-based scheduling
-        let priority_scheduler = FuelAsyncScheduler::new(
-            SchedulingPolicy::PriorityBased,
-            VerificationLevel::Standard,
-        ).unwrap();
+        let priority_scheduler =
+            FuelAsyncScheduler::new(SchedulingPolicy::PriorityBased, VerificationLevel::Standard)
+                .unwrap();
 
         let priority_stats = priority_scheduler.get_statistics();
         assert_eq!(priority_stats.policy, SchedulingPolicy::PriorityBased);
 
         // Test round-robin scheduling
-        let rr_scheduler = FuelAsyncScheduler::new(
-            SchedulingPolicy::RoundRobin,
-            VerificationLevel::Standard,
-        ).unwrap();
+        let rr_scheduler =
+            FuelAsyncScheduler::new(SchedulingPolicy::RoundRobin, VerificationLevel::Standard)
+                .unwrap();
 
         let rr_stats = rr_scheduler.get_statistics();
         assert_eq!(rr_stats.policy, SchedulingPolicy::RoundRobin);
@@ -100,22 +101,23 @@ mod tests {
 
     #[test]
     fn test_scheduler_task_management() {
-        let mut scheduler = FuelAsyncScheduler::new(
-            SchedulingPolicy::Cooperative,
-            VerificationLevel::Standard,
-        ).unwrap();
+        let mut scheduler =
+            FuelAsyncScheduler::new(SchedulingPolicy::Cooperative, VerificationLevel::Standard)
+                .unwrap();
 
         let task_id = TaskId::new(1);
         let component_id = ComponentInstanceId::new(1);
 
         // Add a task
-        scheduler.add_task(
-            task_id,
-            component_id,
-            Priority::Normal,
-            1000, // fuel quota
-            None, // no deadline
-        ).unwrap();
+        scheduler
+            .add_task(
+                task_id,
+                component_id,
+                Priority::Normal,
+                1000, // fuel quota
+                None, // no deadline
+            )
+            .unwrap();
 
         let stats = scheduler.get_statistics();
         assert_eq!(stats.total_tasks, 1);
@@ -133,26 +135,49 @@ mod tests {
 
     #[test]
     fn test_priority_scheduling_order() {
-        let mut scheduler = FuelAsyncScheduler::new(
-            SchedulingPolicy::PriorityBased,
-            VerificationLevel::Standard,
-        ).unwrap();
+        let mut scheduler =
+            FuelAsyncScheduler::new(SchedulingPolicy::PriorityBased, VerificationLevel::Standard)
+                .unwrap();
 
         let low_task = TaskId::new(1);
         let high_task = TaskId::new(2);
         let normal_task = TaskId::new(3);
 
         // Add tasks in non-priority order
-        scheduler.add_task(low_task, ComponentInstanceId::new(1), Priority::Low, 1000, None).unwrap();
-        scheduler.add_task(normal_task, ComponentInstanceId::new(1), Priority::Normal, 1000, None).unwrap();
-        scheduler.add_task(high_task, ComponentInstanceId::new(1), Priority::High, 1000, None).unwrap();
+        scheduler
+            .add_task(
+                low_task,
+                ComponentInstanceId::new(1),
+                Priority::Low,
+                1000,
+                None,
+            )
+            .unwrap();
+        scheduler
+            .add_task(
+                normal_task,
+                ComponentInstanceId::new(1),
+                Priority::Normal,
+                1000,
+                None,
+            )
+            .unwrap();
+        scheduler
+            .add_task(
+                high_task,
+                ComponentInstanceId::new(1),
+                Priority::High,
+                1000,
+                None,
+            )
+            .unwrap();
 
         // Should get high priority task first
         assert_eq!(scheduler.next_task(), Some(high_task));
-        
+
         // Update high priority task to waiting state
         scheduler.update_task_state(high_task, 100, AsyncTaskState::Waiting).unwrap();
-        
+
         // Should get normal priority task next
         assert_eq!(scheduler.next_task(), Some(normal_task));
     }
@@ -169,7 +194,7 @@ mod tests {
         };
 
         let bridge = FuelAsyncBridge::new(config.clone(), VerificationLevel::Standard).unwrap();
-        
+
         let stats = bridge.get_bridge_statistics();
         assert_eq!(stats.total_bridges, 0);
         assert_eq!(stats.active_bridges, 0);
@@ -223,15 +248,13 @@ mod tests {
     #[test]
     fn test_verification_level_impact() {
         // Test that different verification levels are properly handled
-        let basic_scheduler = FuelAsyncScheduler::new(
-            SchedulingPolicy::Cooperative,
-            VerificationLevel::Basic,
-        ).unwrap();
+        let basic_scheduler =
+            FuelAsyncScheduler::new(SchedulingPolicy::Cooperative, VerificationLevel::Basic)
+                .unwrap();
 
-        let full_scheduler = FuelAsyncScheduler::new(
-            SchedulingPolicy::Cooperative,
-            VerificationLevel::Full,
-        ).unwrap();
+        let full_scheduler =
+            FuelAsyncScheduler::new(SchedulingPolicy::Cooperative, VerificationLevel::Full)
+                .unwrap();
 
         // Both should work but with different internal fuel costs
         // (fuel costs are handled by the operations module)
@@ -249,19 +272,18 @@ mod tests {
 
         // Spawn some tasks
         let component_id = ComponentInstanceId::new(1);
-        let _task1 = executor.spawn_task(
-            component_id,
-            1000,
-            Priority::Normal,
-            TestFuture::new(10, 42),
-        ).unwrap();
+        let _task1 = executor
+            .spawn_task(
+                component_id,
+                1000,
+                Priority::Normal,
+                TestFuture::new(10, 42),
+            )
+            .unwrap();
 
-        let _task2 = executor.spawn_task(
-            component_id,
-            1000,
-            Priority::Normal,
-            TestFuture::new(5, 84),
-        ).unwrap();
+        let _task2 = executor
+            .spawn_task(component_id, 1000, Priority::Normal, TestFuture::new(5, 84))
+            .unwrap();
 
         let status_before = executor.get_global_fuel_status();
         assert_eq!(status_before.active_tasks, 2);
@@ -276,13 +298,12 @@ mod tests {
 
     #[test]
     fn test_bridge_statistics() {
-        let bridge = FuelAsyncBridge::new(
-            AsyncBridgeConfig::default(),
-            VerificationLevel::Standard,
-        ).unwrap();
+        let bridge =
+            FuelAsyncBridge::new(AsyncBridgeConfig::default(), VerificationLevel::Standard)
+                .unwrap();
 
         let stats = bridge.get_bridge_statistics();
-        
+
         // Test success rate calculation with no bridges
         assert_eq!(stats.success_rate(), 0.0);
         assert_eq!(stats.average_fuel_per_bridge(), 0.0);
@@ -297,13 +318,12 @@ mod tests {
 
     #[test]
     fn test_scheduling_statistics() {
-        let scheduler = FuelAsyncScheduler::new(
-            SchedulingPolicy::Cooperative,
-            VerificationLevel::Standard,
-        ).unwrap();
+        let scheduler =
+            FuelAsyncScheduler::new(SchedulingPolicy::Cooperative, VerificationLevel::Standard)
+                .unwrap();
 
         let stats = scheduler.get_statistics();
-        
+
         // Test efficiency calculations with no tasks
         assert_eq!(stats.average_fuel_per_task(), 0.0);
         assert_eq!(stats.scheduling_efficiency(), 0.0);
@@ -319,27 +339,50 @@ mod tests {
 
     #[test]
     fn test_round_robin_fairness() {
-        let mut scheduler = FuelAsyncScheduler::new(
-            SchedulingPolicy::RoundRobin,
-            VerificationLevel::Standard,
-        ).unwrap();
+        let mut scheduler =
+            FuelAsyncScheduler::new(SchedulingPolicy::RoundRobin, VerificationLevel::Standard)
+                .unwrap();
 
         let task1 = TaskId::new(1);
         let task2 = TaskId::new(2);
         let task3 = TaskId::new(3);
 
         // Add tasks to round-robin queue
-        scheduler.add_task(task1, ComponentInstanceId::new(1), Priority::Normal, 1000, None).unwrap();
-        scheduler.add_task(task2, ComponentInstanceId::new(1), Priority::Normal, 1000, None).unwrap();
-        scheduler.add_task(task3, ComponentInstanceId::new(1), Priority::Normal, 1000, None).unwrap();
+        scheduler
+            .add_task(
+                task1,
+                ComponentInstanceId::new(1),
+                Priority::Normal,
+                1000,
+                None,
+            )
+            .unwrap();
+        scheduler
+            .add_task(
+                task2,
+                ComponentInstanceId::new(1),
+                Priority::Normal,
+                1000,
+                None,
+            )
+            .unwrap();
+        scheduler
+            .add_task(
+                task3,
+                ComponentInstanceId::new(1),
+                Priority::Normal,
+                1000,
+                None,
+            )
+            .unwrap();
 
         // Should cycle through tasks
         assert_eq!(scheduler.next_task(), Some(task1));
         scheduler.update_task_state(task1, 100, AsyncTaskState::Waiting).unwrap();
-        
+
         assert_eq!(scheduler.next_task(), Some(task2));
         scheduler.update_task_state(task2, 100, AsyncTaskState::Waiting).unwrap();
-        
+
         assert_eq!(scheduler.next_task(), Some(task3));
         scheduler.update_task_state(task3, 100, AsyncTaskState::Waiting).unwrap();
 

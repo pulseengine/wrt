@@ -389,6 +389,71 @@ impl RuntimeInstance {
             "Memory operations not implemented in this runtime",
         ))
     }
+
+    /// Get an export by name (functions only for now)
+    pub fn get_export(&self, name: &str) -> Option<&ExternValue> {
+        // Check function exports first (this is what we mainly need for async execution)
+        self.functions.get(name)
+    }
+
+    /// Get export by name with full type support
+    pub fn get_export_value(&self, name: &str) -> Option<ExternValue> {
+        // Check function exports first
+        if let Some(function) = self.functions.get(name) {
+            return Some(function.clone());
+        }
+        
+        // Check memory exports
+        if let Some(memory) = self.memories.get(name) {
+            return Some(ExternValue::Memory(memory.clone()));
+        }
+        
+        // Check table exports
+        if let Some(table) = self.tables.get(name) {
+            return Some(ExternValue::Table(table.clone()));
+        }
+        
+        // Check global exports
+        if let Some(global) = self.globals.get(name) {
+            return Some(ExternValue::Global(global.clone()));
+        }
+        
+        None
+    }
+
+    /// Get function index for an exported function
+    pub fn get_function_index(&self, name: &str) -> Option<u32> {
+        if let Some(ExternValue::Function(func_value)) = self.functions.get(name) {
+            // Extract function index from export name or derive from it
+            // In a real implementation, this would come from the module's export table
+            // For now, we'll use a simple hash-based approach with better distribution
+            Some(self.hash_function_name_to_index(name))
+        } else {
+            None
+        }
+    }
+
+    /// Hash a function name to a function index
+    fn hash_function_name_to_index(&self, name: &str) -> u32 {
+        // Simple hash-based function index generation
+        // In a real implementation, this would come from the module's export table
+        let mut hash: u32 = 0;
+        for byte in name.bytes() {
+            hash = hash.wrapping_mul(31).wrapping_add(byte as u32);
+        }
+        // Keep within reasonable function index range
+        hash % 1024
+    }
+
+    /// Get all function exports
+    pub fn get_function_exports(&self) -> impl Iterator<Item = (&String, &ExternValue)> {
+        self.functions.iter()
+    }
+
+    /// Check if a function export exists
+    pub fn has_function_export(&self, name: &str) -> bool {
+        self.functions.contains_key(name)
+    }
 }
 
 // Private helper struct for implementing the module instance
