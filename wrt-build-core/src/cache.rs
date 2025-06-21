@@ -105,7 +105,7 @@ pub struct UpdateStats {
 impl DiagnosticCache {
     /// Cache format version
     const VERSION: u32 = 1;
-    
+
     /// Create a new empty cache
     pub fn new(workspace_root: PathBuf) -> Self {
         let now = SystemTime::now();
@@ -125,7 +125,7 @@ impl DiagnosticCache {
     /// Load cache from disk
     pub fn load<P: AsRef<Path>>(cache_path: P, workspace_root: PathBuf) -> BuildResult<Self> {
         let cache_path = cache_path.as_ref();
-        
+
         if !cache_path.exists() {
             return Ok(Self::new(workspace_root));
         }
@@ -150,11 +150,12 @@ impl DiagnosticCache {
     /// Save cache to disk
     pub fn save<P: AsRef<Path>>(&self, cache_path: P) -> BuildResult<()> {
         let cache_path = cache_path.as_ref();
-        
+
         // Ensure cache directory exists
         if let Some(parent) = cache_path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| BuildError::Tool(format!("Failed to create cache directory: {}", e)))?;
+            fs::create_dir_all(parent).map_err(|e| {
+                BuildError::Tool(format!("Failed to create cache directory: {}", e))
+            })?;
         }
 
         let cache_content = serde_json::to_string_pretty(self)
@@ -169,7 +170,7 @@ impl DiagnosticCache {
     /// Check if a file is cached and up-to-date
     pub fn check_file(&mut self, file_path: &Path) -> BuildResult<CacheResult> {
         let relative_path = self.make_relative_path(file_path);
-        
+
         // Check if file exists in cache
         if let Some(entry) = self.entries.get(&relative_path) {
             // Check if file still exists
@@ -208,11 +209,18 @@ impl DiagnosticCache {
     }
 
     /// Cache diagnostics for a file
-    pub fn cache_file(&mut self, file_path: &Path, diagnostics: Vec<Diagnostic>) -> BuildResult<()> {
+    pub fn cache_file(
+        &mut self,
+        file_path: &Path,
+        diagnostics: Vec<Diagnostic>,
+    ) -> BuildResult<()> {
         let relative_path = self.make_relative_path(file_path);
-        
+
         if !file_path.exists() {
-            return Err(BuildError::Tool(format!("File does not exist: {}", file_path.display())));
+            return Err(BuildError::Tool(format!(
+                "File does not exist: {}",
+                file_path.display()
+            )));
         }
 
         let last_modified = file_path
@@ -233,12 +241,10 @@ impl DiagnosticCache {
         self.entries.insert(relative_path, entry);
         self.metadata.updated_at = SystemTime::now();
         self.metadata.total_files = self.entries.len();
-        
+
         // Update diagnostic count
-        self.metadata.stats.total_diagnostics = self.entries
-            .values()
-            .map(|e| e.diagnostics.len())
-            .sum();
+        self.metadata.stats.total_diagnostics =
+            self.entries.values().map(|e| e.diagnostics.len()).sum();
 
         Ok(())
     }
@@ -270,17 +276,14 @@ impl DiagnosticCache {
     fn calculate_file_hash(&self, file_path: &Path) -> BuildResult<String> {
         let content = fs::read(file_path)
             .map_err(|e| BuildError::Tool(format!("Failed to read file for hashing: {}", e)))?;
-        
+
         let hash = md5::compute(&content);
         Ok(format!("{:x}", hash))
     }
 
     /// Convert absolute path to relative path
     fn make_relative_path(&self, file_path: &Path) -> PathBuf {
-        file_path
-            .strip_prefix(&self.workspace_root)
-            .unwrap_or(file_path)
-            .to_path_buf()
+        file_path.strip_prefix(&self.workspace_root).unwrap_or(file_path).to_path_buf()
     }
 
     /// Get all cached files
@@ -341,7 +344,11 @@ impl CacheManager {
     }
 
     /// Cache diagnostics for a file
-    pub fn cache_diagnostics(&mut self, file_path: &Path, diagnostics: Vec<Diagnostic>) -> BuildResult<()> {
+    pub fn cache_diagnostics(
+        &mut self,
+        file_path: &Path,
+        diagnostics: Vec<Diagnostic>,
+    ) -> BuildResult<()> {
         if !self.enabled {
             return Ok(());
         }
@@ -469,12 +476,12 @@ impl CacheManager {
     pub fn get_diff_diagnostics(&self, current_diagnostics: &[Diagnostic]) -> Vec<Diagnostic> {
         let diff = self.compute_diff(current_diagnostics);
         let mut result = diff.new_diagnostics;
-        
+
         // Add changed diagnostics (new versions only)
         for (_, new_diagnostic) in diff.changed_diagnostics {
             result.push(new_diagnostic);
         }
-        
+
         result
     }
 }
@@ -557,7 +564,13 @@ mod tests {
     use crate::diagnostics::{Position, Range};
     use tempfile::TempDir;
 
-    fn create_test_diagnostic(file: &str, line: u32, col: u32, severity: crate::diagnostics::Severity, message: &str) -> Diagnostic {
+    fn create_test_diagnostic(
+        file: &str,
+        line: u32,
+        col: u32,
+        severity: crate::diagnostics::Severity,
+        message: &str,
+    ) -> Diagnostic {
         Diagnostic {
             file: file.to_string(),
             range: Range::new(Position::new(line, col), Position::new(line, col + 10)),
@@ -573,7 +586,7 @@ mod tests {
     fn test_cache_creation() {
         let temp_dir = TempDir::new().unwrap();
         let cache = DiagnosticCache::new(temp_dir.path().to_path_buf());
-        
+
         assert_eq!(cache.version, DiagnosticCache::VERSION);
         assert_eq!(cache.entries.len(), 0);
         assert_eq!(cache.metadata.total_files, 0);
@@ -584,40 +597,70 @@ mod tests {
         let temp_dir = TempDir::new()?;
         let cache_path = temp_dir.path().join("cache.json");
         let workspace = temp_dir.path().to_path_buf();
-        
+
         let mut manager = CacheManager::new(workspace, cache_path, true)?;
-        
+
         // Create some initial diagnostics
         let cached_diagnostics = vec![
-            create_test_diagnostic("file1.rs", 1, 0, crate::diagnostics::Severity::Error, "error 1"),
-            create_test_diagnostic("file2.rs", 2, 0, crate::diagnostics::Severity::Warning, "warning 1"),
+            create_test_diagnostic(
+                "file1.rs",
+                1,
+                0,
+                crate::diagnostics::Severity::Error,
+                "error 1",
+            ),
+            create_test_diagnostic(
+                "file2.rs",
+                2,
+                0,
+                crate::diagnostics::Severity::Warning,
+                "warning 1",
+            ),
         ];
-        
+
         // Cache them
         for diag in &cached_diagnostics {
             let test_file = temp_dir.path().join(&diag.file);
             std::fs::write(&test_file, "test content")?;
             manager.cache_diagnostics(&test_file, vec![diag.clone()])?;
         }
-        
+
         // Create current diagnostics with changes
         let current_diagnostics = vec![
-            create_test_diagnostic("file1.rs", 1, 0, crate::diagnostics::Severity::Error, "error 1"), // unchanged
-            create_test_diagnostic("file2.rs", 2, 0, crate::diagnostics::Severity::Warning, "warning 1 modified"), // changed
-            create_test_diagnostic("file3.rs", 3, 0, crate::diagnostics::Severity::Info, "new info"), // new
+            create_test_diagnostic(
+                "file1.rs",
+                1,
+                0,
+                crate::diagnostics::Severity::Error,
+                "error 1",
+            ), // unchanged
+            create_test_diagnostic(
+                "file2.rs",
+                2,
+                0,
+                crate::diagnostics::Severity::Warning,
+                "warning 1 modified",
+            ), // changed
+            create_test_diagnostic(
+                "file3.rs",
+                3,
+                0,
+                crate::diagnostics::Severity::Info,
+                "new info",
+            ), // new
         ];
-        
+
         let diff = manager.compute_diff(&current_diagnostics);
-        
+
         assert_eq!(diff.summary.unchanged_count, 1);
         assert_eq!(diff.summary.changed_count, 1);
         assert_eq!(diff.summary.new_count, 1);
         assert_eq!(diff.summary.removed_count, 0);
-        
+
         // Test diff-only output
         let diff_diagnostics = manager.get_diff_diagnostics(&current_diagnostics);
         assert_eq!(diff_diagnostics.len(), 2); // 1 changed + 1 new
-        
+
         Ok(())
     }
 
@@ -626,10 +669,10 @@ mod tests {
         let temp_dir = TempDir::new()?;
         let cache_path = temp_dir.path().join("cache.json");
         let workspace = temp_dir.path().to_path_buf();
-        
+
         let mut manager = CacheManager::new(workspace, cache_path, true)?;
         assert!(manager.is_enabled());
-        
+
         // Test stats
         let stats = manager.stats();
         assert_eq!(stats.hits, 0);
@@ -640,24 +683,60 @@ mod tests {
 
     #[test]
     fn test_diagnostic_key_generation() {
-        let diag1 = create_test_diagnostic("file1.rs", 10, 5, crate::diagnostics::Severity::Error, "error");
-        let diag2 = create_test_diagnostic("file1.rs", 10, 5, crate::diagnostics::Severity::Error, "different message");
-        let diag3 = create_test_diagnostic("file1.rs", 11, 5, crate::diagnostics::Severity::Error, "error");
-        
+        let diag1 = create_test_diagnostic(
+            "file1.rs",
+            10,
+            5,
+            crate::diagnostics::Severity::Error,
+            "error",
+        );
+        let diag2 = create_test_diagnostic(
+            "file1.rs",
+            10,
+            5,
+            crate::diagnostics::Severity::Error,
+            "different message",
+        );
+        let diag3 = create_test_diagnostic(
+            "file1.rs",
+            11,
+            5,
+            crate::diagnostics::Severity::Error,
+            "error",
+        );
+
         let key1 = diagnostic_key(&diag1);
         let key2 = diagnostic_key(&diag2);
         let key3 = diagnostic_key(&diag3);
-        
+
         assert_eq!(key1, key2); // Same position and severity, different message -> same key
         assert_ne!(key1, key3); // Different line -> different key
     }
 
     #[test]
     fn test_diagnostics_equal() {
-        let diag1 = create_test_diagnostic("file1.rs", 10, 5, crate::diagnostics::Severity::Error, "error");
-        let diag2 = create_test_diagnostic("file1.rs", 10, 5, crate::diagnostics::Severity::Error, "error");
-        let diag3 = create_test_diagnostic("file1.rs", 10, 5, crate::diagnostics::Severity::Error, "different error");
-        
+        let diag1 = create_test_diagnostic(
+            "file1.rs",
+            10,
+            5,
+            crate::diagnostics::Severity::Error,
+            "error",
+        );
+        let diag2 = create_test_diagnostic(
+            "file1.rs",
+            10,
+            5,
+            crate::diagnostics::Severity::Error,
+            "error",
+        );
+        let diag3 = create_test_diagnostic(
+            "file1.rs",
+            10,
+            5,
+            crate::diagnostics::Severity::Error,
+            "different error",
+        );
+
         assert!(diagnostics_equal(&diag1, &diag2));
         assert!(!diagnostics_equal(&diag1, &diag3));
     }
@@ -667,14 +746,14 @@ mod tests {
         let temp_dir = TempDir::new()?;
         let test_file = temp_dir.path().join("test.rs");
         fs::write(&test_file, "fn main() {}")?;
-        
+
         let cache = DiagnosticCache::new(temp_dir.path().to_path_buf());
         let hash1 = cache.calculate_file_hash(&test_file)?;
-        
+
         // Same content should produce same hash
         let hash2 = cache.calculate_file_hash(&test_file)?;
         assert_eq!(hash1, hash2);
-        
+
         // Different content should produce different hash
         fs::write(&test_file, "fn main() { println!(\"hello\"); }")?;
         let hash3 = cache.calculate_file_hash(&test_file)?;

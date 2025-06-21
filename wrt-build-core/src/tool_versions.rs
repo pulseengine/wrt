@@ -175,32 +175,32 @@ impl ToolVersionConfig {
                     // File doesn't exist, use fallback defaults
                     Self::create_fallback_config()
                 };
-                
+
                 // Load rust-toolchain.toml if it exists
                 let rust_toolchain_path = workspace_root.join("rust-toolchain.toml");
                 if rust_toolchain_path.exists() {
                     config.rust_toolchain = Some(Self::load_rust_toolchain(&rust_toolchain_path)?);
                 }
-                
+
                 Ok(config)
             },
             Err(_) => {
                 // Can't find workspace, use fallback defaults
                 Ok(Self::create_fallback_config())
-            }
+            },
         }
     }
-    
+
     /// Load configuration from a specific file
     pub fn load_from_file(config_path: &std::path::Path) -> Result<Self, crate::error::BuildError> {
         use crate::error::BuildError;
-        
+
         let content = std::fs::read_to_string(config_path)
             .map_err(|e| BuildError::Tool(format!("Failed to read tool-versions.toml: {}", e)))?;
-        
+
         let toml_config: ToolVersionsToml = toml::from_str(&content)
             .map_err(|e| BuildError::Tool(format!("Failed to parse tool-versions.toml: {}", e)))?;
-        
+
         // Convert from TOML format to internal format
         let mut tools = HashMap::new();
         for (name, toml_tool) in toml_config.tools {
@@ -211,56 +211,64 @@ impl ToolVersionConfig {
                 "Any" => VersionRequirement::Any,
                 _ => VersionRequirement::Minimum, // Default fallback
             };
-            
+
             // Convert target-specific configurations
             let mut target_specific = HashMap::new();
             for (target, target_config) in toml_tool.target_specific {
-                target_specific.insert(target, TargetToolConfig {
-                    version: target_config.version,
-                    install_command: target_config.install_command,
-                    version_check_args: target_config.version_check_args,
-                    constraints: target_config.constraints,
-                    supported: target_config.supported,
-                });
+                target_specific.insert(
+                    target,
+                    TargetToolConfig {
+                        version: target_config.version,
+                        install_command: target_config.install_command,
+                        version_check_args: target_config.version_check_args,
+                        constraints: target_config.constraints,
+                        supported: target_config.supported,
+                    },
+                );
             }
-            
-            tools.insert(name, ToolVersion {
-                version: toml_tool.version,
-                requirement_type,
-                install_command: toml_tool.install_command,
-                version_check_args: toml_tool.version_check_args,
-                version_pattern: if toml_tool.version_pattern.is_empty() { 
-                    None 
-                } else { 
-                    Some(toml_tool.version_pattern) 
+
+            tools.insert(
+                name,
+                ToolVersion {
+                    version: toml_tool.version,
+                    requirement_type,
+                    install_command: toml_tool.install_command,
+                    version_check_args: toml_tool.version_check_args,
+                    version_pattern: if toml_tool.version_pattern.is_empty() {
+                        None
+                    } else {
+                        Some(toml_tool.version_pattern)
+                    },
+                    required: toml_tool.required,
+                    used_by: toml_tool.used_by,
+                    description: toml_tool.description,
+                    target_specific,
                 },
-                required: toml_tool.required,
-                used_by: toml_tool.used_by,
-                description: toml_tool.description,
-                target_specific,
-            });
+            );
         }
-        
+
         Ok(ToolVersionConfig {
             tools,
             metadata: toml_config.metadata,
             rust_toolchain: None, // Will be loaded separately if available
         })
     }
-    
+
     /// Load rust-toolchain.toml configuration
-    pub fn load_rust_toolchain(toolchain_path: &std::path::Path) -> Result<RustToolchainConfig, crate::error::BuildError> {
+    pub fn load_rust_toolchain(
+        toolchain_path: &std::path::Path,
+    ) -> Result<RustToolchainConfig, crate::error::BuildError> {
         use crate::error::BuildError;
-        
+
         let content = std::fs::read_to_string(toolchain_path)
             .map_err(|e| BuildError::Tool(format!("Failed to read rust-toolchain.toml: {}", e)))?;
-        
+
         // Parse the [toolchain] section
         #[derive(Deserialize)]
         struct RustToolchainToml {
             toolchain: RustToolchainSection,
         }
-        
+
         #[derive(Deserialize)]
         struct RustToolchainSection {
             channel: String,
@@ -270,10 +278,10 @@ impl ToolVersionConfig {
             #[serde(default)]
             targets: Vec<String>,
         }
-        
+
         let toml_config: RustToolchainToml = toml::from_str(&content)
             .map_err(|e| BuildError::Tool(format!("Failed to parse rust-toolchain.toml: {}", e)))?;
-        
+
         Ok(RustToolchainConfig {
             channel: toml_config.toolchain.channel,
             version: toml_config.toolchain.version,
@@ -281,113 +289,147 @@ impl ToolVersionConfig {
             targets: toml_config.toolchain.targets,
         })
     }
-    
+
     /// Create fallback configuration when file is not available  
     pub fn create_fallback_config() -> Self {
         let mut tools = HashMap::new();
-        
+
         // Kani formal verification
-        tools.insert("kani".to_string(), ToolVersion {
-            version: "0.63.0".to_string(),
-            requirement_type: VersionRequirement::Exact,
-            install_command: "cargo install --locked --version 0.63.0 kani-verifier && cargo kani setup".to_string(),
-            version_check_args: vec!["--version".to_string()],
-            version_pattern: Some(r"kani (\d+\.\d+\.\d+)".to_string()),
-            required: false,
-            used_by: vec!["kani-verify".to_string(), "verify".to_string()],
-            description: "CBMC-based formal verification for Rust".to_string(),
-            target_specific: HashMap::new(),
-        });
-        
+        tools.insert(
+            "kani".to_string(),
+            ToolVersion {
+                version: "0.63.0".to_string(),
+                requirement_type: VersionRequirement::Exact,
+                install_command:
+                    "cargo install --locked --version 0.63.0 kani-verifier && cargo kani setup"
+                        .to_string(),
+                version_check_args: vec!["--version".to_string()],
+                version_pattern: Some(r"kani (\d+\.\d+\.\d+)".to_string()),
+                required: false,
+                used_by: vec!["kani-verify".to_string(), "verify".to_string()],
+                description: "CBMC-based formal verification for Rust".to_string(),
+                target_specific: HashMap::new(),
+            },
+        );
+
         // Cargo-fuzz fuzzing tool
-        tools.insert("cargo-fuzz".to_string(), ToolVersion {
-            version: "0.12.0".to_string(),
-            requirement_type: VersionRequirement::Minimum,
-            install_command: "cargo install --locked --version 0.12.0 cargo-fuzz".to_string(),
-            version_check_args: vec!["fuzz".to_string(), "--version".to_string()],
-            version_pattern: Some(r"cargo-fuzz (\d+\.\d+\.\d+)".to_string()),
-            required: false,
-            used_by: vec!["fuzz".to_string()],
-            description: "Coverage-guided fuzzing for Rust".to_string(),
-            target_specific: HashMap::new(),
-        });
-        
+        tools.insert(
+            "cargo-fuzz".to_string(),
+            ToolVersion {
+                version: "0.12.0".to_string(),
+                requirement_type: VersionRequirement::Minimum,
+                install_command: "cargo install --locked --version 0.12.0 cargo-fuzz".to_string(),
+                version_check_args: vec!["fuzz".to_string(), "--version".to_string()],
+                version_pattern: Some(r"cargo-fuzz (\d+\.\d+\.\d+)".to_string()),
+                required: false,
+                used_by: vec!["fuzz".to_string()],
+                description: "Coverage-guided fuzzing for Rust".to_string(),
+                target_specific: HashMap::new(),
+            },
+        );
+
         // Rust toolchain components
-        tools.insert("clippy".to_string(), ToolVersion {
-            version: "1.86.0".to_string(),
-            requirement_type: VersionRequirement::Minimum,
-            install_command: "rustup component add clippy".to_string(),
-            version_check_args: vec!["clippy".to_string(), "--version".to_string()],
-            version_pattern: Some(r"clippy (\d+\.\d+\.\d+)".to_string()),
-            required: false,
-            used_by: vec!["check".to_string(), "ci".to_string()],
-            description: "Rust linter for code quality checks".to_string(),
-            target_specific: HashMap::new(),
-        });
-        
-        tools.insert("rustfmt".to_string(), ToolVersion {
-            version: "1.86.0".to_string(),
-            requirement_type: VersionRequirement::Minimum,
-            install_command: "rustup component add rustfmt".to_string(),
-            version_check_args: vec!["fmt".to_string(), "--version".to_string()],
-            version_pattern: Some(r"rustfmt (\d+\.\d+\.\d+)".to_string()),
-            required: false,
-            used_by: vec!["check".to_string(), "ci".to_string()],
-            description: "Rust code formatter".to_string(),
-            target_specific: HashMap::new(),
-        });
+        tools.insert(
+            "clippy".to_string(),
+            ToolVersion {
+                version: "1.86.0".to_string(),
+                requirement_type: VersionRequirement::Minimum,
+                install_command: "rustup component add clippy".to_string(),
+                version_check_args: vec!["clippy".to_string(), "--version".to_string()],
+                version_pattern: Some(r"clippy (\d+\.\d+\.\d+)".to_string()),
+                required: false,
+                used_by: vec!["check".to_string(), "ci".to_string()],
+                description: "Rust linter for code quality checks".to_string(),
+                target_specific: HashMap::new(),
+            },
+        );
+
+        tools.insert(
+            "rustfmt".to_string(),
+            ToolVersion {
+                version: "1.86.0".to_string(),
+                requirement_type: VersionRequirement::Minimum,
+                install_command: "rustup component add rustfmt".to_string(),
+                version_check_args: vec!["fmt".to_string(), "--version".to_string()],
+                version_pattern: Some(r"rustfmt (\d+\.\d+\.\d+)".to_string()),
+                required: false,
+                used_by: vec!["check".to_string(), "ci".to_string()],
+                description: "Rust code formatter".to_string(),
+                target_specific: HashMap::new(),
+            },
+        );
 
         // Git version control
-        tools.insert("git".to_string(), ToolVersion {
-            version: "2.30.0".to_string(),
-            requirement_type: VersionRequirement::Minimum,
-            install_command: "Please install Git from https://git-scm.com/".to_string(),
-            version_check_args: vec!["--version".to_string()],
-            version_pattern: Some(r"git version (\d+\.\d+\.\d+)".to_string()),
-            required: false,
-            used_by: vec!["setup".to_string()],
-            description: "Distributed version control".to_string(),
-            target_specific: HashMap::new(),
-        });
-        
+        tools.insert(
+            "git".to_string(),
+            ToolVersion {
+                version: "2.30.0".to_string(),
+                requirement_type: VersionRequirement::Minimum,
+                install_command: "Please install Git from https://git-scm.com/".to_string(),
+                version_check_args: vec!["--version".to_string()],
+                version_pattern: Some(r"git version (\d+\.\d+\.\d+)".to_string()),
+                required: false,
+                used_by: vec!["setup".to_string()],
+                description: "Distributed version control".to_string(),
+                target_specific: HashMap::new(),
+            },
+        );
+
         // LLVM tools for coverage
-        tools.insert("llvm-cov".to_string(), ToolVersion {
-            version: "1.75.0".to_string(),
-            requirement_type: VersionRequirement::Minimum,
-            install_command: "rustup component add llvm-tools-preview".to_string(),
-            version_check_args: vec!["--version".to_string()],
-            version_pattern: Some(r"llvm-cov (\d+\.\d+\.\d+)".to_string()),
-            required: false,
-            used_by: vec!["coverage".to_string()],
-            description: "LLVM coverage analysis tools".to_string(),
-            target_specific: HashMap::new(),
-        });
-        
+        tools.insert(
+            "llvm-cov".to_string(),
+            ToolVersion {
+                version: "1.75.0".to_string(),
+                requirement_type: VersionRequirement::Minimum,
+                install_command: "rustup component add llvm-tools-preview".to_string(),
+                version_check_args: vec!["--version".to_string()],
+                version_pattern: Some(r"llvm-cov (\d+\.\d+\.\d+)".to_string()),
+                required: false,
+                used_by: vec!["coverage".to_string()],
+                description: "LLVM coverage analysis tools".to_string(),
+                target_specific: HashMap::new(),
+            },
+        );
+
         // Documentation tools
-        tools.insert("python3".to_string(), ToolVersion {
-            version: "3.8.0".to_string(),
-            requirement_type: VersionRequirement::Minimum,
-            install_command: "Install Python from https://python.org or via package manager".to_string(),
-            version_check_args: vec!["--version".to_string()],
-            version_pattern: Some(r"Python (\d+\.\d+\.\d+)".to_string()),
-            required: false,
-            used_by: vec!["docs".to_string()],
-            description: "Python interpreter for Sphinx documentation generation".to_string(),
-            target_specific: HashMap::new(),
-        });
-        
-        tools.insert("python-venv".to_string(), ToolVersion {
-            version: "3.8.0".to_string(),
-            requirement_type: VersionRequirement::Minimum,
-            install_command: "Included with Python 3.8+ - install Python if missing".to_string(),
-            version_check_args: vec!["-m".to_string(), "venv".to_string(), "--help".to_string()],
-            version_pattern: Some(r"Python (\d+\.\d+\.\d+)".to_string()),
-            required: false,
-            used_by: vec!["docs".to_string()],
-            description: "Python virtual environment support for isolated documentation dependencies".to_string(),
-            target_specific: HashMap::new(),
-        });
-        
+        tools.insert(
+            "python3".to_string(),
+            ToolVersion {
+                version: "3.8.0".to_string(),
+                requirement_type: VersionRequirement::Minimum,
+                install_command: "Install Python from https://python.org or via package manager"
+                    .to_string(),
+                version_check_args: vec!["--version".to_string()],
+                version_pattern: Some(r"Python (\d+\.\d+\.\d+)".to_string()),
+                required: false,
+                used_by: vec!["docs".to_string()],
+                description: "Python interpreter for Sphinx documentation generation".to_string(),
+                target_specific: HashMap::new(),
+            },
+        );
+
+        tools.insert(
+            "python-venv".to_string(),
+            ToolVersion {
+                version: "3.8.0".to_string(),
+                requirement_type: VersionRequirement::Minimum,
+                install_command: "Included with Python 3.8+ - install Python if missing"
+                    .to_string(),
+                version_check_args: vec![
+                    "-m".to_string(),
+                    "venv".to_string(),
+                    "--help".to_string(),
+                ],
+                version_pattern: Some(r"Python (\d+\.\d+\.\d+)".to_string()),
+                required: false,
+                used_by: vec!["docs".to_string()],
+                description:
+                    "Python virtual environment support for isolated documentation dependencies"
+                        .to_string(),
+                target_specific: HashMap::new(),
+            },
+        );
+
         Self {
             tools,
             metadata: VersionConfigMetadata {
@@ -398,35 +440,39 @@ impl ToolVersionConfig {
             rust_toolchain: None, // Will be loaded from rust-toolchain.toml if available
         }
     }
-    
+
     /// Load configuration from file or use default
     pub fn load_or_default() -> Self {
         Self::default() // This now loads from file or fallback
     }
-    
+
     /// Get version requirement for a tool
     pub fn get_tool_version(&self, tool_name: &str) -> Option<&ToolVersion> {
         self.tools.get(tool_name)
     }
-    
+
     /// Get version requirement for a tool with target-specific override
-    pub fn get_tool_version_for_target(&self, tool_name: &str, target: Option<&str>) -> Option<ToolVersion> {
+    pub fn get_tool_version_for_target(
+        &self,
+        tool_name: &str,
+        target: Option<&str>,
+    ) -> Option<ToolVersion> {
         let base_tool = self.tools.get(tool_name)?.clone();
-        
+
         // If no target specified or no target-specific config, return base tool
         let target = match target {
             Some(t) => t,
             None => return Some(base_tool),
         };
-        
+
         // Check for target-specific configuration
         if let Some(target_config) = base_tool.target_specific.get(target).cloned() {
             if !target_config.supported {
                 return None; // Target not supported
             }
-            
+
             let mut tool = base_tool;
-            
+
             // Override with target-specific settings
             if let Some(version) = &target_config.version {
                 tool.version = version.clone();
@@ -437,13 +483,13 @@ impl ToolVersionConfig {
             if let Some(check_args) = &target_config.version_check_args {
                 tool.version_check_args = check_args.clone();
             }
-            
+
             Some(tool)
         } else {
             Some(base_tool)
         }
     }
-    
+
     /// Check if a target is supported for a tool
     pub fn is_target_supported(&self, tool_name: &str, target: &str) -> bool {
         if let Some(tool) = self.tools.get(tool_name) {
@@ -456,7 +502,7 @@ impl ToolVersionConfig {
             false
         }
     }
-    
+
     /// Get the effective Rust toolchain version from rust-toolchain.toml or fallback
     pub fn get_rust_toolchain_version(&self) -> String {
         if let Some(toolchain) = &self.rust_toolchain {
@@ -470,7 +516,7 @@ impl ToolVersionConfig {
             "1.86.0".to_string() // Fallback version
         }
     }
-    
+
     /// Get all targets specified in rust-toolchain.toml
     pub fn get_rust_targets(&self) -> Vec<String> {
         if let Some(toolchain) = &self.rust_toolchain {
@@ -479,15 +525,13 @@ impl ToolVersionConfig {
             vec![] // No targets specified
         }
     }
-    
+
     /// Check if rustup target is installed
     pub fn check_rustup_target_installed(&self, target: &str) -> bool {
         use std::process::Command;
-        
-        let output = Command::new("rustup")
-            .args(["target", "list", "--installed"])
-            .output();
-            
+
+        let output = Command::new("rustup").args(["target", "list", "--installed"]).output();
+
         match output {
             Ok(output) if output.status.success() => {
                 let installed_targets = String::from_utf8_lossy(&output.stdout);
@@ -496,7 +540,7 @@ impl ToolVersionConfig {
             _ => false,
         }
     }
-    
+
     /// Check if a tool version satisfies requirements
     pub fn check_version_compatibility(
         &self,
@@ -504,7 +548,7 @@ impl ToolVersionConfig {
         installed_version: &str,
     ) -> Option<VersionComparison> {
         let tool_version = self.get_tool_version(tool_name)?;
-        
+
         match tool_version.requirement_type {
             VersionRequirement::Any => Some(VersionComparison::Satisfies),
             VersionRequirement::Exact => {
@@ -532,23 +576,22 @@ impl ToolVersionConfig {
             },
         }
     }
-    
+
     /// Generate installation command for a tool
     pub fn get_install_command(&self, tool_name: &str) -> Option<&str> {
-        self.get_tool_version(tool_name)
-            .map(|v| v.install_command.as_str())
+        self.get_tool_version(tool_name).map(|v| v.install_command.as_str())
     }
-    
+
     /// Get list of all managed tools
     pub fn get_managed_tools(&self) -> Vec<&str> {
         self.tools.keys().map(String::as_str).collect()
     }
-    
+
     /// Save configuration to TOML string
     pub fn to_toml(&self) -> Result<String, toml::ser::Error> {
         toml::to_string_pretty(self)
     }
-    
+
     /// Load configuration from TOML string
     pub fn from_toml(toml_str: &str) -> Result<Self, toml::de::Error> {
         toml::from_str(toml_str)
@@ -561,25 +604,25 @@ pub enum VersionComparison {
     /// Installed version meets requirements
     Satisfies,
     /// Installed version is older than required
-    TooOld { 
+    TooOld {
         /// Currently installed version
-        installed: String, 
+        installed: String,
         /// Required version
-        required: String 
+        required: String,
     },
     /// Installed version is newer than required (warning)
-    Newer { 
+    Newer {
         /// Currently installed version
-        installed: String, 
+        installed: String,
         /// Required version
-        required: String 
+        required: String,
     },
     /// Exact version mismatch
-    Mismatch { 
+    Mismatch {
         /// Currently installed version
-        installed: String, 
+        installed: String,
         /// Required version
-        required: String 
+        required: String,
     },
 }
 
@@ -592,28 +635,24 @@ fn compare_versions(v1: &str, v2: &str) -> std::cmp::Ordering {
             .map(|s| s.parse::<u32>().unwrap_or(0))
             .collect()
     };
-    
+
     let v1_parts = parse_version(v1);
     let v2_parts = parse_version(v2);
-    
+
     // Pad to ensure same length
     let max_len = v1_parts.len().max(v2_parts.len());
-    let v1_padded: Vec<u32> = v1_parts.into_iter()
-        .chain(std::iter::repeat(0))
-        .take(max_len)
-        .collect();
-    let v2_padded: Vec<u32> = v2_parts.into_iter()
-        .chain(std::iter::repeat(0))
-        .take(max_len)
-        .collect();
-    
+    let v1_padded: Vec<u32> =
+        v1_parts.into_iter().chain(std::iter::repeat(0)).take(max_len).collect();
+    let v2_padded: Vec<u32> =
+        v2_parts.into_iter().chain(std::iter::repeat(0)).take(max_len).collect();
+
     v1_padded.cmp(&v2_padded)
 }
 
 /// Extract version from command output using regex
 pub fn extract_version_from_output(output: &str, pattern: &str) -> Option<String> {
     use regex::Regex;
-    
+
     let regex = Regex::new(pattern).ok()?;
     let captures = regex.captures(output)?;
     captures.get(1).map(|m| m.as_str().to_string())
@@ -622,55 +661,77 @@ pub fn extract_version_from_output(output: &str, pattern: &str) -> Option<String
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_version_comparison() {
-        assert_eq!(compare_versions("1.0.0", "1.0.0"), std::cmp::Ordering::Equal);
-        assert_eq!(compare_versions("1.0.1", "1.0.0"), std::cmp::Ordering::Greater);
+        assert_eq!(
+            compare_versions("1.0.0", "1.0.0"),
+            std::cmp::Ordering::Equal
+        );
+        assert_eq!(
+            compare_versions("1.0.1", "1.0.0"),
+            std::cmp::Ordering::Greater
+        );
         assert_eq!(compare_versions("1.0.0", "1.0.1"), std::cmp::Ordering::Less);
-        assert_eq!(compare_versions("2.0.0", "1.9.9"), std::cmp::Ordering::Greater);
+        assert_eq!(
+            compare_versions("2.0.0", "1.9.9"),
+            std::cmp::Ordering::Greater
+        );
         assert_eq!(compare_versions("1.9.9", "2.0.0"), std::cmp::Ordering::Less);
     }
-    
+
     #[test]
     fn test_version_extraction() {
         let output = "kani 0.63.0";
         let pattern = r"kani (\d+\.\d+\.\d+)";
-        assert_eq!(extract_version_from_output(output, pattern), Some("0.63.0".to_string()));
-        
+        assert_eq!(
+            extract_version_from_output(output, pattern),
+            Some("0.63.0".to_string())
+        );
+
         let output = "git version 2.39.5 (Apple Git-154)";
         let pattern = r"git version (\d+\.\d+\.\d+)";
-        assert_eq!(extract_version_from_output(output, pattern), Some("2.39.5".to_string()));
+        assert_eq!(
+            extract_version_from_output(output, pattern),
+            Some("2.39.5".to_string())
+        );
     }
-    
+
     #[test]
     fn test_version_compatibility_check() {
         let config = ToolVersionConfig::default();
-        
+
         // Test exact version requirement
         if let Some(kani_version) = config.get_tool_version("kani") {
             let comparison = config.check_version_compatibility("kani", "0.63.0");
             assert_eq!(comparison, Some(VersionComparison::Satisfies));
-            
+
             let comparison = config.check_version_compatibility("kani", "0.62.0");
-            assert!(matches!(comparison, Some(VersionComparison::Mismatch { .. })));
+            assert!(matches!(
+                comparison,
+                Some(VersionComparison::Mismatch { .. })
+            ));
         }
-        
-        // Test minimum version requirement  
+
+        // Test minimum version requirement
         let comparison = config.check_version_compatibility("cargo-fuzz", "0.12.1");
         assert!(matches!(comparison, Some(VersionComparison::Newer { .. })));
-        
+
         let comparison = config.check_version_compatibility("cargo-fuzz", "0.11.0");
         assert!(matches!(comparison, Some(VersionComparison::TooOld { .. })));
     }
-    
+
     #[test]
     fn test_config_serialization() {
         let config = ToolVersionConfig::default();
         let toml_str = config.to_toml().expect("Should serialize to TOML");
-        let loaded_config = ToolVersionConfig::from_toml(&toml_str).expect("Should deserialize from TOML");
-        
+        let loaded_config =
+            ToolVersionConfig::from_toml(&toml_str).expect("Should deserialize from TOML");
+
         assert_eq!(config.tools.len(), loaded_config.tools.len());
-        assert_eq!(config.metadata.config_version, loaded_config.metadata.config_version);
+        assert_eq!(
+            config.metadata.config_version,
+            loaded_config.metadata.config_version
+        );
     }
 }

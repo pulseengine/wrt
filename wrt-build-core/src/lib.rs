@@ -53,12 +53,12 @@ pub mod memory;
 pub mod parsers;
 pub mod requirements;
 pub mod test;
-pub mod tools;
 pub mod text_search;
 pub mod tool_versions;
+pub mod tools;
 pub mod validation;
-pub mod verify;
 pub mod verification_tool;
+pub mod verify;
 
 // Public API
 pub use build::BuildSystem;

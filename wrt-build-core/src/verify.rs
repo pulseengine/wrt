@@ -1,17 +1,21 @@
 //! Safety verification and compliance checking
 
 use colored::Colorize;
+use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::collections::HashSet;
-use serde::{Deserialize, Serialize};
 
 use crate::build::BuildSystem;
-use crate::text_search::{TextSearcher, count_production_matches, SearchMatch};
 use crate::config::AsilLevel;
-use crate::diagnostics::{Diagnostic, DiagnosticCollection, Position, Range, Severity, ToolOutputParser};
-use crate::parsers::{CargoOutputParser, KaniOutputParser, MiriOutputParser, CargoAuditOutputParser};
+use crate::diagnostics::{
+    Diagnostic, DiagnosticCollection, Position, Range, Severity, ToolOutputParser,
+};
 use crate::error::{BuildError, BuildResult};
+use crate::parsers::{
+    CargoAuditOutputParser, CargoOutputParser, KaniOutputParser, MiriOutputParser,
+};
+use crate::text_search::{count_production_matches, SearchMatch, TextSearcher};
 
 /// Configuration for allowed unsafe blocks
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,13 +42,15 @@ pub struct AllowedUnsafeBlock {
 impl AllowedUnsafeConfig {
     /// Load allowed unsafe configuration from a TOML file
     pub fn load_from_file(path: &Path) -> BuildResult<Self> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| BuildError::Verification(format!("Failed to read allowed unsafe config: {}", e)))?;
-        
-        toml::from_str(&content)
-            .map_err(|e| BuildError::Verification(format!("Failed to parse allowed unsafe config: {}", e)))
+        let content = std::fs::read_to_string(path).map_err(|e| {
+            BuildError::Verification(format!("Failed to read allowed unsafe config: {}", e))
+        })?;
+
+        toml::from_str(&content).map_err(|e| {
+            BuildError::Verification(format!("Failed to parse allowed unsafe config: {}", e))
+        })
     }
-    
+
     /// Check if an unsafe block is allowed
     pub fn is_allowed(&self, file_path: &Path, line_number: usize) -> Option<&AllowedUnsafeBlock> {
         self.allowed.iter().find(|block| {
@@ -52,7 +58,7 @@ impl AllowedUnsafeConfig {
             if !file_path.to_string_lossy().contains(&block.file) {
                 return false;
             }
-            
+
             // If line is specified, check it matches
             if let Some(allowed_line) = block.line {
                 allowed_line == line_number
@@ -127,17 +133,15 @@ pub struct VerificationOptions {
 impl Default for VerificationOptions {
     fn default() -> Self {
         // Try to load allowed-unsafe.toml if it exists
-        let allowed_unsafe = std::env::current_dir()
-            .ok()
-            .and_then(|cwd| {
-                let config_path = cwd.join("allowed-unsafe.toml");
-                if config_path.exists() {
-                    AllowedUnsafeConfig::load_from_file(&config_path).ok()
-                } else {
-                    None
-                }
-            });
-            
+        let allowed_unsafe = std::env::current_dir().ok().and_then(|cwd| {
+            let config_path = cwd.join("allowed-unsafe.toml");
+            if config_path.exists() {
+                AllowedUnsafeConfig::load_from_file(&config_path).ok()
+            } else {
+                None
+            }
+        });
+
         Self {
             target_asil: AsilLevel::QM,
             kani: true,
@@ -162,13 +166,12 @@ impl BuildSystem {
         options: &VerificationOptions,
     ) -> BuildResult<DiagnosticCollection> {
         let start_time = std::time::Instant::now();
-        let mut collection = DiagnosticCollection::new(
-            self.workspace.root.clone(),
-            "verify".to_string(),
-        );
+        let mut collection =
+            DiagnosticCollection::new(self.workspace.root.clone(), "verify".to_string());
 
         // 1. Basic safety checks with structured output
-        let basic_diagnostics = self.run_basic_safety_checks_with_diagnostics_and_options(options)?;
+        let basic_diagnostics =
+            self.run_basic_safety_checks_with_diagnostics_and_options(options)?;
         collection.add_diagnostics(basic_diagnostics);
 
         // 2. Memory safety verification
@@ -189,7 +192,7 @@ impl BuildSystem {
                         format!("Kani verification failed: {}", e),
                         "kani".to_string(),
                     ));
-                }
+                },
             }
         }
 
@@ -205,7 +208,7 @@ impl BuildSystem {
                         format!("MIRI verification failed: {}", e),
                         "miri".to_string(),
                     ));
-                }
+                },
             }
         }
 
@@ -221,7 +224,7 @@ impl BuildSystem {
                         format!("Security audit had issues: {}", e),
                         "cargo-audit".to_string(),
                     ));
-                }
+                },
             }
         }
 
@@ -343,9 +346,12 @@ impl BuildSystem {
     fn run_basic_safety_checks(&self) -> BuildResult<Vec<VerificationCheck>> {
         self.run_basic_safety_checks_with_options(&VerificationOptions::default())
     }
-    
+
     /// Run basic safety checks with options
-    fn run_basic_safety_checks_with_options(&self, options: &VerificationOptions) -> BuildResult<Vec<VerificationCheck>> {
+    fn run_basic_safety_checks_with_options(
+        &self,
+        options: &VerificationOptions,
+    ) -> BuildResult<Vec<VerificationCheck>> {
         let mut checks = Vec::new();
 
         // Check for unsafe code usage
@@ -367,22 +373,28 @@ impl BuildSystem {
     fn check_unsafe_code_usage(&self) -> BuildResult<VerificationCheck> {
         self.check_unsafe_code_usage_with_options(&VerificationOptions::default())
     }
-    
+
     /// Check for unsafe code usage with allowed exceptions
-    fn check_unsafe_code_usage_with_options(&self, options: &VerificationOptions) -> BuildResult<VerificationCheck> {
+    fn check_unsafe_code_usage_with_options(
+        &self,
+        options: &VerificationOptions,
+    ) -> BuildResult<VerificationCheck> {
         let searcher = TextSearcher::new();
         let matches = searcher.search_unsafe_code(&self.workspace.root)?;
-        
+
         // Filter out allowed unsafe blocks if configuration is provided
         let filtered_matches = if let Some(allowed_config) = &options.allowed_unsafe {
-            matches.into_iter().filter(|m| {
-                // Check if this unsafe block is in the allowed list
-                allowed_config.is_allowed(&m.file_path, m.line_number).is_none()
-            }).collect()
+            matches
+                .into_iter()
+                .filter(|m| {
+                    // Check if this unsafe block is in the allowed list
+                    allowed_config.is_allowed(&m.file_path, m.line_number).is_none()
+                })
+                .collect()
         } else {
             matches
         };
-        
+
         let unsafe_count = count_production_matches(&filtered_matches);
 
         Ok(VerificationCheck {
@@ -391,7 +403,10 @@ impl BuildSystem {
             details: if unsafe_count == 0 {
                 "No unsafe code blocks found (excluding allowed exceptions)".to_string()
             } else {
-                format!("Found {} unsafe code blocks not in allowed list", unsafe_count)
+                format!(
+                    "Found {} unsafe code blocks not in allowed list",
+                    unsafe_count
+                )
             },
             severity: VerificationSeverity::Critical,
         })
@@ -492,46 +507,58 @@ impl BuildSystem {
     fn run_basic_safety_checks_with_diagnostics(&self) -> BuildResult<Vec<Diagnostic>> {
         self.run_basic_safety_checks_with_diagnostics_and_options(&VerificationOptions::default())
     }
-    
+
     /// Run basic safety checks with diagnostic output and options
-    fn run_basic_safety_checks_with_diagnostics_and_options(&self, options: &VerificationOptions) -> BuildResult<Vec<Diagnostic>> {
+    fn run_basic_safety_checks_with_diagnostics_and_options(
+        &self,
+        options: &VerificationOptions,
+    ) -> BuildResult<Vec<Diagnostic>> {
         let mut diagnostics = Vec::new();
 
         // Check for unsafe code usage
         let searcher = TextSearcher::new();
         let matches = searcher.search_unsafe_code(&self.workspace.root)?;
-        
+
         // Filter matches based on allowed unsafe configuration
-        let filtered_matches: Vec<SearchMatch> = if let Some(allowed_config) = &options.allowed_unsafe {
-            matches.into_iter().filter(|m| {
-                // Only include matches that are NOT allowed
-                allowed_config.is_allowed(&m.file_path, m.line_number).is_none()
-            }).collect()
-        } else {
-            matches
-        };
-        
+        let filtered_matches: Vec<SearchMatch> =
+            if let Some(allowed_config) = &options.allowed_unsafe {
+                matches
+                    .into_iter()
+                    .filter(|m| {
+                        // Only include matches that are NOT allowed
+                        allowed_config.is_allowed(&m.file_path, m.line_number).is_none()
+                    })
+                    .collect()
+            } else {
+                matches
+            };
+
         let unsafe_count = count_production_matches(&filtered_matches);
 
         if unsafe_count > 0 {
-            for search_match in filtered_matches.iter().take(10) { // Limit to first 10 matches
-                let relative_path = search_match.file_path
+            for search_match in filtered_matches.iter().take(10) {
+                // Limit to first 10 matches
+                let relative_path = search_match
+                    .file_path
                     .strip_prefix(&self.workspace.root)
                     .unwrap_or(&search_match.file_path)
                     .to_string_lossy()
                     .to_string();
 
-                diagnostics.push(Diagnostic::new(
-                    relative_path,
-                    Range::from_line_1_indexed(
-                        search_match.line_number as u32,
-                        1,
-                        search_match.line_content.len() as u32,
-                    ),
-                    Severity::Error,
-                    format!("Unsafe code detected: {}", search_match.line_content.trim()),
-                    "wrt-verify".to_string(),
-                ).with_code("SAFETY001".to_string()));
+                diagnostics.push(
+                    Diagnostic::new(
+                        relative_path,
+                        Range::from_line_1_indexed(
+                            search_match.line_number as u32,
+                            1,
+                            search_match.line_content.len() as u32,
+                        ),
+                        Severity::Error,
+                        format!("Unsafe code detected: {}", search_match.line_content.trim()),
+                        "wrt-verify".to_string(),
+                    )
+                    .with_code("SAFETY001".to_string()),
+                );
             }
         }
 
@@ -541,23 +568,27 @@ impl BuildSystem {
 
         if panic_count > 0 {
             for search_match in panic_matches.iter().take(10) {
-                let relative_path = search_match.file_path
+                let relative_path = search_match
+                    .file_path
                     .strip_prefix(&self.workspace.root)
                     .unwrap_or(&search_match.file_path)
                     .to_string_lossy()
                     .to_string();
 
-                diagnostics.push(Diagnostic::new(
-                    relative_path,
-                    Range::from_line_1_indexed(
-                        search_match.line_number as u32,
-                        1,
-                        search_match.line_content.len() as u32,
-                    ),
-                    Severity::Warning,
-                    format!("Panic macro detected: {}", search_match.line_content.trim()),
-                    "wrt-verify".to_string(),
-                ).with_code("SAFETY002".to_string()));
+                diagnostics.push(
+                    Diagnostic::new(
+                        relative_path,
+                        Range::from_line_1_indexed(
+                            search_match.line_number as u32,
+                            1,
+                            search_match.line_content.len() as u32,
+                        ),
+                        Severity::Warning,
+                        format!("Panic macro detected: {}", search_match.line_content.trim()),
+                        "wrt-verify".to_string(),
+                    )
+                    .with_code("SAFETY002".to_string()),
+                );
             }
         }
 
@@ -567,23 +598,30 @@ impl BuildSystem {
 
         if unwrap_count > 0 {
             for search_match in unwrap_matches.iter().take(10) {
-                let relative_path = search_match.file_path
+                let relative_path = search_match
+                    .file_path
                     .strip_prefix(&self.workspace.root)
                     .unwrap_or(&search_match.file_path)
                     .to_string_lossy()
                     .to_string();
 
-                diagnostics.push(Diagnostic::new(
-                    relative_path,
-                    Range::from_line_1_indexed(
-                        search_match.line_number as u32,
-                        1,
-                        search_match.line_content.len() as u32,
-                    ),
-                    Severity::Warning,
-                    format!("Unwrap usage detected: {}", search_match.line_content.trim()),
-                    "wrt-verify".to_string(),
-                ).with_code("SAFETY003".to_string()));
+                diagnostics.push(
+                    Diagnostic::new(
+                        relative_path,
+                        Range::from_line_1_indexed(
+                            search_match.line_number as u32,
+                            1,
+                            search_match.line_content.len() as u32,
+                        ),
+                        Severity::Warning,
+                        format!(
+                            "Unwrap usage detected: {}",
+                            search_match.line_content.trim()
+                        ),
+                        "wrt-verify".to_string(),
+                    )
+                    .with_code("SAFETY003".to_string()),
+                );
             }
         }
 
@@ -605,10 +643,7 @@ impl BuildSystem {
     /// Run Kani formal verification with diagnostic output
     fn run_kani_verification_with_diagnostics(&self) -> BuildResult<Vec<Diagnostic>> {
         // Check if kani is available
-        let kani_check = Command::new("cargo")
-            .arg("kani")
-            .arg("--version")
-            .output();
+        let kani_check = Command::new("cargo").arg("kani").arg("--version").output();
 
         match kani_check {
             Err(_) => {
@@ -616,29 +651,30 @@ impl BuildSystem {
                     "<kani>".to_string(),
                     Range::entire_line(0),
                     Severity::Warning,
-                    "Kani not available. Install with: cargo install --locked kani-verifier".to_string(),
+                    "Kani not available. Install with: cargo install --locked kani-verifier"
+                        .to_string(),
                     "kani".to_string(),
                 )]);
-            }
+            },
             Ok(output) if !output.status.success() => {
                 return Ok(vec![Diagnostic::new(
                     "<kani>".to_string(),
                     Range::entire_line(0),
                     Severity::Warning,
-                    "Kani not available. Install with: cargo install --locked kani-verifier".to_string(),
+                    "Kani not available. Install with: cargo install --locked kani-verifier"
+                        .to_string(),
                     "kani".to_string(),
                 )]);
-            }
-            Ok(_) => {} // Kani is available, continue
+            },
+            Ok(_) => {}, // Kani is available, continue
         }
 
         // Run kani verification
         let mut cmd = Command::new("cargo");
-        cmd.arg("kani")
-            .arg("--workspace")
-            .current_dir(&self.workspace.root);
+        cmd.arg("kani").arg("--workspace").current_dir(&self.workspace.root);
 
-        let output = cmd.output()
+        let output = cmd
+            .output()
             .map_err(|e| BuildError::Tool(format!("Failed to run kani: {}", e)))?;
 
         let parser = KaniOutputParser::new(&self.workspace.root);
@@ -653,12 +689,10 @@ impl BuildSystem {
     fn run_miri_checks_with_diagnostics(&self) -> BuildResult<Vec<Diagnostic>> {
         // Run cargo miri test
         let mut cmd = Command::new("cargo");
-        cmd.arg("miri")
-            .arg("test")
-            .arg("--workspace")
-            .current_dir(&self.workspace.root);
+        cmd.arg("miri").arg("test").arg("--workspace").current_dir(&self.workspace.root);
 
-        let output = cmd.output()
+        let output = cmd
+            .output()
             .map_err(|e| BuildError::Tool(format!("Failed to run miri: {}", e)))?;
 
         if output.status.success() {
@@ -683,12 +717,10 @@ impl BuildSystem {
     fn run_security_audit_with_diagnostics(&self) -> BuildResult<Vec<Diagnostic>> {
         // Run cargo audit if available
         let mut cmd = Command::new("cargo");
-        cmd.arg("audit")
-            .arg("--format")
-            .arg("json")
-            .current_dir(&self.workspace.root);
+        cmd.arg("audit").arg("--format").arg("json").current_dir(&self.workspace.root);
 
-        let output = cmd.output()
+        let output = cmd
+            .output()
             .map_err(|e| BuildError::Tool(format!("Failed to run cargo audit: {}", e)))?;
 
         if output.status.success() {
@@ -706,7 +738,8 @@ impl BuildSystem {
                     "<audit>".to_string(),
                     Range::entire_line(0),
                     Severity::Info,
-                    "cargo-audit not available. Install with: cargo install cargo-audit".to_string(),
+                    "cargo-audit not available. Install with: cargo install cargo-audit"
+                        .to_string(),
                     "cargo-audit".to_string(),
                 )])
             } else {

@@ -231,43 +231,49 @@ impl ToolOutputParser for CargoOutputParser {
                     "compiler-message" => {
                         if let Some(message) = cargo_msg.message {
                             // Handle messages with primary span
-                            if let Some(primary_span) = message.spans.iter().find(|s| s.is_primary) {
+                            if let Some(primary_span) = message.spans.iter().find(|s| s.is_primary)
+                            {
                                 let diagnostic = self.message_to_diagnostic(&message, primary_span);
                                 diagnostics.push(diagnostic);
                             } else if !message.spans.is_empty() {
                                 // No primary span, use first span
-                                let diagnostic = self.message_to_diagnostic(&message, &message.spans[0]);
+                                let diagnostic =
+                                    self.message_to_diagnostic(&message, &message.spans[0]);
                                 diagnostics.push(diagnostic);
                             } else {
                                 // No spans at all, create a generic diagnostic
-                                diagnostics.push(Diagnostic::new(
-                                    "<unknown>".to_string(),
-                                    Range::entire_line(0),
-                                    Self::level_to_severity(&message.level),
-                                    message.message.clone(),
-                                    "cargo".to_string(),
-                                ).with_code(message.code.map(|c| c.code).unwrap_or_default()));
+                                diagnostics.push(
+                                    Diagnostic::new(
+                                        "<unknown>".to_string(),
+                                        Range::entire_line(0),
+                                        Self::level_to_severity(&message.level),
+                                        message.message.clone(),
+                                        "cargo".to_string(),
+                                    )
+                                    .with_code(message.code.map(|c| c.code).unwrap_or_default()),
+                                );
                             }
                         }
-                    }
+                    },
                     "build-finished" => {
                         // Build finished message, check if it failed
                         // Try to parse the message field directly as JSON
                         if let Ok(msg_value) = serde_json::from_str::<serde_json::Value>(line) {
-                            if let Ok(finished) = serde_json::from_value::<BuildFinished>(msg_value) {
-                            if !finished.success {
-                                diagnostics.push(Diagnostic::new(
-                                    "<build>".to_string(),
-                                    Range::entire_line(0),
-                                    Severity::Error,
-                                    "Build failed".to_string(),
-                                    "cargo".to_string(),
-                                ));
-                            }
+                            if let Ok(finished) = serde_json::from_value::<BuildFinished>(msg_value)
+                            {
+                                if !finished.success {
+                                    diagnostics.push(Diagnostic::new(
+                                        "<build>".to_string(),
+                                        Range::entire_line(0),
+                                        Severity::Error,
+                                        "Build failed".to_string(),
+                                        "cargo".to_string(),
+                                    ));
+                                }
                             }
                         }
-                    }
-                    _ => {} // Ignore other message types for now
+                    },
+                    _ => {}, // Ignore other message types for now
                 }
             }
         }
@@ -275,7 +281,8 @@ impl ToolOutputParser for CargoOutputParser {
         // Also parse stderr for non-JSON error messages
         if !stderr.is_empty() && diagnostics.is_empty() {
             // Fallback to generic parsing if no JSON messages found
-            let generic_parser = GenericOutputParser::new("cargo".to_string(), &self.workspace_root);
+            let generic_parser =
+                GenericOutputParser::new("cargo".to_string(), &self.workspace_root);
             let stderr_diagnostics = generic_parser.parse_error_patterns(stderr);
             diagnostics.extend(stderr_diagnostics);
         }
@@ -340,7 +347,8 @@ impl GenericOutputParser {
         // Pattern 1: "file:line:col: level: message"
         let parts: Vec<&str> = line.split(':').collect();
         if parts.len() >= 4 {
-            if let (Ok(line_num), Ok(col_num)) = (parts[1].parse::<u32>(), parts[2].parse::<u32>()) {
+            if let (Ok(line_num), Ok(col_num)) = (parts[1].parse::<u32>(), parts[2].parse::<u32>())
+            {
                 let file = parts[0].to_string();
                 let message = parts[3..].join(":").trim().to_string();
 
@@ -415,10 +423,15 @@ impl MiriOutputParser {
             if line.starts_with("error: ") {
                 // Save previous error if any
                 if let Some((msg, file, code)) = current_error.take() {
-                    diagnostics.push(self.create_miri_diagnostic(msg, file, code, &backtrace_items));
+                    diagnostics.push(self.create_miri_diagnostic(
+                        msg,
+                        file,
+                        code,
+                        &backtrace_items,
+                    ));
                     backtrace_items.clear();
                 }
-                
+
                 let error_msg = line.strip_prefix("error: ").unwrap_or(line).to_string();
                 current_error = Some((error_msg, String::new(), None));
                 in_backtrace = false;
@@ -449,8 +462,7 @@ impl MiriOutputParser {
             // Parse backtrace
             else if line.trim() == "backtrace:" {
                 in_backtrace = true;
-            }
-            else if in_backtrace && line.trim_start().starts_with("at ") {
+            } else if in_backtrace && line.trim_start().starts_with("at ") {
                 if let Some(location) = line.trim_start().strip_prefix("at ") {
                     backtrace_items.push(location.to_string());
                 }
@@ -505,13 +517,8 @@ impl MiriOutputParser {
             ("<miri>".to_string(), Range::entire_line(0))
         };
 
-        let mut diagnostic = Diagnostic::new(
-            file,
-            range,
-            Severity::Error,
-            message,
-            "miri".to_string(),
-        );
+        let mut diagnostic =
+            Diagnostic::new(file, range, Severity::Error, message, "miri".to_string());
 
         if let Some(code) = code {
             diagnostic = diagnostic.with_code(code);
@@ -525,7 +532,7 @@ impl MiriOutputParser {
                 let bt_file = self.make_relative_path(parts[0]);
                 let bt_line = parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
                 let bt_col = parts.get(2).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
-                
+
                 related_info.push(RelatedInfo::new(
                     bt_file,
                     Range::from_line_1_indexed(bt_line, bt_col, bt_col + 1),
@@ -559,13 +566,13 @@ impl ToolOutputParser for MiriOutputParser {
         _working_dir: &Path,
     ) -> BuildResult<Vec<Diagnostic>> {
         let mut diagnostics = Vec::new();
-        
+
         // Miri outputs to stderr
         diagnostics.extend(self.parse_miri_output(stderr));
-        
+
         // Also check stdout for any additional information
         diagnostics.extend(self.parse_miri_output(stdout));
-        
+
         Ok(diagnostics)
     }
 
@@ -658,25 +665,25 @@ impl CargoAuditOutputParser {
                 for vuln in vulnerabilities {
                     let advisory = &vuln["advisory"];
                     let package = &vuln["package"];
-                    
+
                     let id = advisory["id"].as_str().unwrap_or("UNKNOWN");
                     let title = advisory["title"].as_str().unwrap_or("Security vulnerability");
                     let description = advisory["description"].as_str().unwrap_or("");
                     let severity = advisory["severity"].as_str().unwrap_or("unknown");
                     let package_name = package["name"].as_str().unwrap_or("unknown");
                     let package_version = package["version"].as_str().unwrap_or("unknown");
-                    
+
                     let message = format!(
                         "{}: {} in {} v{}\n{}",
                         id, title, package_name, package_version, description
                     );
-                    
+
                     let severity_level = match severity.to_lowercase().as_str() {
                         "critical" | "high" => Severity::Error,
                         "medium" => Severity::Warning,
                         _ => Severity::Info,
                     };
-                    
+
                     diagnostics.push(
                         Diagnostic::new(
                             "Cargo.lock".to_string(),
@@ -685,11 +692,11 @@ impl CargoAuditOutputParser {
                             message,
                             "cargo-audit".to_string(),
                         )
-                        .with_code(id.to_string())
+                        .with_code(id.to_string()),
                     );
                 }
             }
-            
+
             // Parse warnings if any
             if let Some(warnings) = audit_report["warnings"].as_array() {
                 for warning in warnings {
@@ -705,7 +712,7 @@ impl CargoAuditOutputParser {
                 }
             }
         }
-        
+
         diagnostics
     }
 
@@ -728,7 +735,7 @@ impl CargoAuditOutputParser {
                             format!("{}: {}\n{}", id, title, details.trim()),
                             "cargo-audit".to_string(),
                         )
-                        .with_code(id)
+                        .with_code(id),
                     );
                     details.clear();
                 }
@@ -768,7 +775,7 @@ impl CargoAuditOutputParser {
                     format!("{}: {}\n{}", id, title, details.trim()),
                     "cargo-audit".to_string(),
                 )
-                .with_code(id)
+                .with_code(id),
             );
         }
 
@@ -786,7 +793,10 @@ impl CargoAuditOutputParser {
                     "<audit>".to_string(),
                     Range::entire_line(0),
                     Severity::Error,
-                    format!("{} security vulnerabilities found in dependencies", vuln_count),
+                    format!(
+                        "{} security vulnerabilities found in dependencies",
+                        vuln_count
+                    ),
                     "cargo-audit".to_string(),
                 ));
             }
@@ -820,7 +830,8 @@ impl ToolOutputParser for CargoAuditOutputParser {
                     "<audit>".to_string(),
                     Range::entire_line(0),
                     Severity::Info,
-                    "cargo-audit not available. Install with: cargo install cargo-audit".to_string(),
+                    "cargo-audit not available. Install with: cargo install cargo-audit"
+                        .to_string(),
                     "cargo-audit".to_string(),
                 ));
             } else {
@@ -863,25 +874,27 @@ impl RustdocOutputParser {
 
         for line in output.lines() {
             // Parse error locations like "error: unresolved link to `NonExistent`"
-            if line.trim_start().starts_with("error:") || line.trim_start().starts_with("warning:") {
+            if line.trim_start().starts_with("error:") || line.trim_start().starts_with("warning:")
+            {
                 in_error = true;
                 let is_error = line.contains("error:");
-                let message = line.trim_start()
+                let message = line
+                    .trim_start()
                     .strip_prefix("error:")
                     .or_else(|| line.trim_start().strip_prefix("warning:"))
                     .unwrap_or(line)
                     .trim()
                     .to_string();
 
-                let severity = if is_error {
-                    Severity::Error
-                } else {
-                    Severity::Warning
-                };
+                let severity = if is_error { Severity::Error } else { Severity::Warning };
 
                 // Create diagnostic without file info (will be updated if found)
                 diagnostics.push(Diagnostic::new(
-                    if current_file.is_empty() { "<rustdoc>".to_string() } else { current_file.clone() },
+                    if current_file.is_empty() {
+                        "<rustdoc>".to_string()
+                    } else {
+                        current_file.clone()
+                    },
                     Range::entire_line(0),
                     severity,
                     message,
@@ -894,9 +907,10 @@ impl RustdocOutputParser {
                     let parts: Vec<&str> = location.split(':').collect();
                     if parts.len() >= 2 {
                         let file = self.make_relative_path(parts[0]);
-                        let line_num = parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
+                        let line_num =
+                            parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
                         let col = parts.get(2).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
-                        
+
                         // Update the last diagnostic with file info
                         if let Some(last_diag) = diagnostics.last_mut() {
                             *last_diag = Diagnostic::new(
@@ -925,27 +939,39 @@ impl RustdocOutputParser {
             // Parse specific doc comment issues
             else if line.contains("missing code example") {
                 in_error = false;
-                diagnostics.push(Diagnostic::new(
-                    if current_file.is_empty() { "<rustdoc>".to_string() } else { current_file.clone() },
-                    Range::entire_line(0),
-                    Severity::Warning,
-                    "Missing code example in documentation".to_string(),
-                    "rustdoc".to_string(),
-                ).with_code("DOC001".to_string()));
+                diagnostics.push(
+                    Diagnostic::new(
+                        if current_file.is_empty() {
+                            "<rustdoc>".to_string()
+                        } else {
+                            current_file.clone()
+                        },
+                        Range::entire_line(0),
+                        Severity::Warning,
+                        "Missing code example in documentation".to_string(),
+                        "rustdoc".to_string(),
+                    )
+                    .with_code("DOC001".to_string()),
+                );
             }
             // Parse broken links
             else if line.contains("unresolved link") || line.contains("broken link") {
-                let link_match = line.split('`')
-                    .nth(1)
-                    .unwrap_or("unknown");
-                
-                diagnostics.push(Diagnostic::new(
-                    if current_file.is_empty() { "<rustdoc>".to_string() } else { current_file.clone() },
-                    Range::entire_line(0),
-                    Severity::Warning,
-                    format!("Broken documentation link: `{}`", link_match),
-                    "rustdoc".to_string(),
-                ).with_code("DOC002".to_string()));
+                let link_match = line.split('`').nth(1).unwrap_or("unknown");
+
+                diagnostics.push(
+                    Diagnostic::new(
+                        if current_file.is_empty() {
+                            "<rustdoc>".to_string()
+                        } else {
+                            current_file.clone()
+                        },
+                        Range::entire_line(0),
+                        Severity::Warning,
+                        format!("Broken documentation link: `{}`", link_match),
+                        "rustdoc".to_string(),
+                    )
+                    .with_code("DOC002".to_string()),
+                );
             }
         }
 
@@ -981,11 +1007,11 @@ impl ToolOutputParser for RustdocOutputParser {
         _working_dir: &Path,
     ) -> BuildResult<Vec<Diagnostic>> {
         let mut diagnostics = Vec::new();
-        
+
         // Parse both stdout and stderr as rustdoc outputs to both
         diagnostics.extend(self.parse_rustdoc_output(stdout));
         diagnostics.extend(self.parse_rustdoc_output(stderr));
-        
+
         // If no specific diagnostics but rustdoc failed, add generic error
         if diagnostics.is_empty() && stderr.contains("aborting due to") {
             diagnostics.push(Diagnostic::new(
@@ -996,7 +1022,7 @@ impl ToolOutputParser for RustdocOutputParser {
                 "rustdoc".to_string(),
             ));
         }
-        
+
         Ok(diagnostics)
     }
 
@@ -1033,20 +1059,23 @@ impl TarpaulinOutputParser {
                     Severity::Info
                 };
 
-                diagnostics.push(Diagnostic::new(
-                    "<coverage>".to_string(),
-                    Range::entire_line(0),
-                    severity,
-                    format!("Overall test coverage: {:.2}%", coverage_pct),
-                    "tarpaulin".to_string(),
-                ).with_code("COV001".to_string()));
+                diagnostics.push(
+                    Diagnostic::new(
+                        "<coverage>".to_string(),
+                        Range::entire_line(0),
+                        severity,
+                        format!("Overall test coverage: {:.2}%", coverage_pct),
+                        "tarpaulin".to_string(),
+                    )
+                    .with_code("COV001".to_string()),
+                );
             }
 
             // Parse per-file coverage
             if let Some(files) = coverage_report["files"].as_object() {
                 for (file_path, file_data) in files {
                     let relative_path = self.make_relative_path(file_path);
-                    
+
                     if let Some(file_coverage) = file_data["coverage_percent"].as_f64() {
                         if file_coverage < 80.0 {
                             let severity = if file_coverage < 50.0 {
@@ -1055,13 +1084,16 @@ impl TarpaulinOutputParser {
                                 Severity::Info
                             };
 
-                            diagnostics.push(Diagnostic::new(
-                                relative_path.clone(),
-                                Range::entire_line(0),
-                                severity,
-                                format!("File coverage: {:.2}%", file_coverage),
-                                "tarpaulin".to_string(),
-                            ).with_code("COV002".to_string()));
+                            diagnostics.push(
+                                Diagnostic::new(
+                                    relative_path.clone(),
+                                    Range::entire_line(0),
+                                    severity,
+                                    format!("File coverage: {:.2}%", file_coverage),
+                                    "tarpaulin".to_string(),
+                                )
+                                .with_code("COV002".to_string()),
+                            );
                         }
                     }
 
@@ -1069,13 +1101,16 @@ impl TarpaulinOutputParser {
                     if let Some(uncovered_lines) = file_data["uncovered_lines"].as_array() {
                         for line_value in uncovered_lines {
                             if let Some(line_num) = line_value.as_u64() {
-                                diagnostics.push(Diagnostic::new(
-                                    relative_path.clone(),
-                                    Range::from_line_1_indexed(line_num as u32, 1, 1),
-                                    Severity::Info,
-                                    "Line not covered by tests".to_string(),
-                                    "tarpaulin".to_string(),
-                                ).with_code("COV003".to_string()));
+                                diagnostics.push(
+                                    Diagnostic::new(
+                                        relative_path.clone(),
+                                        Range::from_line_1_indexed(line_num as u32, 1, 1),
+                                        Severity::Info,
+                                        "Line not covered by tests".to_string(),
+                                        "tarpaulin".to_string(),
+                                    )
+                                    .with_code("COV003".to_string()),
+                                );
                             }
                         }
                     }
@@ -1095,10 +1130,8 @@ impl TarpaulinOutputParser {
             // Parse overall coverage line like "Coverage Results: 85.50%"
             if line.contains("Coverage Results:") {
                 if let Some(pct_str) = line.split(':').nth(1) {
-                    let coverage_pct = pct_str.trim()
-                        .trim_end_matches('%')
-                        .parse::<f64>()
-                        .unwrap_or(0.0);
+                    let coverage_pct =
+                        pct_str.trim().trim_end_matches('%').parse::<f64>().unwrap_or(0.0);
 
                     let severity = if coverage_pct < 50.0 {
                         Severity::Error
@@ -1108,13 +1141,16 @@ impl TarpaulinOutputParser {
                         Severity::Info
                     };
 
-                    diagnostics.push(Diagnostic::new(
-                        "<coverage>".to_string(),
-                        Range::entire_line(0),
-                        severity,
-                        format!("Overall test coverage: {:.2}%", coverage_pct),
-                        "tarpaulin".to_string(),
-                    ).with_code("COV001".to_string()));
+                    diagnostics.push(
+                        Diagnostic::new(
+                            "<coverage>".to_string(),
+                            Range::entire_line(0),
+                            severity,
+                            format!("Overall test coverage: {:.2}%", coverage_pct),
+                            "tarpaulin".to_string(),
+                        )
+                        .with_code("COV001".to_string()),
+                    );
                 }
             }
             // Parse file coverage like "src/main.rs: 75.00%"
@@ -1122,10 +1158,10 @@ impl TarpaulinOutputParser {
                 let parts: Vec<&str> = line.split(':').collect();
                 if parts.len() >= 2 {
                     current_file = self.make_relative_path(parts[0].trim());
-                    
+
                     if let Some(pct_str) = parts[1].trim().strip_suffix('%') {
                         let file_coverage = pct_str.parse::<f64>().unwrap_or(0.0);
-                        
+
                         if file_coverage < 80.0 {
                             let severity = if file_coverage < 50.0 {
                                 Severity::Warning
@@ -1133,13 +1169,16 @@ impl TarpaulinOutputParser {
                                 Severity::Info
                             };
 
-                            diagnostics.push(Diagnostic::new(
-                                current_file.clone(),
-                                Range::entire_line(0),
-                                severity,
-                                format!("File coverage: {:.2}%", file_coverage),
-                                "tarpaulin".to_string(),
-                            ).with_code("COV002".to_string()));
+                            diagnostics.push(
+                                Diagnostic::new(
+                                    current_file.clone(),
+                                    Range::entire_line(0),
+                                    severity,
+                                    format!("File coverage: {:.2}%", file_coverage),
+                                    "tarpaulin".to_string(),
+                                )
+                                .with_code("COV002".to_string()),
+                            );
                         }
                     }
                 }
@@ -1154,28 +1193,36 @@ impl TarpaulinOutputParser {
                             // Line range
                             let parts: Vec<&str> = range_str.split('-').collect();
                             if parts.len() == 2 {
-                                if let (Ok(start), Ok(end)) = (parts[0].parse::<u32>(), parts[1].parse::<u32>()) {
+                                if let (Ok(start), Ok(end)) =
+                                    (parts[0].parse::<u32>(), parts[1].parse::<u32>())
+                                {
                                     for line_num in start..=end {
-                                        diagnostics.push(Diagnostic::new(
-                                            current_file.clone(),
-                                            Range::from_line_1_indexed(line_num, 1, 1),
-                                            Severity::Info,
-                                            "Line not covered by tests".to_string(),
-                                            "tarpaulin".to_string(),
-                                        ).with_code("COV003".to_string()));
+                                        diagnostics.push(
+                                            Diagnostic::new(
+                                                current_file.clone(),
+                                                Range::from_line_1_indexed(line_num, 1, 1),
+                                                Severity::Info,
+                                                "Line not covered by tests".to_string(),
+                                                "tarpaulin".to_string(),
+                                            )
+                                            .with_code("COV003".to_string()),
+                                        );
                                     }
                                 }
                             }
                         } else {
                             // Single line
                             if let Ok(line_num) = range_str.parse::<u32>() {
-                                diagnostics.push(Diagnostic::new(
-                                    current_file.clone(),
-                                    Range::from_line_1_indexed(line_num, 1, 1),
-                                    Severity::Info,
-                                    "Line not covered by tests".to_string(),
-                                    "tarpaulin".to_string(),
-                                ).with_code("COV003".to_string()));
+                                diagnostics.push(
+                                    Diagnostic::new(
+                                        current_file.clone(),
+                                        Range::from_line_1_indexed(line_num, 1, 1),
+                                        Severity::Info,
+                                        "Line not covered by tests".to_string(),
+                                        "tarpaulin".to_string(),
+                                    )
+                                    .with_code("COV003".to_string()),
+                                );
                             }
                         }
                     }
@@ -1220,7 +1267,8 @@ impl ToolOutputParser for TarpaulinOutputParser {
                     "<coverage>".to_string(),
                     Range::entire_line(0),
                     Severity::Info,
-                    "cargo-tarpaulin not available. Install with: cargo install cargo-tarpaulin".to_string(),
+                    "cargo-tarpaulin not available. Install with: cargo install cargo-tarpaulin"
+                        .to_string(),
                     "tarpaulin".to_string(),
                 ));
             } else if stderr.contains("error:") {
@@ -1251,19 +1299,17 @@ mod tests {
         let json_message = r#"{"reason":"compiler-message","package_id":"test-package","message":{"message":"cannot find value `x` in this scope","code":{"code":"E0425","explanation":null},"level":"error","spans":[{"file_name":"/workspace/src/main.rs","byte_start":100,"byte_end":101,"line_start":10,"line_end":10,"column_start":5,"column_end":6,"is_primary":true,"text":[],"label":"not found in this scope","suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[],"rendered":null}}"#;
 
         let parser = CargoOutputParser::new("/workspace");
-        let diagnostics = parser
-            .parse_output(json_message, "", Path::new("/workspace"))
-            .unwrap();
+        let diagnostics = parser.parse_output(json_message, "", Path::new("/workspace")).unwrap();
 
         assert_eq!(diagnostics.len(), 1);
         let diagnostic = &diagnostics[0];
-        
+
         assert_eq!(diagnostic.file, "src/main.rs");
         assert_eq!(diagnostic.severity, Severity::Error);
         assert_eq!(diagnostic.code, Some("E0425".to_string()));
         assert_eq!(diagnostic.message, "cannot find value `x` in this scope");
         assert_eq!(diagnostic.source, "rustc");
-        
+
         // Check position conversion (1-indexed to 0-indexed)
         assert_eq!(diagnostic.range.start.line, 9);
         assert_eq!(diagnostic.range.start.character, 4);
@@ -1273,14 +1319,12 @@ mod tests {
     fn test_generic_parser() {
         let parser = GenericOutputParser::new("test-tool".to_string(), "/workspace");
         let stderr = "file.rs:10:5: error: something went wrong";
-        
-        let diagnostics = parser
-            .parse_output("", stderr, Path::new("/workspace"))
-            .unwrap();
+
+        let diagnostics = parser.parse_output("", stderr, Path::new("/workspace")).unwrap();
 
         assert_eq!(diagnostics.len(), 1);
         let diagnostic = &diagnostics[0];
-        
+
         assert_eq!(diagnostic.file, "file.rs");
         assert_eq!(diagnostic.severity, Severity::Error);
         assert_eq!(diagnostic.range.start.line, 9); // 1-indexed to 0-indexed
@@ -1291,10 +1335,8 @@ mod tests {
     fn test_kani_parser() {
         let parser = KaniOutputParser::new("/workspace");
         let output = "VERIFICATION:- FAILED\nassertion failed: x > 0";
-        
-        let diagnostics = parser
-            .parse_output(output, "", Path::new("/workspace"))
-            .unwrap();
+
+        let diagnostics = parser.parse_output(output, "", Path::new("/workspace")).unwrap();
 
         assert_eq!(diagnostics.len(), 2);
         assert_eq!(diagnostics[0].severity, Severity::Error);
@@ -1314,10 +1356,8 @@ mod tests {
 backtrace:
    at /workspace/src/main.rs:10:5
    at /workspace/src/lib.rs:20:10"#;
-        
-        let diagnostics = parser
-            .parse_output("", stderr, Path::new("/workspace"))
-            .unwrap();
+
+        let diagnostics = parser.parse_output("", stderr, Path::new("/workspace")).unwrap();
 
         assert!(!diagnostics.is_empty());
         let diag = &diagnostics[0];
@@ -1350,10 +1390,8 @@ backtrace:
                 ]
             }
         }"#;
-        
-        let diagnostics = parser
-            .parse_output(json_output, "", Path::new("/workspace"))
-            .unwrap();
+
+        let diagnostics = parser.parse_output(json_output, "", Path::new("/workspace")).unwrap();
 
         assert_eq!(diagnostics.len(), 1);
         let diag = &diagnostics[0];
@@ -1371,14 +1409,14 @@ backtrace:
     The ansi_term crate is unmaintained.
     
 2 vulnerabilities found"#;
-        
-        let diagnostics = parser
-            .parse_output(text_output, "", Path::new("/workspace"))
-            .unwrap();
+
+        let diagnostics = parser.parse_output(text_output, "", Path::new("/workspace")).unwrap();
 
         assert!(diagnostics.len() >= 2);
         assert!(diagnostics.iter().any(|d| d.code == Some("RUSTSEC-2021-0139".to_string())));
-        assert!(diagnostics.iter().any(|d| d.message.contains("2 security vulnerabilities found")));
+        assert!(diagnostics
+            .iter()
+            .any(|d| d.message.contains("2 security vulnerabilities found")));
     }
 
     #[test]
@@ -1392,15 +1430,13 @@ backtrace:
    |
 warning: missing code example in documentation
   --> /workspace/src/lib.rs:20:1"#;
-        
-        let diagnostics = parser
-            .parse_output(output, "", Path::new("/workspace"))
-            .unwrap();
+
+        let diagnostics = parser.parse_output(output, "", Path::new("/workspace")).unwrap();
 
         assert_eq!(diagnostics.len(), 2);
         assert_eq!(diagnostics[0].severity, Severity::Error);
         assert_eq!(diagnostics[0].file, "src/lib.rs");
-        
+
         // Find the warning diagnostic
         let warning = diagnostics.iter().find(|d| d.severity == Severity::Warning);
         assert!(warning.is_some());
@@ -1414,15 +1450,15 @@ warning: missing code example in documentation
 src/main.rs: 85.00%
 src/lib.rs: 45.00%
   Uncovered Lines: 10-15, 20, 25-30"#;
-        
-        let diagnostics = parser
-            .parse_output(output, "", Path::new("/workspace"))
-            .unwrap();
+
+        let diagnostics = parser.parse_output(output, "", Path::new("/workspace")).unwrap();
 
         // Should have overall coverage warning, file warning, and uncovered lines
         assert!(diagnostics.len() > 3);
         assert!(diagnostics.iter().any(|d| d.message.contains("Overall test coverage: 75.50%")));
-        assert!(diagnostics.iter().any(|d| d.file == "src/lib.rs" && d.severity == Severity::Warning));
+        assert!(diagnostics
+            .iter()
+            .any(|d| d.file == "src/lib.rs" && d.severity == Severity::Warning));
         assert!(diagnostics.iter().any(|d| d.code == Some("COV003".to_string())));
     }
 }

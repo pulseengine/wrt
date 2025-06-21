@@ -142,30 +142,45 @@ impl DiagnosticProcessor {
     }
 
     /// Apply filtering and grouping to a diagnostic collection
-    pub fn process(&self, collection: &DiagnosticCollection, options: &FilterOptions) -> BuildResult<GroupedDiagnostics> {
+    pub fn process(
+        &self,
+        collection: &DiagnosticCollection,
+        options: &FilterOptions,
+    ) -> BuildResult<GroupedDiagnostics> {
         // Apply filters
         let filtered_diagnostics = self.apply_filters(&collection.diagnostics, &options.filter)?;
-        
+
         // Apply sorting
-        let sorted_diagnostics = self.apply_sorting(filtered_diagnostics, options.sort_by, options.sort_direction);
-        
+        let sorted_diagnostics = self.apply_sorting(
+            filtered_diagnostics,
+            options.sort_by,
+            options.sort_direction,
+        );
+
         // Apply pagination
-        let paginated_diagnostics = self.apply_pagination(sorted_diagnostics, options.offset, options.limit);
-        
+        let paginated_diagnostics =
+            self.apply_pagination(sorted_diagnostics, options.offset, options.limit);
+
         // Apply grouping
         let grouped = self.apply_grouping(paginated_diagnostics, options.group_by);
-        
+
         Ok(grouped)
     }
 
     /// Apply filter criteria to diagnostics
-    fn apply_filters(&self, diagnostics: &[Diagnostic], filter: &DiagnosticFilter) -> BuildResult<Vec<Diagnostic>> {
+    fn apply_filters(
+        &self,
+        diagnostics: &[Diagnostic],
+        filter: &DiagnosticFilter,
+    ) -> BuildResult<Vec<Diagnostic>> {
         let mut filtered = Vec::new();
-        
+
         // Compile regex pattern if provided
         let message_regex = if let Some(pattern) = &filter.message_pattern {
-            Some(Regex::new(pattern)
-                .map_err(|e| BuildError::Tool(format!("Invalid regex pattern: {}", e)))?)
+            Some(
+                Regex::new(pattern)
+                    .map_err(|e| BuildError::Tool(format!("Invalid regex pattern: {}", e)))?,
+            )
         } else {
             None
         };
@@ -229,7 +244,12 @@ impl DiagnosticProcessor {
     }
 
     /// Apply count-based filtering
-    fn apply_count_filters(&self, diagnostics: Vec<Diagnostic>, min_count: Option<usize>, max_count: Option<usize>) -> Vec<Diagnostic> {
+    fn apply_count_filters(
+        &self,
+        diagnostics: Vec<Diagnostic>,
+        min_count: Option<usize>,
+        max_count: Option<usize>,
+    ) -> Vec<Diagnostic> {
         // Group by file to count diagnostics per file
         let mut file_counts: HashMap<String, Vec<Diagnostic>> = HashMap::new();
         for diagnostic in diagnostics {
@@ -243,19 +263,19 @@ impl DiagnosticProcessor {
         let mut result = Vec::new();
         for (_, file_diagnostics) in file_counts {
             let count = file_diagnostics.len();
-            
+
             if let Some(min) = min_count {
                 if count < min {
                     continue;
                 }
             }
-            
+
             if let Some(max) = max_count {
                 if count > max {
                     continue;
                 }
             }
-            
+
             result.extend(file_diagnostics);
         }
 
@@ -280,10 +300,7 @@ impl DiagnosticProcessor {
         }
 
         // Convert glob pattern to regex
-        let regex_pattern = pattern
-            .replace(".", r"\.")
-            .replace("*", ".*")
-            .replace("?", ".");
+        let regex_pattern = pattern.replace(".", r"\.").replace("*", ".*").replace("?", ".");
 
         if let Ok(regex) = Regex::new(&format!("^{}$", regex_pattern)) {
             return regex.is_match(file_path);
@@ -294,7 +311,12 @@ impl DiagnosticProcessor {
     }
 
     /// Apply sorting to diagnostics
-    fn apply_sorting(&self, mut diagnostics: Vec<Diagnostic>, sort_by: SortBy, direction: SortDirection) -> Vec<Diagnostic> {
+    fn apply_sorting(
+        &self,
+        mut diagnostics: Vec<Diagnostic>,
+        sort_by: SortBy,
+        direction: SortDirection,
+    ) -> Vec<Diagnostic> {
         match sort_by {
             SortBy::File => {
                 diagnostics.sort_by(|a, b| {
@@ -304,7 +326,7 @@ impl DiagnosticProcessor {
                         SortDirection::Descending => cmp.reverse(),
                     }
                 });
-            }
+            },
             SortBy::Severity => {
                 diagnostics.sort_by(|a, b| {
                     let order_a = severity_order(&a.severity);
@@ -315,10 +337,12 @@ impl DiagnosticProcessor {
                         SortDirection::Descending => cmp.reverse(),
                     }
                 });
-            }
+            },
             SortBy::Line => {
                 diagnostics.sort_by(|a, b| {
-                    let cmp = a.file.cmp(&b.file)
+                    let cmp = a
+                        .file
+                        .cmp(&b.file)
                         .then_with(|| a.range.start.line.cmp(&b.range.start.line))
                         .then_with(|| a.range.start.character.cmp(&b.range.start.character));
                     match direction {
@@ -326,7 +350,7 @@ impl DiagnosticProcessor {
                         SortDirection::Descending => cmp.reverse(),
                     }
                 });
-            }
+            },
             SortBy::Source => {
                 diagnostics.sort_by(|a, b| {
                     let cmp = a.source.cmp(&b.source);
@@ -335,7 +359,7 @@ impl DiagnosticProcessor {
                         SortDirection::Descending => cmp.reverse(),
                     }
                 });
-            }
+            },
             SortBy::Code => {
                 diagnostics.sort_by(|a, b| {
                     let cmp = a.code.cmp(&b.code);
@@ -344,50 +368,49 @@ impl DiagnosticProcessor {
                         SortDirection::Descending => cmp.reverse(),
                     }
                 });
-            }
+            },
             SortBy::None => {
                 // No sorting
-            }
+            },
         }
 
         diagnostics
     }
 
     /// Apply pagination to diagnostics
-    fn apply_pagination(&self, diagnostics: Vec<Diagnostic>, offset: Option<usize>, limit: Option<usize>) -> Vec<Diagnostic> {
+    fn apply_pagination(
+        &self,
+        diagnostics: Vec<Diagnostic>,
+        offset: Option<usize>,
+        limit: Option<usize>,
+    ) -> Vec<Diagnostic> {
         let start = offset.unwrap_or(0);
-        let end = if let Some(limit) = limit {
-            start + limit
-        } else {
-            diagnostics.len()
-        };
+        let end = if let Some(limit) = limit { start + limit } else { diagnostics.len() };
 
         diagnostics.into_iter().skip(start).take(end - start).collect()
     }
 
     /// Apply grouping to diagnostics
-    fn apply_grouping(&self, diagnostics: Vec<Diagnostic>, group_by: GroupBy) -> GroupedDiagnostics {
+    fn apply_grouping(
+        &self,
+        diagnostics: Vec<Diagnostic>,
+        group_by: GroupBy,
+    ) -> GroupedDiagnostics {
         let total_count = diagnostics.len();
         let mut groups: HashMap<String, Vec<Diagnostic>> = HashMap::new();
 
         match group_by {
             GroupBy::File => {
                 for diagnostic in diagnostics {
-                    groups
-                        .entry(diagnostic.file.clone())
-                        .or_insert_with(Vec::new)
-                        .push(diagnostic);
+                    groups.entry(diagnostic.file.clone()).or_insert_with(Vec::new).push(diagnostic);
                 }
-            }
+            },
             GroupBy::Severity => {
                 for diagnostic in diagnostics {
                     let severity_key = format!("{:?}", diagnostic.severity);
-                    groups
-                        .entry(severity_key)
-                        .or_insert_with(Vec::new)
-                        .push(diagnostic);
+                    groups.entry(severity_key).or_insert_with(Vec::new).push(diagnostic);
                 }
-            }
+            },
             GroupBy::Source => {
                 for diagnostic in diagnostics {
                     groups
@@ -395,19 +418,16 @@ impl DiagnosticProcessor {
                         .or_insert_with(Vec::new)
                         .push(diagnostic);
                 }
-            }
+            },
             GroupBy::Code => {
                 for diagnostic in diagnostics {
                     let code_key = diagnostic.code.clone().unwrap_or_else(|| "no-code".to_string());
-                    groups
-                        .entry(code_key)
-                        .or_insert_with(Vec::new)
-                        .push(diagnostic);
+                    groups.entry(code_key).or_insert_with(Vec::new).push(diagnostic);
                 }
-            }
+            },
             GroupBy::None => {
                 groups.insert("all".to_string(), diagnostics);
-            }
+            },
         }
 
         let group_count = groups.len();
@@ -517,7 +537,13 @@ mod tests {
     use crate::diagnostics::{Position, Range};
     use tempfile::TempDir;
 
-    fn create_test_diagnostic(file: &str, severity: Severity, source: &str, message: &str, code: Option<&str>) -> Diagnostic {
+    fn create_test_diagnostic(
+        file: &str,
+        severity: Severity,
+        source: &str,
+        message: &str,
+        code: Option<&str>,
+    ) -> Diagnostic {
         Diagnostic {
             file: file.to_string(),
             range: Range::new(Position::new(0, 0), Position::new(0, 1)),
@@ -536,18 +562,23 @@ mod tests {
 
         let diagnostics = vec![
             create_test_diagnostic("file1.rs", Severity::Error, "rustc", "error message", None),
-            create_test_diagnostic("file2.rs", Severity::Warning, "clippy", "warning message", None),
+            create_test_diagnostic(
+                "file2.rs",
+                Severity::Warning,
+                "clippy",
+                "warning message",
+                None,
+            ),
             create_test_diagnostic("file3.rs", Severity::Info, "info", "info message", None),
         ];
 
-        let mut collection = DiagnosticCollection::new(temp_dir.path().to_path_buf(), "test".to_string());
+        let mut collection =
+            DiagnosticCollection::new(temp_dir.path().to_path_buf(), "test".to_string());
         for diag in diagnostics {
             collection.add_diagnostic(diag);
         }
 
-        let options = FilterOptionsBuilder::new()
-            .severities(&[Severity::Error])
-            .build();
+        let options = FilterOptionsBuilder::new().severities(&[Severity::Error]).build();
 
         let result = processor.process(&collection, &options).unwrap();
         assert_eq!(result.total_count, 1);
@@ -561,17 +592,22 @@ mod tests {
 
         let diagnostics = vec![
             create_test_diagnostic("file1.rs", Severity::Error, "rustc", "error message", None),
-            create_test_diagnostic("file2.rs", Severity::Warning, "clippy", "warning message", None),
+            create_test_diagnostic(
+                "file2.rs",
+                Severity::Warning,
+                "clippy",
+                "warning message",
+                None,
+            ),
         ];
 
-        let mut collection = DiagnosticCollection::new(temp_dir.path().to_path_buf(), "test".to_string());
+        let mut collection =
+            DiagnosticCollection::new(temp_dir.path().to_path_buf(), "test".to_string());
         for diag in diagnostics {
             collection.add_diagnostic(diag);
         }
 
-        let options = FilterOptionsBuilder::new()
-            .sources(&["clippy".to_string()])
-            .build();
+        let options = FilterOptionsBuilder::new().sources(&["clippy".to_string()]).build();
 
         let result = processor.process(&collection, &options).unwrap();
         assert_eq!(result.total_count, 1);
@@ -589,14 +625,13 @@ mod tests {
             create_test_diagnostic("file2.rs", Severity::Error, "rustc", "error 2", None),
         ];
 
-        let mut collection = DiagnosticCollection::new(temp_dir.path().to_path_buf(), "test".to_string());
+        let mut collection =
+            DiagnosticCollection::new(temp_dir.path().to_path_buf(), "test".to_string());
         for diag in diagnostics {
             collection.add_diagnostic(diag);
         }
 
-        let options = FilterOptionsBuilder::new()
-            .group_by(GroupBy::File)
-            .build();
+        let options = FilterOptionsBuilder::new().group_by(GroupBy::File).build();
 
         let result = processor.process(&collection, &options).unwrap();
         assert_eq!(result.group_count, 2);

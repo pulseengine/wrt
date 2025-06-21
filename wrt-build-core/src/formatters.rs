@@ -146,7 +146,7 @@ impl HumanFormatter {
         // Format: severity: message [code] (source)
         let severity_text = format!("{}", diagnostic.severity);
         let colored_severity = self.colorize_severity(&severity_text, diagnostic.severity);
-        
+
         output.push_str(&format!(
             "{} {}: {} ",
             self.severity_icon(diagnostic.severity),
@@ -236,7 +236,7 @@ impl OutputFormatter for HumanFormatter {
 
             for file in files {
                 let diagnostics = grouped.get(file).unwrap();
-                
+
                 // File header
                 if self.use_colors {
                     output.push_str(&format!("\n{}\n", file.bright_white().underline()));
@@ -300,32 +300,36 @@ impl OutputFormatter for HumanFormatter {
                 } else {
                     None
                 },
-                if summary.infos > 0 {
-                    Some(format!("{} infos", summary.infos))
-                } else {
-                    None
-                },
-                if summary.hints > 0 {
-                    Some(format!("{} hints", summary.hints))
-                } else {
-                    None
-                },
+                if summary.infos > 0 { Some(format!("{} infos", summary.infos)) } else { None },
+                if summary.hints > 0 { Some(format!("{} hints", summary.hints)) } else { None },
             ];
 
             let parts: Vec<String> = parts.into_iter().flatten().collect();
             let summary_text = parts.join(", ");
 
             let icon = if summary.errors > 0 {
-                if self.use_colors { "❌" } else { "error" }
+                if self.use_colors {
+                    "❌"
+                } else {
+                    "error"
+                }
             } else if summary.warnings > 0 {
-                if self.use_colors { "⚠️" } else { "warning" }
+                if self.use_colors {
+                    "⚠️"
+                } else {
+                    "warning"
+                }
             } else {
-                if self.use_colors { "ℹ️" } else { "info" }
+                if self.use_colors {
+                    "ℹ️"
+                } else {
+                    "info"
+                }
             };
 
             output.push_str(&format!(
-                "{} {} in {:.2}s", 
-                icon, 
+                "{} {} in {:.2}s",
+                icon,
                 summary_text,
                 summary.duration_ms as f64 / 1000.0
             ));
@@ -368,31 +372,25 @@ impl Default for JsonFormatter {
 impl OutputFormatter for JsonFormatter {
     fn format_collection(&self, collection: &DiagnosticCollection) -> String {
         if self.pretty {
-            serde_json::to_string_pretty(collection)
-                .unwrap_or_else(|_| "{}".to_string())
+            serde_json::to_string_pretty(collection).unwrap_or_else(|_| "{}".to_string())
         } else {
-            serde_json::to_string(collection)
-                .unwrap_or_else(|_| "{}".to_string())
+            serde_json::to_string(collection).unwrap_or_else(|_| "{}".to_string())
         }
     }
 
     fn format_diagnostics(&self, diagnostics: &[Diagnostic]) -> String {
         if self.pretty {
-            serde_json::to_string_pretty(diagnostics)
-                .unwrap_or_else(|_| "[]".to_string())
+            serde_json::to_string_pretty(diagnostics).unwrap_or_else(|_| "[]".to_string())
         } else {
-            serde_json::to_string(diagnostics)
-                .unwrap_or_else(|_| "[]".to_string())
+            serde_json::to_string(diagnostics).unwrap_or_else(|_| "[]".to_string())
         }
     }
 
     fn format_summary(&self, collection: &DiagnosticCollection) -> String {
         if self.pretty {
-            serde_json::to_string_pretty(&collection.summary)
-                .unwrap_or_else(|_| "{}".to_string())
+            serde_json::to_string_pretty(&collection.summary).unwrap_or_else(|_| "{}".to_string())
         } else {
-            serde_json::to_string(&collection.summary)
-                .unwrap_or_else(|_| "{}".to_string())
+            serde_json::to_string(&collection.summary).unwrap_or_else(|_| "{}".to_string())
         }
     }
 }
@@ -467,9 +465,9 @@ impl FormatterFactory {
 
     /// Create a formatter with options
     pub fn create_with_options(
-        format: OutputFormat, 
-        pretty: bool, 
-        use_colors: bool
+        format: OutputFormat,
+        pretty: bool,
+        use_colors: bool,
     ) -> Box<dyn OutputFormatter> {
         match format {
             OutputFormat::Human => Box::new(HumanFormatter::new().with_colors(use_colors)),
@@ -486,35 +484,45 @@ mod tests {
     use std::path::PathBuf;
 
     fn create_test_collection() -> DiagnosticCollection {
-        let mut collection = DiagnosticCollection::new(
-            PathBuf::from("/workspace"),
-            "test".to_string(),
+        let mut collection =
+            DiagnosticCollection::new(PathBuf::from("/workspace"), "test".to_string());
+
+        collection.add_diagnostic(
+            Diagnostic::new(
+                "src/main.rs".to_string(),
+                Range::single_line(10, 5, 15),
+                Severity::Error,
+                "undefined variable 'x'".to_string(),
+                "rustc".to_string(),
+            )
+            .with_code("E0425".to_string()),
         );
 
-        collection.add_diagnostic(Diagnostic::new(
-            "src/main.rs".to_string(),
-            Range::single_line(10, 5, 15),
-            Severity::Error,
-            "undefined variable 'x'".to_string(),
-            "rustc".to_string(),
-        ).with_code("E0425".to_string()));
-
-        collection.add_diagnostic(Diagnostic::new(
-            "src/lib.rs".to_string(),
-            Range::single_line(5, 0, 10),
-            Severity::Warning,
-            "unused import".to_string(),
-            "rustc".to_string(),
-        ).with_code("W0612".to_string()));
+        collection.add_diagnostic(
+            Diagnostic::new(
+                "src/lib.rs".to_string(),
+                Range::single_line(5, 0, 10),
+                Severity::Warning,
+                "unused import".to_string(),
+                "rustc".to_string(),
+            )
+            .with_code("W0612".to_string()),
+        );
 
         collection.finalize(1500)
     }
 
     #[test]
     fn test_output_format_parsing() {
-        assert_eq!("human".parse::<OutputFormat>().unwrap(), OutputFormat::Human);
+        assert_eq!(
+            "human".parse::<OutputFormat>().unwrap(),
+            OutputFormat::Human
+        );
         assert_eq!("json".parse::<OutputFormat>().unwrap(), OutputFormat::Json);
-        assert_eq!("jsonlines".parse::<OutputFormat>().unwrap(), OutputFormat::JsonLines);
+        assert_eq!(
+            "jsonlines".parse::<OutputFormat>().unwrap(),
+            OutputFormat::JsonLines
+        );
         assert!("invalid".parse::<OutputFormat>().is_err());
     }
 

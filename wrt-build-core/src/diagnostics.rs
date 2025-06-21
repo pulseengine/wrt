@@ -313,36 +313,24 @@ impl DiagnosticCollection {
 
     /// Get diagnostics by severity
     pub fn by_severity(&self, severity: Severity) -> Vec<&Diagnostic> {
-        self.diagnostics
-            .iter()
-            .filter(|d| d.severity == severity)
-            .collect()
+        self.diagnostics.iter().filter(|d| d.severity == severity).collect()
     }
 
     /// Get diagnostics by file
     pub fn by_file(&self, file: &str) -> Vec<&Diagnostic> {
-        self.diagnostics
-            .iter()
-            .filter(|d| d.file == file)
-            .collect()
+        self.diagnostics.iter().filter(|d| d.file == file).collect()
     }
 
     /// Get diagnostics by source tool
     pub fn by_source(&self, source: &str) -> Vec<&Diagnostic> {
-        self.diagnostics
-            .iter()
-            .filter(|d| d.source == source)
-            .collect()
+        self.diagnostics.iter().filter(|d| d.source == source).collect()
     }
 
     /// Group diagnostics by file
     pub fn group_by_file(&self) -> HashMap<String, Vec<&Diagnostic>> {
         let mut groups = HashMap::new();
         for diagnostic in &self.diagnostics {
-            groups
-                .entry(diagnostic.file.clone())
-                .or_insert_with(Vec::new)
-                .push(diagnostic);
+            groups.entry(diagnostic.file.clone()).or_insert_with(Vec::new).push(diagnostic);
         }
         groups
     }
@@ -420,10 +408,8 @@ mod tests {
 
     #[test]
     fn test_diagnostic_collection() {
-        let mut collection = DiagnosticCollection::new(
-            PathBuf::from("/workspace"),
-            "build".to_string(),
-        );
+        let mut collection =
+            DiagnosticCollection::new(PathBuf::from("/workspace"), "build".to_string());
 
         let diagnostic1 = Diagnostic::new(
             "src/main.rs".to_string(),

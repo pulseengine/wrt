@@ -1,9 +1,9 @@
 //! Core build system implementation
 
 use colored::Colorize;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::io::Write;
 
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
@@ -22,13 +22,22 @@ pub fn execute_command(
     description: &str,
 ) -> BuildResult<std::process::Output> {
     let cmd_str = format_command(cmd);
-    
+
     if config.trace_commands || config.verbose {
-        println!("{} {}: {}", "🔧".bright_blue(), description, cmd_str.bright_cyan());
+        println!(
+            "{} {}: {}",
+            "🔧".bright_blue(),
+            description,
+            cmd_str.bright_cyan()
+        );
     }
-    
+
     if config.dry_run {
-        println!("{} DRY RUN - would execute: {}", "🔍".bright_yellow(), cmd_str);
+        println!(
+            "{} DRY RUN - would execute: {}",
+            "🔍".bright_yellow(),
+            cmd_str
+        );
         // Return fake successful output for dry run
         return Ok(std::process::Output {
             status: std::process::ExitStatus::from_raw(0),
@@ -36,7 +45,7 @@ pub fn execute_command(
             stderr: Vec::new(),
         });
     }
-    
+
     cmd.output()
         .map_err(|e| BuildError::Tool(format!("Failed to execute command '{}': {}", cmd_str, e)))
 }
@@ -45,7 +54,7 @@ pub fn execute_command(
 fn format_command(cmd: &Command) -> String {
     let program = cmd.get_program().to_string_lossy();
     let args: Vec<String> = cmd.get_args().map(|arg| arg.to_string_lossy().to_string()).collect();
-    
+
     if args.is_empty() {
         program.to_string()
     } else {
@@ -84,7 +93,8 @@ pub mod xtask_port {
             .env("RUSTFLAGS", "-C instrument-coverage")
             .env("LLVM_PROFILE_FILE", "target/coverage/profile-%p-%m.profraw");
 
-        let test_output = super::execute_command(&mut test_cmd, config, "Running tests with coverage")?;
+        let test_output =
+            super::execute_command(&mut test_cmd, config, "Running tests with coverage")?;
 
         if !test_output.status.success() {
             return Err(BuildError::Test("Coverage tests failed".to_string()));
@@ -103,18 +113,22 @@ pub mod xtask_port {
     pub fn generate_docs_with_options(include_private: bool, open_docs: bool) -> BuildResult<()> {
         generate_docs_with_output_dir(include_private, open_docs, None)
     }
-    
+
     /// Generate documentation with custom output directory
-    pub fn generate_docs_with_output_dir(include_private: bool, open_docs: bool, output_dir: Option<String>) -> BuildResult<()> {
+    pub fn generate_docs_with_output_dir(
+        include_private: bool,
+        open_docs: bool,
+        output_dir: Option<String>,
+    ) -> BuildResult<()> {
         println!("{} Generating documentation...", "📚".bright_blue());
 
         // 1. Generate Rust API documentation
         println!("  📖 Building Rust API documentation...");
-        
+
         // Build documentation for each package individually to avoid conflicts
         let packages = [
             "wrt-error",
-            "wrt-foundation", 
+            "wrt-foundation",
             "wrt-sync",
             "wrt-logging",
             "wrt-math",
@@ -123,39 +137,48 @@ pub mod xtask_port {
             "wrt-intercept",
             "wrt-panic",
             "wrt-build-core",
-            "cargo-wrt"
+            "cargo-wrt",
         ];
-        
+
         let mut any_failed = false;
-        
+
         for package in &packages {
             print!("    Building docs for {}... ", package);
             std::io::stdout().flush().ok();
-            
+
             let mut cmd = Command::new("cargo");
             cmd.args(["doc", "--no-deps", "-p", package]);
-            
+
             if include_private {
                 cmd.arg("--document-private-items");
             }
-            
+
             if let Some(ref out_dir) = output_dir {
                 cmd.arg("--target-dir").arg(out_dir);
             }
-            
-            let output = cmd.output()
-                .map_err(|e| BuildError::Tool(format!("Failed to generate docs for {}: {}", package, e)))?;
-                
+
+            let output = cmd.output().map_err(|e| {
+                BuildError::Tool(format!("Failed to generate docs for {}: {}", package, e))
+            })?;
+
             if output.status.success() {
                 println!("✓");
             } else {
                 println!("✗");
                 let stderr = String::from_utf8_lossy(&output.stderr);
-                eprintln!("      Error: {}", stderr.lines().filter(|l| l.contains("error")).take(3).collect::<Vec<_>>().join("\n      "));
+                eprintln!(
+                    "      Error: {}",
+                    stderr
+                        .lines()
+                        .filter(|l| l.contains("error"))
+                        .take(3)
+                        .collect::<Vec<_>>()
+                        .join("\n      ")
+                );
                 any_failed = true;
             }
         }
-        
+
         if any_failed {
             println!("    ⚠️  Some packages failed to build docs, but continuing...");
         }
@@ -165,13 +188,13 @@ pub mod xtask_port {
         // 2. Generate Sphinx documentation (if tools are available)
         if is_sphinx_available() {
             println!("  📚 Building Sphinx documentation...");
-            
+
             // Check if docs requirements are installed
             if !check_docs_requirements() {
                 println!("    ⚠️  Installing documentation dependencies...");
                 install_docs_requirements()?;
             }
-            
+
             generate_sphinx_docs_with_output(output_dir.as_ref())?;
             println!("    ✅ Sphinx documentation generated");
         } else {
@@ -184,10 +207,13 @@ pub mod xtask_port {
             open_documentation()?;
         }
 
-        println!("{} Documentation generated successfully", "✅".bright_green());
+        println!(
+            "{} Documentation generated successfully",
+            "✅".bright_green()
+        );
         Ok(())
     }
-    
+
     /// Check if Sphinx is available (either globally or in venv)
     fn is_sphinx_available() -> bool {
         // First check if virtual environment exists and has sphinx
@@ -196,11 +222,11 @@ pub mod xtask_port {
         } else {
             ".venv-docs/bin/sphinx-build"
         };
-        
+
         if std::path::Path::new(venv_sphinx).exists() {
             return true;
         }
-        
+
         // Fall back to checking global sphinx-build
         Command::new("sphinx-build")
             .arg("--version")
@@ -208,42 +234,45 @@ pub mod xtask_port {
             .map(|output| output.status.success())
             .unwrap_or(false)
     }
-    
+
     /// Check if documentation virtual environment exists and is set up
     fn check_docs_requirements() -> bool {
         let venv_path = std::path::Path::new(".venv-docs");
         if !venv_path.exists() {
             return false;
         }
-        
+
         // Check if key packages are available in the virtual environment
         let python_cmd = if cfg!(target_os = "windows") {
             ".venv-docs/Scripts/python.exe"
         } else {
             ".venv-docs/bin/python"
         };
-        
+
         let check_cmd = Command::new(python_cmd)
             .args(["-c", "import sphinx, myst_parser; print('OK')"])
             .output();
-            
+
         match check_cmd {
-            Ok(output) => output.status.success() && 
-                         String::from_utf8_lossy(&output.stdout).contains("OK"),
+            Ok(output) => {
+                output.status.success() && String::from_utf8_lossy(&output.stdout).contains("OK")
+            },
             Err(_) => false,
         }
     }
-    
+
     /// Create virtual environment and install documentation requirements
     fn install_docs_requirements() -> BuildResult<()> {
         println!("    📦 Setting up documentation virtual environment...");
-        
+
         // 1. Create virtual environment
         let venv_cmd = Command::new("python3")
             .args(["-m", "venv", ".venv-docs"])
             .output()
-            .map_err(|e| BuildError::Tool(format!("Failed to create virtual environment: {}", e)))?;
-            
+            .map_err(|e| {
+                BuildError::Tool(format!("Failed to create virtual environment: {}", e))
+            })?;
+
         if !venv_cmd.status.success() {
             let stderr = String::from_utf8_lossy(&venv_cmd.stderr);
             return Err(BuildError::Tool(format!(
@@ -251,19 +280,19 @@ pub mod xtask_port {
                 stderr
             )));
         }
-        
+
         // 2. Install requirements in virtual environment
         let pip_cmd = if cfg!(target_os = "windows") {
             ".venv-docs/Scripts/pip"
         } else {
             ".venv-docs/bin/pip"
         };
-        
+
         let install_cmd = Command::new(pip_cmd)
             .args(["install", "-r", "docs/requirements.txt"])
             .output()
             .map_err(|e| BuildError::Tool(format!("Failed to install docs requirements: {}", e)))?;
-            
+
         if !install_cmd.status.success() {
             let stderr = String::from_utf8_lossy(&install_cmd.stderr);
             return Err(BuildError::Tool(format!(
@@ -271,16 +300,16 @@ pub mod xtask_port {
                 stderr
             )));
         }
-        
+
         println!("    ✅ Documentation environment ready");
         Ok(())
     }
-    
+
     /// Generate Sphinx documentation using virtual environment
     fn generate_sphinx_docs() -> BuildResult<()> {
         generate_sphinx_docs_with_output(None)
     }
-    
+
     /// Generate Sphinx documentation with custom output directory
     fn generate_sphinx_docs_with_output(output_dir: Option<&String>) -> BuildResult<()> {
         // Use sphinx-build from virtual environment
@@ -289,7 +318,7 @@ pub mod xtask_port {
         } else {
             ".venv-docs/bin/sphinx-build"
         };
-        
+
         // Determine output paths based on custom directory
         let (build_dir, doctrees_dir, html_dir) = if let Some(out_dir) = output_dir {
             let base = PathBuf::from(out_dir);
@@ -305,24 +334,26 @@ pub mod xtask_port {
                 PathBuf::from("docs/build/html"),
             )
         };
-        
+
         // Create output directory if it doesn't exist
         std::fs::create_dir_all(&build_dir).map_err(|e| {
             BuildError::Build(format!("Failed to create documentation directory: {}", e))
         })?;
-        
+
         let mut cmd = Command::new(sphinx_cmd);
         cmd.args([
-            "-b", "html",
-            "-d", doctrees_dir.to_str().unwrap(), 
+            "-b",
+            "html",
+            "-d",
+            doctrees_dir.to_str().unwrap(),
             "docs/source",
-            html_dir.to_str().unwrap()
+            html_dir.to_str().unwrap(),
         ]);
-        
+
         let output = cmd
             .output()
             .map_err(|e| BuildError::Tool(format!("Failed to run sphinx-build: {}", e)))?;
-            
+
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(BuildError::Build(format!(
@@ -330,18 +361,15 @@ pub mod xtask_port {
                 stderr
             )));
         }
-        
+
         Ok(())
     }
-    
+
     /// Open generated documentation
     fn open_documentation() -> BuildResult<()> {
         // Try to open the main documentation index
-        let docs_paths = vec![
-            "docs/build/html/index.html",
-            "target/doc/index.html",
-        ];
-        
+        let docs_paths = vec!["docs/build/html/index.html", "target/doc/index.html"];
+
         for docs_path in docs_paths {
             if std::path::Path::new(docs_path).exists() {
                 let open_cmd = if cfg!(target_os = "macos") {
@@ -351,13 +379,13 @@ pub mod xtask_port {
                 } else {
                     "xdg-open"
                 };
-                
+
                 let _ = Command::new(open_cmd).arg(docs_path).spawn();
                 println!("    🌐 Opened documentation at {}", docs_path);
                 break;
             }
         }
-        
+
         Ok(())
     }
 
@@ -545,10 +573,13 @@ pub mod xtask_port {
 
     /// Generate multi-version documentation structure
     pub fn generate_multi_version_docs(versions: Vec<String>) -> BuildResult<()> {
-        println!("{} Generating multi-version documentation...", "📚".bright_blue());
-        
+        println!(
+            "{} Generating multi-version documentation...",
+            "📚".bright_blue()
+        );
+
         let temp_dir = std::env::temp_dir().join("wrt-docs");
-        
+
         // Clean and create fresh directory
         if temp_dir.exists() {
             std::fs::remove_dir_all(&temp_dir)
@@ -556,29 +587,29 @@ pub mod xtask_port {
         }
         std::fs::create_dir_all(&temp_dir)
             .map_err(|e| BuildError::Build(format!("Failed to create temp docs dir: {}", e)))?;
-        
+
         let mut switcher_entries = Vec::new();
-        
+
         // Get current branch to return to
         let current_branch_cmd = Command::new("git")
             .args(["rev-parse", "--abbrev-ref", "HEAD"])
             .output()
             .map_err(|e| BuildError::Tool(format!("Failed to get current branch: {}", e)))?;
         let current_branch = String::from_utf8_lossy(&current_branch_cmd.stdout).trim().to_string();
-        
+
         // Generate documentation for each version
         for version in &versions {
             println!("\n  📖 Building documentation for version: {}", version);
-            
+
             let version_dir = temp_dir.join(version);
             std::fs::create_dir_all(&version_dir)
                 .map_err(|e| BuildError::Build(format!("Failed to create version dir: {}", e)))?;
-            
+
             if version == "local" {
                 // Build current working directory docs
                 let output_dir = version_dir.to_string_lossy().to_string();
                 generate_docs_with_output_dir(false, false, Some(output_dir))?;
-                
+
                 switcher_entries.push(serde_json::json!({
                     "version": "local",
                     "url": "/local/",
@@ -587,17 +618,17 @@ pub mod xtask_port {
             } else {
                 // Checkout the version and build docs
                 println!("    Checking out {}...", version);
-                
-                let checkout_cmd = Command::new("git")
-                    .args(["checkout", version])
-                    .output()
-                    .map_err(|e| BuildError::Tool(format!("Failed to checkout {}: {}", version, e)))?;
-                    
+
+                let checkout_cmd =
+                    Command::new("git").args(["checkout", version]).output().map_err(|e| {
+                        BuildError::Tool(format!("Failed to checkout {}: {}", version, e))
+                    })?;
+
                 if !checkout_cmd.status.success() {
                     eprintln!("    ⚠️ Failed to checkout {}, skipping...", version);
                     continue;
                 }
-                
+
                 // Build docs for this version
                 let output_dir = version_dir.to_string_lossy().to_string();
                 match generate_docs_with_output_dir(false, false, Some(output_dir)) {
@@ -608,38 +639,38 @@ pub mod xtask_port {
                         } else {
                             version
                         };
-                        
+
                         switcher_entries.push(serde_json::json!({
                             "version": version,
                             "url": format!("/{}/", version),
                             "name": display_name
                         }));
-                    }
+                    },
                     Err(e) => {
                         eprintln!("    ⚠️ Failed to build docs for {}: {}", version, e);
-                    }
+                    },
                 }
             }
         }
-        
+
         // Return to original branch
         println!("\n  🔄 Returning to original branch: {}", current_branch);
         let return_cmd = Command::new("git")
             .args(["checkout", &current_branch])
             .output()
             .map_err(|e| BuildError::Tool(format!("Failed to return to original branch: {}", e)))?;
-            
+
         if !return_cmd.status.success() {
             eprintln!("    ⚠️ Warning: Failed to return to original branch");
         }
-        
+
         // Create switcher.json
         let switcher_path = temp_dir.join("switcher.json");
         let switcher_content = serde_json::to_string_pretty(&switcher_entries)
             .map_err(|e| BuildError::Build(format!("Failed to serialize switcher.json: {}", e)))?;
         std::fs::write(&switcher_path, switcher_content)
             .map_err(|e| BuildError::Build(format!("Failed to write switcher.json: {}", e)))?;
-        
+
         // Copy root index.html if it exists
         let root_index_src = Path::new("docs/source/root_index.html");
         if root_index_src.exists() {
@@ -647,13 +678,13 @@ pub mod xtask_port {
             std::fs::copy(root_index_src, root_index_dst)
                 .map_err(|e| BuildError::Build(format!("Failed to copy root index.html: {}", e)))?;
         }
-        
+
         // Create local symlinks for each version's documentation
         for version in &versions {
             let version_dir = temp_dir.join(version);
             let version_rust_docs = version_dir.join("doc");
             let version_sphinx_docs = version_dir.join("sphinx/html");
-            
+
             if version_rust_docs.exists() {
                 // Move Rust docs to version root
                 let rust_index = version_dir.join("rust-api");
@@ -663,30 +694,41 @@ pub mod xtask_port {
                 std::fs::rename(&version_rust_docs, &rust_index)
                     .map_err(|e| BuildError::Build(format!("Failed to move Rust docs: {}", e)))?;
             }
-            
+
             if version_sphinx_docs.exists() {
                 // Move Sphinx docs to version root
                 let files = std::fs::read_dir(&version_sphinx_docs)
                     .map_err(|e| BuildError::Build(format!("Failed to read Sphinx docs: {}", e)))?;
-                    
+
                 for entry in files {
-                    let entry = entry.map_err(|e| BuildError::Build(format!("Failed to read dir entry: {}", e)))?;
+                    let entry = entry.map_err(|e| {
+                        BuildError::Build(format!("Failed to read dir entry: {}", e))
+                    })?;
                     let dest = version_dir.join(entry.file_name());
-                    
+
                     std::fs::rename(entry.path(), dest)
                         .map_err(|e| BuildError::Build(format!("Failed to move file: {}", e)))?;
                 }
-                
+
                 // Clean up sphinx directory
                 std::fs::remove_dir_all(version_dir.join("sphinx")).ok();
             }
         }
-        
-        println!("\n✅ Multi-version documentation generated at: {}", temp_dir.display());
-        println!("   switcher.json created with {} versions", switcher_entries.len());
+
+        println!(
+            "\n✅ Multi-version documentation generated at: {}",
+            temp_dir.display()
+        );
+        println!(
+            "   switcher.json created with {} versions",
+            switcher_entries.len()
+        );
         println!("\n   To serve locally, run:");
-        println!("   cd {} && python3 -m http.server 8080", temp_dir.display());
-        
+        println!(
+            "   cd {} && python3 -m http.server 8080",
+            temp_dir.display()
+        );
+
         Ok(())
     }
 
@@ -854,17 +896,26 @@ impl BuildSystem {
     pub fn generate_docs(&self) -> BuildResult<()> {
         xtask_port::generate_docs()
     }
-    
+
     /// Generate documentation with options
-    pub fn generate_docs_with_options(&self, include_private: bool, open_docs: bool) -> BuildResult<()> {
+    pub fn generate_docs_with_options(
+        &self,
+        include_private: bool,
+        open_docs: bool,
+    ) -> BuildResult<()> {
         xtask_port::generate_docs_with_options(include_private, open_docs)
     }
-    
+
     /// Generate documentation with custom output directory
-    pub fn generate_docs_with_output_dir(&self, include_private: bool, open_docs: bool, output_dir: Option<String>) -> BuildResult<()> {
+    pub fn generate_docs_with_output_dir(
+        &self,
+        include_private: bool,
+        open_docs: bool,
+        output_dir: Option<String>,
+    ) -> BuildResult<()> {
         xtask_port::generate_docs_with_output_dir(include_private, open_docs, output_dir)
     }
-    
+
     /// Generate multi-version documentation
     pub fn generate_multi_version_docs(&self, versions: Vec<String>) -> BuildResult<()> {
         xtask_port::generate_multi_version_docs(versions)
@@ -881,16 +932,23 @@ impl BuildSystem {
     }
 
     /// Run static analysis with diagnostic output
-    pub fn run_static_analysis_with_diagnostics(&self, strict: bool) -> BuildResult<DiagnosticCollection> {
+    pub fn run_static_analysis_with_diagnostics(
+        &self,
+        strict: bool,
+    ) -> BuildResult<DiagnosticCollection> {
         let start_time = std::time::Instant::now();
-        let mut collection = DiagnosticCollection::new(
-            self.workspace.root.clone(),
-            "check".to_string(),
-        );
+        let mut collection =
+            DiagnosticCollection::new(self.workspace.root.clone(), "check".to_string());
 
         // Run clippy with JSON output
         let mut clippy_cmd = Command::new("cargo");
-        clippy_cmd.args(["clippy", "--workspace", "--all-targets", "--message-format=json"])
+        clippy_cmd
+            .args([
+                "clippy",
+                "--workspace",
+                "--all-targets",
+                "--message-format=json",
+            ])
             .current_dir(&self.workspace.root);
 
         if strict {
@@ -918,12 +976,13 @@ impl BuildSystem {
                     format!("Failed to parse clippy output: {}", e),
                     "cargo-wrt".to_string(),
                 ));
-            }
+            },
         }
 
         // Check formatting
         let mut fmt_cmd = Command::new("cargo");
-        fmt_cmd.args(["fmt", "--check", "--message-format=json"])
+        fmt_cmd
+            .args(["fmt", "--check", "--message-format=json"])
             .current_dir(&self.workspace.root);
 
         let fmt_output = fmt_cmd
@@ -944,24 +1003,31 @@ impl BuildSystem {
                 // Parse unformatted files from stderr
                 for line in stderr.lines() {
                     if line.contains("Diff in") {
-                        if let Some(file_path) = line.split("Diff in ").nth(1).and_then(|s| s.split(" at").next()) {
-                            let relative_path = if let Ok(path) = std::path::Path::new(file_path).strip_prefix(&self.workspace.root) {
+                        if let Some(file_path) =
+                            line.split("Diff in ").nth(1).and_then(|s| s.split(" at").next())
+                        {
+                            let relative_path = if let Ok(path) =
+                                std::path::Path::new(file_path).strip_prefix(&self.workspace.root)
+                            {
                                 path.to_string_lossy().to_string()
                             } else {
                                 file_path.to_string()
                             };
-                            
-                            collection.add_diagnostic(Diagnostic::new(
-                                relative_path,
-                                Range::entire_line(0),
-                                Severity::Warning,
-                                "File is not formatted according to rustfmt rules".to_string(),
-                                "rustfmt".to_string(),
-                            ).with_code("FORMAT001".to_string()));
+
+                            collection.add_diagnostic(
+                                Diagnostic::new(
+                                    relative_path,
+                                    Range::entire_line(0),
+                                    Severity::Warning,
+                                    "File is not formatted according to rustfmt rules".to_string(),
+                                    "rustfmt".to_string(),
+                                )
+                                .with_code("FORMAT001".to_string()),
+                            );
                         }
                     }
                 }
-                
+
                 collection.add_diagnostic(Diagnostic::new(
                     "<fmt>".to_string(),
                     Range::entire_line(0),
@@ -1138,17 +1204,16 @@ impl BuildSystem {
     }
 
     /// Build a specific package by name with diagnostic output
-    pub fn build_package_with_diagnostics(&self, package_name: &str) -> BuildResult<DiagnosticCollection> {
+    pub fn build_package_with_diagnostics(
+        &self,
+        package_name: &str,
+    ) -> BuildResult<DiagnosticCollection> {
         let start_time = std::time::Instant::now();
-        let mut collection = DiagnosticCollection::new(
-            self.workspace.root.clone(),
-            "build".to_string(),
-        );
+        let mut collection =
+            DiagnosticCollection::new(self.workspace.root.clone(), "build".to_string());
 
         let mut cmd = Command::new("cargo");
-        cmd.arg("build")
-            .arg("--message-format=json")
-            .current_dir(&self.workspace.root);
+        cmd.arg("build").arg("--message-format=json").current_dir(&self.workspace.root);
 
         // Add package selector
         cmd.arg("-p").arg(package_name);
@@ -1189,7 +1254,7 @@ impl BuildSystem {
                     format!("Failed to parse build output: {}", e),
                     "cargo-wrt".to_string(),
                 ));
-            }
+            },
         }
 
         // Add overall build status
@@ -1218,10 +1283,8 @@ impl BuildSystem {
     /// Build all components with diagnostic output
     pub fn build_all_with_diagnostics(&self) -> BuildResult<DiagnosticCollection> {
         let start_time = std::time::Instant::now();
-        let mut collection = DiagnosticCollection::new(
-            self.workspace.root.clone(),
-            "build".to_string(),
-        );
+        let mut collection =
+            DiagnosticCollection::new(self.workspace.root.clone(), "build".to_string());
 
         let mut cmd = Command::new("cargo");
         cmd.arg("build")
@@ -1265,7 +1328,7 @@ impl BuildSystem {
                     format!("Failed to parse build output: {}", e),
                     "cargo-wrt".to_string(),
                 ));
-            }
+            },
         }
 
         // Add overall build status
@@ -1294,7 +1357,11 @@ impl BuildSystem {
     /// Build a specific package by name
     pub fn build_package(&self, package_name: &str) -> BuildResult<BuildResults> {
         if self.config.verbose {
-            println!("  {} Building package: {}", "📦".bright_cyan(), package_name);
+            println!(
+                "  {} Building package: {}",
+                "📦".bright_cyan(),
+                package_name
+            );
         }
 
         let start_time = std::time::Instant::now();
@@ -1341,7 +1408,7 @@ impl BuildSystem {
         }
 
         let duration = start_time.elapsed();
-        
+
         Ok(BuildResults {
             success: true,
             artifacts: vec![], // Single package builds don't track specific artifacts yet
@@ -1389,7 +1456,7 @@ impl BuildSystem {
         }
 
         let duration = start_time.elapsed();
-        
+
         Ok(BuildResults {
             success: true,
             artifacts: vec![], // Package tests don't produce artifacts
@@ -1497,18 +1564,21 @@ impl BuildSystem {
     pub fn workspace(&self) -> &WorkspaceConfig {
         &self.workspace
     }
-    
+
     /// List available fuzzing targets (delegated to fuzz module)
     pub fn list_fuzz_targets(&self) -> BuildResult<Vec<String>> {
         use crate::fuzz::*;
         // Delegate to fuzz module implementation
         list_fuzz_targets_impl(self)
     }
-    
+
     /// Run fuzzing with options (delegated to fuzz module)
-    pub fn run_fuzz_with_options(&self, options: &crate::fuzz::FuzzOptions) -> BuildResult<crate::fuzz::FuzzResults> {
+    pub fn run_fuzz_with_options(
+        &self,
+        options: &crate::fuzz::FuzzOptions,
+    ) -> BuildResult<crate::fuzz::FuzzResults> {
         use crate::fuzz::*;
-        // Delegate to fuzz module implementation  
+        // Delegate to fuzz module implementation
         run_fuzz_with_options_impl(self, options)
     }
 }

@@ -60,12 +60,13 @@ impl BuildSystem {
     }
 
     /// Run tests with diagnostic output
-    pub fn run_tests_with_diagnostics(&self, options: &TestOptions) -> BuildResult<DiagnosticCollection> {
+    pub fn run_tests_with_diagnostics(
+        &self,
+        options: &TestOptions,
+    ) -> BuildResult<DiagnosticCollection> {
         let start_time = std::time::Instant::now();
-        let mut collection = DiagnosticCollection::new(
-            self.workspace.root.clone(),
-            "test".to_string(),
-        );
+        let mut collection =
+            DiagnosticCollection::new(self.workspace.root.clone(), "test".to_string());
 
         // Run tests with JSON output
         let mut cmd = Command::new("cargo");
@@ -114,24 +115,28 @@ impl BuildSystem {
                     format!("Failed to parse test output: {}", e),
                     "cargo-wrt".to_string(),
                 ));
-            }
+            },
         }
 
         // Parse test results from output
         let stdout_str = String::from_utf8_lossy(&output.stdout);
         let mut test_passed = 0;
         let mut test_failed = 0;
-        
+
         for line in stdout_str.lines() {
             if line.contains("test result:") {
                 // Parse test result line like: "test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out"
                 if line.contains(" passed;") {
-                    if let Some(passed_str) = line.split("ok. ").nth(1).and_then(|s| s.split(" passed;").next()) {
+                    if let Some(passed_str) =
+                        line.split("ok. ").nth(1).and_then(|s| s.split(" passed;").next())
+                    {
                         test_passed = passed_str.trim().parse::<usize>().unwrap_or(0);
                     }
                 }
                 if line.contains(" failed;") {
-                    if let Some(failed_str) = line.split(" passed; ").nth(1).and_then(|s| s.split(" failed;").next()) {
+                    if let Some(failed_str) =
+                        line.split(" passed; ").nth(1).and_then(|s| s.split(" failed;").next())
+                    {
                         test_failed = failed_str.trim().parse::<usize>().unwrap_or(0);
                     }
                 }
@@ -144,7 +149,10 @@ impl BuildSystem {
                 "<test>".to_string(),
                 Range::entire_line(0),
                 Severity::Error,
-                format!("Tests failed: {} passed, {} failed", test_passed, test_failed),
+                format!(
+                    "Tests failed: {} passed, {} failed",
+                    test_passed, test_failed
+                ),
                 "cargo-wrt".to_string(),
             ));
         } else {
