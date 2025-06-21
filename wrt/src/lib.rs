@@ -128,11 +128,11 @@ pub mod multi_memory_runtime;
 // Unified WebAssembly 3.0 features runtime integration
 pub mod webassembly_3_runtime;
 
-// Module adapters for integration between specialized crates - temporarily disabled due to runtime dependencies
+// Module adapters for integration between specialized crates
 // #[cfg(feature = "std")] // CFI integration requires std features currently
 // pub mod cfi_integration;
 // pub mod decoder_integration; // Temporarily disabled
-// pub mod instructions_adapter; // Temporarily disabled
+pub mod instructions_adapter;
 // pub mod memory_adapter; // Temporarily disabled due to trait object size issues
 
 // No_std implementation modules are now handled by wrt-foundation

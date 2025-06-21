@@ -167,7 +167,7 @@ qm = ["wrt-foundation/dynamic-allocation"]
 asil-a = ["wrt-foundation/bounded-collections"]
 asil-b = ["wrt-foundation/bounded-collections"]
 asil-c = ["wrt-foundation/static-memory-safety"]
-asil-d = ["wrt-foundation/asil-d"]
+asil-d = ["no_std", "wrt-foundation/asil-d"]
 
 # DO-178C equivalents
 dal-e = ["qm"]
