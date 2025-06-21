@@ -48,7 +48,7 @@ let mut vec = BoundedVec::new(provider)?;
 - **NO unsafe extraction**: There is no `unsafe { guard.release() }` pattern anymore
 - **NO dual systems**: Only one memory system exists - capability-based allocation
 
-## Build Commands
+## Build Commands & Diagnostic System
 
 The WRT project uses a unified build system with `cargo-wrt` as the single entry point for all build operations. All legacy shell scripts have been migrated to this unified system.
 
@@ -57,6 +57,37 @@ The WRT project uses a unified build system with `cargo-wrt` as the single entry
 - Cargo subcommand: `cargo wrt <COMMAND>`
 
 Both patterns work identically and use the same binary.
+
+### Advanced Diagnostic System
+
+The build system includes a comprehensive diagnostic system with LSP-compatible structured output, caching, filtering, grouping, and differential analysis. This system works across all major commands: `build`, `test`, `verify`, and `check`.
+
+**Key Features:**
+- **Structured Output**: LSP-compatible JSON for tooling/AI integration
+- **Caching**: File-based caching with change detection for faster incremental builds
+- **Filtering**: By severity, source tool, file patterns
+- **Grouping**: Organize diagnostics by file, severity, source, or error code
+- **Diff Mode**: Show only new/changed diagnostics since last cached run
+
+**Global Diagnostic Flags (work with build, test, verify, check):**
+```bash
+# Output format control
+--output human|json|json-lines    # Default: human
+
+# Caching control
+--cache                           # Enable diagnostic caching
+--clear-cache                     # Clear cache before running
+--diff-only                       # Show only new/changed diagnostics
+
+# Filtering options
+--filter-severity LIST            # error,warning,info,hint
+--filter-source LIST              # rustc,clippy,miri,cargo
+--filter-file PATTERNS            # *.rs,src/* (glob patterns)
+
+# Grouping and pagination
+--group-by CRITERION              # file|severity|source|code
+--limit NUMBER                    # Limit diagnostic output count
+```
 
 ### Core Commands
 - Build all: `cargo-wrt build` or `cargo build`
@@ -69,6 +100,70 @@ Both patterns work identically and use the same binary.
 - Main CI checks: `cargo-wrt ci`
 - Full CI suite: `cargo-wrt verify --asil d`
 - Typecheck: `cargo check`
+
+### Diagnostic Usage Examples
+
+**Basic Error Analysis:**
+```bash
+# Get all errors in JSON format
+cargo-wrt build --output json --filter-severity error
+
+# Focus on specific file patterns
+cargo-wrt build --output json --filter-file "wrt-foundation/*"
+
+# Get clippy suggestions only
+cargo-wrt check --output json --filter-source clippy
+```
+
+**Incremental Development Workflow:**
+```bash
+# Initial baseline (clears cache and establishes new baseline)
+cargo-wrt build --output json --cache --clear-cache
+
+# Subsequent runs - see only new issues
+cargo-wrt build --output json --cache --diff-only
+
+# Focus on errors only in diff mode
+cargo-wrt build --output json --cache --diff-only --filter-severity error
+```
+
+**Code Quality Analysis:**
+```bash
+# Group warnings by file for focused fixes
+cargo-wrt check --output json --filter-severity warning --group-by file
+
+# Limit output for manageable chunks
+cargo-wrt check --output json --limit 10 --filter-severity warning
+
+# Multiple tool analysis
+cargo-wrt verify --output json --filter-source "rustc,clippy,miri"
+```
+
+**CI/CD Integration:**
+```bash
+# Fail-fast on any errors
+cargo-wrt build --output json | jq '.summary.errors > 0' && exit 1
+
+# Stream processing for large outputs
+cargo-wrt build --output json-lines | while read diagnostic; do
+  echo "$diagnostic" | jq '.severity'
+done
+
+# Generate reports for specific tools
+cargo-wrt verify --output json --filter-source kani,miri
+```
+
+**JSON Processing with jq:**
+```bash
+# Extract error messages
+cargo-wrt build --output json | jq '.diagnostics[] | select(.severity == "error") | .message'
+
+# Count diagnostics by file
+cargo-wrt build --output json | jq '.diagnostics | group_by(.file) | map({file: .[0].file, count: length})'
+
+# Get files with errors
+cargo-wrt build --output json | jq '.diagnostics[] | select(.severity == "error") | .file' | sort -u
+```
 
 ### Advanced Commands
 - Setup and tool management: `cargo-wrt setup --check` or `cargo-wrt setup --all`
@@ -240,6 +335,64 @@ The WRT project has completed its migration to a unified build system:
 - **Tool Management**: Automated version checking and installation
 - **ASIL Verification**: Built-in safety compliance checking
 
+### JSON Diagnostic Format Specification
+
+The JSON output follows LSP (Language Server Protocol) specification for maximum compatibility:
+
+```json
+{
+  "version": "1.0",
+  "timestamp": "2025-06-21T11:39:57.067142+00:00",
+  "workspace_root": "/Users/r/git/wrt2",
+  "command": "build",
+  "diagnostics": [
+    {
+      "file": "wrt-foundation/src/capabilities/factory.rs",
+      "range": {
+        "start": {"line": 17, "character": 29},
+        "end": {"line": 17, "character": 53}
+      },
+      "severity": "warning",
+      "code": "deprecated",
+      "message": "use of deprecated struct `CapabilityFactoryBuilder`",
+      "source": "rustc",
+      "related_info": [
+        {
+          "file": "wrt-foundation/src/lib.rs",
+          "range": {
+            "start": {"line": 29, "character": 4},
+            "end": {"line": 29, "character": 16}
+          },
+          "message": "the lint level is defined here"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total": 221,
+    "errors": 7,
+    "warnings": 214,
+    "infos": 0,
+    "hints": 0,
+    "files_with_diagnostics": 29,
+    "duration_ms": 1486
+  }
+}
+```
+
+**Key Field Explanations:**
+- `file`: Relative path from workspace root
+- `range`: LSP-compatible position (0-indexed line/character)
+- `severity`: "error"|"warning"|"info"|"hint"
+- `code`: Tool-specific error/warning code (optional)
+- `source`: Tool that generated diagnostic ("rustc", "clippy", "miri", etc.)
+- `related_info`: Array of related diagnostic locations
+
+**Performance Benefits:**
+- Initial run: Full analysis (3-4 seconds)
+- Cached run: Incremental analysis (~0.7 seconds)
+- Diff-only: Shows only changed diagnostics (filtering ~5-10% of output)
+
 ## Memories
 - Build and test with `cargo-wrt` commands
 - Memory allocation uses `safe_managed_alloc!` macro only
@@ -248,6 +401,9 @@ The WRT project has completed its migration to a unified build system:
 - Legacy memory system migration completed - single unified capability-based allocation system
 - All NoStdProvider::new() calls replaced with ::default()
 - All legacy patterns removed from code, comments, and documentation
+- **Diagnostic system**: Use `--output json` for structured output, `--cache --diff-only` for incremental analysis
+- **AI Integration**: JSON output is LSP-compatible for IDE and tooling integration
+- **Performance**: Caching reduces analysis time from 3-4s to ~0.7s on subsequent runs
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
 NEVER create files unless they're absolutely necessary for achieving your goal.
