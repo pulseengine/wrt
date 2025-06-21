@@ -602,10 +602,64 @@ impl StacklessEngine {
                 self.consume_instruction_fuel(InstructionFuelType::SimpleConstant)?;
                 Ok(())
             }
+            0x02 => {
+                // block
+                self.consume_instruction_fuel(InstructionFuelType::SimpleControl)?;
+                let block_type = self.read_block_type(code)?;
+                self.enter_block(block_type)
+            }
+            0x03 => {
+                // loop
+                self.consume_instruction_fuel(InstructionFuelType::SimpleControl)?;
+                let block_type = self.read_block_type(code)?;
+                self.enter_loop(block_type)
+            }
+            0x04 => {
+                // if
+                self.consume_instruction_fuel(InstructionFuelType::SimpleControl)?;
+                let block_type = self.read_block_type(code)?;
+                self.enter_if(block_type)
+            }
+            0x05 => {
+                // else
+                self.consume_instruction_fuel(InstructionFuelType::SimpleControl)?;
+                self.enter_else()
+            }
+            0x0C => {
+                // br
+                self.consume_instruction_fuel(InstructionFuelType::SimpleControl)?;
+                let label_idx = self.read_leb128_u32(code)?;
+                self.branch(label_idx)
+            }
+            0x0D => {
+                // br_if
+                self.consume_instruction_fuel(InstructionFuelType::SimpleControl)?;
+                let label_idx = self.read_leb128_u32(code)?;
+                self.branch_if(label_idx)
+            }
+            0x0E => {
+                // br_table
+                self.consume_instruction_fuel(InstructionFuelType::ComplexControl)?;
+                let table = self.read_br_table(code)?;
+                self.branch_table(table)
+            }
             0x0F => {
                 // return
                 self.consume_instruction_fuel(InstructionFuelType::SimpleControl)?;
                 self.return_function()
+            }
+            0x10 => {
+                // call
+                self.consume_instruction_fuel(InstructionFuelType::FunctionCall)?;
+                let func_idx = self.read_leb128_u32(code)?;
+                self.call_function(func_idx)
+            }
+            0x11 => {
+                // call_indirect
+                self.consume_instruction_fuel(InstructionFuelType::ComplexControl)?;
+                let type_idx = self.read_leb128_u32(code)?;
+                let table_idx = self.read_leb128_u32(code)?;
+                self.call_indirect(type_idx, table_idx)
             }
             
             // Variable instructions
@@ -820,9 +874,160 @@ impl StacklessEngine {
                 self.push_control_value(Value::F64(value))
             }
             
+            // Memory instructions
+            0x28 => {
+                // i32.load
+                self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I32Load(memarg).execute(self)
+            }
+            0x29 => {
+                // i64.load
+                self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I64Load(memarg).execute(self)
+            }
+            0x2A => {
+                // f32.load
+                self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::F32Load(memarg).execute(self)
+            }
+            0x2B => {
+                // f64.load
+                self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::F64Load(memarg).execute(self)
+            }
+            0x2C => {
+                // i32.load8_s
+                self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I32Load8S(memarg).execute(self)
+            }
+            0x2D => {
+                // i32.load8_u
+                self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I32Load8U(memarg).execute(self)
+            }
+            0x2E => {
+                // i32.load16_s
+                self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I32Load16S(memarg).execute(self)
+            }
+            0x2F => {
+                // i32.load16_u
+                self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I32Load16U(memarg).execute(self)
+            }
+            0x30 => {
+                // i64.load8_s
+                self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I64Load8S(memarg).execute(self)
+            }
+            0x31 => {
+                // i64.load8_u
+                self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I64Load8U(memarg).execute(self)
+            }
+            0x32 => {
+                // i64.load16_s
+                self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I64Load16S(memarg).execute(self)
+            }
+            0x33 => {
+                // i64.load16_u
+                self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I64Load16U(memarg).execute(self)
+            }
+            0x34 => {
+                // i64.load32_s
+                self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I64Load32S(memarg).execute(self)
+            }
+            0x35 => {
+                // i64.load32_u
+                self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I64Load32U(memarg).execute(self)
+            }
+            0x36 => {
+                // i32.store
+                self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I32Store(memarg).execute(self)
+            }
+            0x37 => {
+                // i64.store
+                self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I64Store(memarg).execute(self)
+            }
+            0x38 => {
+                // f32.store
+                self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::F32Store(memarg).execute(self)
+            }
+            0x39 => {
+                // f64.store
+                self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::F64Store(memarg).execute(self)
+            }
+            0x3A => {
+                // i32.store8
+                self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I32Store8(memarg).execute(self)
+            }
+            0x3B => {
+                // i32.store16
+                self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I32Store16(memarg).execute(self)
+            }
+            0x3C => {
+                // i64.store8
+                self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I64Store8(memarg).execute(self)
+            }
+            0x3D => {
+                // i64.store16
+                self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I64Store16(memarg).execute(self)
+            }
+            0x3E => {
+                // i64.store32
+                self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
+                let memarg = self.read_memarg(code)?;
+                MemoryOp::I64Store32(memarg).execute(self)
+            }
+            0x3F => {
+                // memory.size
+                self.consume_instruction_fuel(InstructionFuelType::MemoryManagement)?;
+                MemoryOp::MemorySize.execute(self)
+            }
+            0x40 => {
+                // memory.grow
+                self.consume_instruction_fuel(InstructionFuelType::MemoryManagement)?;
+                MemoryOp::MemoryGrow.execute(self)
+            }
+
             // Function end
             0x0B => {
                 // end - mark function as completed
+                self.consume_instruction_fuel(InstructionFuelType::SimpleControl)?;
                 self.exec_stack.state = StacklessExecutionState::Completed;
                 Ok(())
             }
