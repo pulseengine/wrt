@@ -5,10 +5,53 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::io::Write;
 
+#[cfg(unix)]
+use std::os::unix::process::ExitStatusExt;
+#[cfg(windows)]
+use std::os::windows::process::ExitStatusExt;
+
 use crate::config::{BuildConfig, WorkspaceConfig};
 use crate::diagnostics::{Diagnostic, DiagnosticCollection, Range, Severity, ToolOutputParser};
 use crate::error::{BuildError, BuildResult};
 use crate::parsers::CargoOutputParser;
+
+/// Helper function to execute commands with tracing and dry-run support
+pub fn execute_command(
+    cmd: &mut Command,
+    config: &BuildConfig,
+    description: &str,
+) -> BuildResult<std::process::Output> {
+    let cmd_str = format_command(cmd);
+    
+    if config.trace_commands || config.verbose {
+        println!("{} {}: {}", "🔧".bright_blue(), description, cmd_str.bright_cyan());
+    }
+    
+    if config.dry_run {
+        println!("{} DRY RUN - would execute: {}", "🔍".bright_yellow(), cmd_str);
+        // Return fake successful output for dry run
+        return Ok(std::process::Output {
+            status: std::process::ExitStatus::from_raw(0),
+            stdout: Vec::new(),
+            stderr: Vec::new(),
+        });
+    }
+    
+    cmd.output()
+        .map_err(|e| BuildError::Tool(format!("Failed to execute command '{}': {}", cmd_str, e)))
+}
+
+/// Format a command for display
+fn format_command(cmd: &Command) -> String {
+    let program = cmd.get_program().to_string_lossy();
+    let args: Vec<String> = cmd.get_args().map(|arg| arg.to_string_lossy().to_string()).collect();
+    
+    if args.is_empty() {
+        program.to_string()
+    } else {
+        format!("{} {}", program, args.join(" "))
+    }
+}
 
 /// Ported functions from xtask for build operations
 pub mod xtask_port {
@@ -16,7 +59,7 @@ pub mod xtask_port {
     use std::process::Command;
 
     /// Run comprehensive coverage analysis (ported from xtask coverage)
-    pub fn run_coverage_analysis() -> BuildResult<()> {
+    pub fn run_coverage_analysis(config: &BuildConfig) -> BuildResult<()> {
         println!(
             "{} Running comprehensive coverage analysis...",
             "📊".bright_blue()
@@ -28,9 +71,7 @@ pub mod xtask_port {
             .env("RUSTFLAGS", "-C instrument-coverage")
             .env("LLVM_PROFILE_FILE", "target/coverage/profile-%p-%m.profraw");
 
-        let output = cmd
-            .output()
-            .map_err(|e| BuildError::Tool(format!("Failed to build with coverage: {}", e)))?;
+        let output = super::execute_command(&mut cmd, config, "Building with coverage flags")?;
 
         if !output.status.success() {
             return Err(BuildError::Build("Coverage build failed".to_string()));
@@ -43,9 +84,7 @@ pub mod xtask_port {
             .env("RUSTFLAGS", "-C instrument-coverage")
             .env("LLVM_PROFILE_FILE", "target/coverage/profile-%p-%m.profraw");
 
-        let test_output = test_cmd
-            .output()
-            .map_err(|e| BuildError::Tool(format!("Failed to run tests with coverage: {}", e)))?;
+        let test_output = super::execute_command(&mut test_cmd, config, "Running tests with coverage")?;
 
         if !test_output.status.success() {
             return Err(BuildError::Test("Coverage tests failed".to_string()));
@@ -808,7 +847,7 @@ impl BuildSystem {
 
     /// Run comprehensive coverage analysis using ported xtask logic
     pub fn run_coverage(&self) -> BuildResult<()> {
-        xtask_port::run_coverage_analysis()
+        xtask_port::run_coverage_analysis(&self.config)
     }
 
     /// Generate documentation using ported xtask logic

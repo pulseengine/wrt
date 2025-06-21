@@ -21,6 +21,10 @@ pub struct BuildConfig {
     pub clippy: bool,
     /// Whether to run format checks
     pub format_check: bool,
+    /// Show commands without executing them
+    pub dry_run: bool,
+    /// Trace all external commands being executed
+    pub trace_commands: bool,
 }
 
 /// Build profiles available
@@ -50,6 +54,8 @@ impl Default for BuildConfig {
             features: vec![],
             clippy: true,
             format_check: true,
+            dry_run: false,
+            trace_commands: false,
         }
     }
 }

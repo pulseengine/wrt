@@ -68,6 +68,14 @@ struct Cli {
     #[arg(long, short, global = true)]
     verbose: bool,
 
+    /// Show commands being executed without running them
+    #[arg(long, global = true)]
+    dry_run: bool,
+
+    /// Trace all external commands being executed
+    #[arg(long, global = true)]
+    trace_commands: bool,
+
     /// Build profile to use
     #[arg(long, global = true, value_enum, default_value = "dev")]
     profile: ProfileArg,
@@ -718,6 +726,8 @@ async fn main() -> Result<()> {
     let mut config = BuildConfig::default();
     config.verbose = cli.verbose;
     config.profile = cli.profile.into();
+    config.dry_run = cli.dry_run;
+    config.trace_commands = cli.trace_commands;
 
     if let Some(ref features) = cli.features {
         config.features = features.split(',').map(|s| s.trim().to_string()).collect();
