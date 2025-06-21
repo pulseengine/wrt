@@ -3,7 +3,8 @@
 //! This module provides comprehensive error recovery mechanisms and detailed
 //! debugging information for the WRT runtime system.
 
-use crate::{Error, ErrorCategory, Result};
+use crate::{Error, Result};
+use crate::errors::ErrorCategory;
 
 #[cfg(feature = "std")]
 use std::{collections::HashMap, string::String, vec::Vec, format};
