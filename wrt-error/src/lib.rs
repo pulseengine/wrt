@@ -91,6 +91,7 @@ pub mod kinds;
 pub mod context;
 pub mod helpers;
 pub mod prelude;
+pub mod recovery;
 
 // ASIL safety support (enabled for ASIL-B and above)
 #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
