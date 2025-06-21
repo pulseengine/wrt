@@ -1024,6 +1024,120 @@ impl StacklessEngine {
                 MemoryOp::MemoryGrow.execute(self)
             }
 
+            // Comparison instructions (i32)
+            0x45 => {
+                // i32.eqz
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I32Eqz.execute(self)
+            }
+            0x46 => {
+                // i32.eq
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I32Eq.execute(self)
+            }
+            0x47 => {
+                // i32.ne
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I32Ne.execute(self)
+            }
+            0x48 => {
+                // i32.lt_s
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I32LtS.execute(self)
+            }
+            0x49 => {
+                // i32.lt_u
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I32LtU.execute(self)
+            }
+            0x4A => {
+                // i32.gt_s
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I32GtS.execute(self)
+            }
+            0x4B => {
+                // i32.gt_u
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I32GtU.execute(self)
+            }
+            0x4C => {
+                // i32.le_s
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I32LeS.execute(self)
+            }
+            0x4D => {
+                // i32.le_u
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I32LeU.execute(self)
+            }
+            0x4E => {
+                // i32.ge_s
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I32GeS.execute(self)
+            }
+            0x4F => {
+                // i32.ge_u
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I32GeU.execute(self)
+            }
+
+            // Comparison instructions (i64)
+            0x50 => {
+                // i64.eqz
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I64Eqz.execute(self)
+            }
+            0x51 => {
+                // i64.eq
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I64Eq.execute(self)
+            }
+            0x52 => {
+                // i64.ne
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I64Ne.execute(self)
+            }
+            0x53 => {
+                // i64.lt_s
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I64LtS.execute(self)
+            }
+            0x54 => {
+                // i64.lt_u
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I64LtU.execute(self)
+            }
+            0x55 => {
+                // i64.gt_s
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I64GtS.execute(self)
+            }
+            0x56 => {
+                // i64.gt_u
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I64GtU.execute(self)
+            }
+            0x57 => {
+                // i64.le_s
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I64LeS.execute(self)
+            }
+            0x58 => {
+                // i64.le_u
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I64LeU.execute(self)
+            }
+            0x59 => {
+                // i64.ge_s
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I64GeS.execute(self)
+            }
+            0x5A => {
+                // i64.ge_u
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::I64GeU.execute(self)
+            }
+
             // Function end
             0x0B => {
                 // end - mark function as completed
