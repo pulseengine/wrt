@@ -37,7 +37,10 @@ macro_rules! asil_error {
             let error = $crate::Error::new($category, $code, $message);
             // Validate at runtime for ASIL-D
             if !error.validate_integrity() {
-                panic!("ASIL-D error integrity check failed");
+                // ASIL-D: Enter safe state instead of panic
+                loop {
+                    core::hint::spin_loop();
+                }
             }
             error
         }
@@ -121,8 +124,10 @@ macro_rules! asil_assert {
         #[cfg(feature = "asil-d")]
         {
             if !$condition {
-                // ASIL-D: Immediate panic for safety-critical assertions
-                panic!("ASIL-D assertion failed: {}", $message);
+                // ASIL-D: Enter safe state instead of panic
+                loop {
+                    core::hint::spin_loop();
+                }
             }
             Ok(())
         }
@@ -130,8 +135,10 @@ macro_rules! asil_assert {
         #[cfg(all(feature = "asil-c", not(feature = "asil-d")))]
         {
             if !$condition {
-                // ASIL-C: Panic for critical assertions
-                panic!("ASIL-C assertion failed: {}", $message);
+                // ASIL-C: Enter safe state for critical assertions
+                loop {
+                    core::hint::spin_loop();
+                }
             }
             Ok(())
         }

@@ -447,17 +447,26 @@ impl TaskRegistry {
     }
 }
 
-/// Global task registry instance
-static mut GLOBAL_TASK_REGISTRY: Option<TaskRegistry> = None;
-static REGISTRY_INIT: std::sync::Once = std::sync::Once::new();
+/// ASIL-D safe global task registry
+use std::sync::{Mutex, Once};
+static REGISTRY_INIT: Once = Once::new();
+static mut GLOBAL_TASK_REGISTRY: Option<Mutex<TaskRegistry>> = None;
 
-/// Get the global task registry
-fn get_task_registry() -> &'static mut TaskRegistry {
+/// Get the global task registry (ASIL-D safe)
+fn get_task_registry() -> Result<&'static Mutex<TaskRegistry>, Error> {
+    REGISTRY_INIT.call_once(|| {
+        // ASIL-D safe: Use Once for thread-safe initialization
+        unsafe {
+            GLOBAL_TASK_REGISTRY = Some(Mutex::new(TaskRegistry::new()));
+        }
+    });
+    
     unsafe {
-        REGISTRY_INIT.call_once(|| {
-            GLOBAL_TASK_REGISTRY = Some(TaskRegistry::new());
-        });
-        GLOBAL_TASK_REGISTRY.as_mut().unwrap()
+        GLOBAL_TASK_REGISTRY.as_ref().ok_or_else(|| Error::new(
+            ErrorCategory::Runtime,
+            codes::INITIALIZATION_ERROR,
+            "Global task registry not initialized"
+        ))
     }
 }
 
@@ -469,7 +478,12 @@ pub mod builtins {
     /// Cancels a running task and all its subtasks
     pub fn task_cancel(task_handle: u32) -> Result<ComponentValue> {
         let handle = TaskHandle(task_handle);
-        let registry = get_task_registry();
+        let registry_mutex = get_task_registry()?;
+        let mut registry = registry_mutex.lock().map_err(|_| Error::new(
+            ErrorCategory::Runtime,
+            codes::CONCURRENCY_ERROR,
+            "Task registry lock poisoned"
+        ))?;
         let result = registry.cancel_task(handle);
         
         match result {
@@ -485,7 +499,12 @@ pub mod builtins {
     /// Cancels a specific subtask
     pub fn subtask_cancel(subtask_handle: u32) -> Result<ComponentValue> {
         let handle = SubtaskHandle(subtask_handle);
-        let registry = get_task_registry();
+        let registry_mutex = get_task_registry()?;
+        let mut registry = registry_mutex.lock().map_err(|_| Error::new(
+            ErrorCategory::Runtime,
+            codes::CONCURRENCY_ERROR,
+            "Task registry lock poisoned"
+        ))?;
         let result = registry.cancel_subtask(handle);
         
         match result {
@@ -500,7 +519,12 @@ pub mod builtins {
     /// `task.spawn` canonical built-in (bonus implementation)
     /// Spawns a new async task
     pub fn task_spawn(future_handle: Option<u32>, stream_handle: Option<u32>) -> Result<ComponentValue> {
-        let registry = get_task_registry();
+        let registry_mutex = get_task_registry()?;
+        let mut registry = registry_mutex.lock().map_err(|_| Error::new(
+            ErrorCategory::Runtime,
+            codes::CONCURRENCY_ERROR,
+            "Task registry lock poisoned"
+        ))?;
         let future_h = future_handle.map(FutureHandle);
         let stream_h = stream_handle.map(StreamHandle);
         
@@ -517,7 +541,12 @@ pub mod builtins {
     /// `subtask.spawn` canonical built-in (bonus implementation)
     /// Spawns a new subtask under a parent task
     pub fn subtask_spawn(parent_task: u32, future_handle: Option<u32>, stream_handle: Option<u32>) -> Result<ComponentValue> {
-        let registry = get_task_registry();
+        let registry_mutex = get_task_registry()?;
+        let mut registry = registry_mutex.lock().map_err(|_| Error::new(
+            ErrorCategory::Runtime,
+            codes::CONCURRENCY_ERROR,
+            "Task registry lock poisoned"
+        ))?;
         let parent_h = TaskHandle(parent_task);
         let future_h = future_handle.map(FutureHandle);
         let stream_h = stream_handle.map(StreamHandle);

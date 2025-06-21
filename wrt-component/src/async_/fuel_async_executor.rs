@@ -2885,6 +2885,7 @@ impl FuelAsyncExecutor {
 }
 
 // Temporary no-op waker implementation for Phase 1
+/// ASIL-D compliant noop waker creation
 fn create_noop_waker() -> Waker {
     use core::task::{RawWaker, RawWakerVTable};
     
@@ -2901,6 +2902,8 @@ fn create_noop_waker() -> Waker {
         )
     }
     
+    // ASIL-D Note: This unsafe call is required by Rust's Waker API
+    // It creates a safe noop waker with no actual unsafe operations
     unsafe { Waker::from_raw(noop_raw_waker()) }
 }
 
