@@ -162,16 +162,18 @@ jobs:
         | **Errors** | ${{ steps.base-diagnostics.outputs.base_errors }} | ${{ steps.pr-diagnostics.outputs.pr_errors }} | **${{ steps.pr-diagnostics.outputs.error_diff }}** |
         | **Warnings** | ${{ steps.base-diagnostics.outputs.base_warnings }} | ${{ steps.pr-diagnostics.outputs.pr_warnings }} | **${{ steps.pr-diagnostics.outputs.warning_diff }}** |
         
-        ### 🎯 Issues in Changed Files
-        - **${{ steps.diff-analysis.outputs.changed_errors }}** errors in your changes
-        - **${{ steps.diff-analysis.outputs.changed_warnings }}** warnings in your changes  
+        ### 🎯 Issues in Files You Modified
+        - **${{ steps.diff-analysis.outputs.changed_errors }}** total errors in modified files
+        - **${{ steps.diff-analysis.outputs.changed_warnings }}** total warnings in modified files  
         - **${{ steps.diff-analysis.outputs.files_affected }}** files affected
+        
+        > **Note**: The "Change" column above shows the net difference across the entire codebase. The counts below show all issues (new and existing) within the files you modified.
         
         EOF
         
         # Add error details if there are errors in changed files
         if [ "${{ steps.diff-analysis.outputs.changed_errors }}" -gt 0 ]; then
-          echo "### ❌ Errors in Your Changes" >> pr_comment.md
+          echo "### ❌ Errors in Modified Files" >> pr_comment.md
           echo "" >> pr_comment.md
           
           # Extract errors and format them
@@ -186,7 +188,7 @@ jobs:
         # Add warning details if there are warnings in changed files
         if [ "${{ steps.diff-analysis.outputs.changed_warnings }}" -gt 0 ]; then
           echo "" >> pr_comment.md
-          echo "### ⚠️ Warnings in Your Changes" >> pr_comment.md
+          echo "### ⚠️ Warnings in Modified Files" >> pr_comment.md
           echo "" >> pr_comment.md
           
           # Extract warnings and format them
@@ -201,8 +203,8 @@ jobs:
         # Add success message if no issues in changed files
         if [ "${{ steps.diff-analysis.outputs.changed_errors }}" -eq 0 ] && [ "${{ steps.diff-analysis.outputs.changed_warnings }}" -eq 0 ]; then
           echo "" >> pr_comment.md
-          echo "### ✅ No Issues in Your Changes" >> pr_comment.md
-          echo "Great job! Your changes don't introduce any new errors or warnings." >> pr_comment.md
+          echo "### ✅ No Issues in Modified Files" >> pr_comment.md
+          echo "Great job! The files you modified are clean - no errors or warnings detected." >> pr_comment.md
         fi
         
         # Add detailed analysis info
