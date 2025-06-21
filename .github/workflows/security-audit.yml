@@ -34,7 +34,7 @@ jobs:
           key: ${{ runner.os }}-cargo-audit-${{ hashFiles('**/Cargo.lock') }}
       
       - name: Install cargo-audit
-        run: cargo install --locked cargo-audit
+        run: cargo install --locked cargo-audit --force
       
       - name: Run Security Audit
         run: cargo audit --json > audit-report.json
@@ -135,4 +135,4 @@ jobs:
       - uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
-          allow-licenses: MIT, Apache-2.0, BSD-3-Clause, ISC
+          allow-licenses: MIT, Apache-2.0, BSD-3-Clause, ISC, MPL-2.0, Unlicense

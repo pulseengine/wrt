@@ -90,7 +90,7 @@ impl Default for HostBuilder {
             let provider = create_host_provider().expect("Failed to create host provider");
             Self {
                 registry: CallbackRegistry::new(),
-                required_builtins: wrt_foundation::BoundedSet::new(provider).unwrap_or_else(|_| panic!("Failed to create builtins set")),
+                required_builtins: wrt_foundation::BoundedSet::new(provider).unwrap_or_default(),
                 strict_validation: false,
             }
         }

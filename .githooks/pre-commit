@@ -39,4 +39,21 @@ else
 fi
 
 echo -e "${GREEN}✅ No test files found in src/ directories${NC}"
+
+# Run cargo fmt check
+echo ""
+echo "🔍 Checking code formatting with cargo fmt..."
+
+# Use the project's unified build tool for formatting check
+if ! cargo-wrt check --strict; then
+    echo -e "${RED}❌ Error: Code formatting issues detected!${NC}"
+    echo ""
+    echo "Please run 'cargo-wrt check' or 'cargo fmt' to format your code before committing."
+    echo ""
+    echo "To bypass this check (not recommended), use:"
+    echo "  git commit --no-verify"
+    exit 1
+fi
+
+echo -e "${GREEN}✅ Code formatting check passed${NC}"
 exit 0

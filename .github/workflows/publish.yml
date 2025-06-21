@@ -134,7 +134,7 @@ jobs:
         run: |
           echo "Building documentation for versions: ${{ env.VERSIONS_TO_BUILD }}"
           export PATH="$HOME/.dagger/bin:$(pwd)/bin:$PATH"
-          cargo-wrt docs --open --private
+          cargo-wrt docs --open --private --output-dir ./docs_output
         env:
           RUST_LOG: info
           RUST_BACKTRACE: 1
@@ -145,13 +145,60 @@ jobs:
           # CI environment flag
           CI: true
 
+      - name: Prepare documentation artifact
+        run: |
+          # Create the expected artifact directory
+          mkdir -p ./docs_artifact_final
+          
+          # Copy Sphinx HTML documentation if it exists
+          if [ -d "./docs_output/sphinx/html" ]; then
+            echo "📚 Found Sphinx documentation"
+            cp -r ./docs_output/sphinx/html/* ./docs_artifact_final/
+          elif [ -d "./docs/build/html" ]; then
+            echo "📚 Found Sphinx documentation (fallback path)"
+            cp -r ./docs/build/html/* ./docs_artifact_final/
+          fi
+          
+          # Copy Rust API documentation
+          if [ -d "./docs_output/doc" ]; then
+            echo "📖 Found Rust API documentation"
+            mkdir -p ./docs_artifact_final/api
+            cp -r ./docs_output/doc/* ./docs_artifact_final/api/
+          elif [ -d "./target/doc" ]; then
+            echo "📖 Found Rust API documentation (fallback path)"
+            mkdir -p ./docs_artifact_final/api
+            cp -r ./target/doc/* ./docs_artifact_final/api/
+          fi
+          
+          # Create a simple index.html if none exists
+          if [ ! -f "./docs_artifact_final/index.html" ]; then
+            echo "⚠️  No index.html found, creating redirect to API docs"
+            cat > ./docs_artifact_final/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <meta charset="utf-8">
+              <title>WRT Documentation</title>
+              <meta http-equiv="refresh" content="0; url=api/wrt/index.html">
+          </head>
+          <body>
+              <p>Redirecting to <a href="api/wrt/index.html">WRT API Documentation</a>...</p>
+          </body>
+          </html>
+          EOF
+          fi
+          
+          # List what we're uploading
+          echo "📦 Documentation artifact contents:"
+          ls -la ./docs_artifact_final/
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
         
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './docs_artifact_final' # Path where Dagger pipeline (via cargo-wrt) exports the final result
+          path: './docs_artifact_final' # Path to the prepared documentation artifact
           
   # Deployment job
   deploy:

@@ -68,7 +68,7 @@ jobs:
       - name: Install and setup cargo-wrt with Kani
         run: |
           cargo build --package cargo-wrt
-          cargo install --path cargo-wrt
+          cargo install --path cargo-wrt --force
           cargo-wrt setup --all # Setup all tools including Kani automatically
       
       - name: Verify tool setup
@@ -130,7 +130,7 @@ jobs:
       - name: Install and setup cargo-wrt with Kani
         run: |
           cargo build --package cargo-wrt
-          cargo install --path cargo-wrt
+          cargo install --path cargo-wrt --force
           cargo-wrt setup --all # Setup all tools including Kani automatically
       
       - name: Verify tool setup
@@ -182,7 +182,7 @@ jobs:
       - name: Install and setup cargo-wrt with Kani
         run: |
           cargo build --package cargo-wrt
-          cargo install --path cargo-wrt
+          cargo install --path cargo-wrt --force
           cargo-wrt setup --all # Setup all tools including Kani automatically
       
       - name: Verify tool setup

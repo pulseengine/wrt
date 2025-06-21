@@ -436,6 +436,6 @@ jobs:
             output: {
               title: title,
               summary: summary,
-              text: `Errors: ${errors}\nWarnings: ${warnings}\n\nSee PR comments for detailed breakdown.`
+              text: `Errors: ${totalNewErrors}\nWarnings: ${totalNewWarnings}\n\nSee PR comments for detailed breakdown.`
             }
           });
