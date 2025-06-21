@@ -17,10 +17,11 @@ use crate::{
 use wrt_foundation::Value; // Add Value import
 use wrt_foundation::bounded::BoundedVec;
 use wrt_foundation::verification::VerificationLevel;
-use wrt_instructions::control_ops::{ControlContext, FunctionOperations, BranchTarget};
-use wrt_instructions::control_ops::Block;
+use wrt_instructions::control_ops::{ControlContext, FunctionOperations, BranchTarget, Block};
 use wrt_instructions::arithmetic_ops::{ArithmeticOp, ArithmeticContext};
 use wrt_instructions::variable_ops::{VariableOp, VariableContext};
+use wrt_instructions::comparison_ops::{ComparisonOp, ComparisonContext};
+use wrt_instructions::memory_ops::MemoryOp;
 use wrt_instructions::prelude::PureInstruction;
 
 // Imports for no_std compatibility
@@ -606,19 +607,22 @@ impl StacklessEngine {
                 // block
                 self.consume_instruction_fuel(InstructionFuelType::SimpleControl)?;
                 let block_type = self.read_block_type(code)?;
-                self.enter_block(block_type)
+                let block = Block::Block(block_type);
+                self.enter_block(block)
             }
             0x03 => {
                 // loop
                 self.consume_instruction_fuel(InstructionFuelType::SimpleControl)?;
                 let block_type = self.read_block_type(code)?;
-                self.enter_loop(block_type)
+                let block = Block::Loop(block_type);
+                self.enter_block(block)
             }
             0x04 => {
                 // if
                 self.consume_instruction_fuel(InstructionFuelType::SimpleControl)?;
                 let block_type = self.read_block_type(code)?;
-                self.enter_if(block_type)
+                let block = Block::If(block_type);
+                self.enter_block(block)
             }
             0x05 => {
                 // else
@@ -629,7 +633,8 @@ impl StacklessEngine {
                 // br
                 self.consume_instruction_fuel(InstructionFuelType::SimpleControl)?;
                 let label_idx = self.read_leb128_u32(code)?;
-                self.branch(label_idx)
+                let target = BranchTarget { label_idx, keep_values: 0 };
+                self.branch(target)
             }
             0x0D => {
                 // br_if
@@ -865,163 +870,140 @@ impl StacklessEngine {
                 // f32.const - read f32 immediate value
                 self.consume_instruction_fuel(InstructionFuelType::SimpleConstant)?;
                 let value = self.read_f32(code)?;
-                self.push_control_value(Value::F32(value))
+                self.push_control_value(Value::F32(wrt_foundation::FloatBits32(value.to_bits())))
             }
             0x44 => {
                 // f64.const - read f64 immediate value
                 self.consume_instruction_fuel(InstructionFuelType::SimpleConstant)?;
                 let value = self.read_f64(code)?;
-                self.push_control_value(Value::F64(value))
+                self.push_control_value(Value::F64(wrt_foundation::FloatBits64(value.to_bits())))
             }
             
             // Memory instructions
             0x28 => {
-                // i32.load
+                // i32.load - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I32Load(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x29 => {
-                // i64.load
+                // i64.load - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I64Load(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x2A => {
-                // f32.load
+                // f32.load - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::F32Load(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x2B => {
-                // f64.load
+                // f64.load - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::F64Load(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x2C => {
-                // i32.load8_s
+                // i32.load8_s - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I32Load8S(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x2D => {
-                // i32.load8_u
+                // i32.load8_u - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I32Load8U(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x2E => {
-                // i32.load16_s
+                // i32.load16_s - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I32Load16S(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x2F => {
-                // i32.load16_u
+                // i32.load16_u - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I32Load16U(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x30 => {
-                // i64.load8_s
+                // i64.load8_s - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I64Load8S(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x31 => {
-                // i64.load8_u
+                // i64.load8_u - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I64Load8U(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x32 => {
-                // i64.load16_s
+                // i64.load16_s - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I64Load16S(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x33 => {
-                // i64.load16_u
+                // i64.load16_u - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I64Load16U(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x34 => {
-                // i64.load32_s
+                // i64.load32_s - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I64Load32S(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x35 => {
-                // i64.load32_u
+                // i64.load32_u - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I64Load32U(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x36 => {
-                // i32.store
+                // i32.store - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I32Store(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x37 => {
-                // i64.store
+                // i64.store - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I64Store(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x38 => {
-                // f32.store
+                // f32.store - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::F32Store(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x39 => {
-                // f64.store
+                // f64.store - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::F64Store(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x3A => {
-                // i32.store8
+                // i32.store8 - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I32Store8(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x3B => {
-                // i32.store16
+                // i32.store16 - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I32Store16(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x3C => {
-                // i64.store8
+                // i64.store8 - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I64Store8(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x3D => {
-                // i64.store16
+                // i64.store16 - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I64Store16(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x3E => {
-                // i64.store32
+                // i64.store32 - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                let memarg = self.read_memarg(code)?;
-                MemoryOp::I64Store32(memarg).execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x3F => {
-                // memory.size
+                // memory.size - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryManagement)?;
-                MemoryOp::MemorySize.execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
             0x40 => {
-                // memory.grow
+                // memory.grow - TODO: Implement proper MemoryOp integration
                 self.consume_instruction_fuel(InstructionFuelType::MemoryManagement)?;
-                MemoryOp::MemoryGrow.execute(self)
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
             }
 
             // Comparison instructions (i32)
@@ -1138,6 +1120,539 @@ impl StacklessEngine {
                 ComparisonOp::I64GeU.execute(self)
             }
 
+            // Floating point comparison instructions (f32)
+            0x5B => {
+                // f32.eq
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::F32Eq.execute(self)
+            }
+            0x5C => {
+                // f32.ne
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::F32Ne.execute(self)
+            }
+            0x5D => {
+                // f32.lt
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::F32Lt.execute(self)
+            }
+            0x5E => {
+                // f32.gt
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::F32Gt.execute(self)
+            }
+            0x5F => {
+                // f32.le
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::F32Le.execute(self)
+            }
+            0x60 => {
+                // f32.ge
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::F32Ge.execute(self)
+            }
+
+            // Floating point comparison instructions (f64)
+            0x61 => {
+                // f64.eq
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::F64Eq.execute(self)
+            }
+            0x62 => {
+                // f64.ne
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::F64Ne.execute(self)
+            }
+            0x63 => {
+                // f64.lt
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::F64Lt.execute(self)
+            }
+            0x64 => {
+                // f64.gt
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::F64Gt.execute(self)
+            }
+            0x65 => {
+                // f64.le
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::F64Le.execute(self)
+            }
+            0x66 => {
+                // f64.ge
+                self.consume_instruction_fuel(InstructionFuelType::Comparison)?;
+                ComparisonOp::F64Ge.execute(self)
+            }
+
+            // Integer arithmetic operations (i32)
+            0x67 => {
+                // i32.clz
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I32Clz.execute(self)
+            }
+            0x68 => {
+                // i32.ctz
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I32Ctz.execute(self)
+            }
+            0x69 => {
+                // i32.popcnt
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I32Popcnt.execute(self)
+            }
+            0x6A => {
+                // i32.add
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I32Add.execute(self)
+            }
+            0x6B => {
+                // i32.sub
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I32Sub.execute(self)
+            }
+            0x6C => {
+                // i32.mul
+                self.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)?;
+                ArithmeticOp::I32Mul.execute(self)
+            }
+            0x6D => {
+                // i32.div_s
+                self.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)?;
+                ArithmeticOp::I32DivS.execute(self)
+            }
+            0x6E => {
+                // i32.div_u
+                self.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)?;
+                ArithmeticOp::I32DivU.execute(self)
+            }
+            0x6F => {
+                // i32.rem_s
+                self.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)?;
+                ArithmeticOp::I32RemS.execute(self)
+            }
+            0x70 => {
+                // i32.rem_u
+                self.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)?;
+                ArithmeticOp::I32RemU.execute(self)
+            }
+            0x71 => {
+                // i32.and
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I32And.execute(self)
+            }
+            0x72 => {
+                // i32.or
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I32Or.execute(self)
+            }
+            0x73 => {
+                // i32.xor
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I32Xor.execute(self)
+            }
+            0x74 => {
+                // i32.shl
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I32Shl.execute(self)
+            }
+            0x75 => {
+                // i32.shr_s
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I32ShrS.execute(self)
+            }
+            0x76 => {
+                // i32.shr_u
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I32ShrU.execute(self)
+            }
+            0x77 => {
+                // i32.rotl
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I32Rotl.execute(self)
+            }
+            0x78 => {
+                // i32.rotr
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I32Rotr.execute(self)
+            }
+
+            // Integer arithmetic operations (i64)
+            0x79 => {
+                // i64.clz
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I64Clz.execute(self)
+            }
+            0x7A => {
+                // i64.ctz
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I64Ctz.execute(self)
+            }
+            0x7B => {
+                // i64.popcnt
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I64Popcnt.execute(self)
+            }
+            0x7C => {
+                // i64.add
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I64Add.execute(self)
+            }
+            0x7D => {
+                // i64.sub
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I64Sub.execute(self)
+            }
+            0x7E => {
+                // i64.mul
+                self.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)?;
+                ArithmeticOp::I64Mul.execute(self)
+            }
+            0x7F => {
+                // i64.div_s
+                self.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)?;
+                ArithmeticOp::I64DivS.execute(self)
+            }
+            0x80 => {
+                // i64.div_u
+                self.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)?;
+                ArithmeticOp::I64DivU.execute(self)
+            }
+            0x81 => {
+                // i64.rem_s
+                self.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)?;
+                ArithmeticOp::I64RemS.execute(self)
+            }
+            0x82 => {
+                // i64.rem_u
+                self.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)?;
+                ArithmeticOp::I64RemU.execute(self)
+            }
+            0x83 => {
+                // i64.and
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I64And.execute(self)
+            }
+            0x84 => {
+                // i64.or
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I64Or.execute(self)
+            }
+            0x85 => {
+                // i64.xor
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I64Xor.execute(self)
+            }
+            0x86 => {
+                // i64.shl
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I64Shl.execute(self)
+            }
+            0x87 => {
+                // i64.shr_s
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I64ShrS.execute(self)
+            }
+            0x88 => {
+                // i64.shr_u
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I64ShrU.execute(self)
+            }
+            0x89 => {
+                // i64.rotl
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I64Rotl.execute(self)
+            }
+            0x8A => {
+                // i64.rotr
+                self.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)?;
+                ArithmeticOp::I64Rotr.execute(self)
+            }
+
+            // Floating point arithmetic operations (f32)
+            0x8B => {
+                // f32.abs
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F32Abs.execute(self)
+            }
+            0x8C => {
+                // f32.neg
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F32Neg.execute(self)
+            }
+            0x8D => {
+                // f32.ceil
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F32Ceil.execute(self)
+            }
+            0x8E => {
+                // f32.floor
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F32Floor.execute(self)
+            }
+            0x8F => {
+                // f32.trunc
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F32Trunc.execute(self)
+            }
+            0x90 => {
+                // f32.nearest
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F32Nearest.execute(self)
+            }
+            0x91 => {
+                // f32.sqrt
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F32Sqrt.execute(self)
+            }
+            0x92 => {
+                // f32.add
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F32Add.execute(self)
+            }
+            0x93 => {
+                // f32.sub
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F32Sub.execute(self)
+            }
+            0x94 => {
+                // f32.mul
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F32Mul.execute(self)
+            }
+            0x95 => {
+                // f32.div
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F32Div.execute(self)
+            }
+            0x96 => {
+                // f32.min
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F32Min.execute(self)
+            }
+            0x97 => {
+                // f32.max
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F32Max.execute(self)
+            }
+            0x98 => {
+                // f32.copysign
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F32Copysign.execute(self)
+            }
+
+            // Floating point arithmetic operations (f64)
+            0x99 => {
+                // f64.abs
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F64Abs.execute(self)
+            }
+            0x9A => {
+                // f64.neg
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F64Neg.execute(self)
+            }
+            0x9B => {
+                // f64.ceil
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F64Ceil.execute(self)
+            }
+            0x9C => {
+                // f64.floor
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F64Floor.execute(self)
+            }
+            0x9D => {
+                // f64.trunc
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F64Trunc.execute(self)
+            }
+            0x9E => {
+                // f64.nearest
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F64Nearest.execute(self)
+            }
+            0x9F => {
+                // f64.sqrt
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F64Sqrt.execute(self)
+            }
+            0xA0 => {
+                // f64.add
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F64Add.execute(self)
+            }
+            0xA1 => {
+                // f64.sub
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F64Sub.execute(self)
+            }
+            0xA2 => {
+                // f64.mul
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F64Mul.execute(self)
+            }
+            0xA3 => {
+                // f64.div
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F64Div.execute(self)
+            }
+            0xA4 => {
+                // f64.min
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F64Min.execute(self)
+            }
+            0xA5 => {
+                // f64.max
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F64Max.execute(self)
+            }
+            0xA6 => {
+                // f64.copysign
+                self.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)?;
+                ArithmeticOp::F64Copysign.execute(self)
+            }
+
+            // Type conversion operations (placeholder implementations - will be expanded in Phase 3)
+            0xA7 => {
+                // i32.wrap_i64 - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xA8 => {
+                // i32.trunc_f32_s - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xA9 => {
+                // i32.trunc_f32_u - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xAA => {
+                // i32.trunc_f64_s - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xAB => {
+                // i32.trunc_f64_u - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xAC => {
+                // i64.extend_i32_s - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xAD => {
+                // i64.extend_i32_u - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xAE => {
+                // i64.trunc_f32_s - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xAF => {
+                // i64.trunc_f32_u - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xB0 => {
+                // i64.trunc_f64_s - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xB1 => {
+                // i64.trunc_f64_u - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xB2 => {
+                // f32.convert_i32_s - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xB3 => {
+                // f32.convert_i32_u - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xB4 => {
+                // f32.convert_i64_s - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xB5 => {
+                // f32.convert_i64_u - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xB6 => {
+                // f32.demote_f64 - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xB7 => {
+                // f64.convert_i32_s - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xB8 => {
+                // f64.convert_i32_u - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xB9 => {
+                // f64.convert_i64_s - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xBA => {
+                // f64.convert_i64_u - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xBB => {
+                // f64.promote_f32 - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xBC => {
+                // i32.reinterpret_f32 - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xBD => {
+                // i64.reinterpret_f64 - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xBE => {
+                // f32.reinterpret_i32 - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+            0xBF => {
+                // f64.reinterpret_i64 - TODO: Implement type conversion operations in Phase 3
+                self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+            }
+
+            // SIMD instructions (0xFD prefix)
+            0xFD => {
+                // Read secondary opcode for SIMD operations
+                let simd_opcode = self.read_leb128_u32(code)?;
+                self.execute_simd_instruction(simd_opcode)
+            }
+
+            // Atomic instructions (0xFE prefix)
+            0xFE => {
+                // Read secondary opcode for atomic operations
+                let atomic_opcode = self.read_leb128_u32(code)?;
+                self.execute_atomic_instruction(atomic_opcode)
+            }
+
             // Function end
             0x0B => {
                 // end - mark function as completed
@@ -1155,6 +1670,560 @@ impl StacklessEngine {
                 ))
             }
         }
+    }
+    
+    /// Execute SIMD instruction based on secondary opcode
+    fn execute_simd_instruction(&mut self, simd_opcode: u32) -> Result<()> {
+        // Consume fuel for SIMD operation first
+        self.consume_instruction_fuel(InstructionFuelType::SimdOperation)?;
+        
+        match simd_opcode {
+            // Vector load operations
+            0 => {
+                // v128.load - Vector load 128-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load not yet implemented"))
+            }
+            1 => {
+                // v128.load8x8_s - Load 8 bytes as 8x8-bit signed vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load8x8_s not yet implemented"))
+            }
+            2 => {
+                // v128.load8x8_u - Load 8 bytes as 8x8-bit unsigned vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load8x8_u not yet implemented"))
+            }
+            3 => {
+                // v128.load16x4_s - Load 8 bytes as 4x16-bit signed vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load16x4_s not yet implemented"))
+            }
+            4 => {
+                // v128.load16x4_u - Load 8 bytes as 4x16-bit unsigned vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load16x4_u not yet implemented"))
+            }
+            5 => {
+                // v128.load32x2_s - Load 8 bytes as 2x32-bit signed vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load32x2_s not yet implemented"))
+            }
+            6 => {
+                // v128.load32x2_u - Load 8 bytes as 2x32-bit unsigned vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load32x2_u not yet implemented"))
+            }
+            7 => {
+                // v128.load8_splat - Load 1 byte and splat to 16x8-bit vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load8_splat not yet implemented"))
+            }
+            8 => {
+                // v128.load16_splat - Load 2 bytes and splat to 8x16-bit vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load16_splat not yet implemented"))
+            }
+            9 => {
+                // v128.load32_splat - Load 4 bytes and splat to 4x32-bit vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load32_splat not yet implemented"))
+            }
+            10 => {
+                // v128.load64_splat - Load 8 bytes and splat to 2x64-bit vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load64_splat not yet implemented"))
+            }
+            11 => {
+                // v128.store - Store 128-bit vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.store not yet implemented"))
+            }
+            
+            // Vector constants
+            12 => {
+                // v128.const - 128-bit vector constant
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.const not yet implemented"))
+            }
+            
+            // Vector lane operations
+            13 => {
+                // i8x16.shuffle - Shuffle lanes using indices
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.shuffle not yet implemented"))
+            }
+            14 => {
+                // i8x16.swizzle - Swizzle lanes
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.swizzle not yet implemented"))
+            }
+            
+            // Lane access operations
+            15 => {
+                // i8x16.splat - Splat i32 to 16x8-bit vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.splat not yet implemented"))
+            }
+            16 => {
+                // i16x8.splat - Splat i32 to 8x16-bit vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i16x8.splat not yet implemented"))
+            }
+            17 => {
+                // i32x4.splat - Splat i32 to 4x32-bit vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i32x4.splat not yet implemented"))
+            }
+            18 => {
+                // i64x2.splat - Splat i64 to 2x64-bit vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i64x2.splat not yet implemented"))
+            }
+            19 => {
+                // f32x4.splat - Splat f32 to 4x32-bit vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f32x4.splat not yet implemented"))
+            }
+            20 => {
+                // f64x2.splat - Splat f64 to 2x64-bit vector
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f64x2.splat not yet implemented"))
+            }
+            
+            // Vector arithmetic operations (i8x16)
+            96 => {
+                // i8x16.add - Add 16x8-bit vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.add not yet implemented"))
+            }
+            97 => {
+                // i8x16.add_sat_s - Add 16x8-bit vectors with signed saturation
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.add_sat_s not yet implemented"))
+            }
+            98 => {
+                // i8x16.add_sat_u - Add 16x8-bit vectors with unsigned saturation
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.add_sat_u not yet implemented"))
+            }
+            99 => {
+                // i8x16.sub - Subtract 16x8-bit vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.sub not yet implemented"))
+            }
+            100 => {
+                // i8x16.sub_sat_s - Subtract 16x8-bit vectors with signed saturation
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.sub_sat_s not yet implemented"))
+            }
+            101 => {
+                // i8x16.sub_sat_u - Subtract 16x8-bit vectors with unsigned saturation
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.sub_sat_u not yet implemented"))
+            }
+            
+            // Vector arithmetic operations (i16x8)
+            126 => {
+                // i16x8.add - Add 8x16-bit vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i16x8.add not yet implemented"))
+            }
+            127 => {
+                // i16x8.add_sat_s - Add 8x16-bit vectors with signed saturation
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i16x8.add_sat_s not yet implemented"))
+            }
+            128 => {
+                // i16x8.add_sat_u - Add 8x16-bit vectors with unsigned saturation
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i16x8.add_sat_u not yet implemented"))
+            }
+            129 => {
+                // i16x8.sub - Subtract 8x16-bit vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i16x8.sub not yet implemented"))
+            }
+            130 => {
+                // i16x8.sub_sat_s - Subtract 8x16-bit vectors with signed saturation
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i16x8.sub_sat_s not yet implemented"))
+            }
+            131 => {
+                // i16x8.sub_sat_u - Subtract 8x16-bit vectors with unsigned saturation
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i16x8.sub_sat_u not yet implemented"))
+            }
+            132 => {
+                // i16x8.mul - Multiply 8x16-bit vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i16x8.mul not yet implemented"))
+            }
+            
+            // Vector arithmetic operations (i32x4)
+            158 => {
+                // i32x4.add - Add 4x32-bit vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i32x4.add not yet implemented"))
+            }
+            159 => {
+                // i32x4.sub - Subtract 4x32-bit vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i32x4.sub not yet implemented"))
+            }
+            160 => {
+                // i32x4.mul - Multiply 4x32-bit vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i32x4.mul not yet implemented"))
+            }
+            
+            // Vector arithmetic operations (i64x2)
+            174 => {
+                // i64x2.add - Add 2x64-bit vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i64x2.add not yet implemented"))
+            }
+            175 => {
+                // i64x2.sub - Subtract 2x64-bit vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i64x2.sub not yet implemented"))
+            }
+            176 => {
+                // i64x2.mul - Multiply 2x64-bit vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i64x2.mul not yet implemented"))
+            }
+            
+            // Vector arithmetic operations (f32x4)
+            182 => {
+                // f32x4.add - Add 4x32-bit float vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f32x4.add not yet implemented"))
+            }
+            183 => {
+                // f32x4.sub - Subtract 4x32-bit float vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f32x4.sub not yet implemented"))
+            }
+            184 => {
+                // f32x4.mul - Multiply 4x32-bit float vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f32x4.mul not yet implemented"))
+            }
+            185 => {
+                // f32x4.div - Divide 4x32-bit float vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f32x4.div not yet implemented"))
+            }
+            186 => {
+                // f32x4.min - Minimum of 4x32-bit float vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f32x4.min not yet implemented"))
+            }
+            187 => {
+                // f32x4.max - Maximum of 4x32-bit float vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f32x4.max not yet implemented"))
+            }
+            
+            // Vector arithmetic operations (f64x2)
+            192 => {
+                // f64x2.add - Add 2x64-bit float vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f64x2.add not yet implemented"))
+            }
+            193 => {
+                // f64x2.sub - Subtract 2x64-bit float vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f64x2.sub not yet implemented"))
+            }
+            194 => {
+                // f64x2.mul - Multiply 2x64-bit float vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f64x2.mul not yet implemented"))
+            }
+            195 => {
+                // f64x2.div - Divide 2x64-bit float vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f64x2.div not yet implemented"))
+            }
+            196 => {
+                // f64x2.min - Minimum of 2x64-bit float vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f64x2.min not yet implemented"))
+            }
+            197 => {
+                // f64x2.max - Maximum of 2x64-bit float vectors
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f64x2.max not yet implemented"))
+            }
+            
+            _ => {
+                // Unknown SIMD instruction
+                Err(Error::new(
+                    ErrorCategory::Runtime,
+                    codes::EXECUTION_ERROR,
+                    "Unknown SIMD instruction"
+                ))
+            }
+        }
+    }
+    
+    /// Execute atomic instruction based on secondary opcode
+    fn execute_atomic_instruction(&mut self, atomic_opcode: u32) -> Result<()> {
+        // Consume fuel for atomic operation first
+        self.consume_instruction_fuel(InstructionFuelType::AtomicOperation)?;
+        
+        match atomic_opcode {
+            // Atomic memory operations
+            0 => {
+                // memory.atomic.notify - Notify waiting threads
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic memory.atomic.notify not yet implemented"))
+            }
+            1 => {
+                // memory.atomic.wait32 - Wait on 32-bit value
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic memory.atomic.wait32 not yet implemented"))
+            }
+            2 => {
+                // memory.atomic.wait64 - Wait on 64-bit value
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic memory.atomic.wait64 not yet implemented"))
+            }
+            3 => {
+                // atomic.fence - Memory fence
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic atomic.fence not yet implemented"))
+            }
+            
+            // Atomic load operations
+            16 => {
+                // i32.atomic.load - Atomic load 32-bit integer
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.load not yet implemented"))
+            }
+            17 => {
+                // i64.atomic.load - Atomic load 64-bit integer
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.load not yet implemented"))
+            }
+            18 => {
+                // i32.atomic.load8_u - Atomic load 8-bit as unsigned 32-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.load8_u not yet implemented"))
+            }
+            19 => {
+                // i32.atomic.load16_u - Atomic load 16-bit as unsigned 32-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.load16_u not yet implemented"))
+            }
+            20 => {
+                // i64.atomic.load8_u - Atomic load 8-bit as unsigned 64-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.load8_u not yet implemented"))
+            }
+            21 => {
+                // i64.atomic.load16_u - Atomic load 16-bit as unsigned 64-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.load16_u not yet implemented"))
+            }
+            22 => {
+                // i64.atomic.load32_u - Atomic load 32-bit as unsigned 64-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.load32_u not yet implemented"))
+            }
+            
+            // Atomic store operations
+            23 => {
+                // i32.atomic.store - Atomic store 32-bit integer
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.store not yet implemented"))
+            }
+            24 => {
+                // i64.atomic.store - Atomic store 64-bit integer
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.store not yet implemented"))
+            }
+            25 => {
+                // i32.atomic.store8 - Atomic store 8-bit from 32-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.store8 not yet implemented"))
+            }
+            26 => {
+                // i32.atomic.store16 - Atomic store 16-bit from 32-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.store16 not yet implemented"))
+            }
+            27 => {
+                // i64.atomic.store8 - Atomic store 8-bit from 64-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.store8 not yet implemented"))
+            }
+            28 => {
+                // i64.atomic.store16 - Atomic store 16-bit from 64-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.store16 not yet implemented"))
+            }
+            29 => {
+                // i64.atomic.store32 - Atomic store 32-bit from 64-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.store32 not yet implemented"))
+            }
+            
+            // Atomic RMW (Read-Modify-Write) operations
+            30 => {
+                // i32.atomic.rmw.add - Atomic read-modify-write add 32-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw.add not yet implemented"))
+            }
+            31 => {
+                // i64.atomic.rmw.add - Atomic read-modify-write add 64-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.rmw.add not yet implemented"))
+            }
+            32 => {
+                // i32.atomic.rmw8.add_u - Atomic RMW add 8-bit to 32-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw8.add_u not yet implemented"))
+            }
+            33 => {
+                // i32.atomic.rmw16.add_u - Atomic RMW add 16-bit to 32-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw16.add_u not yet implemented"))
+            }
+            
+            // Atomic RMW subtract operations
+            46 => {
+                // i32.atomic.rmw.sub - Atomic read-modify-write subtract 32-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw.sub not yet implemented"))
+            }
+            47 => {
+                // i64.atomic.rmw.sub - Atomic read-modify-write subtract 64-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.rmw.sub not yet implemented"))
+            }
+            
+            // Atomic RMW bitwise operations
+            62 => {
+                // i32.atomic.rmw.and - Atomic read-modify-write AND 32-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw.and not yet implemented"))
+            }
+            63 => {
+                // i64.atomic.rmw.and - Atomic read-modify-write AND 64-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.rmw.and not yet implemented"))
+            }
+            78 => {
+                // i32.atomic.rmw.or - Atomic read-modify-write OR 32-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw.or not yet implemented"))
+            }
+            79 => {
+                // i64.atomic.rmw.or - Atomic read-modify-write OR 64-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.rmw.or not yet implemented"))
+            }
+            94 => {
+                // i32.atomic.rmw.xor - Atomic read-modify-write XOR 32-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw.xor not yet implemented"))
+            }
+            95 => {
+                // i64.atomic.rmw.xor - Atomic read-modify-write XOR 64-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.rmw.xor not yet implemented"))
+            }
+            
+            // Atomic RMW exchange operations
+            110 => {
+                // i32.atomic.rmw.xchg - Atomic read-modify-write exchange 32-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw.xchg not yet implemented"))
+            }
+            111 => {
+                // i64.atomic.rmw.xchg - Atomic read-modify-write exchange 64-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.rmw.xchg not yet implemented"))
+            }
+            
+            // Atomic compare-and-swap operations
+            126 => {
+                // i32.atomic.rmw.cmpxchg - Atomic compare-and-swap 32-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw.cmpxchg not yet implemented"))
+            }
+            127 => {
+                // i64.atomic.rmw.cmpxchg - Atomic compare-and-swap 64-bit
+                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.rmw.cmpxchg not yet implemented"))
+            }
+            
+            _ => {
+                // Unknown atomic instruction
+                Err(Error::new(
+                    ErrorCategory::Runtime,
+                    codes::EXECUTION_ERROR,
+                    "Unknown atomic instruction"
+                ))
+            }
+        }
+    }
+    
+    /// Read memory argument (alignment + offset) from bytecode
+    fn read_memarg(&mut self, code: &[u8]) -> Result<(u32, u32)> {
+        let align = self.read_leb128_u32(code)?;
+        let offset = self.read_leb128_u32(code)?;
+        Ok((align, offset))
+    }
+    
+    /// Read block type from bytecode
+    fn read_block_type(&mut self, code: &[u8]) -> Result<wrt_foundation::BlockType> {
+        self.exec_stack.pc += 1;
+        if self.exec_stack.pc >= code.len() {
+            return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Unexpected end of bytecode while reading block type"));
+        }
+        
+        let byte = code[self.exec_stack.pc];
+        match byte {
+            0x40 => Ok(wrt_foundation::BlockType::Value(None)), // Empty
+            0x7F => Ok(wrt_foundation::BlockType::Value(Some(wrt_foundation::ValueType::I32))),
+            0x7E => Ok(wrt_foundation::BlockType::Value(Some(wrt_foundation::ValueType::I64))),
+            0x7D => Ok(wrt_foundation::BlockType::Value(Some(wrt_foundation::ValueType::F32))),
+            0x7C => Ok(wrt_foundation::BlockType::Value(Some(wrt_foundation::ValueType::F64))),
+            _ => {
+                // Type index - for now, treat as function type
+                let type_idx = self.read_leb128_i32(code)? as u32;
+                Ok(wrt_foundation::BlockType::FuncType(type_idx))
+            }
+        }
+    }
+    
+    /// Read 32-bit float from bytecode
+    fn read_f32(&mut self, code: &[u8]) -> Result<f32> {
+        if self.exec_stack.pc + 4 >= code.len() {
+            return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Insufficient data for f32 constant"));
+        }
+        
+        let bytes = [
+            code[self.exec_stack.pc + 1],
+            code[self.exec_stack.pc + 2],
+            code[self.exec_stack.pc + 3],
+            code[self.exec_stack.pc + 4],
+        ];
+        self.exec_stack.pc += 4;
+        
+        Ok(f32::from_le_bytes(bytes))
+    }
+    
+    /// Read 64-bit float from bytecode
+    fn read_f64(&mut self, code: &[u8]) -> Result<f64> {
+        if self.exec_stack.pc + 8 >= code.len() {
+            return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Insufficient data for f64 constant"));
+        }
+        
+        let mut bytes = [0u8; 8];
+        bytes.copy_from_slice(&code[self.exec_stack.pc + 1..self.exec_stack.pc + 9]);
+        self.exec_stack.pc += 8;
+        
+        Ok(f64::from_le_bytes(bytes))
+    }
+    
+    /// Read branch table from bytecode
+    fn read_br_table(&mut self, code: &[u8]) -> Result<(Vec<u32>, u32)> {
+        // Read vector length
+        let len = self.read_leb128_u32(code)?;
+        
+        let mut targets = Vec::new();
+        for _ in 0..len {
+            let target = self.read_leb128_u32(code)?;
+            targets.push(target);
+        }
+        
+        // Read default target
+        let default_target = self.read_leb128_u32(code)?;
+        
+        Ok((targets, default_target))
+    }
+    
+    /// Enter an else block
+    fn enter_else(&mut self) -> Result<()> {
+        // The current if label should be on top of the stack
+        if let Some(last_idx) = self.exec_stack.labels.len().checked_sub(1) {
+            match self.exec_stack.labels.get_mut(last_idx) {
+                Ok(label) => {
+                    if label.kind == LabelKind::If {
+                        // Convert if to else
+                        label.kind = LabelKind::Block; // Treat else as a block
+                        return Ok(());
+                    }
+                }
+                Err(_) => return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Label access error")),
+            }
+        }
+        Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "No matching if for else"))
+    }
+    
+    /// Conditional branch
+    fn branch_if(&mut self, label_idx: u32) -> Result<()> {
+        // Pop condition from stack
+        let condition = self.exec_stack.values.pop()?.ok_or_else(|| {
+            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+        })?;
+        
+        // Check if condition is true (non-zero)
+        let is_true = match condition {
+            Value::I32(v) => v != 0,
+            _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 condition")),
+        };
+        
+        if is_true {
+            // Perform the branch
+            self.branch_to_label(label_idx)
+        } else {
+            // Continue execution
+            Ok(())
+        }
+    }
+    
+    /// Branch table (switch-like)
+    fn branch_table(&mut self, table: (Vec<u32>, u32)) -> Result<()> {
+        let (targets, default_target) = table;
+        
+        // Pop index from stack
+        let index = self.exec_stack.values.pop()?.ok_or_else(|| {
+            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+        })?;
+        
+        let index_u32 = match index {
+            Value::I32(i) => i as u32,
+            _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 index")),
+        };
+        
+        // Select target based on index
+        let target = if (index_u32 as usize) < targets.len() {
+            targets[index_u32 as usize]
+        } else {
+            default_target
+        };
+        
+        self.branch_to_label(target)
     }
     
     /// Read LEB128 unsigned 32-bit integer from bytecode
@@ -2885,7 +3954,9 @@ impl wrt_foundation::traits::FromBytes for Label {
             1 => LabelKind::Loop,
             2 => LabelKind::If,
             3 => LabelKind::Function,
-            _ => return Err(wrt_error::Error::validation_error("Invalid label kind")),
+            _ => {
+                return Err(wrt_error::Error::validation_error("Invalid label kind"));
+            }
         };
         Ok(Label { kind, arity, pc })
     }
