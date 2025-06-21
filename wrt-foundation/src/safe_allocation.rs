@@ -62,60 +62,7 @@ impl CapabilityProviderFactory {
     }
 }
 
-/// Legacy safe factory functions (deprecated)
-///
-/// These functions maintain backward compatibility while transitioning to capability-based system.
-#[deprecated(note = "Use CapabilityProviderFactory for capability-driven design")]
-pub struct SafeProviderFactory;
-
-#[allow(deprecated)]
-impl SafeProviderFactory {
-    /// Create a NoStdProvider safely without unsafe code
-    ///
-    /// This function creates a provider using the internal safe mechanisms
-    /// without exposing the guard's unsafe release method.
-    #[deprecated(note = "Use CapabilityProviderFactory::create_static_provider instead")]
-    #[allow(deprecated)] // We're using the safe internal method
-    fn create_provider_safe<const N: usize>() -> Result<NoStdProvider<N>> {
-        // Use the safe default construction without resize
-        Ok(NoStdProvider::<N>::default())
-    }
-
-    /// Create a provider with budget tracking through the memory coordinator
-    ///
-    /// This provides the same functionality as safe_managed_alloc! but without
-    /// requiring unsafe code to extract the provider.
-    #[deprecated(note = "Use CapabilityProviderFactory::create_context_managed_provider instead")]
-    pub fn create_managed_provider<const N: usize>(crate_id: CrateId) -> Result<NoStdProvider<N>> {
-        // MIGRATION: Use capability system instead of legacy coordinator
-        use crate::memory_init::get_global_capability_context;
-        let context = get_global_capability_context()?;
-        
-        // Verify capability and create provider through modern system
-        let capability_provider = context.create_provider::<N>(crate_id)?;
-        
-        // For backward compatibility, return a default provider
-        // The capability provider ensures the allocation is allowed
-        Ok(NoStdProvider::<N>::default())
-    }
-    
-    /// Create a context-managed provider using capability context
-    ///
-    /// This is the modern replacement for create_managed_provider that uses
-    /// the capability system instead of global state.
-    pub fn create_context_managed_provider<const N: usize>(
-        context: &MemoryCapabilityContext,
-        crate_id: CrateId,
-    ) -> Result<NoStdProvider<N>> {
-        // Verify we have allocation capability
-        use crate::capabilities::MemoryOperation;
-        let operation = MemoryOperation::Allocate { size: N };
-        context.verify_operation(crate_id, &operation)?;
-        
-        // Create the provider safely
-        Self::create_provider_safe::<N>()
-    }
-}
+// SafeProviderFactory removed - use MemoryFactory instead
 
 /// Capability-based safe collection factory functions
 ///
@@ -157,61 +104,6 @@ pub mod capability_factories {
     }
 }
 
-/// Legacy safe collection factory functions using owned providers (deprecated)
-///
-/// These functions create bounded collections using the legacy memory system.
-/// Use capability_factories for new code.
-#[deprecated(note = "Use capability_factories for capability-driven design")]
-pub mod safe_factories {
-    use super::*;
-
-    /// Safely create a BoundedVec with owned provider
-    #[deprecated(note = "Use capability_factories::safe_static_bounded_vec for capability-driven design")]
-    #[allow(deprecated)]
-    pub fn safe_bounded_vec<T, const CAPACITY: usize, const PROVIDER_SIZE: usize>(
-        crate_id: CrateId,
-    ) -> Result<BoundedVec<T, CAPACITY, NoStdProvider<PROVIDER_SIZE>>>
-    where
-        T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-    {
-        let provider = SafeProviderFactory::create_managed_provider::<PROVIDER_SIZE>(crate_id)?;
-        BoundedVec::new(provider).map_err(|e| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ERROR,
-                "Failed to create bounded vector",
-            )
-        })
-    }
-
-    /// Safely create a BoundedMap with owned provider
-    pub fn safe_bounded_map<K, V, const CAPACITY: usize, const PROVIDER_SIZE: usize>(
-        crate_id: CrateId,
-    ) -> Result<BoundedMap<K, V, CAPACITY, NoStdProvider<PROVIDER_SIZE>>>
-    where
-        K: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-        V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-    {
-        let provider = SafeProviderFactory::create_managed_provider::<PROVIDER_SIZE>(crate_id)?;
-        BoundedMap::new(provider).map_err(|e| {
-            Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Failed to create bounded map")
-        })
-    }
-
-    /// Safely create a BoundedString with owned provider
-    pub fn safe_bounded_string<const CAPACITY: usize, const PROVIDER_SIZE: usize>(
-        crate_id: CrateId,
-    ) -> Result<BoundedString<CAPACITY, NoStdProvider<PROVIDER_SIZE>>> {
-        let provider = SafeProviderFactory::create_managed_provider::<PROVIDER_SIZE>(crate_id)?;
-        BoundedString::from_str("", provider).map_err(|e| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ERROR,
-                "Failed to create bounded string",
-            )
-        })
-    }
-}
 
 /// Safe macro for creating providers without unsafe code
 ///
@@ -231,7 +123,7 @@ pub mod safe_factories {
 #[macro_export]
 macro_rules! safe_managed_alloc {
     ($size:expr, $crate_id:expr) => {
-        $crate::safe_allocation::SafeProviderFactory::create_managed_provider::<$size>($crate_id)
+        $crate::capabilities::MemoryFactory::create::<$size>($crate_id)
     };
 }
 
@@ -252,9 +144,6 @@ macro_rules! safe_managed_alloc {
 #[macro_export]
 macro_rules! capability_managed_alloc {
     ($size:expr, $context:expr, $crate_id:expr) => {
-        $crate::safe_allocation::SafeProviderFactory::create_context_managed_provider::<$size>($context, $crate_id)
+        $crate::safe_allocation::CapabilityProviderFactory::create_context_managed_provider::<$size>($context, $crate_id)
     };
 }
-
-/// Public re-exports for convenience
-pub use safe_factories::*;

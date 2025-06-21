@@ -9,9 +9,11 @@ use crate::{
 };
 
 #[cfg(feature = "std")]
-use std::sync::Arc;
+use std::{sync::Arc, vec::Vec};
 #[cfg(not(feature = "std"))]
-use alloc::sync::Arc;
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{sync::Arc, vec::Vec};
 
 /// Types of capabilities supported by the platform bridge
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

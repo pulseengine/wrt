@@ -633,7 +633,7 @@ mod kani_proofs {
     /// Verify resource type serialization roundtrip
     #[kani::proof]
     fn verify_resource_type_serialization() {
-        let provider = NoStdProvider::<1024>::new();
+        let provider = NoStdProvider::<1024>::default();
         
         // Test primitive resource type
         let primitive = ResourceType::<NoStdProvider<1024>>::Primitive(ValueType::I32);
@@ -670,7 +670,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_resource_bounds_checking() {
         const MAX_RESOURCES: usize = 16;
-        let provider = NoStdProvider::<2048>::new();
+        let provider = NoStdProvider::<2048>::default();
         
         // Create a resource collection with bounded capacity
         let mut resources: BoundedVec<ResourceId, MAX_RESOURCES, _> = 
@@ -697,7 +697,7 @@ mod kani_proofs {
     /// Verify resource access pattern safety
     #[kani::proof]
     fn verify_resource_access_safety() {
-        let provider = NoStdProvider::<1024>::new();
+        let provider = NoStdProvider::<1024>::default();
         let mut resources: BoundedVec<ResourceHandle, 8, _> = 
             BoundedVec::new(provider).unwrap();
         

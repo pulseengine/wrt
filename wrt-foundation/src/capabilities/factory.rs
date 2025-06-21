@@ -32,6 +32,9 @@ use super::{context::MemoryCapabilityContext, MemoryCapability, MemoryOperation}
 ///
 /// This factory provides explicit capability injection for memory allocation,
 /// ensuring all memory operations are properly verified and authorized.
+/// 
+/// **DEPRECATED**: Use `MemoryFactory` instead for a simpler API.
+#[deprecated(note = "Use MemoryFactory for simpler memory provider creation")]
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub struct CapabilityMemoryFactory {
     context: MemoryCapabilityContext,
@@ -163,7 +166,7 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
         if self.provider.is_none() {
             // Create the underlying provider
             #[allow(deprecated)]
-            let mut provider = NoStdProvider::new();
+            let mut provider = NoStdProvider::default();
             let _ = provider.resize(N);
             self.provider = Some(provider);
         }
@@ -261,6 +264,9 @@ unsafe impl<const N: usize> Send for CapabilityGuardedProvider<N> {}
 unsafe impl<const N: usize> Sync for CapabilityGuardedProvider<N> {}
 
 /// Builder for creating capability-driven memory factories
+///
+/// **DEPRECATED**: Use `MemoryFactory` instead for direct provider creation.
+#[deprecated(note = "Use MemoryFactory for simpler memory provider creation")]
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub struct CapabilityFactoryBuilder {
     context: MemoryCapabilityContext,

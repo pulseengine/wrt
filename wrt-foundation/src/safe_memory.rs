@@ -1770,12 +1770,12 @@ impl<P: Provider> SafeMemoryHandler<P> {
 
         let size = self.provider.size();
         if size == 0 {
-            let provider = NoStdProvider::<4096>::new();
+            let provider = NoStdProvider::<4096>::default();
             return crate::bounded::BoundedVec::new(provider);
         }
 
         let slice = self.provider.borrow_slice(0, size)?;
-        let provider = NoStdProvider::<4096>::new();
+        let provider = NoStdProvider::<4096>::default();
         let mut result = crate::bounded::BoundedVec::new(provider)?;
 
         for byte in slice.as_ref() {
@@ -1907,7 +1907,7 @@ mod tests {
     #[test]
     fn test_safe_memory_handler_copy_within() {
         // Create a NoStdProvider with capacity 50
-        let mut provider = NoStdProvider::<50>::new();
+        let mut provider = NoStdProvider::<50>::default();
 
         // Set initial data "Hello, World!"
         let test_data = b"Hello, World!";
@@ -1932,7 +1932,7 @@ mod tests {
     #[test]
     fn test_safe_memory_handler_copy_within_overlapping() {
         // Test overlapping copy operation
-        let mut provider = NoStdProvider::<20>::new();
+        let mut provider = NoStdProvider::<20>::default();
 
         // Set data "ABCDEFGHIJ"
         let test_data = b"ABCDEFGHIJ";
@@ -1952,7 +1952,7 @@ mod tests {
 
     #[test]
     fn test_safe_memory_handler_copy_within_bounds_check() {
-        let mut provider = NoStdProvider::<10>::new();
+        let mut provider = NoStdProvider::<10>::default();
         provider.set_data(b"123456789").unwrap();
 
         let mut handler = SafeMemoryHandler::new(provider);
@@ -1968,7 +1968,7 @@ mod tests {
 
     #[test]
     fn test_safe_memory_handler_copy_within_zero_length() {
-        let mut provider = NoStdProvider::<10>::new();
+        let mut provider = NoStdProvider::<10>::default();
         provider.set_data(b"ABCDEFG").unwrap();
 
         let mut handler = SafeMemoryHandler::new(provider);

@@ -35,6 +35,7 @@ pub mod context;
 pub mod dynamic;
 pub mod factory;
 pub mod macros;
+pub mod memory_factory;
 pub mod operations;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub mod platform_bridge;
@@ -46,8 +47,11 @@ pub mod verified;
 // Re-export key types for convenience
 pub use context::{AnyMemoryCapability, CapabilityGuardedProvider, MemoryCapabilityContext};
 pub use dynamic::DynamicMemoryCapability;
+// Deprecated factory types - use MemoryFactory instead
 #[cfg(any(feature = "std", feature = "alloc"))]
+#[allow(deprecated)]
 pub use factory::{CapabilityFactoryBuilder, CapabilityMemoryFactory};
+pub use memory_factory::MemoryFactory;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use platform_bridge::{
     PlatformAllocator, PlatformCapabilityBuilder, PlatformCapabilityProvider, PlatformMemoryProvider,

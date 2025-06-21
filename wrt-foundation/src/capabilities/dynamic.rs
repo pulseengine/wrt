@@ -207,7 +207,7 @@ impl MemoryCapability for DynamicMemoryCapability {
         // Create raw provider directly for internal use within the capability
         let provider = if size <= 65536 {
             // Create raw provider without capability wrapping (we are the capability!)
-            crate::safe_memory::NoStdProvider::<65536>::new()
+            crate::safe_memory::NoStdProvider::<65536>::default()
         } else {
             // For larger allocations, we'd need a different strategy
             return Err(Error::new(

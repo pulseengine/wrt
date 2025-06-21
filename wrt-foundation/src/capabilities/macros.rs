@@ -36,13 +36,10 @@
 #[cfg(any(feature = "std", feature = "alloc"))]
 macro_rules! safe_capability_alloc {
     ($capability_context:expr, $crate_id:expr, $size:expr) => {{
-        use $crate::capabilities::{CapabilityMemoryFactory, MemoryOperation};
+        use $crate::capabilities::{MemoryFactory, MemoryOperation};
 
-        // The capability_context should already be a CapabilityMemoryFactory
-        let factory = $capability_context;
-
-        // Create a capability-aware provider that implements Provider trait
-        factory.create_capability_aware_provider::<$size>($crate_id)
+        // Use MemoryFactory instead of the old factory pattern
+        MemoryFactory::create_wrapped::<$size>($crate_id)
     }};
 }
 
@@ -57,7 +54,7 @@ macro_rules! safe_capability_alloc {
         // In no_std, ignore the context and create provider directly
         let _ = $capability_context;
         let _ = $crate_id;
-        Ok($crate::safe_memory::NoStdProvider::<$size>::new())
+        Ok($crate::safe_memory::NoStdProvider::<$size>::default())
     }};
 }
 
@@ -171,27 +168,33 @@ macro_rules! capability_wrap_provider {
 #[cfg(any(feature = "std", feature = "alloc"))]
 macro_rules! capability_context {
     (dynamic($crate_id:expr, $max_size:expr)) => {{
-        use $crate::capabilities::{CapabilityFactoryBuilder, MemoryCapabilityContext};
+        use $crate::capabilities::{MemoryCapabilityContext, DynamicMemoryCapability};
+        use $crate::verification::VerificationLevel;
 
-        CapabilityFactoryBuilder::new()
-            .with_dynamic_capability($crate_id, $max_size)
-            .map(|builder| builder.build())
+        // Create a simple context with dynamic capability for direct use with MemoryFactory
+        let mut context = MemoryCapabilityContext::new(VerificationLevel::Standard, false);
+        context.register_dynamic_capability($crate_id, $max_size)
+            .map(|_| context)
     }};
 
     (static($crate_id:expr, $size:expr)) => {{
-        use $crate::capabilities::{CapabilityFactoryBuilder, MemoryCapabilityContext};
+        use $crate::capabilities::{MemoryCapabilityContext};
+        use $crate::verification::VerificationLevel;
 
-        CapabilityFactoryBuilder::new()
-            .with_static_capability::<$size>($crate_id)
-            .map(|builder| builder.build())
+        // Create a simple context with static capability for direct use with MemoryFactory  
+        let mut context = MemoryCapabilityContext::new(VerificationLevel::Standard, false);
+        context.register_static_capability::<$size>($crate_id)
+            .map(|_| context)
     }};
 
     (verified($crate_id:expr, $size:expr, $proofs:expr)) => {{
-        use $crate::capabilities::{CapabilityFactoryBuilder, MemoryCapabilityContext};
+        use $crate::capabilities::{MemoryCapabilityContext};
+        use $crate::verification::VerificationLevel;
 
-        CapabilityFactoryBuilder::new()
-            .with_verified_capability::<$size>($crate_id, $proofs)
-            .map(|builder| builder.build())
+        // Create a simple context with verified capability for direct use with MemoryFactory
+        let mut context = MemoryCapabilityContext::new(VerificationLevel::Redundant, true);
+        context.register_verified_capability::<$size>($crate_id, $proofs)
+            .map(|_| context)
     }};
 }
 

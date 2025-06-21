@@ -507,7 +507,7 @@ mod tests {
         use crate::capabilities::{CapabilityFactoryBuilder, ProviderCapabilityExt};
         use crate::safe_memory::NoStdProvider;
 
-        let base_provider = NoStdProvider::<1024>::new();
+        let base_provider = NoStdProvider::<1024>::default();
         let factory = CapabilityFactoryBuilder::new()
             .with_dynamic_capability(CrateId::Foundation, 1024)
             .unwrap()

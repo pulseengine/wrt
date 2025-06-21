@@ -331,7 +331,7 @@ mod tests {
 
     #[test]
     fn test_capability_aware_provider_creation() {
-        let provider = NoStdProvider::<1024>::new();
+        let provider = NoStdProvider::<1024>::default();
         let capability = Box::new(DynamicMemoryCapability::new(
             1024,
             CrateId::Foundation,
@@ -345,7 +345,7 @@ mod tests {
 
     #[test]
     fn test_capability_verification_on_access() {
-        let provider = NoStdProvider::<1024>::new();
+        let provider = NoStdProvider::<1024>::default();
 
         // Create a capability that only allows read access
         let mut capability =
@@ -364,7 +364,7 @@ mod tests {
 
     #[test]
     fn test_capability_verification_failure() {
-        let provider = NoStdProvider::<100>::new(); // Small provider
+        let provider = NoStdProvider::<100>::default(); // Small provider
         let capability = Box::new(DynamicMemoryCapability::new(
             1024, // Capability allows more than provider capacity
             CrateId::Foundation,
@@ -380,7 +380,7 @@ mod tests {
 
     #[test]
     fn test_verified_provider_creation() {
-        let provider = NoStdProvider::<1024>::new();
+        let provider = NoStdProvider::<1024>::default();
         let capability = Box::new(DynamicMemoryCapability::new(
             1024,
             CrateId::Foundation,
@@ -394,7 +394,7 @@ mod tests {
 
     #[test]
     fn test_verified_provider_creation_failure() {
-        let provider = NoStdProvider::<1024>::new();
+        let provider = NoStdProvider::<1024>::default();
         let capability = Box::new(DynamicMemoryCapability::new(
             512, // Capability only allows 512 bytes
             CrateId::Foundation,

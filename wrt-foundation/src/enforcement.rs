@@ -13,7 +13,7 @@ use crate::{
 };
 
 use crate::{
-    capabilities::{MemoryCapabilityContext, context::CapabilityGuardedProvider},
+    capabilities::{MemoryCapabilityContext, CapabilityGuardedProvider},
 };
 
 /// Sealed trait to prevent external implementation
@@ -42,6 +42,7 @@ impl MemoryManaged for MemoryCapabilityContext {
         context: &MemoryCapabilityContext,
         crate_id: CrateId,
     ) -> Result<Self::Guard<N>> {
+        #[allow(deprecated)]
         context.create_provider::<N>(crate_id)
     }
 }
@@ -75,6 +76,7 @@ impl<const SIZE: usize, const CRATE: usize> EnforcedAllocation<SIZE, CRATE> {
             ));
         }
 
+        #[allow(deprecated)]
         context.create_provider::<SIZE>(crate_id)
     }
 }
@@ -93,6 +95,7 @@ impl<const SIZE: usize> AllocationToken<SIZE> {
 
     /// Use the token to allocate memory
     pub fn allocate(self, context: &MemoryCapabilityContext) -> Result<CapabilityGuardedProvider<SIZE>> {
+        #[allow(deprecated)]
         context.create_provider::<SIZE>(self.crate_id)
     }
 }

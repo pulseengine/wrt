@@ -2813,6 +2813,14 @@ where
         // Cannot provide mutable references to serialized data
         None
     }
+    
+    /// Returns the last element of the vector, or None if it is empty.
+    pub fn last(&self) -> WrtResult<Option<T>> {
+        if self.is_empty() {
+            return Ok(None);
+        }
+        self.get(self.length - 1).map(Some)
+    }
 }
 
 pub struct BoundedVecIterator<'a, T, const N_ELEMENTS: usize, P>
@@ -4040,7 +4048,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_bounded_vec_push_capacity() {
         const CAPACITY: usize = 8;
-        let provider = NoStdProvider::<1024>::new();
+        let provider = NoStdProvider::<1024>::default();
         let mut vec: BoundedVec<u32, CAPACITY, _> = BoundedVec::new(provider).unwrap();
         
         // Fill to capacity - 1
@@ -4064,7 +4072,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_bounded_vec_pop_state() {
         const CAPACITY: usize = 4;
-        let provider = NoStdProvider::<1024>::new();
+        let provider = NoStdProvider::<1024>::default();
         let mut vec: BoundedVec<u32, CAPACITY, _> = BoundedVec::new(provider).unwrap();
         
         // Initially empty
@@ -4095,7 +4103,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_bounded_vec_indexing() {
         const CAPACITY: usize = 8;
-        let provider = NoStdProvider::<1024>::new();
+        let provider = NoStdProvider::<1024>::default();
         let mut vec: BoundedVec<u32, CAPACITY, _> = BoundedVec::new(provider).unwrap();
         
         // Add some items
@@ -4124,7 +4132,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_bounded_string_utf8() {
         const CAPACITY: usize = 64;
-        let provider = NoStdProvider::<1024>::new();
+        let provider = NoStdProvider::<1024>::default();
         
         // Valid UTF-8 strings should always work
         let test_str = "Hello, 世界!";
@@ -4161,7 +4169,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_memory_provider_bounds() {
         const PROVIDER_SIZE: usize = 1024;
-        let provider = NoStdProvider::<PROVIDER_SIZE>::new();
+        let provider = NoStdProvider::<PROVIDER_SIZE>::default();
         
         let offset: usize = kani::any_where(|&o| o < PROVIDER_SIZE);
         let len: usize = kani::any_where(|&l| l <= PROVIDER_SIZE - offset);

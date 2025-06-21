@@ -15,7 +15,7 @@ default = []
 # Core allocation strategies (mutually exclusive)
 dynamic-allocation = []
 static-allocation = ["no-runtime-allocation"]
-verified-static-allocation = ["static-allocation", "formal-verification-required"]
+verified-static-allocation = ["static-allocation", "formal-verification-required", "compile-time-memory-layout"]
 
 # Capability features (composable)
 compile-time-capacity-limits = []
@@ -61,12 +61,12 @@ qm = ["dynamic-allocation"]
 asil-a = ["runtime-bounds-checking", "basic-monitoring"]
 asil-b = ["runtime-bounds-checking", "basic-monitoring", "bounded-collections"]
 asil-c = ["static-allocation", "runtime-bounds-checking", "basic-monitoring", "memory-budget-enforcement", "component-isolation"]
-asil-d = ["verified-static-allocation", "runtime-bounds-checking", "basic-monitoring", "memory-budget-enforcement", "memory-isolation", "component-isolation", "compile-time-memory-layout", "mathematical-proofs", "redundant-safety-checks", "hardware-isolation", "formal-verification-required"]
+asil-d = ["verified-static-allocation", "mathematical-proofs", "redundant-safety-checks", "hardware-isolation"]
 
 # Legacy compatibility features
 std = ["wrt-sync/std", "dynamic-allocation"]
 no_std = []
-alloc = ["no_std"]
+alloc = ["no_std", "dynamic-allocation"]
 safety-asil-b = ["asil-b"]
 safety-asil-c = ["asil-c"]
 safety-asil-d = ["asil-d"]
