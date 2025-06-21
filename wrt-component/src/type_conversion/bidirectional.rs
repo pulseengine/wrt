@@ -11,11 +11,11 @@
 //!     format_to_runtime_extern_type, runtime_to_format_extern_type
 //! };
 //! use wrt_format::component::FormatValType;
-//! use wrt_format::component::WrtExternType as FormatWrtExternType;
+//! use wrt_format::component::WrtExternType as FormatExternType;
 //! use wrt_foundation::WrtExternType as RuntimeWrtExternType;
 //!
 //! // Convert a format function type to a runtime function type
-//! let format_func = FormatWrtExternType::Function {
+//! let format_func = FormatExternType::Function {
 //!     params: vec![("arg".to_string(), FormatValType<ComponentProvider>::S32)],
 //!     results: vec![FormatValType<ComponentProvider>::S32],
 //! };
@@ -398,7 +398,7 @@ pub fn types_valtype_to_format_valtype(types_val_type: &WrtTypesValType) -> Form
     }
 }
 
-/// Convert FormatWrtExternType to TypesWrtExternType
+/// Convert FormatExternType to TypesWrtExternType
 ///
 /// Comprehensive conversion from format external type to runtime external type.
 ///
@@ -415,10 +415,10 @@ pub fn types_valtype_to_format_valtype(types_val_type: &WrtTypesValType) -> Form
 ///
 /// ```
 /// use wrt_component::type_conversion::bidirectional::format_to_runtime_extern_type;
-/// use wrt_format::component::WrtExternType as FormatWrtExternType;
+/// use wrt_format::component::WrtExternType as FormatExternType;
 /// use wrt_format::component::ValType as FormatValType<ComponentProvider>;
 ///
-/// let format_func = FormatWrtExternType::Function {
+/// let format_func = FormatExternType::Function {
 ///     params: vec![("param".to_string(), FormatValType<ComponentProvider>::S32)],
 ///     results: vec![FormatValType<ComponentProvider>::S32],
 /// };
@@ -426,10 +426,10 @@ pub fn types_valtype_to_format_valtype(types_val_type: &WrtTypesValType) -> Form
 /// let runtime_func = format_to_runtime_extern_type(&format_func).unwrap();
 /// ```
 pub fn format_to_runtime_extern_type(
-    format_extern_type: &FormatWrtExternType,
+    format_extern_type: &FormatExternType,
 ) -> Result<TypesWrtExternType> {
     match format_extern_type {
-        FormatWrtExternType::Function { params, results } => {
+        FormatExternType::Function { params, results } => {
             // Convert all parameter types to core ValueType
             let converted_params = params
                 .iter()
@@ -444,7 +444,7 @@ pub fn format_to_runtime_extern_type(
 
             Ok(TypesWrtExternType::Function(TypesFuncType::new(converted_params, converted_results)))
         }
-        FormatWrtExternType::Value(val_type) => {
+        FormatExternType::Value(val_type) => {
             // Convert to most appropriate TypesWrtExternType - likely Function with no
             // params/results Could be mapped as constant global in the future
             let value_type = format_val_type_to_value_type(val_type).unwrap_or(ValueType::I32);
@@ -453,12 +453,12 @@ pub fn format_to_runtime_extern_type(
                 mutable: false,
             }))
         }
-        FormatWrtExternType::Type(type_idx) => {
+        FormatExternType::Type(type_idx) => {
             // Type reference - this would need context from the component
             // For now, provide a sensible default
             Ok(TypesWrtExternType::Function(TypesFuncType::new(vec![], vec![])))
         }
-        FormatWrtExternType::Instance { exports } => {
+        FormatExternType::Instance { exports } => {
             // Convert each export to a TypesWrtExternType
             let converted_exports: core::result::Result<Vec<(String, TypesWrtExternType)>> = exports
                 .iter()
@@ -469,7 +469,7 @@ pub fn format_to_runtime_extern_type(
 
             Ok(TypesWrtExternType::Instance(InstanceType { exports: converted_exports? }))
         }
-        FormatWrtExternType::Component { imports, exports } => {
+        FormatExternType::Component { imports, exports } => {
             // Convert imports to TypesWrtExternType
             let converted_imports: core::result::Result<Vec<(String, String, TypesWrtExternType)>> = imports
                 .iter()
@@ -494,7 +494,7 @@ pub fn format_to_runtime_extern_type(
     }
 }
 
-/// Convert TypesWrtExternType to FormatWrtExternType
+/// Convert TypesWrtExternType to FormatExternType
 ///
 /// Comprehensive conversion from runtime external type to format external type.
 ///
@@ -524,7 +524,7 @@ pub fn format_to_runtime_extern_type(
 /// ```
 pub fn runtime_to_format_extern_type(
     types_extern_type: &TypesWrtExternType,
-) -> Result<FormatWrtExternType> {
+) -> Result<FormatExternType> {
     match types_extern_type {
         WrtExternType::Function(func_type) => {
             // Convert parameter types
@@ -551,7 +551,7 @@ pub fn runtime_to_format_extern_type(
                 }
             }
 
-            Ok(FormatWrtExternType::Function { params: param_types, results: result_types })
+            Ok(FormatExternType::Function { params: param_types, results: result_types })
         }
         WrtExternType::Table(table_type) => Err(Error::new(
             ErrorCategory::System,
@@ -569,8 +569,8 @@ pub fn runtime_to_format_extern_type(
             "Global WrtExternType not supported in wrt_format::component".to_string(),
         )),
         WrtExternType::Instance(instance_type) => {
-            // Convert exports to FormatWrtExternType
-            let exports_format: core::result::Result<Vec<(String, FormatWrtExternType)>> = instance_type
+            // Convert exports to FormatExternType
+            let exports_format: core::result::Result<Vec<(String, FormatExternType)>> = instance_type
                 .exports
                 .iter()
                 .map(|(name, ext_type)| {
@@ -578,11 +578,11 @@ pub fn runtime_to_format_extern_type(
                 })
                 .collect();
 
-            Ok(FormatWrtExternType::Instance { exports: exports_format? })
+            Ok(FormatExternType::Instance { exports: exports_format? })
         }
         WrtExternType::Component(component_type) => {
-            // Convert imports to FormatWrtExternType
-            let imports_format: core::result::Result<Vec<(String, String, FormatWrtExternType)>> = component_type
+            // Convert imports to FormatExternType
+            let imports_format: core::result::Result<Vec<(String, String, FormatExternType)>> = component_type
                 .imports
                 .iter()
                 .map(|(ns, name, ext_type)| {
@@ -590,8 +590,8 @@ pub fn runtime_to_format_extern_type(
                 })
                 .collect();
 
-            // Convert exports to FormatWrtExternType
-            let exports_format: core::result::Result<Vec<(String, FormatWrtExternType)>> = component_type
+            // Convert exports to FormatExternType
+            let exports_format: core::result::Result<Vec<(String, FormatExternType)>> = component_type
                 .exports
                 .iter()
                 .map(|(name, ext_type)| {
@@ -599,10 +599,10 @@ pub fn runtime_to_format_extern_type(
                 })
                 .collect();
 
-            Ok(FormatWrtExternType::Component { imports: imports_format?, exports: exports_format? })
+            Ok(FormatExternType::Component { imports: imports_format?, exports: exports_format? })
         }
         WrtExternType::Resource(resource_type) => {
-            // Note: Since FormatWrtExternType doesn't have a direct Resource variant,
+            // Note: Since FormatExternType doesn't have a direct Resource variant,
             // we map it to a Value type with the appropriate representation
             let val_type = match resource_type.rep_type {
                 ValueType::I32 => FormatValType<ComponentProvider>::Own(0), // Use type index 0 as default
@@ -610,7 +610,7 @@ pub fn runtime_to_format_extern_type(
                 _ => FormatValType<ComponentProvider>::Own(0),              // Default to type index 0
             };
 
-            Ok(FormatWrtExternType::Value(convert_types_to_format_valtype(&val_type)))
+            Ok(FormatExternType::Value(convert_types_to_format_valtype(&val_type)))
         }
     }
 }
@@ -698,14 +698,14 @@ pub trait IntoFormatType<T> {
     fn into_format_type(self) -> Result<T>;
 }
 
-impl IntoRuntimeType<TypesWrtExternType> for FormatWrtExternType {
+impl IntoRuntimeType<TypesWrtExternType> for FormatExternType {
     fn into_runtime_type(self) -> Result<TypesWrtExternType> {
         format_to_runtime_extern_type(&self)
     }
 }
 
-impl IntoFormatType<FormatWrtExternType> for TypesWrtExternType {
-    fn into_format_type(self) -> Result<FormatWrtExternType> {
+impl IntoFormatType<FormatExternType> for TypesWrtExternType {
+    fn into_format_type(self) -> Result<FormatExternType> {
         runtime_to_format_extern_type(&self)
     }
 }
@@ -959,7 +959,7 @@ pub fn complete_types_to_format_extern_type(
                 }
             }
 
-            Ok(FormatWrtExternType::Function { params: param_types, results: result_types })
+            Ok(FormatExternType::Function { params: param_types, results: result_types })
         }
         wrt_foundation::WrtExternType::Table(table_type) => Err(Error::new(
             ErrorCategory::Type,
@@ -979,11 +979,11 @@ pub fn complete_types_to_format_extern_type(
         wrt_foundation::WrtExternType::Resource(resource_type) => {
             // For resources, we convert to a Type reference for now
             // In the future, this could be expanded to include full resource types
-            Ok(FormatWrtExternType::Type(0))
+            Ok(FormatExternType::Type(0))
         }
         wrt_foundation::WrtExternType::Instance(instance_type) => {
             // Convert instance exports
-            let exports_result: core::result::Result<Vec<(String, FormatWrtExternType)>> = instance_type
+            let exports_result: core::result::Result<Vec<(String, FormatExternType)>> = instance_type
                 .exports
                 .iter()
                 .map(|(name, extern_type)| {
@@ -992,11 +992,11 @@ pub fn complete_types_to_format_extern_type(
                 })
                 .collect();
 
-            Ok(FormatWrtExternType::Instance { exports: exports_result? })
+            Ok(FormatExternType::Instance { exports: exports_result? })
         }
         wrt_foundation::WrtExternType::Component(component_type) => {
             // Convert component imports
-            let imports_result: core::result::Result<Vec<(String, String, FormatWrtExternType)>> = component_type
+            let imports_result: core::result::Result<Vec<(String, String, FormatExternType)>> = component_type
                 .imports
                 .iter()
                 .map(|(namespace, name, extern_type)| {
@@ -1006,7 +1006,7 @@ pub fn complete_types_to_format_extern_type(
                 .collect();
 
             // Convert component exports
-            let exports_result: core::result::Result<Vec<(String, FormatWrtExternType)>> = component_type
+            let exports_result: core::result::Result<Vec<(String, FormatExternType)>> = component_type
                 .exports
                 .iter()
                 .map(|(name, extern_type)| {
@@ -1015,7 +1015,7 @@ pub fn complete_types_to_format_extern_type(
                 })
                 .collect();
 
-            Ok(FormatWrtExternType::Component { imports: imports_result?, exports: exports_result? })
+            Ok(FormatExternType::Component { imports: imports_result?, exports: exports_result? })
         }
     }
 }
@@ -1037,7 +1037,7 @@ pub fn complete_format_to_types_extern_type(
     format_extern_type: &wrt_format::component::WrtExternType,
 ) -> Result<wrt_foundation::WrtExternType> {
     match format_extern_type {
-        FormatWrtExternType::Function { params, results } => {
+        FormatExternType::Function { params, results } => {
             // Convert parameter types - create an empty vector and then convert and add
             // each parameter
             let mut param_types = Vec::new();
@@ -1086,7 +1086,7 @@ pub fn complete_format_to_types_extern_type(
                 result_types,
             )))
         }
-        FormatWrtExternType::Value(format_val_type) => {
+        FormatExternType::Value(format_val_type) => {
             // Value types typically map to globals in the runtime
             // First convert to WrtTypesValType, then to ValueType if needed
             let types_val_type = convert_format_to_types_valtype(format_val_type);
@@ -1108,7 +1108,7 @@ pub fn complete_format_to_types_extern_type(
                 mutable: false, // Values are typically immutable
             }))
         }
-        FormatWrtExternType::Type(type_idx) => {
+        FormatExternType::Type(type_idx) => {
             // Type references typically map to resources for now
             // In the future, this could be expanded to include more complex type mappings
             Ok(wrt_foundation::WrtExternType::Resource(wrt_foundation::ResourceType {
@@ -1116,7 +1116,7 @@ pub fn complete_format_to_types_extern_type(
                 rep_type: wrt_foundation::ValueType::I32, // Default representation
             }))
         }
-        FormatWrtExternType::Instance { exports } => {
+        FormatExternType::Instance { exports } => {
             // Convert instance exports
             let export_types: core::result::Result<Vec<(String, wrt_foundation::WrtExternType)>> = exports
                 .iter()
@@ -1130,7 +1130,7 @@ pub fn complete_format_to_types_extern_type(
                 exports: export_types?,
             }))
         }
-        FormatWrtExternType::Component { imports, exports } => {
+        FormatExternType::Component { imports, exports } => {
             // Convert component imports
             let import_types: core::result::Result<Vec<(String, String, wrt_foundation::WrtExternType)>> = imports
                 .iter()

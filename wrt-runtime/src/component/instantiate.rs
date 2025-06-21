@@ -14,12 +14,16 @@ use wrt_format::module::Module;
 use std::collections::HashMap;
 #[cfg(feature = "std")]
 use std::string::String;
-#[cfg(not(feature = "std"))]
-use wrt_foundation::BoundedMap as HashMap;
+
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::string::String;
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{BoundedMap, DefaultMemoryProvider};
+
+#[cfg(not(feature = "std"))]
+type HashMap<K, V> = BoundedMap<K, V, 256, DefaultMemoryProvider>;
 
 /// Result of component instantiation
 pub struct InstantiationResult {
@@ -30,6 +34,7 @@ pub struct InstantiationResult {
 }
 
 /// An exported item from an instance
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExportedItem {
     /// Core function
     CoreFunction(u32),
@@ -45,6 +50,83 @@ pub enum ExportedItem {
     Value(u32),
     /// Nested instance
     Instance(u32),
+}
+
+impl Default for ExportedItem {
+    fn default() -> Self {
+        ExportedItem::CoreFunction(0)
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for ExportedItem {
+    fn to_bytes(&self) -> wrt_foundation::Result<wrt_foundation::WrtVec<u8, 64, wrt_foundation::DefaultMemoryProvider>> {
+        let discriminant = match self {
+            ExportedItem::CoreFunction(_) => 0u8,
+            ExportedItem::CoreTable(_) => 1u8,
+            ExportedItem::CoreMemory(_) => 2u8,
+            ExportedItem::CoreGlobal(_) => 3u8,
+            ExportedItem::Function(_) => 4u8,
+            ExportedItem::Value(_) => 5u8,
+            ExportedItem::Instance(_) => 6u8,
+        };
+        let value = match self {
+            ExportedItem::CoreFunction(v) | ExportedItem::CoreTable(v) | ExportedItem::CoreMemory(v) | 
+            ExportedItem::CoreGlobal(v) | ExportedItem::Function(v) | ExportedItem::Value(v) | 
+            ExportedItem::Instance(v) => *v,
+        };
+        let mut bytes = wrt_foundation::WrtVec::new();
+        bytes.push(discriminant)?;
+        bytes.extend_from_slice(&value.to_le_bytes())?;
+        Ok(bytes)
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for ExportedItem {
+    fn from_bytes(data: &[u8]) -> wrt_foundation::Result<Self> {
+        if data.len() < 5 {
+            return Err(wrt_foundation::Error::new(
+                wrt_foundation::ErrorCategory::Parse,
+                wrt_foundation::codes::PARSE_ERROR,
+                "Insufficient data for ExportedItem"
+            ));
+        }
+        let discriminant = data[0];
+        let value = u32::from_le_bytes([data[1], data[2], data[3], data[4]]);
+        match discriminant {
+            0 => Ok(ExportedItem::CoreFunction(value)),
+            1 => Ok(ExportedItem::CoreTable(value)),
+            2 => Ok(ExportedItem::CoreMemory(value)),
+            3 => Ok(ExportedItem::CoreGlobal(value)),
+            4 => Ok(ExportedItem::Function(value)),
+            5 => Ok(ExportedItem::Value(value)),
+            6 => Ok(ExportedItem::Instance(value)),
+            _ => Err(wrt_foundation::Error::new(
+                wrt_foundation::ErrorCategory::Parse,
+                wrt_foundation::codes::PARSE_ERROR,
+                "Invalid ExportedItem discriminant"
+            )),
+        }
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for ExportedItem {
+    fn checksum(&self) -> u32 {
+        let discriminant = match self {
+            ExportedItem::CoreFunction(_) => 0u32,
+            ExportedItem::CoreTable(_) => 1u32,
+            ExportedItem::CoreMemory(_) => 2u32,
+            ExportedItem::CoreGlobal(_) => 3u32,
+            ExportedItem::Function(_) => 4u32,
+            ExportedItem::Value(_) => 5u32,
+            ExportedItem::Instance(_) => 6u32,
+        };
+        let value = match self {
+            ExportedItem::CoreFunction(v) | ExportedItem::CoreTable(v) | ExportedItem::CoreMemory(v) | 
+            ExportedItem::CoreGlobal(v) | ExportedItem::Function(v) | ExportedItem::Value(v) | 
+            ExportedItem::Instance(v) => *v,
+        };
+        discriminant.wrapping_mul(31).wrapping_add(value)
+    }
 }
 
 /// Context for component instantiation
