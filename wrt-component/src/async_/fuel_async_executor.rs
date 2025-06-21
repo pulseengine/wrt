@@ -158,6 +158,12 @@ pub struct ExecutionContext {
     pub error_state: Option<Error>,
     /// ASIL execution mode for this context
     pub asil_mode: ASILExecutionMode,
+    /// Current function index being executed
+    pub current_function_index: u32,
+    /// Function parameters for execution
+    pub function_params: Vec<wrt_foundation::Value>,
+    /// Resource being waited for (if any)
+    pub waiting_for_resource: Option<u64>,
 }
 
 /// Trait for execution state that can be suspended and resumed
@@ -179,10 +185,12 @@ pub trait ExecutionState: core::fmt::Debug + Send + Sync {
 pub struct YieldPoint {
     /// Instruction pointer or yield location
     pub instruction_pointer: u32,
-    /// Stack frame information
-    pub stack_frame: Vec<ComponentValue>,
+    /// Operand stack at yield point
+    pub stack: Vec<wrt_foundation::Value>,
     /// Local variables at yield point
-    pub locals: Vec<ComponentValue>,
+    pub locals: Vec<wrt_foundation::Value>,
+    /// Call stack at yield point
+    pub call_stack: Vec<u32>,
     /// Fuel consumed up to this yield point
     pub fuel_at_yield: u64,
     /// Timestamp of yield (for deterministic replay)
@@ -253,6 +261,9 @@ impl ExecutionContext {
             last_yield_point: None,
             error_state: None,
             asil_mode,
+            current_function_index: 0,
+            function_params: Vec::new(),
+            waiting_for_resource: None,
         }
     }
 
@@ -418,6 +429,36 @@ impl ExecutionContext {
         // In real implementation, would check memory boundaries
         // For now, always succeed
         Ok(())
+    }
+    
+    /// Save a yield point for later resumption
+    pub fn save_yield_point(&mut self, yield_point: YieldPoint) -> Result<(), Error> {
+        self.last_yield_point = Some(yield_point);
+        Ok(())
+    }
+    
+    /// Get deterministic timestamp for ASIL compliance
+    pub fn get_deterministic_timestamp(&self) -> u64 {
+        // Return fuel consumed as deterministic timestamp
+        self.context_fuel_consumed.load(Ordering::Acquire)
+    }
+    
+    /// Create a yield point for suspension
+    pub fn create_yield_point(
+        &mut self,
+        ip: u32,
+        stack: Vec<wrt_foundation::Value>,
+        locals: Vec<wrt_foundation::Value>,
+    ) -> Result<(), Error> {
+        let yield_point = YieldPoint {
+            instruction_pointer: ip,
+            stack,
+            locals,
+            call_stack: vec![], // Empty for now
+            fuel_at_yield: self.context_fuel_consumed.load(Ordering::Acquire),
+            yield_timestamp: self.get_deterministic_timestamp(),
+        };
+        self.save_yield_point(yield_point)
     }
 }
 
@@ -1684,66 +1725,195 @@ impl FuelAsyncExecutor {
             ASILExecutionMode::A { .. } => 100, // Relaxed execution for ASIL-A
         };
         
-        // Simulate WebAssembly execution step
-        // In a real implementation, this would:
-        // 1. Get the function to execute from component_instance
-        // 2. Execute instructions using engine.execute_step()
-        // 3. Handle fuel exhaustion and yield points
-        // 4. Return execution results
-        
-        // For now, simulate instruction execution with proper fuel consumption
-        let mut instructions_executed = 0;
+        // Real WebAssembly execution step
         let initial_fuel = engine.remaining_fuel().unwrap_or(0);
         
-        // Simulate executing instructions until fuel runs low or max instructions reached
-        while instructions_executed < max_instructions_per_step {
-            // Check remaining fuel
-            if let Some(current_fuel) = engine.remaining_fuel() {
-                if current_fuel < 5 { // Reserve some fuel for cleanup
-                    break;
-                }
-            }
-            
-            // Simulate different instruction types with proper fuel consumption
-            let instruction_type = match instructions_executed % 4 {
-                0 => wrt_runtime::stackless::engine::InstructionFuelType::LocalAccess,
-                1 => wrt_runtime::stackless::engine::InstructionFuelType::SimpleArithmetic,
-                2 => wrt_runtime::stackless::engine::InstructionFuelType::Comparison,
-                _ => wrt_runtime::stackless::engine::InstructionFuelType::SimpleControl,
-            };
-            
-            // This calls the actual fuel consumption in the engine
-            match engine.consume_instruction_fuel(instruction_type) {
-                Ok(()) => {
-                    instructions_executed += 1;
-                    // Simulate actual instruction execution here
-                },
-                Err(_) => {
-                    // Fuel exhausted during instruction execution
-                    break;
-                }
-            }
-        }
+        // Get function to execute from execution context
+        let execution_result = if let Some(yield_point) = &task.execution_context.last_yield_point {
+            // Resume from yield point
+            self.resume_from_yield_point(&mut engine, task, yield_point, max_instructions_per_step)
+        } else {
+            // Start fresh execution
+            self.execute_fresh_function(&mut engine, task, component_instance, max_instructions_per_step)
+        };
         
         // Update task fuel consumption based on what the engine consumed
         let final_fuel = engine.remaining_fuel().unwrap_or(0);
         let fuel_consumed_this_step = initial_fuel.saturating_sub(final_fuel);
         
-        // Update task fuel consumption
+        // Update task fuel tracking
         task.fuel_consumed.fetch_add(fuel_consumed_this_step, Ordering::AcqRel);
         task.execution_context.context_fuel_consumed.fetch_add(fuel_consumed_this_step, Ordering::AcqRel);
         
-        // Determine execution result
-        if instructions_executed == max_instructions_per_step {
-            // Completed execution step successfully
-            Ok(ExecutionStepResult::Completed(vec![42u8; 4])) // Mock result data
-        } else if fuel_consumed_this_step > 0 {
-            // Yielded due to fuel exhaustion
-            Ok(ExecutionStepResult::Yielded)
-        } else {
-            // No progress made - likely an error condition
-            Ok(ExecutionStepResult::Waiting)
+        execution_result
+    }
+    
+    /// Execute fresh function from the beginning
+    fn execute_fresh_function(
+        &mut self,
+        engine: &mut wrt_runtime::stackless::engine::StacklessEngine,
+        task: &mut FuelAsyncTask,
+        component_instance: &Arc<ComponentInstance>,
+        max_instructions: u32,
+    ) -> Result<ExecutionStepResult, Error> {
+        // Get the function to execute from the task's execution context
+        let function_index = task.execution_context.current_function_index;
+        
+        // Get the module instance from the component
+        let module_instance = match component_instance.get_core_module_instance(0) {
+            Some(instance) => instance,
+            None => {
+                return Err(Error::new(
+                    ErrorCategory::Component,
+                    codes::COMPONENT_NOT_FOUND,
+                    "No core module instance found in component",
+                ));
+            }
+        };
+        
+        // Get function parameters from execution context
+        let params = &task.execution_context.function_params;
+        
+        // Execute the function using the StacklessEngine
+        match engine.execute_function_step(
+            module_instance.as_ref(),
+            function_index,
+            params,
+            max_instructions,
+        ) {
+            Ok(wrt_runtime::stackless::engine::ExecutionResult::Completed(values)) => {
+                // Function completed successfully
+                let result_bytes = self.serialize_values(&values)?;
+                Ok(ExecutionStepResult::Completed(result_bytes))
+            },
+            Ok(wrt_runtime::stackless::engine::ExecutionResult::Yielded(yield_info)) => {
+                // Function yielded - save state
+                task.execution_context.save_yield_point(YieldPoint {
+                    instruction_pointer: yield_info.instruction_pointer,
+                    stack: yield_info.operand_stack.clone(),
+                    locals: yield_info.locals.clone(),
+                    call_stack: yield_info.call_stack.clone(),
+                })?;
+                Ok(ExecutionStepResult::Yielded)
+            },
+            Ok(wrt_runtime::stackless::engine::ExecutionResult::Waiting(resource_id)) => {
+                // Function is waiting for external resource
+                task.execution_context.waiting_for_resource = Some(resource_id);
+                Ok(ExecutionStepResult::Waiting)
+            },
+            Ok(wrt_runtime::stackless::engine::ExecutionResult::FuelExhausted) => {
+                // Engine ran out of fuel - yield and continue later
+                Ok(ExecutionStepResult::Yielded)
+            },
+            Err(e) => {
+                // Execution error
+                Err(Error::new(
+                    ErrorCategory::Runtime,
+                    codes::EXECUTION_ERROR,
+                    format!("WebAssembly execution failed: {}", e.message()),
+                ))
+            }
         }
+    }
+    
+    /// Resume execution from a yield point
+    fn resume_from_yield_point(
+        &mut self,
+        engine: &mut wrt_runtime::stackless::engine::StacklessEngine,
+        task: &mut FuelAsyncTask,
+        yield_point: &YieldPoint,
+        max_instructions: u32,
+    ) -> Result<ExecutionStepResult, Error> {
+        // Restore engine state from yield point
+        engine.restore_state(wrt_runtime::stackless::engine::EngineState {
+            instruction_pointer: yield_point.instruction_pointer,
+            operand_stack: yield_point.stack.clone(),
+            locals: yield_point.locals.clone(),
+            call_stack: yield_point.call_stack.clone(),
+        })?;
+        
+        // Continue execution from where we left off
+        match engine.continue_execution(max_instructions) {
+            Ok(wrt_runtime::stackless::engine::ExecutionResult::Completed(values)) => {
+                // Function completed - clear yield point
+                task.execution_context.last_yield_point = None;
+                let result_bytes = self.serialize_values(&values)?;
+                Ok(ExecutionStepResult::Completed(result_bytes))
+            },
+            Ok(wrt_runtime::stackless::engine::ExecutionResult::Yielded(yield_info)) => {
+                // Yielded again - update yield point
+                task.execution_context.save_yield_point(YieldPoint {
+                    instruction_pointer: yield_info.instruction_pointer,
+                    stack: yield_info.operand_stack.clone(),
+                    locals: yield_info.locals.clone(),
+                    call_stack: yield_info.call_stack.clone(),
+                })?;
+                Ok(ExecutionStepResult::Yielded)
+            },
+            Ok(wrt_runtime::stackless::engine::ExecutionResult::Waiting(resource_id)) => {
+                // Still waiting for resource
+                task.execution_context.waiting_for_resource = Some(resource_id);
+                Ok(ExecutionStepResult::Waiting)
+            },
+            Ok(wrt_runtime::stackless::engine::ExecutionResult::FuelExhausted) => {
+                // Fuel exhausted - yield
+                Ok(ExecutionStepResult::Yielded)
+            },
+            Err(e) => {
+                // Execution error
+                Err(Error::new(
+                    ErrorCategory::Runtime,
+                    codes::EXECUTION_ERROR,
+                    format!("WebAssembly execution resume failed: {}", e.message()),
+                ))
+            }
+        }
+    }
+    
+    /// Serialize WebAssembly values to bytes
+    fn serialize_values(&self, values: &[wrt_foundation::Value]) -> Result<Vec<u8>, Error> {
+        let mut result = Vec::new();
+        
+        for value in values {
+            match value {
+                wrt_foundation::Value::I32(v) => {
+                    result.extend_from_slice(&v.to_le_bytes());
+                },
+                wrt_foundation::Value::I64(v) => {
+                    result.extend_from_slice(&v.to_le_bytes());
+                },
+                wrt_foundation::Value::F32(v) => {
+                    result.extend_from_slice(&v.to_bits().to_le_bytes());
+                },
+                wrt_foundation::Value::F64(v) => {
+                    result.extend_from_slice(&v.to_bits().to_le_bytes());
+                },
+                wrt_foundation::Value::FuncRef(opt_ref) => {
+                    match opt_ref {
+                        Some(func_ref) => {
+                            result.extend_from_slice(&[1u8]); // Non-null marker
+                            result.extend_from_slice(&func_ref.to_le_bytes());
+                        },
+                        None => {
+                            result.extend_from_slice(&[0u8]); // Null marker
+                        }
+                    }
+                },
+                wrt_foundation::Value::ExternRef(opt_ref) => {
+                    match opt_ref {
+                        Some(extern_ref) => {
+                            result.extend_from_slice(&[1u8]); // Non-null marker
+                            result.extend_from_slice(&extern_ref.to_le_bytes());
+                        },
+                        None => {
+                            result.extend_from_slice(&[0u8]); // Null marker
+                        }
+                    }
+                },
+            }
+        }
+        
+        Ok(result)
     }
 
     /// Get current execution state for debugging/monitoring
