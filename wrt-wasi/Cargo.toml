@@ -47,18 +47,17 @@ wasi-sockets = ["preview3-prep"]  # Future Preview3 feature
 component-model = []
 
 # Safety level presets using new capability-based features
+# wrt-wasi supports QM to ASIL-B (WASI system interfaces with bounded safety)
 qm = ["wrt-foundation/dynamic-allocation", "wrt-format/qm", "wrt-host/qm", "wrt-platform/qm"]
 asil-a = ["wrt-foundation/bounded-collections", "wrt-format/asil-a", "wrt-host/asil-a", "wrt-platform/asil-a"]
 asil-b = ["wrt-foundation/bounded-collections", "wrt-format/asil-b", "wrt-host/asil-b", "wrt-platform/asil-b"]
-asil-c = ["wrt-foundation/static-memory-safety", "wrt-format/asil-c", "wrt-host/asil-c", "wrt-platform/asil-c"]
-asil-d = ["wrt-foundation/asil-d", "wrt-format/asil-d", "wrt-host/asil-d", "wrt-platform/asil-d"]
+# Note: ASIL-C and ASIL-D are not supported for WASI system interfaces
+# WASI involves external system calls which cannot meet ASIL-C/D determinism requirements
 
 # Legacy compatibility 
 safe-memory = ["asil-b"]
 safety-asil-b = ["asil-b"]
-safety-asil-c = ["asil-c"]
-safety-asil-d = ["asil-d"]
-safety-critical = ["asil-c"]
+safety-critical = ["asil-b"]  # Maximum safety level for WASI
 
 # Development and testing features
 # (Add more features as needed)

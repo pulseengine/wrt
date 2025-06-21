@@ -62,26 +62,19 @@ wasi-random = ["wasi", "wrt-wasi/wasi-random"]
 component-model = ["wrt-execution", "wrt-component/component-model-all", "wrt-wasi/component-model"]
 
 # Safety level presets using capability-based features
+# wrtd with wrt-wasi supports QM to ASIL-B (daemon/service use cases)
 qm = ["wrt-foundation/dynamic-allocation", "wrt-logging/qm"]
 asil-a = ["wrt-foundation/bounded-collections", "wrt-logging/asil-a"]
 asil-b = ["wrt-foundation/bounded-collections", "wrt-logging/asil-b"]
-asil-c = ["wrt-foundation/static-memory-safety", "wrt-logging/asil-c"]
-asil-d = ["wrt-foundation/asil-d", "wrt-logging/asil-d"]
+# Note: ASIL-C and ASIL-D are not supported for wrtd+wrt-wasi configuration
+# Use the core 'wrt' crate for ASIL-C/D applications
 
 # Legacy compatibility features
 safe-memory = ["asil-b"]
 safety-asil-b = ["asil-b"]
-safety-asil-c = ["asil-c"]
-safety-asil-d = ["asil-d"]
 
-# Safety-critical features for ASIL-C compliance
-safety-asil-c-legacy = ["std", "wrt-foundation/wrt-allocator", "wrt/safety-asil-c"]
-
-# Panic handler for no_std builds - ASIL-D compliant by default
-enable-panic-handler = ["wrt-panic/default-panic-handler", "wrt-panic/asil-d", "dep:linked_list_allocator"]
-
-# ASIL-B panic handler (lower safety requirements)
-asil-b-panic = ["wrt-panic/default-panic-handler", "wrt-panic/asil-b", "dep:linked_list_allocator"]
+# Panic handler for no_std builds - ASIL-B compliant (highest level for wrtd)
+enable-panic-handler = ["wrt-panic/default-panic-handler", "wrt-panic/asil-b", "dep:linked_list_allocator"]
 
 # Development panic handler (enhanced debugging)
 dev-panic = ["wrt-panic/default-panic-handler", "wrt-panic/dev", "dep:linked_list_allocator"]
