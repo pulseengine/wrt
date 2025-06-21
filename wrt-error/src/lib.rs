@@ -64,7 +64,7 @@
 //! let memory_error = kinds::memory_access_error("Memory access out of bounds");
 //! ```
 
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)] // Rule 2
 #![deny(clippy::all)]
 #![deny(clippy::perf)]
@@ -79,6 +79,9 @@
 // Standard library support
 #[cfg(feature = "std")]
 extern crate std;
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
 
 /// Error codes for wrt
 pub mod codes;

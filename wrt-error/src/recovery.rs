@@ -392,6 +392,9 @@ macro_rules! recoverable {
 mod tests {
     use super::*;
     use crate::codes;
+    
+    #[cfg(not(feature = "std"))]
+    use alloc::string::ToString;
 
     #[test]
     fn test_error_recovery_manager() {
