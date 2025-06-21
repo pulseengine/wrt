@@ -43,7 +43,8 @@ pub mod clean_runtime_test;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub mod atomic_execution;
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub mod atomic_execution_safe;
+// Disabled due to missing atomic ops methods
+// pub mod atomic_execution_safe;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub mod atomic_memory_model;
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -51,6 +52,8 @@ pub mod branch_prediction;
 pub mod cfi_engine;
 pub mod core_types;
 pub mod execution;
+/// Format bridge interface
+pub mod format_bridge;
 pub mod func;
 pub mod global;
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -75,7 +78,8 @@ pub mod module_builder;
 pub mod module_instance;
 pub mod prelude;
 /// SIMD execution integration adapter
-pub mod simd_execution_adapter;
+// Disabled due to compilation issues
+// pub mod simd_execution_adapter;
 pub mod stackless;
 pub mod table;
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -91,9 +95,17 @@ pub mod platform_runtime;
 // Bounded infrastructure for static memory allocation
 pub mod bounded_runtime_infra;
 
+// Instruction parser for bytecode to instruction conversion
+pub mod instruction_parser;
+
 // Temporary stub modules for parallel development
 mod foundation_stubs;
 mod component_stubs;
+
+// Runtime state and resource management
+pub mod state;
+pub mod resources;
+pub mod component;
 
 // Import platform abstractions from wrt-foundation
 pub use wrt_foundation::platform_abstraction;

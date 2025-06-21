@@ -14,7 +14,7 @@ use wrt_foundation::{
     BoundedString, BoundedVec, NoStdProvider,
     prelude::*,
     budget_aware_provider::CrateId,
-    capabilities::{CapabilityAwareProvider, factory::CapabilityMemoryFactory},
+    capabilities::{CapabilityAwareProvider, MemoryFactory},
     capability_context, safe_capability_alloc
 };
 use wrt_error::{Error, Result};

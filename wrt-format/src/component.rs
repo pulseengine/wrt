@@ -178,7 +178,7 @@ pub struct CoreInstance {
 impl Validatable for CoreInstance {
     fn validate(&self) -> Result<()> {
         match &self.instance_expr {
-            CoreInstanceExpr::Instantiate { module_idx, args } => {
+            CoreInstanceExpr::ModuleReference { module_idx, arg_refs } => {
                 // Basic validation: module_idx should be reasonable
                 if *module_idx > 10000 {
                     // Arbitrary reasonable limit
@@ -188,11 +188,11 @@ impl Validatable for CoreInstance {
                     ));
                 }
 
-                // Validate args
-                for arg in args {
-                    if arg.name.is_empty() {
+                // Validate arg references
+                for arg_ref in arg_refs {
+                    if arg_ref.name.is_empty() {
                         return Err(Error::validation_error(
-                            "Instantiate arg name cannot be empty",
+                            "Arg reference name cannot be empty",
                         ));
                     }
                 }
@@ -222,26 +222,26 @@ impl Validatable for CoreInstance {
     }
 }
 
-/// Core WebAssembly instance expression
+/// Core WebAssembly instance expression (format representation only)
 #[derive(Debug, Clone)]
 pub enum CoreInstanceExpr {
-    /// Instantiate a core module
-    Instantiate {
+    /// Reference to a module for instantiation (format-only, runtime handles actual instantiation)
+    ModuleReference {
         /// Module index
         module_idx: u32,
-        /// Instantiation arguments
-        args: Vec<CoreInstantiateArg>,
+        /// Format-only argument references
+        arg_refs: Vec<CoreArgReference>,
     },
     /// Collection of inlined exports
     InlineExports(Vec<CoreInlineExport>),
 }
 
-/// Core WebAssembly instantiation argument
+/// Core WebAssembly argument reference (format representation only)
 #[derive(Debug, Clone)]
-pub struct CoreInstantiateArg {
+pub struct CoreArgReference {
     /// Name of the argument
     pub name: String,
-    /// Instance index that provides the value
+    /// Instance index reference (format-only)
     pub instance_idx: u32,
 }
 
@@ -390,28 +390,28 @@ pub struct Instance {
     pub instance_expr: InstanceExpr,
 }
 
-/// Component instance expression
+/// Component instance expression (format representation only)
 #[derive(Debug, Clone)]
 pub enum InstanceExpr {
-    /// Instantiate a component
-    Instantiate {
+    /// Reference to a component for instantiation (format-only, runtime handles actual instantiation)
+    ComponentReference {
         /// Component index
         component_idx: u32,
-        /// Instantiation arguments
-        args: Vec<InstantiateArg>,
+        /// Format-only argument references
+        arg_refs: Vec<InstantiateArgReference>,
     },
     /// Collection of inlined exports
     InlineExports(Vec<InlineExport>),
 }
 
-/// Component instantiation argument
+/// Component instantiation argument reference (format representation only)
 #[derive(Debug, Clone)]
-pub struct InstantiateArg {
+pub struct InstantiateArgReference {
     /// Name of the argument
     pub name: String,
-    /// Sort of the referenced item
+    /// Sort of the referenced item (format-only)
     pub sort: Sort,
-    /// Index within the sort
+    /// Index within the sort (format-only)
     pub idx: u32,
 }
 
@@ -1079,9 +1079,9 @@ pub enum ConstValue {
 impl Validatable for Instance {
     fn validate(&self) -> Result<()> {
         match &self.instance_expr {
-            InstanceExpr::Instantiate {
+            InstanceExpr::ComponentReference {
                 component_idx,
-                args,
+                arg_refs,
             } => {
                 // Basic validation: component_idx should be reasonable
                 if *component_idx > 10000 {
@@ -1092,11 +1092,11 @@ impl Validatable for Instance {
                     ));
                 }
 
-                // Validate args
-                for arg in args {
-                    if arg.name.is_empty() {
+                // Validate arg references
+                for arg_ref in arg_refs {
+                    if arg_ref.name.is_empty() {
                         return Err(Error::validation_error(
-                            "Instantiate arg name cannot be empty",
+                            "Arg reference name cannot be empty",
                         ));
                     }
                 }

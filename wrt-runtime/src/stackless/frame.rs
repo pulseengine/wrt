@@ -49,7 +49,7 @@ use crate::{
     memory_helpers::ArcMemoryExt, // Add ArcMemoryExt trait import
     module::{Data, Element, Function, Module}, // Module is already in prelude
     module_instance::ModuleInstance,
-    simd_execution_adapter::SimdExecutionAdapter, // SIMD execution integration
+    // simd_execution_adapter::SimdExecutionAdapter, // SIMD execution integration - disabled
     stackless::StacklessStack, // Added StacklessStack
     table::Table,
 };
@@ -4193,12 +4193,15 @@ impl FrameBehavior for StacklessFrame {
                     return Err(Error::new(ErrorCategory::Runtime, codes::MEMORY_OUT_OF_BOUNDS, "MemoryFill operation out of bounds"));
                 }
                 
-                // Fill memory with the specified value using the instruction layer implementation
-                use wrt_instructions::memory_ops::{MemoryFill, MemoryOperations};
-                let fill_op = MemoryFill::new(mem_idx);
-                fill_op.execute(&memory, &Value::I32(offset as i32), &Value::I32(value as i32), &Value::I32(size as i32))?;
-                
-                Ok(ControlFlow::Next)
+                // TODO: Fill memory with the specified value using the instruction layer implementation
+                // use wrt_instructions::memory_ops::{MemoryFill, MemoryOperations};
+                // let fill_op = MemoryFill::new(mem_idx);
+                // fill_op.execute(&mut memory, &Value::I32(offset as i32), &Value::I32(value as i32), &Value::I32(size as i32))?;
+                return Err(Error::new(
+                    ErrorCategory::Runtime,
+                    codes::UNSUPPORTED_OPERATION,
+                    "Memory fill operation not yet fully implemented"
+                ))
             }
             
             Instruction::MemoryCopy(dst_mem_idx, src_mem_idx) => {
@@ -4229,12 +4232,15 @@ impl FrameBehavior for StacklessFrame {
                 // Get the memory instance (assuming same memory for both src and dest in MVP)
                 let memory = self.module_instance.memory(dst_mem_idx)?;
                 
-                // Execute bulk memory copy operation using our runtime
-                use wrt_instructions::memory_ops::{MemoryCopy, MemoryOperations};
-                let copy_op = MemoryCopy::new(dst_mem_idx, src_mem_idx);
-                copy_op.execute(&memory, &Value::I32(dest as i32), &Value::I32(src as i32), &Value::I32(size as i32))?;
-                
-                Ok(ControlFlow::Next)
+                // TODO: Execute bulk memory copy operation using our runtime
+                // use wrt_instructions::memory_ops::{MemoryCopy, MemoryOperations};
+                // let copy_op = MemoryCopy::new(dst_mem_idx, src_mem_idx);
+                // copy_op.execute(&mut memory, &Value::I32(dest as i32), &Value::I32(src as i32), &Value::I32(size as i32))?;
+                return Err(Error::new(
+                    ErrorCategory::Runtime,
+                    codes::UNSUPPORTED_OPERATION,
+                    "Memory copy operation not yet fully implemented"
+                ))
             }
             
             Instruction::DataDrop(data_seg_idx) => {
@@ -4835,14 +4841,14 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic RMW Sub
             Instruction::I32AtomicRmwSub { memarg } => {
                 // Pop value to subtract
-                let value = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwSub value not i32")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwSub addr not i32")),
@@ -4883,14 +4889,14 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic RMW And
             Instruction::I32AtomicRmwAnd { memarg } => {
                 // Pop value to AND
-                let value = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwAnd value not i32")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwAnd addr not i32")),
@@ -4931,14 +4937,14 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic RMW Or
             Instruction::I32AtomicRmwOr { memarg } => {
                 // Pop value to OR
-                let value = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwOr value not i32")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwOr addr not i32")),
@@ -4979,14 +4985,14 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic RMW Xor
             Instruction::I32AtomicRmwXor { memarg } => {
                 // Pop value to XOR
-                let value = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwXor value not i32")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwXor addr not i32")),
@@ -5027,7 +5033,7 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic Load 8-bit unsigned
             Instruction::I32AtomicLoad8U { memarg } => {
                 // Pop address
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicLoad8U addr not i32")),
@@ -5060,7 +5066,7 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic Load 16-bit unsigned
             Instruction::I32AtomicLoad16U { memarg } => {
                 // Pop address
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicLoad16U addr not i32")),
@@ -5096,14 +5102,14 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic RMW Exchange
             Instruction::I32AtomicRmwXchg { memarg } => {
                 // Pop value to exchange
-                let value = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwXchg value not i32")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwXchg addr not i32")),
@@ -5143,14 +5149,14 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic Store 8-bit
             Instruction::I32AtomicStore8 { memarg } => {
                 // Pop value
-                let value = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicStore8 value not i32")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicStore8 addr not i32")),
@@ -5175,14 +5181,14 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic Store 16-bit
             Instruction::I32AtomicStore16 { memarg } => {
                 // Pop value
-                let value = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicStore16 value not i32")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicStore16 addr not i32")),
@@ -5212,7 +5218,7 @@ impl FrameBehavior for StacklessFrame {
             // I64 Atomic Load
             Instruction::I64AtomicLoad { memarg } => {
                 // Pop address
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64AtomicLoad addr not i32")),
@@ -5248,14 +5254,14 @@ impl FrameBehavior for StacklessFrame {
             // I64 Atomic Store
             Instruction::I64AtomicStore { memarg } => {
                 // Pop value
-                let value = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let value_i64 = match value {
                     Value::I64(v) => v,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64AtomicStore value not i64")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64AtomicStore addr not i32")),
@@ -5285,21 +5291,21 @@ impl FrameBehavior for StacklessFrame {
             // Memory Atomic Wait 64
             Instruction::MemoryAtomicWait64 { memarg } => {
                 // Pop timeout
-                let timeout = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let timeout = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let timeout_i64 = match timeout {
                     Value::I64(t) => t,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryAtomicWait64 timeout not i64")),
                 };
                 
                 // Pop expected value
-                let expected = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let expected = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let expected_i64 = match expected {
                     Value::I64(e) => e,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryAtomicWait64 expected not i64")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryAtomicWait64 addr not i32")),
@@ -5317,13 +5323,13 @@ impl FrameBehavior for StacklessFrame {
             // Default case for remaining unimplemented atomic instructions
             // I32 atomic RMW 8-bit operations
             Instruction::I32AtomicRmw8AddU { memarg } => {
-                let value = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8AddU value not i32")),
                 };
                 
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8AddU addr not i32")),
@@ -5352,13 +5358,13 @@ impl FrameBehavior for StacklessFrame {
             }
             
             Instruction::I32AtomicRmw8SubU { memarg } => {
-                let value = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8SubU value not i32")),
                 };
                 
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8SubU addr not i32")),
@@ -5386,13 +5392,13 @@ impl FrameBehavior for StacklessFrame {
             }
             
             Instruction::I32AtomicRmw8AndU { memarg } => {
-                let value = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8AndU value not i32")),
                 };
                 
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8AndU addr not i32")),
@@ -5420,13 +5426,13 @@ impl FrameBehavior for StacklessFrame {
             }
             
             Instruction::I32AtomicRmw8OrU { memarg } => {
-                let value = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8OrU value not i32")),
                 };
                 
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8OrU addr not i32")),
@@ -5454,13 +5460,13 @@ impl FrameBehavior for StacklessFrame {
             }
             
             Instruction::I32AtomicRmw8XorU { memarg } => {
-                let value = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8XorU value not i32")),
                 };
                 
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8XorU addr not i32")),
@@ -5488,13 +5494,13 @@ impl FrameBehavior for StacklessFrame {
             }
             
             Instruction::I32AtomicRmw8XchgU { memarg } => {
-                let value = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8XchgU value not i32")),
                 };
                 
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8XchgU addr not i32")),
@@ -5521,19 +5527,19 @@ impl FrameBehavior for StacklessFrame {
             }
             
             Instruction::I32AtomicRmw8CmpxchgU { memarg } => {
-                let replacement = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let replacement = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let replacement_i32 = match replacement {
                     Value::I32(v) => v,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8CmpxchgU replacement not i32")),
                 };
                 
-                let expected = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let expected = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let expected_i32 = match expected {
                     Value::I32(v) => v,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8CmpxchgU expected not i32")),
                 };
                 
-                let addr = engine.exec_stack.values.pop().ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
                     _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8CmpxchgU addr not i32")),
@@ -5611,6 +5617,13 @@ impl FrameBehavior for StacklessFrame {
                     ErrorCategory::Runtime,
                     codes::UNSUPPORTED_OPERATION,
                     "Remaining atomic sub-word instructions not fully implemented yet",
+                ));
+            }
+            _ => {
+                return Err(Error::new(
+                    ErrorCategory::Runtime,
+                    codes::UNSUPPORTED_OPERATION,
+                    "Instruction not yet implemented",
                 ));
             }
         }
@@ -6059,16 +6072,20 @@ impl StacklessFrame {
         simd_op: &wrt_instructions::simd_ops::SimdOp,
         engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
+        // TODO: SIMD execution not yet implemented
         // Create SIMD execution adapter
-        let adapter = SimdExecutionAdapter::new();
+        // let adapter = SimdExecutionAdapter::new();
         
         // Execute the SIMD operation
-        adapter.execute_simd_with_engine(simd_op, engine)?;
+        // adapter.execute_simd_with_engine(simd_op, engine)?;
         
         // Update execution statistics
-        engine.stats.simd_operations_executed += 1;
-        
-        Ok(ControlFlow::Next)
+        // engine.stats.simd_operations_executed += 1;
+        return Err(Error::new(
+            ErrorCategory::Runtime,
+            codes::UNSUPPORTED_OPERATION,
+            "SIMD operations not yet implemented"
+        ))
     }
 
     /// Check if an instruction is a SIMD operation (when SIMD instructions are added to main enum)

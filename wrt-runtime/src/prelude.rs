@@ -19,11 +19,11 @@ pub use wrt_foundation::{
 // Platform-aware collection type aliases that adapt to target platform capabilities
 /// `BoundedHashMap` type for `no_std` environments with bounded capacity
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub type BoundedHashMap<K, V> = wrt_foundation::no_std_hashmap::BoundedHashMap<K, V, 128, wrt_foundation::NoStdProvider<1024>>;
+pub type BoundedHashMap<K, V> = wrt_foundation::bounded_collections::BoundedMap<K, V, 128, wrt_foundation::NoStdProvider<1024>>;
 
 /// `BoundedHashSet` type for `no_std` environments with bounded capacity  
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub type BoundedHashSet<T> = wrt_foundation::no_std_hashmap::BoundedHashSet<T, 128, wrt_foundation::NoStdProvider<1024>>;
+pub type BoundedHashSet<T> = wrt_foundation::bounded_collections::BoundedSet<T, 128, wrt_foundation::NoStdProvider<1024>>;
 
 // Platform-aware string and vector types
 #[cfg(not(feature = "std"))]
@@ -378,7 +378,7 @@ pub type RuntimeString = wrt_foundation::bounded::BoundedString<256, wrt_foundat
 pub use crate::module::{TableWrapper as RuntimeTable, MemoryWrapper as RuntimeMemory, GlobalWrapper as RuntimeGlobal};
 
 // SIMD execution integration
-pub use crate::simd_execution_adapter::SimdExecutionAdapter;
+// pub use crate::simd_execution_adapter::SimdExecutionAdapter; // Disabled due to compilation issues
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]

@@ -15,7 +15,7 @@ use wrt_foundation::{
 };
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-use wrt_foundation::capabilities::{factory::{CapabilityGuardedProvider, CapabilityMemoryFactory}, MemoryCapabilityContext};
+use wrt_foundation::capabilities::{factory::CapabilityGuardedProvider, MemoryCapabilityContext, MemoryFactory};
 
 // Type alias for the provider type that works with BoundedVec
 // In std/alloc environments, use CapabilityAwareProvider wrapper
@@ -182,8 +182,7 @@ pub mod platform_types {
         }
         #[cfg(any(feature = "std", feature = "alloc"))]
         {
-            let factory: CapabilityMemoryFactory = capability_context!(dynamic(CrateId::Runtime, 8192))?;
-            factory.create_capability_aware_provider::<8192>(CrateId::Runtime)
+            MemoryFactory::create_wrapped::<8192>(CrateId::Runtime)
         }
     }
 }

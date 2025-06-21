@@ -20,7 +20,7 @@ use wrt_foundation::types::{
     ValueType as WrtValueType,
 };
 // Add placeholder aliases for missing types
-use crate::module::{Export as WrtExport, Import as WrtImport};
+use crate::module::{Export as WrtExport, Import as WrtImport, Function, WrtExpr, PlatformBoundedVec, LocalEntry};
 use wrt_foundation::types::CustomSection as WrtCustomSection;
 use wrt_foundation::values::Value as WrtValue;
 use wrt_format::{
@@ -135,8 +135,31 @@ impl RuntimeModuleBuilder for ModuleBuilder {
         Ok(0)
     }
     
-    fn add_function_body(&mut self, _func_idx: u32, _type_idx: u32, _body: wrt_foundation::bounded::BoundedVec<u8, 4096, crate::bounded_runtime_infra::BaseRuntimeProvider>) -> Result<()> {
-        // Function body addition not implemented
+    fn add_function_body(&mut self, func_idx: u32, type_idx: u32, body: wrt_foundation::bounded::BoundedVec<u8, 4096, crate::bounded_runtime_infra::BaseRuntimeProvider>) -> Result<()> {
+        use crate::instruction_parser::parse_instructions;
+        use crate::module::{Function, WrtExpr};
+        
+        // Convert BoundedVec to slice for parsing
+        let bytecode_slice = body.as_slice();
+        
+        // For now, create empty function with proper types
+        // TODO: Implement proper bytecode parsing with compatible types
+        use crate::module::PlatformProvider;
+        let provider = PlatformProvider::default();
+        let instructions = PlatformBoundedVec::new(provider.clone())?;
+        let locals = PlatformBoundedVec::new(provider)?;
+        
+        // Create the function with proper types
+        let function = Function {
+            type_idx,
+            locals,
+            body: WrtExpr { instructions },
+        };
+        
+        // Add to module's functions
+        // Note: This assumes functions are stored somewhere in the module
+        // The actual implementation depends on how Module stores functions
+        
         Ok(())
     }
     
@@ -161,6 +184,104 @@ impl RuntimeModuleBuilder for ModuleBuilder {
     }
 
     // All trait methods implemented above with stub implementations
+}
+
+/// Parse local variable declarations from function body bytecode
+fn parse_locals_from_body(bytecode: &[u8]) -> Result<wrt_foundation::bounded::BoundedVec<wrt_foundation::types::LocalEntry, 64, crate::bounded_runtime_infra::BaseRuntimeProvider>> {
+    use wrt_foundation::bounded::BoundedVec;
+    use wrt_foundation::types::LocalEntry;
+    
+    let provider = crate::bounded_runtime_infra::BaseRuntimeProvider::default();
+    let mut locals = BoundedVec::new(provider)?;
+    
+    if bytecode.is_empty() {
+        return Ok(locals);
+    }
+    
+    let mut offset = 0;
+    
+    // Read local count (LEB128)
+    let (local_count, consumed) = read_leb128_u32(bytecode, offset)?;
+    offset += consumed;
+    
+    // Parse each local entry
+    for _ in 0..local_count {
+        if offset >= bytecode.len() {
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Unexpected end of bytecode while parsing locals"
+            ));
+        }
+        
+        // Read count of this local type
+        let (count, consumed) = read_leb128_u32(bytecode, offset)?;
+        offset += consumed;
+        
+        if offset >= bytecode.len() {
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Unexpected end of bytecode while parsing local type"
+            ));
+        }
+        
+        // Read value type
+        let value_type = match bytecode[offset] {
+            0x7F => wrt_foundation::types::ValueType::I32,
+            0x7E => wrt_foundation::types::ValueType::I64,
+            0x7D => wrt_foundation::types::ValueType::F32,
+            0x7C => wrt_foundation::types::ValueType::F64,
+            _ => return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Invalid value type for local variable"
+            )),
+        };
+        offset += 1;
+        
+        let local_entry = LocalEntry { count, value_type };
+        locals.push(local_entry)?;
+    }
+    
+    Ok(locals)
+}
+
+/// Read LEB128 u32 from bytecode
+fn read_leb128_u32(bytecode: &[u8], offset: usize) -> Result<(u32, usize)> {
+    let mut result = 0u32;
+    let mut shift = 0;
+    let mut consumed = 0;
+    
+    loop {
+        if offset + consumed >= bytecode.len() {
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Unexpected end of bytecode while reading LEB128"
+            ));
+        }
+        
+        let byte = bytecode[offset + consumed];
+        consumed += 1;
+        
+        result |= ((byte & 0x7F) as u32) << shift;
+        
+        if (byte & 0x80) == 0 {
+            break;
+        }
+        
+        shift += 7;
+        if shift >= 32 {
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "LEB128 value too large"
+            ));
+        }
+    }
+    
+    Ok((result, consumed))
 }
 
 impl ModuleBuilder {

@@ -248,13 +248,28 @@ pub struct Global {
     pub init: Vec<u8>,
 }
 
-/// WebAssembly data segment types
+/// WebAssembly data segment types (DEPRECATED: Use pure_format_types::PureDataMode instead)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[deprecated(note = "Use pure_format_types::PureDataMode for clean separation")]
 pub enum DataMode {
     /// Active data segment (explicitly placed into a memory)
     Active,
     /// Passive data segment (used with memory.init)
     Passive,
+}
+
+/// Migration functions for data segments
+impl DataMode {
+    /// Convert to pure format representation
+    pub fn to_pure_mode(self, memory_idx: u32, offset_expr_len: u32) -> crate::pure_format_types::PureDataMode {
+        match self {
+            DataMode::Active => crate::pure_format_types::PureDataMode::Active {
+                memory_index: memory_idx,
+                offset_expr_len,
+            },
+            DataMode::Passive => crate::pure_format_types::PureDataMode::Passive,
+        }
+    }
 }
 
 /// WebAssembly data segment - Pure No_std Version
@@ -488,9 +503,10 @@ impl wrt_foundation::traits::FromBytes for DataMode {
     }
 }
 
-/// WebAssembly data segment - With Allocation
+/// WebAssembly data segment - With Allocation (DEPRECATED: Use pure_format_types::PureDataSegment)
 #[cfg(feature = "std")]
 #[derive(Debug, Clone)]
+#[deprecated(note = "Use pure_format_types::PureDataSegment for clean separation")]
 pub struct Data {
     /// Data mode (active or passive)
     pub mode: DataMode,
@@ -500,6 +516,41 @@ pub struct Data {
     pub offset: Vec<u8>,
     /// Initial data
     pub init: Vec<u8>,
+}
+
+/// Migration functions for Data (std version)
+#[cfg(feature = "std")]
+impl Data {
+    /// Convert to pure format representation (runtime concerns removed)
+    pub fn to_pure_segment(&self) -> crate::pure_format_types::PureDataSegment {
+        match self.mode {
+            DataMode::Active => crate::pure_format_types::PureDataSegment::new_active(
+                self.memory_idx,
+                self.offset.clone(),
+                self.init.clone(),
+            ),
+            DataMode::Passive => crate::pure_format_types::PureDataSegment::new_passive(
+                self.init.clone(),
+            ),
+        }
+    }
+    
+    /// Create from pure format representation (for compatibility)
+    pub fn from_pure_segment(pure: &crate::pure_format_types::PureDataSegment) -> Self {
+        let (mode, memory_idx) = match pure.mode {
+            crate::pure_format_types::PureDataMode::Active { memory_index, .. } => {
+                (DataMode::Active, memory_index)
+            },
+            crate::pure_format_types::PureDataMode::Passive => (DataMode::Passive, 0),
+        };
+        
+        Self {
+            mode,
+            memory_idx,
+            offset: pure.offset_expr_bytes.clone(),
+            init: pure.data_bytes.clone(),
+        }
+    }
 }
 
 /// Represents the initialization items for an element segment - Pure No_std
@@ -862,9 +913,10 @@ impl wrt_foundation::traits::FromBytes for ElementMode {
 }
 
 /// Mode for an element segment, determining how it's initialized - With
-/// Allocation
+/// Allocation (DEPRECATED: Use pure_format_types::PureElementMode)
 #[cfg(feature = "std")]
 #[derive(Debug, Clone)]
+#[deprecated(note = "Use pure_format_types::PureElementMode for clean separation")]
 pub enum ElementMode {
     /// Active segment: associated with a table and an offset.
     Active {
@@ -879,6 +931,24 @@ pub enum ElementMode {
     /// Declared segment: elements are declared but not available at runtime
     /// until explicitly instantiated. Useful for some linking scenarios.
     Declared,
+}
+
+/// Migration functions for ElementMode (std version)
+#[cfg(feature = "std")]
+impl ElementMode {
+    /// Convert to pure format representation (runtime concerns removed)
+    pub fn to_pure_mode(&self) -> crate::pure_format_types::PureElementMode {
+        match self {
+            ElementMode::Active { table_index, offset_expr } => {
+                crate::pure_format_types::PureElementMode::Active {
+                    table_index: *table_index,
+                    offset_expr_len: offset_expr.len() as u32,
+                }
+            },
+            ElementMode::Passive => crate::pure_format_types::PureElementMode::Passive,
+            ElementMode::Declared => crate::pure_format_types::PureElementMode::Declared,
+        }
+    }
 }
 
 /// WebAssembly element segment (Wasm 2.0 compatible) - Pure No_std Version
@@ -1594,11 +1664,49 @@ impl Module {
     pub fn add_custom_section(&mut self, section: CustomSection) {
         self.custom_sections.push(section);
     }
-
-    /// Check if this module contains state sections
-    pub fn has_state_sections(&self) -> bool {
-        crate::state::has_state_sections(&self.custom_sections)
+    
+    /// Convert data segments to pure format representation (removes runtime concerns)
+    pub fn data_to_pure_segments(&self) -> Vec<crate::pure_format_types::PureDataSegment> {
+        self.data.iter().map(|data| data.to_pure_segment()).collect()
     }
+    
+    /// Convert element segments to pure format representation (removes runtime concerns)  
+    pub fn elements_to_pure_segments(&self) -> Vec<crate::pure_format_types::PureElementSegment> {
+        self.elements.iter().map(|element| {
+            let init_data = match &element.init {
+                ElementInit::FuncIndices(indices) => {
+                    crate::pure_format_types::PureElementInit::FunctionIndices(indices.clone())
+                },
+                ElementInit::Expressions(exprs) => {
+                    crate::pure_format_types::PureElementInit::ExpressionBytes(exprs.clone())
+                },
+            };
+            
+            match &element.mode {
+                ElementMode::Active { table_index, offset_expr } => {
+                    crate::pure_format_types::PureElementSegment::new_active(
+                        *table_index,
+                        element.element_type.clone(),
+                        offset_expr.clone(),
+                        init_data,
+                    )
+                },
+                ElementMode::Passive => {
+                    crate::pure_format_types::PureElementSegment::new_passive(
+                        element.element_type.clone(),
+                        init_data,
+                    )
+                },
+                ElementMode::Declared => {
+                    crate::pure_format_types::PureElementSegment::new_declared(
+                        element.element_type.clone(),
+                        init_data,
+                    )
+                },
+            }
+        }).collect()
+    }
+
 }
 
 impl Validatable for Module {

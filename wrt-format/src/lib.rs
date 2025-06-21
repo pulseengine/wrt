@@ -239,13 +239,15 @@ pub mod memory_limits;
 pub mod module;
 /// Common imports for convenience
 pub mod prelude;
-/// Resource handle management for Component Model
-#[cfg(feature = "std")]
-pub mod resource_handle;
+/// Pure format representation types
+pub mod pure_format_types;
+/// Runtime bridge interface
+pub mod runtime_bridge;
+/// Interface demonstration (clean separation)
+pub mod interface_demo;
 /// Safe memory operations
 pub mod safe_memory;
 pub mod section;
-pub mod state;
 /// Streaming parser for no_std environments
 pub mod streaming;
 /// Type storage system for Component Model
@@ -345,8 +347,6 @@ pub type ElementSegment = module::Element;
 // Re-export safe memory utilities
 pub use safe_memory::safe_slice;
 pub use section::{CustomSection, Section};
-#[cfg(feature = "std")]
-pub use state::{create_state_section, extract_state_section, is_state_section_name, StateSection};
 // Use the conversion module versions for consistency
 pub use types::{FormatBlockType, Limits, MemoryIndexType};
 pub use validation::Validatable;
