@@ -3,8 +3,7 @@
 //! This module provides comprehensive error recovery mechanisms and detailed
 //! debugging information for the WRT runtime system.
 
-use crate::{Error, ErrorCategory, Result, codes};
-use crate::errors::ErrorSource;
+use crate::{Error, ErrorCategory, Result};
 
 #[cfg(feature = "std")]
 use std::{collections::HashMap, string::String, vec::Vec, format};
@@ -148,7 +147,7 @@ impl ErrorRecoveryManager {
 
         for (error, context) in &self.error_history {
             // Count by category
-            *category_counts.entry(error.category()).or_insert(0) += 1;
+            *category_counts.entry(error.category).or_insert(0) += 1;
             
             // Count by location
             *location_counts.entry(context.location.clone()).or_insert(0) += 1;
@@ -171,7 +170,7 @@ impl ErrorRecoveryManager {
     pub fn recover(&self, error: &Error, context: &ErrorContext) -> RecoveryResult {
         let strategy = match &context.recovery_strategy {
             RecoveryStrategy::Abort => &context.recovery_strategy,
-            _ => self.strategies.get(&error.category()).unwrap_or(&RecoveryStrategy::Abort),
+            _ => self.strategies.get(&error.category).unwrap_or(&RecoveryStrategy::Abort),
         };
 
         match strategy {
@@ -183,7 +182,10 @@ impl ErrorRecoveryManager {
             },
             RecoveryStrategy::LogAndContinue => {
                 #[cfg(feature = "std")]
-                println!("Warning: {} at {}", error.message(), context.location);
+                {
+                    use std::println;
+                    println!("Warning: {} at {}", error.message, context.location);
+                }
                 RecoveryResult::Continue
             },
         }
@@ -286,8 +288,8 @@ impl DebugUtils {
     pub fn format_detailed_error(error: &Error, context: &ErrorContext) -> String {
         let mut output = String::new();
         
-        output.push_str(&format!("Error: {} (Code: {})\n", error.message(), error.code()));
-        output.push_str(&format!("Category: {:?}\n", error.category()));
+        output.push_str(&format!("Error: {} (Code: {})\n", error.message, error.code));
+        output.push_str(&format!("Category: {:?}\n", error.category));
         output.push_str(&format!("Location: {}\n", context.location));
         
         if !context.context.is_empty() {
@@ -373,7 +375,7 @@ macro_rules! recoverable {
                     $crate::recovery::RecoveryResult::Skip => {
                         // Log and continue
                         #[cfg(feature = "std")]
-                        eprintln!("Recovered from error: {}", recoverable.error.message());
+                        eprintln!("Recovered from error: {}", recoverable.error.message);
                         return recoverable.into_result();
                     },
                     _ => Err(recoverable.error),
@@ -386,6 +388,7 @@ macro_rules! recoverable {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::codes;
 
     #[test]
     fn test_error_recovery_manager() {
