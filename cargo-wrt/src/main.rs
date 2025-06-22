@@ -9,12 +9,14 @@ use std::process;
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use wrt_build_core::cache::CacheManager;
-use wrt_build_core::config::BuildProfile;
-use wrt_build_core::diagnostics::Severity;
-use wrt_build_core::filtering::{FilterOptionsBuilder, GroupBy, SortBy, SortDirection};
-use wrt_build_core::formatters::{FormatterFactory, OutputFormat};
-use wrt_build_core::{BuildConfig, BuildSystem};
+use wrt_build_core::{
+    cache::CacheManager,
+    config::BuildProfile,
+    diagnostics::Severity,
+    filtering::{FilterOptionsBuilder, GroupBy, SortBy, SortDirection},
+    formatters::{FormatterFactory, OutputFormat},
+    BuildConfig, BuildSystem,
+};
 
 /// WRT Build System - Unified tool for building, testing, and verifying WRT
 #[derive(Parser)]
@@ -108,7 +110,8 @@ struct Cli {
     #[arg(long, global = true, value_delimiter = ',')]
     filter_severity: Option<Vec<String>>,
 
-    /// Filter diagnostics by source tool (comma-separated: rustc,clippy,miri,etc)
+    /// Filter diagnostics by source tool (comma-separated:
+    /// rustc,clippy,miri,etc)
     #[arg(long, global = true, value_delimiter = ',')]
     filter_source: Option<Vec<String>>,
 
@@ -270,7 +273,8 @@ enum Commands {
         #[arg(long)]
         output_dir: Option<String>,
 
-        /// Generate multi-version documentation (comma-separated list of versions)
+        /// Generate multi-version documentation (comma-separated list of
+        /// versions)
         #[arg(long)]
         multi_version: Option<String>,
     },
@@ -654,7 +658,8 @@ fn get_cache_path(workspace_root: &std::path::Path) -> std::path::PathBuf {
     workspace_root.join("target").join("wrt-cache").join("diagnostics.json")
 }
 
-/// Parse command line arguments, handling both `cargo-wrt` and `cargo wrt` patterns
+/// Parse command line arguments, handling both `cargo-wrt` and `cargo wrt`
+/// patterns
 fn parse_args() -> Cli {
     let args: Vec<String> = std::env::args().collect();
 
@@ -1817,7 +1822,10 @@ async fn cmd_kani_verify(
 
     // Check if KANI is available
     if !wrt_build_core::kani::is_kani_available() {
-        anyhow::bail!("KANI is not available. Please install it with: cargo install --locked kani-verifier && cargo kani setup");
+        anyhow::bail!(
+            "KANI is not available. Please install it with: cargo install --locked kani-verifier \
+             && cargo kani setup"
+        );
     }
 
     let config = KaniConfig {
@@ -1935,8 +1943,7 @@ async fn cmd_setup(
     check: bool,
     install: bool,
 ) -> Result<()> {
-    use std::fs;
-    use std::process::Command;
+    use std::{fs, process::Command};
 
     println!(
         "{} Setting up development environment...",
@@ -2023,8 +2030,7 @@ async fn cmd_setup(
 
 /// Tool versions command implementation  
 async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionCommand) -> Result<()> {
-    use wrt_build_core::tool_versions::ToolVersionConfig;
-    use wrt_build_core::tools::ToolManager;
+    use wrt_build_core::{tool_versions::ToolVersionConfig, tools::ToolManager};
 
     match command {
         ToolVersionCommand::Generate { force, all } => {
@@ -2118,7 +2124,8 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
 
             if !config_path.exists() {
                 anyhow::bail!(
-                    "Tool version file not found at {}\nRun 'cargo-wrt tool-versions generate' first",
+                    "Tool version file not found at {}\nRun 'cargo-wrt tool-versions generate' \
+                     first",
                     config_path.display()
                 );
             }

@@ -1,8 +1,10 @@
 //! Configuration management for the WRT build system
 
-use crate::error::{BuildError, BuildResult};
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+
+use crate::error::{BuildError, BuildResult};
 
 /// Build configuration settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,7 +109,8 @@ impl WorkspaceConfig {
         let content = std::fs::read_to_string(&cargo_toml)
             .map_err(|e| BuildError::Workspace(format!("Failed to read Cargo.toml: {}", e)))?;
 
-        // Parse workspace members (simplified - real implementation would use toml crate)
+        // Parse workspace members (simplified - real implementation would use toml
+        // crate)
         let members = Self::parse_workspace_members(&content)?;
 
         Ok(Self {

@@ -4,11 +4,13 @@
 //! all required build configurations work correctly and identifies
 //! architectural issues that could impact ASIL compliance.
 
-use std::collections::{HashMap, HashSet};
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::time::Instant;
+use std::{
+    collections::{HashMap, HashSet},
+    io::Write,
+    path::{Path, PathBuf},
+    process::Command,
+    time::Instant,
+};
 
 use chrono::Local;
 use colored::Colorize;
@@ -691,16 +693,32 @@ impl MatrixVerifier {
                                 file,
                                 "### ⚠️ ARCHITECTURAL ISSUE: Cyclic Dependencies Detected"
                             )?;
-                            writeln!(file, "This violates ASIL principles of modular design and clear dependency hierarchy.")?;
+                            writeln!(
+                                file,
+                                "This violates ASIL principles of modular design and clear \
+                                 dependency hierarchy."
+                            )?;
                         },
                         ArchitecturalIssue::DuplicateDefinitions => {
                             writeln!(file, "### ⚠️ ARCHITECTURAL ISSUE: Duplicate Definitions")?;
-                            writeln!(file, "This indicates poor modularity and could lead to undefined behavior in safety-critical systems.")?;
+                            writeln!(
+                                file,
+                                "This indicates poor modularity and could lead to undefined \
+                                 behavior in safety-critical systems."
+                            )?;
                         },
                         ArchitecturalIssue::TraitBounds => {
                             writeln!(file, "### ⚠️ ARCHITECTURAL ISSUE: Trait Bound Violations")?;
-                            writeln!(file, "Feature combinations are creating incompatible trait requirements.")?;
-                            writeln!(file, "This suggests improper abstraction boundaries for ASIL compliance.")?;
+                            writeln!(
+                                file,
+                                "Feature combinations are creating incompatible trait \
+                                 requirements."
+                            )?;
+                            writeln!(
+                                file,
+                                "This suggests improper abstraction boundaries for ASIL \
+                                 compliance."
+                            )?;
                         },
                         ArchitecturalIssue::MissingImports => {
                             writeln!(file, "### ⚠️ ARCHITECTURAL ISSUE: Missing Imports/Modules")?;
@@ -715,7 +733,11 @@ impl MatrixVerifier {
                         },
                         ArchitecturalIssue::Coherence => {
                             writeln!(file, "### ⚠️ ARCHITECTURAL ISSUE: Coherence Violations")?;
-                            writeln!(file, "Multiple implementations conflict, indicating poor separation of concerns.")?;
+                            writeln!(
+                                file,
+                                "Multiple implementations conflict, indicating poor separation of \
+                                 concerns."
+                            )?;
                             writeln!(file, "ASIL-D requires single, unambiguous implementations.")?;
                         },
                         ArchitecturalIssue::MemoryAllocation => {
@@ -723,7 +745,11 @@ impl MatrixVerifier {
                                 file,
                                 "### ⚠️ ARCHITECTURAL ISSUE: Memory Allocation Problems"
                             )?;
-                            writeln!(file, "Memory allocation strategy is not properly abstracted for no_std environments.")?;
+                            writeln!(
+                                file,
+                                "Memory allocation strategy is not properly abstracted for no_std \
+                                 environments."
+                            )?;
                             writeln!(file, "Critical for ASIL-D compliance in embedded systems.")?;
                         },
                         ArchitecturalIssue::StdConflict => {

@@ -3,13 +3,19 @@
 //! This module provides caching functionality for diagnostic results to improve
 //! performance on large codebases by avoiding re-analysis of unchanged files.
 
-use crate::diagnostics::{Diagnostic, DiagnosticCollection};
-use crate::error::{BuildError, BuildResult};
+use std::{
+    collections::HashMap,
+    fs,
+    path::{Path, PathBuf},
+    time::SystemTime,
+};
+
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::time::SystemTime;
+
+use crate::{
+    diagnostics::{Diagnostic, DiagnosticCollection},
+    error::{BuildError, BuildResult},
+};
 
 /// Cache metadata for a single file
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -560,9 +566,10 @@ fn diagnostics_equal(a: &Diagnostic, b: &Diagnostic) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use tempfile::TempDir;
+
     use super::*;
     use crate::diagnostics::{Position, Range};
-    use tempfile::TempDir;
 
     fn create_test_diagnostic(
         file: &str,

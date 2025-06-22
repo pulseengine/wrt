@@ -3,13 +3,14 @@
 //! This module provides parsers for converting output from external tools
 //! (cargo, clippy, kani, etc.) into unified diagnostic format.
 
-use crate::diagnostics::{Diagnostic, Position, Range, RelatedInfo, Severity, ToolOutputParser};
+use std::path::Path;
 
+use serde::{Deserialize, Serialize};
+
+use crate::diagnostics::{Diagnostic, Position, Range, RelatedInfo, Severity, ToolOutputParser};
 // Re-export parser types
 // Note: These are defined below in this module
 use crate::error::BuildResult;
-use serde::{Deserialize, Serialize};
-use std::path::Path;
 
 /// Cargo compiler message format (from cargo --message-format=json)
 #[derive(Debug, Deserialize)]
@@ -723,7 +724,8 @@ impl CargoAuditOutputParser {
         let mut details = String::new();
 
         for line in output.lines() {
-            // Parse vulnerability header like "RUSTSEC-2021-0139: ansi_term is Unmaintained"
+            // Parse vulnerability header like "RUSTSEC-2021-0139: ansi_term is
+            // Unmaintained"
             if line.starts_with("RUSTSEC-") || line.starts_with("CVE-") {
                 // Save previous vulnerability if any
                 if let Some((id, title, severity)) = current_vuln.take() {

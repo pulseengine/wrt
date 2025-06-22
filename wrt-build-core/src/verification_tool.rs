@@ -3,11 +3,14 @@
 //! Provides integrated access to verification capabilities that were
 //! previously in the standalone wrt-verification-tool crate.
 
-use colored::Colorize;
 use std::path::{Path, PathBuf};
 
-use crate::build::BuildSystem;
-use crate::error::{BuildError, BuildResult};
+use colored::Colorize;
+
+use crate::{
+    build::BuildSystem,
+    error::{BuildError, BuildResult},
+};
 
 /// Verification tool options
 #[derive(Debug, Clone)]

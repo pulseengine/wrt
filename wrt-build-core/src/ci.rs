@@ -3,18 +3,22 @@
 //! This module provides functionality to simulate CI workflows locally,
 //! validate configurations, and prepare for GitHub Actions execution.
 
-use std::collections::HashMap;
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::time::Instant;
+use std::{
+    collections::HashMap,
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+    time::Instant,
+};
 
 use chrono::Local;
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
-use crate::error::{BuildError, BuildResult};
-use crate::BuildSystem;
+use crate::{
+    error::{BuildError, BuildResult},
+    BuildSystem,
+};
 
 /// CI workflow simulation results
 #[derive(Debug, Serialize)]

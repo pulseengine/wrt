@@ -1,14 +1,21 @@
 //! Diagnostic filtering and grouping functionality
 //!
-//! This module provides sophisticated filtering, sorting, and grouping capabilities
-//! for diagnostic collections to help users focus on specific issues.
+//! This module provides sophisticated filtering, sorting, and grouping
+//! capabilities for diagnostic collections to help users focus on specific
+//! issues.
 
-use crate::diagnostics::{Diagnostic, DiagnosticCollection, Severity};
-use crate::error::{BuildError, BuildResult};
+use std::{
+    collections::{HashMap, HashSet},
+    path::{Path, PathBuf},
+};
+
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
+
+use crate::{
+    diagnostics::{Diagnostic, DiagnosticCollection, Severity},
+    error::{BuildError, BuildResult},
+};
 
 /// Filter criteria for diagnostics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -533,9 +540,10 @@ impl Default for FilterOptionsBuilder {
 
 #[cfg(test)]
 mod tests {
+    use tempfile::TempDir;
+
     use super::*;
     use crate::diagnostics::{Position, Range};
-    use tempfile::TempDir;
 
     fn create_test_diagnostic(
         file: &str,

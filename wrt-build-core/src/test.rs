@@ -1,13 +1,15 @@
 //! Test execution and management
 
-use colored::Colorize;
-use std::path::Path;
-use std::process::Command;
+use std::{path::Path, process::Command};
 
-use crate::build::BuildSystem;
-use crate::diagnostics::{Diagnostic, DiagnosticCollection, Range, Severity, ToolOutputParser};
-use crate::error::{BuildError, BuildResult};
-use crate::parsers::CargoOutputParser;
+use colored::Colorize;
+
+use crate::{
+    build::BuildSystem,
+    diagnostics::{Diagnostic, DiagnosticCollection, Range, Severity, ToolOutputParser},
+    error::{BuildError, BuildResult},
+    parsers::CargoOutputParser,
+};
 
 /// Test execution results
 #[derive(Debug)]
@@ -125,7 +127,8 @@ impl BuildSystem {
 
         for line in stdout_str.lines() {
             if line.contains("test result:") {
-                // Parse test result line like: "test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out"
+                // Parse test result line like: "test result: ok. 25 passed; 0 failed; 0
+                // ignored; 0 measured; 0 filtered out"
                 if line.contains(" passed;") {
                     if let Some(passed_str) =
                         line.split("ok. ").nth(1).and_then(|s| s.split(" passed;").next())
@@ -338,7 +341,8 @@ impl BuildSystem {
         // Simplified parsing - look for "test result:" line
         for line in output.lines() {
             if line.contains("test result:") {
-                // Parse line like: "test result: ok. 42 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out"
+                // Parse line like: "test result: ok. 42 passed; 0 failed; 0 ignored; 0
+                // measured; 0 filtered out"
                 let parts: Vec<&str> = line.split(';').collect();
                 if parts.len() >= 2 {
                     let passed = parts[0]

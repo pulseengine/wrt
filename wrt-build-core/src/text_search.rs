@@ -1,11 +1,14 @@
 //! Native text search functionality to replace external grep dependency
 //!
-//! Provides fast, native Rust-based text searching capabilities for source code analysis
-//! without relying on external tools like grep.
+//! Provides fast, native Rust-based text searching capabilities for source code
+//! analysis without relying on external tools like grep.
+
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use regex::Regex;
-use std::fs;
-use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use crate::error::{BuildError, BuildResult};
@@ -133,7 +136,8 @@ impl TextSearcher {
             let has_safety_comment = self.has_safety_documentation(&matches, i)?;
             let has_allow_attribute = self.has_allow_unsafe_attribute(&matches, i)?;
 
-            // Only include as a violation if it lacks both safety documentation and allow attribute
+            // Only include as a violation if it lacks both safety documentation and allow
+            // attribute
             if !has_safety_comment && !has_allow_attribute {
                 filtered_matches.push(m.clone());
             }
@@ -403,9 +407,11 @@ pub fn format_matches(matches: &[SearchMatch], max_display: Option<usize>) -> St
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs;
+
     use tempfile::TempDir;
+
+    use super::*;
 
     #[test]
     fn test_search_options_default() {

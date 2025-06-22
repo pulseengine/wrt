@@ -4,11 +4,12 @@
 //! including human-readable output (default) and structured JSON formats
 //! compatible with LSP and CI/CD systems.
 
-use crate::diagnostics::{Diagnostic, DiagnosticCollection, Severity};
+use std::{collections::HashMap, fmt};
+
 use colored::{ColoredString, Colorize};
 use serde_json;
-use std::collections::HashMap;
-use std::fmt;
+
+use crate::diagnostics::{Diagnostic, DiagnosticCollection, Severity};
 
 /// Output format options
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -479,9 +480,10 @@ impl FormatterFactory {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::*;
     use crate::diagnostics::{Position, Range};
-    use std::path::PathBuf;
 
     fn create_test_collection() -> DiagnosticCollection {
         let mut collection =

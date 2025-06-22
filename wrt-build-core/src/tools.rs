@@ -4,12 +4,14 @@
 //! provide helpful error messages when tools are missing, and guide users
 //! through the setup process.
 
-use colored::Colorize;
-use std::collections::HashMap;
-use std::process::Command;
+use std::{collections::HashMap, process::Command};
 
-use crate::error::{BuildError, BuildResult};
-use crate::tool_versions::{extract_version_from_output, ToolVersionConfig, VersionComparison};
+use colored::Colorize;
+
+use crate::{
+    error::{BuildError, BuildResult},
+    tool_versions::{extract_version_from_output, ToolVersionConfig, VersionComparison},
+};
 
 /// Information about an external tool
 #[derive(Debug, Clone)]
@@ -208,7 +210,8 @@ impl ToolManager {
         self.check_tool_for_target(tool_name, None)
     }
 
-    /// Check if a specific tool is available and version compatible for a target
+    /// Check if a specific tool is available and version compatible for a
+    /// target
     pub fn check_tool_for_target(&self, tool_name: &str, target: Option<&str>) -> ToolStatus {
         // First check if the target is supported for this tool
         if let Some(target) = target {
@@ -355,13 +358,10 @@ impl ToolManager {
     pub fn generate_missing_tool_error(&self, tool_name: &str, command: &str) -> BuildError {
         if let Some(tool_info) = self.tools.get(tool_name) {
             let message = format!(
-                "❌ {} is required for the '{}' command but is not installed.\n\n\
-                 📝 {}: {}\n\n\
-                 💿 To install:\n\
-                    {}\n\n\
-                 💡 After installation, you can verify it works with:\n\
-                    {} --version\n\n\
-                 🔧 You can also run 'cargo-wrt setup --all' to install recommended tools.",
+                "❌ {} is required for the '{}' command but is not installed.\n\n📝 {}: {}\n\n💿 \
+                 To install:\n{}\n\n💡 After installation, you can verify it works with:\n{} \
+                 --version\n\n🔧 You can also run 'cargo-wrt setup --all' to install recommended \
+                 tools.",
                 tool_name.bright_red(),
                 command.bright_cyan(),
                 "Description".bright_blue(),
@@ -729,7 +729,8 @@ impl ToolManager {
                     available: true,
                     version: Some(version),
                     error: None,
-                    version_status: VersionStatus::Unknown, // Will be set by enhance_with_version_check
+                    version_status: VersionStatus::Unknown, /* Will be set by
+                                                             * enhance_with_version_check */
                     needs_action: false,
                 }
             },
@@ -783,7 +784,8 @@ impl ToolManager {
                     available: true,
                     version: Some(version),
                     error: None,
-                    version_status: VersionStatus::Unknown, // Will be set by enhance_with_version_check
+                    version_status: VersionStatus::Unknown, /* Will be set by
+                                                             * enhance_with_version_check */
                     needs_action: false,
                 }
             },
@@ -910,7 +912,8 @@ impl ToolManager {
                     available: true,
                     version: Some(version),
                     error: None,
-                    version_status: VersionStatus::Unknown, // Will be set by enhance_with_version_check
+                    version_status: VersionStatus::Unknown, /* Will be set by
+                                                             * enhance_with_version_check */
                     needs_action: false,
                 }
             },

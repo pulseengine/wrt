@@ -12,7 +12,8 @@
 //!
 //! - **Build Operations**: Compilation of all WRT components
 //! - **Test Execution**: Running unit, integration, and verification tests
-//! - **Safety Verification**: SCORE-inspired safety checks and formal verification
+//! - **Safety Verification**: SCORE-inspired safety checks and formal
+//!   verification
 //! - **Documentation Generation**: API docs, guides, and verification reports
 //! - **Coverage Analysis**: Code coverage metrics and reporting
 //!
@@ -34,8 +35,9 @@
 )]
 
 // Re-export core types for convenience
-pub use anyhow::{Context, Result};
 pub use std::path::{Path, PathBuf};
+
+pub use anyhow::{Context, Result};
 
 // Core modules
 pub mod build;

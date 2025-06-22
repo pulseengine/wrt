@@ -3,12 +3,17 @@
 //! Provides integration with cargo-fuzz for comprehensive fuzzing
 //! of WebAssembly parsing, component models, and runtime operations.
 
-use colored::Colorize;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
 
-use crate::build::BuildSystem;
-use crate::error::{BuildError, BuildResult};
+use colored::Colorize;
+
+use crate::{
+    build::BuildSystem,
+    error::{BuildError, BuildResult},
+};
 
 /// Fuzzing configuration options
 #[derive(Debug, Clone)]

@@ -3,9 +3,12 @@
 //! This module provides various code validation checks to ensure
 //! code quality and organization standards.
 
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+
 use colored::Colorize;
-use std::fs;
-use std::path::{Path, PathBuf};
 
 use crate::error::{BuildError, BuildResult};
 

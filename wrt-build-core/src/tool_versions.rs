@@ -1,10 +1,11 @@
 //! Tool version management and configuration
 //!
-//! This module manages specific versions of external tools required by the build system,
-//! ensuring reproducible builds and proper dependency tracking.
+//! This module manages specific versions of external tools required by the
+//! build system, ensuring reproducible builds and proper dependency tracking.
+
+use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Tool version requirement specification
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -300,9 +301,9 @@ impl ToolVersionConfig {
             ToolVersion {
                 version: "0.63.0".to_string(),
                 requirement_type: VersionRequirement::Exact,
-                install_command:
-                    "cargo install --locked --version 0.63.0 kani-verifier && cargo kani setup"
-                        .to_string(),
+                install_command: "cargo install --locked --version 0.63.0 kani-verifier && \
+                                     cargo kani setup"
+                    .to_string(),
                 version_check_args: vec!["--version".to_string()],
                 version_pattern: Some(r"kani (\d+\.\d+\.\d+)".to_string()),
                 required: false,
@@ -423,9 +424,9 @@ impl ToolVersionConfig {
                 version_pattern: Some(r"Python (\d+\.\d+\.\d+)".to_string()),
                 required: false,
                 used_by: vec!["docs".to_string()],
-                description:
-                    "Python virtual environment support for isolated documentation dependencies"
-                        .to_string(),
+                description: "Python virtual environment support for isolated \
+                                     documentation dependencies"
+                    .to_string(),
                 target_specific: HashMap::new(),
             },
         );
@@ -503,7 +504,8 @@ impl ToolVersionConfig {
         }
     }
 
-    /// Get the effective Rust toolchain version from rust-toolchain.toml or fallback
+    /// Get the effective Rust toolchain version from rust-toolchain.toml or
+    /// fallback
     pub fn get_rust_toolchain_version(&self) -> String {
         if let Some(toolchain) = &self.rust_toolchain {
             if let Some(version) = &toolchain.version {

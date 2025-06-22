@@ -4,10 +4,13 @@
 //! diagnostics from all WRT build operations. The diagnostic format is
 //! compatible with the Language Server Protocol (LSP) specification.
 
+use std::{
+    collections::HashMap,
+    fmt,
+    path::{Path, PathBuf},
+};
+
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fmt;
-use std::path::{Path, PathBuf};
 
 /// LSP-compatible diagnostic severity levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -57,7 +60,8 @@ impl Position {
         }
     }
 
-    /// Create position from 1-indexed line and column numbers (converts both to 0-indexed)
+    /// Create position from 1-indexed line and column numbers (converts both to
+    /// 0-indexed)
     pub fn from_line_col_1_indexed(line: u32, column: u32) -> Self {
         Self {
             line: line.saturating_sub(1),
@@ -105,7 +109,8 @@ impl Range {
         }
     }
 
-    /// Create a range from 1-indexed line and column numbers (converts both to 0-indexed)
+    /// Create a range from 1-indexed line and column numbers (converts both to
+    /// 0-indexed)
     pub fn from_line_col_1_indexed(start_line: u32, start_col: u32, end_col: u32) -> Self {
         Self {
             start: Position::from_line_col_1_indexed(start_line, start_col),

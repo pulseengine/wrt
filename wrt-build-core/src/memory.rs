@@ -3,12 +3,15 @@
 //! This module provides tools for analyzing and validating memory usage
 //! across different platforms and ASIL levels.
 
-use colored::Colorize;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::build::BuildSystem;
-use crate::error::{BuildError, BuildResult};
+use colored::Colorize;
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    build::BuildSystem,
+    error::{BuildError, BuildResult},
+};
 
 /// Platform-specific memory budget configuration
 #[derive(Debug, Serialize, Deserialize)]
@@ -231,7 +234,10 @@ impl BuildSystem {
         ));
 
         html.push_str("<table>\n");
-        html.push_str("<tr><th>Platform</th><th>Usage</th><th>Budget</th><th>Percentage</th><th>Status</th></tr>\n");
+        html.push_str(
+            "<tr><th>Platform</th><th>Usage</th><th>Budget</th><th>Percentage</th><th>Status</\
+             th></tr>\n",
+        );
 
         for result in &results {
             let row_class = if result.usage_percentage > 90.0 {

@@ -1,19 +1,23 @@
 //! Core build system implementation
 
-use colored::Colorize;
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
 #[cfg(windows)]
 use std::os::windows::process::ExitStatusExt;
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
-use crate::config::{BuildConfig, WorkspaceConfig};
-use crate::diagnostics::{Diagnostic, DiagnosticCollection, Range, Severity, ToolOutputParser};
-use crate::error::{BuildError, BuildResult};
-use crate::parsers::CargoOutputParser;
+use colored::Colorize;
+
+use crate::{
+    config::{BuildConfig, WorkspaceConfig},
+    diagnostics::{Diagnostic, DiagnosticCollection, Range, Severity, ToolOutputParser},
+    error::{BuildError, BuildResult},
+    parsers::CargoOutputParser,
+};
 
 /// Helper function to execute commands with tracing and dry-run support
 pub fn execute_command(
@@ -64,8 +68,9 @@ fn format_command(cmd: &Command) -> String {
 
 /// Ported functions from xtask for build operations
 pub mod xtask_port {
-    use super::*;
     use std::process::Command;
+
+    use super::*;
 
     /// Run comprehensive coverage analysis (ported from xtask coverage)
     pub fn run_coverage_analysis(config: &BuildConfig) -> BuildResult<()> {
@@ -109,7 +114,8 @@ pub mod xtask_port {
         generate_docs_with_options(false, false)
     }
 
-    /// Generate documentation with options for private items and browser opening
+    /// Generate documentation with options for private items and browser
+    /// opening
     pub fn generate_docs_with_options(include_private: bool, open_docs: bool) -> BuildResult<()> {
         generate_docs_with_output_dir(include_private, open_docs, None)
     }
@@ -732,7 +738,8 @@ pub mod xtask_port {
         Ok(())
     }
 
-    /// Build WRTD (WebAssembly Runtime Daemon) binaries (ported from xtask wrtd_build)
+    /// Build WRTD (WebAssembly Runtime Daemon) binaries (ported from xtask
+    /// wrtd_build)
     pub fn build_wrtd_binaries() -> BuildResult<()> {
         println!("{} Building WRTD binaries...", "🏗️".bright_blue());
 
@@ -1199,7 +1206,8 @@ impl BuildSystem {
             )));
         }
 
-        // Return artifacts (simplified - would parse cargo output in real implementation)
+        // Return artifacts (simplified - would parse cargo output in real
+        // implementation)
         Ok(vec![crate_path.join("target")])
     }
 
@@ -1607,8 +1615,9 @@ impl BuildResults {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::TempDir;
+
+    use super::*;
 
     #[test]
     fn test_build_system_creation() {

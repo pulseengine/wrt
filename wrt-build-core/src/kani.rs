@@ -3,18 +3,22 @@
 //! This module provides comprehensive KANI formal verification support for WRT,
 //! including verification execution, report generation, and coverage analysis.
 
-use std::collections::HashMap;
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::time::Instant;
+use std::{
+    collections::HashMap,
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+    time::Instant,
+};
 
 use chrono::Local;
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
-use crate::config::AsilLevel;
-use crate::error::{BuildError, BuildResult};
+use crate::{
+    config::AsilLevel,
+    error::{BuildError, BuildResult},
+};
 
 /// KANI verification configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

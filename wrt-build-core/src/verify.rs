@@ -1,21 +1,22 @@
 //! Safety verification and compliance checking
 
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+    process::Command,
+};
+
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::path::{Path, PathBuf};
-use std::process::Command;
 
-use crate::build::BuildSystem;
-use crate::config::AsilLevel;
-use crate::diagnostics::{
-    Diagnostic, DiagnosticCollection, Position, Range, Severity, ToolOutputParser,
+use crate::{
+    build::BuildSystem,
+    config::AsilLevel,
+    diagnostics::{Diagnostic, DiagnosticCollection, Position, Range, Severity, ToolOutputParser},
+    error::{BuildError, BuildResult},
+    parsers::{CargoAuditOutputParser, CargoOutputParser, KaniOutputParser, MiriOutputParser},
+    text_search::{count_production_matches, SearchMatch, TextSearcher},
 };
-use crate::error::{BuildError, BuildResult};
-use crate::parsers::{
-    CargoAuditOutputParser, CargoOutputParser, KaniOutputParser, MiriOutputParser,
-};
-use crate::text_search::{count_production_matches, SearchMatch, TextSearcher};
 
 /// Configuration for allowed unsafe blocks
 #[derive(Debug, Clone, Serialize, Deserialize)]

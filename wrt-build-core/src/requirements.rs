@@ -6,10 +6,13 @@
 //! - ASIL compliance verification
 //! - Certification readiness assessment
 
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
+
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 
 use crate::error::{BuildError, BuildResult};
 
