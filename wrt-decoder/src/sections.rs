@@ -11,7 +11,6 @@ use wrt_format::{
     binary::{self},
     types::ValueType as FormatValueType,
 };
-
 // Note: These functions should be available if they're exported by wrt_format
 // If not, we'll need to implement alternatives or define them locally
 use wrt_foundation::types::{
@@ -29,8 +28,10 @@ use wrt_format::{
     module::Export as WrtExport, DataSegment as WrtDataSegment, ElementSegment as WrtElementSegment,
 };
 
-use crate::memory_optimized::{check_bounds_u32, safe_usize_conversion};
-use crate::optimized_string::parse_utf8_string_inplace;
+use crate::{
+    memory_optimized::{check_bounds_u32, safe_usize_conversion},
+    optimized_string::parse_utf8_string_inplace,
+};
 // Type aliases to make Vec/String usage explicit
 #[cfg(feature = "std")]
 type SectionVec<T> = std::vec::Vec<T>;
@@ -331,7 +332,8 @@ pub mod parsers {
         }
 
         // Convert wrt_format::Import to wrt_foundation::Import
-        // Since Table and Memory are now type aliases to foundation types, this should work directly
+        // Since Table and Memory are now type aliases to foundation types, this should
+        // work directly
         let mut wrt_imports = Vec::with_capacity(format_imports.len());
         let provider = wrt_foundation::NoStdProvider::<65536>::default();
 
@@ -402,8 +404,8 @@ pub mod parsers {
             let (format_table, new_offset) = parse_format_module_table(bytes, offset)?;
             offset = new_offset;
 
-            // Since wrt_format::module::Table is now a type alias to wrt_foundation::TableType,
-            // we can use it directly
+            // Since wrt_format::module::Table is now a type alias to
+            // wrt_foundation::TableType, we can use it directly
             wrt_tables.push(format_table);
         }
 
@@ -482,8 +484,8 @@ pub mod parsers {
             let (format_memory, new_offset) = parse_format_module_memory(bytes, offset)?;
             offset = new_offset;
 
-            // Since wrt_format::module::Memory is now a type alias to wrt_foundation::MemoryType,
-            // we can use it directly
+            // Since wrt_format::module::Memory is now a type alias to
+            // wrt_foundation::MemoryType, we can use it directly
             wrt_memories.push(format_memory);
         }
 
@@ -696,7 +698,8 @@ pub mod parsers {
                 .map_err(|e| Error::new(e.category(), e.code(), "Failed to parse element entry"))?;
             offset = new_offset;
 
-            // Since we're expecting wrt_format::ElementSegment, use the parsed element directly
+            // Since we're expecting wrt_format::ElementSegment, use the parsed element
+            // directly
             wrt_elements.push(format_element);
         }
         Ok(wrt_elements)

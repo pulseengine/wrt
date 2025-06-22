@@ -7,13 +7,14 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use crate::prelude::*;
-use wrt_format::module::Module as WrtModule;
-
 #[cfg(not(feature = "std"))]
 use alloc::collections::BTreeMap as HashMap;
 #[cfg(feature = "std")]
 use std::collections::HashMap;
+
+use wrt_format::module::Module as WrtModule;
+
+use crate::prelude::*;
 
 /// WebAssembly format type detection
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

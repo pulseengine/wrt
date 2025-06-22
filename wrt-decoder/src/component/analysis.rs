@@ -3,14 +3,13 @@
 // SPDX-License-Identifier: MIT
 
 use wrt_error::Result;
+#[cfg(not(feature = "std"))]
+use wrt_format::binary;
 #[cfg(feature = "std")]
 use wrt_format::{
     binary,
     component::{CoreSort, Sort},
 };
-
-#[cfg(not(feature = "std"))]
-use wrt_format::binary;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::BoundedCapacity;
 
@@ -87,7 +86,8 @@ pub fn extract_embedded_modules(bytes: &[u8]) -> Result<std::vec::Vec<std::vec::
     Ok(modules)
 }
 
-/// Extract embedded WebAssembly modules from a component binary (no_std version)
+/// Extract embedded WebAssembly modules from a component binary (no_std
+/// version)
 #[cfg(not(feature = "std"))]
 pub fn extract_embedded_modules(
     bytes: &[u8],
@@ -577,7 +577,8 @@ impl wrt_foundation::traits::Checksummable for ExtendedImportInfo {
 #[cfg(feature = "std")]
 impl wrt_foundation::traits::ToBytes for ExtendedExportInfo {
     fn serialized_size(&self) -> usize {
-        self.name.len() + self.kind.len() + 6 // 2 length bytes + 4 bytes for u32 index
+        self.name.len() + self.kind.len() + 6 // 2 length bytes + 4 bytes for
+                                              // u32 index
     }
 
     fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
@@ -651,7 +652,9 @@ impl wrt_foundation::traits::Checksummable for ExtendedExportInfo {
 #[cfg(feature = "std")]
 impl wrt_foundation::traits::ToBytes for ModuleImportInfo {
     fn serialized_size(&self) -> usize {
-        self.module.len() + self.name.len() + self.kind.len() + 3 + 8 // strings + separators + 2 u32s
+        self.module.len() + self.name.len() + self.kind.len() + 3 + 8 // strings
+                                                                      // + separators
+                                                                      // + 2 u32s
     }
 
     fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
@@ -733,7 +736,8 @@ impl wrt_foundation::traits::Checksummable for ModuleImportInfo {
 #[cfg(feature = "std")]
 impl wrt_foundation::traits::ToBytes for ModuleExportInfo {
     fn serialized_size(&self) -> usize {
-        self.name.len() + self.kind.len() + 2 + 8 // strings + separators + 2 u32s
+        self.name.len() + self.kind.len() + 2 + 8 // strings + separators + 2
+                                                  // u32s
     }
 
     fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(

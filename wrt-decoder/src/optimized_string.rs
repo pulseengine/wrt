@@ -6,15 +6,17 @@
 
 //! Optimized string processing utilities that avoid unnecessary allocations
 
-use crate::prelude::read_name;
 use core::str;
 #[cfg(feature = "std")]
 use std::string::String;
+
 #[cfg(not(any(feature = "std")))]
 use wrt_error::codes;
 use wrt_error::{errors::codes as error_codes, Error, ErrorCategory, Result};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::BoundedString;
+
+use crate::prelude::read_name;
 
 /// Binary std/no_std choice
 #[cfg(feature = "std")]

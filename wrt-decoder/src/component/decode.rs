@@ -2,19 +2,22 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-// Component decoding is only available with std feature due to complex recursive types
+// Component decoding is only available with std feature due to complex
+// recursive types
 #[cfg(feature = "std")]
 mod component_decode {
     use wrt_error::{codes, Error, ErrorCategory, Result};
     use wrt_format::{binary, component::Component};
 
-    use crate::component::parse::{
-        parse_alias_section, parse_canon_section, parse_component_section,
-        parse_component_type_section, parse_core_instance_section, parse_core_module_section,
-        parse_core_type_section, parse_export_section, parse_import_section,
-        parse_instance_section, parse_start_section, parse_value_section,
+    use crate::{
+        component::parse::{
+            parse_alias_section, parse_canon_section, parse_component_section,
+            parse_component_type_section, parse_core_instance_section, parse_core_module_section,
+            parse_core_type_section, parse_export_section, parse_import_section,
+            parse_instance_section, parse_start_section, parse_value_section,
+        },
+        prelude::*,
     };
-    use crate::prelude::*;
 
     /// Decode a WebAssembly Component Model binary into a structured component
     /// representation
@@ -98,8 +101,8 @@ mod component_decode {
                             }
                         },
                         Err(_) => {
-                            // Continue parsing even if custom section name can't be
-                            // read
+                            // Continue parsing even if custom section name
+                            // can't be read
                         },
                     }
                 },

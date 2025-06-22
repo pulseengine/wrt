@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: MIT
 
 use wrt_format::binary;
-
 #[cfg(feature = "std")]
 use wrt_format::component::FormatValType;
 

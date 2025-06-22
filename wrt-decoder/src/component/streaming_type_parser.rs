@@ -1,16 +1,19 @@
 //! Streaming Component Type Section Parser
 //!
-//! This module provides ASIL-compliant streaming parsing of Component Type sections
-//! within Component binaries. It uses the unified capability-based memory allocation
-//! system and operates without loading entire type definitions into memory.
+//! This module provides ASIL-compliant streaming parsing of Component Type
+//! sections within Component binaries. It uses the unified capability-based
+//! memory allocation system and operates without loading entire type
+//! definitions into memory.
 //!
 //! # ASIL Compliance
 //!
-//! This implementation works across all ASIL levels using the unified provider system:
+//! This implementation works across all ASIL levels using the unified provider
+//! system:
 //! - The BoundedVec types adapt their behavior based on the current ASIL level
 //! - The NoStdProvider internally chooses appropriate allocation strategies
 //! - All limits are enforced at compile time with runtime validation
-//! - Single implementation that works for QM, ASIL-A, ASIL-B, ASIL-C, and ASIL-D
+//! - Single implementation that works for QM, ASIL-A, ASIL-B, ASIL-C, and
+//!   ASIL-D
 //!
 //! # Architecture
 //!
@@ -28,7 +31,6 @@ extern crate alloc;
 
 #[cfg(not(feature = "std"))]
 use alloc::{boxed::Box, vec::Vec};
-
 #[cfg(feature = "std")]
 use std::{boxed::Box, vec::Vec};
 
@@ -55,12 +57,15 @@ struct ComponentExport {
 #[cfg(not(feature = "std"))]
 use wrt_format::binary::{read_leb128_u32, read_string};
 
-// Define placeholder types for no_std environments where component types aren't available
+// Define placeholder types for no_std environments where component types aren't
+// available
 #[cfg(not(feature = "std"))]
 mod placeholder_types {
-    use crate::prelude::DecoderVec;
     use core::fmt;
+
     use wrt_error::Result;
+
+    use crate::prelude::DecoderVec;
 
     #[derive(Debug, Clone, Default, PartialEq, Eq)]
     pub struct ComponentType {
@@ -314,7 +319,6 @@ mod placeholder_types {
 
 #[cfg(not(feature = "std"))]
 use placeholder_types::{ComponentType, ComponentTypeDefinition, ExternType, FormatValType};
-
 use wrt_foundation::{
     budget_aware_provider::CrateId, safe_memory::NoStdProvider, traits::BoundedCapacity,
     BoundedVec, VerificationLevel,
@@ -353,9 +357,10 @@ type DecoderProvider = NoStdProvider<65536>;
 
 /// Component Type Section streaming parser
 ///
-/// This parser processes Component Type sections within Component binaries using
-/// a streaming approach that minimizes memory allocation and provides
-/// deterministic behavior across all ASIL levels using the unified provider system.
+/// This parser processes Component Type sections within Component binaries
+/// using a streaming approach that minimizes memory allocation and provides
+/// deterministic behavior across all ASIL levels using the unified provider
+/// system.
 pub struct StreamingTypeParser<'a> {
     /// Binary data being parsed
     data: &'a [u8],
@@ -416,7 +421,8 @@ impl<'a> StreamingTypeParser<'a> {
     /// Parse the component type section using streaming approach
     ///
     /// This method processes the component type section without loading entire
-    /// type definitions into memory, using the unified capability-based allocation system.
+    /// type definitions into memory, using the unified capability-based
+    /// allocation system.
     ///
     /// # Returns
     /// A ComponentTypeSection containing parsed types and metadata
@@ -840,7 +846,8 @@ impl<'a> StreamingTypeParser<'a> {
                     let _field_type = self.parse_value_type()?;
                 }
 
-                // Use bounded vec for empty record - allocation will be handled by capability system
+                // Use bounded vec for empty record - allocation will be handled by capability
+                // system
                 #[cfg(not(feature = "std"))]
                 let empty_fields = {
                     let provider = create_decoder_provider::<4096>()?;
@@ -867,7 +874,8 @@ impl<'a> StreamingTypeParser<'a> {
                     }
                 }
 
-                // Use bounded vec for empty variant - allocation will be handled by capability system
+                // Use bounded vec for empty variant - allocation will be handled by capability
+                // system
                 #[cfg(not(feature = "std"))]
                 let empty_cases = {
                     let provider = create_decoder_provider::<4096>()?;
@@ -902,7 +910,8 @@ impl<'a> StreamingTypeParser<'a> {
                     let _element_type = self.parse_value_type()?;
                 }
 
-                // Use bounded vec for empty tuple - allocation will be handled by capability system
+                // Use bounded vec for empty tuple - allocation will be handled by capability
+                // system
                 #[cfg(not(feature = "std"))]
                 let empty_elements = {
                     let provider = create_decoder_provider::<4096>()?;

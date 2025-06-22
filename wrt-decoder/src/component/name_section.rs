@@ -9,10 +9,10 @@
 //! provides debug information for components.
 
 use wrt_format::binary;
-
-use crate::{prelude::*, Error, Result};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::traits::BoundedCapacity;
+
+use crate::{prelude::*, Error, Result};
 
 // Type aliases for generated data to avoid confusion
 #[cfg(feature = "std")]

@@ -19,11 +19,13 @@ use wrt_format::component::{
 // Import component model types from crate
 // Import prelude for String and other types
 
-// Component validation is only available with std feature due to complex recursive types
+// Component validation is only available with std feature due to complex
+// recursive types
 #[cfg(feature = "std")]
 mod component_validation {
-    use super::*;
     use wrt_error::{codes, Error, ErrorCategory};
+
+    use super::*;
 
     /// Maximum reasonable number of types in a component for validation
     const MAX_TYPES: u32 = 100_000;
@@ -33,8 +35,9 @@ mod component_validation {
 
     /// Validation configuration for component model validation
     ///
-    /// This allows controlling which features of the Component Model are validated,
-    /// in case some implementations don't support the full model.
+    /// This allows controlling which features of the Component Model are
+    /// validated, in case some implementations don't support the full
+    /// model.
     #[derive(Debug, Clone)]
     pub struct ValidationConfig {
         /// Enable value section validation (🪙)
@@ -494,7 +497,8 @@ mod component_validation {
     fn validate_instance(_ctx: &ValidationContext, instance: &Instance) -> Result<(), Error> {
         match instance {
             _ => {
-                // TODO: Implement proper instance validation once Instance enum structure is clarified
+                // TODO: Implement proper instance validation once Instance enum structure is
+                // clarified
                 _ = instance; // Suppress unused warning
             },
         }
@@ -546,7 +550,8 @@ mod component_validation {
                 memory_idx,
             } => {
                 // Validate allocation function and memory indices
-                _ = (alloc_func_idx, memory_idx); // Suppress unused warnings for now
+                _ = (alloc_func_idx, memory_idx); // Suppress unused warnings
+                                                  // for now
             },
             CanonOperation::PostReturn { func_idx } => {
                 // Validate post-return function index
@@ -566,7 +571,8 @@ mod component_validation {
                 options,
             } => {
                 // Validate async operation
-                _ = (func_idx, type_idx, options); // Suppress unused warnings for now
+                _ = (func_idx, type_idx, options); // Suppress unused warnings
+                                                   // for now
             },
         }
         Ok(())
@@ -619,12 +625,15 @@ pub mod no_std_stubs {
         pub fn new() -> Self {
             Self
         }
+
         pub fn default() -> Self {
             Self
         }
+
         pub fn all_enabled() -> Self {
             Self
         }
+
         pub fn mvp_only() -> Self {
             Self
         }

@@ -36,10 +36,9 @@
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary;
-use wrt_foundation::traits::BoundedCapacity;
 use wrt_foundation::{
-    capabilities::CapabilityAwareProvider, capability_context, safe_capability_alloc, CrateId,
-    NoStdProvider,
+    capabilities::CapabilityAwareProvider, capability_context, safe_capability_alloc,
+    traits::BoundedCapacity, CrateId, NoStdProvider,
 };
 
 // Helper functions to create properly sized providers
@@ -76,7 +75,8 @@ fn read_name(data: &[u8], offset: usize) -> Result<(&[u8], usize)> {
 
     Ok((&data[name_start..name_end], leb_bytes + name_len as usize))
 }
-// BoundedCapacity trait is private, using alternative approaches for length operations
+// BoundedCapacity trait is private, using alternative approaches for length
+// operations
 use wrt_foundation::{
     bounded::{BoundedString, BoundedVec, MAX_COMPONENT_TYPES},
     component::{MAX_COMPONENT_EXPORTS, MAX_COMPONENT_IMPORTS},

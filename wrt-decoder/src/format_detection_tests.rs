@@ -3,9 +3,12 @@
 //! This module provides extensive testing for WebAssembly format detection,
 //! ensuring robust identification of Core Modules vs Component Model binaries.
 
-use crate::lazy_detection::{DetectionConfig, LazyDetector};
-use crate::unified_loader::{load_wasm_unified, WasmFormat};
 use wrt_error::Result;
+
+use crate::{
+    lazy_detection::{DetectionConfig, LazyDetector},
+    unified_loader::{load_wasm_unified, WasmFormat},
+};
 
 /// Test data for various WASM formats
 pub struct FormatTestData;

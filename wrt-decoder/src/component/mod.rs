@@ -36,38 +36,31 @@ pub use binary_parser::{
     parse_component_binary, parse_component_binary_with_validation, ComponentBinaryParser,
     ComponentHeader, ComponentSectionId, ValidationLevel,
 };
+pub use component_name_section::{
+    generate_component_name_section, parse_component_name_section, ComponentNameSection,
+};
 #[cfg(feature = "std")]
 pub use decode::decode_component as decode_component_internal;
 #[cfg(feature = "std")]
 pub use encode::encode_component;
-
-pub use component_name_section::{
-    generate_component_name_section, parse_component_name_section, ComponentNameSection,
-};
-
 #[cfg(feature = "std")]
 pub use name_section::{NameMap, NameMapEntry, SortIdentifier};
-
+#[cfg(feature = "std")]
+pub use types::{Component, Export, Import};
 pub use types::{
     ComponentAnalyzer, ComponentMetadata, ComponentType, CoreExternType, CoreInstance, CoreType,
     ExportInfo, ExternType, ImportInfo, Instance, ModuleInfo, Start, ValType,
 };
-
-#[cfg(feature = "std")]
-pub use types::{Component, Export, Import};
-
 #[cfg(feature = "std")]
 pub use utils::*;
-
 pub use val_type::encode_val_type;
 pub use validation::{validate_component, validate_component_with_config, ValidationConfig};
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
-#[cfg(feature = "std")]
-use crate::utils::BinaryType;
-
 #[cfg(not(feature = "std"))]
 use crate::prelude::*;
+#[cfg(feature = "std")]
+use crate::utils::BinaryType;
 
 // No_std stub for BinaryType when utils is not available
 #[cfg(not(feature = "std"))]
@@ -80,8 +73,9 @@ pub enum BinaryType {
 // No_std safe utility functions with bounded behavior
 #[cfg(not(feature = "std"))]
 mod no_std_utils {
-    use super::*;
     use wrt_foundation::BoundedString;
+
+    use super::*;
 
     /// Detect binary type with safety bounds for no_std
     ///

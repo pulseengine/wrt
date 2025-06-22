@@ -98,9 +98,22 @@ pub mod branch_hint_section;
 pub mod custom_section_handler;
 
 // Most re-exports temporarily disabled for demo - keep only essential ones
+// Component functionality (std only)
+#[cfg(feature = "std")]
+pub use component::decode_no_alloc;
 pub use decoder_no_alloc::{
     create_memory_provider, decode_module_header, extract_section_info, validate_module_no_alloc,
     verify_wasm_header, SectionId, SectionInfo, ValidatorType, WasmModuleHeader, MAX_MODULE_SIZE,
+};
+// Lazy detection exports
+pub use lazy_detection::{
+    create_fast_detector, create_thorough_detector, ComponentDetection, DetectionConfig,
+    LazyDetector,
+};
+// Shared cache exports
+pub use shared_cache::{
+    create_cache_with_size, create_default_cache, CacheManager, CacheStats, DecodedCache,
+    SectionData,
 };
 // Streaming validator exports
 pub use streaming_validator::{
@@ -108,30 +121,16 @@ pub use streaming_validator::{
     PlatformWasmValidatorFactory, Section, StreamingWasmValidator, WasmConfiguration,
     WasmRequirements,
 };
-pub use wrt_error::{codes, kinds, Error, Result};
 // Unified loader exports
 pub use unified_loader::{
     load_wasm_unified, ComponentInfo, ExportInfo, ExportType, ImportInfo, ImportType, ModuleInfo,
     WasmFormat, WasmInfo,
 };
-// Shared cache exports
-pub use shared_cache::{
-    create_cache_with_size, create_default_cache, CacheManager, CacheStats, DecodedCache,
-    SectionData,
-};
-// Lazy detection exports
-pub use lazy_detection::{
-    create_fast_detector, create_thorough_detector, ComponentDetection, DetectionConfig,
-    LazyDetector,
-};
+pub use wrt_error::{codes, kinds, Error, Result};
 // Essential re-exports only
 #[cfg(feature = "std")]
 pub use wrt_foundation::safe_memory::StdProvider as StdMemoryProvider;
 pub use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice};
-
-// Component functionality (std only)
-#[cfg(feature = "std")]
-pub use component::decode_no_alloc;
 
 /// Validate WebAssembly header
 ///
@@ -148,8 +147,8 @@ pub fn validate_header(bytes: &[u8]) -> Result<()> {
 
 // Panic handler disabled to avoid conflicts with other crates
 // // Provide a panic handler only when wrt-decoder is being tested in isolation
-// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
-// #[panic_handler]
+// #[cfg(all(not(feature = "std"), not(test), not(feature =
+// "disable-panic-handler")))] #[panic_handler]
 // fn panic(_info: &core::panic::PanicInfo) -> ! {
 //     loop {}
 // }

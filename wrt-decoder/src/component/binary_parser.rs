@@ -1,22 +1,23 @@
 //! WebAssembly Component Model Binary Parser
 //!
 //! This module provides a comprehensive parser for WebAssembly Component Model
-//! binaries (.wasm component files) with full support for all component sections
-//! and complete cross-environment compatibility (std, no_std+alloc, pure no_std).
+//! binaries (.wasm component files) with full support for all component
+//! sections and complete cross-environment compatibility (std, no_std+alloc,
+//! pure no_std).
 //!
 //! The parser follows the Component Model Binary Format specification and
 //! provides robust error handling, validation, and memory safety.
 
-// Component binary parsing is only available with std feature due to complex recursive types
+// Component binary parsing is only available with std feature due to complex
+// recursive types
 #[cfg(feature = "std")]
 mod component_binary_parser {
     // Environment-specific imports with conditional compilation
 
     use core::fmt;
-    use wrt_error::{codes, Error, ErrorCategory, Result};
-    use wrt_format::component::Component;
-    use wrt_format::Validatable;
 
+    use wrt_error::{codes, Error, ErrorCategory, Result};
+    use wrt_format::{component::Component, Validatable};
     // Import ValidationLevel from foundation if available, otherwise define locally
     pub use wrt_foundation::VerificationLevel as ValidationLevel;
 
@@ -49,7 +50,8 @@ mod component_binary_parser {
 
     /// Component Section Types
     ///
-    /// All section IDs defined in the Component Model Binary Format specification
+    /// All section IDs defined in the Component Model Binary Format
+    /// specification
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     #[repr(u8)]
     pub enum ComponentSectionId {
@@ -796,9 +798,11 @@ pub mod no_std_stubs {
         pub fn new() -> Self {
             Self
         }
+
         pub fn with_validation_level(_level: ValidationLevel) -> Self {
             Self
         }
+
         pub fn parse(&mut self, _bytes: &[u8]) -> Result<Component> {
             Err(Error::new(
                 ErrorCategory::Validation,

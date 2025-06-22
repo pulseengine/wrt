@@ -6,15 +6,16 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use crate::prelude::*;
-
 // Import Vec type explicitly
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::vec::Vec;
+
 use wrt_format::module::Module as WrtModule;
 use wrt_foundation::safe_memory::NoStdProvider;
+
+use crate::prelude::*;
 
 /// Default provider for decoder operations
 type DecoderProvider = NoStdProvider<65536>;
@@ -172,7 +173,8 @@ fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result
                             value_type: global_type.value_type,
                             mutable: global_type.mutable,
                         },
-                        init: Vec::new(), // Empty init - should be populated from code section
+                        init: Vec::new(), /* Empty init - should be populated from code
+                                           * section */
                     };
                     module.globals.push(global);
                 }

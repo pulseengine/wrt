@@ -3,14 +3,13 @@
 //! This module provides real-time validation capabilities that operate during
 //! the parsing process, enabling early error detection and recovery.
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_foundation::{DefaultMemoryProvider, WrtVec};
-
+#[cfg(not(feature = "std"))]
+use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::{collections::HashMap, string::String, vec::Vec};
 
-#[cfg(not(feature = "std"))]
-use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
+use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_foundation::{DefaultMemoryProvider, WrtVec};
 
 /// Validation severity levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

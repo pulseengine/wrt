@@ -5,7 +5,6 @@
 // Component parsing requires std for Box and complex recursive structures
 #[cfg(feature = "std")]
 mod std_parsing {
-    use crate::prelude::*;
     use wrt_error::{kinds, Error, Result};
     use wrt_format::{
         binary,
@@ -16,6 +15,8 @@ mod std_parsing {
         module::Module,
     };
     use wrt_foundation::resource;
+
+    use crate::prelude::*;
 
     // Helper function to convert &[u8] to String
     fn bytes_to_string_safe(bytes: &[u8]) -> Result<String> {
@@ -1704,7 +1705,8 @@ mod std_parsing {
                     offset += bytes_read;
                 }
                 // TODO: Fix FormatValType enum to support ResultErr variant
-                // Ok((wrt_format::component::FormatValType::ResultErr(Box::new(err_type)), offset))
+                // Ok((wrt_format::component::FormatValType::ResultErr(Box::new(err_type)),
+                // offset))
                 Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
@@ -1725,8 +1727,8 @@ mod std_parsing {
                 }
                 // TODO: Fix FormatValType enum to support ResultBoth variant
                 // Ok((
-                //     wrt_format::component::FormatValType::ResultBoth(Box::new(ok_type), Box::new(err_type)),
-                //     offset,
+                //     wrt_format::component::FormatValType::ResultBoth(Box::new(ok_type),
+                // Box::new(err_type)),     offset,
                 // ))
                 Err(Error::new(
                     ErrorCategory::Parse,
@@ -2693,7 +2695,7 @@ mod no_std_parsing {
     /// No_std parse core module section with safety bounds
     ///
     /// # Safety Requirements
-    /// - Uses bounded allocation with compile-time limits  
+    /// - Uses bounded allocation with compile-time limits
     /// - Fails gracefully when limits are exceeded
     /// - No heap allocation or dynamic memory
     pub fn parse_core_module_section(_bytes: &[u8]) -> Result<(ParseVec<Module>, usize)> {

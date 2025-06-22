@@ -7,11 +7,13 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use crate::prelude::*;
-use crate::streaming_validator::{ComprehensivePlatformLimits, StreamingWasmValidator};
 use wrt_format::module::{Function, Module as WrtModule};
-use wrt_foundation::bounded::BoundedVec;
-use wrt_foundation::safe_memory::NoStdProvider;
+use wrt_foundation::{bounded::BoundedVec, safe_memory::NoStdProvider};
+
+use crate::{
+    prelude::*,
+    streaming_validator::{ComprehensivePlatformLimits, StreamingWasmValidator},
+};
 
 /// Streaming decoder that processes WebAssembly modules section by section
 pub struct StreamingDecoder<'a> {
@@ -148,8 +150,8 @@ impl<'a> StreamingDecoder<'a> {
 
         // Process each type one at a time
         for _ in 0..count {
-            // Skip the actual type parsing for now - would parse function type here
-            // and add to module.types
+            // Skip the actual type parsing for now - would parse function type
+            // here and add to module.types
         }
 
         Ok(())

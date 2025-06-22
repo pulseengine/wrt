@@ -9,10 +9,12 @@
 //! This module provides zero-allocation and minimal-allocation parsing
 //! functions that work across std, no_std+alloc, and pure no_std environments.
 
-use crate::prelude::read_leb128_u32;
 use core::str;
+
 use wrt_error::{codes, errors::codes as error_codes, Error, ErrorCategory, Result};
 use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice};
+
+use crate::prelude::read_leb128_u32;
 
 /// Memory pool for reusing vectors during parsing
 pub struct MemoryPool<P: MemoryProvider> {

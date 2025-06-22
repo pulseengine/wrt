@@ -7,8 +7,7 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use crate::prelude::*;
-use crate::unified_loader::WasmFormat;
+use crate::{prelude::*, unified_loader::WasmFormat};
 
 /// Component detection result
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -490,6 +489,7 @@ mod tests {
 
         // Should handle safely even with ambiguous detection
         let result = detector.needs_component_processing(&core_module).unwrap();
-        assert!(result || !result); // Either result is acceptable for empty module
+        assert!(result || !result); // Either result is acceptable for empty
+                                    // module
     }
 }

@@ -39,10 +39,6 @@ pub use std::{
     vec::Vec,
 };
 
-// No_std equivalents - use wrt-foundation types (Vec and String defined below with specific providers)
-#[cfg(not(feature = "std"))]
-pub use wrt_foundation::BoundedMap as HashMap;
-
 // Import synchronization primitives for no_std
 //#[cfg(not(feature = "std"))]
 // pub use wrt_sync::{Mutex, RwLock};
@@ -68,7 +64,6 @@ pub use wrt_format::{
     // Format-specific types
     types::{FormatBlockType, Limits, MemoryIndexType},
 };
-
 // Binary std/no_std choice
 #[cfg(feature = "std")]
 // pub use wrt_format::state::{create_state_section, extract_state_section, StateSection};
@@ -78,6 +73,10 @@ pub use wrt_foundation::component_value::{ComponentValue, ValType};
 // Conversion utilities from wrt-foundation
 #[cfg(feature = "conversion")]
 pub use wrt_foundation::conversion::{ref_type_to_val_type, val_type_to_ref_type};
+// No_std equivalents - use wrt-foundation types (Vec and String defined below with specific
+// providers)
+#[cfg(not(feature = "std"))]
+pub use wrt_foundation::BoundedMap as HashMap;
 // Re-export clean types from wrt-foundation
 pub use wrt_foundation::{
     // SafeMemory types
@@ -86,7 +85,12 @@ pub use wrt_foundation::{
     types::{BlockType, RefType, ValueType},
     values::Value,
 };
-
+// Use our unified memory management system
+#[cfg(not(feature = "std"))]
+pub use wrt_foundation::{
+    unified_types_simple::{DefaultTypes, EmbeddedTypes},
+    BoundedString, BoundedVec,
+};
 // Re-export clean types only when allocation is available
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use wrt_foundation::{
@@ -97,13 +101,6 @@ pub use wrt_foundation::{
 
 // Binary std/no_std choice
 pub use crate::decoder_no_alloc;
-
-// Use our unified memory management system
-#[cfg(not(feature = "std"))]
-pub use wrt_foundation::{
-    unified_types_simple::{DefaultTypes, EmbeddedTypes},
-    BoundedString, BoundedVec,
-};
 // For no_std mode, use explicit bounded types (no confusing aliases!)
 #[cfg(not(feature = "std"))]
 pub type DecoderVec<T> = BoundedVec<T, 256, wrt_foundation::NoStdProvider<4096>>;
@@ -184,8 +181,9 @@ pub mod binary {
 /// Binary utilities for no_std environments
 #[cfg(not(feature = "std"))]
 pub mod binary {
-    use super::create_decoder_provider;
     use wrt_foundation::{BoundedVec, NoStdProvider};
+
+    use super::create_decoder_provider;
 
     /// Write LEB128 u32 in no_std mode
     pub fn write_leb128_u32(value: u32) -> BoundedVec<u8, 10, NoStdProvider<64>> {
@@ -302,14 +300,14 @@ pub mod binary {
     }
 }
 
-// Make commonly used binary functions available at top level (now exported by wrt_format directly)
-pub use wrt_format::read_leb128_u32;
-#[cfg(feature = "std")]
-pub use wrt_format::{read_name, read_string, write_leb128_u32, write_string};
-
+// Make commonly used binary functions available at top level (now exported by
+// wrt_format directly)
 // For no_std mode, provide the missing functions locally
 #[cfg(not(feature = "std"))]
 pub use binary::{read_name, write_leb128_u32, write_string};
+pub use wrt_format::read_leb128_u32;
+#[cfg(feature = "std")]
+pub use wrt_format::{read_name, read_string, write_leb128_u32, write_string};
 
 /// Extension trait to add missing methods to BoundedVec
 pub trait BoundedVecExt<T, const N: usize, P: wrt_foundation::MemoryProvider> {
@@ -385,6 +383,7 @@ pub fn is_valid_wasm_header(data: &[u8]) -> bool {
 
 // read_leb128_u32 is now imported from wrt_format
 
-// Feature-gated function aliases - bring in functions from wrt_format that aren't already exported
+// Feature-gated function aliases - bring in functions from wrt_format that
+// aren't already exported
 #[cfg(feature = "std")]
 pub use wrt_format::binary::with_alloc::parse_block_type as parse_format_block_type;

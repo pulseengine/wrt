@@ -7,13 +7,15 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use crate::prelude::*;
-use crate::unified_loader::{ExportInfo, ImportInfo, WasmFormat};
-
 #[cfg(not(feature = "std"))]
 use alloc::collections::BTreeMap as HashMap;
 #[cfg(feature = "std")]
 use std::collections::HashMap;
+
+use crate::{
+    prelude::*,
+    unified_loader::{ExportInfo, ImportInfo, WasmFormat},
+};
 
 /// Cached section data to avoid re-parsing
 #[derive(Debug, Clone)]

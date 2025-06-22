@@ -5,9 +5,10 @@
 // Component encoding requires std for Box and Vec - entire module is std-only
 #[cfg(feature = "std")]
 mod std_encoding {
-    use crate::prelude::*;
     use wrt_error::Result;
     use wrt_format::{binary, component::Component};
+
+    use crate::prelude::*;
 
     /// Encode a WebAssembly Component Model component into binary format
     pub fn encode_component(component: &Component) -> Result<Vec<u8>> {
@@ -785,7 +786,8 @@ mod no_std_encoding {
     use wrt_error::{codes, Error, ErrorCategory, Result};
     use wrt_foundation::{safe_memory::NoStdProvider, BoundedVec};
 
-    // No_std stub types for components that can't be fully encoded without heap allocation
+    // No_std stub types for components that can't be fully encoded without heap
+    // allocation
     #[derive(Debug, Clone)]
     pub struct Component {
         // Simplified component representation for no_std

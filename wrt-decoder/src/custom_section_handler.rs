@@ -4,27 +4,24 @@
 //! including automatic recognition and parsing of well-known sections like
 //! branch hints, name sections, and others.
 
-use crate::branch_hint_section::{
-    parse_branch_hint_section, BranchHintSection, BRANCH_HINT_SECTION_NAME,
-};
-use crate::prelude::*;
-use wrt_error::{codes, Error, ErrorCategory, Result};
+#[cfg(not(feature = "std"))]
+use alloc::collections::BTreeMap;
+#[cfg(not(feature = "std"))]
+use alloc::{string::String, vec::Vec};
+#[cfg(all(feature = "std", not(feature = "safety-critical")))]
+use std::collections::HashMap;
+#[cfg(feature = "std")]
+use std::{string::String, vec::Vec};
 
+use wrt_error::{codes, Error, ErrorCategory, Result};
 // Conditional imports for WRT allocator
 #[cfg(all(feature = "std", feature = "safety-critical"))]
 use wrt_foundation::allocator::{CrateId, WrtHashMap};
 
-#[cfg(all(feature = "std", not(feature = "safety-critical")))]
-use std::collections::HashMap;
-
-#[cfg(not(feature = "std"))]
-use alloc::collections::BTreeMap;
-
-#[cfg(feature = "std")]
-use std::{string::String, vec::Vec};
-
-#[cfg(not(feature = "std"))]
-use alloc::{string::String, vec::Vec};
+use crate::{
+    branch_hint_section::{parse_branch_hint_section, BranchHintSection, BRANCH_HINT_SECTION_NAME},
+    prelude::*,
+};
 
 /// Represents a parsed custom section
 #[derive(Debug, Clone)]
@@ -201,7 +198,8 @@ impl Default for CustomSection {
     }
 }
 
-/// Utility function to extract custom section name and data from a complete custom section
+/// Utility function to extract custom section name and data from a complete
+/// custom section
 pub fn extract_custom_section(section_data: &[u8]) -> Result<(String, &[u8])> {
     use wrt_format::binary::read_leb128_u32;
 

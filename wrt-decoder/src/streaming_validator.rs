@@ -4,11 +4,12 @@
 //! platform capabilities.
 
 use wrt_error::{codes, Error, ErrorCategory};
-use wrt_foundation::bounded::BoundedVec;
-use wrt_foundation::traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream};
-use wrt_foundation::verification::Checksum;
-use wrt_foundation::NoStdProvider;
-use wrt_foundation::WrtResult;
+use wrt_foundation::{
+    bounded::BoundedVec,
+    traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream},
+    verification::Checksum,
+    NoStdProvider, WrtResult,
+};
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -18,8 +19,8 @@ mod platform_stubs {
     /// Comprehensive platform limits configuration
     ///
     /// This structure defines platform-specific resource limits that constrain
-    /// WebAssembly execution and validation. These limits ensure that WASM modules
-    /// do not exceed platform capabilities.
+    /// WebAssembly execution and validation. These limits ensure that WASM
+    /// modules do not exceed platform capabilities.
     pub struct ComprehensivePlatformLimits {
         /// Maximum total memory available on the platform (bytes)
         pub max_total_memory: usize,
@@ -525,7 +526,8 @@ impl StreamingWasmValidator {
         let (function_count, _) = self.read_leb128_u32(section_data)?;
 
         // Estimate stack usage based on function count
-        // This is a simplified heuristic - real implementation would analyze function bodies
+        // This is a simplified heuristic - real implementation would analyze function
+        // bodies
         let estimated_stack_usage = function_count * 512; // 512 bytes per function estimate
 
         Ok(Section::Code(CodeSection {

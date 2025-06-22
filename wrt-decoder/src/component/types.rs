@@ -15,8 +15,9 @@ pub use wrt_format::component::{
 // No_std bounded alternatives following functional safety guidelines
 #[cfg(not(feature = "std"))]
 mod no_std_types {
-    use super::*;
     use wrt_foundation::{safe_memory::NoStdProvider, BoundedMap, BoundedString, BoundedVec};
+
+    use super::*;
     type BoundedProvider = NoStdProvider<8192>; // Use 8KB provider like NoStdProvider<8192>
     type ComponentVec<T> = BoundedVec<T, 64, BoundedProvider>;
     type ComponentString = BoundedString<256, BoundedProvider>;
@@ -438,7 +439,8 @@ impl ComponentAnalyzer for Component {
     fn analyze(&self) -> crate::component::analysis::ComponentSummary {
         // Create a basic summary directly from the component
         crate::component::analysis::ComponentSummary {
-            name: String::new(), // Keep as std String for now as this is used in analysis
+            name: String::new(), /* Keep as std String for now as this is used
+                                  * in analysis */
             core_modules_count: self.modules.len() as u32,
             core_instances_count: self.core_instances.len() as u32,
             imports_count: self.imports.len() as u32,

@@ -2,9 +2,10 @@
 //!
 //! This module requires the `alloc` feature.
 //!
-//! This module implements parsing for the "metadata.code.branch_hint" custom section
-//! as defined in the WebAssembly Branch Hinting proposal. This section contains
-//! performance hints that suggest which branches are more likely to be taken.
+//! This module implements parsing for the "metadata.code.branch_hint" custom
+//! section as defined in the WebAssembly Branch Hinting proposal. This section
+//! contains performance hints that suggest which branches are more likely to be
+//! taken.
 //!
 //! # Custom Section Format
 //!
@@ -146,7 +147,8 @@ impl BranchHint {
         }
     }
 
-    /// Check if this hint suggests the branch should be optimized for the taken path
+    /// Check if this hint suggests the branch should be optimized for the taken
+    /// path
     pub fn optimize_for_taken(&self) -> bool {
         self.hint_value.is_likely_taken()
     }

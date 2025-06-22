@@ -1,16 +1,19 @@
 //! Streaming Core Module Section Parser for WebAssembly Component Model
 //!
-//! This module provides ASIL-compliant streaming parsing of Core Module sections
-//! within Component binaries. It uses the unified capability-based memory allocation
-//! system and operates without loading entire modules into memory.
+//! This module provides ASIL-compliant streaming parsing of Core Module
+//! sections within Component binaries. It uses the unified capability-based
+//! memory allocation system and operates without loading entire modules into
+//! memory.
 //!
 //! # ASIL Compliance
 //!
-//! This implementation works across all ASIL levels using the unified provider system:
+//! This implementation works across all ASIL levels using the unified provider
+//! system:
 //! - The BoundedVec types adapt their behavior based on the current ASIL level
 //! - The NoStdProvider internally chooses appropriate allocation strategies
 //! - All limits are enforced at compile time with runtime validation
-//! - Single implementation that works for QM, ASIL-A, ASIL-B, ASIL-C, and ASIL-D
+//! - Single implementation that works for QM, ASIL-A, ASIL-B, ASIL-C, and
+//!   ASIL-D
 //!
 //! # Architecture
 //!
@@ -28,7 +31,6 @@ extern crate alloc;
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
-
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
@@ -43,7 +45,6 @@ type CoreModule = Module;
 
 #[cfg(feature = "std")]
 use wrt_format::component::Component;
-
 use wrt_foundation::{
     budget_aware_provider::CrateId, safe_memory::NoStdProvider, BoundedVec, VerificationLevel,
 };
@@ -68,7 +69,8 @@ type DecoderProvider = NoStdProvider<65536>;
 ///
 /// This parser processes Core Module sections within Component binaries using
 /// a streaming approach that minimizes memory allocation and provides
-/// deterministic behavior across all ASIL levels using the unified provider system.
+/// deterministic behavior across all ASIL levels using the unified provider
+/// system.
 pub struct StreamingCoreModuleParser<'a> {
     /// Binary data being parsed
     data: &'a [u8],
@@ -85,8 +87,10 @@ pub struct CoreModuleSection {
     pub module_count: u32,
     /// Total bytes consumed
     pub bytes_consumed: usize,
-    /// Modules parsed using capability-managed storage (simplified for core module streaming)
-    modules: Vec<CoreModule>, // Use Vec for now until Module implements all required traits
+    /// Modules parsed using capability-managed storage (simplified for core
+    /// module streaming)
+    modules: Vec<CoreModule>, /* Use Vec for now until Module implements all required
+                               * traits */
 }
 
 impl<'a> StreamingCoreModuleParser<'a> {
@@ -126,7 +130,8 @@ impl<'a> StreamingCoreModuleParser<'a> {
     /// Parse the core module section using streaming approach
     ///
     /// This method processes the core module section without loading entire
-    /// modules into memory, using the unified capability-based allocation system.
+    /// modules into memory, using the unified capability-based allocation
+    /// system.
     ///
     /// # Returns
     /// A CoreModuleSection containing parsed modules and metadata

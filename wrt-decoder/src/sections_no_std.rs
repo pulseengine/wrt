@@ -10,10 +10,10 @@
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::{
     binary::{self},
-    module::{DataMode, ElementInit, ExportKind},
+    module::{DataMode, ElementInit, Export as WrtExport, ExportKind},
     types::{parse_value_type, RefType},
+    DataSegment as WrtDataSegment, ElementSegment as WrtElementSegment, WasmString,
 };
-
 use wrt_foundation::{
     bounded::{BoundedVec, WasmName},
     safe_memory::NoStdProvider,
@@ -24,16 +24,12 @@ use wrt_foundation::{
     },
 };
 
-use wrt_format::{
-    module::Export as WrtExport, DataSegment as WrtDataSegment,
-    ElementSegment as WrtElementSegment, WasmString,
-};
-
-use crate::memory_optimized::{check_bounds_u32, safe_usize_conversion};
-use crate::optimized_string::parse_utf8_string_inplace;
-
 // Import bounded infrastructure
 use crate::bounded_decoder_infra::*;
+use crate::{
+    memory_optimized::{check_bounds_u32, safe_usize_conversion},
+    optimized_string::parse_utf8_string_inplace,
+};
 
 /// WebAssembly section representation for no_std environments
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -821,8 +817,11 @@ pub mod parsers {
     }
 }
 
-// Helper functions removed - using concrete implementations from bounded_decoder_infra.rs
+// Helper functions removed - using concrete implementations from
+// bounded_decoder_infra.rs
 
-// All duplicate helper functions removed - using implementations from bounded_decoder_infra.rs
+// All duplicate helper functions removed - using implementations from
+// bounded_decoder_infra.rs
 
-// new_results_vec also removed - using implementation from bounded_decoder_infra.rs
+// new_results_vec also removed - using implementation from
+// bounded_decoder_infra.rs

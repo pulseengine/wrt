@@ -1,12 +1,14 @@
 //! Comprehensive tests for ComponentBinaryParser
 //!
-//! This module provides extensive test coverage for the WebAssembly Component Model
-//! binary parser, including edge cases, error conditions, and cross-environment compatibility.
+//! This module provides extensive test coverage for the WebAssembly Component
+//! Model binary parser, including edge cases, error conditions, and
+//! cross-environment compatibility.
 
 #[cfg(test)]
 mod tests {
-    use super::super::binary_parser::*;
     use wrt_error::ErrorCategory;
+
+    use super::super::binary_parser::*;
 
     // Test data generators for creating valid component binaries
 

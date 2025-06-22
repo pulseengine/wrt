@@ -8,15 +8,12 @@
 //! sections in WebAssembly Component Model binaries.
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-
-#[cfg(feature = "std")]
-use wrt_format::component::Sort;
-
 #[cfg(feature = "std")]
 use wrt_format::binary::with_alloc::{read_leb128_u32, read_string};
 #[cfg(feature = "std")]
+use wrt_format::component::Sort;
+#[cfg(feature = "std")]
 use wrt_format::{write_leb128_u32, write_string};
-
 #[cfg(not(feature = "std"))]
 use wrt_foundation::bounded::BoundedVec;
 #[cfg(not(feature = "std"))]
@@ -176,7 +173,7 @@ pub fn generate_component_name_section(section: &ComponentNameSection) -> Result
 ///
 /// # Safety Requirements
 /// - Uses bounded allocation with compile-time limits
-/// - Fails gracefully when limits are exceeded  
+/// - Fails gracefully when limits are exceeded
 /// - No heap allocation or dynamic memory
 #[cfg(not(feature = "std"))]
 pub fn generate_component_name_section(
@@ -365,7 +362,8 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
     Ok(result)
 }
 
-/// Parse a component name section from binary data (no_std version - simplified)
+/// Parse a component name section from binary data (no_std version -
+/// simplified)
 #[cfg(not(feature = "std"))]
 pub fn parse_component_name_section(_data: &[u8]) -> Result<ComponentNameSection> {
     // Simplified parsing for no_std - only basic functionality
