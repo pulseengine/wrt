@@ -52,6 +52,8 @@ pub mod branch_prediction;
 pub mod cfi_engine;
 pub mod core_types;
 pub mod execution;
+#[cfg(test)]
+mod execution_tests;
 /// Format bridge interface
 pub mod format_bridge;
 pub mod func;
@@ -97,6 +99,8 @@ pub mod bounded_runtime_infra;
 
 // Instruction parser for bytecode to instruction conversion
 pub mod instruction_parser;
+#[cfg(test)]
+mod instruction_parser_tests;
 
 // Temporary stub modules for parallel development
 mod foundation_stubs;

@@ -3138,7 +3138,7 @@ impl<const N_BITS: usize> FromBytes for BoundedBitSet<N_BITS> {
 mod tests {
     use super::*;
     use crate::safe_memory::NoStdProvider;
-    use crate::{budget_aware_provider::CrateId, wrt_memory_system::WrtProviderFactory};
+    use crate::budget_aware_provider::CrateId;
 
     // Helper function to initialize memory system for tests
     fn init_test_memory_system() {

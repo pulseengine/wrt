@@ -6,7 +6,7 @@
 use wrt_error::Result;
 
 use crate::{
-    lazy_detection::{DetectionConfig, LazyDetector},
+    lazy_detection::{ComponentDetection, DetectionConfig, LazyDetector},
     unified_loader::{load_wasm_unified, WasmFormat},
 };
 
@@ -102,14 +102,14 @@ impl FormatDetectionTests {
         // Test Core Module detection
         let core_binary = FormatTestData::minimal_core_module();
         let core_info = load_wasm_unified(&core_binary)?;
-        assert_eq!(core_info.format, WasmFormat::CoreModule);
+        assert_eq!(core_info.format_type, WasmFormat::CoreModule);
         assert!(core_info.module_info.is_some());
         assert!(core_info.component_info.is_none());
 
         // Test Component detection
         let component_binary = FormatTestData::minimal_component();
         let component_info = load_wasm_unified(&component_binary)?;
-        assert_eq!(component_info.format, WasmFormat::Component);
+        assert_eq!(component_info.format_type, WasmFormat::Component);
         assert!(component_info.component_info.is_some());
         assert!(core_info.module_info.is_some()); // Core may still be present
 
@@ -120,7 +120,7 @@ impl FormatDetectionTests {
     /// Test lazy detection performance and accuracy
     pub fn test_lazy_detection() -> Result<()> {
         let config = DetectionConfig::default();
-        let detector = LazyDetector::new(config);
+        let detector = LazyDetector::with_config(config);
 
         // Test various binaries
         let test_cases = vec![
@@ -147,7 +147,12 @@ impl FormatDetectionTests {
         ];
 
         for (binary, expected_format, description) in test_cases {
-            let detected_format = detector.detect_format(&binary)?;
+            let detection_result = detector.detect_format(&binary)?;
+            let detected_format = match detection_result {
+                ComponentDetection::CoreModule => WasmFormat::CoreModule,
+                ComponentDetection::Component => WasmFormat::Component,
+                _ => WasmFormat::Unknown,
+            };
             assert_eq!(
                 detected_format, expected_format,
                 "Failed detection for {}",
@@ -176,7 +181,7 @@ impl FormatDetectionTests {
         let result = load_wasm_unified(&unsupported);
         // This might succeed but with warnings - check the format
         if let Ok(info) = result {
-            println!("Unsupported version detected as: {:?}", info.format);
+            println!("Unsupported version detected as: {:?}", info.format_type);
         }
 
         println!("✓ Error handling tests passed");
@@ -235,7 +240,7 @@ impl FormatDetectionTests {
             0x01, 0x00, 0x00, 0x00, // version
         ];
         let info = load_wasm_unified(&minimal)?;
-        assert_eq!(info.format, WasmFormat::CoreModule);
+        assert_eq!(info.format_type, WasmFormat::CoreModule);
 
         // Test binary with only magic (should fail)
         let magic_only = vec![0x00, 0x61, 0x73, 0x6d];
@@ -259,7 +264,7 @@ impl FormatDetectionTests {
         // Load the same binary multiple times to test caching
         for i in 0..5 {
             let info = load_wasm_unified(&binary)?;
-            assert_eq!(info.format, WasmFormat::CoreModule);
+            assert_eq!(info.format_type, WasmFormat::CoreModule);
 
             // Check that builtin imports are consistent
             if i > 0 {

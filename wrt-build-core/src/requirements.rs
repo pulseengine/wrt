@@ -5,6 +5,9 @@
 //! - File traceability checking
 //! - ASIL compliance verification
 //! - Certification readiness assessment
+//! - Enhanced safety requirement modeling
+
+pub mod model;
 
 use std::{
     collections::HashMap,
@@ -14,7 +17,14 @@ use std::{
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
-use crate::error::{BuildError, BuildResult};
+use crate::{
+    error::{BuildError, BuildResult},
+    verify::AsilLevel,
+};
+use self::model::{
+    SafetyRequirement, RequirementRegistry, RequirementId,
+    RequirementType, VerificationMethod, VerificationStatus, CoverageLevel,
+};
 
 /// Requirements file structure
 #[derive(Debug, Deserialize)]
@@ -89,6 +99,18 @@ impl Requirements {
 
         toml::from_str(&content)
             .map_err(|e| BuildError::Verification(format!("Failed to parse requirements: {}", e)))
+    }
+
+    /// Convert to enhanced requirement registry
+    pub fn to_registry(&self) -> RequirementRegistry {
+        let mut registry = RequirementRegistry::new();
+        
+        for req in &self.requirement {
+            let safety_req = req.to_safety_requirement();
+            registry.add_requirement(safety_req);
+        }
+        
+        registry
     }
 
     /// Initialize a sample requirements file
@@ -215,5 +237,218 @@ platform = ["all"]
         }
 
         matrix
+    }
+}
+
+impl Requirement {
+    /// Convert simple requirement to enhanced SafetyRequirement
+    pub fn to_safety_requirement(&self) -> SafetyRequirement {
+        let mut req = SafetyRequirement::new(
+            RequirementId::new(&self.id),
+            self.name.clone(),
+            self.description.clone(),
+            self.parse_requirement_type(),
+            self.parse_asil_level(),
+        );
+        
+        // Set verification method
+        req.verification_method = self.parse_verification_method();
+        
+        // Add source files as implementations
+        for src in &self.source_files {
+            req.add_implementation(src.clone());
+        }
+        
+        // Add test files
+        for test in &self.test_files {
+            req.add_test(test.clone());
+        }
+        
+        // Add documentation
+        for doc in &self.documentation_files {
+            req.add_documentation(doc.clone());
+        }
+        
+        // Set status based on simple status field
+        req.status = match self.status.to_lowercase().as_str() {
+            "implemented" | "verified" | "complete" => VerificationStatus::Verified,
+            "in_progress" | "partial" => VerificationStatus::InProgress,
+            "not_started" | "pending" => VerificationStatus::NotStarted,
+            _ => VerificationStatus::NotStarted,
+        };
+        
+        // Estimate coverage level based on test files
+        req.coverage = if self.test_files.is_empty() {
+            CoverageLevel::None
+        } else if self.test_files.len() == 1 {
+            CoverageLevel::Basic
+        } else {
+            CoverageLevel::Comprehensive
+        };
+        
+        req
+    }
+    
+    /// Parse requirement type from category string
+    fn parse_requirement_type(&self) -> RequirementType {
+        match self.category.to_lowercase().as_str() {
+            "functional" => RequirementType::Functional,
+            "performance" => RequirementType::Performance,
+            "safety" => RequirementType::Safety,
+            "security" => RequirementType::Security,
+            "reliability" => RequirementType::Reliability,
+            "qualification" => RequirementType::Qualification,
+            "platform" => RequirementType::Platform,
+            "memory" => RequirementType::Memory,
+            _ => RequirementType::Functional,
+        }
+    }
+    
+    /// Parse ASIL level from string
+    fn parse_asil_level(&self) -> AsilLevel {
+        match self.asil_level.to_uppercase().as_str() {
+            "QM" => AsilLevel::QM,
+            "ASIL-A" | "ASIL_A" | "A" => AsilLevel::ASIL_A,
+            "ASIL-B" | "ASIL_B" | "B" => AsilLevel::ASIL_B,
+            "ASIL-C" | "ASIL_C" | "C" => AsilLevel::ASIL_C,
+            "ASIL-D" | "ASIL_D" | "D" => AsilLevel::ASIL_D,
+            _ => AsilLevel::QM,
+        }
+    }
+    
+    /// Parse verification method from string
+    fn parse_verification_method(&self) -> VerificationMethod {
+        let method = self.verification_method.to_lowercase();
+        if method.contains("inspection") || method.contains("review") {
+            VerificationMethod::Inspection
+        } else if method.contains("analysis") {
+            VerificationMethod::Analysis
+        } else if method.contains("test") {
+            VerificationMethod::Test
+        } else if method.contains("demonstration") || method.contains("demo") {
+            VerificationMethod::Demonstration
+        } else if method.contains("simulation") || method.contains("sim") {
+            VerificationMethod::Simulation
+        } else if method.contains("formal") || method.contains("proof") {
+            VerificationMethod::FormalProof
+        } else {
+            VerificationMethod::Test
+        }
+    }
+}
+
+/// Enhanced requirements verification using SCORE methodology
+pub struct EnhancedRequirementsVerifier {
+    /// Path to workspace root
+    workspace_root: PathBuf,
+    /// Requirements registry
+    registry: RequirementRegistry,
+}
+
+impl EnhancedRequirementsVerifier {
+    /// Create a new enhanced verifier
+    pub fn new(workspace_root: PathBuf) -> Self {
+        Self {
+            workspace_root,
+            registry: RequirementRegistry::new(),
+        }
+    }
+    
+    /// Load requirements from file and convert to enhanced model
+    pub fn load_requirements(&mut self, path: &Path) -> BuildResult<()> {
+        let requirements = Requirements::load(path)?;
+        self.registry = requirements.to_registry();
+        Ok(())
+    }
+    
+    /// Verify all requirements with enhanced checking
+    pub fn verify_all(&mut self) -> BuildResult<()> {
+        // First do file-based verification
+        self.verify_file_references()?;
+        
+        // Then update status based on verification results
+        self.update_verification_status();
+        
+        Ok(())
+    }
+    
+    /// Verify file references for all requirements
+    fn verify_file_references(&self) -> BuildResult<()> {
+        for req in &self.registry.requirements {
+            // Check implementation files
+            for impl_file in &req.implementations {
+                let path = self.workspace_root.join(impl_file);
+                if !path.exists() && !impl_file.contains("*") {
+                    println!(
+                        "{} Missing implementation file for {}: {}",
+                        "⚠️ ".yellow(),
+                        req.id,
+                        impl_file
+                    );
+                }
+            }
+            
+            // Check test files
+            for test_file in &req.tests {
+                let path = self.workspace_root.join(test_file);
+                if !path.exists() && !test_file.contains("*") {
+                    println!(
+                        "{} Missing test file for {}: {}",
+                        "⚠️ ".yellow(),
+                        req.id,
+                        test_file
+                    );
+                }
+            }
+            
+            // Check documentation files
+            for doc_file in &req.documentation {
+                let path = self.workspace_root.join(doc_file);
+                if !path.exists() && !doc_file.contains("*") {
+                    println!(
+                        "{} Missing documentation file for {}: {}",
+                        "⚠️ ".yellow(),
+                        req.id,
+                        doc_file
+                    );
+                }
+            }
+        }
+        
+        Ok(())
+    }
+    
+    /// Update verification status based on file existence
+    fn update_verification_status(&mut self) {
+        for req in &mut self.registry.requirements {
+            let mut all_files_exist = true;
+            
+            // Check all referenced files
+            for file in req.implementations.iter()
+                .chain(req.tests.iter())
+                .chain(req.documentation.iter()) 
+            {
+                let path = self.workspace_root.join(file);
+                if !path.exists() && !file.contains("*") {
+                    all_files_exist = false;
+                    break;
+                }
+            }
+            
+            // Update status if needed
+            if matches!(req.status, VerificationStatus::Verified) && !all_files_exist {
+                req.status = VerificationStatus::Failed("Missing referenced files".to_string());
+            }
+        }
+    }
+    
+    /// Get the requirement registry
+    pub fn registry(&self) -> &RequirementRegistry {
+        &self.registry
+    }
+    
+    /// Get mutable requirement registry
+    pub fn registry_mut(&mut self) -> &mut RequirementRegistry {
+        &mut self.registry
     }
 }

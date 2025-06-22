@@ -5,9 +5,9 @@
 use wrt_foundation::{
     bounded::BoundedErrorKind,
     BoundedBitSet, BoundedBuilder, BoundedDeque, BoundedMap, BoundedQueue, BoundedSet,
-    MemoryBuilder, NoStdProvider, StringBuilder, WrtProviderFactory, budget_aware_provider::CrateId,
-    VerificationLevel, traits::BoundedCapacity,
-, safe_managed_alloc};
+    MemoryBuilder, NoStdProvider, StringBuilder, budget_aware_provider::CrateId,
+    VerificationLevel, traits::BoundedCapacity, safe_managed_alloc
+};
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
@@ -148,7 +148,7 @@ fn test_bounded_map_operations() {
 
 #[test]
 fn test_bounded_set_operations() {
-    let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
+    let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     let mut set = BoundedSet::<String, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
     // Check empty set properties
@@ -205,7 +205,7 @@ fn test_bounded_set_operations() {
 
 #[test]
 fn test_bounded_deque_operations() {
-    let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
+    let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     let mut deque = BoundedDeque::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
     // Check empty deque properties
@@ -499,7 +499,7 @@ fn test_bounded_collections_performance() {
 
     // Create large collections
     let mut deque = BoundedDeque::<u32, 10_000, NoStdProvider<4_194_304>>::new(
-        NoStdProvider::new(4 * 1024 * 1024, VerificationLevel::Critical), // 4MB buffer
+        safe_managed_alloc!(4 * 1024 * 1024, CrateId::Foundation).unwrap(), // 4MB buffer
     )
     .unwrap();
 

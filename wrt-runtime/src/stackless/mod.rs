@@ -14,6 +14,9 @@ mod frame;
 #[cfg(feature = "std")]
 pub mod tail_call;
 
+#[cfg(test)]
+mod engine_tests;
+
 pub use engine::{
     StacklessCallbackRegistry, StacklessEngine, StacklessExecutionState, StacklessStack,
 };

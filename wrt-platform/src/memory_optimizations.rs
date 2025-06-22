@@ -21,7 +21,7 @@ use std::vec::Vec;
 
 use wrt_error::Error;
 
-use crate::memory::{MemoryProvider, NoStdProvider, VerificationLevel};
+use crate::memory::{MemoryProvider, NoStdProvider, NoStdProviderBuilder, VerificationLevel};
 type WrtResult<T> = Result<T, Error>;
 
 /// A checksum implementation for data verification.
@@ -123,7 +123,7 @@ impl MacOSOptimizedProvider {
     /// verification level.
     pub fn new(size: usize, verification_level: VerificationLevel) -> Self {
         Self {
-            inner: NoStdProvider::new(size, verification_level),
+            inner: NoStdProviderBuilder::new().with_size(size).with_verification_level(verification_level).build(),
             features: MacOSFeatures::default(),
         }
     }
@@ -134,7 +134,7 @@ impl MacOSOptimizedProvider {
         verification_level: VerificationLevel,
         features: MacOSFeatures,
     ) -> Self {
-        Self { inner: NoStdProvider::new(size, verification_level), features }
+        Self { inner: NoStdProviderBuilder::new().with_size(size).with_verification_level(verification_level).build(), features }
     }
 }
 
@@ -292,7 +292,7 @@ impl LinuxOptimizedProvider {
     /// verification level.
     pub fn new(size: usize, verification_level: VerificationLevel) -> Self {
         Self {
-            inner: NoStdProvider::new(size, verification_level),
+            inner: NoStdProviderBuilder::new().with_size(size).with_verification_level(verification_level).build(),
             features: LinuxFeatures::default(),
         }
     }
@@ -303,7 +303,7 @@ impl LinuxOptimizedProvider {
         verification_level: VerificationLevel,
         features: LinuxFeatures,
     ) -> Self {
-        Self { inner: NoStdProvider::new(size, verification_level), features }
+        Self { inner: NoStdProviderBuilder::new().with_size(size).with_verification_level(verification_level).build(), features }
     }
 }
 

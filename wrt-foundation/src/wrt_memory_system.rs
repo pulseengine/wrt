@@ -92,23 +92,7 @@ impl<const N: usize> ProviderFactory for SizedNoStdProviderFactory<N> {
 pub type WrtBudgetAwareFactory<const N: usize> =
     GenericBudgetAwareFactory<SizedNoStdProviderFactory<N>, WrtMemoryCoordinator, CrateId>;
 
-/// Legacy compatibility wrapper for WrtProviderFactory (DEPRECATED)
-#[deprecated(since = "0.3.0", note = "Use CapabilityWrtFactory for capability-driven design")]
-pub struct WrtProviderFactory;
-
-#[allow(deprecated)]
-impl WrtProviderFactory {
-    /// Create a provider using the legacy API (redirects to capability system)
-    pub fn create_provider<const N: usize>(crate_id: CrateId) -> Result<crate::capabilities::CapabilityGuardedProvider<N>> {
-        CapabilityWrtFactory::create_provider::<N>(crate_id)
-    }
-    
-    /// Create a typed provider using the legacy API  
-    pub fn create_typed_provider<T, const N: usize>(crate_id: CrateId) -> Result<crate::capabilities::CapabilityGuardedProvider<N>> {
-        // Note: Caller must specify N explicitly since const generics can't use T::size_of()
-        CapabilityWrtFactory::create_provider::<N>(crate_id)
-    }
-}
+// Legacy WrtProviderFactory has been removed. Use CapabilityWrtFactory instead.
 
 /// Modern capability-based factory for WRT memory providers
 ///

@@ -1090,11 +1090,10 @@ fn main() -> Result<()> {
     }
 
     // Complete memory system initialization
-    // TODO: Memory init temporarily disabled due to hanging issue
-    // #[cfg(feature = "std")]
-    // if let Err(e) = wrt_foundation::memory_init::init_wrt_memory() {
-    //     eprintln!("Warning: Failed to complete memory system: {}", e);
-    // }
+    #[cfg(feature = "std")]
+    if let Err(e) = wrt_foundation::memory_init::init_wrt_memory() {
+        eprintln!("Warning: Failed to complete memory system: {}", e);
+    }
     
     Ok(())
 }

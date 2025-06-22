@@ -515,6 +515,12 @@ enum Commands {
         clean: bool,
     },
 
+    /// Requirements verification with SCORE methodology
+    Requirements {
+        #[command(subcommand)]
+        command: RequirementsCommand,
+    },
+
     /// Show comprehensive diagnostic system help
     #[command(name = "help-diagnostics", hide = true)]
     HelpDiagnostics,

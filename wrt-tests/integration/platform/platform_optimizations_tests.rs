@@ -11,6 +11,7 @@ use wrt_foundation::{
     BoundedQueue, BoundedMap, BoundedSet, BoundedDeque, BoundedBitSet,
     BoundedBuilder, StringBuilder, ResourceBuilder, MemoryBuilder,
     VerificationLevel, NoStdProvider, bounded::{BoundedVec, BoundedString, WasmName},
+    safe_managed_alloc, budget_aware_provider::CrateId,
 };
 
 // Import platform-specific items
@@ -190,7 +191,7 @@ fn test_memory_optimizer_operations() {
 #[test]
 fn test_performance_comparison() {
     // Create both standard and optimized providers
-    let std_provider = NoStdProvider::new(4096, VerificationLevel::Critical);
+    let std_provider = safe_managed_alloc!(4096, CrateId::Test).unwrap();
     let opt_provider = create_platform_provider();
     
     // Create standard and optimized collections
@@ -239,7 +240,7 @@ fn test_performance_comparison() {
     // Standard provider write and read
     let mut std_buffer = [0u8; 1000];
     let std_write_read = benchmark_operations("Standard provider write/read", || {
-        let mut provider = NoStdProvider::new(data_size, VerificationLevel::Critical);
+        let mut provider = safe_managed_alloc!(data_size, CrateId::Test).unwrap();
         provider.write_data(0, &large_data[..data_size]).unwrap();
         provider.read_data(0, &mut std_buffer).unwrap();
     });

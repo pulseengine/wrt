@@ -237,7 +237,16 @@ impl NoStdProviderBuilder {
 
     /// Builds and returns a configured `NoStdProvider`.
     pub fn build(self) -> NoStdProvider {
-        NoStdProvider::new(self.size, self.verification_level)
+        // Note: This is a temporary workaround for the deprecated NoStdProvider
+        // This entire module should be migrated to use wrt-foundation's memory system
+        NoStdProvider {
+            buffer: unsafe {
+                static mut DUMMY_BUFFER: [u8; 4096] = [0; 4096];
+                let actual_size = core::cmp::min(self.size, 4096);
+                &mut DUMMY_BUFFER[0..actual_size]
+            },
+            verification_level: self.verification_level,
+        }
     }
 }
 

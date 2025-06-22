@@ -1207,11 +1207,31 @@ impl DefaultCfiControlFlowOps {
 
     fn resolve_label_to_offset(
         &self,
-        _label_idx: u32,
-        _context: &CfiExecutionContext,
+        label_idx: u32,
+        context: &CfiExecutionContext,
     ) -> Result<u32> {
-        // TODO: Implement label resolution
-        Ok(0)
+        // ASIL-B: Validate label index bounds
+        if label_idx >= context.max_labels {
+            return Err(Error::new(
+                ErrorCategory::ControlFlow,
+                codes::CONTROL_FLOW_ERROR,
+                "Label index out of bounds"
+            ));
+        }
+        
+        // ASIL-B: Check if label is in valid targets
+        if let Some(valid_targets) = &context.valid_branch_targets {
+            if !valid_targets.iter().any(|&target| target == label_idx) {
+                return Err(Error::new(
+                    ErrorCategory::ControlFlow,
+                    codes::CONTROL_FLOW_ERROR,
+                    "Invalid branch target"
+                ));
+            }
+        }
+        
+        // Return resolved label (in real implementation, would map to actual PC)
+        Ok(label_idx)
     }
 
     fn create_hardware_instruction(
@@ -1359,39 +1379,198 @@ impl DefaultCfiControlFlowOps {
 
     fn validate_type_signature(
         &self,
-        _expected_type_index: u32,
-        _signature_hash: u64,
-        _context: &CfiExecutionContext,
+        expected_type_index: u32,
+        signature_hash: u64,
+        context: &CfiExecutionContext,
     ) -> Result<()> {
-        // TODO: Implement type signature validation
+        // ASIL-B: Validate type index bounds
+        if expected_type_index >= context.max_types {
+            return Err(Error::new(
+                ErrorCategory::Type,
+                codes::TYPE_ERROR,
+                "Type index out of bounds"
+            ));
+        }
+        
+        // ASIL-B: Verify signature hash matches expected
+        // In a real implementation, would compute hash from actual type
+        let expected_hash = context.type_signatures.get(expected_type_index as usize)
+            .ok_or_else(|| Error::new(
+                ErrorCategory::Type,
+                codes::TYPE_ERROR,
+                "Type signature not found"
+            ))?;
+            
+        if *expected_hash != signature_hash {
+            return Err(Error::new(
+                ErrorCategory::Security,
+                codes::SECURITY_VIOLATION,
+                "Type signature mismatch - potential CFI violation"
+            ));
+        }
+        
         Ok(())
     }
 
-    fn validate_shadow_stack(&self, _context: &CfiExecutionContext) -> Result<()> {
-        // TODO: Implement shadow stack validation
+    fn validate_shadow_stack(&self, context: &CfiExecutionContext) -> Result<()> {
+        // ASIL-B: Check shadow stack depth
+        if context.shadow_stack.len() > context.max_shadow_stack_depth {
+            return Err(Error::new(
+                ErrorCategory::Security,
+                codes::STACK_OVERFLOW,
+                "Shadow stack overflow"
+            ));
+        }
+        
+        // ASIL-B: Validate shadow stack integrity
+        if context.shadow_stack.is_empty() && context.current_function != 0 {
+            return Err(Error::new(
+                ErrorCategory::Security,
+                codes::SECURITY_VIOLATION,
+                "Shadow stack underflow - potential CFI violation"
+            ));
+        }
+        
+        // ASIL-B: Verify return address matches shadow stack
+        if let Some(expected_return) = context.shadow_stack.last() {
+            if expected_return.return_address != context.current_instruction {
+                return Err(Error::new(
+                    ErrorCategory::Security,
+                    codes::SECURITY_VIOLATION,
+                    "Return address mismatch - potential ROP attack"
+                ));
+            }
+        }
+        
         Ok(())
     }
 
     fn validate_control_flow_target(
         &self,
-        _valid_targets: &[u32],
-        _context: &CfiExecutionContext,
+        valid_targets: &[u32],
+        context: &CfiExecutionContext,
     ) -> Result<()> {
-        // TODO: Implement control flow target validation
+        // ASIL-B: Ensure valid targets list is not empty
+        if valid_targets.is_empty() {
+            return Err(Error::new(
+                ErrorCategory::ControlFlow,
+                codes::CONTROL_FLOW_ERROR,
+                "No valid control flow targets specified"
+            ));
+        }
+        
+        // ASIL-B: Check current instruction is a valid target
+        let current_target = context.current_instruction;
+        if !valid_targets.iter().any(|&target| target == current_target) {
+            // Increment violation count for monitoring
+            // Note: In real implementation, would update mutable context
+            return Err(Error::new(
+                ErrorCategory::Security,
+                codes::SECURITY_VIOLATION,
+                "Invalid control flow target - potential CFI violation"
+            ));
+        }
+        
+        // ASIL-B: Additional check for indirect branches
+        if context.metrics.indirect_branches_taken > 0 {
+            // Verify target is marked as valid indirect branch target
+            if !context.indirect_branch_targets.iter().any(|&target| target == current_target) {
+                return Err(Error::new(
+                    ErrorCategory::Security,
+                    codes::SECURITY_VIOLATION,
+                    "Invalid indirect branch target"
+                ));
+            }
+        }
+        
         Ok(())
     }
 
-    fn validate_calling_convention(&self, _context: &CfiExecutionContext) -> Result<()> {
-        // TODO: Implement calling convention validation
+    fn validate_calling_convention(&self, context: &CfiExecutionContext) -> Result<()> {
+        // ASIL-B: Validate stack alignment for calls
+        const REQUIRED_ALIGNMENT: usize = 16; // Common for most ABIs
+        if context.current_stack_depth % REQUIRED_ALIGNMENT != 0 {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::MEMORY_ALIGNMENT_ERROR,
+                "Stack misaligned for function call"
+            ));
+        }
+        
+        // ASIL-B: Check calling convention constraints
+        if context.calling_convention != CallingConvention::WebAssembly {
+            // Verify platform-specific constraints
+            match context.calling_convention {
+                CallingConvention::SystemV => {
+                    // Check red zone requirements
+                    if context.current_stack_depth < 128 {
+                        return Err(Error::new(
+                            ErrorCategory::Runtime,
+                            codes::RUNTIME_ERROR,
+                            "Insufficient stack space for SystemV ABI"
+                        ));
+                    }
+                }
+                CallingConvention::WindowsFastcall => {
+                    // Check shadow space requirements
+                    if context.current_stack_depth < 32 {
+                        return Err(Error::new(
+                            ErrorCategory::Runtime,
+                            codes::RUNTIME_ERROR,
+                            "Insufficient shadow space for Windows ABI"
+                        ));
+                    }
+                }
+                _ => {} // WebAssembly has no additional requirements
+            }
+        }
+        
         Ok(())
     }
 
     fn validate_temporal_properties(
         &self,
-        _max_duration: u64,
-        _context: &CfiExecutionContext,
+        max_duration: u64,
+        context: &CfiExecutionContext,
     ) -> Result<()> {
-        // TODO: Implement temporal validation
+        // ASIL-B: Check if temporal validation is enabled
+        if !context.software_config.temporal_validation {
+            return Ok(()); // Skip if not enabled
+        }
+        
+        // ASIL-B: Validate execution time bounds
+        let current_time = context.metrics.total_execution_time;
+        if current_time > max_duration {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::TIMEOUT,
+                "Execution time exceeded maximum allowed duration"
+            ));
+        }
+        
+        // ASIL-B: Check for timing anomalies that might indicate attacks
+        if let Some(avg_instruction_time) = context.metrics.average_instruction_time {
+            let current_instruction_time = context.metrics.last_instruction_time;
+            
+            // Flag if current instruction took >10x average time
+            if current_instruction_time > avg_instruction_time * 10 {
+                return Err(Error::new(
+                    ErrorCategory::Security,
+                    codes::SECURITY_VIOLATION,
+                    "Timing anomaly detected - potential side-channel attack"
+                ));
+            }
+        }
+        
+        // ASIL-B: Validate monotonic time progression
+        if context.metrics.total_execution_time < context.last_checkpoint_time {
+            return Err(Error::new(
+                ErrorCategory::Security,
+                codes::SECURITY_VIOLATION,
+                "Time regression detected - potential clock manipulation"
+            ));
+        }
+        
         Ok(())
     }
 }

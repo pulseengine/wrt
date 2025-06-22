@@ -9,7 +9,6 @@ use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
 use std::{collections::HashMap, string::String, vec::Vec};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_foundation::{BoundedVec, NoStdProvider};
 
 /// Validation severity levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -76,9 +75,9 @@ impl ValidationIssue {
 #[derive(Debug)]
 pub struct StreamingValidator {
     /// Issues found during validation
-    issues: BoundedVec<ValidationIssue, 256, NoStdProvider<1024>>,
+    issues: Vec<ValidationIssue>,
     /// Current parsing context
-    context_stack: BoundedVec<String, 32, NoStdProvider<1024>>,
+    context_stack: Vec<String>,
     /// Validation rules configuration
     config: ValidationConfig,
     /// Statistics
@@ -119,7 +118,7 @@ impl Default for ValidationConfig {
 }
 
 /// Validation statistics
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct ValidationStats {
     /// Total bytes validated
     pub bytes_validated: usize,
@@ -134,6 +133,19 @@ pub struct ValidationStats {
     pub start_time: std::time::Instant,
 }
 
+impl Default for ValidationStats {
+    fn default() -> Self {
+        Self {
+            bytes_validated: 0,
+            sections_validated: 0,
+            functions_validated: 0,
+            types_validated: 0,
+            #[cfg(feature = "std")]
+            start_time: std::time::Instant::now(),
+        }
+    }
+}
+
 impl StreamingValidator {
     /// Create a new streaming validator
     pub fn new() -> Result<Self> {
@@ -143,8 +155,8 @@ impl StreamingValidator {
     /// Create a new streaming validator with custom configuration
     pub fn with_config(config: ValidationConfig) -> Result<Self> {
         Ok(Self {
-            issues: BoundedVec::new(NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create issues vector")),
-            context_stack: BoundedVec::new(NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create context stack")),
+            issues: Vec::new(),
+            context_stack: Vec::new(),
             config,
             stats: ValidationStats {
                 #[cfg(feature = "std")]
@@ -156,24 +168,19 @@ impl StreamingValidator {
 
     /// Enter a new validation context
     pub fn enter_context(&mut self, context: impl Into<String>) -> Result<()> {
-        self.context_stack.push(context.into()).map_err(|_| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_FAILED,
-                "Context stack overflow",
-            )
-        })
+        self.context_stack.push(context.into());
+        Ok(())
     }
 
     /// Exit the current validation context
     pub fn exit_context(&mut self) -> Result<()> {
-        self.context_stack.pop().ok_or_else(|| {
-            Error::new(
+        if self.context_stack.pop().is_none() {
+            return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
                 "Context stack underflow",
-            )
-        })?;
+            ));
+        }
         Ok(())
     }
 
@@ -190,13 +197,7 @@ impl StreamingValidator {
         let should_abort =
             issue.severity == ValidationSeverity::Critical && !self.config.continue_after_critical;
 
-        self.issues.push(issue).map_err(|_| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_FAILED,
-                "Cannot store validation issue",
-            )
-        })?;
+        self.issues.push(issue);
 
         if should_abort {
             return Err(Error::new(
@@ -480,7 +481,7 @@ impl StreamingValidator {
     }
 
     /// Get all validation issues
-    pub fn get_issues(&self) -> &BoundedVec<ValidationIssue, 256, NoStdProvider<1024>> {
+    pub fn get_issues(&self) -> &Vec<ValidationIssue> {
         &self.issues
     }
 

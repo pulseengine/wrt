@@ -59,7 +59,16 @@ impl Default for ExportedItem {
 }
 
 impl wrt_foundation::traits::ToBytes for ExportedItem {
-    fn to_bytes(&self) -> wrt_foundation::Result<wrt_foundation::WrtVec<u8, 64, wrt_foundation::DefaultMemoryProvider>> {
+    fn serialized_size(&self) -> usize {
+        5 // 1 byte discriminant + 4 bytes u32 value
+    }
+
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        // Write discriminant
         let discriminant = match self {
             ExportedItem::CoreFunction(_) => 0u8,
             ExportedItem::CoreTable(_) => 1u8,
@@ -69,29 +78,29 @@ impl wrt_foundation::traits::ToBytes for ExportedItem {
             ExportedItem::Value(_) => 5u8,
             ExportedItem::Instance(_) => 6u8,
         };
+        writer.write_u8(discriminant)?;
+        
+        // Write value
         let value = match self {
-            ExportedItem::CoreFunction(v) | ExportedItem::CoreTable(v) | ExportedItem::CoreMemory(v) | 
-            ExportedItem::CoreGlobal(v) | ExportedItem::Function(v) | ExportedItem::Value(v) | 
+            ExportedItem::CoreFunction(v) | ExportedItem::CoreTable(v) | 
+            ExportedItem::CoreMemory(v) | ExportedItem::CoreGlobal(v) | 
+            ExportedItem::Function(v) | ExportedItem::Value(v) | 
             ExportedItem::Instance(v) => *v,
         };
-        let mut bytes = wrt_foundation::WrtVec::new();
-        bytes.push(discriminant)?;
-        bytes.extend_from_slice(&value.to_le_bytes())?;
-        Ok(bytes)
+        writer.write_u32_le(value)?;
+        
+        Ok(())
     }
 }
 
 impl wrt_foundation::traits::FromBytes for ExportedItem {
-    fn from_bytes(data: &[u8]) -> wrt_foundation::Result<Self> {
-        if data.len() < 5 {
-            return Err(wrt_foundation::Error::new(
-                wrt_foundation::ErrorCategory::Parse,
-                wrt_foundation::codes::PARSE_ERROR,
-                "Insufficient data for ExportedItem"
-            ));
-        }
-        let discriminant = data[0];
-        let value = u32::from_le_bytes([data[1], data[2], data[3], data[4]]);
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let discriminant = reader.read_u8()?;
+        let value = reader.read_u32_le()?;
+        
         match discriminant {
             0 => Ok(ExportedItem::CoreFunction(value)),
             1 => Ok(ExportedItem::CoreTable(value)),
@@ -110,7 +119,7 @@ impl wrt_foundation::traits::FromBytes for ExportedItem {
 }
 
 impl wrt_foundation::traits::Checksummable for ExportedItem {
-    fn checksum(&self) -> u32 {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         let discriminant = match self {
             ExportedItem::CoreFunction(_) => 0u32,
             ExportedItem::CoreTable(_) => 1u32,
@@ -125,7 +134,12 @@ impl wrt_foundation::traits::Checksummable for ExportedItem {
             ExportedItem::CoreGlobal(v) | ExportedItem::Function(v) | ExportedItem::Value(v) | 
             ExportedItem::Instance(v) => *v,
         };
-        discriminant.wrapping_mul(31).wrapping_add(value)
+        for byte in discriminant.to_le_bytes() {
+            checksum.update(byte);
+        }
+        for byte in value.to_le_bytes() {
+            checksum.update(byte);
+        }
     }
 }
 

@@ -9,7 +9,7 @@
 
 use crate::{
     execution::ExecutionStats,
-    module::{ExportKind, Module},
+    module::{ExportKind, Module, MemoryWrapper},
     module_instance::ModuleInstance,
     prelude::*,
     stackless::frame::StacklessFrame,
@@ -21,7 +21,8 @@ use wrt_instructions::control_ops::{ControlContext, FunctionOperations, BranchTa
 use wrt_instructions::arithmetic_ops::{ArithmeticOp, ArithmeticContext};
 use wrt_instructions::variable_ops::{VariableOp, VariableContext};
 use wrt_instructions::comparison_ops::{ComparisonOp, ComparisonContext};
-use wrt_instructions::memory_ops::MemoryOp;
+use wrt_instructions::memory_ops::{MemoryOp, MemoryLoad, MemoryStore, MemoryOperations, MemoryContext, DataSegmentOperations};
+use wrt_instructions::conversion_ops::{ConversionOp, ConversionContext};
 use wrt_instructions::prelude::PureInstruction;
 
 // Imports for no_std compatibility
@@ -420,6 +421,112 @@ impl StacklessEngine {
         self.current_module = Some(instance);
         self.instance_count += 1;
         Ok(self.instance_count as u32 - 1)
+    }
+
+    /// Get memory from current module instance with ASIL-B safety checks
+    fn get_memory_safe(&self, memory_idx: u32) -> Result<MemoryWrapper> {
+        // ASIL-B: Validate module instance exists
+        let module_instance = self.current_module.as_ref()
+            .ok_or_else(|| Error::new(
+                ErrorCategory::Runtime, 
+                codes::RUNTIME_ERROR, 
+                "No module instance set for memory access"
+            ))?;
+        
+        // ASIL-B: Bounds check memory index
+        if memory_idx > 0 {
+            // Multi-memory support - validate index
+            return Err(Error::new(
+                ErrorCategory::Resource,
+                codes::MEMORY_NOT_FOUND,
+                "Memory index out of bounds"
+            ));
+        }
+        
+        // Get memory with error propagation
+        module_instance.memory(memory_idx)
+    }
+
+    /// Execute a memory load operation with ASIL-B safety guarantees
+    fn execute_memory_load(&mut self, mem_op: MemoryLoad, memory_idx: u32) -> Result<()> {
+        // ASIL-B: Get memory with safety checks
+        let memory_wrapper = self.get_memory_safe(memory_idx)?;
+        let memory = memory_wrapper.inner();
+        
+        // Pop the address from the stack
+        let addr_value = self.pop_control_value()?;
+        let base_addr = match addr_value {
+            Value::I32(addr) => addr as u32,
+            _ => return Err(Error::new(
+                ErrorCategory::Type, 
+                codes::TYPE_MISMATCH, 
+                "Memory address must be i32"
+            )),
+        };
+        
+        // ASIL-B: Calculate effective address with overflow check
+        let effective_addr = base_addr.checked_add(mem_op.offset)
+            .ok_or_else(|| Error::new(
+                ErrorCategory::Runtime,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                "Memory address overflow"
+            ))?;
+        
+        // Execute the load operation using MemoryOperations trait
+        let result = mem_op.execute(memory.as_ref(), &Value::I32(effective_addr as i32))?;
+        
+        // Update statistics
+        self.stats.increment_memory_reads(1);
+        
+        // Push result to stack
+        self.push_control_value(result)
+    }
+
+    /// Execute a memory store operation with ASIL-B safety guarantees
+    fn execute_memory_store(&mut self, mem_op: MemoryStore, memory_idx: u32) -> Result<()> {
+        // ASIL-B: Get memory with safety checks
+        let memory_wrapper = self.get_memory_safe(memory_idx)?;
+        
+        // For store operations, we need mutable access
+        // TODO: This is a temporary workaround - memory should support interior mutability
+        // or we should use a different approach for memory access
+        let memory_arc = memory_wrapper.inner();
+        
+        // Pop the value to store
+        let value = self.pop_control_value()?;
+        
+        // Pop the address from the stack
+        let addr_value = self.pop_control_value()?;
+        let base_addr = match addr_value {
+            Value::I32(addr) => addr as u32,
+            _ => return Err(Error::new(
+                ErrorCategory::Type, 
+                codes::TYPE_MISMATCH, 
+                "Memory address must be i32"
+            )),
+        };
+        
+        // ASIL-B: Calculate effective address with overflow check
+        let effective_addr = base_addr.checked_add(mem_op.offset)
+            .ok_or_else(|| Error::new(
+                ErrorCategory::Runtime,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                "Memory address overflow"
+            ))?;
+        
+        // Execute the store operation
+        // TODO: This needs to be fixed to handle Arc<Memory> properly
+        // For now, return unimplemented error
+        return Err(Error::new(
+            ErrorCategory::Runtime,
+            codes::EXECUTION_ERROR,
+            "Memory store operations not yet implemented for Arc<Memory>"
+        ));
+        
+        // Update statistics
+        self.stats.increment_memory_writes(1);
+        
+        Ok(())
     }
     
     /// Create a new stackless execution engine with a module
@@ -881,129 +988,473 @@ impl StacklessEngine {
             
             // Memory instructions
             0x28 => {
-                // i32.load - TODO: Implement proper MemoryOp integration
+                // i32.load
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 2 { // 2^2 = 4 bytes max for i32
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i32.load"));
+                }
+                
+                // Create memory load operation
+                let mem_op = MemoryLoad::i32_legacy(offset, 1u32 << align);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_load(mem_op, 0)
             }
             0x29 => {
-                // i64.load - TODO: Implement proper MemoryOp integration
+                // i64.load
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 3 { // 2^3 = 8 bytes max for i64
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.load"));
+                }
+                
+                // Create memory load operation
+                let mem_op = MemoryLoad::i64(offset, 1u32 << align);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_load(mem_op, 0)
             }
             0x2A => {
-                // f32.load - TODO: Implement proper MemoryOp integration
+                // f32.load
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 2 { // 2^2 = 4 bytes max for f32
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for f32.load"));
+                }
+                
+                // Create memory load operation
+                let mem_op = MemoryLoad::f32(offset, 1u32 << align);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_load(mem_op, 0)
             }
             0x2B => {
-                // f64.load - TODO: Implement proper MemoryOp integration
+                // f64.load
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 3 { // 2^3 = 8 bytes max for f64
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for f64.load"));
+                }
+                
+                // Create memory load operation
+                let mem_op = MemoryLoad::f64(offset, 1u32 << align);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_load(mem_op, 0)
             }
             0x2C => {
-                // i32.load8_s - TODO: Implement proper MemoryOp integration
+                // i32.load8_s
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 0 { // 2^0 = 1 byte max for i8
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i32.load8_s"));
+                }
+                
+                // Create memory load operation (signed 8-bit)
+                let mem_op = MemoryLoad::i32_load8(offset, 1u32 << align, true);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_load(mem_op, 0)
             }
             0x2D => {
-                // i32.load8_u - TODO: Implement proper MemoryOp integration
+                // i32.load8_u
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 0 { // 2^0 = 1 byte max for i8
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i32.load8_u"));
+                }
+                
+                // Create memory load operation (unsigned 8-bit)
+                let mem_op = MemoryLoad::i32_load8(offset, 1u32 << align, false);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_load(mem_op, 0)
             }
             0x2E => {
-                // i32.load16_s - TODO: Implement proper MemoryOp integration
+                // i32.load16_s
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 1 { // 2^1 = 2 bytes max for i16
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i32.load16_s"));
+                }
+                
+                // Create memory load operation (signed 16-bit)
+                let mem_op = MemoryLoad::i32_load16(offset, 1u32 << align, true);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_load(mem_op, 0)
             }
             0x2F => {
-                // i32.load16_u - TODO: Implement proper MemoryOp integration
+                // i32.load16_u
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 1 { // 2^1 = 2 bytes max for i16
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i32.load16_u"));
+                }
+                
+                // Create memory load operation (unsigned 16-bit)
+                let mem_op = MemoryLoad::i32_load16(offset, 1u32 << align, false);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_load(mem_op, 0)
             }
             0x30 => {
-                // i64.load8_s - TODO: Implement proper MemoryOp integration
+                // i64.load8_s
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 0 { // 2^0 = 1 byte max for i8
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.load8_s"));
+                }
+                
+                // Create memory load operation (signed 8-bit to i64)
+                let mem_op = MemoryLoad::i64_load8(offset, 1u32 << align, true);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_load(mem_op, 0)
             }
             0x31 => {
-                // i64.load8_u - TODO: Implement proper MemoryOp integration
+                // i64.load8_u
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 0 { // 2^0 = 1 byte max for i8
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.load8_u"));
+                }
+                
+                // Create memory load operation (unsigned 8-bit to i64)
+                let mem_op = MemoryLoad::i64_load8(offset, 1u32 << align, false);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_load(mem_op, 0)
             }
             0x32 => {
-                // i64.load16_s - TODO: Implement proper MemoryOp integration
+                // i64.load16_s
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 1 { // 2^1 = 2 bytes max for i16
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.load16_s"));
+                }
+                
+                // Create memory load operation (signed 16-bit to i64)
+                let mem_op = MemoryLoad::i64_load16(offset, 1u32 << align, true);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_load(mem_op, 0)
             }
             0x33 => {
-                // i64.load16_u - TODO: Implement proper MemoryOp integration
+                // i64.load16_u
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 1 { // 2^1 = 2 bytes max for i16
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.load16_u"));
+                }
+                
+                // Create memory load operation (unsigned 16-bit to i64)
+                let mem_op = MemoryLoad::i64_load16(offset, 1u32 << align, false);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_load(mem_op, 0)
             }
             0x34 => {
-                // i64.load32_s - TODO: Implement proper MemoryOp integration
+                // i64.load32_s
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 2 { // 2^2 = 4 bytes max for i32
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.load32_s"));
+                }
+                
+                // Create memory load operation (signed 32-bit to i64)
+                let mem_op = MemoryLoad::i64_load32(offset, 1u32 << align, true);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_load(mem_op, 0)
             }
             0x35 => {
-                // i64.load32_u - TODO: Implement proper MemoryOp integration
+                // i64.load32_u
                 self.consume_instruction_fuel(InstructionFuelType::MemoryLoad)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 2 { // 2^2 = 4 bytes max for i32
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.load32_u"));
+                }
+                
+                // Create memory load operation (unsigned 32-bit to i64)
+                let mem_op = MemoryLoad::i64_load32(offset, 1u32 << align, false);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_load(mem_op, 0)
             }
             0x36 => {
-                // i32.store - TODO: Implement proper MemoryOp integration
+                // i32.store
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 2 { // 2^2 = 4 bytes max for i32
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i32.store"));
+                }
+                
+                // Create memory store operation
+                let mem_op = MemoryStore::i32(offset, 1u32 << align);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_store(mem_op, 0)
             }
             0x37 => {
-                // i64.store - TODO: Implement proper MemoryOp integration
+                // i64.store
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 3 { // 2^3 = 8 bytes max for i64
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.store"));
+                }
+                
+                // Create memory store operation
+                let mem_op = MemoryStore::i64(offset, 1u32 << align);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_store(mem_op, 0)
             }
             0x38 => {
-                // f32.store - TODO: Implement proper MemoryOp integration
+                // f32.store
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 2 { // 2^2 = 4 bytes max for f32
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for f32.store"));
+                }
+                
+                // Create memory store operation
+                let mem_op = MemoryStore::f32(offset, 1u32 << align);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_store(mem_op, 0)
             }
             0x39 => {
-                // f64.store - TODO: Implement proper MemoryOp integration
+                // f64.store
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 3 { // 2^3 = 8 bytes max for f64
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for f64.store"));
+                }
+                
+                // Create memory store operation
+                let mem_op = MemoryStore::f64(offset, 1u32 << align);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_store(mem_op, 0)
             }
             0x3A => {
-                // i32.store8 - TODO: Implement proper MemoryOp integration
+                // i32.store8
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 0 { // 2^0 = 1 byte max for i8
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i32.store8"));
+                }
+                
+                // Create memory store operation (8-bit)
+                let mem_op = MemoryStore::i32_store8(offset, 1u32 << align);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_store(mem_op, 0)
             }
             0x3B => {
-                // i32.store16 - TODO: Implement proper MemoryOp integration
+                // i32.store16
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 1 { // 2^1 = 2 bytes max for i16
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i32.store16"));
+                }
+                
+                // Create memory store operation (16-bit)
+                let mem_op = MemoryStore::i32_store16(offset, 1u32 << align);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_store(mem_op, 0)
             }
             0x3C => {
-                // i64.store8 - TODO: Implement proper MemoryOp integration
+                // i64.store8
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 0 { // 2^0 = 1 byte max for i8
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.store8"));
+                }
+                
+                // Create memory store operation (8-bit from i64)
+                let mem_op = MemoryStore::i64_store8(offset, 1u32 << align);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_store(mem_op, 0)
             }
             0x3D => {
-                // i64.store16 - TODO: Implement proper MemoryOp integration
+                // i64.store16
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 1 { // 2^1 = 2 bytes max for i16
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.store16"));
+                }
+                
+                // Create memory store operation (16-bit from i64)
+                let mem_op = MemoryStore::i64_store16(offset, 1u32 << align);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_store(mem_op, 0)
             }
             0x3E => {
-                // i64.store32 - TODO: Implement proper MemoryOp integration
+                // i64.store32
                 self.consume_instruction_fuel(InstructionFuelType::MemoryStore)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory instruction parameters: align and offset
+                let align = self.read_leb128_u32(code)?;
+                let offset = self.read_leb128_u32(code)?;
+                
+                // ASIL-B: Validate alignment is power of 2 and within bounds
+                if align > 2 { // 2^2 = 4 bytes max for i32
+                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.store32"));
+                }
+                
+                // Create memory store operation (32-bit from i64)
+                let mem_op = MemoryStore::i64_store32(offset, 1u32 << align);
+                
+                // Execute the memory operation directly with proper error handling
+                self.execute_memory_store(mem_op, 0)
             }
             0x3F => {
-                // memory.size - TODO: Implement proper MemoryOp integration
+                // memory.size
                 self.consume_instruction_fuel(InstructionFuelType::MemoryManagement)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory index (0x00 for default memory)
+                let mem_idx = self.read_u8(code)?;
+                
+                // ASIL-B: Validate memory index
+                if mem_idx != 0 {
+                    return Err(Error::new(ErrorCategory::Resource, codes::MEMORY_NOT_FOUND, "Invalid memory index"));
+                }
+                
+                // Get memory with safety checks
+                let memory_wrapper = self.get_memory_safe(mem_idx as u32)?;
+                let size = memory_wrapper.size(); // Size in pages
+                
+                // Push result to stack
+                self.push_control_value(Value::I32(size as i32))
             }
             0x40 => {
-                // memory.grow - TODO: Implement proper MemoryOp integration
+                // memory.grow
                 self.consume_instruction_fuel(InstructionFuelType::MemoryManagement)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Memory operations integration pending"))
+                // Read memory index (0x00 for default memory)
+                let mem_idx = self.read_u8(code)?;
+                
+                // ASIL-B: Validate memory index
+                if mem_idx != 0 {
+                    return Err(Error::new(ErrorCategory::Resource, codes::MEMORY_NOT_FOUND, "Invalid memory index"));
+                }
+                
+                // Pop delta pages from stack
+                let delta_value = self.pop_control_value()?;
+                let delta = match delta_value {
+                    Value::I32(d) => {
+                        // ASIL-B: Validate non-negative growth
+                        if d < 0 {
+                            return Err(Error::new(ErrorCategory::Runtime, codes::INVALID_PARAMETER, "Memory grow delta must be non-negative"));
+                        }
+                        d as u32
+                    },
+                    _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Memory grow delta must be i32")),
+                };
+                
+                // Get memory with safety checks
+                let memory_wrapper = self.get_memory_safe(mem_idx as u32)?;
+                
+                // For grow operations, we need mutable access - clone the Arc
+                // TODO: Memory growth requires mutable access to Arc<Memory>
+                // This needs architectural changes to support interior mutability
+                // For now, return unimplemented error
+                return Err(Error::new(
+                    ErrorCategory::Runtime,
+                    codes::EXECUTION_ERROR,
+                    "Memory grow operation not yet implemented for Arc<Memory>"
+                ))
             }
 
             // Comparison instructions (i32)
@@ -1512,131 +1963,131 @@ impl StacklessEngine {
                 ArithmeticOp::F64Copysign.execute(self)
             }
 
-            // Type conversion operations (placeholder implementations - will be expanded in Phase 3)
+            // Type conversion operations
             0xA7 => {
-                // i32.wrap_i64 - TODO: Implement type conversion operations in Phase 3
+                // i32.wrap_i64
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::I32WrapI64.execute(self)
             }
             0xA8 => {
-                // i32.trunc_f32_s - TODO: Implement type conversion operations in Phase 3
+                // i32.trunc_f32_s
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::I32TruncF32S.execute(self)
             }
             0xA9 => {
-                // i32.trunc_f32_u - TODO: Implement type conversion operations in Phase 3
+                // i32.trunc_f32_u
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::I32TruncF32U.execute(self)
             }
             0xAA => {
-                // i32.trunc_f64_s - TODO: Implement type conversion operations in Phase 3
+                // i32.trunc_f64_s
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::I32TruncF64S.execute(self)
             }
             0xAB => {
-                // i32.trunc_f64_u - TODO: Implement type conversion operations in Phase 3
+                // i32.trunc_f64_u
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::I32TruncF64U.execute(self)
             }
             0xAC => {
-                // i64.extend_i32_s - TODO: Implement type conversion operations in Phase 3
+                // i64.extend_i32_s
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::I64ExtendI32S.execute(self)
             }
             0xAD => {
-                // i64.extend_i32_u - TODO: Implement type conversion operations in Phase 3
+                // i64.extend_i32_u
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::I64ExtendI32U.execute(self)
             }
             0xAE => {
-                // i64.trunc_f32_s - TODO: Implement type conversion operations in Phase 3
+                // i64.trunc_f32_s
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::I64TruncF32S.execute(self)
             }
             0xAF => {
-                // i64.trunc_f32_u - TODO: Implement type conversion operations in Phase 3
+                // i64.trunc_f32_u
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::I64TruncF32U.execute(self)
             }
             0xB0 => {
-                // i64.trunc_f64_s - TODO: Implement type conversion operations in Phase 3
+                // i64.trunc_f64_s
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::I64TruncF64S.execute(self)
             }
             0xB1 => {
-                // i64.trunc_f64_u - TODO: Implement type conversion operations in Phase 3
+                // i64.trunc_f64_u
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::I64TruncF64U.execute(self)
             }
             0xB2 => {
-                // f32.convert_i32_s - TODO: Implement type conversion operations in Phase 3
+                // f32.convert_i32_s
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::F32ConvertI32S.execute(self)
             }
             0xB3 => {
-                // f32.convert_i32_u - TODO: Implement type conversion operations in Phase 3
+                // f32.convert_i32_u
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::F32ConvertI32U.execute(self)
             }
             0xB4 => {
-                // f32.convert_i64_s - TODO: Implement type conversion operations in Phase 3
+                // f32.convert_i64_s
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::F32ConvertI64S.execute(self)
             }
             0xB5 => {
-                // f32.convert_i64_u - TODO: Implement type conversion operations in Phase 3
+                // f32.convert_i64_u
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::F32ConvertI64U.execute(self)
             }
             0xB6 => {
-                // f32.demote_f64 - TODO: Implement type conversion operations in Phase 3
+                // f32.demote_f64
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::F32DemoteF64.execute(self)
             }
             0xB7 => {
-                // f64.convert_i32_s - TODO: Implement type conversion operations in Phase 3
+                // f64.convert_i32_s
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::F64ConvertI32S.execute(self)
             }
             0xB8 => {
-                // f64.convert_i32_u - TODO: Implement type conversion operations in Phase 3
+                // f64.convert_i32_u
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::F64ConvertI32U.execute(self)
             }
             0xB9 => {
-                // f64.convert_i64_s - TODO: Implement type conversion operations in Phase 3
+                // f64.convert_i64_s
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::F64ConvertI64S.execute(self)
             }
             0xBA => {
-                // f64.convert_i64_u - TODO: Implement type conversion operations in Phase 3
+                // f64.convert_i64_u
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::F64ConvertI64U.execute(self)
             }
             0xBB => {
-                // f64.promote_f32 - TODO: Implement type conversion operations in Phase 3
+                // f64.promote_f32
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::F64PromoteF32.execute(self)
             }
             0xBC => {
-                // i32.reinterpret_f32 - TODO: Implement type conversion operations in Phase 3
+                // i32.reinterpret_f32
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::I32ReinterpretF32.execute(self)
             }
             0xBD => {
-                // i64.reinterpret_f64 - TODO: Implement type conversion operations in Phase 3
+                // i64.reinterpret_f64
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::I64ReinterpretF64.execute(self)
             }
             0xBE => {
-                // f32.reinterpret_i32 - TODO: Implement type conversion operations in Phase 3
+                // f32.reinterpret_i32
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::F32ReinterpretI32.execute(self)
             }
             0xBF => {
-                // f64.reinterpret_i64 - TODO: Implement type conversion operations in Phase 3
+                // f64.reinterpret_i64
                 self.consume_instruction_fuel(InstructionFuelType::TypeConversion)?;
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Type conversion operations not yet implemented"))
+                ConversionOp::F64ReinterpretI64.execute(self)
             }
 
             // SIMD instructions (0xFD prefix)
@@ -2115,6 +2566,17 @@ impl StacklessEngine {
         }
     }
     
+    /// Read single byte from bytecode
+    fn read_u8(&mut self, code: &[u8]) -> Result<u8> {
+        if self.exec_stack.pc >= code.len() {
+            return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Insufficient data for u8"));
+        }
+        
+        let byte = code[self.exec_stack.pc];
+        self.exec_stack.pc += 1;
+        Ok(byte)
+    }
+    
     /// Read 32-bit float from bytecode
     fn read_f32(&mut self, code: &[u8]) -> Result<f32> {
         if self.exec_stack.pc + 4 >= code.len() {
@@ -2167,14 +2629,14 @@ impl StacklessEngine {
         // The current if label should be on top of the stack
         if let Some(last_idx) = self.exec_stack.labels.len().checked_sub(1) {
             match self.exec_stack.labels.get_mut(last_idx) {
-                Ok(label) => {
+                Some(label) => {
                     if label.kind == LabelKind::If {
                         // Convert if to else
                         label.kind = LabelKind::Block; // Treat else as a block
                         return Ok(());
                     }
                 }
-                Err(_) => return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Label access error")),
+                None => return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Label access error")),
             }
         }
         Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "No matching if for else"))
@@ -3463,6 +3925,61 @@ impl VariableContext for StacklessEngine {
 /// Implementation of ControlContext for StacklessEngine
 /// This enables the engine to handle WebAssembly control flow instructions
 /// including the new branch hinting instructions.
+impl wrt_instructions::memory_ops::MemoryContext for StacklessEngine {
+    fn pop_value(&mut self) -> Result<Value> {
+        self.pop_control_value()
+    }
+
+    fn push_value(&mut self, value: Value) -> Result<()> {
+        self.push_control_value(value)
+    }
+
+    fn get_memory(&mut self, memory_idx: u32) -> Result<&mut dyn MemoryOperations> {
+        // For ASIL-B compliance, we need proper error handling here
+        // Since we can't return a mutable reference from an Arc<Memory>, we'll need to handle this differently
+        Err(Error::new(
+            ErrorCategory::Resource,
+            codes::MEMORY_NOT_FOUND,
+            "Memory access through trait not yet implemented - use direct memory access"
+        ))
+    }
+    
+    fn get_data_segments(&mut self) -> Result<&mut dyn DataSegmentOperations> {
+        // Data segment operations not yet implemented
+        Err(Error::new(
+            ErrorCategory::Runtime,
+            codes::NOT_IMPLEMENTED,
+            "Data segment operations not yet implemented"
+        ))
+    }
+    
+    fn execute_memory_init(
+        &mut self,
+        _memory_index: u32,
+        _data_index: u32,
+        _dest: i32,
+        _src: i32,
+        _size: i32,
+    ) -> Result<()> {
+        // Memory init operation not yet implemented
+        Err(Error::new(
+            ErrorCategory::Runtime,
+            codes::NOT_IMPLEMENTED,
+            "Memory init operation not yet implemented"
+        ))
+    }
+}
+
+impl ConversionContext for StacklessEngine {
+    fn pop_conversion_value(&mut self) -> Result<Value> {
+        self.pop_control_value()
+    }
+
+    fn push_conversion_value(&mut self, value: Value) -> Result<()> {
+        self.push_control_value(value)
+    }
+}
+
 impl ControlContext for StacklessEngine {
     /// Push a value to the operand stack
     fn push_control_value(&mut self, value: Value) -> Result<()> {
