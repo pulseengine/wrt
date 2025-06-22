@@ -114,7 +114,7 @@ jobs:
           echo "Generating code coverage for documentation inclusion"
           # Ensure cargo-wrt is compiled and installed
           cargo build --package cargo-wrt
-          cargo install --path cargo-wrt
+          cargo install --path cargo-wrt --force
           # Add Dagger to PATH
           export PATH="$HOME/.dagger/bin:$(pwd)/bin:$PATH"
           echo $PATH
