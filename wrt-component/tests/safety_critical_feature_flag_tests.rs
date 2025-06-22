@@ -15,8 +15,8 @@ extern crate alloc;
 
 use wrt_component::bounded_component_infra::*;
 use wrt_foundation::{
-    safe_managed_alloc,
-    {bounded::BoundedVec, budget_aware_provider::CrateId, managed_alloc, WrtError, WrtResult},
+    bounded::BoundedVec, budget_aware_provider::CrateId, managed_alloc, safe_managed_alloc,
+    WrtError, WrtResult,
 };
 
 #[cfg(test)]
@@ -75,8 +75,7 @@ mod feature_flag_tests {
     #[test]
     fn test_std_features() {
         // Test features that require std
-        use std::sync::Arc;
-        use std::thread;
+        use std::{sync::Arc, thread};
 
         let vec = Arc::new(new_component_vec::<u32>().unwrap());
         let vec_clone = Arc::clone(&vec);

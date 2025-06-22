@@ -13,6 +13,7 @@ use core::{
     task::{Context, Poll},
     time::Duration,
 };
+
 use wrt_component::{
     async_::{
         fuel_async_bridge::{AsyncBridgeConfig, FuelAsyncBridge},
@@ -164,7 +165,8 @@ impl DeadlineConstrainedTask {
             .iter()
             .map(|phase| {
                 if phase.variable_execution {
-                    phase.fuel_cost + (phase.fuel_cost / 4) // Add 25% for variability
+                    phase.fuel_cost + (phase.fuel_cost / 4) // Add 25% for
+                                                            // variability
                 } else {
                     phase.fuel_cost
                 }
@@ -177,7 +179,8 @@ impl DeadlineConstrainedTask {
             .iter()
             .map(|phase| {
                 if phase.variable_execution {
-                    phase.fuel_cost - (phase.fuel_cost / 4) // Subtract 25% for best case
+                    phase.fuel_cost - (phase.fuel_cost / 4) // Subtract 25% for
+                                                            // best case
                 } else {
                     phase.fuel_cost
                 }
@@ -187,7 +190,9 @@ impl DeadlineConstrainedTask {
 }
 
 impl Future for DeadlineConstrainedTask {
-    type Output = Result<u64, Error>; // Returns total fuel consumed
+    type Output = Result<u64, Error>;
+
+    // Returns total fuel consumed
 
     fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.completed {

@@ -71,7 +71,7 @@ fn test_complex_conversion() {
         target,
         ComplexTarget {
             value: 42,
-            description: "Converted from: Test Source".to_string()
+            description: "Converted from: Test Source".to_string(),
         }
     );
 }

@@ -1,13 +1,15 @@
 //! Integration tests for fuel-based async system
 //!
 //! These tests verify that the fuel-based async executor, scheduler, and bridge
-//! work together correctly for deterministic WebAssembly Component Model execution.
+//! work together correctly for deterministic WebAssembly Component Model
+//! execution.
 
 use core::{
     future::Future,
     pin::Pin,
     task::{Context, Poll},
 };
+
 use wrt_component::{
     async_::{
         fuel_async_bridge::{AsyncBridgeConfig, FuelAsyncBridge},

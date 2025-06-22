@@ -19,8 +19,7 @@
 #![cfg(test)]
 
 use wrt_component::*;
-use wrt_foundation::component_value::ComponentValue;
-use wrt_foundation::types::ValueType;
+use wrt_foundation::{component_value::ComponentValue, types::ValueType};
 
 #[cfg(feature = "std")]
 mod async_context_tests {
@@ -750,7 +749,8 @@ mod cross_feature_integration_tests {
 
         // Check for ready items
         let ready = WaitableSetBuiltins::waitable_set_poll_all(set_id).unwrap();
-        assert!(ready.len() >= 1); // At least the resolved future should be ready
+        assert!(ready.len() >= 1); // At least the resolved future should be
+                                   // ready
     }
 
     #[test]
@@ -834,8 +834,9 @@ mod test_helpers {
 // Performance benchmarks (when benchmarking is enabled)
 #[cfg(all(test, feature = "std", feature = "bench"))]
 mod benchmarks {
-    use super::*;
     use test::Bencher;
+
+    use super::*;
 
     #[bench]
     fn bench_context_get_set(b: &mut Bencher) {

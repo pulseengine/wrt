@@ -13,6 +13,13 @@
 
 extern crate alloc;
 
+#[cfg(not(feature = "std"))]
+use alloc::sync::Arc;
+#[cfg(feature = "std")]
+use std::sync::{Arc, Barrier, Mutex, RwLock};
+#[cfg(feature = "std")]
+use std::thread;
+
 use wrt_component::{
     bounded_component_infra::*,
     resource_management::ResourceTable,
@@ -24,14 +31,6 @@ use wrt_component::{
 use wrt_foundation::{
     bounded::BoundedVec, budget_aware_provider::CrateId, managed_alloc, WrtError, WrtResult,
 };
-
-#[cfg(feature = "std")]
-use std::sync::{Arc, Barrier, Mutex, RwLock};
-#[cfg(feature = "std")]
-use std::thread;
-
-#[cfg(not(feature = "std"))]
-use alloc::sync::Arc;
 #[cfg(not(feature = "std"))]
 use wrt_platform::threading::{spawn_bounded, JoinHandle};
 #[cfg(not(feature = "std"))]

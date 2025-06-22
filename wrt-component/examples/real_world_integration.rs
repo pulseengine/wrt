@@ -4,6 +4,7 @@
 //! into a practical WebAssembly application with multiple components.
 
 use std::collections::HashMap;
+
 use wrt_component::{
     AgentConfiguration, AgentId, AgentRegistry, ExecutionMode, HybridModeFlags,
     RuntimeBridgeConfig, UnifiedExecutionAgent, UnifiedExecutionState, Value,
@@ -139,7 +140,8 @@ impl WasmApplicationManager {
             function_name, component_name
         );
 
-        // Simple function name to index mapping (in real app, this would be more sophisticated)
+        // Simple function name to index mapping (in real app, this would be more
+        // sophisticated)
         let function_index = self.function_name_to_index(function_name);
         let instance_id = 1; // Simplified for demo
 
@@ -321,8 +323,10 @@ impl WasmApplicationManager {
 
     fn function_name_to_index(&self, function_name: &str) -> u32 {
         // Simple hash-based mapping (in real app, use proper function registry)
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        use std::{
+            collections::hash_map::DefaultHasher,
+            hash::{Hash, Hasher},
+        };
 
         let mut hasher = DefaultHasher::new();
         function_name.hash(&mut hasher);

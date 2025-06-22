@@ -15,17 +15,13 @@ extern crate alloc;
 
 use wrt_component::bounded_component_infra::*;
 use wrt_foundation::{
-    safe_managed_alloc,
-    {
-        bounded::{BoundedString, BoundedVec},
-        budget_aware_provider::CrateId,
-        budget_provider::BudgetProvider,
-        managed_alloc,
-        safe_memory::NoStdProvider,
-        WrtError, WrtResult,
-    },
+    bounded::{BoundedString, BoundedVec},
+    budget_aware_provider::CrateId,
+    budget_provider::BudgetProvider,
+    managed_alloc, safe_managed_alloc,
+    safe_memory::NoStdProvider,
+    WrtError, WrtResult,
 };
-
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
     safe_managed_alloc,

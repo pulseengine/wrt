@@ -5,9 +5,9 @@
 
 #![allow(unused_imports)]
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use std::collections::{HashMap as StdHashMap, Vec as StdVec};
 
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 #[cfg(feature = "safety-critical")]
 use wrt_foundation::allocator::{CrateId, WrtHashMap, WrtVec};
 

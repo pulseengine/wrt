@@ -8,9 +8,9 @@
 #[cfg(not(feature = "std"))]
 compile_error!("Benchmarks require std feature for criterion");
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::collections::{HashMap as StdHashMap, Vec as StdVec};
 
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 #[cfg(feature = "safety-critical")]
 use wrt_foundation::allocator::{CrateId, WrtHashMap, WrtVec};
 

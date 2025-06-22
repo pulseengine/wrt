@@ -14,8 +14,13 @@
 
 extern crate alloc;
 
-use wrt_component::bounded_component_infra::*;
+#[cfg(not(feature = "std"))]
+use alloc::sync::Arc;
+#[cfg(feature = "std")]
+use std::sync::{Arc, Mutex};
+
 use wrt_component::{
+    bounded_component_infra::*,
     canonical_abi::canonical::{CanonicalABI, CanonicalOptions},
     resource_management::ResourceTable,
     resources::{
@@ -25,19 +30,13 @@ use wrt_component::{
         MemoryStrategy, VerificationLevel,
     },
 };
+#[cfg(not(feature = "std"))]
+use wrt_foundation::bounded_collections::BoundedMap as BoundedHashMap;
 use wrt_foundation::{
     bounded::{BoundedString, BoundedVec},
     budget_aware_provider::CrateId,
     managed_alloc, WrtError, WrtResult,
 };
-
-#[cfg(not(feature = "std"))]
-use wrt_foundation::bounded_collections::BoundedMap as BoundedHashMap;
-
-#[cfg(not(feature = "std"))]
-use alloc::sync::Arc;
-#[cfg(feature = "std")]
-use std::sync::{Arc, Mutex};
 #[cfg(not(feature = "std"))]
 use wrt_sync::Mutex;
 

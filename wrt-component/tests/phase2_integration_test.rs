@@ -2,7 +2,7 @@
 //!
 //! This test demonstrates the complete Phase 2 ASIL-B async system including:
 //! - Priority inheritance protocol
-//! - Bounded async channels with fuel tracking  
+//! - Bounded async channels with fuel tracking
 //! - Preemptive fuel scheduling
 //! - Integration with existing fuel system
 
@@ -12,6 +12,7 @@ use core::{
     task::{Context, Poll},
     time::Duration,
 };
+
 use wrt_component::{
     async_::{
         fuel_async_bridge::{AsyncBridgeConfig, FuelAsyncBridge},

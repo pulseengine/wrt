@@ -4,6 +4,7 @@
 //! execution engine compared to legacy individual engines.
 
 use std::time::{Duration, Instant};
+
 use wrt_component::{
     AgentConfiguration,
     AgentCreationOptions,

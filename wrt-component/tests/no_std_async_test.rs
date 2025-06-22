@@ -18,8 +18,7 @@ extern crate wrt_component;
 extern crate wrt_foundation;
 
 use wrt_component::*;
-use wrt_foundation::component_value::ComponentValue;
-use wrt_foundation::types::ValueType;
+use wrt_foundation::{component_value::ComponentValue, types::ValueType};
 
 #[test]
 fn test_async_context_no_std() {

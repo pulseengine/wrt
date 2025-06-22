@@ -1,7 +1,8 @@
 //! Safety-Critical Capacity Limit Tests
 //!
-//! This module comprehensively tests capacity limits for all migrated collections
-//! ensuring that error handling is robust and no panics occur when limits are exceeded.
+//! This module comprehensively tests capacity limits for all migrated
+//! collections ensuring that error handling is robust and no panics occur when
+//! limits are exceeded.
 //!
 //! # Safety Requirements
 //! - SW-REQ-ID: REQ_MEM_001 - Memory bounds checking
@@ -13,14 +14,13 @@
 extern crate alloc;
 
 use wrt_component::bounded_component_infra::*;
+#[cfg(not(feature = "std"))]
+use wrt_foundation::bounded_collections::BoundedMap as BoundedHashMap;
 use wrt_foundation::{
     bounded::{BoundedString, BoundedVec},
     budget_aware_provider::CrateId,
     managed_alloc, WrtError, WrtResult,
 };
-
-#[cfg(not(feature = "std"))]
-use wrt_foundation::bounded_collections::BoundedMap as BoundedHashMap;
 
 #[cfg(test)]
 mod capacity_limit_tests {
