@@ -580,7 +580,8 @@ impl BoundedWitParser {
                     if brace_count > 0 {
                         brace_count -= 1;
                         if brace_count == 0 && found_opening {
-                            return position + 1; // Return position after closing brace
+                            return position + 1; // Return position after
+                                                 // closing brace
                         }
                     }
                 },
@@ -785,7 +786,8 @@ mod tests {
 
         let parse_result = result.unwrap();
         assert_eq!(parse_result.worlds.len(), 1); // Only first world should be parsed
-        assert!(!parse_result.metadata.warnings.is_empty()); // Should have warnings
+        assert!(!parse_result.metadata.warnings.is_empty()); // Should have
+                                                             // warnings
     }
 
     #[test]

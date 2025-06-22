@@ -1,7 +1,7 @@
 //! WAST Integration Examples
 //!
-//! This module provides practical examples of how to use the WAST test infrastructure
-//! in different scenarios and environments.
+//! This module provides practical examples of how to use the WAST test
+//! infrastructure in different scenarios and environments.
 
 #![cfg(test)]
 
@@ -71,8 +71,8 @@ fn example_trap_testing() -> Result<()> {
     println!("  assert_trap tests: {}", stats.assert_trap_count);
 
     assert_eq!(stats.assert_trap_count, 2);
-    // Note: Trap tests might fail if the engine doesn't properly implement trap detection
-    // This is expected during development
+    // Note: Trap tests might fail if the engine doesn't properly implement trap
+    // detection This is expected during development
 
     Ok(())
 }

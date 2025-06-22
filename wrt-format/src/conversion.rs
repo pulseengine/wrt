@@ -5,7 +5,6 @@
 //! duplication and ensure consistency across crates.
 
 use core::fmt;
-
 #[cfg(feature = "std")]
 use std::format;
 
@@ -281,7 +280,8 @@ mod tests {
         let block_type_idx = format_block_type_to_block_type(&format_type_idx);
 
         assert!(matches!(block_empty, BlockType::Value(None)));
-        // ValueType now requires generic parameter, so we'll check the general structure
+        // ValueType now requires generic parameter, so we'll check the general
+        // structure
         assert!(matches!(block_value, BlockType::Value(_)));
         assert!(matches!(block_type_idx, BlockType::FuncType(42)));
 

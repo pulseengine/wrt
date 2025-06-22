@@ -11,10 +11,8 @@ use std::cmp;
 
 #[cfg(feature = "std")]
 use wrt_error::{codes, Error, ErrorCategory, Result};
-
 #[cfg(not(any(feature = "std")))]
 use wrt_error::{codes, Error, ErrorCategory, Result};
-
 #[cfg(not(any(feature = "std")))]
 use wrt_foundation::MemoryProvider;
 

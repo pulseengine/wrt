@@ -228,7 +228,8 @@ impl Validatable for CoreInstance {
 /// Core WebAssembly instance expression (format representation only)
 #[derive(Debug, Clone)]
 pub enum CoreInstanceExpr {
-    /// Reference to a module for instantiation (format-only, runtime handles actual instantiation)
+    /// Reference to a module for instantiation (format-only, runtime handles
+    /// actual instantiation)
     ModuleReference {
         /// Module index
         module_idx: u32,
@@ -396,7 +397,8 @@ pub struct Instance {
 /// Component instance expression (format representation only)
 #[derive(Debug, Clone)]
 pub enum InstanceExpr {
-    /// Reference to a component for instantiation (format-only, runtime handles actual instantiation)
+    /// Reference to a component for instantiation (format-only, runtime handles
+    /// actual instantiation)
     ComponentReference {
         /// Component index
         component_idx: u32,

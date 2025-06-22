@@ -81,12 +81,11 @@ extern crate std;
 #[cfg(feature = "std")]
 use std::{format, string::String, vec::Vec};
 
+// Re-export error types directly from wrt-error
+pub use wrt_error::{Error, ErrorCategory};
 // In no_std mode, use our own bounded collections from wrt-foundation
 #[cfg(not(feature = "std"))]
 use wrt_foundation::bounded::{BoundedString, BoundedVec};
-
-// Re-export error types directly from wrt-error
-pub use wrt_error::{Error, ErrorCategory};
 // Re-export resource types from wrt-foundation
 pub use wrt_foundation::resource::ResourceRepresentation;
 // Re-export Result type from wrt-foundation
@@ -144,7 +143,7 @@ pub type WasmVec<T> = Vec<T>;
 // Helper macro for conditional type usage
 #[macro_export]
 macro_rules! collection_type {
-    (Vec<$t:ty>) => {
+    (Vec < $t:ty >) => {
         #[cfg(feature = "std")]
         type VecType = Vec<$t>;
         #[cfg(not(any(feature = "std")))]
@@ -285,20 +284,6 @@ pub mod bounded_wit_parser;
 mod ast_simple_tests;
 
 // Re-export binary constants (always available)
-pub use binary::{
-    COMPONENT_CORE_SORT_FUNC, COMPONENT_CORE_SORT_GLOBAL, COMPONENT_CORE_SORT_INSTANCE,
-    COMPONENT_CORE_SORT_MEMORY, COMPONENT_CORE_SORT_MODULE, COMPONENT_CORE_SORT_TABLE,
-    COMPONENT_CORE_SORT_TYPE, COMPONENT_MAGIC, COMPONENT_SORT_COMPONENT, COMPONENT_SORT_CORE,
-    COMPONENT_SORT_FUNC, COMPONENT_SORT_INSTANCE, COMPONENT_SORT_TYPE, COMPONENT_SORT_VALUE,
-    COMPONENT_VERSION, WASM_MAGIC, WASM_VERSION,
-};
-
-// Re-export binary parsing functions
-// Core parsing functions available in all configurations
-pub use binary::{
-    read_leb128_i32, read_leb128_i64, read_leb128_u32, read_leb128_u64, read_u32, read_u8,
-};
-
 // Binary std/no_std choice
 #[cfg(feature = "std")]
 pub use binary::with_alloc::{
@@ -307,7 +292,6 @@ pub use binary::with_alloc::{
     // is_valid_wasm_header, parse_block_type,
     // read_vector, validate_utf8, BinaryFormat,
 };
-
 // Always available functions
 // pub use binary::{
 //     read_f32, read_f64, read_name,
@@ -318,12 +302,23 @@ pub use binary::with_alloc::{
 pub use binary::with_alloc::{
     write_leb128_i32, write_leb128_i64, write_leb128_u32, write_leb128_u64, write_string,
 };
-
+// Re-export binary parsing functions
+// Core parsing functions available in all configurations
+pub use binary::{
+    read_leb128_i32, read_leb128_i64, read_leb128_u32, read_leb128_u64, read_u32, read_u8,
+};
 // Re-export no_std write functions
 #[cfg(not(any(feature = "std")))]
 pub use binary::{
     write_leb128_u32_bounded, write_leb128_u32_to_slice, write_string_bounded,
     write_string_to_slice,
+};
+pub use binary::{
+    COMPONENT_CORE_SORT_FUNC, COMPONENT_CORE_SORT_GLOBAL, COMPONENT_CORE_SORT_INSTANCE,
+    COMPONENT_CORE_SORT_MEMORY, COMPONENT_CORE_SORT_MODULE, COMPONENT_CORE_SORT_TABLE,
+    COMPONENT_CORE_SORT_TYPE, COMPONENT_MAGIC, COMPONENT_SORT_COMPONENT, COMPONENT_SORT_CORE,
+    COMPONENT_SORT_FUNC, COMPONENT_SORT_INSTANCE, COMPONENT_SORT_TYPE, COMPONENT_SORT_VALUE,
+    COMPONENT_VERSION, WASM_MAGIC, WASM_VERSION,
 };
 #[cfg(feature = "std")]
 pub use component::Component;
@@ -345,6 +340,12 @@ pub use module::{Data, DataMode, Element, ElementInit, ElementMode, Module};
 pub type DataSegment = module::Data;
 pub type ElementSegment = module::Element;
 // Re-export safe memory utilities
+// Re-export enhanced bounded WIT parser (Agent C)
+pub use bounded_wit_parser::{
+    parse_wit_embedded, parse_wit_linux, parse_wit_qnx, parse_wit_with_limits,
+    BoundedWitParser as EnhancedBoundedWitParser, WarningSeverity, WitParseMetadata,
+    WitParseResult, WitParseWarning, WitParsingLimits,
+};
 pub use safe_memory::safe_slice;
 pub use section::{CustomSection, Section};
 // Use the conversion module versions for consistency
@@ -364,13 +365,6 @@ pub use wit_parser::{
 pub use wit_parser_bounded::{
     parse_wit_bounded, BoundedWitExport, BoundedWitFunction, BoundedWitImport, BoundedWitInterface,
     BoundedWitParser, BoundedWitType, BoundedWitWorld, HAS_BOUNDED_WIT_PARSING_NO_STD,
-};
-
-// Re-export enhanced bounded WIT parser (Agent C)
-pub use bounded_wit_parser::{
-    parse_wit_embedded, parse_wit_linux, parse_wit_qnx, parse_wit_with_limits,
-    BoundedWitParser as EnhancedBoundedWitParser, WarningSeverity, WitParseMetadata,
-    WitParseResult, WitParseWarning, WitParsingLimits,
 };
 
 // Public functions for feature detection
@@ -513,8 +507,8 @@ pub mod no_std_demo {
 
 // Panic handler disabled to avoid conflicts with other crates
 // // Provide a panic handler only when wrt-format is being tested in isolation
-// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
-// #[panic_handler]
+// #[cfg(all(not(feature = "std"), not(test), not(feature =
+// "disable-panic-handler")))] #[panic_handler]
 // fn panic(_info: &core::panic::PanicInfo) -> ! {
 //     loop {}
 // }

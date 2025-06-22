@@ -8,9 +8,8 @@ use std::{collections::BTreeMap, vec::Vec};
 #[cfg(all(not(feature = "std")))]
 use std::{collections::BTreeMap, vec::Vec};
 
-use wrt_foundation::{prelude::*, BoundedString, NoStdProvider};
-
 use wrt_error::{Error, Result};
+use wrt_foundation::{prelude::*, BoundedString, NoStdProvider};
 
 use crate::ast::*;
 

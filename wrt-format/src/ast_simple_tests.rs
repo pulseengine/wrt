@@ -6,10 +6,10 @@
 #[cfg(test)]
 #[cfg(feature = "std")]
 mod tests {
-    use crate::ast_simple::*;
-
     #[cfg(feature = "std")]
     use std::vec::Vec;
+
+    use crate::ast_simple::*;
 
     #[test]
     fn test_source_span_creation() {
@@ -195,7 +195,8 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_ast_structure_without_strings() {
-        // Test that we can work with the AST structure even without BoundedString creation
+        // Test that we can work with the AST structure even without BoundedString
+        // creation
         let interface_items: Vec<InterfaceItem> = Vec::new();
         assert!(interface_items.is_empty());
 

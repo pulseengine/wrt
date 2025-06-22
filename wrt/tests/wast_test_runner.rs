@@ -1,8 +1,9 @@
 //! WAST Test Runner Integration
 //!
-//! This module provides a comprehensive WAST test infrastructure that integrates
-//! with the existing wrt-test-registry framework. It supports all WAST directive
-//! types and provides proper categorization, error handling, and resource management.
+//! This module provides a comprehensive WAST test infrastructure that
+//! integrates with the existing wrt-test-registry framework. It supports all
+//! WAST directive types and provides proper categorization, error handling, and
+//! resource management.
 
 #![cfg(test)]
 
@@ -13,16 +14,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[cfg(not(feature = "std"))]
-use wrt_foundation::bounded::{BoundedHashMap as HashMap, BoundedVec};
-
 use wast::{
     core::{NanPattern, WastArgCore, WastRetCore},
     parser::{self, ParseBuffer},
     Wast, WastArg, WastDirective, WastExecute, WastRet,
 };
-
 use wrt::{Error, Module, Result, StacklessEngine, Value};
+#[cfg(not(feature = "std"))]
+use wrt_foundation::bounded::{BoundedHashMap as HashMap, BoundedVec};
 use wrt_test_registry::{TestCase, TestConfig, TestRegistry, TestResult, TestRunner, TestSuite};
 
 /// WAST Test Runner that integrates with the existing test infrastructure
@@ -604,7 +603,8 @@ impl WastTestRunner {
 
         #[cfg(not(feature = "std"))]
         {
-            // In no_std mode, we can't maintain a registry, but we can still track the directive
+            // In no_std mode, we can't maintain a registry, but we can still track the
+            // directive
             if self.current_module.is_some() {
                 self.stats.passed += 1;
                 return Ok(WastDirectiveInfo {
@@ -951,7 +951,8 @@ fn run_wast_testsuite_tests() -> wrt_test_registry::TestResult {
     }
 }
 
-/// Utility function to get the test suite path from environment variables (std only)
+/// Utility function to get the test suite path from environment variables (std
+/// only)
 #[cfg(feature = "std")]
 fn get_testsuite_path() -> Option<String> {
     std::env::var("WASM_TESTSUITE").ok()

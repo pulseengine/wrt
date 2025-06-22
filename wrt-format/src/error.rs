@@ -6,10 +6,9 @@
 #[cfg(feature = "std")]
 use std::{boxed::Box, string::String};
 
+use wrt_error::Error;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::bounded::BoundedString;
-
-use wrt_error::Error;
 
 /// Module for error codes
 pub mod codes {
