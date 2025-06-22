@@ -10,9 +10,7 @@ use wrt_foundation::{
     NoStdProvider,
 };
 
-use crate::cursor::DwarfCursor;
-
-use crate::bounded_debug_infra;
+use crate::{bounded_debug_infra, cursor::DwarfCursor};
 /// DWARF attribute form constants
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AttributeForm {

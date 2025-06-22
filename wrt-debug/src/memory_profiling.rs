@@ -1,32 +1,31 @@
 //! Runtime Memory Profiling and Debugging
 //!
-//! This module provides comprehensive runtime profiling and debugging capabilities
-//! for the WRT memory system, enabling detailed analysis of memory usage patterns,
-//! allocation tracking, and performance profiling. It complements the existing
-//! memory inspection capabilities with advanced profiling features.
+//! This module provides comprehensive runtime profiling and debugging
+//! capabilities for the WRT memory system, enabling detailed analysis of memory
+//! usage patterns, allocation tracking, and performance profiling. It
+//! complements the existing memory inspection capabilities with advanced
+//! profiling features.
 
 #![cfg(feature = "memory-profiling")]
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
+#[cfg(feature = "std")]
+use alloc::collections::BTreeMap;
 use core::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering};
 #[cfg(feature = "std")]
 use std::sync::{Mutex, OnceLock};
 
-use crate::bounded_debug_infra;
-#[cfg(feature = "std")]
-use alloc::collections::BTreeMap;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::no_std_hashmap::BoundedHashMap;
-
 use wrt_foundation::{
     bounded::{BoundedString, BoundedVec},
     verification::Checksum,
     wrt_provider, CrateId, Result as WrtResult,
 };
 
-use crate::runtime_memory::MemoryInspector;
+use crate::{bounded_debug_infra, runtime_memory::MemoryInspector};
 
 /// Maximum number of allocation records to track
 const MAX_ALLOCATION_RECORDS: usize = 512;

@@ -5,13 +5,12 @@ use alloc::boxed::Box;
 #[cfg(feature = "std")]
 use std::boxed::Box;
 
-use crate::bounded_debug_infra;
-
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
     NoStdProvider,
 };
 
+use crate::bounded_debug_infra;
 /// Runtime debugging API definitions
 /// This module defines the interface between the debug information
 /// and the runtime execution engine for advanced debugging features
@@ -281,12 +280,16 @@ mod integration_example {
         fn pc(&self) -> u32 {
             self.pc
         }
+
         fn sp(&self) -> u32 {
             self.sp
         }
+
         fn fp(&self) -> Option<u32> {
             None
-        } // WASM has no frame pointer
+        }
+
+        // WASM has no frame pointer
 
         fn read_local(&self, index: u32) -> Option<u64> {
             self.locals.get(index as usize).copied()

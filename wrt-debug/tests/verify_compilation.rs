@@ -15,15 +15,19 @@ mod mock_deps {
                 _phantom: std::marker::PhantomData,
             }
         }
+
         pub fn push(&mut self, _: T) -> Result<(), ()> {
             Ok(())
         }
+
         pub fn iter(&self) -> std::slice::Iter<'_, T> {
             [].iter()
         }
+
         pub fn len(&self) -> usize {
             0
         }
+
         pub fn as_slice(&self) -> &[T] {
             &[]
         }
@@ -39,12 +43,15 @@ mod mock_deps {
                 _phantom: std::marker::PhantomData,
             }
         }
+
         pub fn push(&mut self, _: T) -> Result<(), ()> {
             Ok(())
         }
+
         pub fn pop(&mut self) -> Option<T> {
             None
         }
+
         pub fn clear(&mut self) {}
     }
 }
@@ -118,18 +125,23 @@ mod tests {
         fn pc(&self) -> u32 {
             0
         }
+
         fn sp(&self) -> u32 {
             0
         }
+
         fn fp(&self) -> Option<u32> {
             None
         }
+
         fn read_local(&self, _: u32) -> Option<u64> {
             None
         }
+
         fn read_stack(&self, _: u32) -> Option<u64> {
             None
         }
+
         fn current_function(&self) -> Option<u32> {
             None
         }

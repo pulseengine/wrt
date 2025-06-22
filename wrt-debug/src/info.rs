@@ -4,7 +4,6 @@
 
 //! DWARF .debug_info section parsing
 
-use crate::bounded_debug_infra;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 #[cfg(all(not(feature = "std")))]
@@ -18,6 +17,7 @@ use wrt_foundation::{
 
 use crate::{
     abbrev::{attributes, tags, AbbreviationTable, AttributeForm},
+    bounded_debug_infra,
     cursor::DwarfCursor,
     parameter::{BasicType, InlinedFunction, InlinedFunctions, Parameter, ParameterList},
     strings::{DebugString, StringTable},

@@ -3,6 +3,13 @@
 //! This module provides bounded alternatives for debug collections
 //! to ensure static memory allocation throughout the debug system.
 
+// Import standard traits for bounds
+use core::clone::Clone;
+use core::{
+    cmp::{Eq, PartialEq},
+    default::Default,
+};
+
 use wrt_foundation::{
     bounded::{BoundedString, BoundedVec},
     bounded_collections::BoundedMap as BoundedHashMap,
@@ -11,11 +18,6 @@ use wrt_foundation::{
     traits::{Checksummable, FromBytes, ToBytes},
     CrateId, Result as WrtResult,
 };
-
-// Import standard traits for bounds
-use core::clone::Clone;
-use core::cmp::{Eq, PartialEq};
-use core::default::Default;
 
 /// Maximum stack trace depth
 pub const MAX_STACK_TRACE_DEPTH: usize = 256;
@@ -105,7 +107,8 @@ pub const MAX_SYMBOL_TABLE_ENTRIES: usize = 8192;
 /// Maximum debug string length
 pub const MAX_DEBUG_STRING_LEN: usize = 512;
 
-// Type aliases for cleaner usage (using factory pattern instead of direct provider)
+// Type aliases for cleaner usage (using factory pattern instead of direct
+// provider)
 /// Bounded vector for stack frames
 pub type BoundedStackTraceVec<T> = BoundedVec<T, MAX_STACK_TRACE_DEPTH, DebugProvider>;
 

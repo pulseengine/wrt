@@ -18,12 +18,16 @@ mod runtime_debug_tests {
         fn pc(&self) -> u32 {
             self.pc
         }
+
         fn sp(&self) -> u32 {
             self.sp
         }
+
         fn fp(&self) -> Option<u32> {
             Some(0x10000)
-        } // Mock frame pointer
+        }
+
+        // Mock frame pointer
 
         fn read_local(&self, index: u32) -> Option<u64> {
             self.locals.get(index as usize).copied()

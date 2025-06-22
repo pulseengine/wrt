@@ -1,6 +1,7 @@
 //! Platform-aware debug infrastructure
 //!
-//! Provides debug capabilities that adapt to platform limitations and resources.
+//! Provides debug capabilities that adapt to platform limitations and
+//! resources.
 
 use wrt_error::Error;
 

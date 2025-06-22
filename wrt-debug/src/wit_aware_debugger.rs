@@ -1,32 +1,29 @@
 //! WIT-aware debugger integration
 //!
-//! This module extends the runtime debugger with WIT source mapping capabilities,
-//! allowing debugging at the WIT source level rather than just binary level.
+//! This module extends the runtime debugger with WIT source mapping
+//! capabilities, allowing debugging at the WIT source level rather than just
+//! binary level.
 
 #[cfg(not(feature = "std"))]
 use alloc::{boxed::Box, collections::BTreeMap, format, vec::Vec};
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::BTreeMap, format, vec::Vec};
 
-use crate::bounded_debug_infra;
-use wrt_foundation::{safe_managed_alloc, CrateId};
-
-use wrt_foundation::{prelude::*, BoundedString, NoStdProvider};
-
 use wrt_error::{Error, Result};
+use wrt_foundation::{prelude::*, safe_managed_alloc, BoundedString, CrateId, NoStdProvider};
 
-// Import from existing modules
-#[cfg(feature = "runtime-debug")]
-use crate::{
-    Breakpoint, DebugAction, DebugError, DebugMemory, DebuggableRuntime, RuntimeDebugger,
-    RuntimeState,
-};
-
+use crate::bounded_debug_infra;
 // Import WIT source mapping
 #[cfg(any(feature = "wit-integration", feature = "std"))]
 use crate::wit_source_map::{
     ComponentBoundary, ComponentId, FunctionId, SourceSpan, TypeId, WitDiagnostic, WitSourceMap,
     WitTypeInfo,
+};
+// Import from existing modules
+#[cfg(feature = "runtime-debug")]
+use crate::{
+    Breakpoint, DebugAction, DebugError, DebugMemory, DebuggableRuntime, RuntimeDebugger,
+    RuntimeState,
 };
 
 /// Component error for WIT debugging

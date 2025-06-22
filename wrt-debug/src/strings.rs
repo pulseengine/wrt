@@ -48,8 +48,8 @@ impl<'a> wrt_foundation::traits::FromBytes for DebugString<'a> {
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         // This is tricky because we need to return a reference with lifetime 'a
-        // In practice, this should not be called for DebugString as it's a zero-copy type
-        // We'll return a default value for now
+        // In practice, this should not be called for DebugString as it's a zero-copy
+        // type We'll return a default value for now
         let _ = reader.read_u32_le()?; // Read and ignore length
         Ok(Self::default())
     }

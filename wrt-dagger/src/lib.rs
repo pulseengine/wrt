@@ -1,8 +1,8 @@
 //! # WRT Dagger - Containerized Build Wrapper
 //!
-//! This module provides optional containerized build capabilities for WRT using Dagger.
-//! It serves as a thin wrapper around cargo-wrt, enabling consistent builds across
-//! different environments through containerization.
+//! This module provides optional containerized build capabilities for WRT using
+//! Dagger. It serves as a thin wrapper around cargo-wrt, enabling consistent
+//! builds across different environments through containerization.
 //!
 //! ## Features
 //!
@@ -14,23 +14,27 @@
 //! ## Usage
 //!
 //! ```rust,no_run
-//! use wrt_dagger::{DaggerPipeline, ContainerConfig};
+//! use wrt_dagger::{
+//!     ContainerConfig,
+//!     DaggerPipeline,
+//! };
 //!
 //! #[tokio::main]
 //! async fn main() -> anyhow::Result<()> {
 //!     let config = ContainerConfig::default();
 //!     let pipeline = DaggerPipeline::new(config).await?;
-//!     
+//!
 //!     // Run cargo-wrt build in container
 //!     pipeline.build().await?;
-//!     
+//!
 //!     Ok(())
 //! }
 //! ```
 
+use std::collections::HashMap;
+
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Configuration for containerized builds
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -154,7 +158,8 @@ impl DaggerPipeline {
         );
 
         // TODO: Implement updated Dagger SDK v0.11+ integration
-        // The previous implementation was based on older API that has changed significantly
+        // The previous implementation was based on older API that has changed
+        // significantly
     }
 
     #[cfg(not(feature = "dagger"))]

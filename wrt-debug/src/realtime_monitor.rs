@@ -3,10 +3,9 @@
 //! This module provides continuous monitoring capabilities for memory usage
 //! with configurable alerts and automatic visualization generation.
 
+#[cfg(any(feature = "std", feature = "alloc"))]
+use alloc::{string::String, vec::Vec};
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use wrt_foundation::CrateId;
-use wrt_foundation::{codes, Error, ErrorCategory, Result as WrtResult};
-
 #[cfg(feature = "std")]
 use std::{
     collections::VecDeque,
@@ -15,8 +14,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{string::String, vec::Vec};
+use wrt_foundation::{codes, CrateId, Error, ErrorCategory, Result as WrtResult};
 
 /// Real-time monitoring configuration
 #[derive(Debug, Clone)]
@@ -281,7 +279,8 @@ impl RealtimeMonitor {
     #[allow(dead_code)]
     fn check_alerts(sample: &MemorySample, config: &MonitorConfig) -> Option<MemoryAlert> {
         // Check global memory health
-        // Note: Memory analysis features will be restored when wrt_foundation memory_analysis module is available
+        // Note: Memory analysis features will be restored when wrt_foundation
+        // memory_analysis module is available
 
         // Check per-crate utilization
         let crates = [
@@ -381,7 +380,8 @@ impl RealtimeMonitor {
             .unwrap_or_default()
             .as_secs();
 
-        // Note: Visualization features will be restored when budget_visualization module is available
+        // Note: Visualization features will be restored when budget_visualization
+        // module is available
         let json_path = format!("{}/memory_report_{}.json", config.output_dir, timestamp);
         let html_path = format!("{}/memory_report_{}.html", config.output_dir, timestamp);
 
@@ -424,8 +424,7 @@ impl RealtimeMonitor {
     /// Export monitoring data to CSV
     #[cfg(feature = "std")]
     pub fn export_to_csv(&self, filename: &str) -> WrtResult<()> {
-        use std::fs::File;
-        use std::io::Write;
+        use std::{fs::File, io::Write};
 
         let mut file = File::create(filename).map_err(|_e| {
             Error::new(
@@ -436,12 +435,18 @@ impl RealtimeMonitor {
         })?;
 
         // Write CSV header
-        writeln!(file, "timestamp,total_allocated,active_providers,shared_pool_utilization,foundation_util,runtime_util,component_util")
-            .map_err(|_e| Error::new(
+        writeln!(
+            file,
+            "timestamp,total_allocated,active_providers,shared_pool_utilization,foundation_util,\
+             runtime_util,component_util"
+        )
+        .map_err(|_e| {
+            Error::new(
                 ErrorCategory::Runtime,
                 codes::RUNTIME_ERROR,
-                "Failed to write CSV header"
-            ))?;
+                "Failed to write CSV header",
+            )
+        })?;
 
         // Write data rows
         if let Ok(history) = self.history.lock() {
@@ -498,7 +503,8 @@ pub fn stop_global_monitoring() {
     // No-op in no_std mode
 }
 
-/// Get current memory sample from global monitor (placeholder - not supported in no_std)
+/// Get current memory sample from global monitor (placeholder - not supported
+/// in no_std)
 pub fn get_current_sample() -> WrtResult<MemorySample> {
     Err(Error::new(
         ErrorCategory::Runtime,

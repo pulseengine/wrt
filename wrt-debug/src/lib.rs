@@ -52,16 +52,15 @@ pub use runtime_api::{
 pub mod realtime_monitor;
 
 // Re-export realtime monitoring types
-pub use realtime_monitor::{
-    get_current_sample, init_global_monitor, AlertLevel, MemoryAlert, MemorySample, MonitorConfig,
-    RealtimeMonitor,
-};
-
 #[cfg(feature = "memory-profiling")]
 pub use memory_profiling::{
     init_profiler, with_profiler, AccessPatternSummary, AccessRecord, AccessType, AllocationRecord,
     AllocationType, LeakInfo, MemoryHotspot, MemoryProfiler, PerformanceAnalysis,
     PerformanceSample, ProfileReport, ProfilingHandle,
+};
+pub use realtime_monitor::{
+    get_current_sample, init_global_monitor, AlertLevel, MemoryAlert, MemorySample, MonitorConfig,
+    RealtimeMonitor,
 };
 #[cfg(feature = "std")]
 pub use realtime_monitor::{start_global_monitoring, stop_global_monitoring};
@@ -322,8 +321,8 @@ pub mod prelude {
 
 // Panic handler disabled to avoid conflicts with other crates
 // // Provide a panic handler only when wrt-debug is being tested in isolation
-// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
-// #[panic_handler]
+// #[cfg(all(not(feature = "std"), not(test), not(feature =
+// "disable-panic-handler")))] #[panic_handler]
 // fn panic(_info: &core::panic::PanicInfo) -> ! {
 //     loop {}
 // }

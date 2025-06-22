@@ -3,20 +3,18 @@
 //! This module provides source mapping capabilities between WIT source code,
 //! AST nodes, and component binary representations for enhanced debugging.
 
-use crate::bounded_debug_infra;
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::BTreeMap, vec::Vec};
 #[cfg(all(not(feature = "std")))]
 use std::{boxed::Box, collections::BTreeMap, vec::Vec};
-use wrt_foundation::safe_managed_alloc;
-
-use wrt_foundation::{prelude::*, BoundedString, BoundedVec, NoStdProvider};
 
 use wrt_error::{Error, Result};
-
 /// Source location span (re-exported from wrt-format for consistency)
 #[cfg(feature = "wit-integration")]
 pub use wrt_format::ast::SourceSpan;
+use wrt_foundation::{prelude::*, safe_managed_alloc, BoundedString, BoundedVec, NoStdProvider};
+
+use crate::bounded_debug_infra;
 
 /// Type identifier for mapping between AST and binary representations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]

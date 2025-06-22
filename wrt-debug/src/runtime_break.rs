@@ -416,18 +416,23 @@ mod tests {
             fn pc(&self) -> u32 {
                 0x1000
             }
+
             fn sp(&self) -> u32 {
                 0
             }
+
             fn fp(&self) -> Option<u32> {
                 None
             }
+
             fn read_local(&self, _: u32) -> Option<u64> {
                 None
             }
+
             fn read_stack(&self, _: u32) -> Option<u64> {
                 None
             }
+
             fn current_function(&self) -> Option<u32> {
                 None
             }
