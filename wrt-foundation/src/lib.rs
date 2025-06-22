@@ -304,6 +304,10 @@ pub use safe_memory::{
     NoStdProvider, Provider as MemoryProvider, SafeMemoryHandler, Slice as SafeSlice,
     SliceMut as SafeSliceMut, Stats as MemoryStats,
 };
+
+// Type aliases for backward compatibility
+pub type DefaultMemoryProvider<const N: usize> = NoStdProvider<N>;
+pub type WrtVec<T, const CAPACITY: usize, P> = BoundedVec<T, CAPACITY, P>;
 pub use traits::{BoundedCapacity, Checksummed, FromFormat, ToFormat, Validatable};
 pub use types::{
     BlockType, DataMode, ElementMode, FuncType, GlobalType, Limits, MemArg, MemoryType, RefType,

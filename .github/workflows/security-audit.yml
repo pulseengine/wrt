@@ -135,9 +135,10 @@ jobs:
       - uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
+          # Allow common open source licenses
           allow-licenses: MIT, Apache-2.0, BSD-3-Clause, ISC, MPL-2.0, Unlicense
-          # Allow dependencies with undetected licenses that we've manually verified
-          # chrono is MIT/Apache-2.0, dagger-sdk is Apache-2.0
+          # Exclude packages with undetected licenses that we've manually verified
+          # Using PURL format: pkg:cargo/package@version
           allow-dependencies-licenses: |
-            pkg:cargo/chrono@0.4.41
+            pkg:cargo/chrono@0.4.*, 
             pkg:cargo/dagger-sdk@0.11.10

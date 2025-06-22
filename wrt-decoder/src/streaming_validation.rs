@@ -9,7 +9,7 @@ use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
 use std::{collections::HashMap, string::String, vec::Vec};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_foundation::{DefaultMemoryProvider, WrtVec};
+use wrt_foundation::{BoundedVec, NoStdProvider};
 
 /// Validation severity levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -76,9 +76,9 @@ impl ValidationIssue {
 #[derive(Debug)]
 pub struct StreamingValidator {
     /// Issues found during validation
-    issues: WrtVec<ValidationIssue, 256, DefaultMemoryProvider>,
+    issues: BoundedVec<ValidationIssue, 256, NoStdProvider<1024>>,
     /// Current parsing context
-    context_stack: WrtVec<String, 32, DefaultMemoryProvider>,
+    context_stack: BoundedVec<String, 32, NoStdProvider<1024>>,
     /// Validation rules configuration
     config: ValidationConfig,
     /// Statistics
@@ -143,8 +143,8 @@ impl StreamingValidator {
     /// Create a new streaming validator with custom configuration
     pub fn with_config(config: ValidationConfig) -> Result<Self> {
         Ok(Self {
-            issues: WrtVec::new(),
-            context_stack: WrtVec::new(),
+            issues: BoundedVec::new(NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create issues vector")),
+            context_stack: BoundedVec::new(NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create context stack")),
             config,
             stats: ValidationStats {
                 #[cfg(feature = "std")]
@@ -480,7 +480,7 @@ impl StreamingValidator {
     }
 
     /// Get all validation issues
-    pub fn get_issues(&self) -> &WrtVec<ValidationIssue, 256, DefaultMemoryProvider> {
+    pub fn get_issues(&self) -> &BoundedVec<ValidationIssue, 256, NoStdProvider<1024>> {
         &self.issues
     }
 

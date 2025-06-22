@@ -195,6 +195,181 @@ pub struct YieldPoint {
     pub fuel_at_yield: u64,
     /// Timestamp of yield (for deterministic replay)
     pub yield_timestamp: u64,
+    /// Type of yield that occurred
+    pub yield_type: YieldType,
+    /// Yield context for restoration
+    pub yield_context: YieldContext,
+    /// Conditional resumption criteria
+    pub resumption_condition: Option<ResumptionCondition>,
+}
+
+/// Type of yield that occurred during execution
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum YieldType {
+    /// Yield due to fuel exhaustion
+    FuelExhausted,
+    /// Yield due to time slice completion
+    TimeSliceExpired,
+    /// Yield due to async operation wait
+    AsyncWait { resource_id: u64 },
+    /// Explicit yield by WebAssembly code
+    ExplicitYield,
+    /// Yield due to stack depth limit
+    StackDepthLimit,
+    /// Yield due to ASIL compliance requirement
+    ASILCompliance { reason: String },
+    /// Yield for preemption by higher priority task
+    Preemption { preempting_task_id: Option<u32> },
+}
+
+/// Context information for yield point restoration
+#[derive(Debug, Clone)]
+pub struct YieldContext {
+    /// WebAssembly module state at yield
+    pub module_state: Option<ModuleExecutionState>,
+    /// Memory state snapshot (for ASIL-D)
+    pub memory_snapshot: Option<Vec<u8>>,
+    /// Global variables state
+    pub globals: Vec<wrt_foundation::Value>,
+    /// Table state if modified
+    pub tables: Vec<TableState>,
+    /// Linear memory bounds at yield
+    pub memory_bounds: Option<(u32, u32)>,
+    /// Active function import/export context
+    pub function_context: FunctionExecutionContext,
+}
+
+/// Module execution state for complete restoration
+#[derive(Debug, Clone)]
+pub struct ModuleExecutionState {
+    /// Current WebAssembly function being executed
+    pub current_function: u32,
+    /// Execution frame stack
+    pub frame_stack: Vec<ExecutionFrame>,
+    /// Control flow stack (blocks, loops, if/else)
+    pub control_stack: Vec<ControlFrame>,
+    /// Exception handling state
+    pub exception_state: Option<ExceptionState>,
+}
+
+/// WebAssembly execution frame
+#[derive(Debug, Clone)]
+pub struct ExecutionFrame {
+    /// Function index
+    pub function_index: u32,
+    /// Local variables for this frame
+    pub locals: Vec<wrt_foundation::Value>,
+    /// Return address (instruction pointer in caller)
+    pub return_address: u32,
+    /// Stack pointer in caller frame
+    pub caller_stack_pointer: u32,
+}
+
+/// Control frame for WebAssembly control flow
+#[derive(Debug, Clone)]
+pub struct ControlFrame {
+    /// Type of control structure
+    pub control_type: ControlType,
+    /// Block type signature
+    pub block_type: BlockType,
+    /// Start instruction pointer
+    pub start_ip: u32,
+    /// End instruction pointer
+    pub end_ip: u32,
+    /// Stack height at block entry
+    pub stack_height: u32,
+}
+
+/// WebAssembly control flow types
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ControlType {
+    Block,
+    Loop,
+    If,
+    Else,
+    Try,
+    Catch,
+}
+
+/// Block type for control frames
+#[derive(Debug, Clone)]
+pub enum BlockType {
+    Empty,
+    Value(wrt_foundation::types::ValueType),
+    Function(u32), // Type index
+}
+
+/// Exception handling state
+#[derive(Debug, Clone)]
+pub struct ExceptionState {
+    /// Exception tag
+    pub tag: u32,
+    /// Exception values
+    pub values: Vec<wrt_foundation::Value>,
+    /// Handler instruction pointer
+    pub handler_ip: Option<u32>,
+}
+
+/// Table state for restoration
+#[derive(Debug, Clone)]
+pub struct TableState {
+    /// Table index
+    pub table_index: u32,
+    /// Table elements
+    pub elements: Vec<Option<wrt_foundation::Value>>,
+    /// Table size
+    pub size: u32,
+}
+
+/// Function execution context
+#[derive(Debug, Clone)]
+pub struct FunctionExecutionContext {
+    /// Function signature
+    pub signature: FunctionSignature,
+    /// Import/export status
+    pub function_kind: FunctionKind,
+    /// Calling convention used
+    pub calling_convention: CallingConvention,
+}
+
+/// Function signature for restoration
+#[derive(Debug, Clone)]
+pub struct FunctionSignature {
+    /// Parameter types
+    pub params: Vec<wrt_foundation::types::ValueType>,
+    /// Return types
+    pub returns: Vec<wrt_foundation::types::ValueType>,
+}
+
+/// Function kind (import/export/local)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FunctionKind {
+    Local,
+    Import { module: String, name: String },
+    Export { name: String },
+}
+
+/// Calling convention used
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CallingConvention {
+    WebAssembly,
+    ComponentModel,
+    Host,
+}
+
+/// Condition for automatic resumption
+#[derive(Debug, Clone)]
+pub enum ResumptionCondition {
+    /// Resume when resource becomes available
+    ResourceAvailable { resource_id: u64 },
+    /// Resume after specific fuel amount
+    FuelRecovered { fuel_amount: u64 },
+    /// Resume after time period (ASIL-B/C)
+    TimeElapsed { duration_ms: u32 },
+    /// Resume when external event occurs
+    ExternalEvent { event_id: u64 },
+    /// Resume manually (no automatic resumption)
+    Manual,
 }
 
 /// ASIL execution mode configuration
@@ -315,17 +490,108 @@ impl ExecutionContext {
     pub fn create_yield_point(&mut self, instruction_pointer: u32, 
                              stack_frame: Vec<ComponentValue>, 
                              locals: Vec<ComponentValue>) -> Result<(), Error> {
+        // Convert ComponentValue to wrt_foundation::Value for storage
+        let stack = stack_frame.into_iter()
+            .map(|cv| self.convert_component_value_to_value(cv))
+            .collect::<Result<Vec<_>, _>>()?;
+        let local_vars = locals.into_iter()
+            .map(|cv| self.convert_component_value_to_value(cv))
+            .collect::<Result<Vec<_>, _>>()?;
+
         let fuel_consumed = self.context_fuel_consumed.load(Ordering::Acquire);
         
         self.last_yield_point = Some(YieldPoint {
             instruction_pointer,
-            stack_frame,
-            locals,
+            stack,
+            locals: local_vars,
+            call_stack: vec![self.current_function_index], // Simple call stack
             fuel_at_yield: fuel_consumed,
             yield_timestamp: self.get_deterministic_timestamp(),
+            yield_type: YieldType::ExplicitYield,
+            yield_context: self.create_yield_context()?,
+            resumption_condition: Some(ResumptionCondition::Manual),
         });
         
         Ok(())
+    }
+
+    /// Create advanced yield point with specific yield type and conditions
+    pub fn create_advanced_yield_point(
+        &mut self,
+        instruction_pointer: u32,
+        yield_type: YieldType,
+        resumption_condition: Option<ResumptionCondition>,
+    ) -> Result<(), Error> {
+        let fuel_consumed = self.context_fuel_consumed.load(Ordering::Acquire);
+        
+        // Capture current execution state
+        let (stack, locals) = self.capture_execution_state()?;
+        
+        self.last_yield_point = Some(YieldPoint {
+            instruction_pointer,
+            stack,
+            locals,
+            call_stack: vec![self.current_function_index],
+            fuel_at_yield: fuel_consumed,
+            yield_timestamp: self.get_deterministic_timestamp(),
+            yield_type,
+            yield_context: self.create_yield_context()?,
+            resumption_condition,
+        });
+        
+        Ok(())
+    }
+
+    /// Create comprehensive yield context for restoration
+    fn create_yield_context(&self) -> Result<YieldContext, Error> {
+        Ok(YieldContext {
+            module_state: Some(ModuleExecutionState {
+                current_function: self.current_function_index,
+                frame_stack: vec![ExecutionFrame {
+                    function_index: self.current_function_index,
+                    locals: vec![], // Will be populated from self.locals
+                    return_address: 0, // Would come from call stack
+                    caller_stack_pointer: 0,
+                }],
+                control_stack: vec![], // Would be populated with active control structures
+                exception_state: None,
+            }),
+            memory_snapshot: None, // Only for ASIL-D deterministic execution
+            globals: vec![], // Would be populated from module globals
+            tables: vec![], // Would be populated from module tables
+            memory_bounds: None, // Would come from memory instance
+            function_context: FunctionExecutionContext {
+                signature: FunctionSignature {
+                    params: vec![], // Would come from function type
+                    returns: vec![],
+                },
+                function_kind: FunctionKind::Local, // Would be determined from module
+                calling_convention: CallingConvention::WebAssembly,
+            },
+        })
+    }
+
+    /// Capture current execution state for yielding
+    fn capture_execution_state(&self) -> Result<(Vec<wrt_foundation::Value>, Vec<wrt_foundation::Value>), Error> {
+        // In a real implementation, this would capture the actual WebAssembly execution state
+        // For now, create placeholder state
+        let stack = vec![];
+        let locals = self.function_params.clone();
+        Ok((stack, locals))
+    }
+
+    /// Convert ComponentValue to wrt_foundation::Value
+    fn convert_component_value_to_value(&self, cv: ComponentValue) -> Result<wrt_foundation::Value, Error> {
+        // Simple conversion - in real implementation would handle all ComponentValue types
+        match cv {
+            ComponentValue::S32(val) => Ok(wrt_foundation::Value::I32(val)),
+            ComponentValue::U32(val) => Ok(wrt_foundation::Value::I32(val as i32)),
+            ComponentValue::S64(val) => Ok(wrt_foundation::Value::I64(val)),
+            ComponentValue::U64(val) => Ok(wrt_foundation::Value::I64(val as i64)),
+            ComponentValue::F32(val) => Ok(wrt_foundation::Value::F32(val)),
+            ComponentValue::F64(val) => Ok(wrt_foundation::Value::F64(val)),
+            _ => Ok(wrt_foundation::Value::I32(0)), // Placeholder for complex types
+        }
     }
 
     /// Get deterministic timestamp for ASIL compliance
@@ -365,6 +631,172 @@ impl ExecutionContext {
         } else {
             Ok(ExecutionStepResult::Yielded)
         }
+    }
+
+    /// Restore execution from advanced yield point
+    pub fn restore_from_yield_point(&mut self, yield_point: &YieldPoint) -> Result<(), Error> {
+        // Restore basic execution state
+        self.current_function_index = yield_point.instruction_pointer;
+        self.function_params = yield_point.locals.clone();
+        
+        // Restore fuel consumption state
+        self.context_fuel_consumed.store(yield_point.fuel_at_yield, Ordering::SeqCst);
+        
+        // Restore module state if available
+        if let Some(module_state) = &yield_point.yield_context.module_state {
+            self.restore_module_state(module_state)?;
+        }
+        
+        // Handle ASIL-D memory restoration
+        if let ASILExecutionMode::D { deterministic_execution: true, .. } = self.asil_mode {
+            if let Some(memory_snapshot) = &yield_point.yield_context.memory_snapshot {
+                self.restore_memory_snapshot(memory_snapshot)?;
+            }
+        }
+        
+        Ok(())
+    }
+
+    /// Check if yield point can be resumed based on conditions
+    pub fn can_resume_yield_point(&self, yield_point: &YieldPoint) -> Result<bool, Error> {
+        if let Some(condition) = &yield_point.resumption_condition {
+            match condition {
+                ResumptionCondition::ResourceAvailable { resource_id } => {
+                    // Check if resource is now available
+                    self.check_resource_availability(*resource_id)
+                },
+                ResumptionCondition::FuelRecovered { fuel_amount } => {
+                    // Check if we have recovered enough fuel
+                    let current_fuel = self.context_fuel_consumed.load(Ordering::Acquire);
+                    Ok(yield_point.fuel_at_yield.saturating_sub(current_fuel) >= *fuel_amount)
+                },
+                ResumptionCondition::TimeElapsed { duration_ms } => {
+                    // Check if enough time has elapsed
+                    let current_time = self.get_deterministic_timestamp();
+                    let elapsed = current_time.saturating_sub(yield_point.yield_timestamp);
+                    Ok(elapsed >= (*duration_ms as u64))
+                },
+                ResumptionCondition::ExternalEvent { event_id } => {
+                    // Check if external event has occurred
+                    self.check_external_event(*event_id)
+                },
+                ResumptionCondition::Manual => {
+                    // Manual resumption - always ready
+                    Ok(true)
+                },
+            }
+        } else {
+            // No condition - can always resume
+            Ok(true)
+        }
+    }
+
+    /// Create ASIL-compliant yield point
+    pub fn create_asil_yield_point(
+        &mut self,
+        instruction_pointer: u32,
+        asil_reason: String,
+    ) -> Result<(), Error> {
+        let yield_type = YieldType::ASILCompliance { reason: asil_reason };
+        
+        // Determine resumption condition based on ASIL mode
+        let resumption_condition = match self.asil_mode {
+            ASILExecutionMode::D { max_fuel_per_slice, .. } => {
+                Some(ResumptionCondition::FuelRecovered { fuel_amount: max_fuel_per_slice / 4 })
+            },
+            ASILExecutionMode::B { max_execution_slice_ms, .. } => {
+                Some(ResumptionCondition::TimeElapsed { duration_ms: max_execution_slice_ms })
+            },
+            _ => Some(ResumptionCondition::Manual),
+        };
+        
+        self.create_advanced_yield_point(instruction_pointer, yield_type, resumption_condition)
+    }
+
+    /// Create conditional yield point for async operations
+    pub fn create_async_yield_point(
+        &mut self,
+        instruction_pointer: u32,
+        resource_id: u64,
+    ) -> Result<(), Error> {
+        let yield_type = YieldType::AsyncWait { resource_id };
+        let resumption_condition = Some(ResumptionCondition::ResourceAvailable { resource_id });
+        
+        self.create_advanced_yield_point(instruction_pointer, yield_type, resumption_condition)
+    }
+
+    /// Save yield point state for ASIL-D deterministic execution
+    pub fn save_yield_point(&mut self, yield_info: YieldInfo) -> Result<(), Error> {
+        // Create memory snapshot for ASIL-D
+        let memory_snapshot = if let ASILExecutionMode::D { deterministic_execution: true, .. } = self.asil_mode {
+            Some(self.create_memory_snapshot()?)
+        } else {
+            None
+        };
+        
+        let fuel_consumed = self.context_fuel_consumed.load(Ordering::Acquire);
+        
+        self.last_yield_point = Some(YieldPoint {
+            instruction_pointer: yield_info.instruction_pointer,
+            stack: yield_info.stack,
+            locals: yield_info.locals,
+            call_stack: yield_info.call_stack,
+            fuel_at_yield: fuel_consumed,
+            yield_timestamp: self.get_deterministic_timestamp(),
+            yield_type: yield_info.yield_type,
+            yield_context: YieldContext {
+                module_state: yield_info.module_state,
+                memory_snapshot,
+                globals: yield_info.globals,
+                tables: yield_info.tables,
+                memory_bounds: yield_info.memory_bounds,
+                function_context: yield_info.function_context,
+            },
+            resumption_condition: yield_info.resumption_condition,
+        });
+        
+        Ok(())
+    }
+
+    /// Restore module execution state
+    fn restore_module_state(&mut self, module_state: &ModuleExecutionState) -> Result<(), Error> {
+        self.current_function_index = module_state.current_function;
+        
+        // In real implementation, would restore frame stack, control stack, etc.
+        // For now, just update the basic state
+        if let Some(frame) = module_state.frame_stack.first() {
+            self.function_params = frame.locals.clone();
+        }
+        
+        Ok(())
+    }
+
+    /// Create memory snapshot for deterministic execution
+    fn create_memory_snapshot(&self) -> Result<Vec<u8>, Error> {
+        // In real implementation, would capture actual memory state
+        // For now, return empty snapshot
+        Ok(vec![])
+    }
+
+    /// Restore memory snapshot for deterministic execution
+    fn restore_memory_snapshot(&mut self, _snapshot: &[u8]) -> Result<(), Error> {
+        // In real implementation, would restore memory state
+        // For now, just return success
+        Ok(())
+    }
+
+    /// Check if a resource is available
+    fn check_resource_availability(&self, _resource_id: u64) -> Result<bool, Error> {
+        // In real implementation, would check actual resource availability
+        // For now, assume resources become available after some time
+        Ok(true)
+    }
+
+    /// Check if an external event has occurred
+    fn check_external_event(&self, _event_id: u64) -> Result<bool, Error> {
+        // In real implementation, would check actual event status
+        // For now, assume events occur after some time
+        Ok(true)
     }
 
     /// Execute isolated step for ASIL-C
@@ -430,36 +862,22 @@ impl ExecutionContext {
         // For now, always succeed
         Ok(())
     }
-    
-    /// Save a yield point for later resumption
-    pub fn save_yield_point(&mut self, yield_point: YieldPoint) -> Result<(), Error> {
-        self.last_yield_point = Some(yield_point);
-        Ok(())
-    }
-    
-    /// Get deterministic timestamp for ASIL compliance
-    pub fn get_deterministic_timestamp(&self) -> u64 {
-        // Return fuel consumed as deterministic timestamp
-        self.context_fuel_consumed.load(Ordering::Acquire)
-    }
-    
-    /// Create a yield point for suspension
-    pub fn create_yield_point(
-        &mut self,
-        ip: u32,
-        stack: Vec<wrt_foundation::Value>,
-        locals: Vec<wrt_foundation::Value>,
-    ) -> Result<(), Error> {
-        let yield_point = YieldPoint {
-            instruction_pointer: ip,
-            stack,
-            locals,
-            call_stack: vec![], // Empty for now
-            fuel_at_yield: self.context_fuel_consumed.load(Ordering::Acquire),
-            yield_timestamp: self.get_deterministic_timestamp(),
-        };
-        self.save_yield_point(yield_point)
-    }
+}
+
+/// Yield information for creating yield points
+#[derive(Debug)]
+pub struct YieldInfo {
+    pub instruction_pointer: u32,
+    pub stack: Vec<wrt_foundation::Value>,
+    pub locals: Vec<wrt_foundation::Value>,
+    pub call_stack: Vec<u32>,
+    pub yield_type: YieldType,
+    pub module_state: Option<ModuleExecutionState>,
+    pub globals: Vec<wrt_foundation::Value>,
+    pub tables: Vec<TableState>,
+    pub memory_bounds: Option<(u32, u32)>,
+    pub function_context: FunctionExecutionContext,
+    pub resumption_condition: Option<ResumptionCondition>,
 }
 
 /// Fuel-based async executor for Component Model
@@ -1628,7 +2046,7 @@ impl FuelAsyncExecutor {
 
         // 2. Restore stack frame
         // Restore the stack frame values at the time of yield
-        for (index, value) in yield_point.stack_frame.iter().enumerate() {
+        for (index, value) in yield_point.stack.iter().enumerate() {
             if index < task.execution_context.stack_depth as usize {
                 // In real implementation, would restore actual stack values
                 // For now, just track that we're restoring
