@@ -1,9 +1,11 @@
 //! Core build system implementation
 
-#[cfg(unix)]
+#[cfg(all(feature = "std", unix))]
 use std::os::unix::process::ExitStatusExt;
-#[cfg(windows)]
+#[cfg(all(feature = "std", windows))]
 use std::os::windows::process::ExitStatusExt;
+
+#[cfg(feature = "std")]
 use std::{
     io::Write,
     path::{Path, PathBuf},
@@ -20,6 +22,7 @@ use crate::{
 };
 
 /// Helper function to execute commands with tracing and dry-run support
+#[cfg(feature = "std")]
 pub fn execute_command(
     cmd: &mut Command,
     config: &BuildConfig,
@@ -43,8 +46,15 @@ pub fn execute_command(
             cmd_str
         );
         // Return fake successful output for dry run
+        #[cfg(unix)]
+        let status = std::process::ExitStatus::from_raw(0);
+        #[cfg(windows)]
+        let status = std::process::ExitStatus::from_raw(0);
+        #[cfg(not(any(unix, windows)))]
+        compile_error!("Unsupported platform for dry run mode");
+
         return Ok(std::process::Output {
-            status: std::process::ExitStatus::from_raw(0),
+            status,
             stdout: Vec::new(),
             stderr: Vec::new(),
         });
@@ -55,6 +65,7 @@ pub fn execute_command(
 }
 
 /// Format a command for display
+#[cfg(feature = "std")]
 fn format_command(cmd: &Command) -> String {
     let program = cmd.get_program().to_string_lossy();
     let args: Vec<String> = cmd.get_args().map(|arg| arg.to_string_lossy().to_string()).collect();
@@ -67,6 +78,7 @@ fn format_command(cmd: &Command) -> String {
 }
 
 /// Ported functions from xtask for build operations
+#[cfg(feature = "std")]
 pub mod xtask_port {
     use std::process::Command;
 
@@ -796,6 +808,7 @@ pub mod xtask_port {
 }
 
 /// Central build system coordinator
+#[cfg(feature = "std")]
 #[derive(Debug)]
 pub struct BuildSystem {
     /// Workspace configuration
@@ -805,6 +818,7 @@ pub struct BuildSystem {
 }
 
 /// Build results and artifacts
+#[cfg(feature = "std")]
 #[derive(Debug)]
 pub struct BuildResults {
     /// Whether the build succeeded
@@ -817,6 +831,7 @@ pub struct BuildResults {
     pub warnings: Vec<String>,
 }
 
+#[cfg(feature = "std")]
 impl BuildSystem {
     /// Create a new build system instance
     pub fn new(workspace_root: PathBuf) -> BuildResult<Self> {
@@ -1591,6 +1606,7 @@ impl BuildSystem {
     }
 }
 
+#[cfg(feature = "std")]
 impl BuildResults {
     /// Check if build was successful
     pub fn is_success(&self) -> bool {

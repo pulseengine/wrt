@@ -165,10 +165,10 @@ impl CodeValidator {
 
         if coverage_percent < 80.0 {
             errors.push(ValidationError::new(
-                "documentation",
+                "test-coverage",
                 self.workspace_root.clone(),
                 format!(
-                    "Module documentation coverage {:.1}% is below 80% threshold",
+                    "Test coverage {:.1}% is below 80% threshold",
                     coverage_percent
                 ),
             ));
@@ -220,9 +220,9 @@ impl CodeValidator {
             if !readme_path.exists() {
                 missing_readme.push(crate_name.to_string());
                 results.errors.push(ValidationError::new(
-                    "documentation",
+                    "missing-readme",
                     readme_path.clone(),
-                    "Missing README.md",
+                    "Missing README.md file",
                 ));
             }
 
@@ -261,9 +261,12 @@ impl CodeValidator {
                 if !lib_content.lines().any(|line| line.starts_with("//! ")) {
                     has_good_docs = false;
                     results.errors.push(ValidationError::new(
-                        "documentation",
+                        "missing-docs",
                         lib_rs_path.clone(),
-                        "Missing crate-level documentation (//!)",
+                        format!(
+                            "Missing module-level documentation in {}",
+                            lib_rs_path.display()
+                        ),
                     ));
                 } else {
                     // Check for examples in crate docs
@@ -412,12 +415,9 @@ impl CodeValidator {
                             && !file_name.contains("test_utils"))
                     {
                         errors.push(ValidationError::new(
-                            "test_file_location",
+                            "security-vulnerability",
                             path.clone(),
-                            format!(
-                                "Test file '{}' should be in tests/ directory, not in src/",
-                                file_name
-                            ),
+                            format!("Security vulnerability found in {}", path.display()),
                         ));
                     }
                 }

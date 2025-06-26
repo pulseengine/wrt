@@ -4,14 +4,11 @@
 //! SCORE's approach to safety-critical system verification. It links requirements to
 //! implementation code, tests, and documentation for full accountability.
 
-use std::{
-    collections::HashMap,
-    fmt,
-};
+use std::{collections::HashMap, fmt};
 
 use serde::{Deserialize, Serialize};
 
-use crate::verify::AsilLevel;
+use crate::config::AsilLevel;
 
 /// Unique identifier for a requirement
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -21,7 +18,7 @@ impl RequirementId {
     pub fn new(id: impl Into<String>) -> Self {
         Self(id.into())
     }
-    
+
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -210,59 +207,59 @@ impl SafetyRequirement {
             documentation: Vec::new(),
         }
     }
-    
+
     /// Add implementation reference
     pub fn add_implementation(&mut self, implementation: String) {
         self.implementations.push(implementation);
     }
-    
+
     /// Add test reference
     pub fn add_test(&mut self, test: String) {
         self.tests.push(test);
     }
-    
+
     /// Add documentation reference
     pub fn add_documentation(&mut self, doc: String) {
         self.documentation.push(doc);
     }
-    
+
     /// Set verification status
     pub fn set_status(&mut self, status: VerificationStatus) {
         self.status = status;
     }
-    
+
     /// Set coverage level
     pub fn set_coverage(&mut self, coverage: CoverageLevel) {
         self.coverage = coverage;
     }
-    
+
     /// Check if requirement is fully verified
     pub fn is_verified(&self) -> bool {
-        matches!(self.status, VerificationStatus::Verified) &&
-        self.coverage >= CoverageLevel::Basic &&
-        !self.implementations.is_empty()
+        matches!(self.status, VerificationStatus::Verified)
+            && self.coverage >= CoverageLevel::Basic
+            && !self.implementations.is_empty()
     }
-    
+
     /// Check if requirement needs implementation
     pub fn needs_implementation(&self) -> bool {
         self.implementations.is_empty()
     }
-    
+
     /// Check if requirement needs testing
     pub fn needs_testing(&self) -> bool {
         self.tests.is_empty() || self.coverage < CoverageLevel::Basic
     }
-    
+
     /// Get compliance score (0.0 to 1.0)
     pub fn compliance_score(&self) -> f64 {
         let mut score = 0.0;
         let total_points = 4.0;
-        
+
         // Implementation coverage
         if !self.implementations.is_empty() {
             score += 1.0;
         }
-        
+
         // Test coverage
         match self.coverage {
             CoverageLevel::None => {},
@@ -270,19 +267,19 @@ impl SafetyRequirement {
             CoverageLevel::Comprehensive => score += 0.8,
             CoverageLevel::Complete => score += 1.0,
         }
-        
+
         // Verification status
         match &self.status {
             VerificationStatus::Verified => score += 1.0,
             VerificationStatus::InProgress => score += 0.3,
             _ => {},
         }
-        
+
         // Documentation
         if !self.documentation.is_empty() {
             score += 1.0;
         }
-        
+
         score / total_points
     }
 }
@@ -301,99 +298,85 @@ impl RequirementRegistry {
             requirements: Vec::new(),
         }
     }
-    
+
     /// Add a requirement to the registry
     pub fn add_requirement(&mut self, requirement: SafetyRequirement) {
         self.requirements.push(requirement);
     }
-    
+
     /// Get requirement by ID
     pub fn get_requirement(&self, id: &RequirementId) -> Option<&SafetyRequirement> {
         self.requirements.iter().find(|r| r.id == *id)
     }
-    
+
     /// Get mutable requirement by ID
     pub fn get_requirement_mut(&mut self, id: &RequirementId) -> Option<&mut SafetyRequirement> {
         self.requirements.iter_mut().find(|r| r.id == *id)
     }
-    
+
     /// Get all requirements for a specific ASIL level
     pub fn get_requirements_by_asil(&self, asil_level: AsilLevel) -> Vec<&SafetyRequirement> {
-        self.requirements.iter()
-            .filter(|r| r.asil_level == asil_level)
-            .collect()
+        self.requirements.iter().filter(|r| r.asil_level == asil_level).collect()
     }
-    
+
     /// Get all requirements of a specific type
     pub fn get_requirements_by_type(&self, req_type: &RequirementType) -> Vec<&SafetyRequirement> {
-        self.requirements.iter()
-            .filter(|r| r.req_type == *req_type)
-            .collect()
+        self.requirements.iter().filter(|r| r.req_type == *req_type).collect()
     }
-    
+
     /// Get unverified requirements
     pub fn get_unverified_requirements(&self) -> Vec<&SafetyRequirement> {
-        self.requirements.iter()
-            .filter(|r| !r.is_verified())
-            .collect()
+        self.requirements.iter().filter(|r| !r.is_verified()).collect()
     }
-    
+
     /// Get requirements needing implementation
     pub fn get_requirements_needing_implementation(&self) -> Vec<&SafetyRequirement> {
-        self.requirements.iter()
-            .filter(|r| r.needs_implementation())
-            .collect()
+        self.requirements.iter().filter(|r| r.needs_implementation()).collect()
     }
-    
+
     /// Get requirements needing testing
     pub fn get_requirements_needing_testing(&self) -> Vec<&SafetyRequirement> {
-        self.requirements.iter()
-            .filter(|r| r.needs_testing())
-            .collect()
+        self.requirements.iter().filter(|r| r.needs_testing()).collect()
     }
-    
+
     /// Calculate overall compliance percentage
     pub fn overall_compliance(&self) -> f64 {
         if self.requirements.is_empty() {
             return 1.0; // 100% compliant if no requirements
         }
-        
-        let total_score: f64 = self.requirements.iter()
-            .map(|r| r.compliance_score())
-            .sum();
-        
+
+        let total_score: f64 = self.requirements.iter().map(|r| r.compliance_score()).sum();
+
         total_score / self.requirements.len() as f64
     }
-    
+
     /// Calculate ASIL-specific compliance
     pub fn asil_compliance(&self, asil_level: AsilLevel) -> f64 {
         let asil_requirements = self.get_requirements_by_asil(asil_level);
-        
+
         if asil_requirements.is_empty() {
             return 1.0;
         }
-        
-        let total_score: f64 = asil_requirements.iter()
-            .map(|r| r.compliance_score())
-            .sum();
-        
+
+        let total_score: f64 = asil_requirements.iter().map(|r| r.compliance_score()).sum();
+
         total_score / asil_requirements.len() as f64
     }
-    
+
     /// Generate compliance report
     pub fn generate_compliance_report(&self) -> ComplianceReport {
         let mut asil_compliance = HashMap::new();
-        
+
         for asil in &[
             AsilLevel::QM,
-            AsilLevel::ASIL_A,
-            AsilLevel::ASIL_B,
-            AsilLevel::ASIL_C,
-            AsilLevel::ASIL_D,
+            AsilLevel::A,
+            AsilLevel::B,
+            AsilLevel::C,
+            AsilLevel::D,
         ] {
             asil_compliance.insert(*asil, self.asil_compliance(*asil));
         }
-        
+
         ComplianceReport {
             total_requirements: self.requirements.len(),
             verified_requirements: self.requirements.iter().filter(|r| r.is_verified()).count(),
@@ -430,52 +413,66 @@ impl ComplianceReport {
     pub fn meets_compliance_threshold(&self, threshold: f64) -> bool {
         self.overall_compliance >= threshold
     }
-    
+
     /// Get the lowest ASIL compliance level
     pub fn lowest_asil_compliance(&self) -> Option<(AsilLevel, f64)> {
-        self.asil_compliance.iter()
+        self.asil_compliance
+            .iter()
             .min_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(asil, compliance)| (*asil, *compliance))
     }
-    
+
     /// Format report as human-readable text
     pub fn format_human(&self) -> String {
         let mut output = String::new();
-        
+
         output.push_str(&format!("📊 Requirements Compliance Report\n"));
         output.push_str(&format!("═══════════════════════════════\n\n"));
-        
-        output.push_str(&format!("Overall Compliance: {:.1}%\n", self.overall_compliance * 100.0));
-        output.push_str(&format!("Total Requirements: {}\n", self.total_requirements));
-        output.push_str(&format!("Verified: {} ({:.1}%)\n", 
+
+        output.push_str(&format!(
+            "Overall Compliance: {:.1}%\n",
+            self.overall_compliance * 100.0
+        ));
+        output.push_str(&format!(
+            "Total Requirements: {}\n",
+            self.total_requirements
+        ));
+        output.push_str(&format!(
+            "Verified: {} ({:.1}%)\n",
             self.verified_requirements,
             (self.verified_requirements as f64 / self.total_requirements as f64) * 100.0
         ));
-        
+
         output.push_str(&format!("\n📈 ASIL Compliance:\n"));
         output.push_str(&format!("──────────────────\n"));
-        
+
         let mut asil_levels: Vec<_> = self.asil_compliance.iter().collect();
         asil_levels.sort_by_key(|(asil, _)| match asil {
             AsilLevel::QM => 0,
-            AsilLevel::ASIL_A => 1,
-            AsilLevel::ASIL_B => 2,
-            AsilLevel::ASIL_C => 3,
-            AsilLevel::ASIL_D => 4,
+            AsilLevel::A => 1,
+            AsilLevel::B => 2,
+            AsilLevel::C => 3,
+            AsilLevel::D => 4,
         });
-        
+
         for (asil, compliance) in asil_levels {
             output.push_str(&format!("  {}: {:.1}%\n", asil, compliance * 100.0));
         }
-        
+
         if self.unverified_count > 0 {
             output.push_str(&format!("\n⚠️  Issues Found:\n"));
             output.push_str(&format!("──────────────\n"));
             output.push_str(&format!("  Unverified: {}\n", self.unverified_count));
-            output.push_str(&format!("  Missing Implementation: {}\n", self.missing_implementation_count));
-            output.push_str(&format!("  Missing Tests: {}\n", self.missing_testing_count));
+            output.push_str(&format!(
+                "  Missing Implementation: {}\n",
+                self.missing_implementation_count
+            ));
+            output.push_str(&format!(
+                "  Missing Tests: {}\n",
+                self.missing_testing_count
+            ));
         }
-        
+
         output
     }
 }
@@ -483,7 +480,7 @@ impl ComplianceReport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_requirement_creation() {
         let req = SafetyRequirement::new(
@@ -491,15 +488,15 @@ mod tests {
             "Memory Safety".to_string(),
             "All memory allocations must be bounded".to_string(),
             RequirementType::Memory,
-            AsilLevel::ASIL_C,
+            AsilLevel::C,
         );
-        
+
         assert_eq!(req.id.as_str(), "REQ_MEM_001");
-        assert_eq!(req.asil_level, AsilLevel::ASIL_C);
+        assert_eq!(req.asil_level, AsilLevel::C);
         assert!(!req.is_verified());
         assert!(req.needs_implementation());
     }
-    
+
     #[test]
     fn test_compliance_calculation() {
         let mut req = SafetyRequirement::new(
@@ -507,20 +504,20 @@ mod tests {
             "Test Requirement".to_string(),
             "Test description".to_string(),
             RequirementType::Functional,
-            AsilLevel::ASIL_A,
+            AsilLevel::A,
         );
-        
+
         // Initially no compliance
         assert_eq!(req.compliance_score(), 0.0);
-        
+
         // Add implementation
         req.add_implementation("src/test.rs".to_string());
         assert!(req.compliance_score() > 0.0);
-        
+
         // Add testing
         req.set_coverage(CoverageLevel::Comprehensive);
         assert!(req.compliance_score() > 0.5);
-        
+
         // Mark as verified
         req.set_status(VerificationStatus::Verified);
         assert!(req.compliance_score() > 0.8);

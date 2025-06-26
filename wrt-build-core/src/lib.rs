@@ -35,7 +35,13 @@
 )]
 
 // Re-export core types for convenience
+#[cfg(feature = "std")]
 pub use std::path::{Path, PathBuf};
+
+#[cfg(not(feature = "std"))]
+pub type PathBuf = (); // Placeholder for no_std
+#[cfg(not(feature = "std"))]
+pub type Path = (); // Placeholder for no_std
 
 pub use anyhow::{Context, Result};
 
@@ -61,6 +67,7 @@ pub mod tools;
 pub mod validation;
 pub mod verification_tool;
 pub mod verify;
+pub mod wasm;
 
 // Public API
 pub use build::BuildSystem;
@@ -71,6 +78,7 @@ pub use error::{BuildError, BuildResult};
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Default workspace root detection
+#[cfg(feature = "std")]
 pub fn detect_workspace_root() -> Result<PathBuf> {
     let current = std::env::current_dir().context("Failed to get current directory")?;
 
@@ -93,6 +101,12 @@ pub fn detect_workspace_root() -> Result<PathBuf> {
     }
 
     anyhow::bail!("Could not find workspace root (Cargo.toml with [workspace])")
+}
+
+/// Default workspace root detection (no_std fallback)
+#[cfg(not(feature = "std"))]
+pub fn detect_workspace_root() -> Result<PathBuf> {
+    anyhow::bail!("Workspace detection not available in no_std mode")
 }
 
 #[cfg(test)]
