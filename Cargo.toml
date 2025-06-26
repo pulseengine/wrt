@@ -17,11 +17,11 @@ members = [
     "wrt-instructions",
     "wrt-intercept",
     # "test-control-instructions",  # TODO: Remove after migration
-    "wrt-verification-tool",
     "wrt-test-registry",
     "wrt-platform",
     "wrt-panic",
     "wrt-tests/integration", "wrt-build-core", "cargo-wrt", "wrt-dagger"]
+exclude = ["examples/wasi-nn/inference_module"]
 resolver = "2"  # Use edition 2021 resolver
 
 [workspace.package]
@@ -59,7 +59,6 @@ wrt-math = { path = "wrt-math", version = "0.2.0", default-features = false }
 wrt-platform = { path = "wrt-platform", version = "0.2.0", default-features = false }
 wrt-panic = { path = "wrt-panic", version = "0.2.0", default-features = false }
 wrt-wasi = { path = "wrt-wasi", version = "0.2.0", default-features = false }
-wrt-verification-tool = { path = "wrt-verification-tool", version = "0.2.0", default-features = false }
 
 # Note: Safety level presets should be defined in individual crate Cargo.toml files
 # as workspace.features is not supported by Cargo

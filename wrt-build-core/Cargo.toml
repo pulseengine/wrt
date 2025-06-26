@@ -34,6 +34,7 @@ md5 = "0.7"
 # Internal WRT crates
 wrt-error = { workspace = true }
 wrt-foundation = { workspace = true }
+wrt-decoder = { workspace = true }
 
 # Optional testing framework integration
 [dev-dependencies]
