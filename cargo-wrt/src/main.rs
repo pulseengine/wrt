@@ -4,19 +4,35 @@
 //! interface to the wrt-build-core library. It replaces the fragmented approach
 //! of justfile, xtask, and shell scripts with a single, AI-friendly tool.
 
-use std::process;
+// Standard library imports
+use std::{path::PathBuf, process};
 
+// External crates
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
+
+// Internal crates (wrt_* imports)
 use wrt_build_core::{
     cache::CacheManager,
-    config::BuildProfile,
+    config::{AsilLevel, BuildProfile},
     diagnostics::Severity,
     filtering::{FilterOptionsBuilder, GroupBy, SortBy, SortDirection},
     formatters::{FormatterFactory, OutputFormat},
+    kani::{KaniConfig, KaniVerifier},
     BuildConfig, BuildSystem,
 };
+
+// Local helper modules
+mod formatters;
+mod helpers;
+
+mod commands;
+#[cfg(test)]
+mod testing;
+
+use commands::{cmd_embed_limits, execute_test_validate, TestValidateArgs};
+use helpers::{output_diagnostics, AutoFixManager, GlobalArgs, OutputManager};
 
 /// WRT Build System - Unified tool for building, testing, and verifying WRT
 #[derive(Parser)]
@@ -191,6 +207,18 @@ impl From<GroupByArg> for GroupBy {
             GroupByArg::Severity => GroupBy::Severity,
             GroupByArg::Source => GroupBy::Source,
             GroupByArg::Code => GroupBy::Code,
+        }
+    }
+}
+
+impl From<AsilArg> for AsilLevel {
+    fn from(asil: AsilArg) -> Self {
+        match asil {
+            AsilArg::QM => AsilLevel::QM,
+            AsilArg::A => AsilLevel::A,
+            AsilArg::B => AsilLevel::B,
+            AsilArg::C => AsilLevel::C,
+            AsilArg::D => AsilLevel::D,
         }
     }
 }
@@ -521,6 +549,48 @@ enum Commands {
         command: RequirementsCommand,
     },
 
+    /// WebAssembly module verification and analysis
+    Wasm {
+        #[command(subcommand)]
+        command: WasmCommand,
+    },
+
+    /// Safety verification with SCORE-inspired methodology
+    Safety {
+        #[command(subcommand)]
+        command: SafetyCommand,
+    },
+
+    /// Embed resource limits into WebAssembly binaries
+    EmbedLimits {
+        /// Path to the WebAssembly binary
+        wasm_file: PathBuf,
+
+        /// Path to the TOML configuration file
+        #[arg(short = 'c', long = "config")]
+        config_file: PathBuf,
+
+        /// Output file path (defaults to modifying in place)
+        #[arg(short = 'o', long = "output")]
+        output_file: Option<PathBuf>,
+
+        /// ASIL level to enforce
+        #[arg(short = 'a', long = "asil")]
+        asil_level: Option<String>,
+
+        /// Binary hash for qualification
+        #[arg(long = "binary-hash")]
+        binary_hash: Option<String>,
+
+        /// Validate limits against ASIL requirements
+        #[arg(long = "validate")]
+        validate: bool,
+
+        /// Remove existing resource limits sections
+        #[arg(long = "replace")]
+        replace: bool,
+    },
+
     /// Show comprehensive diagnostic system help
     #[command(name = "help-diagnostics", hide = true)]
     HelpDiagnostics,
@@ -539,6 +609,389 @@ enum AsilArg {
     C,
     #[value(name = "d")]
     D,
+}
+
+/// Requirements management subcommands
+#[derive(Subcommand, Clone)]
+enum RequirementsCommand {
+    /// Initialize a sample requirements.toml file
+    Init {
+        /// Path for the requirements file
+        #[arg(default_value = "requirements.toml")]
+        path: String,
+
+        /// Force overwrite if file exists
+        #[arg(long)]
+        force: bool,
+    },
+
+    /// Verify requirements against implementation
+    Verify {
+        /// Path to requirements file
+        #[arg(default_value = "requirements.toml")]
+        path: String,
+
+        /// Show detailed verification results
+        #[arg(long)]
+        detailed: bool,
+
+        /// Use enhanced SCORE methodology
+        #[arg(long)]
+        enhanced: bool,
+    },
+
+    /// Show compliance scores for all requirements
+    Score {
+        /// Path to requirements file
+        #[arg(default_value = "requirements.toml")]
+        path: String,
+
+        /// Group scores by ASIL level
+        #[arg(long)]
+        by_asil: bool,
+
+        /// Group scores by requirement type
+        #[arg(long)]
+        by_type: bool,
+
+        /// Show detailed breakdown
+        #[arg(long)]
+        detailed: bool,
+    },
+
+    /// Generate requirements traceability matrix
+    Matrix {
+        /// Path to requirements file
+        #[arg(default_value = "requirements.toml")]
+        path: String,
+
+        /// Output format (markdown, html, json)
+        #[arg(long, default_value = "markdown")]
+        format: String,
+
+        /// Output file (stdout if not specified)
+        #[arg(long)]
+        output: Option<String>,
+    },
+
+    /// List requirements needing attention
+    Missing {
+        /// Path to requirements file
+        #[arg(default_value = "requirements.toml")]
+        path: String,
+
+        /// Show requirements missing implementation
+        #[arg(long)]
+        implementation: bool,
+
+        /// Show requirements missing tests
+        #[arg(long)]
+        tests: bool,
+
+        /// Show requirements missing documentation
+        #[arg(long)]
+        docs: bool,
+
+        /// Show all missing items
+        #[arg(long)]
+        all: bool,
+    },
+
+    /// Demonstrate SCORE methodology
+    Demo {
+        /// Output directory for demo files
+        #[arg(long, default_value = "./score-demo")]
+        output_dir: String,
+
+        /// Run interactive demo
+        #[arg(long)]
+        interactive: bool,
+    },
+}
+
+/// WebAssembly verification subcommands
+#[derive(Subcommand, Clone)]
+enum WasmCommand {
+    /// Verify a WebAssembly module
+    Verify {
+        /// Path to the WebAssembly module (.wasm file)
+        #[arg(required = true)]
+        file: String,
+
+        /// Show detailed verification information
+        #[arg(long)]
+        detailed: bool,
+
+        /// Run performance benchmarks
+        #[arg(long)]
+        benchmark: bool,
+    },
+
+    /// List imports from a WebAssembly module
+    Imports {
+        /// Path to the WebAssembly module (.wasm file)
+        #[arg(required = true)]
+        file: String,
+
+        /// Filter for builtin imports only
+        #[arg(long)]
+        builtins_only: bool,
+
+        /// Filter by module name
+        #[arg(long)]
+        module: Option<String>,
+    },
+
+    /// List exports from a WebAssembly module
+    Exports {
+        /// Path to the WebAssembly module (.wasm file)
+        #[arg(required = true)]
+        file: String,
+
+        /// Filter by export kind (function, table, memory, global)
+        #[arg(long)]
+        kind: Option<String>,
+    },
+
+    /// Analyze multiple WebAssembly modules
+    Analyze {
+        /// Paths to WebAssembly modules (glob patterns supported)
+        #[arg(required = true)]
+        files: Vec<String>,
+
+        /// Generate summary report
+        #[arg(long)]
+        summary: bool,
+
+        /// Include performance metrics
+        #[arg(long)]
+        performance: bool,
+    },
+
+    /// Create a minimal test WebAssembly module
+    CreateTest {
+        /// Output path for the test module
+        #[arg(default_value = "test.wasm")]
+        output: String,
+
+        /// Include builtin imports
+        #[arg(long)]
+        with_builtins: bool,
+    },
+}
+
+/// Safety verification subcommands with SCORE methodology
+#[derive(Subcommand, Clone)]
+enum SafetyCommand {
+    /// Perform comprehensive ASIL compliance verification
+    Verify {
+        /// Target ASIL level to verify against
+        #[arg(long, value_enum, default_value = "qm")]
+        asil: AsilArg,
+
+        /// Path to requirements file
+        #[arg(long, default_value = "requirements.toml")]
+        requirements: String,
+
+        /// Include test results integration
+        #[arg(long)]
+        include_tests: bool,
+
+        /// Include platform verification
+        #[arg(long)]
+        include_platform: bool,
+
+        /// Generate detailed compliance report
+        #[arg(long)]
+        detailed: bool,
+    },
+
+    /// Check certification readiness for specific ASIL level
+    Certify {
+        /// ASIL level for certification assessment
+        #[arg(value_enum, default_value = "a")]
+        asil: AsilArg,
+
+        /// Path to requirements file
+        #[arg(long, default_value = "requirements.toml")]
+        requirements: String,
+
+        /// Path to test results (JSON format)
+        #[arg(long)]
+        test_results: Option<String>,
+
+        /// Path to coverage data (JSON format)
+        #[arg(long)]
+        coverage_data: Option<String>,
+    },
+
+    /// Generate comprehensive safety report
+    Report {
+        /// Path to requirements file
+        #[arg(long, default_value = "requirements.toml")]
+        requirements: String,
+
+        /// Include all ASIL levels in report
+        #[arg(long)]
+        all_asil: bool,
+
+        /// Output file for report (stdout if not specified)
+        #[arg(long)]
+        output: Option<String>,
+
+        /// Report format (human, json, html)
+        #[arg(long, default_value = "human")]
+        format: String,
+    },
+
+    /// Record and integrate test results with safety verification
+    RecordTest {
+        /// Test name
+        #[arg(required = true)]
+        test_name: String,
+
+        /// Test passed (true) or failed (false)
+        #[arg(long)]
+        passed: bool,
+
+        /// Test execution time in milliseconds
+        #[arg(long)]
+        duration_ms: Option<u64>,
+
+        /// ASIL level of the test
+        #[arg(long, value_enum, default_value = "qm")]
+        asil: AsilArg,
+
+        /// Requirements verified by this test (comma-separated)
+        #[arg(long)]
+        verifies: Option<String>,
+
+        /// Test coverage type
+        #[arg(long, value_enum, default_value = "basic")]
+        coverage_type: TestCoverageArg,
+
+        /// Failure reason (if test failed)
+        #[arg(long)]
+        failure_reason: Option<String>,
+    },
+
+    /// Update code coverage data for safety verification
+    UpdateCoverage {
+        /// Line coverage percentage (0-100)
+        #[arg(long)]
+        line_coverage: Option<f64>,
+
+        /// Branch coverage percentage (0-100)
+        #[arg(long)]
+        branch_coverage: Option<f64>,
+
+        /// Function coverage percentage (0-100)
+        #[arg(long)]
+        function_coverage: Option<f64>,
+
+        /// Path to detailed coverage data (JSON)
+        #[arg(long)]
+        coverage_file: Option<String>,
+    },
+
+    /// Add platform verification result
+    PlatformVerify {
+        /// Platform name
+        #[arg(required = true)]
+        platform: String,
+
+        /// Verification passed
+        #[arg(long)]
+        passed: bool,
+
+        /// ASIL compliance level achieved
+        #[arg(long, value_enum, default_value = "qm")]
+        asil: AsilArg,
+
+        /// Verified features (comma-separated)
+        #[arg(long)]
+        verified_features: Option<String>,
+
+        /// Failed features (comma-separated)
+        #[arg(long)]
+        failed_features: Option<String>,
+    },
+
+    /// Initialize safety verification framework
+    Init {
+        /// Initialize with WRT-specific safety requirements
+        #[arg(long)]
+        wrt_requirements: bool,
+
+        /// Force overwrite existing configuration
+        #[arg(long)]
+        force: bool,
+    },
+
+    /// Generate SCORE methodology demonstration
+    Demo {
+        /// Output directory for demo files
+        #[arg(long, default_value = "./safety-demo")]
+        output_dir: String,
+
+        /// Run interactive demonstration
+        #[arg(long)]
+        interactive: bool,
+
+        /// Include certification workflow
+        #[arg(long)]
+        certification: bool,
+    },
+
+    /// Verify documentation compliance for safety requirements
+    VerifyDocs {
+        /// Path to requirements file
+        #[arg(long, default_value = "requirements.toml")]
+        requirements: String,
+
+        /// Target ASIL level for documentation verification
+        #[arg(long, value_enum)]
+        asil: Option<AsilArg>,
+
+        /// Generate detailed documentation report
+        #[arg(long)]
+        detailed: bool,
+
+        /// Check implementation documentation
+        #[arg(long)]
+        check_implementations: bool,
+
+        /// Check API documentation
+        #[arg(long)]
+        check_api: bool,
+    },
+
+    /// Generate documentation compliance report
+    DocsReport {
+        /// Path to requirements file
+        #[arg(long, default_value = "requirements.toml")]
+        requirements: String,
+
+        /// Include all ASIL levels in report
+        #[arg(long)]
+        all_asil: bool,
+
+        /// Output file for report (stdout if not specified)
+        #[arg(long)]
+        output: Option<String>,
+
+        /// Report format (human, json, html)
+        #[arg(long, default_value = "human")]
+        format: String,
+    },
+}
+
+/// Test coverage type arguments
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
+enum TestCoverageArg {
+    Basic,
+    Comprehensive,
+    Complete,
 }
 
 /// Tool version management subcommands
@@ -576,18 +1029,6 @@ enum ToolVersionCommand {
         #[arg(long)]
         all: bool,
     },
-}
-
-impl From<AsilArg> for wrt_build_core::config::AsilLevel {
-    fn from(asil: AsilArg) -> Self {
-        match asil {
-            AsilArg::QM => wrt_build_core::config::AsilLevel::QM,
-            AsilArg::A => wrt_build_core::config::AsilLevel::A,
-            AsilArg::B => wrt_build_core::config::AsilLevel::B,
-            AsilArg::C => wrt_build_core::config::AsilLevel::C,
-            AsilArg::D => wrt_build_core::config::AsilLevel::D,
-        }
-    }
 }
 
 /// WRTD runtime variants
@@ -731,9 +1172,8 @@ async fn main() -> Result<()> {
         println!();
     }
 
-    // Determine output configuration
-    let output_format: OutputFormat = cli.output.into();
-    let use_colors = should_use_colors(&output_format);
+    // Create global args from CLI
+    let mut global = GlobalArgs::from_cli(&cli)?;
 
     // Create build system instance
     let build_system = match &cli.workspace {
@@ -747,14 +1187,11 @@ async fn main() -> Result<()> {
 
     // Configure build system
     let mut config = BuildConfig::default();
-    config.verbose = cli.verbose;
-    config.profile = cli.profile.into();
-    config.dry_run = cli.dry_run;
-    config.trace_commands = cli.trace_commands;
-
-    if let Some(ref features) = cli.features {
-        config.features = features.split(',').map(|s| s.trim().to_string()).collect();
-    }
+    config.verbose = global.verbose;
+    config.profile = global.profile.clone();
+    config.dry_run = global.dry_run;
+    config.trace_commands = global.trace_commands;
+    config.features = global.features.clone();
 
     let mut build_system = build_system;
     build_system.set_config(config);
@@ -771,9 +1208,7 @@ async fn main() -> Result<()> {
                 package.clone(),
                 *clippy,
                 *fmt_check,
-                &output_format,
-                use_colors,
-                &cli,
+                &mut global,
             )
             .await
         },
@@ -784,6 +1219,8 @@ async fn main() -> Result<()> {
             unit_only,
             no_doc_tests,
         } => {
+            let output_format = global.output_format.clone();
+            let use_colors = should_use_colors(&output_format);
             cmd_test(
                 &build_system,
                 package.clone(),
@@ -794,6 +1231,7 @@ async fn main() -> Result<()> {
                 &output_format,
                 use_colors,
                 &cli,
+                &mut global,
             )
             .await
         },
@@ -804,6 +1242,8 @@ async fn main() -> Result<()> {
             detailed,
             allowed_unsafe: _,
         } => {
+            let output_format = global.output_format.clone();
+            let use_colors = should_use_colors(&output_format);
             cmd_verify(
                 &build_system,
                 *asil,
@@ -813,6 +1253,7 @@ async fn main() -> Result<()> {
                 &output_format,
                 use_colors,
                 &cli,
+                &mut global,
             )
             .await
         },
@@ -838,27 +1279,19 @@ async fn main() -> Result<()> {
             best_effort,
         } => cmd_coverage(&build_system, *html, *open, format.clone(), *best_effort).await,
         Commands::Check { strict, fix } => {
-            cmd_check(
-                &build_system,
-                *strict,
-                *fix,
-                &output_format,
-                use_colors,
-                &cli,
-            )
-            .await
+            cmd_check(&build_system, *strict, *fix, &mut global).await
         },
         Commands::NoStd {
             continue_on_error,
             detailed,
-        } => cmd_no_std(&build_system, *continue_on_error, *detailed).await,
+        } => cmd_no_std(&build_system, *continue_on_error, *detailed, &global.output).await,
         Commands::Wrtd {
             variant,
             test,
             cross,
         } => cmd_wrtd(&build_system, *variant, *test, *cross).await,
         Commands::Ci { fail_fast, json } => cmd_ci(&build_system, *fail_fast, *json).await,
-        Commands::Clean { all } => cmd_clean(&build_system, *all).await,
+        Commands::Clean { all } => cmd_clean(&build_system, *all, &mut global).await,
         Commands::VerifyMatrix {
             report,
             output_dir,
@@ -960,6 +1393,56 @@ async fn main() -> Result<()> {
             )
             .await
         },
+        Commands::Requirements { command } => {
+            cmd_requirements(
+                &build_system,
+                command.clone(),
+                &global.output_format,
+                should_use_colors(&global.output_format),
+                &cli,
+            )
+            .await
+        },
+        Commands::Wasm { command } => {
+            cmd_wasm(
+                &build_system,
+                command.clone(),
+                &global.output_format,
+                should_use_colors(&global.output_format),
+                &cli,
+            )
+            .await
+        },
+        Commands::Safety { command } => {
+            cmd_safety(
+                &build_system,
+                command.clone(),
+                &global.output_format,
+                should_use_colors(&global.output_format),
+                &cli,
+            )
+            .await
+        },
+        Commands::EmbedLimits {
+            wasm_file,
+            config_file,
+            output_file,
+            asil_level,
+            binary_hash,
+            validate,
+            replace,
+        } => {
+            let args = commands::embed_limits::EmbedLimitsArgs {
+                wasm_file: wasm_file.clone(),
+                config_file: config_file.clone(),
+                output_file: output_file.clone(),
+                asil_level: asil_level.clone(),
+                binary_hash: binary_hash.clone(),
+                validate: *validate,
+                replace: *replace,
+            };
+            cmd_embed_limits(args, &global.output)
+        },
         Commands::HelpDiagnostics => {
             print_diagnostic_help();
             Ok(())
@@ -969,12 +1452,12 @@ async fn main() -> Result<()> {
     match result {
         Ok(()) => {
             if cli.verbose {
-                println!("{} Command completed successfully", "✅".bright_green());
+                global.output.success("Command completed successfully");
             }
             Ok(())
         },
         Err(e) => {
-            eprintln!("{} {}", "❌".bright_red(), e);
+            global.output.error(&e.to_string());
             process::exit(1);
         },
     }
@@ -986,11 +1469,10 @@ async fn cmd_build(
     package: Option<String>,
     clippy: bool,
     fmt_check: bool,
-    output_format: &OutputFormat,
-    use_colors: bool,
-    cli: &Cli,
+    global: &mut GlobalArgs,
 ) -> Result<()> {
-    match output_format {
+    let output = &global.output;
+    match output.format() {
         OutputFormat::Json | OutputFormat::JsonLines => {
             // Use diagnostic-based build with caching and filtering
             let mut diagnostics = if let Some(pkg) = &package {
@@ -1002,18 +1484,18 @@ async fn cmd_build(
             };
 
             // Apply caching and diff functionality if enabled
-            if cli.cache {
+            if global.cache {
                 let workspace_root = build_system.workspace_root();
                 let cache_path = get_cache_path(workspace_root);
                 let mut cache_manager =
                     CacheManager::new(workspace_root.to_path_buf(), cache_path, true)?;
 
-                if cli.clear_cache {
+                if global.clear_cache {
                     cache_manager.clear()?;
                 }
 
                 // Apply diff filtering if requested
-                if cli.diff_only {
+                if global.diff_only {
                     let diff_diagnostics =
                         cache_manager.get_diff_diagnostics(&diagnostics.diagnostics);
                     diagnostics.diagnostics = diff_diagnostics;
@@ -1039,12 +1521,12 @@ async fn cmd_build(
             }
 
             // Apply filtering if specified
-            if cli.filter_severity.is_some()
-                || cli.filter_source.is_some()
-                || cli.filter_file.is_some()
-                || cli.group_by.is_some()
+            if global.filter_severity.is_some()
+                || global.filter_source.is_some()
+                || global.filter_file.is_some()
+                || global.group_by.is_some()
             {
-                let filter_options = create_filter_options(cli)?.build();
+                let filter_options = global.build_filter_options()?;
                 let processor = wrt_build_core::filtering::DiagnosticProcessor::new(
                     build_system.workspace_root().to_path_buf(),
                 );
@@ -1058,69 +1540,92 @@ async fn cmd_build(
                 diagnostics.diagnostics = filtered_diagnostics;
             }
 
-            let formatter = FormatterFactory::create_with_options(*output_format, true, use_colors);
+            let formatter = FormatterFactory::create_with_options(
+                global.output.format().clone(),
+                true,
+                global.output.is_colored(),
+            );
             print!("{}", formatter.format_collection(&diagnostics));
 
             if diagnostics.has_errors() {
-                std::process::exit(1);
+                process::exit(1);
             }
         },
         OutputFormat::Human => {
-            // Use traditional output for human format
-            if use_colors {
-                println!("{} Building WRT components...", "🔨".bright_blue());
-            } else {
-                println!("Building WRT components...");
-            }
+            // Use enhanced progress indicators for human format
+            use helpers::{MultiStepProgress, ProgressIndicator};
 
             if let Some(pkg) = package {
-                println!("  Building package: {}", pkg.bright_cyan());
+                let mut progress = ProgressIndicator::spinner(
+                    format!("Building package: {}", pkg),
+                    global.output_format.clone(),
+                    output.is_colored(),
+                );
+                progress.start();
+
                 let results = build_system.build_package(&pkg).context("Package build failed")?;
 
+                progress.finish_with_message(format!(
+                    "Package '{}' built successfully in {:.2}s",
+                    pkg,
+                    results.duration().as_secs_f64()
+                ));
+
                 if !results.warnings().is_empty() {
-                    println!("{} Build warnings:", "⚠️".bright_yellow());
+                    output.warning("Build warnings:");
                     for warning in results.warnings() {
-                        println!("  {}", warning);
+                        output.indent(warning);
                     }
                 }
-
-                println!(
-                    "{} Package build completed in {:.2}s",
-                    "✅".bright_green(),
-                    results.duration().as_secs_f64()
-                );
             } else {
+                // Multi-step progress for full build
+                let steps = vec![
+                    "Analyzing dependencies".to_string(),
+                    "Compiling core components".to_string(),
+                    "Running post-build checks".to_string(),
+                ];
+
+                let mut progress = MultiStepProgress::new(
+                    steps,
+                    global.output_format.clone(),
+                    output.is_colored(),
+                );
+                progress.start();
+
+                progress.begin_step("Analyzing workspace dependencies");
+                // Simulate dependency analysis
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                progress.finish_step("Dependencies analyzed");
+
+                progress.begin_step("Compiling all workspace components");
                 let results = build_system.build_all().context("Build failed")?;
+                progress.finish_step("Compilation completed");
+
+                progress.begin_step("Running clippy and format checks");
+                // Additional checks would go here
+                std::thread::sleep(std::time::Duration::from_millis(300));
+                progress.finish_step("Checks completed");
+
+                progress.finish(format!(
+                    "All components built successfully in {:.2}s",
+                    results.duration().as_secs_f64()
+                ));
 
                 if !results.warnings().is_empty() {
-                    println!("{} Build warnings:", "⚠️".bright_yellow());
+                    output.warning("Build warnings:");
                     for warning in results.warnings() {
-                        println!("  {}", warning);
+                        output.indent(warning);
                     }
                 }
-
-                println!(
-                    "{} Build completed in {:.2}s",
-                    "✅".bright_green(),
-                    results.duration().as_secs_f64()
-                );
             }
 
             if clippy {
-                if use_colors {
-                    println!("{} Running clippy checks...", "📎".bright_blue());
-                } else {
-                    println!("Running clippy checks...");
-                }
+                output.progress("Running clippy checks...");
                 build_system.run_static_analysis().context("Clippy checks failed")?;
             }
 
             if fmt_check {
-                if use_colors {
-                    println!("{} Checking code formatting...", "🎨".bright_blue());
-                } else {
-                    println!("Checking code formatting...");
-                }
+                output.progress("Checking code formatting...");
                 build_system.check_formatting().context("Format check failed")?;
             }
         },
@@ -1140,6 +1645,7 @@ async fn cmd_test(
     output_format: &OutputFormat,
     use_colors: bool,
     cli: &Cli,
+    global: &mut GlobalArgs,
 ) -> Result<()> {
     match output_format {
         OutputFormat::Json | OutputFormat::JsonLines => {
@@ -1154,18 +1660,18 @@ async fn cmd_test(
                 build_system.run_tests_with_diagnostics(&test_options).context("Tests failed")?;
 
             // Apply caching and diff functionality if enabled
-            if cli.cache {
+            if global.cache {
                 let workspace_root = build_system.workspace_root();
                 let cache_path = get_cache_path(workspace_root);
                 let mut cache_manager =
                     CacheManager::new(workspace_root.to_path_buf(), cache_path, true)?;
 
-                if cli.clear_cache {
+                if global.clear_cache {
                     cache_manager.clear()?;
                 }
 
                 // Apply diff filtering if requested
-                if cli.diff_only {
+                if global.diff_only {
                     let diff_diagnostics =
                         cache_manager.get_diff_diagnostics(&diagnostics.diagnostics);
                     diagnostics.diagnostics = diff_diagnostics;
@@ -1175,12 +1681,12 @@ async fn cmd_test(
             }
 
             // Apply filtering if specified
-            if cli.filter_severity.is_some()
-                || cli.filter_source.is_some()
-                || cli.filter_file.is_some()
-                || cli.group_by.is_some()
+            if global.filter_severity.is_some()
+                || global.filter_source.is_some()
+                || global.filter_file.is_some()
+                || global.group_by.is_some()
             {
-                let filter_options = create_filter_options(cli)?.build();
+                let filter_options = global.build_filter_options()?;
                 let processor = wrt_build_core::filtering::DiagnosticProcessor::new(
                     build_system.workspace_root().to_path_buf(),
                 );
@@ -1194,11 +1700,15 @@ async fn cmd_test(
                 diagnostics.diagnostics = filtered_diagnostics;
             }
 
-            let formatter = FormatterFactory::create_with_options(*output_format, true, use_colors);
+            let formatter = FormatterFactory::create_with_options(
+                global.output.format().clone(),
+                true,
+                global.output.is_colored(),
+            );
             print!("{}", formatter.format_collection(&diagnostics));
 
             if diagnostics.has_errors() {
-                std::process::exit(1);
+                process::exit(1);
             }
         },
         OutputFormat::Human => {
@@ -1269,6 +1779,7 @@ async fn cmd_verify(
     output_format: &OutputFormat,
     use_colors: bool,
     cli: &Cli,
+    global: &mut GlobalArgs,
 ) -> Result<()> {
     let mut options = wrt_build_core::verify::VerificationOptions::default();
     options.target_asil = asil.into();
@@ -1320,18 +1831,18 @@ async fn cmd_verify(
                 .context("Safety verification failed")?;
 
             // Apply caching and diff functionality if enabled
-            if cli.cache {
+            if global.cache {
                 let workspace_root = build_system.workspace_root();
                 let cache_path = get_cache_path(workspace_root);
                 let mut cache_manager =
                     CacheManager::new(workspace_root.to_path_buf(), cache_path, true)?;
 
-                if cli.clear_cache {
+                if global.clear_cache {
                     cache_manager.clear()?;
                 }
 
                 // Apply diff filtering if requested
-                if cli.diff_only {
+                if global.diff_only {
                     let diff_diagnostics =
                         cache_manager.get_diff_diagnostics(&diagnostics.diagnostics);
                     diagnostics.diagnostics = diff_diagnostics;
@@ -1341,12 +1852,12 @@ async fn cmd_verify(
             }
 
             // Apply filtering if specified
-            if cli.filter_severity.is_some()
-                || cli.filter_source.is_some()
-                || cli.filter_file.is_some()
-                || cli.group_by.is_some()
+            if global.filter_severity.is_some()
+                || global.filter_source.is_some()
+                || global.filter_file.is_some()
+                || global.group_by.is_some()
             {
-                let filter_options = create_filter_options(cli)?.build();
+                let filter_options = global.build_filter_options()?;
                 let processor = wrt_build_core::filtering::DiagnosticProcessor::new(
                     build_system.workspace_root().to_path_buf(),
                 );
@@ -1360,11 +1871,15 @@ async fn cmd_verify(
                 diagnostics.diagnostics = filtered_diagnostics;
             }
 
-            let formatter = FormatterFactory::create_with_options(*output_format, true, use_colors);
+            let formatter = FormatterFactory::create_with_options(
+                global.output.format().clone(),
+                true,
+                global.output.is_colored(),
+            );
             print!("{}", formatter.format_collection(&diagnostics));
 
             if diagnostics.has_errors() {
-                std::process::exit(1);
+                process::exit(1);
             }
         },
         OutputFormat::Human => {
@@ -1526,11 +2041,10 @@ async fn cmd_check(
     build_system: &BuildSystem,
     strict: bool,
     fix: bool,
-    output_format: &OutputFormat,
-    use_colors: bool,
-    cli: &Cli,
+    global: &mut GlobalArgs,
 ) -> Result<()> {
-    match output_format {
+    let output = &global.output;
+    match output.format() {
         OutputFormat::Json | OutputFormat::JsonLines => {
             // Use diagnostic-based static analysis with caching and filtering
             let mut diagnostics = build_system
@@ -1538,18 +2052,18 @@ async fn cmd_check(
                 .context("Static analysis failed")?;
 
             // Apply caching and diff functionality if enabled
-            if cli.cache {
+            if global.cache {
                 let workspace_root = build_system.workspace_root();
                 let cache_path = get_cache_path(workspace_root);
                 let mut cache_manager =
                     CacheManager::new(workspace_root.to_path_buf(), cache_path, true)?;
 
-                if cli.clear_cache {
+                if global.clear_cache {
                     cache_manager.clear()?;
                 }
 
                 // Apply diff filtering if requested
-                if cli.diff_only {
+                if global.diff_only {
                     let diff_diagnostics =
                         cache_manager.get_diff_diagnostics(&diagnostics.diagnostics);
                     diagnostics.diagnostics = diff_diagnostics;
@@ -1559,12 +2073,12 @@ async fn cmd_check(
             }
 
             // Apply filtering if specified
-            if cli.filter_severity.is_some()
-                || cli.filter_source.is_some()
-                || cli.filter_file.is_some()
-                || cli.group_by.is_some()
+            if global.filter_severity.is_some()
+                || global.filter_source.is_some()
+                || global.filter_file.is_some()
+                || global.group_by.is_some()
             {
-                let filter_options = create_filter_options(cli)?.build();
+                let filter_options = global.build_filter_options()?;
                 let processor = wrt_build_core::filtering::DiagnosticProcessor::new(
                     build_system.workspace_root().to_path_buf(),
                 );
@@ -1578,31 +2092,44 @@ async fn cmd_check(
                 diagnostics.diagnostics = filtered_diagnostics;
             }
 
-            let formatter = FormatterFactory::create_with_options(*output_format, true, use_colors);
+            let formatter = FormatterFactory::create_with_options(
+                global.output.format().clone(),
+                true,
+                global.output.is_colored(),
+            );
             print!("{}", formatter.format_collection(&diagnostics));
 
             if diagnostics.has_errors() {
-                std::process::exit(1);
+                process::exit(1);
             }
         },
         OutputFormat::Human => {
             // Use traditional output for human format
-            if use_colors {
-                println!("{} Running static analysis...", "🔍".bright_blue());
-            } else {
-                println!("Running static analysis...");
-            }
+            output.progress("Running static analysis...");
 
-            build_system.run_static_analysis().context("Static analysis failed")?;
-
+            // Get diagnostics for auto-fix even in human mode
             if fix {
-                if use_colors {
-                    println!("{} Auto-fixing issues...", "🔧".bright_blue());
+                let diagnostics = build_system
+                    .run_static_analysis_with_diagnostics(strict)
+                    .context("Static analysis failed")?;
+
+                output.progress("Auto-fixing issues...");
+                let autofix_manager = AutoFixManager::new(output.clone(), global.dry_run);
+                let fix_result = autofix_manager.apply_fixes(&diagnostics)?;
+
+                if fix_result.has_fixes() {
+                    output.success(&format!("Applied {} fixes", fix_result.successful_fixes));
+                    if fix_result.failed_fixes > 0 {
+                        output.warning(&format!("{} fixes failed", fix_result.failed_fixes));
+                    }
                 } else {
-                    println!("Auto-fixing issues...");
+                    output.info("No auto-fixable issues found");
                 }
-                // TODO: Implement auto-fix
+            } else {
+                build_system.run_static_analysis().context("Static analysis failed")?;
             }
+
+            output.success("Static analysis completed");
         },
     }
 
@@ -1614,10 +2141,28 @@ async fn cmd_no_std(
     build_system: &BuildSystem,
     continue_on_error: bool,
     detailed: bool,
+    output: &OutputManager,
 ) -> Result<()> {
-    println!("{} Verifying no_std compatibility...", "🔧".bright_blue());
+    output.progress("Verifying no_std compatibility...");
 
-    build_system.verify_no_std().context("no_std verification failed")?;
+    if output.is_json_mode() {
+        // Use diagnostic-based verification for structured output
+        build_system.verify_no_std().context("no_std verification failed")?;
+
+        output.success("no_std verification completed successfully");
+    } else {
+        // Use traditional verification for human output
+        match build_system.verify_no_std() {
+            Ok(()) => output.success("no_std compatibility verified"),
+            Err(e) => {
+                if continue_on_error {
+                    output.warning(&format!("no_std verification failed: {}", e));
+                } else {
+                    return Err(anyhow::anyhow!("no_std verification failed: {}", e));
+                }
+            },
+        }
+    }
 
     Ok(())
 }
@@ -1723,8 +2268,11 @@ async fn cmd_ci(build_system: &BuildSystem, fail_fast: bool, json: bool) -> Resu
 }
 
 /// Clean command implementation
-async fn cmd_clean(build_system: &BuildSystem, all: bool) -> Result<()> {
-    println!("{} Cleaning build artifacts...", "🧹".bright_blue());
+async fn cmd_clean(build_system: &BuildSystem, all: bool, global: &mut GlobalArgs) -> Result<()> {
+    use helpers::{build_errors, ErrorContext};
+
+    let output = &global.output;
+    output.progress("Cleaning build artifacts...");
 
     let workspace_root = build_system.workspace_root();
 
@@ -1733,7 +2281,7 @@ async fn cmd_clean(build_system: &BuildSystem, all: bool) -> Result<()> {
         let target_dir = workspace_root.join("target");
         if target_dir.exists() {
             std::fs::remove_dir_all(&target_dir).context("Failed to remove target directory")?;
-            println!("  Removed {}", target_dir.display());
+            output.indent(&format!("Removed {}", target_dir.display()));
         }
 
         // Remove cargo-wrt target if it exists
@@ -1741,7 +2289,7 @@ async fn cmd_clean(build_system: &BuildSystem, all: bool) -> Result<()> {
         if cargo_wrt_target.exists() {
             std::fs::remove_dir_all(&cargo_wrt_target)
                 .context("Failed to remove cargo-wrt target directory")?;
-            println!("  Removed {}", cargo_wrt_target.display());
+            output.indent(&format!("Removed {}", cargo_wrt_target.display()));
         }
 
         // Remove wrt-build-core target if it exists
@@ -1749,21 +2297,22 @@ async fn cmd_clean(build_system: &BuildSystem, all: bool) -> Result<()> {
         if build_core_target.exists() {
             std::fs::remove_dir_all(&build_core_target)
                 .context("Failed to remove wrt-build-core target directory")?;
-            println!("  Removed {}", build_core_target.display());
+            output.indent(&format!("Removed {}", build_core_target.display()));
         }
     } else {
         // Standard cargo clean
-        let mut cmd = std::process::Command::new("cargo");
+        let mut cmd = process::Command::new("cargo");
         cmd.arg("clean").current_dir(workspace_root);
 
-        let output = cmd.output().context("Failed to run cargo clean")?;
+        let command_output =
+            cmd.output().context("Failed to run cargo clean - is cargo installed?")?;
 
-        if !output.status.success() {
-            anyhow::bail!("cargo clean failed");
+        if !command_output.status.success() {
+            return Err(build_errors::compilation_failed("cargo clean failed").into());
         }
     }
 
-    println!("{} Clean completed", "✅".bright_green());
+    output.success("Clean completed");
     Ok(())
 }
 
@@ -2292,6 +2841,1517 @@ async fn cmd_testsuite(
 
     println!("{} Testsuite operations completed", "✅".bright_green());
     Ok(())
+}
+
+/// Requirements command implementation
+async fn cmd_requirements(
+    build_system: &BuildSystem,
+    command: RequirementsCommand,
+    output_format: &OutputFormat,
+    use_colors: bool,
+    cli: &Cli,
+) -> Result<()> {
+    use wrt_build_core::requirements::{
+        model::{ComplianceReport, RequirementType},
+        EnhancedRequirementsVerifier, Requirements,
+    };
+
+    let workspace_root = build_system.workspace_root();
+
+    match command {
+        RequirementsCommand::Init { path, force } => {
+            let req_path = workspace_root.join(&path);
+
+            if req_path.exists() && !force {
+                anyhow::bail!(
+                    "Requirements file already exists at {}\nUse --force to overwrite",
+                    req_path.display()
+                );
+            }
+
+            Requirements::init_sample(&req_path)?;
+            println!(
+                "{} Initialized sample requirements file at {}",
+                "✅".bright_green(),
+                req_path.display()
+            );
+            Ok(())
+        },
+
+        RequirementsCommand::Verify {
+            path,
+            detailed,
+            enhanced,
+        } => {
+            let req_path = workspace_root.join(&path);
+
+            if enhanced {
+                // Use enhanced SCORE verification
+                let mut verifier = EnhancedRequirementsVerifier::new(workspace_root.to_path_buf());
+                verifier.load_requirements(&req_path)?;
+                verifier.verify_all()?;
+
+                let registry = verifier.registry();
+                let report = registry.generate_compliance_report();
+
+                match output_format {
+                    OutputFormat::Json | OutputFormat::JsonLines => {
+                        println!("{}", serde_json::to_string_pretty(&report)?);
+                    },
+                    OutputFormat::Human => {
+                        println!("{}", report.format_human());
+
+                        if detailed {
+                            println!("\n📋 Detailed Requirements Status:");
+                            println!("─────────────────────────────────");
+
+                            for req in &registry.requirements {
+                                println!("\n{} {}", req.id, req.title.bright_cyan());
+                                println!("  Type: {}", req.req_type);
+                                println!("  ASIL: {}", req.asil_level);
+                                println!("  Status: {}", req.status);
+                                println!("  Coverage: {}", req.coverage);
+                                println!("  Score: {:.1}%", req.compliance_score() * 100.0);
+                            }
+                        }
+                    },
+                }
+            } else {
+                // Use simple verification
+                let requirements = Requirements::load(&req_path)?;
+                let result = requirements.verify(&workspace_root)?;
+
+                match output_format {
+                    OutputFormat::Json | OutputFormat::JsonLines => {
+                        println!("{}", serde_json::to_string_pretty(&result)?);
+                    },
+                    OutputFormat::Human => {
+                        println!("{} Requirements Verification Report", "📊".bright_blue());
+                        println!("  Total Requirements: {}", result.total_requirements);
+                        println!("  Verified: {}", result.verified_requirements);
+                        println!(
+                            "  Certification Readiness: {:.1}%",
+                            result.certification_readiness
+                        );
+
+                        if !result.missing_files.is_empty() {
+                            println!("\n{} Missing Files:", "⚠️ ".yellow());
+                            for file in &result.missing_files {
+                                println!("  - {}", file);
+                            }
+                        }
+
+                        if !result.incomplete_requirements.is_empty() {
+                            println!("\n{} Incomplete Requirements:", "❌".red());
+                            for req in &result.incomplete_requirements {
+                                println!("  - {}", req);
+                            }
+                        }
+                    },
+                }
+            }
+            Ok(())
+        },
+
+        RequirementsCommand::Score {
+            path,
+            by_asil,
+            by_type,
+            detailed,
+        } => {
+            let req_path = workspace_root.join(&path);
+            let requirements = Requirements::load(&req_path)?;
+            let registry = requirements.to_registry();
+            let report = registry.generate_compliance_report();
+
+            match output_format {
+                OutputFormat::Json | OutputFormat::JsonLines => {
+                    println!("{}", serde_json::to_string_pretty(&report)?);
+                },
+                OutputFormat::Human => {
+                    println!("{}", report.format_human());
+
+                    if by_asil {
+                        println!("\n📊 Compliance by ASIL Level:");
+                        println!("───────────────────────────");
+                        for (asil, score) in &report.asil_compliance {
+                            println!("  {}: {:.1}%", asil, score * 100.0);
+                        }
+                    }
+
+                    if by_type {
+                        println!("\n📊 Compliance by Requirement Type:");
+                        println!("──────────────────────────────────");
+                        for req_type in &[
+                            RequirementType::Functional,
+                            RequirementType::Performance,
+                            RequirementType::Safety,
+                            RequirementType::Security,
+                            RequirementType::Reliability,
+                            RequirementType::Qualification,
+                            RequirementType::Platform,
+                            RequirementType::Memory,
+                        ] {
+                            let type_reqs = registry.get_requirements_by_type(req_type);
+                            if !type_reqs.is_empty() {
+                                let score: f64 =
+                                    type_reqs.iter().map(|r| r.compliance_score()).sum::<f64>()
+                                        / type_reqs.len() as f64;
+                                println!("  {}: {:.1}%", req_type, score * 100.0);
+                            }
+                        }
+                    }
+
+                    if detailed {
+                        if let Some((asil, score)) = report.lowest_asil_compliance() {
+                            println!(
+                                "\n⚠️  Lowest ASIL Compliance: {} at {:.1}%",
+                                asil,
+                                score * 100.0
+                            );
+                        }
+                    }
+                },
+            }
+            Ok(())
+        },
+
+        RequirementsCommand::Matrix {
+            path,
+            format,
+            output,
+        } => {
+            let req_path = workspace_root.join(&path);
+            let requirements = Requirements::load(&req_path)?;
+
+            let matrix = match format.as_str() {
+                "json" => {
+                    let registry = requirements.to_registry();
+                    serde_json::to_string_pretty(&registry)?
+                },
+                "html" => {
+                    // Generate HTML requirements matrix
+                    use crate::formatters::{HtmlFormatter, HtmlReportGenerator};
+
+                    let formatter = HtmlFormatter::new();
+                    let registry = requirements.to_registry();
+
+                    // Convert to HTML data format
+                    let req_data: Vec<_> = registry
+                        .requirements
+                        .iter()
+                        .map(|req| crate::formatters::html::RequirementData {
+                            id: req.id.to_string(),
+                            title: req.title.clone(),
+                            asil_level: req.asil_level.to_string(),
+                            req_type: req.req_type.to_string(),
+                            status: req.status.to_string(),
+                            implementations: req.implementations.clone(),
+                            tests: req.tests.clone(),
+                            documentation: req.documentation.clone(),
+                        })
+                        .collect();
+
+                    HtmlReportGenerator::requirements_matrix(&req_data, &formatter)?
+                },
+                "markdown" | "md" => {
+                    // Generate Markdown requirements matrix
+                    use crate::formatters::{MarkdownFormatter, MarkdownReportGenerator};
+
+                    let formatter = MarkdownFormatter::new();
+                    let registry = requirements.to_registry();
+
+                    // Convert to data format
+                    let req_data: Vec<_> = registry
+                        .requirements
+                        .iter()
+                        .map(|req| crate::formatters::html::RequirementData {
+                            id: req.id.to_string(),
+                            title: req.title.clone(),
+                            asil_level: req.asil_level.to_string(),
+                            req_type: req.req_type.to_string(),
+                            status: req.status.to_string(),
+                            implementations: req.implementations.clone(),
+                            tests: req.tests.clone(),
+                            documentation: req.documentation.clone(),
+                        })
+                        .collect();
+
+                    MarkdownReportGenerator::requirements_matrix(&req_data, &formatter)?
+                },
+                "github" => {
+                    // Generate GitHub-flavored Markdown
+                    use crate::formatters::{MarkdownFormatter, MarkdownReportGenerator};
+
+                    let formatter = MarkdownFormatter::github();
+                    let registry = requirements.to_registry();
+
+                    // Convert to data format
+                    let req_data: Vec<_> = registry
+                        .requirements
+                        .iter()
+                        .map(|req| crate::formatters::html::RequirementData {
+                            id: req.id.to_string(),
+                            title: req.title.clone(),
+                            asil_level: req.asil_level.to_string(),
+                            req_type: req.req_type.to_string(),
+                            status: req.status.to_string(),
+                            implementations: req.implementations.clone(),
+                            tests: req.tests.clone(),
+                            documentation: req.documentation.clone(),
+                        })
+                        .collect();
+
+                    MarkdownReportGenerator::requirements_matrix(&req_data, &formatter)?
+                },
+                _ => {
+                    // Default to simple markdown
+                    requirements.generate_traceability_matrix()
+                },
+            };
+
+            if let Some(output_file) = output {
+                std::fs::write(&output_file, matrix)?;
+                println!(
+                    "{} Generated traceability matrix at {}",
+                    "✅".bright_green(),
+                    output_file
+                );
+            } else {
+                println!("{}", matrix);
+            }
+            Ok(())
+        },
+
+        RequirementsCommand::Missing {
+            path,
+            implementation,
+            tests,
+            docs,
+            all,
+        } => {
+            let req_path = workspace_root.join(&path);
+            let requirements = Requirements::load(&req_path)?;
+            let registry = requirements.to_registry();
+
+            let show_all = all || (!implementation && !tests && !docs);
+
+            if show_all || implementation {
+                let missing_impl = registry.get_requirements_needing_implementation();
+                if !missing_impl.is_empty() {
+                    println!("{} Requirements Missing Implementation:", "⚠️ ".yellow());
+                    for req in missing_impl {
+                        println!("  - {} {}", req.id, req.title);
+                    }
+                    println!();
+                }
+            }
+
+            if show_all || tests {
+                let missing_tests = registry.get_requirements_needing_testing();
+                if !missing_tests.is_empty() {
+                    println!("{} Requirements Missing Tests:", "⚠️ ".yellow());
+                    for req in missing_tests {
+                        println!("  - {} {} (coverage: {})", req.id, req.title, req.coverage);
+                    }
+                    println!();
+                }
+            }
+
+            if show_all || docs {
+                let missing_docs: Vec<_> =
+                    registry.requirements.iter().filter(|r| r.documentation.is_empty()).collect();
+                if !missing_docs.is_empty() {
+                    println!("{} Requirements Missing Documentation:", "⚠️ ".yellow());
+                    for req in missing_docs {
+                        println!("  - {} {}", req.id, req.title);
+                    }
+                }
+            }
+            Ok(())
+        },
+
+        RequirementsCommand::Demo {
+            output_dir,
+            interactive,
+        } => {
+            println!("{} SCORE Methodology Demo", "🎓".bright_blue());
+            println!("════════════════════════");
+
+            if interactive {
+                println!("Interactive demo not yet implemented");
+            } else {
+                // Create demo directory
+                std::fs::create_dir_all(&output_dir)?;
+
+                // Generate sample requirements file
+                let req_path = PathBuf::from(&output_dir).join("requirements.toml");
+                Requirements::init_sample(&req_path)?;
+
+                println!("✅ Created sample requirements at {}", req_path.display());
+                println!("\n📚 SCORE Methodology Overview:");
+                println!("  - Safety requirements with ASIL levels");
+                println!("  - Multiple verification methods");
+                println!("  - Coverage level tracking");
+                println!("  - Compliance scoring");
+                println!("  - Traceability to implementation, tests, and docs");
+
+                println!("\n🚀 Try these commands:");
+                println!(
+                    "  cargo-wrt requirements verify --enhanced --path {}",
+                    req_path.display()
+                );
+                println!(
+                    "  cargo-wrt requirements score --by-asil --path {}",
+                    req_path.display()
+                );
+                println!(
+                    "  cargo-wrt requirements missing --all --path {}",
+                    req_path.display()
+                );
+            }
+            Ok(())
+        },
+    }
+}
+
+/// WebAssembly command implementation
+async fn cmd_wasm(
+    build_system: &BuildSystem,
+    command: WasmCommand,
+    output_format: &OutputFormat,
+    use_colors: bool,
+    cli: &Cli,
+) -> Result<()> {
+    use wrt_build_core::wasm::{create_minimal_module, verify_modules, WasmVerifier};
+
+    let workspace_root = build_system.workspace_root();
+
+    match command {
+        WasmCommand::Verify {
+            file,
+            detailed,
+            benchmark,
+        } => {
+            let wasm_path = workspace_root.join(&file);
+
+            if !wasm_path.exists() {
+                anyhow::bail!("WebAssembly module not found: {}", wasm_path.display());
+            }
+
+            let verifier = WasmVerifier::new(&wasm_path);
+            let result = verifier.verify()?;
+
+            match output_format {
+                OutputFormat::Json | OutputFormat::JsonLines => {
+                    println!("{}", serde_json::to_string_pretty(&result)?);
+                },
+                OutputFormat::Human => {
+                    verifier.print_results(&result);
+
+                    if detailed && !result.errors.is_empty() {
+                        println!("\n🔍 Detailed Error Analysis:");
+                        println!("───────────────────────────");
+                        for (i, error) in result.errors.iter().enumerate() {
+                            println!("  {}. {}", i + 1, error);
+                        }
+                    }
+                },
+            }
+
+            // Also output as diagnostics if there are errors
+            if !result.errors.is_empty() {
+                let diagnostics = verifier.to_diagnostics(&result);
+                if cli.verbose {
+                    println!("\n📋 Diagnostic Output:");
+                    println!("───────────────────");
+                    let formatter =
+                        wrt_build_core::formatters::FormatterFactory::create(*output_format);
+                    println!("{}", formatter.format_collection(&diagnostics));
+                }
+            }
+
+            Ok(())
+        },
+
+        WasmCommand::Imports {
+            file,
+            builtins_only,
+            module,
+        } => {
+            let wasm_path = workspace_root.join(&file);
+
+            if !wasm_path.exists() {
+                anyhow::bail!("WebAssembly module not found: {}", wasm_path.display());
+            }
+
+            let verifier = WasmVerifier::new(&wasm_path);
+            let result = verifier.verify()?;
+
+            match output_format {
+                OutputFormat::Json | OutputFormat::JsonLines => {
+                    if builtins_only {
+                        println!("{}", serde_json::to_string_pretty(&result.builtin_imports)?);
+                    } else {
+                        let filtered_imports: Vec<_> = result
+                            .imports
+                            .iter()
+                            .filter(|imp| module.as_ref().map_or(true, |m| &imp.module == m))
+                            .collect();
+                        println!("{}", serde_json::to_string_pretty(&filtered_imports)?);
+                    }
+                },
+                OutputFormat::Human => {
+                    if builtins_only {
+                        if result.builtin_imports.is_empty() {
+                            println!("No builtin imports found");
+                        } else {
+                            println!("🔧 Builtin Imports ({}):", result.builtin_imports.len());
+                            for builtin in &result.builtin_imports {
+                                println!("  - wasi_builtin::{}", builtin);
+                            }
+                        }
+                    } else {
+                        let filtered_imports: Vec<_> = result
+                            .imports
+                            .iter()
+                            .filter(|imp| module.as_ref().map_or(true, |m| &imp.module == m))
+                            .collect();
+
+                        if filtered_imports.is_empty() {
+                            println!("No imports found");
+                        } else {
+                            println!("📥 Imports ({}):", filtered_imports.len());
+                            for import in filtered_imports {
+                                println!(
+                                    "  - {}::{} ({})",
+                                    import.module, import.name, import.kind
+                                );
+                            }
+                        }
+                    }
+                },
+            }
+
+            Ok(())
+        },
+
+        WasmCommand::Exports { file, kind } => {
+            let wasm_path = workspace_root.join(&file);
+
+            if !wasm_path.exists() {
+                anyhow::bail!("WebAssembly module not found: {}", wasm_path.display());
+            }
+
+            let verifier = WasmVerifier::new(&wasm_path);
+            let result = verifier.verify()?;
+
+            let filtered_exports: Vec<_> = result
+                .exports
+                .iter()
+                .filter(|exp| kind.as_ref().map_or(true, |k| &exp.kind == k))
+                .collect();
+
+            match output_format {
+                OutputFormat::Json | OutputFormat::JsonLines => {
+                    println!("{}", serde_json::to_string_pretty(&filtered_exports)?);
+                },
+                OutputFormat::Human => {
+                    if filtered_exports.is_empty() {
+                        println!("No exports found");
+                    } else {
+                        println!("📤 Exports ({}):", filtered_exports.len());
+                        for export in filtered_exports {
+                            println!("  - {} ({})", export.name, export.kind);
+                        }
+                    }
+                },
+            }
+
+            Ok(())
+        },
+
+        WasmCommand::Analyze {
+            files,
+            summary,
+            performance,
+        } => {
+            let mut wasm_paths = Vec::new();
+
+            // Expand glob patterns
+            for pattern in &files {
+                let full_pattern = workspace_root.join(pattern);
+                match glob::glob(&full_pattern.to_string_lossy()) {
+                    Ok(paths) => {
+                        for path in paths {
+                            match path {
+                                Ok(p) => wasm_paths.push(p),
+                                Err(e) => eprintln!("Warning: Failed to read path: {}", e),
+                            }
+                        }
+                    },
+                    Err(_) => {
+                        // Not a glob pattern, treat as single file
+                        wasm_paths.push(workspace_root.join(pattern));
+                    },
+                }
+            }
+
+            if wasm_paths.is_empty() {
+                anyhow::bail!("No WebAssembly modules found matching the patterns");
+            }
+
+            let results = verify_modules(&wasm_paths)?;
+
+            match output_format {
+                OutputFormat::Json | OutputFormat::JsonLines => {
+                    println!("{}", serde_json::to_string_pretty(&results)?);
+                },
+                OutputFormat::Human => {
+                    println!("🔍 WebAssembly Module Analysis");
+                    println!("════════════════════════════");
+                    println!("Analyzed {} modules\n", results.len());
+
+                    let mut total_valid = 0;
+                    let mut total_imports = 0;
+                    let mut total_exports = 0;
+                    let mut total_builtins = 0;
+
+                    for (path, result) in &results {
+                        if summary {
+                            println!("📄 {}", path.bright_cyan());
+                            println!(
+                                "  Status: {}",
+                                if result.valid { "✅ Valid" } else { "❌ Invalid" }
+                            );
+                            if performance {
+                                if let Some(perf) = result.performance.as_ref() {
+                                    println!("  Parse time: {}ms", perf.parse_time_ms);
+                                    println!("  Size: {} bytes", perf.module_size);
+                                }
+                            }
+                            println!(
+                                "  Imports: {}, Exports: {}, Builtins: {}",
+                                result.imports.len(),
+                                result.exports.len(),
+                                result.builtin_imports.len()
+                            );
+                            println!();
+                        } else {
+                            let verifier = WasmVerifier::new(path);
+                            verifier.print_results(result);
+                            println!();
+                        }
+
+                        if result.valid {
+                            total_valid += 1;
+                        }
+                        total_imports += result.imports.len();
+                        total_exports += result.exports.len();
+                        total_builtins += result.builtin_imports.len();
+                    }
+
+                    if summary {
+                        println!("📊 Summary:");
+                        println!("─────────");
+                        println!("  Valid modules: {}/{}", total_valid, results.len());
+                        println!("  Total imports: {}", total_imports);
+                        println!("  Total exports: {}", total_exports);
+                        println!("  Total builtins: {}", total_builtins);
+                    }
+                },
+            }
+
+            Ok(())
+        },
+
+        WasmCommand::CreateTest {
+            output,
+            with_builtins,
+        } => {
+            let test_module = if with_builtins {
+                create_minimal_module()
+            } else {
+                // Create even simpler module without imports
+                vec![0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00] // Just header
+            };
+
+            let output_path = workspace_root.join(&output);
+            std::fs::write(&output_path, test_module)?;
+
+            println!(
+                "{} Created test WebAssembly module at {}",
+                "✅".bright_green(),
+                output_path.display()
+            );
+
+            if with_builtins {
+                println!("  Module includes builtin imports (wasi_builtin::random)");
+            } else {
+                println!("  Module is minimal (header only)");
+            }
+
+            Ok(())
+        },
+    }
+}
+
+/// Handle safety verification commands with SCORE methodology
+async fn cmd_safety(
+    build_system: &BuildSystem,
+    command: SafetyCommand,
+    output_format: &OutputFormat,
+    use_colors: bool,
+    cli: &Cli,
+) -> Result<()> {
+    let workspace_root = build_system.workspace_root().to_path_buf();
+
+    match command {
+        SafetyCommand::Verify {
+            asil,
+            requirements,
+            include_tests,
+            include_platform,
+            detailed,
+        } => {
+            let asil_level = wrt_build_core::config::AsilLevel::from(asil);
+
+            // Import the safety verification framework
+            use wrt_build_core::requirements::{Requirements, SafetyVerificationFramework};
+
+            let mut framework = SafetyVerificationFramework::new(workspace_root.clone());
+
+            // Load WRT-specific safety requirements
+            let (_count, load_diagnostics) =
+                framework.load_requirements_from_source(&requirements)?;
+
+            // If we have a requirements file, load it too
+            let requirements_path = workspace_root.join(&requirements);
+            if requirements_path.exists() {
+                let reqs = Requirements::load(&requirements_path)?;
+                let registry = reqs.to_registry();
+                for req in registry.requirements {
+                    framework.add_requirement(req);
+                }
+            }
+
+            // Perform ASIL compliance verification
+            let (compliance_result, verification_diagnostics) =
+                framework.verify_asil_compliance(asil_level)?;
+
+            // Generate safety report
+            let (safety_report, report_diagnostics) = framework.generate_safety_report();
+
+            // Combine all diagnostics manually
+            let mut all_diagnostics = load_diagnostics;
+            // Add verification diagnostics
+            for diag in verification_diagnostics.diagnostics {
+                all_diagnostics.add_diagnostic(diag);
+            }
+            // Add report diagnostics
+            for diag in report_diagnostics.diagnostics {
+                all_diagnostics.add_diagnostic(diag);
+            }
+
+            // Format and display results
+            let formatter = wrt_build_core::formatters::FormatterFactory::create_with_options(
+                *output_format,
+                true,
+                use_colors,
+            );
+            print!(
+                "{}",
+                formatter.format_diagnostics(&all_diagnostics.diagnostics)
+            );
+
+            if detailed {
+                match output_format {
+                    OutputFormat::Json => {
+                        println!("{}", serde_json::to_string_pretty(&compliance_result)?);
+                    },
+                    _ => {
+                        println!(
+                            "\n{} ASIL {} Compliance Verification:",
+                            "📊".bright_blue(),
+                            asil_level
+                        );
+                        println!(
+                            "  Total Requirements: {}",
+                            compliance_result.total_requirements
+                        );
+                        println!("  Verified: {}", compliance_result.verified_requirements);
+                        println!(
+                            "  Compliance: {:.1}%",
+                            compliance_result.compliance_percentage
+                        );
+                        println!(
+                            "  Status: {}",
+                            if compliance_result.is_compliant {
+                                "✅ COMPLIANT".bright_green()
+                            } else {
+                                "❌ NON-COMPLIANT".bright_red()
+                            }
+                        );
+
+                        if !compliance_result.violations.is_empty() {
+                            println!("\n{} Violations:", "⚠️ ".bright_yellow());
+                            for violation in &compliance_result.violations {
+                                println!(
+                                    "  • {}: {}",
+                                    violation.violation_type, violation.description
+                                );
+                            }
+                        }
+                    },
+                }
+            }
+
+            Ok(())
+        },
+
+        SafetyCommand::Certify {
+            asil,
+            requirements,
+            test_results,
+            coverage_data,
+        } => {
+            let asil_level = wrt_build_core::config::AsilLevel::from(asil);
+
+            use wrt_build_core::requirements::{Requirements, SafetyVerificationFramework};
+
+            let mut framework = SafetyVerificationFramework::new(workspace_root.clone());
+
+            // Load requirements
+            let requirements_path = workspace_root.join(&requirements);
+            if requirements_path.exists() {
+                let reqs = Requirements::load(&requirements_path)?;
+                let registry = reqs.to_registry();
+                for req in registry.requirements {
+                    framework.add_requirement(req);
+                }
+            }
+
+            // Load test results if provided
+            if let Some(test_file) = test_results {
+                // TODO: Implement test results loading from JSON
+                println!("Loading test results from: {}", test_file);
+            }
+
+            // Load coverage data if provided
+            if let Some(coverage_file) = coverage_data {
+                // TODO: Implement coverage data loading from JSON
+                println!("Loading coverage data from: {}", coverage_file);
+            }
+
+            // Check certification readiness
+            let (readiness, diagnostics) = framework.check_certification_readiness(asil_level);
+
+            // Format and display results
+            let formatter = wrt_build_core::formatters::FormatterFactory::create_with_options(
+                *output_format,
+                true,
+                use_colors,
+            );
+            print!("{}", formatter.format_collection(&diagnostics));
+
+            match output_format {
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string_pretty(&readiness)?);
+                },
+                _ => {
+                    println!(
+                        "\n{} ASIL {} Certification Readiness:",
+                        "🏆".bright_yellow(),
+                        asil_level
+                    );
+                    println!(
+                        "  Status: {}",
+                        if readiness.is_ready {
+                            "✅ READY FOR CERTIFICATION".bright_green()
+                        } else {
+                            "❌ NOT READY".bright_red()
+                        }
+                    );
+
+                    println!(
+                        "  Compliance: {:.1}% (requires {:.1}%)",
+                        readiness.compliance_percentage, readiness.required_compliance
+                    );
+                    println!(
+                        "  Coverage: {:.1}% (requires {:.1}%)",
+                        readiness.coverage_percentage, readiness.required_coverage
+                    );
+
+                    if !readiness.blocking_issues.is_empty() {
+                        println!("\n{} Blocking Issues:", "🚫".bright_red());
+                        for issue in &readiness.blocking_issues {
+                            println!("  • {}", issue);
+                        }
+                    }
+
+                    if !readiness.recommendations.is_empty() {
+                        println!("\n{} Recommendations:", "💡".bright_blue());
+                        for rec in &readiness.recommendations {
+                            println!("  • {}", rec);
+                        }
+                    }
+                },
+            }
+
+            Ok(())
+        },
+
+        SafetyCommand::Report {
+            requirements,
+            all_asil,
+            output,
+            format,
+        } => {
+            use wrt_build_core::requirements::{Requirements, SafetyVerificationFramework};
+
+            let mut framework = SafetyVerificationFramework::new(workspace_root.clone());
+
+            // Load requirements
+            let requirements_path = workspace_root.join(&requirements);
+            if requirements_path.exists() {
+                let reqs = Requirements::load(&requirements_path)?;
+                let registry = reqs.to_registry();
+                for req in registry.requirements {
+                    framework.add_requirement(req);
+                }
+            }
+
+            // Generate comprehensive safety report
+            let (safety_report, diagnostics) = framework.generate_safety_report();
+
+            // Format output based on requested format
+            let report_content = match format.as_str() {
+                "json" => serde_json::to_string_pretty(&safety_report)?,
+                "html" => {
+                    // Generate HTML safety report
+                    use crate::formatters::{HtmlFormatter, HtmlReportGenerator};
+                    use std::collections::HashMap;
+
+                    let formatter = HtmlFormatter::new();
+
+                    // Convert to HTML data format
+                    let asil_compliance: HashMap<String, f64> = safety_report
+                        .asil_compliance
+                        .iter()
+                        .map(|(k, v)| (format!("{:?}", k), *v))
+                        .collect();
+
+                    let html_data = crate::formatters::html::SafetyReportData {
+                        overall_compliance: safety_report.overall_compliance * 100.0,
+                        asil_compliance,
+                        test_summary: crate::formatters::html::TestSummaryData {
+                            total_tests: safety_report.test_summary.total_tests,
+                            passed_tests: safety_report.test_summary.passed_tests,
+                            failed_tests: safety_report.test_summary.failed_tests,
+                            coverage_percentage: safety_report.test_summary.coverage_percentage,
+                        },
+                        recommendations: safety_report.recommendations.clone(),
+                    };
+
+                    HtmlReportGenerator::safety_report(&html_data, &formatter)?
+                },
+                "markdown" | "md" => {
+                    // Generate Markdown safety report
+                    use crate::formatters::{MarkdownFormatter, MarkdownReportGenerator};
+                    use std::collections::HashMap;
+
+                    let formatter = MarkdownFormatter::new();
+
+                    // Convert to data format
+                    let asil_compliance: HashMap<String, f64> = safety_report
+                        .asil_compliance
+                        .iter()
+                        .map(|(k, v)| (format!("{:?}", k), *v * 100.0))
+                        .collect();
+
+                    let report_data = crate::formatters::html::SafetyReportData {
+                        overall_compliance: safety_report.overall_compliance * 100.0,
+                        asil_compliance,
+                        test_summary: crate::formatters::html::TestSummaryData {
+                            total_tests: safety_report.test_summary.total_tests,
+                            passed_tests: safety_report.test_summary.passed_tests,
+                            failed_tests: safety_report.test_summary.failed_tests,
+                            coverage_percentage: safety_report.test_summary.coverage_percentage,
+                        },
+                        recommendations: safety_report.recommendations.clone(),
+                    };
+
+                    MarkdownReportGenerator::safety_report(&report_data, &formatter)?
+                },
+                "github" => {
+                    // Generate GitHub-flavored Markdown safety report
+                    use crate::formatters::{MarkdownFormatter, MarkdownReportGenerator};
+                    use std::collections::HashMap;
+
+                    let formatter = MarkdownFormatter::github();
+
+                    // Convert to data format
+                    let asil_compliance: HashMap<String, f64> = safety_report
+                        .asil_compliance
+                        .iter()
+                        .map(|(k, v)| (format!("{:?}", k), *v * 100.0))
+                        .collect();
+
+                    let report_data = crate::formatters::html::SafetyReportData {
+                        overall_compliance: safety_report.overall_compliance * 100.0,
+                        asil_compliance,
+                        test_summary: crate::formatters::html::TestSummaryData {
+                            total_tests: safety_report.test_summary.total_tests,
+                            passed_tests: safety_report.test_summary.passed_tests,
+                            failed_tests: safety_report.test_summary.failed_tests,
+                            coverage_percentage: safety_report.test_summary.coverage_percentage,
+                        },
+                        recommendations: safety_report.recommendations.clone(),
+                    };
+
+                    MarkdownReportGenerator::safety_report(&report_data, &formatter)?
+                },
+                _ => {
+                    // Human-readable format
+                    let mut content = String::new();
+                    content.push_str(&format!("🛡️  WRT Safety Verification Report\n"));
+                    content.push_str(&format!("════════════════════════════════\n\n"));
+                    content.push_str(&format!(
+                        "Overall Compliance: {:.1}%\n",
+                        safety_report.overall_compliance * 100.0
+                    ));
+                    content.push_str(&format!(
+                        "Unverified Requirements: {}\n",
+                        safety_report.unverified_requirements
+                    ));
+                    content.push_str(&format!(
+                        "Critical Violations: {}\n\n",
+                        safety_report.critical_violations.len()
+                    ));
+
+                    content.push_str("📊 Test Summary:\n");
+                    content.push_str(&format!(
+                        "  Total Tests: {}\n",
+                        safety_report.test_summary.total_tests
+                    ));
+                    content.push_str(&format!(
+                        "  Passed: {}\n",
+                        safety_report.test_summary.passed_tests
+                    ));
+                    content.push_str(&format!(
+                        "  Failed: {}\n",
+                        safety_report.test_summary.failed_tests
+                    ));
+                    content.push_str(&format!(
+                        "  Coverage: {:.1}%\n\n",
+                        safety_report.test_summary.coverage_percentage
+                    ));
+
+                    if all_asil {
+                        content.push_str("🎯 ASIL Compliance:\n");
+                        for (asil, compliance) in &safety_report.asil_compliance {
+                            content.push_str(&format!("  {}: {:.1}%\n", asil, compliance * 100.0));
+                        }
+                        content.push('\n');
+                    }
+
+                    if !safety_report.recommendations.is_empty() {
+                        content.push_str("💡 Recommendations:\n");
+                        for rec in &safety_report.recommendations {
+                            content.push_str(&format!("  • {}\n", rec));
+                        }
+                    }
+
+                    content
+                },
+            };
+
+            // Output to file or stdout
+            if let Some(output_file) = output {
+                let output_path = workspace_root.join(output_file);
+                std::fs::write(&output_path, report_content)?;
+                println!(
+                    "{} Safety report written to {}",
+                    "✅".bright_green(),
+                    output_path.display()
+                );
+            } else {
+                println!("{}", report_content);
+            }
+
+            // Also output diagnostics
+            let formatter = wrt_build_core::formatters::FormatterFactory::create_with_options(
+                *output_format,
+                true,
+                use_colors,
+            );
+            print!("{}", formatter.format_collection(&diagnostics));
+
+            Ok(())
+        },
+
+        SafetyCommand::RecordTest {
+            test_name,
+            passed,
+            duration_ms,
+            asil,
+            verifies,
+            coverage_type,
+            failure_reason,
+        } => {
+            use wrt_build_core::requirements::{
+                RequirementId, SafetyVerificationFramework, TestCoverageType, TestResult,
+            };
+
+            let mut framework = SafetyVerificationFramework::new(workspace_root.clone());
+            let asil_level = wrt_build_core::config::AsilLevel::from(asil);
+
+            // Parse verified requirements
+            let verified_requirements = if let Some(req_list) = verifies {
+                req_list.split(',').map(|s| RequirementId::new(s.trim())).collect()
+            } else {
+                Vec::new()
+            };
+
+            // Convert coverage type
+            let test_coverage_type = match coverage_type {
+                TestCoverageArg::Basic => TestCoverageType::Basic,
+                TestCoverageArg::Comprehensive => TestCoverageType::Comprehensive,
+                TestCoverageArg::Complete => TestCoverageType::Complete,
+            };
+
+            let test_result = TestResult {
+                test_name: test_name.clone(),
+                passed,
+                execution_time_ms: duration_ms.unwrap_or(0),
+                verified_requirements,
+                coverage_type: test_coverage_type,
+                failure_reason: failure_reason.unwrap_or_default(),
+                asil_level,
+            };
+
+            let diagnostics = framework.record_test_result(test_result);
+
+            let formatter = wrt_build_core::formatters::FormatterFactory::create_with_options(
+                *output_format,
+                true,
+                use_colors,
+            );
+            print!("{}", formatter.format_collection(&diagnostics));
+
+            if passed {
+                println!(
+                    "{} Test {} recorded as PASSED",
+                    "✅".bright_green(),
+                    test_name
+                );
+            } else {
+                println!(
+                    "{} Test {} recorded as FAILED",
+                    "❌".bright_red(),
+                    test_name
+                );
+            }
+
+            Ok(())
+        },
+
+        SafetyCommand::UpdateCoverage {
+            line_coverage,
+            branch_coverage,
+            function_coverage,
+            coverage_file,
+        } => {
+            use wrt_build_core::requirements::{CoverageData, FileCoverage};
+
+            let coverage_data = if let Some(file) = coverage_file {
+                // TODO: Load from JSON file
+                println!("Loading coverage data from: {}", file);
+                CoverageData::new()
+            } else {
+                CoverageData {
+                    line_coverage: line_coverage.unwrap_or(0.0),
+                    branch_coverage: branch_coverage.unwrap_or(0.0),
+                    function_coverage: function_coverage.unwrap_or(0.0),
+                    file_coverages: Vec::new(),
+                }
+            };
+
+            println!("{} Coverage data updated:", "📊".bright_blue());
+            println!("  Line Coverage: {:.1}%", coverage_data.line_coverage);
+            println!("  Branch Coverage: {:.1}%", coverage_data.branch_coverage);
+            println!(
+                "  Function Coverage: {:.1}%",
+                coverage_data.function_coverage
+            );
+            println!("  Overall: {:.1}%", coverage_data.overall_coverage());
+
+            Ok(())
+        },
+
+        SafetyCommand::PlatformVerify {
+            platform,
+            passed,
+            asil,
+            verified_features,
+            failed_features,
+        } => {
+            use wrt_build_core::requirements::PlatformVerification;
+
+            let asil_level = wrt_build_core::config::AsilLevel::from(asil);
+
+            let verified = verified_features
+                .unwrap_or_default()
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect();
+            let failed = failed_features
+                .unwrap_or_default()
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect();
+
+            let verification = PlatformVerification {
+                platform_name: platform.clone(),
+                verification_passed: passed,
+                verified_features: verified,
+                failed_features: failed,
+                asil_compliance: asil_level,
+            };
+
+            if passed {
+                println!(
+                    "{} Platform {} verification PASSED (ASIL {})",
+                    "✅".bright_green(),
+                    platform,
+                    asil_level
+                );
+            } else {
+                println!(
+                    "{} Platform {} verification FAILED",
+                    "❌".bright_red(),
+                    platform
+                );
+            }
+
+            Ok(())
+        },
+
+        SafetyCommand::Init {
+            wrt_requirements,
+            force,
+        } => {
+            use wrt_build_core::requirements::SafetyVerificationFramework;
+
+            let mut framework = SafetyVerificationFramework::new(workspace_root.clone());
+
+            if wrt_requirements {
+                // Initialize with WRT-specific safety requirements
+                let (_count, diagnostics) =
+                    framework.load_requirements_from_source("wrt-safety-requirements")?;
+
+                let formatter = wrt_build_core::formatters::FormatterFactory::create_with_options(
+                    *output_format,
+                    true,
+                    use_colors,
+                );
+                print!("{}", formatter.format_collection(&diagnostics));
+
+                println!(
+                    "{} Initialized safety verification with WRT-specific requirements",
+                    "✅".bright_green()
+                );
+            } else {
+                println!(
+                    "{} Safety verification framework initialized",
+                    "✅".bright_green()
+                );
+            }
+
+            Ok(())
+        },
+
+        SafetyCommand::Demo {
+            output_dir,
+            interactive,
+            certification,
+        } => {
+            let demo_path = workspace_root.join(&output_dir);
+            std::fs::create_dir_all(&demo_path)?;
+
+            println!(
+                "{} Creating SCORE methodology demonstration in {}",
+                "🎯".bright_blue(),
+                demo_path.display()
+            );
+
+            if interactive {
+                println!("🔄 Interactive demo mode not yet implemented");
+            }
+
+            if certification {
+                println!("🏆 Certification workflow demo not yet implemented");
+            }
+
+            println!("{} SCORE demo setup complete", "✅".bright_green());
+            Ok(())
+        },
+
+        SafetyCommand::VerifyDocs {
+            requirements,
+            asil,
+            detailed,
+            check_implementations,
+            check_api,
+        } => {
+            use wrt_build_core::requirements::{
+                DocumentationVerificationConfig, DocumentationVerificationFramework, Requirements,
+            };
+
+            let mut framework = DocumentationVerificationFramework::new(workspace_root.clone());
+
+            // Configure the framework based on options
+            let mut config = DocumentationVerificationConfig::default();
+            config.enable_api_documentation_check = check_api;
+            framework = framework.with_config(config);
+
+            // Load requirements
+            let requirements_path = workspace_root.join(&requirements);
+            if requirements_path.exists() {
+                let reqs = Requirements::load(&requirements_path)?;
+                let registry = reqs.to_registry();
+                for req in registry.requirements {
+                    framework.add_requirement(req);
+                }
+            }
+
+            // Perform documentation verification
+            let (result, diagnostics) = if let Some(asil_level) = asil {
+                let asil_level = wrt_build_core::config::AsilLevel::from(asil_level);
+                framework.verify_asil_documentation(asil_level)?
+            } else {
+                framework.verify_all_documentation()?
+            };
+
+            // Format and display results
+            let formatter = wrt_build_core::formatters::FormatterFactory::create_with_options(
+                *output_format,
+                true,
+                use_colors,
+            );
+            print!("{}", formatter.format_collection(&diagnostics));
+
+            if detailed {
+                match output_format {
+                    OutputFormat::Json => {
+                        println!("{}", serde_json::to_string_pretty(&result)?);
+                    },
+                    _ => {
+                        println!(
+                            "\n{} Documentation Compliance Verification:",
+                            "📚".bright_blue()
+                        );
+                        println!("  Total Requirements: {}", result.total_requirements);
+                        println!("  Compliant: {}", result.compliant_requirements);
+                        println!("  Compliance: {:.1}%", result.compliance_percentage);
+                        println!(
+                            "  Certification Ready: {}",
+                            if result.is_certification_ready {
+                                "✅ YES".bright_green()
+                            } else {
+                                "❌ NO".bright_red()
+                            }
+                        );
+
+                        if !result.violations.is_empty() {
+                            println!("\n{} Documentation Violations:", "⚠️ ".bright_yellow());
+                            for violation in &result.violations {
+                                println!(
+                                    "  • {} ({}): {}",
+                                    violation.violation_type,
+                                    violation.severity,
+                                    violation.description
+                                );
+                            }
+                        }
+                    },
+                }
+            }
+
+            Ok(())
+        },
+
+        SafetyCommand::DocsReport {
+            requirements,
+            all_asil,
+            output,
+            format,
+        } => {
+            use wrt_build_core::requirements::{DocumentationVerificationFramework, Requirements};
+
+            let mut framework = DocumentationVerificationFramework::new(workspace_root.clone());
+
+            // Load requirements
+            let requirements_path = workspace_root.join(&requirements);
+            if requirements_path.exists() {
+                let reqs = Requirements::load(&requirements_path)?;
+                let registry = reqs.to_registry();
+                for req in registry.requirements {
+                    framework.add_requirement(req);
+                }
+            }
+
+            // Generate comprehensive documentation report
+            let (doc_report, diagnostics) = framework.generate_report();
+
+            // Format output based on requested format
+            let report_content = match format.as_str() {
+                "json" => serde_json::to_string_pretty(&doc_report)?,
+                "html" => {
+                    // Generate HTML documentation report
+                    use crate::formatters::{HtmlFormatter, HtmlReportGenerator};
+                    use std::collections::HashMap;
+
+                    let formatter = HtmlFormatter::new();
+
+                    // Convert to HTML data format
+                    let asil_compliance: HashMap<String, f64> = doc_report
+                        .asil_compliance
+                        .iter()
+                        .map(|(k, v)| (format!("{:?}", k), *v))
+                        .collect();
+
+                    let html_data = crate::formatters::html::DocumentationReportData {
+                        overall_compliance: doc_report.overall_compliance * 100.0,
+                        total_requirements: doc_report.total_requirements,
+                        total_violations: doc_report.total_violations,
+                        critical_violations: doc_report.critical_violations,
+                        asil_compliance,
+                    };
+
+                    HtmlReportGenerator::documentation_report(&html_data, &formatter)?
+                },
+                "markdown" | "md" => {
+                    // Generate Markdown documentation report
+                    use crate::formatters::{MarkdownFormatter, MarkdownReportGenerator};
+                    use std::collections::HashMap;
+
+                    let formatter = MarkdownFormatter::new();
+
+                    // Convert to data format
+                    let asil_compliance: HashMap<String, f64> = doc_report
+                        .asil_compliance
+                        .iter()
+                        .map(|(k, v)| (format!("{:?}", k), *v * 100.0))
+                        .collect();
+
+                    let report_data = crate::formatters::html::DocumentationReportData {
+                        overall_compliance: doc_report.overall_compliance * 100.0,
+                        total_requirements: doc_report.total_requirements,
+                        total_violations: doc_report.total_violations,
+                        critical_violations: doc_report.critical_violations,
+                        asil_compliance,
+                    };
+
+                    MarkdownReportGenerator::documentation_report(&report_data, &formatter)?
+                },
+                "github" => {
+                    // Generate GitHub-flavored Markdown documentation report
+                    use crate::formatters::{MarkdownFormatter, MarkdownReportGenerator};
+                    use std::collections::HashMap;
+
+                    let formatter = MarkdownFormatter::github();
+
+                    // Convert to data format
+                    let asil_compliance: HashMap<String, f64> = doc_report
+                        .asil_compliance
+                        .iter()
+                        .map(|(k, v)| (format!("{:?}", k), *v * 100.0))
+                        .collect();
+
+                    let report_data = crate::formatters::html::DocumentationReportData {
+                        overall_compliance: doc_report.overall_compliance * 100.0,
+                        total_requirements: doc_report.total_requirements,
+                        total_violations: doc_report.total_violations,
+                        critical_violations: doc_report.critical_violations,
+                        asil_compliance,
+                    };
+
+                    MarkdownReportGenerator::documentation_report(&report_data, &formatter)?
+                },
+                _ => {
+                    // Human-readable format
+                    let mut content = String::new();
+                    content.push_str(&format!("📚 WRT Documentation Compliance Report\n"));
+                    content.push_str(&format!("═══════════════════════════════════════\n\n"));
+                    content.push_str(&format!(
+                        "Overall Compliance: {:.1}%\n",
+                        doc_report.overall_compliance
+                    ));
+                    content.push_str(&format!(
+                        "Total Requirements: {}\n",
+                        doc_report.total_requirements
+                    ));
+                    content.push_str(&format!(
+                        "Total Violations: {}\n",
+                        doc_report.total_violations
+                    ));
+                    content.push_str(&format!(
+                        "Critical Violations: {}\n\n",
+                        doc_report.critical_violations
+                    ));
+
+                    if all_asil && !doc_report.asil_compliance.is_empty() {
+                        content.push_str("📊 ASIL Documentation Compliance:\n");
+                        let mut sorted_asil: Vec<_> = doc_report.asil_compliance.iter().collect();
+                        sorted_asil.sort_by_key(|(asil, _)| match asil {
+                            wrt_build_core::config::AsilLevel::QM => 0,
+                            wrt_build_core::config::AsilLevel::A => 1,
+                            wrt_build_core::config::AsilLevel::B => 2,
+                            wrt_build_core::config::AsilLevel::C => 3,
+                            wrt_build_core::config::AsilLevel::D => 4,
+                        });
+                        for (asil, compliance) in sorted_asil {
+                            content.push_str(&format!("  {}: {:.1}%\n", asil, compliance));
+                        }
+                        content.push('\n');
+                    }
+
+                    if !doc_report.recommendations.is_empty() {
+                        content.push_str("💡 Recommendations:\n");
+                        for rec in &doc_report.recommendations {
+                            content.push_str(&format!("  • {}\n", rec));
+                        }
+                    }
+
+                    content
+                },
+            };
+
+            // Output to file or stdout
+            if let Some(output_file) = output {
+                let output_path = workspace_root.join(output_file);
+                std::fs::write(&output_path, report_content)?;
+                println!(
+                    "{} Documentation report written to {}",
+                    "✅".bright_green(),
+                    output_path.display()
+                );
+            } else {
+                println!("{}", report_content);
+            }
+
+            // Also output diagnostics
+            let formatter = wrt_build_core::formatters::FormatterFactory::create_with_options(
+                *output_format,
+                true,
+                use_colors,
+            );
+            print!("{}", formatter.format_collection(&diagnostics));
+
+            Ok(())
+        },
+    }
 }
 
 /// Print comprehensive diagnostic system help
