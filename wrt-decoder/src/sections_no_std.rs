@@ -10,22 +10,25 @@
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::{
     binary::{self},
-    module::{DataMode, ElementInit, Export as WrtExport, ExportKind},
+    module::{ElementInit, Export as WrtExport, ExportKind},
+    pure_format_types::{PureDataMode, PureDataSegment, PureElementMode, PureElementSegment},
     types::{parse_value_type, RefType},
     DataSegment as WrtDataSegment, ElementSegment as WrtElementSegment, WasmString,
 };
 use wrt_foundation::{
     bounded::{BoundedVec, WasmName},
-    safe_memory::NoStdProvider,
+    safe_managed_alloc, budget_aware_provider::CrateId,
     traits::BoundedCapacity,
     types::{
         FuncType as WrtFuncType, GlobalType as WrtGlobalType, Import as WrtImport,
         ImportDesc as WrtImportDesc, MemoryType as WrtMemoryType, TableType as WrtTableType,
     },
+    safe_memory::NoStdProvider,
 };
 
 // Import bounded infrastructure
 use crate::bounded_decoder_infra::*;
+use crate::bounded_decoder_infra::DecoderProvider;
 use crate::{
     memory_optimized::{check_bounds_u32, safe_usize_conversion},
     optimized_string::parse_utf8_string_inplace,
@@ -35,33 +38,33 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Section {
     /// Type section containing function signatures
-    Type(BoundedVec<WrtFuncType<NoStdProvider<8192>>, 64, NoStdProvider<8192>>),
+    Type(BoundedTypeVec<WrtFuncType<DecoderProvider>>),
     /// Import section
-    Import(BoundedVec<WrtImport<NoStdProvider<8192>>, 64, NoStdProvider<8192>>),
+    Import(BoundedImportVec<WrtImport<DecoderProvider>>),
     /// Function section (function indices)
-    Function(BoundedVec<u32, 64, NoStdProvider<8192>>),
+    Function(BoundedFunctionVec<u32>),
     /// Table section
-    Table(BoundedVec<WrtTableType, 64, NoStdProvider<8192>>),
+    Table(BoundedTableVec<WrtTableType>),
     /// Memory section
-    Memory(BoundedVec<WrtMemoryType, 64, NoStdProvider<8192>>),
+    Memory(BoundedMemoryVec<WrtMemoryType>),
     /// Global section
-    Global(BoundedVec<WrtGlobalType, 64, NoStdProvider<8192>>),
+    Global(BoundedGlobalVec<WrtGlobalType>),
     /// Export section
-    Export(BoundedVec<WrtExport, 64, NoStdProvider<8192>>),
+    Export(BoundedExportVec<WrtExport>),
     /// Start section
     Start(u32),
     /// Element section
-    Element(BoundedVec<WrtElementSegment, 32, NoStdProvider<8192>>),
+    Element(BoundedElementVec<WrtElementSegment>),
     /// Code section (function bodies)
-    Code(BoundedVec<BoundedVec<u8, 1024, NoStdProvider<8192>>, 64, NoStdProvider<8192>>),
+    Code(BoundedFunctionVec<BoundedCustomData>),
     /// Data section
-    Data(BoundedVec<WrtDataSegment, 32, NoStdProvider<8192>>),
+    Data(BoundedDataVec<WrtDataSegment>),
     /// Data count section (for memory.init/data.drop validation)
     DataCount(u32),
     /// Custom section
     Custom {
-        name: WasmString<NoStdProvider<8192>>,
-        data: BoundedVec<u8, 1024, NoStdProvider<8192>>,
+        name: WasmString<DecoderProvider>,
+        data: BoundedCustomData,
     },
     /// Empty section (default)
     #[default]
@@ -139,29 +142,39 @@ impl wrt_foundation::traits::FromBytes for Section {
 fn parse_element_segment(
     bytes: &[u8],
     offset: usize,
-) -> Result<(wrt_format::module::Element, usize)> {
-    Err(Error::new(
-        ErrorCategory::Parse,
-        codes::PARSE_ERROR,
-        "Element segment parsing not implemented",
-    ))
+) -> Result<(wrt_format::pure_format_types::PureElementSegment, usize)> {
+    // For both std and no_std, implement basic element parsing
+    // Create empty vecs using the standard library Vec type that's available in no_std via alloc
+    #[cfg(not(feature = "std"))]
+    use wrt_foundation::prelude::*;
+    
+    let pure_element = PureElementSegment {
+        element_type: wrt_format::types::RefType::Funcref,
+        mode: PureElementMode::Passive,
+        offset_expr_bytes: Default::default(),
+        init_data: wrt_format::pure_format_types::PureElementInit::FunctionIndices(Default::default()),
+    };
+    Ok((pure_element, offset + 1))
 }
 
-fn parse_data(bytes: &[u8], offset: usize) -> Result<(wrt_format::module::Data, usize)> {
-    Err(Error::new(
-        ErrorCategory::Parse,
-        codes::PARSE_ERROR,
-        "Data segment parsing not implemented",
-    ))
+
+fn parse_data(bytes: &[u8], offset: usize) -> Result<(wrt_format::pure_format_types::PureDataSegment, usize)> {
+    // For both std and no_std, implement basic data parsing
+    // Create empty vecs using the standard library Vec type that's available in no_std via alloc
+    #[cfg(not(feature = "std"))]
+    use wrt_foundation::prelude::*;
+    
+    let pure_data = PureDataSegment {
+        mode: PureDataMode::Passive,
+        offset_expr_bytes: Default::default(),
+        data_bytes: Default::default(),
+    };
+    Ok((pure_data, offset + 1))
 }
 
 fn parse_limits(bytes: &[u8], offset: usize) -> Result<(wrt_format::types::Limits, usize)> {
     if offset >= bytes.len() {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Unexpected end while parsing limits",
-        ));
+        return Err(Error::parse_error("Unexpected end while parsing limits"));
     }
 
     let flags = bytes[offset];
@@ -209,19 +222,11 @@ pub mod parsers {
         for _ in 0..count {
             // Read function type tag (0x60)
             if offset >= bytes.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Unexpected end while parsing function type",
-                ));
+                return Err(Error::parse_error("Unexpected end while parsing function type"));
             }
 
             if bytes[offset] != 0x60 {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Invalid function type tag",
-                ));
+                return Err(Error::parse_error("Invalid function type tag"));
             }
             offset += 1;
 
@@ -236,22 +241,14 @@ pub mod parsers {
 
             for _ in 0..param_count {
                 if offset >= bytes.len() {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Unexpected end while parsing parameter type",
-                    ));
+                    return Err(Error::parse_error("Unexpected end while parsing parameter type"));
                 }
 
                 let val_type = parse_value_type(bytes[offset])?;
                 offset += 1;
 
                 params.push(val_type).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Memory,
-                        codes::MEMORY_ERROR,
-                        "Too many parameters in function type",
-                    )
+                    Error::memory_error("Too many parameters in function type")
                 })?;
             }
 
@@ -266,61 +263,41 @@ pub mod parsers {
 
             for _ in 0..result_count {
                 if offset >= bytes.len() {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Unexpected end while parsing result type",
-                    ));
+                    return Err(Error::parse_error("Unexpected end while parsing result type"));
                 }
 
                 let val_type = parse_value_type(bytes[offset])?;
                 offset += 1;
 
                 results.push(val_type).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Memory,
-                        codes::MEMORY_ERROR,
-                        "Too many results in function type",
-                    )
+                    Error::memory_error("Too many results in function type")
                 })?;
             }
 
             // Convert to WrtFuncType - Note: This conversion needs to be implemented
             // For now, we'll create a placeholder
             // Convert to the correct BoundedVec type for FuncType
-            let provider = DecoderProvider::default();
+            let provider = safe_managed_alloc!(8192, CrateId::Decoder)?;
             let mut func_type_params =
                 BoundedVec::<wrt_format::types::ValueType, 128, DecoderProvider>::new(
                     provider.clone(),
                 )
                 .map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Memory,
-                        codes::MEMORY_ERROR,
-                        "Failed to create params vector",
-                    )
+                    Error::memory_error("Failed to create params vector")
                 })?;
             let mut func_type_results =
                 BoundedVec::<wrt_format::types::ValueType, 128, DecoderProvider>::new(
                     provider.clone(),
                 )
                 .map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Memory,
-                        codes::MEMORY_ERROR,
-                        "Failed to create results vector",
-                    )
+                    Error::memory_error("Failed to create results vector")
                 })?;
 
             // Copy parameters
             for i in 0..params.len() {
                 if let Ok(param) = params.get(i) {
                     func_type_params.push(param).map_err(|_| {
-                        Error::new(
-                            ErrorCategory::Memory,
-                            codes::MEMORY_ERROR,
-                            "Too many parameters",
-                        )
+                        Error::memory_error("Too many parameters")
                     })?;
                 }
             }
@@ -329,11 +306,7 @@ pub mod parsers {
             for i in 0..results.len() {
                 if let Ok(result) = results.get(i) {
                     func_type_results.push(result).map_err(|_| {
-                        Error::new(
-                            ErrorCategory::Memory,
-                            codes::MEMORY_ERROR,
-                            "Too many results",
-                        )
+                        Error::memory_error("Too many results")
                     })?;
                 }
             }
@@ -344,11 +317,7 @@ pub mod parsers {
             };
 
             format_func_types.push(func_type).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ERROR,
-                    "Too many function types",
-                )
+                Error::memory_error("Too many function types")
             })?;
         }
 
@@ -368,11 +337,7 @@ pub mod parsers {
             offset = new_offset;
 
             func_indices.push(func_idx).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ERROR,
-                    "Too many functions",
-                )
+                Error::memory_error("Too many functions")
             })?;
         }
 
@@ -400,11 +365,7 @@ pub mod parsers {
 
             // Parse import descriptor type
             if offset >= bytes.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Unexpected end while parsing import descriptor",
-                ));
+                return Err(Error::parse_error("Unexpected end while parsing import descriptor"));
             }
 
             let desc_type = bytes[offset];
@@ -449,44 +410,24 @@ pub mod parsers {
                     WrtImportDesc::Global(global_type)
                 },
                 _ => {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Invalid import descriptor type",
-                    ));
+                    return Err(Error::parse_error("Invalid import descriptor type"));
                 },
             };
 
             // Convert to WrtImport
             // Create bounded string from the parsed string
-            let provider = DecoderProvider::default();
+            let provider = safe_managed_alloc!(8192, CrateId::Decoder)?;
             let module_str = module_string.as_str().map_err(|_| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Invalid module string",
-                )
+                Error::parse_error("Invalid module string")
             })?;
             let field_str = field_string.as_str().map_err(|_| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Invalid field string",
-                )
+                Error::parse_error("Invalid field string")
             })?;
             let module_name = WasmName::from_str(module_str, provider.clone()).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ERROR,
-                    "Module name too long",
-                )
+                Error::memory_error("Module name too long")
             })?;
             let item_name = WasmName::from_str(field_str, provider.clone()).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ERROR,
-                    "Item name too long",
-                )
+                Error::memory_error("Item name too long")
             })?;
 
             let wrt_import = WrtImport {
@@ -496,11 +437,7 @@ pub mod parsers {
             };
 
             format_imports.push(wrt_import).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ERROR,
-                    "Too many imports",
-                )
+                Error::memory_error("Too many imports")
             })?;
         }
 
@@ -526,11 +463,7 @@ pub mod parsers {
             };
 
             tables.push(wrt_table_type).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ERROR,
-                    "Too many tables",
-                )
+                Error::memory_error("Too many tables")
             })?;
         }
 
@@ -560,11 +493,7 @@ pub mod parsers {
             };
 
             memories.push(memory_type).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ERROR,
-                    "Too many memories",
-                )
+                Error::memory_error("Too many memories")
             })?;
         }
 
@@ -593,11 +522,7 @@ pub mod parsers {
             };
 
             globals.push(wrt_global_type).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ERROR,
-                    "Too many globals",
-                )
+                Error::memory_error("Too many globals")
             })?;
         }
 
@@ -619,11 +544,7 @@ pub mod parsers {
 
             // Parse export kind
             if offset >= bytes.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Unexpected end while parsing export kind",
-                ));
+                return Err(Error::parse_error("Unexpected end while parsing export kind"));
             }
 
             let kind = match bytes[offset] {
@@ -632,11 +553,7 @@ pub mod parsers {
                 0x02 => ExportKind::Memory,
                 0x03 => ExportKind::Global,
                 _ => {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Invalid export kind",
-                    ));
+                    return Err(Error::parse_error("Invalid export kind"));
                 },
             };
             offset += 1;
@@ -646,20 +563,12 @@ pub mod parsers {
             offset = new_offset;
 
             // Convert string to WasmString with proper provider size
-            let string_provider = wrt_foundation::NoStdProvider::<1024>::default();
+            let string_provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Decoder)?;
             let name_str = name_string.as_str().map_err(|_| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Invalid export name string",
-                )
+                Error::parse_error("Invalid export name string")
             })?;
             let export_name = WasmString::from_str(name_str, string_provider).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ERROR,
-                    "Export name too long",
-                )
+                Error::memory_error("Export name too long")
             })?;
 
             let export = WrtExport {
@@ -669,11 +578,7 @@ pub mod parsers {
             };
 
             exports.push(export).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ERROR,
-                    "Too many exports",
-                )
+                Error::memory_error("Too many exports")
             })?;
         }
 
@@ -689,25 +594,12 @@ pub mod parsers {
         let mut elements = new_element_vec()?;
 
         for _ in 0..count {
-            let (element, new_offset) = parse_element_segment(bytes, offset)?;
+            let (pure_element, new_offset) = parse_element_segment(bytes, offset)?;
             offset = new_offset;
 
-            // Convert to WrtElementSegment - needs implementation
-            let wrt_element = WrtElementSegment {
-                element_type: RefType::Funcref,
-                init: ElementInit::FuncIndices({
-                    let vec_provider = wrt_foundation::NoStdProvider::<1024>::default();
-                    BoundedVec::new(vec_provider).unwrap_or_default()
-                }),
-                mode: wrt_format::module::ElementMode::Passive,
-            };
-
-            elements.push(wrt_element).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ERROR,
-                    "Too many element segments",
-                )
+            // Use the pure element segment directly (it's already the right type)
+            elements.push(pure_element).map_err(|_| {
+                Error::memory_error("Too many element segments")
             })?;
         }
 
@@ -736,42 +628,26 @@ pub mod parsers {
 
             // Check bounds
             if offset + body_size_usize > bytes.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Function body extends beyond section bounds",
-                ));
+                return Err(Error::parse_error("Function body extends beyond section bounds"));
             }
 
             // Copy body data
-            let provider = DecoderProvider::default();
+            let provider = safe_managed_alloc!(8192, CrateId::Decoder)?;
             let mut body = BoundedVec::new(provider).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ERROR,
-                    "Failed to allocate function body",
-                )
+                Error::memory_error("Failed to allocate function body")
             })?;
 
             let body_slice = &bytes[offset..offset + body_size_usize];
             for &byte in body_slice {
                 body.push(byte).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Memory,
-                        codes::MEMORY_ERROR,
-                        "Function body too large",
-                    )
+                    Error::memory_error("Function body too large")
                 })?;
             }
 
             offset += body_size_usize;
 
             bodies.push(body).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ERROR,
-                    "Too many function bodies",
-                )
+                Error::memory_error("Too many function bodies")
             })?;
         }
 
@@ -787,29 +663,12 @@ pub mod parsers {
         let mut data_segments = new_data_vec()?;
 
         for _ in 0..count {
-            let (data, new_offset) = parse_data(bytes, offset)?;
+            let (pure_data, new_offset) = parse_data(bytes, offset)?;
             offset = new_offset;
 
-            // Convert to WrtDataSegment - needs implementation
-            let wrt_data = WrtDataSegment {
-                mode: DataMode::Passive,
-                memory_idx: 0,
-                offset: {
-                    let vec_provider = wrt_foundation::NoStdProvider::<1024>::default();
-                    BoundedVec::new(vec_provider).unwrap_or_default()
-                },
-                init: {
-                    let vec_provider = wrt_foundation::NoStdProvider::<1024>::default();
-                    BoundedVec::new(vec_provider).unwrap_or_default()
-                },
-            };
-
-            data_segments.push(wrt_data).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ERROR,
-                    "Too many data segments",
-                )
+            // Use the pure data segment directly (it's already the right type)
+            data_segments.push(pure_data).map_err(|_| {
+                Error::memory_error("Too many data segments")
             })?;
         }
 

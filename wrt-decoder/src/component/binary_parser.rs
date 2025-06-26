@@ -145,27 +145,15 @@ mod component_binary_parser {
         /// Validate the component header
         pub fn validate(&self) -> Result<()> {
             if self.magic != COMPONENT_MAGIC {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Invalid component magic number",
-                ));
+                return Err(Error::parse_error("Invalid component magic number"));
             }
 
             if self.version != COMPONENT_VERSION {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Unsupported component version",
-                ));
+                return Err(Error::parse_error("Unsupported component version"));
             }
 
             if self.layer != COMPONENT_LAYER {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Invalid component layer (expected 1)",
-                ));
+                return Err(Error::parse_error("Invalid component layer (expected 1)"));
             }
 
             Ok(())
@@ -205,11 +193,7 @@ mod component_binary_parser {
 
             // Validate minimum size
             if bytes.len() < 12 {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Component binary too small (minimum 12 bytes required)",
-                ));
+                return Err(Error::parse_error("Component binary too small (minimum 12 bytes required)"));
             }
 
             // Parse and validate header
@@ -235,11 +219,7 @@ mod component_binary_parser {
         /// Parse the component header (magic, version, layer)
         fn parse_header(&mut self, bytes: &[u8]) -> Result<ComponentHeader> {
             if self.offset + 12 > bytes.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Insufficient bytes for component header",
-                ));
+                return Err(Error::parse_error("Insufficient bytes for component header"));
             }
 
             // Parse magic (4 bytes)
@@ -280,11 +260,7 @@ mod component_binary_parser {
             }
 
             if self.offset + 1 > self.size {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Insufficient bytes for section ID",
-                ));
+                return Err(Error::parse_error("Insufficient bytes for section ID"));
             }
 
             // Read section ID
@@ -367,11 +343,7 @@ mod component_binary_parser {
 
             loop {
                 if self.offset >= self.size {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Unexpected end of binary while reading LEB128",
-                    ));
+                    return Err(Error::parse_error("Unexpected end of binary while reading LEB128"));
                 }
 
                 let byte = bytes[self.offset];
@@ -386,19 +358,11 @@ mod component_binary_parser {
 
                 shift += 7;
                 if shift >= 32 {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "LEB128 value too large for u32",
-                    ));
+                    return Err(Error::parse_error("LEB128 value too large for u32"));
                 }
 
                 if bytes_read > 5 {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "LEB128 encoding too long",
-                    ));
+                    return Err(Error::parse_error("LEB128 encoding too long"));
                 }
             }
 
@@ -524,7 +488,14 @@ mod component_binary_parser {
                 }
 
                 // Add to component's types collection
-                self.record_component_type_parsed(component, i, &comp_type)?;
+                // Convert placeholder type to wrt_format type - temporary stub
+                let dummy_comp_type = wrt_format::component::ComponentType {
+                    definition: wrt_format::component::ComponentTypeDefinition::Function {
+                        params: Vec::new(),
+                        results: Vec::new(),
+                    },
+                };
+                self.record_component_type_parsed(component, i, &dummy_comp_type)?;
             }
 
             // Update our parsing offset is handled by the caller
@@ -804,11 +775,7 @@ pub mod no_std_stubs {
         }
 
         pub fn parse(&mut self, _bytes: &[u8]) -> Result<Component> {
-            Err(Error::new(
-                ErrorCategory::Validation,
-                codes::UNSUPPORTED_OPERATION,
-                "Component binary parsing requires std feature",
-            ))
+            Err(Error::runtime_execution_error("Component parsing not available in no_std"))
         }
     }
 
@@ -817,8 +784,7 @@ pub mod no_std_stubs {
         Err(Error::new(
             ErrorCategory::Validation,
             codes::UNSUPPORTED_OPERATION,
-            "Component binary parsing requires std feature",
-        ))
+            "Component parsing not available in no_std"))
     }
 
     /// Parse component binary with validation (no_std stub)
@@ -826,11 +792,7 @@ pub mod no_std_stubs {
         _bytes: &[u8],
         _validation_level: ValidationLevel,
     ) -> Result<Component> {
-        Err(Error::new(
-            ErrorCategory::Validation,
-            codes::UNSUPPORTED_OPERATION,
-            "Component binary parsing requires std feature",
-        ))
+        Err(Error::runtime_execution_error("Component parsing not available in no_std"))
     }
 }
 

@@ -35,35 +35,21 @@ use alloc::{boxed::Box, vec::Vec};
 use std::{boxed::Box, vec::Vec};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
+use crate::prelude::*;
+use crate::prelude::{DecoderStringExt, DecoderVecExt};
+use self::placeholder_types::*;
 #[cfg(feature = "std")]
-use wrt_format::{
-    binary::{read_leb128_u32, read_string},
-    component::{ComponentType, ComponentTypeDefinition, ExternType, FormatValType},
-};
+use wrt_format::{binary::{read_leb128_u32, read_string}, component};
 
-#[cfg(feature = "std")]
-struct ComponentImport {
-    pub namespace: crate::prelude::DecoderString,
-    pub name: crate::prelude::DecoderString,
-    pub extern_type: ExternType,
-}
-
-#[cfg(feature = "std")]
-struct ComponentExport {
-    pub name: crate::prelude::DecoderString,
-    pub extern_type: ExternType,
-}
 
 #[cfg(not(feature = "std"))]
 use wrt_format::binary::{read_leb128_u32, read_string};
 
-// Define placeholder types for no_std environments where component types aren't
-// available
-#[cfg(not(feature = "std"))]
+// Define types that work in both std and no_std environments
 mod placeholder_types {
     use core::fmt;
 
-    use wrt_error::Result;
+    use wrt_error::{Result, Error, ErrorCategory, codes};
 
     use crate::prelude::DecoderVec;
 
@@ -85,6 +71,12 @@ mod placeholder_types {
         pub extern_type: ExternType,
     }
 
+    #[derive(Debug, Clone, PartialEq, Eq, Default)]
+    pub struct FunctionParam {
+        pub name: crate::prelude::DecoderString,
+        pub val_type: FormatValType,
+    }
+
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum ComponentTypeDefinition {
         Component {
@@ -95,7 +87,7 @@ mod placeholder_types {
             exports: DecoderVec<ComponentExport>,
         },
         Function {
-            params: DecoderVec<(crate::prelude::DecoderString, FormatValType)>,
+            params: DecoderVec<FunctionParam>,
             results: DecoderVec<FormatValType>,
         },
         Value(FormatValType),
@@ -114,7 +106,7 @@ mod placeholder_types {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum ExternType {
         Function {
-            params: DecoderVec<(crate::prelude::DecoderString, FormatValType)>,
+            params: DecoderVec<FunctionParam>,
             results: DecoderVec<FormatValType>,
         },
         Value(FormatValType),
@@ -152,6 +144,9 @@ mod placeholder_types {
         String,
         Record(DecoderVec<(crate::prelude::DecoderString, FormatValType)>),
         Variant(DecoderVec<(crate::prelude::DecoderString, Option<FormatValType>)>),
+        #[cfg(feature = "std")]
+        List(Box<FormatValType>),
+        #[cfg(not(feature = "std"))]
         List(u32),
         Tuple(DecoderVec<FormatValType>),
         Own(u32),
@@ -161,6 +156,31 @@ mod placeholder_types {
     impl wrt_format::Validatable for ComponentType {
         fn validate(&self) -> Result<()> {
             Ok(())
+        }
+    }
+
+    // Conversion function from wrt_format types to placeholder types
+    #[cfg(feature = "std")]
+    impl From<wrt_format::component::FormatValType> for FormatValType {
+        fn from(val: wrt_format::component::FormatValType) -> Self {
+            use wrt_format::component::FormatValType as WrtFormat;
+            match val {
+                WrtFormat::Bool => FormatValType::Bool,
+                WrtFormat::S8 => FormatValType::S8,
+                WrtFormat::U8 => FormatValType::U8,
+                WrtFormat::S16 => FormatValType::S16,
+                WrtFormat::U16 => FormatValType::U16,
+                WrtFormat::S32 => FormatValType::S32,
+                WrtFormat::U32 => FormatValType::U32,
+                WrtFormat::S64 => FormatValType::S64,
+                WrtFormat::U64 => FormatValType::U64,
+                WrtFormat::F32 => FormatValType::F32,
+                WrtFormat::F64 => FormatValType::F64,
+                WrtFormat::Char => FormatValType::Char,
+                WrtFormat::String => FormatValType::String,
+                // For complex types, use placeholders for now
+                _ => FormatValType::Bool, // Placeholder
+            }
         }
     }
 
@@ -229,99 +249,279 @@ mod placeholder_types {
     // Implement required traits for ComponentImport
     impl Checksummable for ComponentImport {
         fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-            checksum.update_slice(&[0]); // Placeholder implementation
+            self.namespace.update_checksum(checksum);
+            self.name.update_checksum(checksum);
+            self.extern_type.update_checksum(checksum);
         }
     }
 
     impl ToBytes for ComponentImport {
         fn serialized_size(&self) -> usize {
-            0 // Placeholder implementation
+            self.namespace.serialized_size() + 
+            self.name.serialized_size() + 
+            self.extern_type.serialized_size()
         }
 
-        fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
             &self,
-            _writer: &mut wrt_foundation::traits::WriteStream<'_>,
-            _provider: &P,
+            writer: &mut wrt_foundation::traits::WriteStream<'a>,
+            provider: &P,
         ) -> wrt_foundation::Result<()> {
-            Ok(()) // Placeholder implementation
+            self.namespace.to_bytes_with_provider(writer, provider)?;
+            self.name.to_bytes_with_provider(writer, provider)?;
+            self.extern_type.to_bytes_with_provider(writer, provider)?;
+            Ok(())
         }
     }
 
     impl FromBytes for ComponentImport {
-        fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
-            _reader: &mut wrt_foundation::traits::ReadStream<'_>,
-            _provider: &P,
+        fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+            reader: &mut wrt_foundation::traits::ReadStream<'a>,
+            provider: &P,
         ) -> wrt_foundation::Result<Self> {
-            Ok(Self::default()) // Placeholder implementation
+            Ok(Self {
+                namespace: {
+                    let s = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
+                    s
+                },
+                name: {
+                    let s = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
+                    s
+                },
+                extern_type: ExternType::from_bytes_with_provider(reader, provider)?,
+            })
         }
     }
 
     // Implement required traits for ComponentExport
     impl Checksummable for ComponentExport {
         fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-            checksum.update_slice(&[0]); // Placeholder implementation
+            self.name.update_checksum(checksum);
+            self.extern_type.update_checksum(checksum);
         }
     }
 
     impl ToBytes for ComponentExport {
         fn serialized_size(&self) -> usize {
-            0 // Placeholder implementation
+            self.name.serialized_size() + self.extern_type.serialized_size()
         }
 
-        fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
             &self,
-            _writer: &mut wrt_foundation::traits::WriteStream<'_>,
-            _provider: &P,
+            writer: &mut wrt_foundation::traits::WriteStream<'a>,
+            provider: &P,
         ) -> wrt_foundation::Result<()> {
-            Ok(()) // Placeholder implementation
+            self.name.to_bytes_with_provider(writer, provider)?;
+            self.extern_type.to_bytes_with_provider(writer, provider)?;
+            Ok(())
         }
     }
 
     impl FromBytes for ComponentExport {
-        fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
-            _reader: &mut wrt_foundation::traits::ReadStream<'_>,
-            _provider: &P,
+        fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+            reader: &mut wrt_foundation::traits::ReadStream<'a>,
+            provider: &P,
         ) -> wrt_foundation::Result<Self> {
-            Ok(Self::default()) // Placeholder implementation
+            Ok(Self {
+                name: {
+                    let s = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
+                    s
+                },
+                extern_type: ExternType::from_bytes_with_provider(reader, provider)?,
+            })
+        }
+    }
+
+    // Implement required traits for FunctionParam
+    impl Checksummable for FunctionParam {
+        fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+            self.name.update_checksum(checksum);
+            self.val_type.update_checksum(checksum);
+        }
+    }
+
+    impl ToBytes for FunctionParam {
+        fn serialized_size(&self) -> usize {
+            self.name.serialized_size() + self.val_type.serialized_size()
+        }
+
+        fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+            &self,
+            writer: &mut wrt_foundation::traits::WriteStream<'a>,
+            provider: &P,
+        ) -> wrt_foundation::Result<()> {
+            self.name.to_bytes_with_provider(writer, provider)?;
+            self.val_type.to_bytes_with_provider(writer, provider)?;
+            Ok(())
+        }
+    }
+
+    impl FromBytes for FunctionParam {
+        fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+            reader: &mut wrt_foundation::traits::ReadStream<'a>,
+            provider: &P,
+        ) -> wrt_foundation::Result<Self> {
+            Ok(Self {
+                name: {
+                    let s = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
+                    s
+                },
+                val_type: FormatValType::from_bytes_with_provider(reader, provider)?,
+            })
         }
     }
 
     // Implement required traits for ExternType
     impl Checksummable for ExternType {
         fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-            checksum.update_slice(&[0]); // Placeholder implementation
+            match self {
+                ExternType::Function { params, results } => {
+                    checksum.update(0u8); // Tag for Function
+                    // Use manual checksum update for Vec types
+                    for param in params.iter() {
+                        param.update_checksum(checksum);
+                    }
+                    for result in results.iter() {
+                        result.update_checksum(checksum);
+                    }
+                }
+                ExternType::Value(val_type) => {
+                    checksum.update(1u8); // Tag for Value
+                    val_type.update_checksum(checksum);
+                }
+                ExternType::Type(idx) => {
+                    checksum.update(2u8); // Tag for Type
+                    checksum.update_slice(&idx.to_le_bytes());
+                }
+                ExternType::Instance { exports } => {
+                    checksum.update(3u8); // Tag for Instance
+                    for export in exports.iter() {
+                        export.update_checksum(checksum);
+                    }
+                }
+                ExternType::Component { imports, exports } => {
+                    checksum.update(4u8); // Tag for Component
+                    for import in imports.iter() {
+                        import.update_checksum(checksum);
+                    }
+                    for export in exports.iter() {
+                        export.update_checksum(checksum);
+                    }
+                }
+            }
         }
     }
 
     impl ToBytes for ExternType {
         fn serialized_size(&self) -> usize {
-            0 // Placeholder implementation
+            1 + match self { // 1 byte for tag
+                ExternType::Function { params, results } => {
+                    params.len() * 4 + results.len() * 4 // Approximate size
+                }
+                ExternType::Value(val_type) => val_type.serialized_size(),
+                ExternType::Type(_) => 4, // u32
+                ExternType::Instance { exports } => exports.len() * 8, // Approximate size
+                ExternType::Component { imports, exports } => {
+                    imports.len() * 8 + exports.len() * 8 // Approximate size
+                }
+            }
         }
 
-        fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
             &self,
-            _writer: &mut wrt_foundation::traits::WriteStream<'_>,
-            _provider: &P,
+            writer: &mut wrt_foundation::traits::WriteStream<'a>,
+            provider: &P,
         ) -> wrt_foundation::Result<()> {
-            Ok(()) // Placeholder implementation
+            match self {
+                ExternType::Function { params, results } => {
+                    writer.write_u8(0)?; // Tag
+                    // Manual serialization for Vec types
+                    for param in params.iter() {
+                        param.to_bytes_with_provider(writer, provider)?;
+                    }
+                    for result in results.iter() {
+                        result.to_bytes_with_provider(writer, provider)?;
+                    }
+                }
+                ExternType::Value(val_type) => {
+                    writer.write_u8(1)?; // Tag
+                    val_type.to_bytes_with_provider(writer, provider)?;
+                }
+                ExternType::Type(idx) => {
+                    writer.write_u8(2)?; // Tag
+                    writer.write_u32_le(*idx)?;
+                }
+                ExternType::Instance { exports } => {
+                    writer.write_u8(3)?; // Tag
+                    for export in exports.iter() {
+                        export.to_bytes_with_provider(writer, provider)?;
+                    }
+                }
+                ExternType::Component { imports, exports } => {
+                    writer.write_u8(4)?; // Tag
+                    for import in imports.iter() {
+                        import.to_bytes_with_provider(writer, provider)?;
+                    }
+                    for export in exports.iter() {
+                        export.to_bytes_with_provider(writer, provider)?;
+                    }
+                }
+            }
+            Ok(())
         }
     }
 
     impl FromBytes for ExternType {
-        fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
-            _reader: &mut wrt_foundation::traits::ReadStream<'_>,
-            _provider: &P,
+        fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+            reader: &mut wrt_foundation::traits::ReadStream<'a>,
+            provider: &P,
         ) -> wrt_foundation::Result<Self> {
-            Ok(Self::default()) // Placeholder implementation
+            let tag = reader.read_u8()?;
+            match tag {
+                0 => Ok(ExternType::Function {
+                    params: {
+                        let v: DecoderVec<FunctionParam> = <DecoderVec<FunctionParam> as crate::prelude::DecoderVecExt<FunctionParam>>::from_bytes_with_provider(reader, provider)?;
+                        v
+                    },
+                    results: {
+                        let v: DecoderVec<FormatValType> = <DecoderVec<FormatValType> as crate::prelude::DecoderVecExt<FormatValType>>::from_bytes_with_provider(reader, provider)?;
+                        v
+                    },
+                }),
+                1 => Ok(ExternType::Value(
+                    FormatValType::from_bytes_with_provider(reader, provider)?
+                )),
+                2 => Ok(ExternType::Type(reader.read_u32_le()?)),
+                3 => Ok(ExternType::Instance {
+                    exports: {
+                        let v: DecoderVec<ComponentExport> = <DecoderVec<ComponentExport> as crate::prelude::DecoderVecExt<ComponentExport>>::from_bytes_with_provider(reader, provider)?;
+                        v
+                    },
+                }),
+                4 => Ok(ExternType::Component {
+                    imports: {
+                        let v: DecoderVec<ComponentImport> = <DecoderVec<ComponentImport> as crate::prelude::DecoderVecExt<ComponentImport>>::from_bytes_with_provider(reader, provider)?;
+                        v
+                    },
+                    exports: {
+                        let v: DecoderVec<ComponentExport> = <DecoderVec<ComponentExport> as crate::prelude::DecoderVecExt<ComponentExport>>::from_bytes_with_provider(reader, provider)?;
+                        v
+                    },
+                }),
+                _ => Err(Error::parse_error("Invalid ExternType tag ")),
+            }
         }
     }
 }
 
+// Use the same types in both std and no_std modes for consistency
+use placeholder_types::{ComponentImport, ComponentExport, FunctionParam};
+
 #[cfg(not(feature = "std"))]
 use placeholder_types::{ComponentType, ComponentTypeDefinition, ExternType, FormatValType};
 use wrt_foundation::{
-    budget_aware_provider::CrateId, safe_memory::NoStdProvider, traits::BoundedCapacity,
-    BoundedVec, VerificationLevel,
+    budget_aware_provider::CrateId, safe_memory::{NoStdProvider, NoStdMemoryProvider}, 
+    traits::BoundedCapacity, BoundedVec, VerificationLevel,
 };
 
 // Import the unified bounded decoder infrastructure
@@ -344,7 +544,7 @@ fn create_decoder_provider<const N: usize>(
 type BoundedTypeVec<T> = Vec<T>;
 
 // Import bounded types from prelude
-use crate::prelude::{DecoderString, DecoderVec};
+use crate::prelude::*;
 
 /// Maximum size of a single type definition (64KB, ASIL constraint)
 pub const MAX_TYPE_DEFINITION_SIZE: usize = 64 * 1024;
@@ -394,20 +594,12 @@ impl<'a> StreamingTypeParser<'a> {
     /// A new parser instance ready to process component types
     pub fn new(data: &'a [u8], verification_level: VerificationLevel) -> Result<Self> {
         if data.is_empty() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_BINARY,
-                "Empty component type section data",
-            ));
+            return Err(Error::runtime_execution_error("Streaming type parser error "));
         }
 
         // ASIL constraint: Verify data size constraints
         if data.len() > MAX_TYPE_DEFINITION_SIZE {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Component type section exceeds maximum size",
-            ));
+            return Err(Error::validation_error("Type definition size exceeds maximum"));
         }
 
         Ok(Self {
@@ -433,11 +625,7 @@ impl<'a> StreamingTypeParser<'a> {
 
         // ASIL constraint: Validate type count
         if type_count > MAX_TYPES_PER_COMPONENT as u32 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Too many component types in section",
-            ));
+            return Err(Error::validation_error("Too many component types in section "));
         }
 
         // Initialize storage using unified provider system
@@ -458,18 +646,24 @@ impl<'a> StreamingTypeParser<'a> {
 
     /// Create type storage using unified provider system
     fn create_type_storage(&self) -> Result<BoundedTypeVec<ComponentType>> {
-        // Use std Vec for BoundedTypeVec
-        Ok(Vec::new())
+        // For std mode, use Vec
+        #[cfg(feature = "std")]
+        {
+            Ok(Vec::new())
+        }
+        
+        // For no_std mode, use BoundedVec
+        #[cfg(not(feature = "std"))]
+        {
+            let provider = create_decoder_provider::<65536>()?;
+            Ok(BoundedVec::new(provider)?)
+        }
     }
 
     /// Parse a single component type from the binary stream
     fn parse_single_component_type(&mut self, type_index: u32) -> Result<ComponentType> {
         if self.offset >= self.data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unexpected end of type section",
-            ));
+            return Err(Error::parse_error("Unexpected end of type section "));
         }
 
         // Read type form
@@ -478,11 +672,7 @@ impl<'a> StreamingTypeParser<'a> {
 
         // ASIL constraint: Check recursion depth
         if self.recursion_depth >= MAX_TYPE_RECURSION_DEPTH {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Type recursion depth exceeded",
-            ));
+            return Err(Error::validation_error("Type recursion depth exceeded "));
         }
 
         self.recursion_depth += 1;
@@ -494,11 +684,7 @@ impl<'a> StreamingTypeParser<'a> {
             0x43 => self.parse_value_type_definition()?,
             0x44 => self.parse_resource_type_definition()?,
             _ => {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Unknown component type form",
-                ));
+                return Err(Error::parse_error("Unknown component type form "));
             },
         };
 
@@ -514,25 +700,25 @@ impl<'a> StreamingTypeParser<'a> {
         self.offset += bytes_read;
 
         #[cfg(not(feature = "std"))]
-        let mut imports = {
-            let provider = create_decoder_provider::<4096>()?;
-            DecoderVec::new(provider.clone())?
-        };
+        let provider = create_decoder_provider::<4096>()?;
+        
+        #[cfg(not(feature = "std"))]
+        let mut imports = DecoderVec::new(provider.clone())?;
         #[cfg(feature = "std")]
         let mut imports = DecoderVec::new();
         for _ in 0..import_count {
             let namespace = self.read_string()?;
             let name = self.read_string()?;
             let extern_type = self.parse_extern_type()?;
-            // Create tuple format expected by ComponentTypeDefinition::Component
-            let import = (namespace, name, extern_type);
+            // Create ComponentImport struct
+            let import = ComponentImport {
+                namespace,
+                name,
+                extern_type,
+            };
             #[cfg(not(feature = "std"))]
             imports.push(import).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::CAPACITY_EXCEEDED,
-                    "Too many imports in component type",
-                )
+                Error::runtime_execution_error("Streaming type parser error ")
             })?;
             #[cfg(feature = "std")]
             imports.push(import);
@@ -549,15 +735,14 @@ impl<'a> StreamingTypeParser<'a> {
         for _ in 0..export_count {
             let name = self.read_string()?;
             let extern_type = self.parse_extern_type()?;
-            // Create tuple format expected by ComponentTypeDefinition::Component
-            let export = (name, extern_type);
+            // Create ComponentExport struct
+            let export = ComponentExport {
+                name,
+                extern_type,
+            };
             #[cfg(not(feature = "std"))]
             exports.push(export).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::CAPACITY_EXCEEDED,
-                    "Too many exports in component type",
-                )
+                Error::runtime_execution_error("Streaming type parser error ")
             })?;
             #[cfg(feature = "std")]
             exports.push(export);
@@ -582,15 +767,14 @@ impl<'a> StreamingTypeParser<'a> {
         for _ in 0..export_count {
             let name = self.read_string()?;
             let extern_type = self.parse_extern_type()?;
-            // Create tuple format expected by ComponentTypeDefinition::Instance
-            let export = (name, extern_type);
+            // Create ComponentExport struct
+            let export = ComponentExport {
+                name,
+                extern_type,
+            };
             #[cfg(not(feature = "std"))]
             exports.push(export).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::CAPACITY_EXCEEDED,
-                    "Too many exports in instance type",
-                )
+                Error::runtime_execution_error("Streaming type parser error ")
             })?;
             #[cfg(feature = "std")]
             exports.push(export);
@@ -615,16 +799,13 @@ impl<'a> StreamingTypeParser<'a> {
         for _ in 0..param_count {
             let name = self.read_string()?;
             let val_type = self.parse_value_type()?;
+            let param = FunctionParam { name, val_type: val_type.into() };
             #[cfg(not(feature = "std"))]
-            params.push((name, val_type)).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::CAPACITY_EXCEEDED,
-                    "Too many parameters in function type",
-                )
+            params.push(param).map_err(|_| {
+                Error::runtime_execution_error("Streaming type parser error ")
             })?;
             #[cfg(feature = "std")]
-            params.push((name, val_type));
+            params.push(param);
         }
 
         // Read result count
@@ -642,11 +823,7 @@ impl<'a> StreamingTypeParser<'a> {
             let val_type = self.parse_value_type()?;
             #[cfg(not(feature = "std"))]
             results.push(val_type).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::CAPACITY_EXCEEDED,
-                    "Too many results in function type",
-                )
+                Error::runtime_execution_error("Streaming type parser error ")
             })?;
             #[cfg(feature = "std")]
             results.push(val_type);
@@ -676,8 +853,8 @@ impl<'a> StreamingTypeParser<'a> {
         #[cfg(feature = "std")]
         {
             Ok(ComponentTypeDefinition::Resource {
-                representation,
-                nullable,
+                name: None, // Placeholder for now
+                functions: DecoderVec::new(),
             })
         }
         #[cfg(not(feature = "std"))]
@@ -693,11 +870,7 @@ impl<'a> StreamingTypeParser<'a> {
     /// Parse extern type
     fn parse_extern_type(&mut self) -> Result<ExternType> {
         if self.offset >= self.data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unexpected end while reading extern type",
-            ));
+            return Err(Error::parse_error("Unexpected end while reading extern type "));
         }
 
         let extern_form = self.data[self.offset];
@@ -719,16 +892,13 @@ impl<'a> StreamingTypeParser<'a> {
                 for _ in 0..param_count {
                     let name = self.read_string()?;
                     let val_type = self.parse_value_type()?;
+                    let param = FunctionParam { name, val_type: val_type.into() };
                     #[cfg(not(feature = "std"))]
-                    params.push((name, val_type)).map_err(|_| {
-                        Error::new(
-                            ErrorCategory::Resource,
-                            codes::CAPACITY_EXCEEDED,
-                            "Too many parameters in extern function type",
-                        )
+                    params.push(param).map_err(|_| {
+                        Error::runtime_execution_error("Streaming type parser error ")
                     })?;
                     #[cfg(feature = "std")]
-                    params.push((name, val_type));
+                    params.push(param);
                 }
 
                 let (result_count, bytes_read) = read_leb128_u32(self.data, self.offset)?;
@@ -745,11 +915,7 @@ impl<'a> StreamingTypeParser<'a> {
                     let val_type = self.parse_value_type()?;
                     #[cfg(not(feature = "std"))]
                     results.push(val_type).map_err(|_| {
-                        Error::new(
-                            ErrorCategory::Resource,
-                            codes::CAPACITY_EXCEEDED,
-                            "Too many results in extern function type",
-                        )
+                        Error::runtime_execution_error("Streaming type parser error ")
                     })?;
                     #[cfg(feature = "std")]
                     results.push(val_type);
@@ -777,11 +943,7 @@ impl<'a> StreamingTypeParser<'a> {
                 if let ComponentTypeDefinition::Instance { exports } = instance_def {
                     Ok(ExternType::Instance { exports })
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Invalid instance type definition",
-                    ))
+                    Err(Error::parse_error("Invalid instance type definition"))
                 }
             },
             0x04 => {
@@ -793,29 +955,17 @@ impl<'a> StreamingTypeParser<'a> {
                 if let ComponentTypeDefinition::Component { imports, exports } = component_def {
                     Ok(ExternType::Component { imports, exports })
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Invalid component type definition",
-                    ))
+                    Err(Error::parse_error("Invalid component type definition"))
                 }
             },
-            _ => Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unknown extern type form",
-            )),
+            _ => Err(Error::parse_error("Unknown extern type form ")),
         }
     }
 
     /// Parse component value type
     fn parse_value_type(&mut self) -> Result<FormatValType> {
         if self.offset >= self.data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unexpected end while reading value type",
-            ));
+            return Err(Error::parse_error("Unexpected end while reading value type "));
         }
 
         let val_form = self.data[self.offset];
@@ -933,11 +1083,7 @@ impl<'a> StreamingTypeParser<'a> {
                 self.offset += bytes_read;
                 Ok(FormatValType::Borrow(resource_idx))
             },
-            _ => Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unknown value type form",
-            )),
+            _ => Err(Error::parse_error("Unknown value type form ")),
         }
     }
 
@@ -953,11 +1099,7 @@ impl<'a> StreamingTypeParser<'a> {
         &mut self,
     ) -> Result<wrt_foundation::resource::ResourceRepresentation> {
         if self.offset >= self.data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unexpected end while reading resource representation",
-            ));
+            return Err(Error::parse_error("Unexpected end while reading resource representation"));
         }
 
         let repr_form = self.data[self.offset];
@@ -966,11 +1108,7 @@ impl<'a> StreamingTypeParser<'a> {
         match repr_form {
             0x00 => Ok(wrt_foundation::resource::ResourceRepresentation::Handle32),
             0x01 => Ok(wrt_foundation::resource::ResourceRepresentation::Handle64),
-            _ => Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unknown resource representation",
-            )),
+            _ => Err(Error::parse_error("Unknown resource representation")),
         }
     }
 
@@ -982,22 +1120,14 @@ impl<'a> StreamingTypeParser<'a> {
         // Convert to bounded string
         // Convert bytes to string first
         let string_str = core::str::from_utf8(&string).map_err(|_| {
-            Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Invalid UTF-8 in string",
-            )
+            Error::parse_error("Invalid UTF-8 in string")
         })?;
 
         #[cfg(not(feature = "std"))]
         let bounded_string = {
             let provider = create_decoder_provider::<4096>()?;
             DecoderString::from_str(string_str, provider).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::CAPACITY_EXCEEDED,
-                    "String too long for bounded storage",
-                )
+                Error::runtime_execution_error("Streaming type parser error ")
             })?
         };
         #[cfg(feature = "std")]
@@ -1013,18 +1143,16 @@ impl<'a> StreamingTypeParser<'a> {
         comp_type: ComponentType,
     ) -> Result<()> {
         #[cfg(not(feature = "std"))]
-        types.push(comp_type).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::CAPACITY_EXCEEDED,
-                "Component type storage capacity exceeded",
-            )
-        })?;
+        {
+            types.push(comp_type).map_err(|_| {
+                Error::runtime_execution_error("Streaming type parser error ")
+            })?;
+        }
         #[cfg(feature = "std")]
         {
             types.push(comp_type);
-            Ok(())
         }
+        Ok(())
     }
 
     /// Get current parsing offset
@@ -1050,13 +1178,18 @@ impl ComponentTypeSection {
     }
 
     /// Get a type by index (ASIL-safe)
-    pub fn get_type(&self, index: usize) -> Option<ComponentType> {
-        self.types.get(index).cloned()
+    pub fn get_type(&self, index: usize) -> wrt_error::Result<ComponentType> {
+        self.types.get(index).cloned().ok_or_else(|| {
+            wrt_error::Error::parse_error("Component type index out of bounds")
+        })
     }
 
-    /// Iterate over all types (ASIL-safe)
-    pub fn iter_types(&self) -> impl Iterator<Item = &ComponentType> + '_ {
-        self.types.iter()
+    /// Iterate over all types (ASIL-safe)  
+    /// Note: Manual iteration to work around BoundedVec iterator limitations
+    pub fn iter_types(&self) -> impl Iterator<Item = ComponentType> + '_ {
+        (0..self.types.len()).filter_map(move |i| {
+            self.types.get(i).cloned()
+        })
     }
 
     /// Get the number of types as usize
