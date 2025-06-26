@@ -99,12 +99,12 @@ pub struct CapabilityWrtFactory;
 
 impl CapabilityWrtFactory {
     /// Create a capability-gated provider using the global capability context
-    pub fn create_provider<const N: usize>(crate_id: CrateId) -> Result<crate::capabilities::CapabilityGuardedProvider<N>> {
+    pub fn create_provider<const N: usize>(crate_id: CrateId) -> Result<crate::safe_memory::NoStdProvider<N>> {
         use crate::memory_init::get_global_capability_context;
         let context = get_global_capability_context()?;
         
         // Use the context to create a capability-guarded provider
-        context.create_provider::<N>(crate_id)
+        crate::capabilities::memory_factory::MemoryFactory::create_with_context::<N>(context, crate_id)
     }
 
     /// Initialize the capability system with default crate budgets

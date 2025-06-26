@@ -52,12 +52,10 @@ pub mod static_alloc;
 pub mod verified;
 
 // Re-export key types for convenience
-pub use context::{AnyMemoryCapability, CapabilityGuardedProvider, MemoryCapabilityContext};
+pub use context::{AnyMemoryCapability, MemoryCapabilityContext};
 pub use dynamic::DynamicMemoryCapability;
-// Deprecated factory types - use MemoryFactory instead
-#[cfg(any(feature = "std", feature = "alloc"))]
-#[allow(deprecated)]
-pub use factory::{CapabilityFactoryBuilder, CapabilityMemoryFactory};
+// CapabilityGuardedProvider is still needed internally
+pub use factory::CapabilityGuardedProvider;
 pub use memory_factory::MemoryFactory;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use platform_bridge::{

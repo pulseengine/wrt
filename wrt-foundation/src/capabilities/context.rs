@@ -193,27 +193,6 @@ impl MemoryCapabilityContext {
         capability.verify_access(operation)
     }
 
-    /// Create a memory provider for a crate with capability verification
-    ///
-    /// This is the new capability-gated version of safe_managed_alloc!
-    /// DEPRECATED: Use CapabilityMemoryFactory for new code
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use CapabilityMemoryFactory::create_provider() for new code"
-    )]
-    pub fn create_provider<const N: usize>(
-        &self,
-        crate_id: CrateId,
-    ) -> Result<CapabilityGuardedProvider<N>> {
-        let capability = self.get_capability(crate_id)?;
-
-        // Verify allocation operation
-        let operation = MemoryOperation::Allocate { size: N };
-        capability.verify_access(&operation)?;
-
-        // Create the provider with capability protection
-        CapabilityGuardedProvider::new(capability.clone_capability())
-    }
 
     /// Remove a capability for a crate
     pub fn remove_capability(&mut self, crate_id: CrateId) -> Result<()> {

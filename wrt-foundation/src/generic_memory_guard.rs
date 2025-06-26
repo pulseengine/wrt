@@ -120,7 +120,7 @@ where
     }
 
     // Memory providers are managed through capability system with automatic RAII cleanup
-    // Use capability-driven memory management through CapabilityMemoryFactory instead
+    // Use capability-driven memory management through MemoryFactory instead
 }
 
 impl<P, C, I> Drop for GenericMemoryGuard<P, C, I>

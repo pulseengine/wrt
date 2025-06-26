@@ -28,107 +28,6 @@ use crate::{
 #[cfg(any(feature = "std", feature = "alloc"))]
 use super::{context::MemoryCapabilityContext, MemoryCapability, MemoryOperation};
 
-/// Capability-driven memory provider factory
-///
-/// This factory provides explicit capability injection for memory allocation,
-/// ensuring all memory operations are properly verified and authorized.
-/// 
-/// **DEPRECATED**: Use `MemoryFactory` instead for a simpler API.
-#[deprecated(note = "Use MemoryFactory for simpler memory provider creation")]
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub struct CapabilityMemoryFactory {
-    context: MemoryCapabilityContext,
-}
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-impl CapabilityMemoryFactory {
-    /// Create a new factory with the given capability context
-    pub fn new(context: MemoryCapabilityContext) -> Self {
-        Self { context }
-    }
-
-    /// Create a capability-verified memory provider
-    ///
-    /// This method verifies that the requesting crate has the necessary
-    /// capability to allocate the requested size before creating the provider.
-    pub fn create_provider<const N: usize>(
-        &self,
-        crate_id: CrateId,
-    ) -> Result<CapabilityGuardedProvider<N>> {
-        // Verify the crate has capability to allocate this size
-        let capability = self.context.get_capability(crate_id)?;
-
-        // Verify allocation operation
-        let operation = MemoryOperation::Allocate { size: N };
-        capability.verify_access(&operation)?;
-
-        // Create the underlying provider through the capability
-        CapabilityGuardedProvider::new(capability.clone_capability())
-    }
-
-    /// Create a capability-aware wrapped provider (compatible with Provider trait)
-    ///
-    /// This method creates a CapabilityAwareProvider that wraps a NoStdProvider
-    /// and can be used anywhere a Provider trait is expected.
-    pub fn create_capability_aware_provider<const N: usize>(
-        &self,
-        crate_id: CrateId,
-    ) -> Result<super::provider_bridge::CapabilityAwareProvider<NoStdProvider<N>>> {
-        // Verify the crate has capability to allocate this size
-        let capability = self.context.get_capability(crate_id)?;
-
-        // Verify allocation operation
-        let operation = MemoryOperation::Allocate { size: N };
-        capability.verify_access(&operation)?;
-
-        // Create the underlying NoStdProvider
-        let provider = NoStdProvider::<N>::default();
-
-        // Wrap with capability verification
-        Ok(super::provider_bridge::CapabilityAwareProvider::new(
-            provider,
-            capability.clone_capability(),
-            crate_id,
-        ))
-    }
-
-    /// Create a provider with explicit capability verification
-    pub fn create_verified_provider<const N: usize>(
-        &self,
-        crate_id: CrateId,
-        required_verification_level: crate::verification::VerificationLevel,
-    ) -> Result<CapabilityGuardedProvider<N>> {
-        let capability = self.context.get_capability(crate_id)?;
-
-        // Check if capability meets required verification level
-        if capability.verification_level() < required_verification_level {
-            return Err(Error::runtime_execution_error(
-                "Capability verification level too low for verified provider"
-            ));
-        }
-
-        // Verify allocation operation
-        let operation = MemoryOperation::Allocate { size: N };
-        capability.verify_access(&operation)?;
-
-        CapabilityGuardedProvider::new(capability.clone_capability())
-    }
-
-    /// Get the capability context for advanced operations
-    pub fn context(&self) -> &MemoryCapabilityContext {
-        &self.context
-    }
-
-    /// Register a new capability for a crate
-    #[cfg(any(feature = "std"))]
-    pub fn register_capability(
-        &mut self,
-        crate_id: CrateId,
-        capability: Box<dyn super::AnyMemoryCapability>,
-    ) -> Result<()> {
-        self.context.register_capability(crate_id, capability)
-    }
-}
 
 /// A memory provider that is protected by capability verification
 ///
@@ -250,65 +149,6 @@ unsafe impl<const N: usize> Send for CapabilityGuardedProvider<N> {}
 #[cfg(any(feature = "std", feature = "alloc"))]
 unsafe impl<const N: usize> Sync for CapabilityGuardedProvider<N> {}
 
-/// Builder for creating capability-driven memory factories
-///
-/// **DEPRECATED**: Use `MemoryFactory` instead for direct provider creation.
-#[deprecated(note = "Use MemoryFactory for simpler memory provider creation")]
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub struct CapabilityFactoryBuilder {
-    context: MemoryCapabilityContext,
-}
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-impl CapabilityFactoryBuilder {
-    /// Create a new builder with default capability context
-    pub fn new() -> Self {
-        Self { context: MemoryCapabilityContext::default() }
-    }
-
-    /// Create builder with custom capability context
-    pub fn with_context(context: MemoryCapabilityContext) -> Self {
-        Self { context }
-    }
-
-    /// Register a dynamic capability for a crate
-    pub fn with_dynamic_capability(
-        mut self,
-        crate_id: CrateId,
-        max_allocation: usize,
-    ) -> Result<Self> {
-        self.context.register_dynamic_capability(crate_id, max_allocation)?;
-        Ok(self)
-    }
-
-    /// Register a static capability for a crate
-    pub fn with_static_capability<const N: usize>(mut self, crate_id: CrateId) -> Result<Self> {
-        self.context.register_static_capability::<N>(crate_id)?;
-        Ok(self)
-    }
-
-    /// Register a verified capability for a crate (ASIL-D)
-    pub fn with_verified_capability<const N: usize>(
-        mut self,
-        crate_id: CrateId,
-        proofs: super::verified::VerificationProofs,
-    ) -> Result<Self> {
-        self.context.register_verified_capability::<N>(crate_id, proofs)?;
-        Ok(self)
-    }
-
-    /// Build the capability factory
-    pub fn build(self) -> CapabilityMemoryFactory {
-        CapabilityMemoryFactory::new(self.context)
-    }
-}
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-impl Default for CapabilityFactoryBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 #[cfg(all(test, any(feature = "std", feature = "alloc")))]
 mod tests {
@@ -316,54 +156,13 @@ mod tests {
     use crate::verification::VerificationLevel;
 
     #[test]
-    fn test_capability_factory_creation() {
-        let factory = CapabilityFactoryBuilder::new()
-            .with_dynamic_capability(CrateId::Foundation, 1024)
-            .unwrap()
-            .build();
-
-        assert!(factory.context().has_capability(CrateId::Foundation));
-    }
-
-    #[test]
     fn test_capability_guarded_provider() {
-        let mut factory = CapabilityFactoryBuilder::new()
-            .with_dynamic_capability(CrateId::Foundation, 4096)
-            .unwrap()
-            .build();
-
-        let mut provider = factory.create_provider::<1024>(CrateId::Foundation).unwrap();
+        // Test the CapabilityGuardedProvider directly using the new MemoryFactory
+        use crate::capabilities::MemoryFactory;
+        
+        let provider = MemoryFactory::create::<1024>(CrateId::Foundation).unwrap();
+        
+        // Test basic provider properties
         assert_eq!(provider.size(), 1024);
-
-        // Test read/write operations
-        let test_data = b"Hello, World!";
-        provider.write_bytes(0, test_data).unwrap();
-        let read_data = provider.read_bytes(0, test_data.len()).unwrap();
-        assert_eq!(read_data, test_data);
-    }
-
-    #[test]
-    fn test_capability_verification_failure() {
-        let factory = CapabilityFactoryBuilder::new()
-            .with_dynamic_capability(CrateId::Foundation, 512) // Small limit
-            .unwrap()
-            .build();
-
-        // Try to create provider larger than capability allows
-        let result = factory.create_provider::<1024>(CrateId::Foundation);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_verification_level_checking() {
-        let factory = CapabilityFactoryBuilder::new()
-            .with_dynamic_capability(CrateId::Foundation, 1024)
-            .unwrap()
-            .build();
-
-        // Request higher verification than capability provides
-        let result = factory
-            .create_verified_provider::<512>(CrateId::Foundation, VerificationLevel::Redundant);
-        assert!(result.is_err());
     }
 }

@@ -99,6 +99,10 @@ pub mod event_codes {
     pub const SAFETY_VIOLATION: u32 = 0x5000;
     /// Double free detected
     pub const SAFETY_DOUBLE_FREE: u32 = 0x5001;
+    /// Safety health degraded
+    pub const SAFETY_HEALTH_DEGRADED: u32 = 0x5002;
+    /// Memory deallocation
+    pub const MEMORY_DEALLOCATION: u32 = 0x1004;
     
     /// System initialized
     pub const LIFECYCLE_INIT: u32 = 0x6000;

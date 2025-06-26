@@ -200,6 +200,7 @@ pub fn get_browser_command(config: &CargoWrtConfig) -> Option<String> {
                 return Some(browser.to_string());
             }
         }
+        return None;
     }
 
     #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]

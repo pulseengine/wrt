@@ -157,7 +157,7 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
         &self,
         size: usize,
         min_priority: MemoryPriority,
-    ) -> Result<(crate::capabilities::CapabilityGuardedProvider<N>, usize)> {
+    ) -> Result<(crate::safe_memory::NoStdProvider<N>, usize)> {
         // Find the best sub-budget based on priority and availability
         let mut best_idx = None;
         let mut best_priority = MemoryPriority::Low;

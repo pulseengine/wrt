@@ -15,13 +15,13 @@ use crate::{
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 use crate::capabilities::{
-    CapabilityAwareProvider, CapabilityFactoryBuilder, DynamicMemoryCapability, ProviderCapabilityExt
+    CapabilityAwareProvider, DynamicMemoryCapability, ProviderCapabilityExt
 };
 
 /// DEPRECATED: Use capability-driven memory management instead
 ///
 /// This struct is deprecated as it violates capability-based design principles.
-/// Use CapabilityFactoryBuilder and CapabilityMemoryFactory for safe memory management.
+/// Use MemoryFactory for safe memory management.
 #[deprecated(
     since = "0.3.0",
     note = "Use CapabilityFactoryBuilder and safe_capability_alloc! macro instead"

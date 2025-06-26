@@ -63,26 +63,17 @@ macro_rules! safe_capability_alloc {
 /// This macro allows specifying the required verification level for the allocation.
 ///
 /// # Arguments
-/// * `$capability_context` - The MemoryCapabilityContext to use
-/// * `$crate_id` - The CrateId requesting allocation
+/// * `$crate_id` - The CrateId requesting allocation  
 /// * `$size` - The size of memory to allocate
 /// * `$verification_level` - Required VerificationLevel
 ///
 /// # Examples
 ///
 /// ```rust,no_run
-/// use wrt_foundation::capabilities::{
-///     MemoryCapabilityContext, CapabilityFactoryBuilder
-/// };
 /// use wrt_foundation::{budget_aware_provider::CrateId, verification::VerificationLevel};
 ///
 /// # fn example() -> wrt_foundation::Result<()> {
-/// let mut factory = CapabilityFactoryBuilder::new()
-///     .with_dynamic_capability(CrateId::Foundation, 4096)?
-///     .build();
-///
 /// let provider = safe_verified_alloc!(
-///     factory,
 ///     CrateId::Foundation,
 ///     1024,
 ///     VerificationLevel::Redundant
@@ -92,11 +83,10 @@ macro_rules! safe_capability_alloc {
 /// ```
 #[macro_export]
 macro_rules! safe_verified_alloc {
-    ($capability_context:expr, $crate_id:expr, $size:expr, $verification_level:expr) => {{
-        use $crate::capabilities::CapabilityMemoryFactory;
+    ($crate_id:expr, $size:expr, $verification_level:expr) => {{
+        use $crate::capabilities::MemoryFactory;
 
-        let factory = $capability_context;
-        factory.create_verified_provider::<$size>($crate_id, $verification_level)
+        MemoryFactory::create_verified::<$size>($crate_id, $verification_level)
     }};
 }
 
@@ -293,10 +283,8 @@ mod tests {
     #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn test_safe_verified_alloc_macro() {
-        let context = capability_context!(dynamic(CrateId::Foundation, 2048)).unwrap();
-
         let result =
-            safe_verified_alloc!(context, CrateId::Foundation, 1024, VerificationLevel::Standard);
+            safe_verified_alloc!(CrateId::Foundation, 1024, VerificationLevel::Standard);
         assert!(result.is_ok());
     }
 }

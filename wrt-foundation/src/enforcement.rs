@@ -36,14 +36,13 @@ pub trait MemoryManaged: sealed::Sealed {
 impl sealed::Sealed for MemoryCapabilityContext {}
 
 impl MemoryManaged for MemoryCapabilityContext {
-    type Guard<const N: usize> = CapabilityGuardedProvider<N>;
+    type Guard<const N: usize> = crate::safe_memory::NoStdProvider<N>;
 
     fn allocate<const N: usize>(
         context: &MemoryCapabilityContext,
         crate_id: CrateId,
     ) -> Result<Self::Guard<N>> {
-        #[allow(deprecated)]
-        context.create_provider::<N>(crate_id)
+        crate::capabilities::memory_factory::MemoryFactory::create_with_context::<N>(context, crate_id)
     }
 }
 
@@ -66,14 +65,13 @@ impl<const SIZE: usize, const CRATE: usize> EnforcedAllocation<SIZE, CRATE> {
         self, 
         context: &MemoryCapabilityContext,
         crate_id: CrateId,
-    ) -> Result<CapabilityGuardedProvider<SIZE>> {
+    ) -> Result<crate::safe_memory::NoStdProvider<SIZE>> {
         // Verify crate ID matches compile-time constant
         if crate_id.as_index() != CRATE {
             return Err(Error::runtime_execution_error("Crate ID mismatch in enforced allocation"));
         }
 
-        #[allow(deprecated)]
-        context.create_provider::<SIZE>(crate_id)
+        crate::capabilities::memory_factory::MemoryFactory::create_with_context::<SIZE>(context, crate_id)
     }
 }
 
@@ -90,9 +88,8 @@ impl<const SIZE: usize> AllocationToken<SIZE> {
     }
 
     /// Use the token to allocate memory
-    pub fn allocate(self, context: &MemoryCapabilityContext) -> Result<CapabilityGuardedProvider<SIZE>> {
-        #[allow(deprecated)]
-        context.create_provider::<SIZE>(self.crate_id)
+    pub fn allocate(self, context: &MemoryCapabilityContext) -> Result<crate::safe_memory::NoStdProvider<SIZE>> {
+        crate::capabilities::memory_factory::MemoryFactory::create_with_context::<SIZE>(context, self.crate_id)
     }
 }
 
