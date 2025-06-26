@@ -8,9 +8,9 @@
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-use alloc::collections::BTreeMap as HashMap;
+use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
 #[cfg(feature = "std")]
-use std::collections::HashMap;
+use std::{collections::HashMap, string::String, vec::Vec};
 
 use wrt_format::module::Module as WrtModule;
 
@@ -142,24 +142,16 @@ impl WasmInfo {
 
     /// Get module info, returning error if not a module
     pub fn require_module_info(&self) -> Result<&ModuleInfo> {
-        self.module_info.as_ref().ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::TYPE_MISMATCH,
-                "WASM binary is not a core module",
-            )
-        })
+        self.module_info
+            .as_ref()
+            .ok_or_else(|| Error::validation_type_mismatch("WASM binary is not a core module"))
     }
 
     /// Get component info, returning error if not a component
     pub fn require_component_info(&self) -> Result<&ComponentInfo> {
-        self.component_info.as_ref().ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::TYPE_MISMATCH,
-                "WASM binary is not a component",
-            )
-        })
+        self.component_info
+            .as_ref()
+            .ok_or_else(|| Error::validation_type_mismatch("WASM binary is not a component"))
     }
 }
 
@@ -177,20 +169,12 @@ impl WasmInfo {
 pub fn load_wasm_unified(binary: &[u8]) -> Result<WasmInfo> {
     // Validate basic WASM header
     if binary.len() < 8 {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Binary too small to be valid WASM",
-        ));
+        return Err(Error::parse_error("Binary too small to be valid WASM"));
     }
 
     // Check magic number
     if &binary[0..4] != b"\0asm" {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Invalid WASM magic number",
-        ));
+        return Err(Error::parse_error("Invalid WASM magic number"));
     }
 
     // Check version (1.0 for core modules, different for components)
@@ -220,11 +204,7 @@ pub fn load_wasm_unified(binary: &[u8]) -> Result<WasmInfo> {
             info.component_info = Some(extract_component_info(binary)?);
         },
         WasmFormat::Unknown => {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::UNSUPPORTED_OPERATION,
-                "Unsupported WASM format version",
-            ));
+            return Err(Error::runtime_execution_error("Unknown WebAssembly format"));
         },
     }
 
@@ -253,13 +233,8 @@ fn detect_component_format(binary: &[u8]) -> Result<bool> {
         offset += 1;
 
         // Read section size
-        let (section_size, bytes_read) = read_leb128_u32(binary, offset).map_err(|_| {
-            Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Failed to read section size",
-            )
-        })?;
+        let (section_size, bytes_read) = read_leb128_u32(binary, offset)
+            .map_err(|_| Error::parse_error("Failed to read section size"))?;
         offset += bytes_read;
         offset += section_size as usize;
     }
@@ -288,22 +263,13 @@ fn extract_module_info(binary: &[u8]) -> Result<ModuleInfo> {
         let section_id = binary[offset];
         offset += 1;
 
-        let (section_size, bytes_read) = read_leb128_u32(binary, offset).map_err(|_| {
-            Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Failed to read section size",
-            )
-        })?;
+        let (section_size, bytes_read) = read_leb128_u32(binary, offset)
+            .map_err(|_| Error::parse_error("Failed to read section size"))?;
         offset += bytes_read;
 
         let section_end = offset + section_size as usize;
         if section_end > binary.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Section extends beyond binary",
-            ));
+            return Err(Error::parse_error("Section extends beyond binary"));
         }
 
         let section_data = &binary[offset..section_end];
@@ -332,7 +298,16 @@ fn parse_type_section_info(data: &[u8], info: &mut ModuleInfo) -> Result<()> {
     for _ in 0..count {
         // For now, just add placeholder type info
         // In a full implementation, we'd parse the actual function types
+        #[cfg(feature = "std")]
         info.function_types.push("func".to_string());
+
+        #[cfg(not(feature = "std"))]
+        {
+            let provider = create_decoder_provider::<256>()?;
+            let func_str = DecoderString::from_str("func", provider)
+                .map_err(|_| Error::runtime_execution_error("Failed to create string"))?;
+            info.function_types.push(func_str);
+        }
 
         // Skip the actual type parsing for now
         if offset < data.len() {
@@ -355,21 +330,13 @@ pub(crate) fn parse_import_section_info(data: &[u8], info: &mut ModuleInfo) -> R
         offset += bytes_read;
 
         if offset + module_len as usize > data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
+            return Err(Error::parse_error(
                 "Import module name extends beyond section",
             ));
         }
 
         let module_name = core::str::from_utf8(&data[offset..offset + module_len as usize])
-            .map_err(|_| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Invalid UTF-8 in import module name",
-                )
-            })?;
+            .map_err(|_| Error::parse_error("Invalid UTF-8 in import module name"))?;
         offset += module_len as usize;
 
         // Parse import name
@@ -377,30 +344,16 @@ pub(crate) fn parse_import_section_info(data: &[u8], info: &mut ModuleInfo) -> R
         offset += bytes_read;
 
         if offset + name_len as usize > data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Import name extends beyond section",
-            ));
+            return Err(Error::parse_error("Import name extends beyond section"));
         }
 
-        let import_name =
-            core::str::from_utf8(&data[offset..offset + name_len as usize]).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Invalid UTF-8 in import name",
-                )
-            })?;
+        let import_name = core::str::from_utf8(&data[offset..offset + name_len as usize])
+            .map_err(|_| Error::parse_error("Invalid UTF-8 in import name"))?;
         offset += name_len as usize;
 
         // Parse import kind
         if offset >= data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Missing import kind",
-            ));
+            return Err(Error::parse_error("Missing import kind"));
         }
 
         let import_kind = data[offset];
@@ -429,19 +382,35 @@ pub(crate) fn parse_import_section_info(data: &[u8], info: &mut ModuleInfo) -> R
                 ImportType::Global
             },
             _ => {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Invalid import kind",
-                ));
+                return Err(Error::parse_error("Invalid import kind"));
             },
         };
 
+        #[cfg(feature = "std")]
         info.imports.push(ImportInfo {
             module: module_name.to_string(),
             name: import_name.to_string(),
             import_type,
         });
+
+        #[cfg(not(feature = "std"))]
+        {
+            let provider = create_decoder_provider::<256>()?;
+            let module = DecoderString::from_str(module_name, provider.clone())
+                .map_err(|_| Error::runtime_execution_error("Failed to create string"))?;
+            let name = DecoderString::from_str(import_name, provider).map_err(|_| {
+                Error::new(
+                    ErrorCategory::Resource,
+                    codes::CAPACITY_EXCEEDED,
+                    "Import name string too long",
+                )
+            })?;
+            info.imports.push(ImportInfo {
+                module,
+                name,
+                import_type,
+            });
+        }
     }
 
     Ok(())
@@ -486,30 +455,16 @@ pub(crate) fn parse_export_section_info(data: &[u8], info: &mut ModuleInfo) -> R
         offset += bytes_read;
 
         if offset + name_len as usize > data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Export name extends beyond section",
-            ));
+            return Err(Error::parse_error("Export name extends beyond section"));
         }
 
-        let export_name =
-            core::str::from_utf8(&data[offset..offset + name_len as usize]).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Invalid UTF-8 in export name",
-                )
-            })?;
+        let export_name = core::str::from_utf8(&data[offset..offset + name_len as usize])
+            .map_err(|_| Error::parse_error("Invalid UTF-8 in export name"))?;
         offset += name_len as usize;
 
         // Parse export kind
         if offset >= data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Missing export kind",
-            ));
+            return Err(Error::parse_error("Missing export kind"));
         }
 
         let export_kind = data[offset];
@@ -525,19 +480,28 @@ pub(crate) fn parse_export_section_info(data: &[u8], info: &mut ModuleInfo) -> R
             2 => ExportType::Memory,
             3 => ExportType::Global,
             _ => {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Invalid export kind",
-                ));
+                return Err(Error::parse_error("Invalid export kind"));
             },
         };
 
+        #[cfg(feature = "std")]
         info.exports.push(ExportInfo {
             name: export_name.to_string(),
             export_type,
             index,
         });
+
+        #[cfg(not(feature = "std"))]
+        {
+            let provider = create_decoder_provider::<256>()?;
+            let name = DecoderString::from_str(export_name, provider)
+                .map_err(|_| Error::runtime_execution_error("Failed to create string"))?;
+            info.exports.push(ExportInfo {
+                name,
+                export_type,
+                index,
+            });
+        }
     }
 
     Ok(())
@@ -576,13 +540,8 @@ fn extract_builtin_imports(binary: &[u8]) -> Result<Vec<String>> {
         let section_id = binary[offset];
         offset += 1;
 
-        let (section_size, bytes_read) = read_leb128_u32(binary, offset).map_err(|_| {
-            Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Failed to read section size",
-            )
-        })?;
+        let (section_size, bytes_read) = read_leb128_u32(binary, offset)
+            .map_err(|_| Error::parse_error("Failed to read section size"))?;
         offset += bytes_read;
 
         let section_end = offset + section_size as usize;
@@ -626,7 +585,18 @@ fn extract_builtin_imports(binary: &[u8]) -> Result<Vec<String>> {
 
                 // Check if this is a wasi_builtin import
                 if module_name == "wasi_builtin" {
+                    #[cfg(feature = "std")]
                     builtin_imports.push(import_name.to_string());
+
+                    #[cfg(not(feature = "std"))]
+                    {
+                        let provider = create_decoder_provider::<256>()?;
+                        let import_str =
+                            DecoderString::from_str(import_name, provider).map_err(|_| {
+                                Error::runtime_execution_error("Failed to create import string")
+                            })?;
+                        builtin_imports.push(import_str);
+                    }
                 }
 
                 // Skip import kind and type info
@@ -656,11 +626,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
     for i in 0..5 {
         // Max 5 bytes for u32
         if offset + i >= data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unexpected end of data while reading LEB128",
-            ));
+            return Err(Error::parse_error("Truncated LEB128 value"));
         }
 
         let byte = data[offset + i];
@@ -674,11 +640,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
 
         shift += 7;
         if shift >= 32 {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "LEB128 value too large for u32",
-            ));
+            return Err(Error::parse_error("LEB128 value too large for u32"));
         }
     }
 

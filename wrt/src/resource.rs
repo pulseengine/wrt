@@ -5,10 +5,18 @@
 //! reference counting.
 
 #[cfg(not(feature = "std"))]
-use std::sync::Arc;
+use alloc::sync::Arc;
 #[cfg(feature = "std")]
 use std::sync::Arc;
+#[cfg(feature = "std")]
 use std::{
+    any::Any,
+    cmp::{Eq, PartialEq},
+    fmt,
+};
+
+#[cfg(not(feature = "std"))]
+use core::{
     any::Any,
     cmp::{Eq, PartialEq},
     fmt,

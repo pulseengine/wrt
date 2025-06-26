@@ -261,7 +261,7 @@ mod tests {
         let mut capabilities = WasiEnvironmentCapabilities::minimal()?;
         capabilities.args_access = true;
         
-        let filtered = get_filtered_arguments(&capabilities)?;
+        let _filtered = get_filtered_arguments(&capabilities)?;
         
         // Should return arguments when access is allowed
         // In test environment, may contain test runner arguments

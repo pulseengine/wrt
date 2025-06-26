@@ -213,11 +213,7 @@ impl wrt_foundation::traits::FromBytes for CustomSection {
         let mut name_bytes = alloc::vec![0u8; name_len as usize];
         reader.read_exact(&mut name_bytes)?;
         let name = alloc::string::String::from_utf8(name_bytes)
-            .map_err(|_| wrt_foundation::Error::new(
-                wrt_error::ErrorCategory::Parse,
-                wrt_error::codes::PARSE_ERROR,
-                "Invalid UTF-8 in custom section name"
-            ))?;
+            .map_err(|_| wrt_error::Error::parse_error("Invalid UTF-8 in custom section name"))?;
         
         // Read data length
         let data_len = reader.read_u32_le()?;

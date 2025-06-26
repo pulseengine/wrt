@@ -24,8 +24,7 @@
 
 extern crate alloc;
 
-use wrt_foundation::safety_system::{AsilLevel, SafetyStandard, SafetyStandardType};
-use wrt_foundation::safety_system::{DalLevel, SilLevel, MedicalClass, RailwaySil, AgricultureLevel};
+use wrt_foundation::safety_system::AsilLevel;
 use wrt_foundation::budget_aware_provider::CrateId;
 
 /// Maximum memory size for bounded verification

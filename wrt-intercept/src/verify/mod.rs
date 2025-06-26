@@ -125,7 +125,7 @@ pub mod proofs {
 
         let args = vec![Value::I32(10)];
         let result = interceptor.intercept_call("target", "func", args.clone(), |_| {
-            Err(wrt_error::Error::new(wrt_error::kinds::ExecutionError("Test error".to_string())))
+            Err(wrt_error::Error::runtime_execution_error("Test error")))
         });
 
         assert!(result.is_err());

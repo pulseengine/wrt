@@ -394,11 +394,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
         let mode = match mode_byte {
             0 => DataMode::Active,
             1 => DataMode::Passive,
-            _ => return Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Validation,
-                wrt_error::codes::PARSE_ERROR,
-                "Invalid DataMode discriminant",
-            )),
+            _ => return Err(wrt_error::Error::runtime_execution_error("Invalid data mode byte")),
         };
         
         let mut memory_idx_bytes = [0u8; 4];
@@ -428,11 +424,7 @@ impl wrt_foundation::traits::FromBytes for Data {
         let mode = match mode_byte {
             0 => DataMode::Active,
             1 => DataMode::Passive,
-            _ => return Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Validation,
-                wrt_error::codes::PARSE_ERROR,
-                "Invalid DataMode discriminant",
-            )),
+            _ => return Err(wrt_error::Error::runtime_execution_error("Invalid data mode byte")),
         };
         
         let mut memory_idx_bytes = [0u8; 4];
@@ -494,11 +486,9 @@ impl wrt_foundation::traits::FromBytes for DataMode {
         match discriminant {
             0 => Ok(DataMode::Active),
             1 => Ok(DataMode::Passive),
-            _ => Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Validation,
+            _ => Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,
                 wrt_error::codes::PARSE_ERROR,
-                "Invalid DataMode discriminant",
-            )),
+                "Invalid data mode discriminant")),
         }
     }
 }
@@ -704,11 +694,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
                 let exprs = crate::WasmVec::from_bytes_with_provider(reader, provider)?;
                 Ok(Self::Expressions(exprs))
             }
-            _ => Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Validation,
-                wrt_error::codes::PARSE_ERROR,
-                "Invalid ElementInit discriminant",
-            )),
+            _ => Err(wrt_error::Error::runtime_execution_error("Invalid element init discriminant")),
         }
     }
 }
@@ -749,11 +735,7 @@ impl wrt_foundation::traits::FromBytes for ElementInit {
                 }
                 Ok(Self::Expressions(exprs))
             }
-            _ => Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Validation,
-                wrt_error::codes::PARSE_ERROR,
-                "Invalid ElementInit discriminant",
-            )),
+            _ => Err(wrt_error::Error::runtime_execution_error("Invalid element init discriminant")),
         }
     }
 }
@@ -903,11 +885,7 @@ impl wrt_foundation::traits::FromBytes for ElementMode {
             }
             1 => Ok(Self::Passive),
             2 => Ok(Self::Declared),
-            _ => Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Validation,
-                wrt_error::codes::PARSE_ERROR,
-                "Invalid ElementMode discriminant",
-            )),
+            _ => Err(wrt_error::Error::runtime_execution_error("Invalid element mode discriminant")),
         }
     }
 }
@@ -1357,11 +1335,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
                 let idx = u32::from_le_bytes(idx_bytes);
                 Ok(ImportDesc::Tag(idx, core::marker::PhantomData))
             }
-            _ => Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Validation,
-                0x1001,
-                "ImportDesc: Unknown type tag",
-            )),
+            _ => Err(wrt_error::Error::runtime_execution_error("Invalid import descriptor tag")),
         }
     }
 }
@@ -1510,10 +1484,10 @@ pub struct Module<
     pub memories: crate::WasmVec<Memory, P>,
     /// Global definitions
     pub globals: crate::WasmVec<Global<P>, P>,
-    /// Element segments (table initializers)
-    pub elements: crate::WasmVec<Element<P>, P>,
-    /// Data segments (memory initializers)
-    pub data: crate::WasmVec<Data<P>, P>,
+    /// Element segments (table initializers) - using pure format internally
+    pub elements: crate::WasmVec<crate::pure_format_types::PureElementSegment, P>,
+    /// Data segments (memory initializers) - using pure format internally
+    pub data: crate::WasmVec<crate::pure_format_types::PureDataSegment, P>,
     /// Module exports (visible functions/globals/etc)
     pub exports: crate::WasmVec<Export<P>, P>,
     /// Module imports (external dependencies)
@@ -1584,10 +1558,10 @@ pub struct Module {
     pub memories: Vec<Memory>,
     /// Global definitions
     pub globals: Vec<Global>,
-    /// Element segments (table initializers)
-    pub elements: Vec<Element>,
-    /// Data segments (memory initializers)
-    pub data: Vec<Data>,
+    /// Element segments (table initializers) - using pure format internally
+    pub elements: Vec<crate::pure_format_types::PureElementSegment>,
+    /// Data segments (memory initializers) - using pure format internally
+    pub data: Vec<crate::pure_format_types::PureDataSegment>,
     /// Module exports (visible functions/globals/etc)
     pub exports: Vec<Export>,
     /// Module imports (external dependencies)
@@ -1638,21 +1612,13 @@ impl Module {
     /// This is a convenience method that wraps Binary::from_bytes +
     /// Module::from_binary
     pub fn from_bytes(_wasm_bytes: &[u8]) -> Result<Self> {
-        Err(Error::new(
-            ErrorCategory::Validation,
-            codes::PARSE_ERROR,
-            "Module::from_bytes not yet implemented",
-        ))
+        Err(Error::validation_parse_error("Module::from_bytes not yet implemented"))
     }
 
     /// Convert a Module to a WebAssembly binary.
     #[cfg(feature = "std")]
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
-        Err(Error::new(
-            ErrorCategory::Validation,
-            codes::PARSE_ERROR,
-            "Module::to_bytes not yet implemented",
-        ))
+        Err(Error::validation_parse_error("Module::to_bytes not yet implemented"))
     }
 
     /// Find a custom section by name
@@ -1667,43 +1633,17 @@ impl Module {
     
     /// Convert data segments to pure format representation (removes runtime concerns)
     pub fn data_to_pure_segments(&self) -> Vec<crate::pure_format_types::PureDataSegment> {
-        self.data.iter().map(|data| data.to_pure_segment()).collect()
+        self.data.iter().map(|data| {
+            // Direct conversion since Data is already PureDataSegment
+            data.clone()
+        }).collect()
     }
     
     /// Convert element segments to pure format representation (removes runtime concerns)  
     pub fn elements_to_pure_segments(&self) -> Vec<crate::pure_format_types::PureElementSegment> {
         self.elements.iter().map(|element| {
-            let init_data = match &element.init {
-                ElementInit::FuncIndices(indices) => {
-                    crate::pure_format_types::PureElementInit::FunctionIndices(indices.clone())
-                },
-                ElementInit::Expressions(exprs) => {
-                    crate::pure_format_types::PureElementInit::ExpressionBytes(exprs.clone())
-                },
-            };
-            
-            match &element.mode {
-                ElementMode::Active { table_index, offset_expr } => {
-                    crate::pure_format_types::PureElementSegment::new_active(
-                        *table_index,
-                        element.element_type.clone(),
-                        offset_expr.clone(),
-                        init_data,
-                    )
-                },
-                ElementMode::Passive => {
-                    crate::pure_format_types::PureElementSegment::new_passive(
-                        element.element_type.clone(),
-                        init_data,
-                    )
-                },
-                ElementMode::Declared => {
-                    crate::pure_format_types::PureElementSegment::new_declared(
-                        element.element_type.clone(),
-                        init_data,
-                    )
-                },
-            }
+            // Direct conversion since Element is already PureElementSegment
+            element.clone()
         }).collect()
     }
 
@@ -1715,49 +1655,29 @@ impl Validatable for Module {
 
         // Check for reasonable number of types
         if self.types.len() > 10000 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Module has too many types",
-            ));
+            return Err(Error::validation_error("Module has too many types"));
         }
 
         // Check for reasonable number of functions
         if self.functions.len() > 10000 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Module has too many functions",
-            ));
+            return Err(Error::validation_error("Module has too many functions"));
         }
 
         // Check for empty exports
         for export in self.exports.iter() {
             if export.name.is_empty() {
-                return Err(Error::new(
-                    ErrorCategory::Validation,
-                    codes::VALIDATION_ERROR,
-                    "Export name cannot be empty",
-                ));
+                return Err(Error::validation_error("Export name cannot be empty"));
             }
         }
 
         // Check for empty imports
         for import in self.imports.iter() {
             if import.module.is_empty() {
-                return Err(Error::new(
-                    ErrorCategory::Validation,
-                    codes::VALIDATION_ERROR,
-                    "Import module name cannot be empty",
-                ));
+                return Err(Error::validation_error("Import module name cannot be empty"));
             }
 
             if import.name.is_empty() {
-                return Err(Error::new(
-                    ErrorCategory::Validation,
-                    codes::VALIDATION_ERROR,
-                    "Import name cannot be empty",
-                ));
+                return Err(Error::validation_error("Import name cannot be empty"));
             }
         }
 

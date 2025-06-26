@@ -121,20 +121,12 @@ impl<'a> DebugInfoParser<'a> {
     fn parse_cu_header(&self, cursor: &mut DwarfCursor) -> Result<CompilationUnitHeader> {
         let unit_length = cursor.read_u32()?;
         if unit_length == 0xffffffff {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "64-bit DWARF not supported",
-            ));
+            return Err(Error::parse_error("64-bit DWARF not supported"));
         }
 
         let version = cursor.read_u16()?;
         if version < 2 || version > 5 {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unsupported DWARF version",
-            ));
+            return Err(Error::parse_error("Unsupported DWARF version"));
         }
 
         let abbrev_offset = cursor.read_u32()?;
@@ -163,13 +155,10 @@ impl<'a> DebugInfoParser<'a> {
                 continue;
             }
 
-            let abbrev = self.abbrev_table.find(abbrev_code).ok_or_else(|| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Abbreviation not found",
-                )
-            })?;
+            let abbrev = self
+                .abbrev_table
+                .find(abbrev_code)
+                .ok_or_else(|| Error::parse_error("Abbreviation not found"))?;
 
             // Handle specific tags we care about
             match abbrev.tag {
@@ -280,13 +269,10 @@ impl<'a> DebugInfoParser<'a> {
                     break; // End of children
                 }
 
-                let child_abbrev = self.abbrev_table.find(child_abbrev_code).ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Child abbreviation not found",
-                    )
-                })?;
+                let child_abbrev = self
+                    .abbrev_table
+                    .find(child_abbrev_code)
+                    .ok_or_else(|| Error::parse_error("Child abbreviation not found"))?;
 
                 // Handle parameter DIEs
                 if child_abbrev.tag == tags::DW_TAG_FORMAL_PARAMETER {
@@ -390,11 +376,7 @@ impl<'a> DebugInfoParser<'a> {
                 self.skip_attribute_value(cursor, &form, header)?;
             },
             AttributeForm::Unknown(_) => {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Unknown attribute form",
-                ));
+                return Err(Error::parse_error("Unknown attribute form"));
             },
         }
         Ok(())
@@ -411,13 +393,10 @@ impl<'a> DebugInfoParser<'a> {
                 continue;
             }
 
-            let abbrev = self.abbrev_table.find(abbrev_code).ok_or_else(|| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Abbreviation not found while skipping",
-                )
-            })?;
+            let abbrev = self
+                .abbrev_table
+                .find(abbrev_code)
+                .ok_or_else(|| Error::parse_error("Abbreviation not found while skipping"))?;
 
             // Skip attributes
             for attr_spec in abbrev.attributes.iter() {

@@ -14,6 +14,9 @@ use std::{boxed::Box, vec::Vec};
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
     prelude::*,
+    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
 };
 
 use crate::{
@@ -88,7 +91,14 @@ impl AsyncCanonicalEncoder {
             #[cfg(feature = "std")]
             buffer: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            buffer: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            buffer: {
+                // Use proper error propagation for encoder construction
+                // This should only fail in extreme memory exhaustion scenarios
+                let provider = safe_managed_alloc!(65536, CrateId::Component)
+                    .expect("AsyncCanonicalEncoder allocation should not fail");
+                BoundedVec::new(provider)
+                    .expect("AsyncCanonicalEncoder buffer initialization should not fail")
+            },
             position: 0,
         }
     }
@@ -304,10 +314,7 @@ impl AsyncCanonicalEncoder {
     
     fn write_u8(&mut self, value: u8) -> Result<()> {
         self.buffer.push(value).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                wrt_error::codes::RESOURCE_EXHAUSTED,
-                "Encoder buffer full"
+            Error::runtime_execution_error("
             )
         })?;
         self.position += 1;
@@ -441,8 +448,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
             Error::new(
                 ErrorCategory::Parse,
                 wrt_error::codes::PARSE_ERROR,
-                "Invalid Unicode code point"
-            )
+                ")
         })
     }
     
@@ -480,10 +486,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
             };
             Ok(Value::Variant { tag, value })
         } else {
-            Err(Error::new(
-                ErrorCategory::Parse,
-                wrt_error::codes::PARSE_ERROR,
-                "Invalid variant tag"
+            Err(Error::runtime_execution_error("
             ))
         }
     }
@@ -504,8 +507,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
             _ => Err(Error::new(
                 ErrorCategory::Parse,
                 wrt_error::codes::PARSE_ERROR,
-                "Invalid option discriminant"
-            ))
+                "))
         }
     }
     
@@ -514,10 +516,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         match discriminant {
             0 => Ok(Ok(Box::new(self.decode_value(ok_type, options)?))),
             1 => Ok(Err(Box::new(self.decode_value(err_type, options)?))),
-            _ => Err(Error::new(
-                ErrorCategory::Parse,
-                wrt_error::codes::PARSE_ERROR,
-                "Invalid result discriminant"
+            _ => Err(Error::runtime_execution_error("
             ))
         }
     }
@@ -566,8 +565,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
             return Err(Error::new(
                 ErrorCategory::Parse,
                 wrt_error::codes::PARSE_ERROR,
-                "Unexpected end of buffer"
-            ));
+                "));
         }
         
         let value = self.buffer[self.position];
@@ -577,11 +575,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
     
     fn read_bytes(&mut self, count: usize) -> Result<&[u8]> {
         if self.position + count > self.buffer.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                wrt_error::codes::PARSE_ERROR,
-                "Unexpected end of buffer"
-            ));
+            return Err(Error::runtime_execution_error("Unexpected end of buffer"));
         }
         
         let bytes = &self.buffer[self.position..self.position + count];

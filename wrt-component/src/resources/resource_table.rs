@@ -427,11 +427,7 @@ impl ResourceTable {
         #[cfg(feature = "safety-critical")]
         {
             self.interceptors.push(interceptor).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_EXHAUSTED,
-                    "Too many resource interceptors (limit: 16)"
-                )
+                Error::resource_exhausted("Too many resource interceptors (limit: 16)")
             })
         }
         #[cfg(not(feature = "safety-critical"))]
@@ -449,10 +445,7 @@ impl ResourceTable {
     ) -> Result<u32> {
         // Check if we've reached the maximum number of resources
         if self.resources.len() >= self.max_resources {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_EXHAUSTED,
-                format!("Maximum resources ({}) reached", self.max_resources),
+            return Err(Error::resource_exhausted("Maximum resources ({}) reached"),
             ));
         }
 
@@ -483,11 +476,7 @@ impl ResourceTable {
         #[cfg(feature = "safety-critical")]
         {
             self.resources.insert(handle, entry).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_EXHAUSTED,
-                    "Too many resources in table (limit: 1024)"
-                )
+                Error::resource_exhausted("Too many resources in table (limit: 1024)")
             })?;
         }
         #[cfg(not(feature = "safety-critical"))]
@@ -506,11 +495,7 @@ impl ResourceTable {
         let resource = match resource_opt {
             Some(r) => r,
             None => {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_ERROR,
-                    "Component not found".to_string(),
-                ));
+                return Err(Error::resource_error("Component not found"));
             }
         };
 
@@ -529,11 +514,7 @@ impl ResourceTable {
             #[cfg(feature = "safety-critical")]
             {
                 entry.borrows.push(weak_ref).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_EXHAUSTED,
-                        "Too many borrows for this resource (limit: 32)"
-                    )
+                    Error::resource_exhausted("Too many borrows for this resource (limit: 32)")
                 })?;
             }
             #[cfg(not(feature = "safety-critical"))]
@@ -553,11 +534,7 @@ impl ResourceTable {
                 verification_level: self.default_verification_level,
             },
         ).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_EXHAUSTED,
-                "Too many resources in table (limit: 1024)"
-            )
+            Error::resource_exhausted("Too many resources in table (limit: 1024)")
         })?;
         #[cfg(not(feature = "safety-critical"))]
         {
@@ -579,11 +556,7 @@ impl ResourceTable {
     pub fn drop_resource(&mut self, handle: u32) -> Result<()> {
         // Check if the resource exists
         if !self.resources.contains_key(&handle) {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_ERROR,
-                "Component not found",
-            ));
+            return Err(Error::resource_error("Component not found"));
         }
 
         // Notify interceptors about resource dropping
@@ -601,11 +574,7 @@ impl ResourceTable {
     pub fn get_resource(&self, handle: u32) -> Result<Arc<Mutex<Resource>>> {
         // Check if the resource exists
         let entry = self.resources.get(&handle).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_ERROR,
-                "Component not found",
-            )
+            Error::resource_error("Component not found")
         })?;
 
         // Record access
@@ -629,11 +598,7 @@ impl ResourceTable {
     ) -> Result<ComponentValue> {
         // Check if the resource exists
         if !self.resources.contains_key(&handle) {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_ERROR,
-                "Component not found",
-            ));
+            return Err(Error::resource_error("Component not found"));
         }
 
         // Get the operation kind for interception using our utility function
@@ -693,11 +658,7 @@ impl ResourceTable {
     pub fn set_memory_strategy(&mut self, handle: u32, strategy: MemoryStrategy) -> Result<()> {
         // Check if the resource exists
         let entry = self.resources.get_mut(&handle).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_ERROR,
-                "Component not found",
-            )
+            Error::resource_error("Component not found")
         })?;
 
         entry.memory_strategy = strategy;
@@ -708,11 +669,7 @@ impl ResourceTable {
     pub fn set_verification_level(&mut self, handle: u32, level: VerificationLevel) -> Result<()> {
         // Check if the resource exists
         let entry = self.resources.get_mut(&handle).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_ERROR,
-                "Component not found",
-            )
+            Error::resource_error("Component not found")
         })?;
 
         entry.verification_level = level;

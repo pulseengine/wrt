@@ -48,7 +48,10 @@ impl<'a> StreamingDecoder<'a> {
     /// Create a new streaming decoder (no_std version)
     #[cfg(not(feature = "std"))]
     pub fn new(binary: &'a [u8]) -> Result<Self> {
-        let provider = NoStdProvider::<8192>::default();
+        let provider = wrt_foundation::safe_managed_alloc!(
+            8192,
+            wrt_foundation::budget_aware_provider::CrateId::Decoder
+        )?;
         let module = WrtModule::default();
 
         Ok(Self {
@@ -63,29 +66,19 @@ impl<'a> StreamingDecoder<'a> {
     pub fn decode_header(&mut self) -> Result<()> {
         // Validate magic number and version
         if self.binary.len() < 8 {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
+            return Err(Error::parse_error(
                 "Binary too small for WebAssembly header",
             ));
         }
 
         // Check magic number
         if &self.binary[0..4] != b"\0asm" {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Invalid WebAssembly magic number",
-            ));
+            return Err(Error::parse_error("Invalid WebAssembly magic number"));
         }
 
         // Check version
         if &self.binary[4..8] != &[0x01, 0x00, 0x00, 0x00] {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unsupported WebAssembly version",
-            ));
+            return Err(Error::parse_error("Unsupported WebAssembly version"));
         }
 
         self.offset = 8;
@@ -108,11 +101,7 @@ impl<'a> StreamingDecoder<'a> {
 
         let section_end = self.offset + section_size as usize;
         if section_end > self.binary.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Section extends beyond binary",
-            ));
+            return Err(Error::parse_error("Section extends beyond binary"));
         }
 
         // Process section data without loading it all into memory
@@ -209,9 +198,7 @@ impl<'a> StreamingDecoder<'a> {
 
         // Check memory count against platform limits
         if count > 1 && !self.platform_limits.max_components > 0 {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_EXHAUSTED,
+            return Err(Error::resource_exhausted(
                 "Multiple memories not supported on this platform",
             ));
         }
@@ -264,11 +251,7 @@ impl<'a> StreamingDecoder<'a> {
             // one at a time for even lower memory usage
             let body_end = offset + body_size as usize;
             if body_end > data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Function body extends beyond section",
-                ));
+                return Err(Error::parse_error("Function body extends beyond section"));
             }
 
             // For now, copy the body - but this could be optimized further

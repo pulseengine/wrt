@@ -249,6 +249,7 @@ mod tests {
     use crate::{
         budget_aware_provider::CrateId,
         capabilities::DynamicMemoryCapability,
+        safe_managed_alloc,
         safe_memory::NoStdProvider,
         verification::VerificationLevel,
     };
@@ -266,8 +267,8 @@ mod tests {
     }
 
     #[test]
-    fn test_capability_wrap_provider_macro() {
-        let provider = NoStdProvider::<1024>::default();
+    fn test_capability_wrap_provider_macro() -> crate::WrtResult<()> {
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
         let capability = Box::new(DynamicMemoryCapability::new(
             1024,
             CrateId::Foundation,
@@ -277,6 +278,7 @@ mod tests {
         let wrapped = capability_wrap_provider!(provider, capability, CrateId::Foundation);
         assert_eq!(wrapped.capacity(), 1024);
         assert_eq!(wrapped.owner_crate(), CrateId::Foundation);
+        Ok(())
     }
 
     #[cfg(any(feature = "std", feature = "alloc"))]

@@ -115,10 +115,7 @@ impl ExecutionMonitor for SimpleExecutionMonitor {
     fn check_thread_health(&self, id: u64) -> Result<ThreadHealth> {
         let threads = self.threads.read();
         let info = threads.get(&id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                1,
-                "Thread not found in monitor",
+            Error::runtime_execution_error(",
             )
         })?;
 
@@ -175,7 +172,7 @@ pub struct WasmThreadManager {
 
 impl core::fmt::Debug for WasmThreadManager {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("WasmThreadManager")
+        f.debug_struct(")
             .field("resource_tracker", &self.resource_tracker)
             .field("threads", &"<BTreeMap>")
             .field("modules", &"<BTreeMap>")
@@ -230,10 +227,7 @@ impl WasmThreadManager {
     pub fn spawn_thread(&self, request: ThreadSpawnRequest) -> Result<u64> {
         // Check if shutting down
         if *self.shutdown.lock() {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                1,
-                "Thread manager is shutting down",
+            return Err(Error::runtime_execution_error(",
             ));
         }
 
@@ -244,17 +238,13 @@ impl WasmThreadManager {
                 Error::new(
                     ErrorCategory::Validation,
                     1,
-                    "Module not registered",
-                )
+                    ")
             })?
         };
 
         // Binary std/no_std choice
         if !self.resource_tracker.can_allocate_thread(&request)? {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                1,
-                "Cannot allocate thread: resource limits exceeded",
+            return Err(Error::runtime_execution_error(",
             ));
         }
 
@@ -354,11 +344,7 @@ impl WasmThreadManager {
     pub fn is_thread_running(&self, thread_id: u64) -> Result<bool> {
         let threads = self.threads.read();
         let thread_info = threads.get(&thread_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                1,
-                "Thread not found",
-            )
+            Error::runtime_execution_error("Thread not found")
         })?;
 
         Ok(thread_info.handle.is_running())
@@ -515,7 +501,7 @@ mod tests {
 
         let module = WasmModuleInfo {
             id: 1,
-            name: "test_module".to_string(),
+            name: "),
             max_threads: 4,
             memory_limit: 64 * 1024 * 1024,
             cpu_quota: Duration::from_secs(60),

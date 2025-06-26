@@ -60,10 +60,8 @@ pub mod bounded_wrtd_infra;
 pub mod memory_limits;
 
 // Optional WRT execution capabilities (only in std mode with wrt-execution feature)
-#[cfg(all(feature = "std", feature = "wrt-execution"))]
-use wrt::Engine;
-#[cfg(all(feature = "std", feature = "wrt-execution"))]
-use wrt_runtime::Module;
+// Engine type moved to wrt::engine module
+// Module type is available through wrt prelude
 
 // WASI host function support
 #[cfg(all(feature = "wasi", feature = "wrt-execution"))]
@@ -335,11 +333,7 @@ impl WrtdEngine {
             
             // Initialize platform-specific features
             #[cfg(feature = "wrt-execution")]
-            PlatformMemory::init_optimizations().map_err(|_| Error::new(
-                ErrorCategory::Runtime,
-                codes::RUNTIME_ERROR,
-                "Failed to initialize platform memory optimizations"
-            ))?;
+            PlatformMemory::init_optimizations().map_err(|_| Error::runtime_error("Failed to initialize platform memory optimizations"))?;
             
             self.platform_optimizations = true;
             let _ = self.logger.handle_minimal_log(LogLevel::Info, "Platform optimizations enabled");
@@ -351,11 +345,7 @@ impl WrtdEngine {
     fn init_memory_profiling(&mut self) -> Result<()> {
         let _ = self.logger.handle_minimal_log(LogLevel::Info, "Initializing memory profiling");
         
-        self.memory_profiler = Some(MemoryProfiler::new().map_err(|_| Error::new(
-            ErrorCategory::Runtime,
-            codes::RUNTIME_ERROR,
-            "Failed to initialize memory profiler"
-        ))?);
+        self.memory_profiler = Some(MemoryProfiler::new().map_err(|_| Error::runtime_error("Failed to initialize memory profiler"))?);
         
         let _ = self.logger.handle_minimal_log(LogLevel::Info, "Memory profiling initialized");
         Ok(())
@@ -384,30 +374,18 @@ impl WrtdEngine {
         let provider: Box<dyn WasiHostProvider> = match self.config.wasi_version {
             WasiVersion::Preview2 => {
                 let provider = ComponentModelProvider::new(capabilities)
-                    .map_err(|_| Error::new(
-                        ErrorCategory::Runtime,
-                        codes::RUNTIME_ERROR,
-                        "Failed to create WASI Preview 2 provider"
-                    ))?;
+                    .map_err(|_| Error::runtime_error("Failed to create WASI Preview 2 provider"))?;
                 Box::new(provider)
             }
         };
         
         // Register WASI functions with host registry
         let host_functions = provider.get_host_functions()
-            .map_err(|_| Error::new(
-                ErrorCategory::Runtime,
-                codes::RUNTIME_ERROR,
-                "Failed to get WASI host functions"
-            ))?;
+            .map_err(|_| Error::runtime_error("Failed to get WASI host functions"))?;
         
         for function in host_functions {
             self.host_registry.register_function(function)
-                .map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::RUNTIME_ERROR,
-                    "Failed to register WASI function"
-                ))?;
+                .map_err(|_| Error::runtime_error("Failed to register WASI function"))?;
         }
         
         // Update stats
@@ -425,20 +403,12 @@ impl WrtdEngine {
         let _ = self.logger.handle_minimal_log(LogLevel::Info, "Initializing component model");
         
         let mut registry = ComponentRegistry::new()
-            .map_err(|_| Error::new(
-                ErrorCategory::Runtime,
-                codes::RUNTIME_ERROR,
-                "Failed to create component registry"
-            ))?;
+            .map_err(|_| Error::runtime_error("Failed to create component registry"))?;
         
         // Register component interfaces
         for interface in &self.config.component_interfaces {
             registry.register_interface(interface)
-                .map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::RUNTIME_ERROR,
-                    "Failed to register component interface"
-                ))?;
+                .map_err(|_| Error::runtime_error("Failed to register component interface"))?;
         }
         
         self.component_registry = Some(registry);
@@ -463,11 +433,7 @@ impl WrtdEngine {
             Ok(version != 1)
         } else {
             // Not a WASM binary at all
-            Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Invalid WebAssembly binary format"
-            ))
+            Err(Error::parse_error("Invalid WebAssembly binary format"))
         }
     }
     
@@ -479,54 +445,30 @@ impl WrtdEngine {
         if let Some(ref registry) = self.component_registry {
             // Create component from binary data
             let component = Component::from_binary(data)
-                .map_err(|_| Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Failed to parse component binary"
-                ))?;
+                .map_err(|_| Error::parse_error("Failed to parse component binary"))?;
             
             // Create component linker with host functions
             let mut linker = ComponentLinker::new()
-                .map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::RUNTIME_ERROR,
-                    "Failed to create component linker"
-                ))?;
+                .map_err(|_| Error::runtime_error("Failed to create component linker"))?;
             
             // Link WASI functions if available
             #[cfg(feature = "wasi")]
             if let Some(ref wasi_provider) = self.wasi_provider {
                 linker.link_wasi_provider(wasi_provider.as_ref())
-                    .map_err(|_| Error::new(
-                        ErrorCategory::Runtime,
-                        codes::RUNTIME_ERROR,
-                        "Failed to link WASI provider"
-                    ))?;
+                    .map_err(|_| Error::runtime_error("Failed to link WASI provider"))?;
             }
             
             // Create component instance
             let instance = ComponentInstance::new(&component, &linker)
-                .map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::EXECUTION_ERROR,
-                    "Failed to instantiate component"
-                ))?;
+                .map_err(|_| Error::runtime_execution_error("Failed to instantiate component"))?;
             
             // Execute the component's main function
             instance.call_main(&[])
-                .map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::EXECUTION_ERROR,
-                    "Component execution failed"
-                ))?;
+                .map_err(|_| Error::runtime_execution_error("Component execution failed"))?;
             
             self.stats.components_executed += 1;
         } else {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::RUNTIME_ERROR,
-                "Component model not initialized"
-            ));
+            return Err(Error::runtime_error("Component model not initialized"));
         }
         
         Ok(())
@@ -539,43 +481,75 @@ impl WrtdEngine {
         // Execute with actual WRT engine if available
         #[cfg(all(feature = "std", feature = "wrt-execution"))]
         {
-            let mut engine = Engine::default();
+            use wrt::engine::{CapabilityAwareEngine, EnginePreset};
             
-            // Configure engine with host functions
-            if !self.host_registry.is_empty() {
-                engine.link_host_functions(&self.host_registry)
-                    .map_err(|_| Error::new(
-                        ErrorCategory::Runtime,
-                        codes::RUNTIME_ERROR,
-                        "Failed to link host functions"
-                    ))?;
+            // Determine engine preset from features  
+            let preset = if cfg!(feature = "asil-d") {
+                EnginePreset::AsilD
+            } else if cfg!(feature = "asil-c") {
+                EnginePreset::AsilC
+            } else if cfg!(feature = "asil-b") {
+                EnginePreset::AsilB
+            } else if cfg!(feature = "asil-a") {
+                EnginePreset::AsilA  
+            } else if cfg!(feature = "qm") {
+                EnginePreset::QM
+            } else {
+                EnginePreset::QM // Default to QM
+            };
+            
+            // Create engine with appropriate capabilities
+            let mut engine = CapabilityAwareEngine::with_preset(preset)
+                .map_err(|e| Error::runtime_error("Failed to create engine"))?;
+
+            // Enable WASI support if configured
+            #[cfg(feature = "wasi")]
+            if self.config.enable_wasi {
+                if let Err(e) = engine.enable_wasi() {
+                    let _ = self.logger.handle_minimal_log(LogLevel::Warning, &format!("WASI not available for this ASIL level: {}", e));
+                } else {
+                    let _ = self.logger.handle_minimal_log(LogLevel::Info, "WASI support enabled");
+                }
+            }
+
+            // Register example host functions for demonstration
+            if matches!(preset, EnginePreset::QM | EnginePreset::AsilA) {
+                // Only in less restrictive modes
+                let _ = engine.register_host_function("env", "host_print", |args: &[wrt_foundation::values::Value]| -> Result<Vec<wrt_foundation::values::Value>> {
+                    // Simple host function that "prints" a value (in practice would log it)
+                    if let Some(wrt_foundation::values::Value::I32(val)) = args.get(0) {
+                        // In a real implementation, this would print to stdout or log
+                        // For now, just return success
+                    }
+                    Ok(vec![])
+                }).unwrap_or(());
+                
+                let _ = self.logger.handle_minimal_log(LogLevel::Info, "Example host functions registered");
             }
             
-            // Create module from binary data
-            let module = Module::new(&engine, data).map_err(|_| Error::new(
-                ErrorCategory::Runtime,
-                codes::EXECUTION_ERROR,
-                "Failed to create module"
-            ))?;
+            // Load module
+            let module_handle = engine.load_module(data)
+                .map_err(|e| Error::runtime_execution_error("Failed to load module"))?;
             
-            // Create instance with host functions
-            let instance = module.instantiate(&engine)
-                .map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::EXECUTION_ERROR,
-                    "Failed to instantiate module"
-                ))?;
+            // Instantiate
+            let instance = engine.instantiate(module_handle)
+                .map_err(|e| Error::runtime_execution_error("Failed to instantiate module"))?;
             
-            // Execute the specified function
+            // Execute function
             let function_name = self.config.function_name.unwrap_or("start");
-            let _ = self.logger.handle_minimal_log(LogLevel::Info, "Executing function");
+            let _ = self.logger.handle_minimal_log(LogLevel::Info, &format!("Executing function: {}", function_name));
             
-            instance.call_function(function_name, &[])
-                .map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::EXECUTION_ERROR,
-                    "Function execution failed"
-                ))?;
+            // Check if function exists before execution
+            if !engine.has_function(instance, function_name)
+                .map_err(|e| Error::runtime_function_not_found("Failed to check function existence"))? {
+                let _ = self.logger.handle_minimal_log(LogLevel::Error, &format!("Function '{}' not found in module exports", function_name));
+                return Err(Error::runtime_function_not_found("Function not found"));
+            }
+            
+            engine.execute(instance, function_name, &[])
+                .map_err(|e| Error::runtime_execution_error("Function execution failed"))?;
+            
+            self.stats.modules_executed += 1;
         }
 
         // Fallback simulation for demo/no-std modes
@@ -585,20 +559,12 @@ impl WrtdEngine {
             
             // Validate module structure
             if data.len() < 8 {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Module too small to be valid WASM"
-                ));
+                return Err(Error::parse_error("Module too small to be valid WASM"));
             }
 
             // Check for WASM magic number (0x00 0x61 0x73 0x6D)
             if &data[0..4] != [0x00, 0x61, 0x73, 0x6D] {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Invalid WASM magic number"
-                ));
+                return Err(Error::parse_error("Invalid WASM magic number"));
             }
             
             // Simulate successful execution
@@ -615,18 +581,11 @@ impl WrtdEngine {
         
         if let Some(ref path) = self.config.module_path {
             // Check file size first
-            let metadata = fs::metadata(path).map_err(|_| Error::new(
-                ErrorCategory::Resource,
-                codes::SYSTEM_IO_ERROR_CODE,
-                "Failed to read module metadata"
-            ))?;
+            let metadata = fs::metadata(path).map_err(|_| Error::system_io_error("Failed to read module metadata"))?;
             
             let file_size = metadata.len() as usize;
             if file_size > MAX_MODULE_SIZE {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::CAPACITY_EXCEEDED,
-                    "Module size exceeds 2MB limit"
+                return Err(Error::runtime_execution_error("
                 ));
             }
             
@@ -636,30 +595,19 @@ impl WrtdEngine {
                 let mut module_data: WrtVec<u8, {CrateId::Wrtd as u8}, MAX_MODULE_SIZE> = WrtVec::new();
                 
                 // Read file in chunks to stay within bounds
-                let mut file = fs::File::open(path).map_err(|_| Error::new(
-                    ErrorCategory::Resource,
-                    codes::SYSTEM_IO_ERROR_CODE,
-                    "Failed to open module file"
-                ))?;
+                let mut file = fs::File::open(path).map_err(|_| Error::system_io_error("Failed to open module file"))?;
                 
                 use std::io::Read;
                 let mut buffer = [0u8; 4096];
                 loop {
-                    let bytes_read = file.read(&mut buffer).map_err(|_| Error::new(
-                        ErrorCategory::Resource,
-                        codes::SYSTEM_IO_ERROR_CODE,
-                        "Failed to read module data"
-                    ))?;
+                    let bytes_read = file.read(&mut buffer).map_err(|_| Error::system_io_error("Failed to read module data"))?;
                     
                     if bytes_read == 0 {
                         break;
                     }
                     
                     for &byte in &buffer[..bytes_read] {
-                        module_data.push(byte).map_err(|_| Error::new(
-                            ErrorCategory::Resource,
-                            codes::CAPACITY_EXCEEDED,
-                            "Module data exceeds bounded capacity"
+                        module_data.push(byte).map_err(|_| Error::runtime_execution_error("
                         ))?;
                     }
                 }
@@ -668,29 +616,18 @@ impl WrtdEngine {
             }
             
             // For non-safety-critical mode, use standard loading but with size check
-            #[cfg(not(feature = "safety-critical"))]
+            #[cfg(not(feature = "))]
             {
-                fs::read(path).map_err(|_| Error::new(
-                    ErrorCategory::Resource,
-                    codes::SYSTEM_IO_ERROR_CODE,
-                    "Failed to read module"
-                ))
+                fs::read(path).map_err(|_| Error::system_io_error("Failed to read module"))
             }
         } else if let Some(data) = &self.config.module_data {
             if data.len() > MAX_MODULE_SIZE {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::CAPACITY_EXCEEDED,
-                    "Module data exceeds 2MB limit"
+                return Err(Error::runtime_execution_error("
                 ));
             }
             Ok(data.to_vec())
         } else {
-            Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "No module source specified"
-            ))
+            Err(Error::parse_error("))
         }
     }
 
@@ -703,11 +640,7 @@ impl WrtdEngine {
         let module_data = self.load_module_bounded()?;
 
         #[cfg(not(feature = "std"))]
-        let module_data = self.config.module_data.ok_or_else(|| Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "No module data provided for no_std execution"
-        ))?;
+        let module_data = self.config.module_data.ok_or_else(|| Error::parse_error("No module data provided for no_std execution"))?;
         
         // Check if this is a component or module
         let is_component = self.detect_component_format(&module_data)?;
@@ -724,10 +657,7 @@ impl WrtdEngine {
 
         // Check limits
         if estimated_fuel > self.config.max_fuel {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::CAPACITY_EXCEEDED,
-                "Estimated fuel usage exceeds limit"
+            return Err(Error::runtime_execution_error("
             ));
         }
 
@@ -735,8 +665,7 @@ impl WrtdEngine {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::CAPACITY_EXCEEDED,
-                "Estimated memory usage exceeds limit"
-            ));
+                "));
         }
 
         // Route execution based on binary type
@@ -748,11 +677,7 @@ impl WrtdEngine {
             }
             #[cfg(not(feature = "component-model"))]
             {
-                return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::RUNTIME_ERROR,
-                    "Component model support not enabled"
-                ));
+                return Err(Error::runtime_error("Component model support not enabled"));
             }
         } else {
             // Execute as traditional WebAssembly module

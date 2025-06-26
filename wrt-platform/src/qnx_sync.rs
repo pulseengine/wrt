@@ -232,11 +232,7 @@ impl QnxFutex {
         // Create a channel for synchronization
         let chid = unsafe { ffi::ChannelCreate(config.channel_flags as i32) };
         if chid == -1 {
-            return Err(Error::new(
-                ErrorCategory::Platform,
-                1,
-                "Failed to create QNX channel",
-            ));
+            return Err(Error::runtime_execution_error("Failed to create QNX channel"));
         }
 
         // Create a connection to self (for sending pulses)
@@ -269,11 +265,7 @@ impl QnxFutex {
         };
 
         if result == -1 {
-            return Err(Error::new(
-                ErrorCategory::Platform,
-                1,
-                "Failed to send pulse",
-            ));
+            return Err(Error::runtime_execution_error("Failed to send QNX pulse"));
         }
 
         Ok(())
@@ -308,17 +300,13 @@ impl QnxFutex {
             return Err(Error::new(
                 ErrorCategory::Platform,
                 1,
-                "Failed to receive pulse",
+                "Failed to receive QNX pulse",
             ));
         }
 
         // Check if it's the pulse we're expecting
         if pulse.code as u32 != self.config.pulse_code as u32 {
-            return Err(Error::new(
-                ErrorCategory::Platform,
-                1,
-                "Received unexpected pulse code",
-            ));
+            return Err(Error::runtime_execution_error("Unexpected pulse code received"));
         }
 
         Ok(TimeoutResult::Success)

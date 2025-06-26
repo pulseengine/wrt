@@ -6,6 +6,11 @@
 
 use wrt_format::component::FormatValType;
 use crate::bounded_component_infra::ComponentProvider;
+use wrt_foundation::{
+    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
+};
 
 use crate::prelude::*;
 
@@ -311,14 +316,31 @@ struct MemoryBuffer {
 
 impl CanonicalMemoryPool {
     /// Create a new memory pool
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Result<Self, crate::ComponentError> {
+        Ok(Self {
             #[cfg(not(any(feature = "std", )))]
-            pools: [BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(), BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(), BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(), BoundedVec::new(NoStdProvider::<65536>::default()).unwrap()],
+            pools: [
+                {
+                    let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                    BoundedVec::new(provider)?
+                },
+                {
+                    let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                    BoundedVec::new(provider)?
+                },
+                {
+                    let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                    BoundedVec::new(provider)?
+                },
+                {
+                    let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                    BoundedVec::new(provider)?
+                }
+            ],
             #[cfg(feature = "std")]
             pools: [Vec::new(), Vec::new(), Vec::new(), Vec::new()],
             size_classes: [64, 256, 1024, 4096],
-        }
+        })
     }
 
     /// Acquire a buffer of at least the specified size
@@ -370,7 +392,7 @@ impl CanonicalMemoryPool {
 
 impl Default for CanonicalMemoryPool {
     fn default() -> Self {
-        Self::new()
+        Self::new().expect("Failed to create CanonicalMemoryPool")
     }
 }
 

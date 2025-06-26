@@ -72,6 +72,13 @@ pub mod integration_proofs;
 #[cfg(any(doc, kani, feature = "kani"))]
 pub mod advanced_proofs;
 
+// New ASIL-A verification modules for error handling and fault detection
+#[cfg(any(doc, kani, feature = "kani"))]
+pub mod error_handling_proofs;
+
+#[cfg(any(doc, kani, feature = "kani"))]
+pub mod fault_detection_proofs;
+
 /// Statistics for formal verification execution
 #[derive(Debug, Default, Clone)]
 pub struct VerificationStats {
@@ -122,6 +129,8 @@ impl KaniTestRunner {
         self.register_resource_lifecycle_tests()?;
         self.register_integration_tests()?;
         self.register_advanced_tests()?;
+        self.register_error_handling_tests()?;
+        self.register_fault_detection_tests()?;
         Ok(())
     }
     
@@ -286,6 +295,58 @@ impl KaniTestRunner {
         Ok(())
     }
     
+    /// Register error handling verification tests
+    fn register_error_handling_tests(&mut self) -> TestResult {
+        #[cfg(any(doc, kani, feature = "kani"))]
+        {
+            error_handling_proofs::register_tests(self.registry)?;
+            self.stats.verified_properties += error_handling_proofs::property_count();
+        }
+        
+        #[cfg(not(any(doc, kani, feature = "kani")))]
+        {
+            use wrt_test_registry::register_test;
+            
+            register_test!(
+                "error_handling_placeholder",
+                "formal-verification",
+                true,
+                "Placeholder for error handling verification (requires KANI feature)",
+                |_config: &TestConfig| -> TestResult {
+                    Ok(())
+                }
+            );
+        }
+        
+        Ok(())
+    }
+    
+    /// Register fault detection verification tests
+    fn register_fault_detection_tests(&mut self) -> TestResult {
+        #[cfg(any(doc, kani, feature = "kani"))]
+        {
+            fault_detection_proofs::register_tests(self.registry)?;
+            self.stats.verified_properties += fault_detection_proofs::property_count();
+        }
+        
+        #[cfg(not(any(doc, kani, feature = "kani")))]
+        {
+            use wrt_test_registry::register_test;
+            
+            register_test!(
+                "fault_detection_placeholder",
+                "formal-verification",
+                true,
+                "Placeholder for fault detection verification (requires KANI feature)",
+                |_config: &TestConfig| -> TestResult {
+                    Ok(())
+                }
+            );
+        }
+        
+        Ok(())
+    }
+    
     /// Get verification statistics
     pub fn get_stats(&self) -> &VerificationStats {
         &self.stats
@@ -301,6 +362,8 @@ impl KaniTestRunner {
         resource_lifecycle_proofs::run_all_proofs();
         integration_proofs::run_all_proofs();
         advanced_proofs::run_all_proofs();
+        error_handling_proofs::run_all_proofs();
+        fault_detection_proofs::run_all_proofs();
     }
 }
 

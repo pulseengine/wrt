@@ -192,7 +192,7 @@ pub mod component_extensions {
     /// Async component instance trait
     pub trait AsyncComponentInstance {
         /// Call an async export function
-        fn call_async(&self, name: &str, args: Vec<Value>) -> Pin<Box<dyn Future<Output = Result<Vec<Value>>>>>;
+        fn call_async(&self, name: &str, args: Vec<crate::Value>) -> Pin<Box<dyn Future<Output = Result<Vec<crate::Value>>>>>;
         
         /// Get an async resource handle
         fn get_async_resource(&self, name: &str) -> Result<WasiAsyncResourceHandle>;
@@ -241,36 +241,31 @@ pub mod error_extensions {
     
     /// Preview3-specific error codes
     pub mod codes {
-        use wrt_error::ErrorCode;
-        
         /// Thread spawn failed
-        pub const THREAD_SPAWN_FAILED: ErrorCode = ErrorCode(0x3001);
+        pub const THREAD_SPAWN_FAILED: u32 = 0x3001;
         /// Shared memory allocation failed
-        pub const SHARED_MEMORY_FAILED: ErrorCode = ErrorCode(0x3002);
+        pub const SHARED_MEMORY_FAILED: u32 = 0x3002;
         /// Async operation timeout
-        pub const ASYNC_TIMEOUT: ErrorCode = ErrorCode(0x3003);
+        pub const ASYNC_TIMEOUT: u32 = 0x3003;
         /// Stream codec error
-        pub const STREAM_CODEC_ERROR: ErrorCode = ErrorCode(0x3004);
+        pub const STREAM_CODEC_ERROR: u32 = 0x3004;
     }
     
     /// Preview3-specific error kinds
     pub mod kinds {
-        use wrt_error::ErrorKind;
+        // Remove ErrorKind usage - not defined in wrt_error
         
         /// Threading error
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub struct ThreadingError(pub &'static str);
-        impl ErrorKind for ThreadingError {}
         
         /// Async I/O error
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub struct AsyncIoError(pub &'static str);
-        impl ErrorKind for AsyncIoError {}
         
         /// Streaming error
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub struct StreamingError(pub &'static str);
-        impl ErrorKind for StreamingError {}
     }
 }
 

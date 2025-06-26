@@ -249,10 +249,7 @@ impl CfiProtectedEngine {
             .iter()
             .find(|f| f.function_index == function_index)
             .ok_or_else(|| {
-                Error::new(
-                    ErrorCategory::Runtime,
-                    codes::CFI_VIOLATION,
-                    format!("No CFI metadata found for function {}", function_index),
+                Error::runtime_execution_error(", function_index),
                 )
             })?;
 
@@ -328,7 +325,7 @@ impl CfiProtectedEngine {
         Err(Error::new(
             ErrorCategory::Runtime,
             codes::FUNCTION_NOT_FOUND,
-            format!("Function '{}' not found in module exports", function_name),
+            format!("),
         ))
     }
 

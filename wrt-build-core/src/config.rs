@@ -76,7 +76,7 @@ pub struct WorkspaceConfig {
 }
 
 /// ASIL (Automotive Safety Integrity Level) configuration
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum AsilLevel {
     /// Quality Management (no specific safety requirements)
     QM,
@@ -93,6 +93,18 @@ pub enum AsilLevel {
 impl Default for AsilLevel {
     fn default() -> Self {
         AsilLevel::QM
+    }
+}
+
+impl std::fmt::Display for AsilLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AsilLevel::QM => write!(f, "QM"),
+            AsilLevel::A => write!(f, "ASIL-A"),
+            AsilLevel::B => write!(f, "ASIL-B"),
+            AsilLevel::C => write!(f, "ASIL-C"),
+            AsilLevel::D => write!(f, "ASIL-D"),
+        }
     }
 }
 

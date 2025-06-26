@@ -69,11 +69,7 @@ fn validate_input_count(op: &SimdOp, inputs: &[Value]) -> Result<()> {
     let actual = inputs.len();
     
     if actual != expected {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("SIMD operation {:?} expects {} inputs, got {}", op, expected, actual)
-        ));
+        return Err(Error::runtime_execution_error("SIMD operation {:?} expects {} inputs, got {}"));
     }
     
     Ok(())
@@ -100,11 +96,7 @@ fn validate_simd_result(op: &SimdOp, result: &Value) -> Result<()> {
         Value::I64(_) => Ok(()),
         Value::F32(_) => Ok(()),
         Value::F64(_) => Ok(()),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            format!("Invalid result type for SIMD operation {:?}", op)
-        ))
+        _ => Err(Error::runtime_execution_error("Invalid result type for SIMD operation {:?}"))
     }
 }
 
@@ -418,10 +410,7 @@ impl SimdProvider for AssilCompliantSimdProvider {
 fn extract_v128(value: &Value) -> Result<[u8; 16]> {
     match value {
         Value::V128(bytes) => Ok(*bytes),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            format!("Expected v128 value, got {:?}", value.value_type())
+        _ => Err(Error::runtime_execution_error("Expected v128 value, got {:?}")
         ))
     }
 }
@@ -431,10 +420,7 @@ fn extract_v128(value: &Value) -> Result<[u8; 16]> {
 fn extract_i32(value: &Value) -> Result<i32> {
     match value {
         Value::I32(val) => Ok(*val),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            format!("Expected i32 value, got {:?}", value.value_type())
+        _ => Err(Error::runtime_execution_error("Expected i32 value, got {:?}")
         ))
     }
 }
@@ -444,10 +430,7 @@ fn extract_i32(value: &Value) -> Result<i32> {
 fn extract_i64(value: &Value) -> Result<i64> {
     match value {
         Value::I64(val) => Ok(*val),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            format!("Expected i64 value, got {:?}", value.value_type())
+        _ => Err(Error::runtime_execution_error("Expected i64 value, got {:?}")
         ))
     }
 }
@@ -457,10 +440,7 @@ fn extract_i64(value: &Value) -> Result<i64> {
 fn extract_f32(value: &Value) -> Result<f32> {
     match value {
         Value::F32(val) => Ok(*val),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            format!("Expected f32 value, got {:?}", value.value_type())
+        _ => Err(Error::runtime_execution_error("Expected f32 value, got {:?}")
         ))
     }
 }
@@ -470,10 +450,7 @@ fn extract_f32(value: &Value) -> Result<f32> {
 fn extract_f64(value: &Value) -> Result<f64> {
     match value {
         Value::F64(val) => Ok(*val),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            format!("Expected f64 value, got {:?}", value.value_type())
+        _ => Err(Error::runtime_execution_error("Expected f64 value, got {:?}")
         ))
     }
 }
@@ -2215,11 +2192,7 @@ fn execute_i8x16_extract_lane_s(inputs: &[Value], lane: u8) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     
     if lane >= 16 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("Lane index {} out of bounds for i8x16", lane)
-        ));
+        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i8x16"));
     }
     
     let val = a[lane as usize] as i8;
@@ -2230,11 +2203,7 @@ fn execute_i8x16_extract_lane_u(inputs: &[Value], lane: u8) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     
     if lane >= 16 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("Lane index {} out of bounds for i8x16", lane)
-        ));
+        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i8x16"));
     }
     
     let val = a[lane as usize];
@@ -2246,11 +2215,7 @@ fn execute_i8x16_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let val = extract_i32(&inputs[1])?;
     
     if lane >= 16 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("Lane index {} out of bounds for i8x16", lane)
-        ));
+        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i8x16"));
     }
     
     a[lane as usize] = val as u8;
@@ -2261,11 +2226,7 @@ fn execute_i16x8_extract_lane_s(inputs: &[Value], lane: u8) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     
     if lane >= 8 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("Lane index {} out of bounds for i16x8", lane)
-        ));
+        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i16x8"));
     }
     
     let lane_idx = lane as usize;
@@ -2277,11 +2238,7 @@ fn execute_i16x8_extract_lane_u(inputs: &[Value], lane: u8) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     
     if lane >= 8 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("Lane index {} out of bounds for i16x8", lane)
-        ));
+        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i16x8"));
     }
     
     let lane_idx = lane as usize;
@@ -2294,11 +2251,7 @@ fn execute_i16x8_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let val = extract_i32(&inputs[1])?;
     
     if lane >= 8 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("Lane index {} out of bounds for i16x8", lane)
-        ));
+        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i16x8"));
     }
     
     let lane_idx = lane as usize;
@@ -2312,11 +2265,7 @@ fn execute_i32x4_extract_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     
     if lane >= 4 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("Lane index {} out of bounds for i32x4", lane)
-        ));
+        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i32x4"));
     }
     
     let lane_idx = lane as usize;
@@ -2329,11 +2278,7 @@ fn execute_i32x4_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let val = extract_i32(&inputs[1])?;
     
     if lane >= 4 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("Lane index {} out of bounds for i32x4", lane)
-        ));
+        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i32x4"));
     }
     
     let lane_idx = lane as usize;
@@ -2346,11 +2291,7 @@ fn execute_i64x2_extract_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     
     if lane >= 2 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("Lane index {} out of bounds for i64x2", lane)
-        ));
+        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i64x2"));
     }
     
     let lane_idx = lane as usize;
@@ -2365,11 +2306,7 @@ fn execute_i64x2_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let val = extract_i64(&inputs[1])?;
     
     if lane >= 2 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("Lane index {} out of bounds for i64x2", lane)
-        ));
+        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i64x2"));
     }
     
     let lane_idx = lane as usize;
@@ -2382,11 +2319,7 @@ fn execute_f32x4_extract_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     
     if lane >= 4 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("Lane index {} out of bounds for f32x4", lane)
-        ));
+        return Err(Error::runtime_execution_error("Lane index {} out of bounds for f32x4"));
     }
     
     let lane_idx = lane as usize;
@@ -2399,11 +2332,7 @@ fn execute_f32x4_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let val = extract_f32(&inputs[1])?;
     
     if lane >= 4 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("Lane index {} out of bounds for f32x4", lane)
-        ));
+        return Err(Error::runtime_execution_error("Lane index {} out of bounds for f32x4"));
     }
     
     let lane_idx = lane as usize;
@@ -2416,11 +2345,7 @@ fn execute_f64x2_extract_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     
     if lane >= 2 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("Lane index {} out of bounds for f64x2", lane)
-        ));
+        return Err(Error::runtime_execution_error("Lane index {} out of bounds for f64x2"));
     }
     
     let lane_idx = lane as usize;
@@ -2435,11 +2360,7 @@ fn execute_f64x2_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let val = extract_f64(&inputs[1])?;
     
     if lane >= 2 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("Lane index {} out of bounds for f64x2", lane)
-        ));
+        return Err(Error::runtime_execution_error("Lane index {} out of bounds for f64x2"));
     }
     
     let lane_idx = lane as usize;

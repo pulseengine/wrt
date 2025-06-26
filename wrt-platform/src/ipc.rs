@@ -146,11 +146,7 @@ pub fn create_platform_channel(_name: &str) -> Result<Box<dyn IpcChannel>> {
     #[cfg(not(any(target_os = "nto", target_os = "linux", target_os = "windows")))]
     {
         // Generic IPC implementation for platforms without native IPC
-        Err(Error::new(
-            ErrorCategory::System,
-            1,
-            "IPC not supported on this platform",
-        ))
+        Err(Error::runtime_execution_error("IPC not supported on this platform"))
     }
 }
 
@@ -237,7 +233,7 @@ impl IpcServer {
                 Err(e) => {
                     if *self.running.lock() {
                         // Only log error if we're still running
-                        eprintln!("IPC receive error: {e}");
+                        eprintln!("IPC server error: {}", e);
                     }
                 }
             }

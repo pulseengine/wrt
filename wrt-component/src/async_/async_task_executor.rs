@@ -12,7 +12,7 @@ use crate::{
         fuel_aware_waker::WakerData,
     },
     task_manager::TaskId,
-    component_instance::ComponentInstance,
+    types::ComponentInstance,
     ComponentInstanceId,
     prelude::*,
 };
@@ -92,10 +92,7 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
         // Check fuel budget strictly
         let fuel_consumed = context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
         if fuel_consumed >= self.max_execution_time {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::EXECUTION_LIMIT_EXCEEDED,
-                "ASIL-D fuel limit exceeded".to_string(),
+            return Err(Error::runtime_execution_error(".to_string(),
             ));
         }
 
@@ -106,11 +103,7 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
                 ExecutionStepResult::Completed(result) => {
                     // Verify deterministic completion
                     if self.execution_counter != context.get_deterministic_timestamp() {
-                        return Err(Error::new(
-                            ErrorCategory::Runtime,
-                            codes::EXECUTION_ERROR,
-                            "ASIL-D determinism violation".to_string(),
-                        ));
+                        return Err(Error::runtime_execution_error("));
                     }
                     Ok(ExecutionStepResult::Completed(result))
                 },
@@ -125,11 +118,7 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
                 },
                 ExecutionStepResult::Waiting => {
                     // ASIL-D tasks should not wait - must be deterministic
-                    Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::INVALID_STATE,
-                        "ASIL-D tasks cannot enter waiting state".to_string(),
-                    ))
+                    Err(Error::validation_invalid_state("ASIL-D tasks cannot enter waiting state"))
                 },
             }
         } else {
@@ -151,10 +140,7 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
                 max_fuel_per_slice,
             } => {
                 if !deterministic_execution {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::INVALID_CONFIG,
-                        "ASIL-D requires deterministic execution".to_string(),
+                    return Err(Error::runtime_execution_error(".to_string(),
                     ));
                 }
 
@@ -162,26 +148,19 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
                     return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::INVALID_CONFIG,
-                        "ASIL-D requires bounded execution time".to_string(),
+                        "),
                     ));
                 }
 
                 if context.stack_depth > self.max_stack_depth {
-                    return Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_LIMIT_EXCEEDED,
-                        format!("ASIL-D stack depth {} exceeds limit {}", 
+                    return Err(Error::runtime_execution_error(", 
                             context.stack_depth, self.max_stack_depth),
                     ));
                 }
 
                 Ok(())
             },
-            _ => Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "ASILDTaskExecutor only handles ASIL-D mode".to_string(),
-            )),
+            _ => Err(Error::validation_invalid_input(")),
         }
     }
 
@@ -244,10 +223,7 @@ impl AsyncTaskExecutor for ASILCTaskExecutor {
                     // Verify temporal isolation
                     let end_fuel = context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
                     if end_fuel - start_fuel > self.max_slice_duration {
-                        return Err(Error::new(
-                            ErrorCategory::Resource,
-                            codes::EXECUTION_LIMIT_EXCEEDED,
-                            "ASIL-C temporal isolation violated".to_string(),
+                        return Err(Error::runtime_execution_error(".to_string(),
                         ));
                     }
                     Ok(ExecutionStepResult::Completed(result))
@@ -282,15 +258,12 @@ impl AsyncTaskExecutor for ASILCTaskExecutor {
                     return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::INVALID_CONFIG,
-                        "ASIL-C requires spatial isolation".to_string(),
+                        "),
                     ));
                 }
 
                 if temporal_isolation && !self.temporal_isolation {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::INVALID_CONFIG,
-                        "ASIL-C requires temporal isolation".to_string(),
+                    return Err(Error::runtime_execution_error(".to_string(),
                     ));
                 }
 
@@ -298,17 +271,13 @@ impl AsyncTaskExecutor for ASILCTaskExecutor {
                     return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::INVALID_CONFIG,
-                        "ASIL-C requires resource isolation".to_string(),
+                        "),
                     ));
                 }
 
                 Ok(())
             },
-            _ => Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "ASILCTaskExecutor only handles ASIL-C mode".to_string(),
-            )),
+            _ => Err(Error::validation_invalid_input("ASILCTaskExecutor only handles ASIL-C mode")),
         }
     }
 
@@ -386,10 +355,7 @@ impl AsyncTaskExecutor for ASILBTaskExecutor {
                 max_execution_slice_ms,
             } => {
                 if strict_resource_limits && !self.strict_resource_limits {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::INVALID_CONFIG,
-                        "ASIL-B requires strict resource limits".to_string(),
+                    return Err(Error::runtime_execution_error(".to_string(),
                     ));
                 }
 
@@ -397,18 +363,13 @@ impl AsyncTaskExecutor for ASILBTaskExecutor {
                     return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::INVALID_CONFIG,
-                        format!("ASIL-B execution slice {} exceeds limit {}", 
-                            self.max_execution_slice_ms, max_execution_slice_ms),
+                        format!("),
                     ));
                 }
 
                 Ok(())
             },
-            _ => Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "ASILBTaskExecutor only handles ASIL-B mode".to_string(),
-            )),
+            _ => Err(Error::validation_invalid_input("ASILBTaskExecutor only handles ASIL-B mode")),
         }
     }
 
@@ -468,10 +429,7 @@ impl AsyncTaskExecutor for ASILATaskExecutor {
                     
                     if self.error_count >= self.max_error_count {
                         // Too many errors - fail task
-                        Err(Error::new(
-                            ErrorCategory::Runtime,
-                            codes::EXECUTION_ERROR,
-                            format!("ASIL-A task exceeded error limit: {}", e),
+                        Err(Error::runtime_execution_error("ASIL-A task exceeded error limit: {}"),
                         ))
                     } else {
                         // Try to recover by yielding
@@ -493,19 +451,12 @@ impl AsyncTaskExecutor for ASILATaskExecutor {
         match asil_mode {
             ASILExecutionMode::A { error_detection } => {
                 if error_detection && !self.error_detection {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::INVALID_CONFIG,
-                        "ASIL-A requires error detection".to_string(),
+                    return Err(Error::runtime_execution_error(".to_string(),
                     ));
                 }
                 Ok(())
             },
-            _ => Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "ASILATaskExecutor only handles ASIL-A mode".to_string(),
-            )),
+            _ => Err(Error::validation_invalid_input(")),
         }
     }
 

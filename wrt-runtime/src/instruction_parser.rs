@@ -7,18 +7,21 @@ use wrt_foundation::{
     types::{Instruction, BlockType, MemArg},
     bounded::BoundedVec,
     safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
 };
 use wrt_error::{Error, ErrorCategory, Result, codes};
 
+// Type aliases for capability-based memory allocation
+type InstructionProvider = wrt_foundation::safe_memory::NoStdProvider<8192>;
+type InstructionVec = BoundedVec<Instruction<InstructionProvider>, 1024, InstructionProvider>;
+type TargetVec = BoundedVec<u32, 256, InstructionProvider>;
+
 /// Parse WebAssembly bytecode into runtime instructions
-pub fn parse_instructions(bytecode: &[u8]) -> Result<BoundedVec<Instruction<NoStdProvider<8192>>, 1024, NoStdProvider<8192>>> {
-    let provider = NoStdProvider::<8192>::default();
+pub fn parse_instructions(bytecode: &[u8]) -> Result<InstructionVec> {
+    let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
     let mut instructions = BoundedVec::new(provider).map_err(|_| {
-        Error::new(
-            ErrorCategory::Memory,
-            codes::MEMORY_ALLOCATION_ERROR,
-            "Failed to allocate instruction vector"
-        )
+        Error::memory_error("Failed to allocate instruction vector")
     })?;
     
     let mut offset = 0;
@@ -26,11 +29,7 @@ pub fn parse_instructions(bytecode: &[u8]) -> Result<BoundedVec<Instruction<NoSt
         let (instruction, consumed) = parse_instruction(bytecode, offset)?;
         let is_end = matches!(instruction, Instruction::End);
         instructions.push(instruction).map_err(|_| {
-            Error::new(
-                ErrorCategory::Capacity,
-                codes::CAPACITY_EXCEEDED,
-                "Too many instructions in function"
-            )
+            Error::capacity_exceeded("Too many instructions in function")
         })?;
         offset += consumed;
         
@@ -44,13 +43,9 @@ pub fn parse_instructions(bytecode: &[u8]) -> Result<BoundedVec<Instruction<NoSt
 }
 
 /// Parse a single instruction from bytecode
-fn parse_instruction(bytecode: &[u8], offset: usize) -> Result<(Instruction<NoStdProvider<8192>>, usize)> {
+fn parse_instruction(bytecode: &[u8], offset: usize) -> Result<(Instruction<InstructionProvider>, usize)> {
     if offset >= bytecode.len() {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Unexpected end of bytecode"
-        ));
+        return Err(Error::parse_error("Unexpected end of bytecode"));
     }
     
     let opcode = bytecode[offset];
@@ -97,12 +92,8 @@ fn parse_instruction(bytecode: &[u8], offset: usize) -> Result<(Instruction<NoSt
         }
         0x0E => {
             // BrTable
-            let provider = NoStdProvider::<8192>::default(); // Provider for BoundedVec
-            let mut targets = BoundedVec::new(provider).map_err(|_| Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Failed to create BrTable targets vector"
-            ))?;
+            let provider = safe_managed_alloc!(8192, CrateId::Runtime)?; // Provider for BoundedVec
+            let mut targets = BoundedVec::new(provider).map_err(|_| Error::parse_error("Failed to create BrTable targets vector"))?;
             
             let (count, mut bytes_consumed) = read_leb128_u32(bytecode, offset + 1)?;
             consumed += bytes_consumed;
@@ -111,11 +102,7 @@ fn parse_instruction(bytecode: &[u8], offset: usize) -> Result<(Instruction<NoSt
             for _ in 0..count {
                 let (target, bytes) = read_leb128_u32(bytecode, offset + consumed)?;
                 consumed += bytes;
-                targets.push(target).map_err(|_| Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Too many BrTable targets"
-                ))?;
+                targets.push(target).map_err(|_| Error::parse_error("Too many BrTable targets"))?;
             }
             
             // Parse default target
@@ -273,11 +260,7 @@ fn parse_instruction(bytecode: &[u8], offset: usize) -> Result<(Instruction<NoSt
         }
         0x43 => {
             if offset + 5 > bytecode.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "F32 constant extends beyond bytecode"
-                ));
+                return Err(Error::parse_error("F32 constant extends beyond bytecode"));
             }
             let bytes = [bytecode[offset + 1], bytecode[offset + 2], bytecode[offset + 3], bytecode[offset + 4]];
             let value = u32::from_le_bytes(bytes); // Use bit representation
@@ -286,11 +269,7 @@ fn parse_instruction(bytecode: &[u8], offset: usize) -> Result<(Instruction<NoSt
         }
         0x44 => {
             if offset + 9 > bytecode.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "F64 constant extends beyond bytecode"
-                ));
+                return Err(Error::parse_error("F64 constant extends beyond bytecode"));
             }
             let mut bytes = [0u8; 8];
             bytes.copy_from_slice(&bytecode[offset + 1..offset + 9]);
@@ -388,11 +367,7 @@ fn parse_instruction(bytecode: &[u8], offset: usize) -> Result<(Instruction<NoSt
         0xBB => Instruction::F64PromoteF32,
         
         _ => {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-"Unknown instruction opcode"
-            ));
+            return Err(Error::parse_error("Unknown instruction opcode"));
         }
     };
     
@@ -402,11 +377,7 @@ fn parse_instruction(bytecode: &[u8], offset: usize) -> Result<(Instruction<NoSt
 /// Parse a block type
 fn parse_block_type(bytecode: &[u8], offset: usize) -> Result<BlockType> {
     if offset >= bytecode.len() {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Unexpected end while parsing block type"
-        ));
+        return Err(Error::parse_error("Unexpected end while parsing block type"));
     }
     
     match bytecode[offset] {
@@ -418,11 +389,7 @@ fn parse_block_type(bytecode: &[u8], offset: usize) -> Result<BlockType> {
                 0x7E => Ok(BlockType::Value(Some(wrt_foundation::types::ValueType::I64))),
                 0x7D => Ok(BlockType::Value(Some(wrt_foundation::types::ValueType::F32))),
                 0x7C => Ok(BlockType::Value(Some(wrt_foundation::types::ValueType::F64))),
-                _ => Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Invalid value type in block type"
-                ))
+                _ => Err(Error::parse_error("Invalid value type in block type"))
             }
         }
         _ => {
@@ -440,11 +407,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
     
     loop {
         if offset + consumed >= data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unexpected end of data while reading LEB128"
-            ));
+            return Err(Error::parse_error("Unexpected end of data while reading LEB128"));
         }
         
         let byte = data[offset + consumed];
@@ -458,11 +421,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
         
         shift += 7;
         if shift >= 32 {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "LEB128 value too large for u32"
-            ));
+            return Err(Error::parse_error("LEB128 value too large for u32"));
         }
     }
     
@@ -478,11 +437,7 @@ fn read_leb128_i32(data: &[u8], offset: usize) -> Result<(i32, usize)> {
     
     loop {
         if offset + consumed >= data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unexpected end of data while reading LEB128"
-            ));
+            return Err(Error::parse_error("Unexpected end of data while reading LEB128"));
         }
         
         byte = data[offset + consumed];
@@ -513,11 +468,7 @@ fn read_leb128_i64(data: &[u8], offset: usize) -> Result<(i64, usize)> {
     
     loop {
         if offset + consumed >= data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unexpected end of data while reading LEB128"
-            ));
+            return Err(Error::parse_error("Unexpected end of data while reading LEB128"));
         }
         
         byte = data[offset + consumed];

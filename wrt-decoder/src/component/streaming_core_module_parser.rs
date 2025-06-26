@@ -104,19 +104,13 @@ impl<'a> StreamingCoreModuleParser<'a> {
     /// A new parser instance ready to process core modules
     pub fn new(data: &'a [u8], verification_level: VerificationLevel) -> Result<Self> {
         if data.is_empty() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_BINARY,
-                "Empty core module section data",
-            ));
+            return Err(Error::runtime_execution_error("Streaming parser error"));
         }
 
         // ASIL constraint: Verify data size constraints
         if data.len() > MAX_CORE_MODULE_SIZE {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Core module section exceeds maximum size",
+            return Err(Error::validation_error(
+                "Core module size exceeds maximum allowed",
             ));
         }
 
@@ -142,9 +136,7 @@ impl<'a> StreamingCoreModuleParser<'a> {
 
         // ASIL constraint: Validate module count
         if module_count > MAX_MODULES_PER_COMPONENT as u32 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
+            return Err(Error::validation_error(
                 "Too many core modules in component",
             ));
         }
@@ -175,18 +167,12 @@ impl<'a> StreamingCoreModuleParser<'a> {
 
         // ASIL constraint: Validate module size
         if module_size > MAX_CORE_MODULE_SIZE as u32 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Core module size exceeds maximum",
-            ));
+            return Err(Error::validation_error("Core module size exceeds maximum"));
         }
 
         // Ensure we have enough data
         if self.offset + module_size as usize > self.data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
+            return Err(Error::parse_error(
                 "Core module extends beyond section data",
             ));
         }
@@ -196,17 +182,13 @@ impl<'a> StreamingCoreModuleParser<'a> {
 
         // Validate WASM header
         if module_data.len() < 8 {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::INVALID_BINARY,
+            return Err(Error::parse_invalid_binary(
                 "Core module too small for WASM header",
             ));
         }
 
         if &module_data[0..4] != WASM_MAGIC {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::INVALID_BINARY,
+            return Err(Error::parse_invalid_binary(
                 "Invalid WASM magic number in core module",
             ));
         }
@@ -218,11 +200,7 @@ impl<'a> StreamingCoreModuleParser<'a> {
             module_data[7],
         ];
         if version_bytes != WASM_VERSION {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::UNSUPPORTED_OPERATION,
-                "Unsupported WASM version in core module",
-            ));
+            return Err(Error::runtime_execution_error("Streaming parser error"));
         }
 
         // Use existing streaming decoder for the core module
@@ -250,9 +228,7 @@ impl<'a> StreamingCoreModuleParser<'a> {
                 crate::streaming_decoder::decode_module_streaming(module_data)?;
             // Convert to unified Module type (this might require implementing conversion)
             // For now, return error indicating this needs proper conversion
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::NOT_IMPLEMENTED,
+            Err(Error::runtime_not_implemented(
                 "Core module parsing in no_std requires type conversion implementation",
             ))
         }

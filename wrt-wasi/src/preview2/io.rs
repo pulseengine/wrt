@@ -123,63 +123,39 @@ pub fn wasi_poll_one_off(
 /// Helper function to extract stream handle from arguments
 fn extract_stream_handle(args: &[Value]) -> Result<u32> {
     if args.is_empty() {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-"Missing stream handle argument"
-        ));
+        return Err(Error::wasi_invalid_fd("Missing stream handle argument"));
     }
     
     match &args[0] {
         Value::U32(handle) => Ok(*handle),
         Value::S32(handle) => {
             if *handle < 0 {
-                Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::WASI_INVALID_FD,
-        "Invalid negative stream handle"
-                ))
+                Err(Error::wasi_invalid_fd("Invalid negative stream handle"))
             } else {
                 Ok(*handle as u32)
             }
         }
-        _ => Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-            "Invalid stream handle type"
-        )),
+        _ => Err(Error::wasi_invalid_fd("Invalid stream handle type")),
     }
 }
 
 /// Helper function to extract read length from arguments
 fn extract_read_length(args: &[Value], index: usize) -> Result<u64> {
     if args.len() <= index {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-            "Missing read length argument"
-        ));
+        return Err(Error::wasi_invalid_fd("Missing read length argument"));
     }
     
     match &args[index] {
         Value::U64(len) => Ok(*len),
         Value::U32(len) => Ok(*len as u64),
-        _ => Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-            "Invalid read length type"
-        )),
+        _ => Err(Error::wasi_invalid_fd("Invalid read length type")),
     }
 }
 
 /// Helper function to extract write data from arguments
 fn extract_write_data(args: &[Value], index: usize) -> Result<Vec<u8>> {
     if args.len() <= index {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-            "Missing write data argument"
-        ));
+        return Err(Error::wasi_invalid_fd("Missing write data argument"));
     }
     
     match &args[index] {
@@ -188,31 +164,19 @@ fn extract_write_data(args: &[Value], index: usize) -> Result<Vec<u8>> {
             for item in items {
                 match item {
                     Value::U8(byte) => data.push(*byte),
-                    _ => return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::WASI_INVALID_FD,
-                        "Invalid byte data in write"
-                    )),
+                    _ => return Err(Error::wasi_invalid_fd("Invalid byte data in write")),
                 }
             }
             Ok(data)
         }
-        _ => Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-            "Invalid write data type"
-        )),
+        _ => Err(Error::wasi_invalid_fd("Invalid write data type")),
     }
 }
 
 /// Helper function to extract pollable list from arguments
 fn extract_pollable_list(args: &[Value]) -> Result<Vec<u32>> {
     if args.is_empty() {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-            "Missing pollables argument"
-        ));
+        return Err(Error::wasi_invalid_fd("Missing pollables argument"));
     }
     
     match &args[0] {
@@ -221,20 +185,12 @@ fn extract_pollable_list(args: &[Value]) -> Result<Vec<u32>> {
             for item in items {
                 match item {
                     Value::U32(handle) => pollables.push(*handle),
-                    _ => return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::WASI_INVALID_FD,
-                        "Invalid pollable handle"
-                    )),
+                    _ => return Err(Error::wasi_invalid_fd("Invalid pollable handle")),
                 }
             }
             Ok(pollables)
         }
-        _ => Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-            "Invalid pollables type"
-        )),
+        _ => Err(Error::wasi_invalid_fd("Invalid pollables type")),
     }
 }
 
@@ -254,11 +210,7 @@ fn perform_stream_read(stream_handle: u32, len: u64) -> Result<Vec<u8>> {
                 use std::io::{self, Read};
                 let mut buffer = vec![0u8; len.min(4096) as usize];
                 let bytes_read = io::stdin().read(&mut buffer)
-                    .map_err(|_| Error::new(
-                        ErrorCategory::Runtime,
-                        codes::WASI_CAPABILITY_UNAVAILABLE,
-                        "Failed to read from stdin"
-                    ))?;
+                    .map_err(|_| Error::wasi_capability_unavailable("Failed to read from stdin"))?;
                 buffer.truncate(bytes_read);
                 Ok(buffer)
             }
@@ -290,17 +242,9 @@ fn perform_stream_write(stream_handle: u32, data: &[u8]) -> Result<u64> {
             {
                 use std::io::{self, Write};
                 io::stdout().write_all(data)
-                    .map_err(|_| Error::new(
-                        ErrorCategory::Runtime,
-                        codes::WASI_CAPABILITY_UNAVAILABLE,
-                        "Failed to write to stdout"
-                    ))?;
+                    .map_err(|_| Error::wasi_capability_unavailable("Failed to write to stdout"))?;
                 io::stdout().flush()
-                    .map_err(|_| Error::new(
-                        ErrorCategory::Runtime,
-                        codes::WASI_CAPABILITY_UNAVAILABLE,
-                        "Failed to flush stdout"
-                    ))?;
+                    .map_err(|_| Error::wasi_capability_unavailable("Failed to flush stdout"))?;
                 Ok(data.len() as u64)
             }
             #[cfg(not(feature = "std"))]
@@ -315,17 +259,9 @@ fn perform_stream_write(stream_handle: u32, data: &[u8]) -> Result<u64> {
             {
                 use std::io::{self, Write};
                 io::stderr().write_all(data)
-                    .map_err(|_| Error::new(
-                        ErrorCategory::Runtime,
-                        codes::WASI_CAPABILITY_UNAVAILABLE,
-                        "Failed to write to stderr"
-                    ))?;
+                    .map_err(|_| Error::wasi_capability_unavailable("Failed to write to stderr"))?;
                 io::stderr().flush()
-                    .map_err(|_| Error::new(
-                        ErrorCategory::Runtime,
-                        codes::WASI_CAPABILITY_UNAVAILABLE,
-                        "Failed to flush stderr"
-                    ))?;
+                    .map_err(|_| Error::wasi_capability_unavailable("Failed to flush stderr"))?;
                 Ok(data.len() as u64)
             }
             #[cfg(not(feature = "std"))]
@@ -350,11 +286,7 @@ fn perform_stream_flush(stream_handle: u32) -> Result<()> {
             {
                 use std::io::{self, Write};
                 io::stdout().flush()
-                    .map_err(|_| Error::new(
-                        ErrorCategory::Runtime,
-                        codes::WASI_CAPABILITY_UNAVAILABLE,
-                        "Failed to flush stdout"
-                    ))?;
+                    .map_err(|_| Error::wasi_capability_unavailable("Failed to flush stdout"))?;
             }
             Ok(())
         }
@@ -364,11 +296,7 @@ fn perform_stream_flush(stream_handle: u32) -> Result<()> {
             {
                 use std::io::{self, Write};
                 io::stderr().flush()
-                    .map_err(|_| Error::new(
-                        ErrorCategory::Runtime,
-                        codes::WASI_CAPABILITY_UNAVAILABLE,
-                        "Failed to flush stderr"
-                    ))?;
+                    .map_err(|_| Error::wasi_capability_unavailable("Failed to flush stderr"))?;
             }
             Ok(())
         }

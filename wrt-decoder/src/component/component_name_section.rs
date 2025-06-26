@@ -179,23 +179,18 @@ pub fn generate_component_name_section(section: &ComponentNameSection) -> Result
 pub fn generate_component_name_section(
     section: &ComponentNameSection,
 ) -> Result<BoundedVec<u8, 1024, NoStdProvider<2048>>> {
-    let provider = NoStdProvider::<2048>::default();
+    let provider = wrt_foundation::safe_managed_alloc!(
+        2048,
+        wrt_foundation::budget_aware_provider::CrateId::Decoder
+    )?;
     let mut result = BoundedVec::new(provider).map_err(|_| {
-        Error::new(
-            ErrorCategory::Memory,
-            codes::MEMORY_ALLOCATION_FAILED,
-            "Failed to create result buffer",
-        )
+        wrt_error::Error::platform_memory_allocation_failed("Failed to create result buffer")
     })?;
 
     // Write component name if present (simplified for no_std)
     if let Some(name) = &section.component_name {
         result.push(subsection::COMPONENT_NAME).map_err(|_| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_FAILED,
-                "Name section buffer overflow",
-            )
+            wrt_error::Error::platform_memory_allocation_failed("Name section buffer overflow")
         })?;
 
         // In no_std mode, use simplified string writing
@@ -217,22 +212,14 @@ pub fn generate_component_name_section(
         // Write length data
         for i in 0..len_bytes_count {
             result.push(length_data[i]).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ALLOCATION_FAILED,
-                    "Name section buffer overflow",
-                )
+                wrt_error::Error::platform_memory_allocation_failed("Name section buffer overflow")
             })?;
         }
 
         // Write name data
         for byte in name_bytes.iter() {
             result.push(*byte).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ALLOCATION_FAILED,
-                    "Name section buffer overflow",
-                )
+                wrt_error::Error::platform_memory_allocation_failed("Name section buffer overflow")
             })?;
         }
     }
@@ -260,9 +247,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
 
         let subsection_end = pos + subsection_size as usize;
         if subsection_end > data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
+            return Err(Error::parse_error(
                 "Subsection extends beyond end of name section data",
             ));
         }
@@ -272,11 +257,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
                 // Parse component name
                 let (name, bytes_read) = read_string(&data[pos..subsection_end], 0)?;
                 if bytes_read != subsection_size as usize {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Invalid component name format",
-                    ));
+                    return Err(Error::parse_error("Invalid component name format"));
                 }
                 result.component_name = Some(name);
             },
@@ -291,9 +272,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
                 for _ in 0..num_sorts {
                     // Read sort ID
                     if subsection_pos >= subsection_end {
-                        return Err(Error::new(
-                            ErrorCategory::Parse,
-                            codes::PARSE_ERROR,
+                        return Err(Error::parse_error(
                             "Unexpected end of sort names subsection",
                         ));
                     }

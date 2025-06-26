@@ -39,31 +39,19 @@ static mut GLOBAL_CAPABILITY_CONTEXT: Option<MemoryCapabilityContext> = None;
 /// Get access to the global capability context
 pub fn get_global_capability_context() -> Result<&'static MemoryCapabilityContext> {
     if !MEMORY_INITIALIZED.load(Ordering::Acquire) {
-        return Err(Error::new(
-            crate::ErrorCategory::Initialization,
-            crate::codes::INITIALIZATION_ERROR,
-            "Memory system not initialized",
-        ));
+        return Err(Error::runtime_execution_error("Memory system not initialized"));
     }
     
     #[cfg(feature = "std")]
     {
-        GLOBAL_CAPABILITY_CONTEXT.get().ok_or_else(|| Error::new(
-            crate::ErrorCategory::Initialization,
-            crate::codes::INITIALIZATION_ERROR,
-            "Global capability context not available",
-        ))
+        GLOBAL_CAPABILITY_CONTEXT.get().ok_or_else(|| Error::runtime_execution_error("Global capability context not available"))
     }
     
     #[cfg(not(feature = "std"))]
     {
         #[allow(unsafe_code, static_mut_refs)] // Safe: Read-only access to static after initialization
         unsafe {
-            GLOBAL_CAPABILITY_CONTEXT.as_ref().ok_or_else(|| Error::new(
-                crate::ErrorCategory::Initialization,
-                crate::codes::INITIALIZATION_ERROR,
-                "Global capability context not available",
-            ))
+            GLOBAL_CAPABILITY_CONTEXT.as_ref().ok_or_else(|| Error::runtime_execution_error("Global capability context not initialized"))
         }
     }
 }
@@ -113,14 +101,9 @@ impl MemoryInitializer {
                 // Register dynamic capabilities for all crates
                 if let Err(_) = context.register_dynamic_capability(*crate_id, *budget) {
                     // ASIL-D safe error storage using atomic pointer
-                    let error_msg: &'static str = "Failed to register capability for crate";
-                    INIT_ERROR_PTR.store(error_msg as *const str as *mut &'static str, Ordering::Release);
+                    let error_msg: &'static str = "Failed to register crate capability";
                     MEMORY_INITIALIZED.store(false, Ordering::Release);
-                    return Err(Error::new(
-                        crate::ErrorCategory::Initialization,
-                        crate::codes::INITIALIZATION_ERROR,
-                        "Failed to register crate capability",
-                    ));
+                    return Err(Error::runtime_execution_error("Failed to register dynamic capability for crate"));
                 }
             }
         }
@@ -130,11 +113,7 @@ impl MemoryInitializer {
         {
             if let Err(_) = GLOBAL_CAPABILITY_CONTEXT.set(context) {
                 MEMORY_INITIALIZED.store(false, Ordering::Release);
-                return Err(Error::new(
-                    crate::ErrorCategory::Initialization,
-                    crate::codes::INITIALIZATION_ERROR,
-                    "Failed to store global capability context",
-                ));
+                return Err(Error::runtime_execution_error("Failed to set global capability context"));
             }
         }
         
@@ -222,11 +201,7 @@ pub fn init_crate_memory(crate_id: CrateId) -> Result<()> {
     // Verify crate is properly configured in capability system
     let context = get_global_capability_context()?;
     if !context.has_capability(crate_id) {
-        return Err(Error::new(
-            crate::ErrorCategory::Initialization,
-            crate::codes::INITIALIZATION_ERROR,
-            "Crate has no registered capability",
-        ));
+        return Err(Error::runtime_execution_error("Crate has no registered capability"));
     }
 
     Ok(())

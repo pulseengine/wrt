@@ -49,29 +49,17 @@ pub struct ThreadSpawnOptions {
 impl ThreadHandle {
     /// Terminate the thread (not supported in `no_std` mode)
     pub fn terminate(&self) -> Result<()> {
-        Err(Error::new(
-            ErrorCategory::NotSupported,
-            codes::UNSUPPORTED_OPERATION,
-            "Thread termination not supported in no_std mode"
-        ))
+        Err(Error::not_supported_unsupported_operation("Thread termination not supported in no_std mode"))
     }
     
     /// Join thread with timeout (not supported in `no_std` mode)
     pub fn join_timeout(&self, _timeout: core::time::Duration) -> Result<()> {
-        Err(Error::new(
-            ErrorCategory::NotSupported,
-            codes::UNSUPPORTED_OPERATION,
-            "Thread join with timeout not supported in no_std mode"
-        ))
+        Err(Error::not_supported_unsupported_operation("Thread join with timeout not supported in no_std mode"))
     }
     
     /// Join thread (not supported in `no_std` mode)
     pub fn join(&self) -> Result<()> {
-        Err(Error::new(
-            ErrorCategory::NotSupported,
-            codes::UNSUPPORTED_OPERATION,
-            "Thread join not supported in no_std mode"
-        ))
+        Err(Error::not_supported_unsupported_operation("Thread join not supported in no_std mode"))
     }
 }
 
@@ -336,21 +324,13 @@ impl ThreadManager {
     ) -> Result<ThreadId> {
         // Check thread limits
         if self.active_thread_count() >= self.config.max_threads {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_EXHAUSTED,
-                "Maximum thread limit reached"
-            ));
+            return Err(Error::resource_exhausted("Maximum thread limit reached"));
         }
         
         // Validate stack size
         let stack_size = stack_size.unwrap_or(self.config.default_stack_size);
         if stack_size > self.config.max_stack_size {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Stack size exceeds maximum allowed"
-            ));
+            return Err(Error::validation_error("Stack size exceeds maximum allowed"));
         }
         
         // Generate thread ID
@@ -372,10 +352,7 @@ impl ThreadManager {
         // Store thread context using bounded map
         // Store thread context in array
         if thread_id as usize >= MAX_MANAGED_THREADS {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::CAPACITY_EXCEEDED,
-                "Thread limit exceeded"
+            return Err(Error::runtime_execution_error("
             ));
         }
         self.threads[thread_id as usize] = Some(context);
@@ -390,11 +367,7 @@ impl ThreadManager {
         let context = self.get_thread_context_mut(thread_id)?;
         
         if context.info.state != ThreadState::Ready {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::EXECUTION_ERROR,
-                "Thread is not in ready state"
-            ));
+            return Err(Error::runtime_execution_error("));
         }
         
         // Create thread spawn options
@@ -422,11 +395,7 @@ impl ThreadManager {
                 // This is a placeholder for the actual WebAssembly execution
                 Ok(())
             }
-        ).map_err(|_| Error::new(
-            ErrorCategory::Runtime,
-            codes::EXECUTION_ERROR,
-            "Failed to spawn platform thread"
-        ))?;
+        ).map_err(|_| Error::runtime_execution_error("Failed to spawn platform thread"))?;
         
         #[cfg(not(feature = "std"))]
         let handle = ThreadHandle { id: thread_id };
@@ -445,11 +414,7 @@ impl ThreadManager {
         
         if let Some(handle) = &context.handle {
             // Request thread termination
-            handle.terminate().map_err(|_| Error::new(
-                ErrorCategory::Runtime,
-                codes::EXECUTION_ERROR,
-                "Failed to terminate thread"
-            ))?;
+            handle.terminate().map_err(|_| Error::runtime_execution_error("Failed to terminate thread"))?;
         }
         
         context.update_state(ThreadState::Terminated);
@@ -476,11 +441,7 @@ impl ThreadManager {
                     context.update_state(ThreadState::Completed);
                 } else {
                     context.update_state(ThreadState::Failed);
-                    return Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::EXECUTION_ERROR,
-                        "Thread join failed"
-                    ));
+                    return Err(Error::runtime_execution_error("Thread join failed"));
                 }
             }
             
@@ -579,10 +540,7 @@ impl ThreadManager {
     fn get_thread_context(&self, thread_id: ThreadId) -> Result<&ThreadExecutionContext> {
         self.threads.get(thread_id as usize)
             .and_then(|opt| opt.as_ref())
-            .ok_or_else(|| Error::new(
-                ErrorCategory::Runtime, 
-                codes::INVALID_ARGUMENT, 
-                "Thread not found"
+            .ok_or_else(|| Error::runtime_execution_error("
             ))
     }
     
@@ -593,8 +551,7 @@ impl ThreadManager {
             .ok_or_else(|| Error::new(
                 ErrorCategory::Runtime, 
                 codes::INVALID_ARGUMENT, 
-                "Thread not found"
-            ))
+                "))
     }
 }
 

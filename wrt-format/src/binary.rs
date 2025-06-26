@@ -25,6 +25,10 @@ use crate::error::parse_error;
 #[cfg(feature = "std")]
 use crate::module::{Data, DataMode, Element, ElementInit, Module};
 #[cfg(feature = "std")]
+use crate::pure_format_types::{
+    PureDataMode, PureDataSegment, PureElementInit, PureElementMode, PureElementSegment,
+};
+#[cfg(feature = "std")]
 use crate::types::FormatBlockType;
 
 /// Magic bytes for WebAssembly modules: \0asm
@@ -733,9 +737,7 @@ pub mod with_alloc {
         {
             for &byte in &WASM_MAGIC {
                 binary.push(byte).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::CAPACITY_EXCEEDED,
+                    Error::runtime_execution_error(
                         "Binary generation capacity exceeded (magic bytes)",
                     )
                 })?;
@@ -749,11 +751,7 @@ pub mod with_alloc {
         {
             for &byte in &WASM_VERSION {
                 binary.push(byte).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::CAPACITY_EXCEEDED,
-                        "Binary generation capacity exceeded (version)",
-                    )
+                    Error::runtime_execution_error("Binary generation capacity exceeded (version)")
                 })?;
             }
         }
@@ -1719,11 +1717,7 @@ pub mod with_alloc {
     ) -> wrt_error::Result<(crate::types::Limits, usize)> {
         if offset + 1 > bytes.len() {
             // Need at least flags byte
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unexpected end of limits",
-            ));
+            return Err(Error::parse_error("Unexpected end of limits"));
         }
         let flags = bytes[offset];
         let mut current_offset = offset + 1;
@@ -2203,9 +2197,7 @@ pub mod with_alloc {
     #[cfg(feature = "std")]
     pub fn parse_data(bytes: &[u8], mut offset: usize) -> Result<(Data, usize)> {
         if offset >= bytes.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
+            return Err(Error::parse_error(
                 "Unexpected end of bytes when parsing data segment prefix",
             ));
         }
@@ -2224,9 +2216,7 @@ pub mod with_alloc {
                 offset += bytes_read_count;
 
                 if offset + (init_byte_count as usize) > bytes.len() {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
+                    return Err(Error::parse_error(
                         "Data segment init bytes extend beyond data",
                     ));
                 }
@@ -2249,9 +2239,7 @@ pub mod with_alloc {
                 offset += bytes_read_count;
 
                 if offset + (init_byte_count as usize) > bytes.len() {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
+                    return Err(Error::parse_error(
                         "Passive data segment init bytes extend beyond data",
                     ));
                 }
@@ -2280,9 +2268,7 @@ pub mod with_alloc {
                 offset += bytes_read_count;
 
                 if offset + (init_byte_count as usize) > bytes.len() {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
+                    return Err(Error::parse_error(
                         "Data segment init bytes extend beyond data",
                     ));
                 }
@@ -2304,6 +2290,473 @@ pub mod with_alloc {
                 prefix
             ))),
         }
+    }
+
+    /// Parses a data segment into pure format type (recommended)
+    #[cfg(feature = "std")]
+    pub fn parse_data_pure(bytes: &[u8], mut offset: usize) -> Result<(PureDataSegment, usize)> {
+        if offset >= bytes.len() {
+            return Err(Error::parse_error(
+                "Unexpected end of bytes when parsing data segment prefix",
+            ));
+        }
+
+        let prefix = bytes[offset];
+        offset += 1;
+
+        match prefix {
+            0x00 => {
+                // Active data segment for memory 0
+                let memory_index = 0; // Implicit memory index 0
+                let (offset_expr, bytes_read_offset) = parse_init_expr(bytes, offset)?;
+                offset += bytes_read_offset;
+
+                let (init_byte_count, bytes_read_count) = read_leb128_u32(bytes, offset)?;
+                offset += bytes_read_count;
+
+                if offset + (init_byte_count as usize) > bytes.len() {
+                    return Err(Error::parse_error(
+                        "Data segment init bytes extend beyond data",
+                    ));
+                }
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
+                offset += init_byte_count as usize;
+
+                Ok((
+                    PureDataSegment {
+                        mode: PureDataMode::Active {
+                            memory_index,
+                            offset_expr_len: offset_expr.len() as u32,
+                        },
+                        offset_expr_bytes: offset_expr,
+                        data_bytes: init_data,
+                    },
+                    offset,
+                ))
+            },
+            0x01 => {
+                // Passive data segment
+                let (init_byte_count, bytes_read_count) = read_leb128_u32(bytes, offset)?;
+                offset += bytes_read_count;
+
+                if offset + (init_byte_count as usize) > bytes.len() {
+                    return Err(Error::parse_error(
+                        "Passive data segment init bytes extend beyond data",
+                    ));
+                }
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
+                offset += init_byte_count as usize;
+
+                Ok((
+                    PureDataSegment {
+                        mode: PureDataMode::Passive,
+                        offset_expr_bytes: Vec::new(),
+                        data_bytes: init_data,
+                    },
+                    offset,
+                ))
+            },
+            0x02 => {
+                // Active data segment with explicit memory index
+                let (memory_index, bytes_read_mem_idx) = read_leb128_u32(bytes, offset)?;
+                offset += bytes_read_mem_idx;
+
+                let (offset_expr, bytes_read_offset) = parse_init_expr(bytes, offset)?;
+                offset += bytes_read_offset;
+
+                let (init_byte_count, bytes_read_count) = read_leb128_u32(bytes, offset)?;
+                offset += bytes_read_count;
+
+                if offset + (init_byte_count as usize) > bytes.len() {
+                    return Err(Error::parse_error(
+                        "Data segment init bytes extend beyond data",
+                    ));
+                }
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
+                offset += init_byte_count as usize;
+
+                Ok((
+                    PureDataSegment {
+                        mode: PureDataMode::Active {
+                            memory_index,
+                            offset_expr_len: offset_expr.len() as u32,
+                        },
+                        offset_expr_bytes: offset_expr,
+                        data_bytes: init_data,
+                    },
+                    offset,
+                ))
+            },
+            _ => Err(crate::error::parse_error_dynamic(format!(
+                "Unsupported data segment prefix: 0x{:02X}",
+                prefix
+            ))),
+        }
+    }
+
+    /// Parses an element segment into pure format type (recommended)
+    #[cfg(feature = "std")]
+    pub fn parse_element_segment_pure(
+        bytes: &[u8],
+        mut offset: usize,
+    ) -> Result<(PureElementSegment, usize)> {
+        let (prefix_val, next_offset) = read_leb128_u32(bytes, offset).map_err(|e| {
+            crate::error::parse_error_dynamic(format!(
+                "Failed to read element segment prefix at offset {}: {}",
+                offset, e
+            ))
+        })?;
+        offset = next_offset;
+
+        let (element_type, init_data, mode, offset_expr): (
+            crate::types::RefType,
+            PureElementInit,
+            PureElementMode,
+            Vec<u8>,
+        );
+
+        match prefix_val {
+            0x00 => {
+                // MVP Active: expr vec(funcidx) end; tableidx is 0, elemkind is funcref
+                let table_index = 0;
+                let (parsed_offset_expr, next_offset) =
+                    parse_init_expr(bytes, offset).map_err(|e| {
+                        crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Failed to parse offset_expr for element segment (type 0): {}",
+                        offset, e
+                    ))
+                    })?;
+                offset = next_offset;
+                let (func_indices, next_offset) = read_vector(bytes, offset, read_leb128_u32)
+                    .map_err(|e| {
+                        crate::error::parse_error_dynamic(format!(
+                            "(offset {}): Failed to read func_indices for element segment (type 0): {}",
+                            offset, e
+                        ))
+                    })?;
+                offset = next_offset;
+
+                if bytes.get(offset).copied() != Some(END) {
+                    return Err(crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Expected END opcode after active element segment (type 0)",
+                        offset
+                    )));
+                }
+                offset += 1; // Consume END
+
+                element_type = crate::types::RefType::Funcref;
+                init_data = PureElementInit::FunctionIndices(func_indices);
+                mode = PureElementMode::Active {
+                    table_index,
+                    offset_expr_len: parsed_offset_expr.len() as u32,
+                };
+                offset_expr = parsed_offset_expr;
+            },
+            0x01 => {
+                // Passive: elemkind vec(expr) end
+                let (elemkind_byte, next_offset) = read_u8(bytes, offset)?;
+                offset = next_offset;
+                if elemkind_byte != 0x00 {
+                    return Err(crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type 1)",
+                        offset - 1,
+                        elemkind_byte
+                    )));
+                }
+                element_type = crate::types::RefType::Funcref;
+
+                let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
+                    .map_err(|e| {
+                        crate::error::parse_error_dynamic(format!(
+                            "(offset {}): Failed to read expressions for element segment (type 1): {}",
+                            offset, e
+                        ))
+                    })?;
+                offset = next_offset;
+
+                if bytes.get(offset).copied() != Some(END) {
+                    return Err(crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Expected END opcode after passive element segment (type 1)",
+                        offset
+                    )));
+                }
+                offset += 1; // Consume END
+
+                init_data = PureElementInit::ExpressionBytes(exprs_vec);
+                mode = PureElementMode::Passive;
+                offset_expr = Vec::new();
+            },
+            0x02 => {
+                // Active with tableidx: tableidx expr elemkind vec(expr) end
+                let (table_index, next_offset) = read_leb128_u32(bytes, offset).map_err(|e| {
+                    crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Failed to read table_idx for element segment (type 2): {}",
+                        offset, e
+                    ))
+                })?;
+                offset = next_offset;
+                let (parsed_offset_expr, next_offset) =
+                    parse_init_expr(bytes, offset).map_err(|e| {
+                        crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Failed to parse offset_expr for element segment (type 2): {}",
+                        offset, e
+                    ))
+                    })?;
+                offset = next_offset;
+
+                let (elemkind_byte, next_offset) = read_u8(bytes, offset)?;
+                offset = next_offset;
+                if elemkind_byte != 0x00 {
+                    return Err(crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type 2)",
+                        offset - 1,
+                        elemkind_byte
+                    )));
+                }
+                element_type = crate::types::RefType::Funcref;
+
+                let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
+                    .map_err(|e| {
+                        crate::error::parse_error_dynamic(format!(
+                            "(offset {}): Failed to read expressions for element segment (type 2): {}",
+                            offset, e
+                        ))
+                    })?;
+                offset = next_offset;
+
+                if bytes.get(offset).copied() != Some(END) {
+                    return Err(crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Expected END opcode after active element segment (type 2)",
+                        offset
+                    )));
+                }
+                offset += 1; // Consume END
+
+                init_data = PureElementInit::ExpressionBytes(exprs_vec);
+                mode = PureElementMode::Active {
+                    table_index,
+                    offset_expr_len: parsed_offset_expr.len() as u32,
+                };
+                offset_expr = parsed_offset_expr;
+            },
+            0x03 => {
+                // Declared: elemkind vec(expr) end
+                let (elemkind_byte, next_offset) = read_u8(bytes, offset)?;
+                offset = next_offset;
+                if elemkind_byte != 0x00 {
+                    return Err(crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type 3)",
+                        offset - 1,
+                        elemkind_byte
+                    )));
+                }
+                element_type = crate::types::RefType::Funcref;
+
+                let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
+                    .map_err(|e| {
+                        crate::error::parse_error_dynamic(format!(
+                            "(offset {}): Failed to read expressions for element segment (type 3): {}",
+                            offset, e
+                        ))
+                    })?;
+                offset = next_offset;
+
+                if bytes.get(offset).copied() != Some(END) {
+                    return Err(crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Expected END opcode after declared element segment (type 3)",
+                        offset
+                    )));
+                }
+                offset += 1; // Consume END
+
+                init_data = PureElementInit::ExpressionBytes(exprs_vec);
+                mode = PureElementMode::Declared;
+                offset_expr = Vec::new();
+            },
+            0x04 => {
+                // Active with tableidx 0 (encoded in prefix): expr vec(funcidx) end
+                let table_index = 0; // Implicitly table 0
+                let (parsed_offset_expr, next_offset) =
+                    parse_init_expr(bytes, offset).map_err(|e| {
+                        crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Failed to parse offset_expr for element segment (type 4): {}",
+                        offset, e
+                    ))
+                    })?;
+                offset = next_offset;
+                let (func_indices, next_offset) = read_vector(bytes, offset, read_leb128_u32)
+                    .map_err(|e| {
+                        crate::error::parse_error_dynamic(format!(
+                            "(offset {}): Failed to read func_indices for element segment (type 4): {}",
+                            offset, e
+                        ))
+                    })?;
+                offset = next_offset;
+
+                if bytes.get(offset).copied() != Some(END) {
+                    return Err(crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Expected END opcode after active element segment (type 4)",
+                        offset
+                    )));
+                }
+                offset += 1; // Consume END
+
+                element_type = crate::types::RefType::Funcref;
+                init_data = PureElementInit::FunctionIndices(func_indices);
+                mode = PureElementMode::Active {
+                    table_index,
+                    offset_expr_len: parsed_offset_expr.len() as u32,
+                };
+                offset_expr = parsed_offset_expr;
+            },
+            0x05 => {
+                // Passive: reftype vec(expr) end
+                let rt_byte = bytes.get(offset).copied().ok_or_else(|| {
+                    crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Unexpected EOF reading reftype for element segment (type 5)",
+                        offset
+                    ))
+                })?;
+                offset += 1;
+                let value_type = ValueType::from_binary(rt_byte)?;
+                element_type = match value_type {
+                    ValueType::FuncRef => crate::types::RefType::Funcref,
+                    ValueType::ExternRef => crate::types::RefType::Externref,
+                    _ => return Err(parse_error("Invalid ref type for element")),
+                };
+
+                let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
+                    .map_err(|e| {
+                        crate::error::parse_error_dynamic(format!(
+                            "(offset {}): Failed to read expressions for element segment (type 5): {}",
+                            offset, e
+                        ))
+                    })?;
+                offset = next_offset;
+
+                if bytes.get(offset).copied() != Some(END) {
+                    return Err(crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Expected END opcode after passive element segment (type 5)",
+                        offset
+                    )));
+                }
+                offset += 1; // Consume END
+
+                init_data = PureElementInit::ExpressionBytes(exprs_vec);
+                mode = PureElementMode::Passive;
+                offset_expr = Vec::new();
+            },
+            0x06 => {
+                // Active with tableidx: tableidx expr reftype vec(expr) end
+                let (table_index, next_offset) = read_leb128_u32(bytes, offset).map_err(|e| {
+                    crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Failed to read table_idx for element segment (type 6): {}",
+                        offset, e
+                    ))
+                })?;
+                offset = next_offset;
+                let (parsed_offset_expr, next_offset) =
+                    parse_init_expr(bytes, offset).map_err(|e| {
+                        crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Failed to parse offset_expr for element segment (type 6): {}",
+                        offset, e
+                    ))
+                    })?;
+                offset = next_offset;
+
+                let rt_byte = bytes.get(offset).copied().ok_or_else(|| {
+                    crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Unexpected EOF reading reftype for element segment (type 6)",
+                        offset
+                    ))
+                })?;
+                offset += 1;
+                let value_type = ValueType::from_binary(rt_byte)?;
+                element_type = match value_type {
+                    ValueType::FuncRef => crate::types::RefType::Funcref,
+                    ValueType::ExternRef => crate::types::RefType::Externref,
+                    _ => return Err(parse_error("Invalid ref type for element")),
+                };
+
+                let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
+                    .map_err(|e| {
+                        crate::error::parse_error_dynamic(format!(
+                            "(offset {}): Failed to read expressions for element segment (type 6): {}",
+                            offset, e
+                        ))
+                    })?;
+                offset = next_offset;
+
+                if bytes.get(offset).copied() != Some(END) {
+                    return Err(crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Expected END opcode after active element segment (type 6)",
+                        offset
+                    )));
+                }
+                offset += 1; // Consume END
+
+                init_data = PureElementInit::ExpressionBytes(exprs_vec);
+                mode = PureElementMode::Active {
+                    table_index,
+                    offset_expr_len: parsed_offset_expr.len() as u32,
+                };
+                offset_expr = parsed_offset_expr;
+            },
+            0x07 => {
+                // Declared: reftype vec(expr) end
+                let rt_byte = bytes.get(offset).copied().ok_or_else(|| {
+                    crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Unexpected EOF reading reftype for element segment (type 7)",
+                        offset
+                    ))
+                })?;
+                offset += 1;
+                let value_type = ValueType::from_binary(rt_byte)?;
+                element_type = match value_type {
+                    ValueType::FuncRef => crate::types::RefType::Funcref,
+                    ValueType::ExternRef => crate::types::RefType::Externref,
+                    _ => return Err(parse_error("Invalid ref type for element")),
+                };
+
+                let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
+                    .map_err(|e| {
+                        crate::error::parse_error_dynamic(format!(
+                            "(offset {}): Failed to read expressions for element segment (type 7): {}",
+                            offset, e
+                        ))
+                    })?;
+                offset = next_offset;
+
+                if bytes.get(offset).copied() != Some(END) {
+                    return Err(crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Expected END opcode after declared element segment (type 7)",
+                        offset
+                    )));
+                }
+                offset += 1; // Consume END
+
+                init_data = PureElementInit::ExpressionBytes(exprs_vec);
+                mode = PureElementMode::Declared;
+                offset_expr = Vec::new();
+            },
+            _ => {
+                return Err(crate::error::parse_error_dynamic(format!(
+                    "(offset {}): Invalid element segment prefix: 0x{:02X}",
+                    offset.saturating_sub(1),
+                    prefix_val
+                )))
+            },
+        }
+
+        Ok((
+            PureElementSegment {
+                mode,
+                element_type,
+                offset_expr_bytes: offset_expr,
+                init_data,
+            },
+            offset,
+        ))
     }
 } // Binary std/no_std choice
 
@@ -2720,6 +3173,10 @@ mod tests {
         assert_eq!(section_id, decoded_id);
         assert_eq!(content_size, decoded_size);
     }
+
+    // Re-export pure parsing functions for std builds
+    pub use super::parse_data_pure;
+    pub use super::parse_element_segment_pure;
 }
 
 // Additional exports and aliases for compatibility

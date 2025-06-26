@@ -56,11 +56,7 @@ fn convert_format_valtype_to_valuetype(format_val_type: &FormatValType<Component
         FormatValType<ComponentProvider>::S64 => Ok(ValueType::I64),
         FormatValType<ComponentProvider>::F32 => Ok(ValueType::F32),
         FormatValType<ComponentProvider>::F64 => Ok(ValueType::F64),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::NOT_IMPLEMENTED,
-            "Component not found",
-        )),
+        _ => Err(Error::unimplemented("Component not found")),
     }
 }
 
@@ -71,11 +67,7 @@ fn convert_types_valtype_to_valuetype(val_type: &WrtTypesValType) -> Result<Valu
         WrtTypesValType::S64 => Ok(ValueType::I64),
         WrtTypesValType::F32 => Ok(ValueType::F32),
         WrtTypesValType::F64 => Ok(ValueType::F64),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::NOT_IMPLEMENTED,
-            "Component not found",
-        )),
+        _ => Err(Error::unimplemented("Component not found")),
     }
 }
 
@@ -160,18 +152,14 @@ pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatVal
         ValueType::I64 => Ok(FormatValType<ComponentProvider>::S64),
         ValueType::F32 => Ok(FormatValType<ComponentProvider>::F32),
         ValueType::F64 => Ok(FormatValType<ComponentProvider>::F64),
-        ValueType::FuncRef => Err(Error::new(
-            ErrorCategory::Type,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError(
-                "FuncRef type not directly convertible to component format".to_string(),
+        ValueType::FuncRef => Err(Error::runtime_execution_error(".to_string(),
             ),
         )),
         ValueType::ExternRef => Err(Error::new(
             ErrorCategory::Type,
             codes::NOT_IMPLEMENTED,
             NotImplementedError(
-                "ExternRef type not directly convertible to component format".to_string(),
+                "),
             ),
         )),
     }
@@ -553,20 +541,14 @@ pub fn runtime_to_format_extern_type(
 
             Ok(FormatExternType::Function { params: param_types, results: result_types })
         }
-        WrtExternType::Table(table_type) => Err(Error::new(
-            ErrorCategory::System,
-            codes::NOT_IMPLEMENTED,
-            "Table WrtExternType not supported in wrt_format::component".to_string(),
+        WrtExternType::Table(table_type) => Err(Error::runtime_execution_error(".to_string(),
         )),
         WrtExternType::Memory(memory_type) => Err(Error::new(
             ErrorCategory::System,
             codes::NOT_IMPLEMENTED,
-            "Memory WrtExternType not supported in wrt_format::component".to_string(),
+            "),
         )),
-        WrtExternType::Global(global_type) => Err(Error::new(
-            ErrorCategory::System,
-            codes::NOT_IMPLEMENTED,
-            "Global WrtExternType not supported in wrt_format::component".to_string(),
+        WrtExternType::Global(global_type) => Err(Error::runtime_execution_error(".to_string(),
         )),
         WrtExternType::Instance(instance_type) => {
             // Convert exports to FormatExternType
@@ -631,10 +613,7 @@ pub fn format_to_common_val_type(val_type: &FormatValType<ComponentProvider>) ->
         FormatValType<ComponentProvider>::S64 => Ok(ValueType::I64),
         FormatValType<ComponentProvider>::F32 => Ok(ValueType::F32),
         FormatValType<ComponentProvider>::F64 => Ok(ValueType::F64),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError("Component not found"),
+        _ => Err(Error::component_not_found("),
         )),
     }
 }
@@ -655,11 +634,7 @@ pub fn common_to_format_val_type(value_type: &ValueType) -> Result<FormatValType
         ValueType::I64 => Ok(FormatValType<ComponentProvider>::S64),
         ValueType::F32 => Ok(FormatValType<ComponentProvider>::F32),
         ValueType::F64 => Ok(FormatValType<ComponentProvider>::F64),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError(format!(
-                "Value type {:?} cannot be directly mapped to component format",
+        _ => Err(Error::runtime_execution_error(",
                 value_type
             )),
         )),
@@ -678,10 +653,7 @@ pub fn common_to_format_val_type(value_type: &ValueType) -> Result<FormatValType
 pub fn extern_type_to_func_type(extern_type: &WrtExternType) -> Result<TypesFuncType> {
     match extern_type {
         WrtExternType::Function(func_type) => Ok(func_type.clone()),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::INVALID_TYPE,
-            InvalidArgumentError("Component not found"),
+        _ => Err(Error::component_not_found("),
         )),
     }
 }
@@ -808,11 +780,7 @@ pub fn types_componentvalue_to_format_constvalue(
         WrtComponentValue::Char(v) => Ok(FormatConstValue::Char(*v)),
         WrtComponentValue::String(v) => Ok(FormatConstValue::String(v.clone())),
         WrtComponentValue::Void => Ok(FormatConstValue::Null),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::CONVERSION_ERROR,
-            NotImplementedError(format!(
-                "Cannot convert {:?} to format ConstValue",
+        _ => Err(Error::runtime_execution_error(",
                 types_component_value
             )),
         )),
@@ -847,7 +815,7 @@ pub fn core_value_to_types_componentvalue(
             ErrorCategory::Type,
             codes::CONVERSION_ERROR,
             NotImplementedError(
-                "Unsupported value type for conversion to component value".to_string(),
+                "),
             ),
         )),
     }
@@ -892,11 +860,7 @@ pub fn types_componentvalue_to_core_value(
         WrtComponentValue::U64(v) => Ok(wrt_foundation::values::Value::I64(*v as i64)),
         WrtComponentValue::F32(v) => Ok(wrt_foundation::values::Value::F32(*v)),
         WrtComponentValue::F64(v) => Ok(wrt_foundation::values::Value::F64(*v)),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::CONVERSION_ERROR,
-            NotImplementedError(
-                "Unsupported component value type for conversion to core value".to_string(),
+        _ => Err(Error::runtime_execution_error(".to_string(),
             ),
         )),
     }
@@ -937,7 +901,7 @@ pub fn complete_types_to_format_extern_type(
         wrt_foundation::WrtExternType::Function(func_type) => {
             // Convert parameter types
             let param_names: Vec<String> =
-                (0..func_type.params.len()).map(|i| "Component not found").collect();
+                (0..func_type.params.len()).map(|i| ").collect();
 
             // Create param_types manually to handle errors gracefully
             let mut param_types = Vec::new();
@@ -961,20 +925,14 @@ pub fn complete_types_to_format_extern_type(
 
             Ok(FormatExternType::Function { params: param_types, results: result_types })
         }
-        wrt_foundation::WrtExternType::Table(table_type) => Err(Error::new(
-            ErrorCategory::Type,
-            codes::CONVERSION_ERROR,
-            "Table WrtExternType not supported in component model format".to_string(),
+        wrt_foundation::WrtExternType::Table(table_type) => Err(Error::runtime_execution_error(".to_string(),
         )),
         wrt_foundation::WrtExternType::Memory(memory_type) => Err(Error::new(
             ErrorCategory::Type,
             codes::CONVERSION_ERROR,
-            "Memory WrtExternType not supported in component model format".to_string(),
+            "),
         )),
-        wrt_foundation::WrtExternType::Global(global_type) => Err(Error::new(
-            ErrorCategory::Type,
-            codes::CONVERSION_ERROR,
-            "Global WrtExternType not supported in component model format".to_string(),
+        wrt_foundation::WrtExternType::Global(global_type) => Err(Error::runtime_execution_error(".to_string(),
         )),
         wrt_foundation::WrtExternType::Resource(resource_type) => {
             // For resources, we convert to a Type reference for now
@@ -1051,9 +1009,7 @@ pub fn complete_format_to_types_extern_type(
                             ErrorCategory::Type,
                             codes::CONVERSION_ERROR,
                             NotImplementedError(format!(
-                                "Cannot convert {:?} to core ValueType",
-                                format_val_type
-                            )),
+                                ")),
                         ))
                     }
                 }
@@ -1068,11 +1024,7 @@ pub fn complete_format_to_types_extern_type(
                 match convert_format_valtype_to_valuetype(format_val_type) {
                     Ok(value_type) => result_types.push(value_type),
                     Err(_) => {
-                        return Err(Error::new(
-                            ErrorCategory::Type,
-                            codes::CONVERSION_ERROR,
-                            NotImplementedError(format!(
-                                "Cannot convert {:?} to core ValueType",
+                        return Err(Error::runtime_execution_error(",
                                 format_val_type
                             )),
                         ))
@@ -1097,9 +1049,7 @@ pub fn complete_format_to_types_extern_type(
                         ErrorCategory::Type,
                         codes::CONVERSION_ERROR,
                         NotImplementedError(format!(
-                            "Cannot convert {:?} to core ValueType",
-                            format_val_type
-                        )),
+                            ")),
                     ))
                 }
             };

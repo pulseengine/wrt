@@ -56,9 +56,10 @@ pub use wrt_format::{
     },
     // Module types
     module::{
-        Data, DataMode, Element, Export, ExportKind, Function, Global, Import, ImportDesc, Memory,
-        Table,
+        Data, Element, Export, ExportKind, Function, Global, Import, ImportDesc, Memory, Table,
     },
+    // Pure format types (recommended over deprecated module types)
+    pure_format_types::{PureDataMode, PureDataSegment, PureElementMode, PureElementSegment},
     // Section types
     section::{CustomSection, Section, SectionId},
     // Format-specific types
@@ -121,12 +122,12 @@ pub fn create_decoder_provider<const N: usize>(
     MemoryFactory::create::<N>(CrateId::Decoder)
 }
 
-// For std mode, provide a simple version
+// For std mode, use the capability system as well
 #[cfg(feature = "std")]
 pub fn create_decoder_provider<const N: usize>(
 ) -> wrt_foundation::WrtResult<wrt_foundation::NoStdProvider<N>> {
-    use wrt_foundation::NoStdProvider;
-    Ok(NoStdProvider::default())
+    use wrt_foundation::{capabilities::MemoryFactory, CrateId};
+    MemoryFactory::create::<N>(CrateId::Decoder)
 }
 
 // For no_std mode, provide a minimal ToString trait
@@ -234,11 +235,7 @@ pub mod binary {
     pub fn read_leb_u32(data: &[u8], offset: usize) -> wrt_error::Result<(u32, usize)> {
         // Simple implementation for no_std - just read from beginning
         if offset >= data.len() {
-            return Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Parse,
-                wrt_error::codes::PARSE_ERROR,
-                "Offset out of bounds",
-            ));
+            return Err(wrt_error::Error::parse_error("Offset out of bounds"));
         }
         // For simplicity, just parse from the offset
         let mut value = 0u32;
@@ -247,11 +244,7 @@ pub mod binary {
 
         for &byte in &data[offset..] {
             if bytes_read >= 5 {
-                return Err(wrt_error::Error::new(
-                    wrt_error::ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    "LEB128 too long",
-                ));
+                return Err(wrt_error::Error::parse_error("LEB128 too long"));
             }
 
             value |= ((byte & 0x7F) as u32) << shift;
@@ -264,21 +257,13 @@ pub mod binary {
             shift += 7;
         }
 
-        Err(wrt_error::Error::new(
-            wrt_error::ErrorCategory::Parse,
-            wrt_error::codes::PARSE_ERROR,
-            "Incomplete LEB128",
-        ))
+        Err(wrt_error::Error::parse_error("Incomplete LEB128"))
     }
 
     /// Read name from binary data in no_std mode
     pub fn read_name(data: &[u8], offset: usize) -> wrt_error::Result<(&[u8], usize)> {
         if offset >= data.len() {
-            return Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Parse,
-                wrt_error::codes::PARSE_ERROR,
-                "Offset out of bounds",
-            ));
+            return Err(wrt_error::Error::parse_error("Offset out of bounds"));
         }
 
         // Read length as LEB128
@@ -286,11 +271,7 @@ pub mod binary {
         let name_start = offset + new_offset;
 
         if name_start + length as usize > data.len() {
-            return Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Parse,
-                wrt_error::codes::PARSE_ERROR,
-                "Name extends beyond data",
-            ));
+            return Err(wrt_error::Error::parse_error("Name extends beyond data"));
         }
 
         Ok((
@@ -337,17 +318,220 @@ where
 
     fn try_push(&mut self, item: T) -> wrt_error::Result<()> {
         self.push(item).map_err(|_e| {
-            wrt_error::Error::new(
-                wrt_error::ErrorCategory::Resource,
-                wrt_error::codes::CAPACITY_EXCEEDED,
-                "BoundedVec push failed: capacity exceeded",
-            )
+            wrt_error::Error::runtime_execution_error("Failed to push item to bounded vector")
         })
     }
 
     fn is_empty(&self) -> bool {
         use wrt_foundation::traits::BoundedCapacity;
         self.len() == 0
+    }
+}
+
+// Extension trait to add missing methods to Vec in std mode
+pub trait DecoderVecExt<T> {
+    /// Create from bytes with provider (compatible with both std and no_std)
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::Result<Self>
+    where
+        Self: Sized;
+
+    /// Update checksum (compatible with both std and no_std)
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum);
+
+    /// Serialized size (compatible with both std and no_std)
+    fn serialized_size(&self) -> usize;
+
+    /// To bytes with provider (compatible with both std and no_std)
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::Result<()>;
+}
+
+#[cfg(feature = "std")]
+impl<T> DecoderVecExt<T> for Vec<T>
+where
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Clone,
+{
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        // For std mode, read all items without provider
+        let mut result = Vec::new();
+        // Read count first (assuming LEB128 u32 count prefix)
+        let mut count_bytes = [0u8; 4];
+        reader.read_exact(&mut count_bytes)?;
+        let count = u32::from_le_bytes(count_bytes);
+
+        result.reserve(count as usize);
+        for _ in 0..count {
+            let item = T::from_bytes_with_provider(reader, _provider)?;
+            result.push(item);
+        }
+        Ok(result)
+    }
+
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        for item in self {
+            item.update_checksum(checksum);
+        }
+    }
+
+    fn serialized_size(&self) -> usize {
+        4 + self.iter().map(|item| item.serialized_size()).sum::<usize>() // 4 bytes for count + items
+    }
+
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        // Write count first
+        let count = self.len() as u32;
+        writer.write_all(&count.to_le_bytes())?;
+
+        // Write all items
+        for item in self {
+            item.to_bytes_with_provider(writer, provider)?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl<T, const N: usize, P> DecoderVecExt<T> for BoundedVec<T, N, P>
+where
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
+    P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
+{
+    fn from_bytes_with_provider<'a, P2: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P2,
+    ) -> wrt_foundation::Result<Self> {
+        // For no_std mode, use the provider directly
+        use wrt_foundation::traits::FromBytes;
+        FromBytes::from_bytes_with_provider(reader, provider)
+    }
+
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        use wrt_foundation::traits::Checksummable;
+        Checksummable::update_checksum(self, checksum);
+    }
+
+    fn serialized_size(&self) -> usize {
+        use wrt_foundation::traits::ToBytes;
+        ToBytes::serialized_size(self)
+    }
+
+    fn to_bytes_with_provider<'a, P2: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P2,
+    ) -> wrt_foundation::Result<()> {
+        use wrt_foundation::traits::ToBytes;
+        ToBytes::to_bytes_with_provider(self, writer, provider)
+    }
+}
+
+// Extension trait to add missing methods to String in std mode
+pub trait DecoderStringExt {
+    /// Create from bytes with provider (compatible with both std and no_std)
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::Result<Self>
+    where
+        Self: Sized;
+
+    /// Update checksum (compatible with both std and no_std)
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum);
+
+    /// Serialized size (compatible with both std and no_std)
+    fn serialized_size(&self) -> usize;
+
+    /// To bytes with provider (compatible with both std and no_std)
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::Result<()>;
+}
+
+#[cfg(feature = "std")]
+impl DecoderStringExt for String {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        // For std mode, read string using foundation traits
+        use wrt_foundation::traits::FromBytes;
+        String::from_bytes_with_provider(reader, _provider)
+    }
+
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(self.as_bytes());
+    }
+
+    fn serialized_size(&self) -> usize {
+        self.len()
+    }
+
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_all(self.as_bytes())?;
+        Ok(())
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl<const N: usize, P> DecoderStringExt for BoundedString<N, P>
+where
+    P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq,
+{
+    fn from_bytes_with_provider<'a, P2: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P2,
+    ) -> wrt_foundation::Result<Self> {
+        // For no_std mode, use the provider to create bounded string
+        let mut buffer = wrt_foundation::BoundedVec::<u8, N, P2>::new(provider.clone())?;
+        reader.read_to_end(&mut buffer)?;
+        Self::from_utf8_bytes(&buffer, provider.clone())
+    }
+
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        use wrt_foundation::traits::Checksummable;
+        Checksummable::update_checksum(self, checksum);
+    }
+
+    fn serialized_size(&self) -> usize {
+        use wrt_foundation::traits::ToBytes;
+        ToBytes::serialized_size(self)
+    }
+
+    fn to_bytes_with_provider<'a, P2: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P2,
+    ) -> wrt_foundation::Result<()> {
+        use wrt_foundation::traits::ToBytes;
+        ToBytes::to_bytes_with_provider(self, writer, provider)
     }
 }
 
@@ -387,3 +571,5 @@ pub fn is_valid_wasm_header(data: &[u8]) -> bool {
 // aren't already exported
 #[cfg(feature = "std")]
 pub use wrt_format::binary::with_alloc::parse_block_type as parse_format_block_type;
+
+// Duplicate type aliases removed - using the ones defined earlier in the file

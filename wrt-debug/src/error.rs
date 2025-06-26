@@ -31,31 +31,15 @@ impl From<wrt_error::Error> for DebugError {
 impl From<DebugError> for wrt_error::Error {
     fn from(err: DebugError) -> Self {
         match err {
-            DebugError::InvalidData => Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Invalid DWARF data",
-            ),
-            DebugError::UnexpectedEof => Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unexpected end of DWARF data",
-            ),
-            DebugError::UnsupportedVersion(_version) => Error::new(
-                ErrorCategory::Parse,
-                codes::VALIDATION_UNSUPPORTED_FEATURE,
-                "Unsupported DWARF version",
-            ),
-            DebugError::InvalidAbbreviation(_code) => Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Invalid abbreviation code",
-            ),
-            DebugError::StringError => Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "String table access error",
-            ),
+            DebugError::InvalidData => Error::parse_error("Invalid DWARF data"),
+            DebugError::UnexpectedEof => Error::parse_error("Unexpected end of DWARF data"),
+            DebugError::UnsupportedVersion(_version) => {
+                Error::validation_unsupported_feature("Unsupported DWARF version")
+            },
+            DebugError::InvalidAbbreviation(_code) => {
+                Error::parse_error("Invalid abbreviation code")
+            },
+            DebugError::StringError => Error::parse_error("String table access error"),
         }
     }
 }

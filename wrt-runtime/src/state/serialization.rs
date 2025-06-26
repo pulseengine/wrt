@@ -155,7 +155,7 @@ pub fn create_state_section(
 pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Vec<u8>)> {
     // Verify that this is a valid state section
     let section_type = StateSection::from_name(&section.name).ok_or_else(|| {
-        Error::new(ErrorCategory::Validation, codes::PARSE_ERROR, "Invalid state section name")
+        Error::validation_parse_error("Invalid state section name")
     })?;
 
     // Get the data
@@ -163,20 +163,12 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
 
     // Parse header
     if data.len() < 17 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::PARSE_ERROR,
-            "State section header too small",
-        ));
+        return Err(Error::validation_parse_error("State section header too small"));
     }
 
     // Verify magic bytes
     if data[0..4] != *STATE_MAGIC {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::PARSE_ERROR,
-            "Invalid state section magic bytes",
-        ));
+        return Err(Error::validation_parse_error("Invalid state section magic bytes"));
     }
 
     // Parse version
@@ -190,27 +182,19 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
 
     // Parse section type
     let parsed_section_type = StateSection::from_u32(data[8] as u32).ok_or_else(|| {
-        Error::new(ErrorCategory::Validation, codes::PARSE_ERROR, "Invalid section type ID")
+        Error::validation_parse_error("Invalid section type ID")
     })?;
 
     // Verify section type matches the name
     if parsed_section_type != section_type {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::PARSE_ERROR,
-            "Section type mismatch",
-        ));
+        return Err(Error::validation_parse_error("Section type mismatch"));
     }
 
     // Parse compression type
     let compression_type = match CompressionType::from_u8(data[9]) {
         Some(t) => t,
         None => {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::PARSE_ERROR,
-                "Unknown compression type",
-            ));
+            return Err(Error::validation_parse_error("Unknown compression type"));
         }
     };
 
@@ -222,11 +206,7 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
 
     // Extract the compressed data
     if data.len() < 18 + compressed_size as usize {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::PARSE_ERROR,
-            "Compressed data truncated",
-        ));
+        return Err(Error::validation_parse_error("Compressed data truncated"));
     }
 
     let compressed_data = &data[18..18 + compressed_size as usize];
@@ -239,11 +219,7 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
 
     // Verify decompressed size
     if decompressed_data.len() != uncompressed_size as usize {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::PARSE_ERROR,
-            "Decompressed size mismatch",
-        ));
+        return Err(Error::validation_parse_error("Decompressed size mismatch"));
     }
 
     // Create header

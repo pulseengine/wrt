@@ -143,11 +143,7 @@ impl core::str::FromStr for ResourceOperation {
             "delete" => Ok(ResourceOperation::Delete),
             "reference" => Ok(ResourceOperation::Reference),
             "dereference" => Ok(ResourceOperation::Dereference),
-            _ => Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Parse,
-                wrt_error::codes::PARSE_ERROR,
-                "Unknown resource operation",
-            )),
+            _ => Err(wrt_error::Error::parse_error("Unknown resource operation")),
         }
     }
 }
@@ -241,19 +237,11 @@ impl core::str::FromStr for ResourceRepresentation {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    Err(wrt_error::Error::new(
-                        wrt_error::ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        "ResourceRepresentation::Aggregate is not available without the 'alloc' \
-                         feature",
-                    ))
+                    Err(wrt_error::Error::parse_error("ResourceRepresentation::Aggregate is not available without the 'alloc' \
+                         feature"))
                 }
             }
-            _ => Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Parse,
-                wrt_error::codes::PARSE_ERROR,
-                "Unknown resource representation",
-            )),
+            _ => Err(wrt_error::Error::parse_error("Unknown resource representation")),
         }
     }
 }
@@ -633,6 +621,7 @@ mod kani_proofs {
     /// Verify resource type serialization roundtrip
     #[kani::proof]
     fn verify_resource_type_serialization() {
+        // Note: Using default here is safe in Kani proofs for verification purposes
         let provider = NoStdProvider::<1024>::default();
         
         // Test primitive resource type
@@ -670,6 +659,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_resource_bounds_checking() {
         const MAX_RESOURCES: usize = 16;
+        // Note: Using default here is safe in Kani proofs for verification purposes
         let provider = NoStdProvider::<2048>::default();
         
         // Create a resource collection with bounded capacity
@@ -697,6 +687,7 @@ mod kani_proofs {
     /// Verify resource access pattern safety
     #[kani::proof]
     fn verify_resource_access_safety() {
+        // Note: Using default here is safe in Kani proofs for verification purposes
         let provider = NoStdProvider::<1024>::default();
         let mut resources: BoundedVec<ResourceHandle, 8, _> = 
             BoundedVec::new(provider).unwrap();

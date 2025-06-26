@@ -97,6 +97,10 @@ pub mod platform_runtime;
 // Bounded infrastructure for static memory allocation
 pub mod bounded_runtime_infra;
 
+// Capability-based execution engine
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub mod engine;
+
 // Instruction parser for bytecode to instruction conversion
 pub mod instruction_parser;
 #[cfg(test)]

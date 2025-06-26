@@ -20,12 +20,14 @@ use crate::prelude::*;
 #[cfg(feature = "std")]
 type AnalysisString = std::string::String;
 #[cfg(not(feature = "std"))]
-type AnalysisString = wrt_foundation::BoundedString<256, wrt_foundation::NoStdProvider<4096>>;
+type AnalysisString =
+    wrt_foundation::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<4096>>;
 
 #[cfg(feature = "std")]
 type AnalysisVec<T> = std::vec::Vec<T>;
 #[cfg(not(feature = "std"))]
-type AnalysisVec<T> = wrt_foundation::BoundedVec<T, 64, wrt_foundation::NoStdProvider<4096>>;
+type AnalysisVec<T> =
+    wrt_foundation::BoundedVec<T, 64, wrt_foundation::safe_memory::NoStdProvider<4096>>;
 
 // Compatibility trait to provide as_bytes() for BoundedString
 #[cfg(not(feature = "std"))]
@@ -98,9 +100,10 @@ pub fn extract_embedded_modules(
         wrt_foundation::safe_memory::NoStdProvider<2048>,
     >,
 > {
-    use wrt_foundation::safe_memory::NoStdProvider;
-
-    let provider = NoStdProvider::<2048>::default();
+    let provider = wrt_foundation::safe_managed_alloc!(
+        2048,
+        wrt_foundation::budget_aware_provider::CrateId::Decoder
+    )?;
     let modules = wrt_foundation::BoundedVec::new(provider)?;
 
     // Simplified no_std implementation
@@ -218,6 +221,10 @@ pub fn analyze_component(bytes: &[u8]) -> Result<ComponentSummary> {
     #[cfg(not(feature = "std"))]
     let component = {
         // For no_std, create a minimal component structure
+        let provider = wrt_foundation::safe_managed_alloc!(
+            8192,
+            wrt_foundation::budget_aware_provider::CrateId::Decoder
+        )?;
         ComponentSummary {
             name: "",
             core_modules_count: 0,
@@ -225,11 +232,7 @@ pub fn analyze_component(bytes: &[u8]) -> Result<ComponentSummary> {
             imports_count: 0,
             exports_count: 0,
             aliases_count: 0,
-            module_info: {
-                use wrt_foundation::safe_memory::NoStdProvider;
-                let provider = NoStdProvider::<8192>::default();
-                wrt_foundation::BoundedVec::new(provider).unwrap_or_default()
-            },
+            module_info: wrt_foundation::BoundedVec::new(provider)?,
             export_info: (),
             import_info: (),
         }
@@ -241,8 +244,11 @@ pub fn analyze_component(bytes: &[u8]) -> Result<ComponentSummary> {
         name: "".to_string(),
         #[cfg(not(feature = "std"))]
         name: {
-            let provider = wrt_foundation::NoStdProvider::default();
-            AnalysisString::from_str("", provider).unwrap_or_default()
+            let provider = wrt_foundation::safe_managed_alloc!(
+                4096,
+                wrt_foundation::budget_aware_provider::CrateId::Decoder
+            )?;
+            AnalysisString::from_str("", provider)?
         },
         core_modules_count: component.modules.len() as u32,
         core_instances_count: component.core_instances.len() as u32,
@@ -257,18 +263,27 @@ pub fn analyze_component(bytes: &[u8]) -> Result<ComponentSummary> {
         import_info: std::vec::Vec::new(),
         #[cfg(not(feature = "std"))]
         module_info: {
-            let provider = wrt_foundation::NoStdProvider::default();
-            AnalysisVec::new(provider).unwrap_or_default()
+            let provider = wrt_foundation::safe_managed_alloc!(
+                4096,
+                wrt_foundation::budget_aware_provider::CrateId::Decoder
+            )?;
+            AnalysisVec::new(provider)?
         },
         #[cfg(not(feature = "std"))]
         export_info: {
-            let provider = wrt_foundation::NoStdProvider::default();
-            AnalysisVec::new(provider).unwrap_or_default()
+            let provider = wrt_foundation::safe_managed_alloc!(
+                4096,
+                wrt_foundation::budget_aware_provider::CrateId::Decoder
+            )?;
+            AnalysisVec::new(provider)?
         },
         #[cfg(not(feature = "std"))]
         import_info: {
-            let provider = wrt_foundation::NoStdProvider::default();
-            AnalysisVec::new(provider).unwrap_or_default()
+            let provider = wrt_foundation::safe_managed_alloc!(
+                4096,
+                wrt_foundation::budget_aware_provider::CrateId::Decoder
+            )?;
+            AnalysisVec::new(provider)?
         },
     });
 
@@ -382,14 +397,16 @@ pub fn analyze_component_extended(
 
     #[cfg(not(feature = "std"))]
     {
-        use wrt_foundation::safe_memory::NoStdProvider;
-        let provider = NoStdProvider::<4096>::default();
+        let provider = wrt_foundation::safe_managed_alloc!(
+            4096,
+            wrt_foundation::budget_aware_provider::CrateId::Decoder
+        )?;
         Ok((
             summary,
-            wrt_foundation::BoundedVec::new().unwrap_or_default(), // Import info
-            wrt_foundation::BoundedVec::new().unwrap_or_default(), // Export info
-            wrt_foundation::BoundedVec::new().unwrap_or_default(), // Module import info
-            wrt_foundation::BoundedVec::new().unwrap_or_default(), // Module export info
+            wrt_foundation::BoundedVec::new(provider.clone()).unwrap_or_default(), // Import info
+            wrt_foundation::BoundedVec::new(provider.clone()).unwrap_or_default(), // Export info
+            wrt_foundation::BoundedVec::new(provider.clone()).unwrap_or_default(), // Module import info
+            wrt_foundation::BoundedVec::new(provider).unwrap_or_default(), // Module export info
         ))
     }
 }
@@ -607,10 +624,15 @@ impl wrt_foundation::traits::FromBytes for ExtendedExportInfo {
         #[cfg(not(feature = "std"))]
         let mut name_bytes = {
             use wrt_foundation::safe_memory::NoStdProvider;
-            let provider = NoStdProvider::<8192>::default();
+            let provider = wrt_foundation::safe_managed_alloc!(
+                8192,
+                wrt_foundation::budget_aware_provider::CrateId::Decoder
+            )
+            .map_err(|_| wrt_foundation::traits::SerializationError::InvalidFormat)?;
             let mut vec = wrt_foundation::BoundedVec::<u8, 256, NoStdProvider<8192>>::new(provider)
-                .unwrap_or_default();
-            vec.resize(name_len, 0u8);
+                .map_err(|_| wrt_foundation::traits::SerializationError::InvalidFormat)?;
+            vec.resize(name_len, 0u8)
+                .map_err(|_| wrt_foundation::traits::SerializationError::InvalidFormat)?;
             vec
         };
         stream.read_exact(&mut name_bytes)?;
@@ -623,10 +645,15 @@ impl wrt_foundation::traits::FromBytes for ExtendedExportInfo {
         #[cfg(not(feature = "std"))]
         let mut kind_bytes = {
             use wrt_foundation::safe_memory::NoStdProvider;
-            let provider = NoStdProvider::<8192>::default();
+            let provider = wrt_foundation::safe_managed_alloc!(
+                8192,
+                wrt_foundation::budget_aware_provider::CrateId::Decoder
+            )
+            .map_err(|_| wrt_foundation::traits::SerializationError::InvalidFormat)?;
             let mut vec = wrt_foundation::BoundedVec::<u8, 256, NoStdProvider<8192>>::new(provider)
-                .unwrap_or_default();
-            vec.resize(kind_len, 0u8);
+                .map_err(|_| wrt_foundation::traits::SerializationError::InvalidFormat)?;
+            vec.resize(kind_len, 0u8)
+                .map_err(|_| wrt_foundation::traits::SerializationError::InvalidFormat)?;
             vec
         };
         stream.read_exact(&mut kind_bytes)?;
@@ -684,9 +711,13 @@ impl wrt_foundation::traits::FromBytes for ModuleImportInfo {
         let mut bytes = Vec::new();
         #[cfg(not(feature = "std"))]
         let mut bytes = {
-            use wrt_foundation::safe_memory::NoStdProvider;
-            let provider = NoStdProvider::<8192>::default();
-            wrt_foundation::BoundedVec::new().unwrap_or_default()
+            let provider = wrt_foundation::safe_managed_alloc!(
+                8192,
+                wrt_foundation::budget_aware_provider::CrateId::Decoder
+            )
+            .map_err(|_| wrt_foundation::traits::SerializationError::InvalidFormat)?;
+            wrt_foundation::BoundedVec::new(provider)
+                .map_err(|_| wrt_foundation::traits::SerializationError::InvalidFormat)?
         };
         loop {
             match stream.read_u8() {
@@ -765,9 +796,13 @@ impl wrt_foundation::traits::FromBytes for ModuleExportInfo {
         let mut bytes = Vec::new();
         #[cfg(not(feature = "std"))]
         let mut bytes = {
-            use wrt_foundation::safe_memory::NoStdProvider;
-            let provider = NoStdProvider::<8192>::default();
-            wrt_foundation::BoundedVec::new().unwrap_or_default()
+            let provider = wrt_foundation::safe_managed_alloc!(
+                8192,
+                wrt_foundation::budget_aware_provider::CrateId::Decoder
+            )
+            .map_err(|_| wrt_foundation::traits::SerializationError::InvalidFormat)?;
+            wrt_foundation::BoundedVec::new(provider)
+                .map_err(|_| wrt_foundation::traits::SerializationError::InvalidFormat)?
         };
         loop {
             match stream.read_u8() {

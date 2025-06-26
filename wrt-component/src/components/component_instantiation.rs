@@ -315,27 +315,15 @@ impl ComponentInstance {
     ) -> Result<Self> {
         // Validate inputs
         if name.is_empty() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Instance name cannot be empty",
-            ));
+            return Err(Error::validation_error("Instance name cannot be empty"));
         }
 
         if exports.len() > MAX_EXPORTS_PER_COMPONENT {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Too many exports for component",
-            ));
+            return Err(Error::validation_error("Too many exports for component"));
         }
 
         if imports.len() > MAX_IMPORTS_PER_COMPONENT {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Too many imports for component",
-            ));
+            return Err(Error::validation_error("Too many imports for component"));
         }
 
         // Initialize memory if needed
@@ -375,10 +363,7 @@ impl ComponentInstance {
                 self.state = InstanceState::Ready;
                 Ok(())
             }
-            _ => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_STATE,
-                "Instance is not in initializing state",
+            _ => Err(Error::runtime_execution_error(",
             )),
         }
     }
@@ -394,8 +379,7 @@ impl ComponentInstance {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_STATE,
-                "Instance is not ready for function calls",
-            ));
+                "));
         }
 
         // Find the function
@@ -416,11 +400,7 @@ impl ComponentInstance {
             FunctionImplementation::Component { target_instance, target_function } => {
                 // This would need to go through the linker to call another component
                 // For now, return a placeholder
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::NOT_IMPLEMENTED,
-                    "Component-to-component calls not yet implemented",
-                ))
+                Err(Error::runtime_not_implemented("Component-to-component calls not yet implemented"))
             }
         }
     }
@@ -433,11 +413,7 @@ impl ComponentInstance {
     /// Add a resolved import
     pub fn add_resolved_import(&mut self, resolved: ResolvedImport) -> Result<()> {
         if self.imports.len() >= MAX_IMPORTS_PER_COMPONENT {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Too many resolved imports",
-            ));
+            return Err(Error::validation_error("Too many resolved imports"));
         }
 
         self.imports.push(resolved);
@@ -491,11 +467,7 @@ impl ComponentInstance {
             }
             resource_manager.create_resource(self.id, resource_type, data)
         } else {
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::NOT_IMPLEMENTED,
-                "Resource management not available for this instance",
-            ))
+            Err(Error::runtime_not_implemented("Resource management not available for this instance"))
         }
     }
 
@@ -505,18 +477,11 @@ impl ComponentInstance {
             if let Some(table) = resource_manager.get_instance_table_mut(self.id) {
                 table.drop_resource(handle)
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::VALIDATION_EXPORT_NOT_FOUND,
-                    "Instance table not found",
+                Err(Error::runtime_execution_error(",
                 ))
             }
         } else {
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::NOT_IMPLEMENTED,
-                "Resource management not available for this instance",
-            ))
+            Err(Error::runtime_not_implemented("))
         }
     }
 
@@ -528,20 +493,12 @@ impl ComponentInstance {
             match &export.export_type {
                 ExportType::Function(sig) => {
                     if sig.name.is_empty() {
-                        return Err(Error::new(
-                            ErrorCategory::Validation,
-                            codes::VALIDATION_ERROR,
-                            "Function signature name cannot be empty",
-                        ));
+                        return Err(Error::validation_error("Function signature name cannot be empty"));
                     }
                 }
                 ExportType::Memory(config) => {
                     if config.initial_pages == 0 {
-                        return Err(Error::new(
-                            ErrorCategory::Validation,
-                            codes::VALIDATION_ERROR,
-                            "Memory must have at least 1 initial page",
-                        ));
+                        return Err(Error::validation_error("Memory must have at least 1 initial page"));
                     }
                 }
                 _ => {} // Other export types are valid by construction
@@ -574,11 +531,7 @@ impl ComponentInstance {
 
     fn find_function(&self, name: &str) -> Result<&ComponentFunction> {
         self.functions.iter().find(|f| f.signature.name == name).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::FUNCTION_NOT_FOUND,
-                "Function not found",
-            )
+            Error::runtime_function_not_found("Function not found")
         })
     }
 
@@ -588,11 +541,7 @@ impl ComponentInstance {
         args: &[ComponentValue],
     ) -> Result<()> {
         if args.len() != signature.params.len() {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::TYPE_MISMATCH,
-                "Function argument count mismatch",
-            ));
+            return Err(Error::runtime_type_mismatch("Function argument count mismatch"));
         }
 
         // Type checking would go here in a full implementation
@@ -626,11 +575,7 @@ impl ComponentMemory {
 
         if let Some(max_pages) = config.max_pages {
             if config.initial_pages > max_pages {
-                return Err(Error::new(
-                    ErrorCategory::Validation,
-                    codes::VALIDATION_ERROR,
-                    "Initial pages cannot exceed maximum pages",
-                ));
+                return Err(Error::validation_error("Initial pages cannot exceed maximum pages"));
             }
         }
 
@@ -649,11 +594,7 @@ impl ComponentMemory {
 
         if let Some(max_pages) = self.config.max_pages {
             if new_pages > max_pages {
-                return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::OUT_OF_BOUNDS_ERROR,
-                    "Memory growth would exceed maximum pages",
-                ));
+                return Err(Error::runtime_out_of_bounds("Memory growth would exceed maximum pages"));
             }
         }
 
@@ -682,11 +623,7 @@ impl CanonicalMemory for ComponentMemory {
         let end = start + len as usize;
 
         if end > self.data.len() {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_OUT_OF_BOUNDS,
-                "Memory read out of bounds",
-            ));
+            return Err(Error::memory_out_of_bounds("Memory read out of bounds"));
         }
 
         Ok(self.data[start..end].to_vec())
@@ -697,11 +634,7 @@ impl CanonicalMemory for ComponentMemory {
         let end = start + data.len();
 
         if end > self.data.len() {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_OUT_OF_BOUNDS,
-                "Memory write out of bounds",
-            ));
+            return Err(Error::memory_out_of_bounds("Memory write out of bounds"));
         }
 
         self.data[start..end].copy_from_slice(data);

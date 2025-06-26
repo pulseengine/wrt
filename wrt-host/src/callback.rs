@@ -152,11 +152,7 @@ impl wrt_foundation::traits::FromBytes for CallbackType {
             3 => Ok(CallbackType::Deallocate),
             4 => Ok(CallbackType::Intercept),
             5 => Ok(CallbackType::Logging),
-            _ => Err(wrt_foundation::Error::new(
-                wrt_error::ErrorCategory::Parse,
-                wrt_error::codes::PARSE_ERROR,
-                "Invalid CallbackType discriminant",
-            )),
+            _ => Err(wrt_error::Error::parse_error("Invalid CallbackType discriminant")),
         }
     }
 }
@@ -436,7 +432,7 @@ impl CallbackRegistry {
         }
 
         // Return error if the function is not found
-        Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Host function not found"))
+        Err(Error::runtime_error("Host function not found"))
     }
 
     /// Internal implementation of `call_host_function` without interception (`no_std` version)
@@ -449,7 +445,7 @@ impl CallbackRegistry {
         _args: ValueVec,
     ) -> Result<ValueVec> {
         // In no_std mode, we can't dynamically call host functions
-        Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Host functions not supported in no_std mode"))
+        Err(Error::runtime_error("Host functions not supported in no_std mode"))
     }
 
     /// Get all registered module names

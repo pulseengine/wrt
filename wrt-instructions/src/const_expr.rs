@@ -124,9 +124,12 @@ impl ConstExprSequence {
         let mut stack = Vec::new();
         
         #[cfg(not(feature = "std"))]
-        let mut stack = BoundedVec::<Value, 8, wrt_foundation::NoStdProvider<128>>::new(
-            wrt_foundation::NoStdProvider::<128>::default()
-        ).unwrap();
+        let mut stack = {
+            let provider = wrt_foundation::safe_managed_alloc!(128, wrt_foundation::budget_aware_provider::CrateId::Instructions)?;
+            BoundedVec::<Value, 8, wrt_foundation::NoStdProvider<128>>::new(provider).map_err(|_| {
+                Error::memory_error("Failed to create evaluation stack")
+            })?
+        };
         
         for i in 0..self.len {
             let instr = self.instructions[i].as_ref().ok_or_else(|| {

@@ -46,11 +46,7 @@ pub fn val_type_to_ref_type(val_type: CoreValueType) -> Result<RefType> {
     match val_type {
         CoreValueType::FuncRef => Ok(RefType::Funcref),
         CoreValueType::ExternRef => Ok(RefType::Externref),
-        _ => Err(Error::new(
-            wrt_error::ErrorCategory::Type,
-            codes::CONVERSION_ERROR,
-            "Invalid reference type",
-        )),
+        _ => Err(Error::runtime_execution_error("Value type is not a reference type")),
     }
 }
 

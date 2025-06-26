@@ -537,6 +537,65 @@ impl fmt::Display for ComponentError {
 #[cfg(feature = "std")]
 impl std::error::Error for ComponentError {}
 
+// Conversion to wrt_error::Error for unified error handling
+impl From<ComponentError> for wrt_error::Error {
+    fn from(err: ComponentError) -> Self {
+        use wrt_error::{ErrorCategory, codes};
+        match err {
+            ComponentError::TooManyGenerativeTypes => Self::new(
+                ErrorCategory::ComponentRuntime,
+                codes::COMPONENT_RESOURCE_LIFECYCLE_ERROR,
+                "Too many generative types for component instance",
+            ),
+            ComponentError::TooManyTypeBounds => Self::new(
+                ErrorCategory::ComponentRuntime,
+                codes::COMPONENT_CONFIGURATION_INVALID,
+                "Too many type bounds for component type",
+            ),
+            ComponentError::ResourceHandleAlreadyExists => Self::new(
+                ErrorCategory::ComponentRuntime,
+                codes::COMPONENT_HANDLE_REPRESENTATION_ERROR,
+                "Resource handle already exists",
+            ),
+            ComponentError::InvalidTypeReference(_, _) => Self::new(
+                ErrorCategory::ComponentRuntime,
+                codes::COMPONENT_ABI_RUNTIME_ERROR,
+                "Invalid type reference in component ABI",
+            ),
+            ComponentError::InvalidSubtypeRelation(_, _) => Self::new(
+                ErrorCategory::ComponentRuntime,
+                codes::COMPONENT_ABI_RUNTIME_ERROR,
+                "Invalid subtype relation in component type system",
+            ),
+            ComponentError::InstantiationFailed => Self::new(
+                ErrorCategory::ComponentRuntime,
+                codes::COMPONENT_INSTANTIATION_RUNTIME_ERROR,
+                "Component instantiation failed",
+            ),
+            ComponentError::ResourceNotFound(_) => Self::new(
+                ErrorCategory::ComponentRuntime,
+                codes::COMPONENT_HANDLE_REPRESENTATION_ERROR,
+                "Component resource not found",
+            ),
+            ComponentError::TypeMismatch => Self::new(
+                ErrorCategory::ComponentRuntime,
+                codes::COMPONENT_ABI_RUNTIME_ERROR,
+                "Component type mismatch",
+            ),
+            ComponentError::ImportResolutionFailed => Self::new(
+                ErrorCategory::ComponentRuntime,
+                codes::COMPONENT_INSTANTIATION_RUNTIME_ERROR,
+                "Component import resolution failed",
+            ),
+            ComponentError::ExportResolutionFailed => Self::new(
+                ErrorCategory::ComponentRuntime,
+                codes::COMPONENT_INSTANTIATION_RUNTIME_ERROR,
+                "Component export resolution failed",
+            ),
+        }
+    }
+}
+
 // Implement required traits for BoundedVec compatibility
 use wrt_foundation::traits::{WriteStream, ReadStream};
 

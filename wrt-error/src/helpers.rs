@@ -20,29 +20,25 @@ use crate::{codes, Error, ErrorCategory};
 /// Create a safety violation error
 #[must_use]
 pub const fn safety_violation_error(message: &'static str) -> Error {
-    Error::new(ErrorCategory::Safety, codes::SAFETY_VIOLATION, message)
+    Error::safety_violation(message)
 }
 
 /// Create a safety ASIL violation error
 #[must_use]
 pub const fn safety_asil_violation_error(message: &'static str) -> Error {
-    Error::new(ErrorCategory::Safety, codes::SAFETY_ASIL_VIOLATION, message)
+    Error::safety_asil_violation(message)
 }
 
 /// Create a memory corruption detected error
 #[must_use]
 pub const fn memory_corruption_error(message: &'static str) -> Error {
-    Error::new(
-        ErrorCategory::Safety,
-        codes::MEMORY_CORRUPTION_DETECTED,
-        message,
-    )
+    Error::memory_corruption_detected(message)
 }
 
 /// Create a verification failed error
 #[must_use]
 pub const fn verification_failed_error(message: &'static str) -> Error {
-    Error::new(ErrorCategory::Safety, codes::VERIFICATION_FAILED, message)
+    Error::verification_failed(message)
 }
 
 /// Create a unified type configuration error
@@ -78,11 +74,7 @@ pub const fn memory_provider_creation_error(message: &'static str) -> Error {
 /// Create a memory allocation failed error
 #[must_use]
 pub const fn memory_allocation_failed_error(message: &'static str) -> Error {
-    Error::new(
-        ErrorCategory::Memory,
-        codes::MEMORY_ALLOCATION_FAILED,
-        message,
-    )
+    Error::platform_memory_allocation_failed(message)
 }
 
 /// Create a memory provider capacity exceeded error
@@ -201,7 +193,7 @@ pub const fn resource_type_limit_exceeded_error(message: &'static str) -> Error 
 /// Create a CFI validation failed error
 #[must_use]
 pub const fn cfi_validation_failed_error(message: &'static str) -> Error {
-    Error::new(ErrorCategory::Safety, codes::CFI_VALIDATION_FAILED, message)
+    Error::cfi_validation_failed(message)
 }
 
 /// Create a CFI unsupported error
@@ -226,7 +218,7 @@ pub const fn execution_engine_error(message: &'static str) -> Error {
 #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
 #[must_use]
 pub const fn asil_violation_error(_level: &'static str, message: &'static str) -> Error {
-    Error::new(ErrorCategory::Safety, codes::SAFETY_ASIL_VIOLATION, message)
+    Error::safety_asil_violation(message)
 }
 
 /// Create a safety-critical memory error (ASIL-C and above)
@@ -244,16 +236,12 @@ pub const fn safety_critical_memory_error(message: &'static str) -> Error {
 #[cfg(feature = "asil-d")]
 #[must_use]
 pub const fn determinism_violation_error(message: &'static str) -> Error {
-    Error::new(ErrorCategory::Safety, codes::DETERMINISM_VIOLATION, message)
+    Error::determinism_violation(message)
 }
 
 /// Create a redundancy check failure error (ASIL-D only)
 #[cfg(feature = "asil-d")]
 #[must_use]
 pub const fn redundancy_check_failure_error(message: &'static str) -> Error {
-    Error::new(
-        ErrorCategory::Safety,
-        codes::REDUNDANCY_CHECK_FAILURE,
-        message,
-    )
+    Error::redundancy_check_failure(message)
 }

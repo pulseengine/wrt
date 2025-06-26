@@ -14,7 +14,12 @@ use std::{
 };
 
 #[cfg(not(feature = "std"))]
-use wrt_foundation::{BoundedVec as Vec, safe_memory::NoStdProvider};
+use wrt_foundation::{
+    BoundedVec as Vec, 
+    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
+};
 
 // Enable vec! macro for no_std
 #[cfg(not(feature = "std"))]
@@ -65,10 +70,7 @@ impl BuiltinHandler for ResourceCreateHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::new(
-                wrt_error::ErrorCategory::Parameter,
-                wrt_error::codes::EXECUTION_ERROR,
-                "resource.create: Expected 1 argument"
+            return Err(Error::runtime_execution_error("
             ));
         }
 
@@ -80,8 +82,7 @@ impl BuiltinHandler for ResourceCreateHandler {
                 return Err(Error::new(
                     wrt_error::ErrorCategory::Parameter,
                     wrt_error::codes::TYPE_MISMATCH,
-                    "resource.create: Expected u32 or u64 representation"
-                ));
+                    "));
             }
         };
 
@@ -96,12 +97,13 @@ impl BuiltinHandler for ResourceCreateHandler {
         }
         #[cfg(not(feature = "std"))]
         {
-            let mut result = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
-            result.push(ComponentValue::U32(id.0)).map_err(|_| Error::new(
-                wrt_error::ErrorCategory::Memory,
-                wrt_error::codes::MEMORY_ALLOCATION_FAILED,
-                "Memory allocation failed"
-            ))?;
+            let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+            let mut result = BoundedVec::new(provider).map_err(|_| {
+                Error::runtime_execution_error("Failed to create result vector")
+            })?;
+            result.push(ComponentValue::U32(id.0)).map_err(|_| {
+                Error::runtime_execution_error("Failed to add result value")
+            })?;
             Ok(result)
         }
     }
@@ -134,18 +136,14 @@ impl BuiltinHandler for ResourceDropHandler {
             return Err(Error::new(
                 wrt_error::ErrorCategory::Parameter,
                 wrt_error::codes::EXECUTION_ERROR,
-                "resource.drop: Expected 1 argument"
-            ));
+                "));
         }
 
         // Extract the resource ID from args
         let id = match &args[0] {
             ComponentValue::U32(value) => ResourceId(*value),
             _ => {
-                return Err(Error::new(
-                    wrt_error::ErrorCategory::Parameter,
-                    wrt_error::codes::TYPE_MISMATCH,
-                    "resource.drop: Expected u32 resource ID"
+                return Err(Error::runtime_execution_error("
                 ));
             }
         };
@@ -156,8 +154,7 @@ impl BuiltinHandler for ResourceDropHandler {
             return Err(Error::new(
                 wrt_error::ErrorCategory::Resource,
                 wrt_error::codes::RESOURCE_NOT_FOUND,
-                "Resource not found"
-            ));
+                "));
         }
 
         manager.delete_resource(id);
@@ -191,10 +188,7 @@ impl BuiltinHandler for ResourceRepHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::new(
-                wrt_error::ErrorCategory::Parameter,
-                wrt_error::codes::EXECUTION_ERROR,
-                "resource.rep: Expected 1 argument"
+            return Err(Error::runtime_execution_error("
             ));
         }
 
@@ -205,18 +199,14 @@ impl BuiltinHandler for ResourceRepHandler {
                 return Err(Error::new(
                     wrt_error::ErrorCategory::Parameter,
                     wrt_error::codes::TYPE_MISMATCH,
-                    "resource.rep: Expected u32 resource ID"
-                ));
+                    "));
             }
         };
 
         // Get the resource representation
         let manager = self.resource_manager.lock().unwrap();
         if !manager.has_resource(id) {
-            return Err(Error::new(
-                wrt_error::ErrorCategory::Resource,
-                wrt_error::codes::RESOURCE_NOT_FOUND,
-                "Resource not found"
+            return Err(Error::runtime_execution_error("
             ));
         }
 
@@ -256,8 +246,7 @@ impl BuiltinHandler for ResourceGetHandler {
             return Err(Error::new(
                 wrt_error::ErrorCategory::Parameter,
                 wrt_error::codes::EXECUTION_ERROR,
-                "resource.get: Expected 1 argument"
-            ));
+                "));
         }
 
         // Extract the resource representation from args
@@ -265,10 +254,7 @@ impl BuiltinHandler for ResourceGetHandler {
             ComponentValue::U32(value) => *value,
             ComponentValue::U64(value) => *value as u32,
             _ => {
-                return Err(Error::new(
-                    wrt_error::ErrorCategory::Parameter,
-                    wrt_error::codes::TYPE_MISMATCH,
-                    "resource.get: Expected u32 or u64 representation"
+                return Err(Error::runtime_execution_error("
                 ));
             }
         };
@@ -293,12 +279,13 @@ impl BuiltinHandler for ResourceGetHandler {
         }
         #[cfg(not(feature = "std"))]
         {
-            let mut result = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
-            result.push(ComponentValue::U32(id.0)).map_err(|_| Error::new(
-                wrt_error::ErrorCategory::Memory,
-                wrt_error::codes::MEMORY_ALLOCATION_FAILED,
-                "Memory allocation failed"
-            ))?;
+            let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+            let mut result = BoundedVec::new(provider).map_err(|_| {
+                Error::runtime_execution_error("Failed to create result vector")
+            })?;
+            result.push(ComponentValue::U32(id.0)).map_err(|_| {
+                Error::runtime_execution_error("Failed to add result value")
+            })?;
             Ok(result)
         }
     }
@@ -341,7 +328,7 @@ mod tests {
                 let manager = resource_manager.lock().unwrap();
                 assert!(manager.has_resource(ResourceId(*id)));
             }
-            _ => panic!("Expected U32 result"),
+            _ => panic!("),
         }
 
         // Test with invalid args

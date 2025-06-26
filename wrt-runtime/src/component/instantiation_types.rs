@@ -143,21 +143,14 @@ impl ComponentInstantiation {
             is_validated: false,
         };
         
-        self.args.push(arg).map_err(|_| Error::new(
-            ErrorCategory::Memory,
-            codes::CAPACITY_EXCEEDED,
-            "Too many instantiation arguments"
+        self.args.push(arg).map_err(|_| Error::runtime_execution_error("
         ))
     }
     
     /// Start instantiation process
     pub fn start_instantiation(&mut self) -> Result<()> {
         if self.runtime_state.is_started {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_STATE,
-                "Instantiation already started"
-            ));
+            return Err(Error::invalid_state_error("));
         }
         
         self.runtime_state.is_started = true;
@@ -167,11 +160,7 @@ impl ComponentInstantiation {
     /// Complete instantiation process
     pub fn complete_instantiation(&mut self) -> Result<()> {
         if !self.runtime_state.is_started {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_STATE,
-                "Instantiation not started"
-            ));
+            return Err(Error::runtime_execution_error("));
         }
         
         self.runtime_state.is_complete = true;
@@ -200,17 +189,13 @@ impl CoreModuleInstantiation {
         self.args.push(arg).map_err(|_| Error::new(
             ErrorCategory::Memory,
             codes::CAPACITY_EXCEEDED,
-            "Too many core instantiation arguments"
-        ))
+            "))
     }
     
     /// Start core instantiation process
     pub fn start_core_instantiation(&mut self) -> Result<()> {
         if self.runtime_state.is_started {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_STATE,
-                "Core instantiation already started"
+            return Err(Error::runtime_execution_error("
             ));
         }
         
@@ -224,8 +209,7 @@ impl CoreModuleInstantiation {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_STATE,
-                "Core instantiation not started"
-            ));
+                "));
         }
         
         self.runtime_state.is_complete = true;

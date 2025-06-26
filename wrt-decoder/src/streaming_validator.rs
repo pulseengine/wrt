@@ -357,29 +357,17 @@ impl StreamingWasmValidator {
     /// Validate WebAssembly header
     fn validate_header(&self, wasm_bytes: &[u8]) -> Result<(), Error> {
         if wasm_bytes.len() < 8 {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "WASM module too small for header",
-            ));
+            return Err(Error::parse_error("WASM module too small for header "));
         }
 
         // Check magic number (0x00 0x61 0x73 0x6D)
         if &wasm_bytes[0..4] != &[0x00, 0x61, 0x73, 0x6D] {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Invalid WASM magic number",
-            ));
+            return Err(Error::parse_error("Invalid WASM magic number "));
         }
 
         // Check version (0x01 0x00 0x00 0x00)
         if &wasm_bytes[4..8] != &[0x01, 0x00, 0x00, 0x00] {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unsupported WASM version",
-            ));
+            return Err(Error::parse_error("Unsupported WASM version "));
         }
 
         Ok(())
@@ -389,14 +377,13 @@ impl StreamingWasmValidator {
     fn parse_sections(
         &self,
         wasm_bytes: &[u8],
-    ) -> Result<BoundedVec<Section, 32, NoStdProvider<2048>>, Error> {
-        let mut sections = BoundedVec::new(NoStdProvider::<2048>::default()).map_err(|_| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::INSUFFICIENT_MEMORY,
-                "Failed to allocate sections vector",
-            )
-        })?;
+    ) -> Result<BoundedVec<Section, 32, wrt_foundation::NoStdProvider<2048>>, Error> {
+        let provider = wrt_foundation::safe_managed_alloc!(
+            2048,
+            wrt_foundation::budget_aware_provider::CrateId::Decoder
+        )?;
+        let mut sections = BoundedVec::new(provider)
+            .map_err(|_| Error::runtime_execution_error("Failed to create section vector"))?;
         let mut offset = 8; // Skip header
 
         while offset < wasm_bytes.len() {
@@ -412,21 +399,15 @@ impl StreamingWasmValidator {
             offset += size_bytes;
 
             if offset + section_size as usize > wasm_bytes.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Section extends beyond module bounds",
-                ));
+                return Err(Error::parse_error("Section extends beyond available data "));
             }
 
             let section_data = &wasm_bytes[offset..offset + section_size as usize];
             let section = self.parse_section_type(section_id, section_data)?;
 
             if let Err(_) = sections.push(section) {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_EXHAUSTED,
-                    "Too many sections in WASM module",
+                return Err(Error::resource_exhausted(
+                    "Too many sections in WASM module ",
                 ));
             }
 
@@ -451,51 +432,31 @@ impl StreamingWasmValidator {
             9 => Ok(Section::Element),
             10 => self.parse_code_section(section_data),
             11 => Ok(Section::Data),
-            _ => Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unknown section type",
-            )),
+            _ => Err(Error::parse_error("Unknown section type ")),
         }
     }
 
     /// Parse memory section
     fn parse_memory_section(&self, section_data: &[u8]) -> Result<Section, Error> {
         if section_data.is_empty() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Empty memory section",
-            ));
+            return Err(Error::parse_error("Empty memory section "));
         }
 
         // Read memory count (should be 1 for MVP)
         let (memory_count, mut offset) = self.read_leb128_u32(section_data)?;
 
         if memory_count == 0 {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Memory section with zero memories",
-            ));
+            return Err(Error::parse_error("Memory section with zero memories "));
         }
 
         if memory_count > 1 {
             // Multiple memories - future feature
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Multiple memories not supported",
-            ));
+            return Err(Error::parse_error("Multiple memories not supported "));
         }
 
         // Read memory limits
         if offset >= section_data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Truncated memory section",
-            ));
+            return Err(Error::parse_error("Truncated memory section "));
         }
 
         let limits_flag = section_data[offset];
@@ -543,10 +504,8 @@ impl StreamingWasmValidator {
                 let required = mem.initial as usize * 65536; // Convert pages to bytes
 
                 if required > self.platform_limits.max_wasm_linear_memory {
-                    return Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_EXHAUSTED,
-                        "WASM memory requirement exceeds platform limit",
+                    return Err(Error::resource_exhausted(
+                        "WASM memory requirement exceeds platform limit ",
                     ));
                 }
 
@@ -554,10 +513,8 @@ impl StreamingWasmValidator {
             },
             Section::Code(code) => {
                 if code.estimated_stack_usage as usize > self.platform_limits.max_stack_bytes {
-                    return Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_EXHAUSTED,
-                        "Estimated stack usage exceeds platform limit",
+                    return Err(Error::resource_exhausted(
+                        "Estimated stack usage exceeds platform limit ",
                     ));
                 }
 
@@ -585,10 +542,8 @@ impl StreamingWasmValidator {
             self.requirements.required_memory + self.requirements.estimated_stack_usage;
 
         if total_memory_need > self.platform_limits.max_total_memory {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_EXHAUSTED,
-                "Total memory requirement exceeds platform limit",
+            return Err(Error::resource_exhausted(
+                "Total memory requirement exceeds platform limit ",
             ));
         }
 
@@ -600,10 +555,8 @@ impl StreamingWasmValidator {
         };
 
         if self.requirements.function_count > max_functions {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_EXHAUSTED,
-                "Function count exceeds platform limit",
+            return Err(Error::resource_exhausted(
+                "Function count exceeds platform limit ",
             ));
         }
 
@@ -627,19 +580,11 @@ impl StreamingWasmValidator {
 
             shift += 7;
             if shift >= 32 {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "LEB128 value too large",
-                ));
+                return Err(Error::parse_error("LEB128 value too large "));
             }
         }
 
-        Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Truncated LEB128 value",
-        ))
+        Err(Error::parse_error("Truncated LEB128 value "))
     }
 
     /// Get current validation state
@@ -723,7 +668,7 @@ mod tests {
             assert_eq!(mem.initial, 1);
             assert_eq!(mem.maximum, None);
         } else {
-            panic!("Expected memory section");
+            panic!("Wrong section type ");
         }
     }
 

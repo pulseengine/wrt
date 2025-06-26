@@ -24,18 +24,10 @@ fn create_component_provider() -> Result<CapabilityAwareProvider<wrt_foundation:
     use wrt_foundation::memory_init::get_global_capability_context;
     
     let context = get_global_capability_context()
-        .map_err(|_| Error::new(
-            ErrorCategory::Initialization,
-            codes::INITIALIZATION_ERROR,
-            "Global capability context not available"
-        ))?;
+        .map_err(|_| Error::initialization_error("Global capability context not available"))?;
     
     context.create_provider(CrateId::Component, 4096)
-        .map_err(|_| Error::new(
-            ErrorCategory::Memory,
-            codes::MEMORY_OUT_OF_BOUNDS,
-            "Failed to create component capability provider"
-        ))
+        .map_err(|_| Error::memory_out_of_bounds("Failed to create component capability provider"))
 }
 
 /// Map of export names to exports using bounded collections

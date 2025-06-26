@@ -69,15 +69,13 @@ pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatVal
         ValueType::I64 => Ok(FormatValType::S64),
         ValueType::F32 => Ok(FormatValType::F32),
         ValueType::F64 => Ok(FormatValType::F64),
-        ValueType::V128 => Err(wrt_error::Error::new(
-            wrt_error::ErrorCategory::Parse,
-            wrt_error::codes::UNIMPLEMENTED,
-            "V128 to FormatValType mapping is not yet implemented - SIMD support planned",
+        ValueType::V128 => Err(wrt_error::Error::runtime_execution_error(
+            "V128 type not supported in component model",
         )),
         ValueType::I16x8 => Err(wrt_error::Error::new(
             wrt_error::ErrorCategory::Parse,
             wrt_error::codes::UNIMPLEMENTED,
-            "I16x8 to FormatValType mapping is not yet implemented - SIMD support planned",
+            "I16x8 type not supported in component model",
         )),
         ValueType::FuncRef => Ok(FormatValType::Own(0)), // Map to handle
         ValueType::ExternRef => Ok(FormatValType::Own(0)), // Map to handle
@@ -100,15 +98,13 @@ pub fn map_wasm_type_to_component(ty: ValueType) -> wrt_error::Result<FormatValT
         ValueType::I64 => Ok(FormatValType::S64),
         ValueType::F32 => Ok(FormatValType::F32),
         ValueType::F64 => Ok(FormatValType::F64),
-        ValueType::V128 => Err(wrt_error::Error::new(
-            wrt_error::ErrorCategory::Parse,
-            wrt_error::codes::UNIMPLEMENTED,
-            "V128 to FormatValType mapping is not yet implemented - SIMD support planned",
+        ValueType::V128 => Err(wrt_error::Error::runtime_execution_error(
+            "V128 type not supported in component model",
         )),
         ValueType::I16x8 => Err(wrt_error::Error::new(
             wrt_error::ErrorCategory::Parse,
             wrt_error::codes::UNIMPLEMENTED,
-            "I16x8 to FormatValType mapping is not yet implemented - SIMD support planned",
+            "I16x8 type not supported in component model",
         )),
         ValueType::FuncRef => Ok(FormatValType::Own(0)), // Map to handle
         ValueType::ExternRef => Ok(FormatValType::Own(0)), // Map to handle
@@ -128,15 +124,13 @@ pub fn map_wasm_type_to_component<
         ValueType::I64 => Ok(FormatValType::S64),
         ValueType::F32 => Ok(FormatValType::F32),
         ValueType::F64 => Ok(FormatValType::F64),
-        ValueType::V128 => Err(wrt_error::Error::new(
-            wrt_error::ErrorCategory::Parse,
-            wrt_error::codes::UNIMPLEMENTED,
-            "V128 to FormatValType mapping is not yet implemented - SIMD support planned",
+        ValueType::V128 => Err(wrt_error::Error::runtime_execution_error(
+            "V128 type not supported in component model",
         )),
         ValueType::I16x8 => Err(wrt_error::Error::new(
             wrt_error::ErrorCategory::Parse,
             wrt_error::codes::UNIMPLEMENTED,
-            "I16x8 to FormatValType mapping is not yet implemented - SIMD support planned",
+            "I16x8 type not supported in component model",
         )),
         ValueType::FuncRef => Ok(FormatValType::Own(0)), // Map to handle
         ValueType::ExternRef => Ok(FormatValType::Own(0)), // Map to handle

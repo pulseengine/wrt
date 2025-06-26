@@ -184,10 +184,7 @@ pub mod conversions {
     pub fn value_to_descriptor(value: &Value) -> Result<filesystem_types::Descriptor> {
         match value {
             Value::U32(desc) => Ok(*desc),
-            _ => Err(Error::new(
-                ErrorCategory::Parse,
-                codes::WASI_INVALID_FD,
-                "Invalid descriptor type"
+            _ => Err(Error::runtime_execution_error("Cannot convert value to size type"
             )),
         }
     }
@@ -225,10 +222,7 @@ pub mod conversions {
                 
                 Ok(filesystem_types::Timestamp { seconds, nanoseconds })
             }
-            _ => Err(Error::new(
-                ErrorCategory::Parse,
-                codes::WASI_INVALID_FD,
-                "Invalid timestamp format"
+            _ => Err(Error::runtime_execution_error("Cannot convert value to size type"
             )),
         }
     }
@@ -261,8 +255,7 @@ pub mod conversions {
             _ => Err(Error::new(
                 ErrorCategory::Parse,
                 codes::WASI_INVALID_FD,
-                "Invalid descriptor type"
-            )),
+                "Expected record type for timestamp")),
         }
     }
 }

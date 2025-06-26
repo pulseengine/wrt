@@ -85,11 +85,7 @@ pub mod capability_factories {
         let provider = NoStdProvider::<PROVIDER_SIZE>::default();
         
         let vec = BoundedVec::new(provider).map_err(|_| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ERROR,
-                "Failed to create capability-managed bounded vector",
-            )
+            Error::memory_error("Failed to create capability-managed bounded vector")
         })?;
         
         Ok((vec, capability))

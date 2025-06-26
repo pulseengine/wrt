@@ -13,6 +13,9 @@ use std::{boxed::Box, vec::Vec};
 
 use wrt_foundation::{
     bounded::BoundedVec, component::WrtComponentType, component_value::ComponentValue, prelude::*,
+    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
 };
 
 use crate::{
@@ -279,32 +282,47 @@ pub struct CallStatistics {
 
 impl CrossComponentCallManager {
     /// Create a new cross-component call manager
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> WrtResult<Self> {
+        Ok(Self {
             #[cfg(feature = "std")]
             targets: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            targets: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            targets: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider).unwrap()
+            },
             #[cfg(feature = "std")]
             call_stack: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            call_stack: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            call_stack: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider).unwrap()
+            },
             #[cfg(feature = "std")]
             call_cache: std::collections::HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            call_cache: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            call_cache: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider).unwrap()
+            },
             #[cfg(feature = "std")]
             call_frequency: std::collections::HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            call_frequency: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            call_frequency: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider).unwrap()
+            },
             #[cfg(feature = "std")]
             pending_transfers: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            pending_transfers: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            pending_transfers: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider).unwrap()
+            },
             canonical_abi: CanonicalAbi::new(),
             resource_manager: ResourceLifecycleManager::new(),
             max_call_depth: MAX_CROSS_CALL_DEPTH,
-        }
+        })
     }
 
     /// Set maximum call depth
@@ -323,10 +341,7 @@ impl CrossComponentCallManager {
         #[cfg(not(any(feature = "std", )))]
         {
             self.targets.push(target).map_err(|_| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Too many call targets"
+                wrt_error::Error::resource_exhausted("Too many call targets")
                 )
             })?;
         }
@@ -344,10 +359,7 @@ impl CrossComponentCallManager {
     ) -> WrtResult<CrossCallResult> {
         // Check call depth
         if self.call_stack.len() >= self.max_call_depth {
-            return Err(wrt_foundation::Error::new(
-                wrt_foundation::ErrorCategory::Resource,
-                wrt_error::codes::RESOURCE_EXHAUSTED,
-                "Maximum call depth exceeded"
+            return Err(wrt_error::Error::resource_exhausted("Maximum call depth exceeded")
             ));
         }
 
@@ -355,19 +367,13 @@ impl CrossComponentCallManager {
         let target = self
             .targets
             .get(target_id as usize)
-            .ok_or_else(|| wrt_foundation::Error::new(
-                wrt_foundation::ErrorCategory::Validation,
-                wrt_error::errors::codes::INVALID_INPUT,
-                "Invalid input"
+            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input")
             ))?
             .clone();
 
         // Check permissions
         if !target.permissions.allowed {
-            return Err(wrt_foundation::Error::new(
-                wrt_foundation::ErrorCategory::Runtime,
-                wrt_error::codes::RUNTIME_ERROR,
-                "Cross-component call not allowed"
+            return Err(wrt_error::Error::runtime_error("Cross-component call not allowed")
             ));
         }
 
@@ -381,7 +387,10 @@ impl CrossComponentCallManager {
             #[cfg(feature = "std")]
             transferred_resources: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            transferred_resources: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            transferred_resources: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider).unwrap()
+            },
         };
 
         // Push call frame
@@ -392,10 +401,7 @@ impl CrossComponentCallManager {
         #[cfg(not(any(feature = "std", )))]
         {
             self.call_stack.push(call_frame).map_err(|_| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Call stack overflow"
+                wrt_error::Error::resource_exhausted("Call stack overflow")
                 )
             })?;
         }
@@ -448,7 +454,10 @@ impl CrossComponentCallManager {
                     #[cfg(feature = "std")]
                     transferred_resources: Vec::new(),
                     #[cfg(not(any(feature = "std", )))]
-                    transferred_resources: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+                    transferred_resources: {
+                        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                        BoundedVec::new(provider).unwrap()
+                    },
                     stats,
                 }
             }
@@ -473,7 +482,7 @@ impl CrossComponentCallManager {
         args: &[Value],
         target: &CallTarget,
         caller_instance: u32,
-    ) -> Wrtcore::result::Result<(Vec<Value>, Vec<TransferredResource>)> {
+    ) -> WrtResult<(Vec<Value>, Vec<TransferredResource>)> {
         #[cfg(feature = "std")]
         let mut prepared_args = Vec::new();
         #[cfg(not(any(feature = "std", )))]
@@ -499,10 +508,7 @@ impl CrossComponentCallManager {
                         transferred_resources.push(transferred);
                         prepared_args.push(arg.clone());
                     } else {
-                        return Err(wrt_foundation::Error::new(
-                            wrt_foundation::ErrorCategory::Runtime,
-                            wrt_error::codes::RUNTIME_ERROR,
-                            "Resource transfer not allowed"
+                        return Err(wrt_error::Error::runtime_error("Resource transfer not allowed")
                         ));
                     }
                 }
@@ -525,10 +531,7 @@ impl CrossComponentCallManager {
         transfer_type: ResourceTransferPolicy,
     ) -> WrtResult<TransferredResource> {
         match transfer_type {
-            ResourceTransferPolicy::None => Err(wrt_foundation::Error::new(
-                wrt_foundation::ErrorCategory::Runtime,
-                wrt_error::codes::RUNTIME_ERROR,
-                "Resource transfer not allowed"
+            ResourceTransferPolicy::None => Err(wrt_error::Error::runtime_error("Resource transfer not allowed")
             )),
             ResourceTransferPolicy::Transfer => {
                 // Transfer ownership
@@ -722,10 +725,7 @@ impl CrossComponentCallManager {
         #[cfg(not(any(feature = "std", )))]
         {
             self.pending_transfers.push(transfer).map_err(|_| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Too many pending transfers"
+                wrt_error::Error::resource_exhausted("Too many pending transfers")
                 )
             })?;
         }
@@ -818,10 +818,7 @@ impl CrossComponentCallManager {
         #[cfg(not(any(feature = "std", )))]
         {
             self.call_cache.push((key, cached_target)).map_err(|_| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Call cache full"
+                wrt_error::Error::resource_exhausted("Call cache full")
                 )
             })?;
         }
@@ -924,7 +921,10 @@ impl Default for CallPermissions {
 
 impl Default for CrossComponentCallManager {
     fn default() -> Self {
-        Self::new()
+        Self::new().unwrap_or_else(|_| {
+            // In case of allocation failure, panic as this is a critical error
+            panic!("Failed to create CrossComponentCallManager: memory allocation failed")
+        })
     }
 }
 
@@ -945,14 +945,14 @@ mod tests {
 
     #[test]
     fn test_call_manager_creation() {
-        let manager = CrossComponentCallManager::new();
+        let manager = CrossComponentCallManager::new().unwrap();
         assert_eq!(manager.call_depth(), 0);
         assert_eq!(manager.targets.len(), 0);
     }
 
     #[test]
     fn test_register_target() {
-        let mut manager = CrossComponentCallManager::new();
+        let mut manager = CrossComponentCallManager::new().unwrap();
 
         let target = CallTarget::new(
             1,
@@ -1001,7 +1001,7 @@ mod tests {
 
     #[test]
     fn test_is_call_allowed() {
-        let mut manager = CrossComponentCallManager::new();
+        let mut manager = CrossComponentCallManager::new().unwrap();
 
         // No targets registered - should not be allowed
         assert!(!manager.is_call_allowed(0, 1));
@@ -1022,7 +1022,7 @@ mod tests {
 
     #[test]
     fn test_call_caching() {
-        let mut manager = CrossComponentCallManager::new();
+        let mut manager = CrossComponentCallManager::new().unwrap();
 
         // Test call stats update
         manager.update_call_stats(0, 1, "test_func", 12345, 500);
@@ -1045,7 +1045,7 @@ mod tests {
 
     #[test]
     fn test_pending_transfers() {
-        let mut manager = CrossComponentCallManager::new();
+        let mut manager = CrossComponentCallManager::new().unwrap();
 
         // Add some pending transfers
         manager.add_pending_transfer(100, 0, 1, ResourceTransferType::Move).unwrap();
@@ -1068,7 +1068,7 @@ mod tests {
 
     #[test]
     fn test_signature_hash() {
-        let manager = CrossComponentCallManager::new();
+        let manager = CrossComponentCallManager::new().unwrap();
 
         // Test that different types have different hashes
         let hash1 = manager.calculate_signature_hash(&WrtComponentType::U32);

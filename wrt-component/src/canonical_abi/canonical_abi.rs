@@ -248,11 +248,7 @@ impl CanonicalMemory for SimpleMemory {
         let end = start + len as usize;
 
         if end > self.data.len() {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_OUT_OF_BOUNDS,
-                "Memory read out of bounds",
-            ));
+            return Err(Error::memory_out_of_bounds("Memory read out of bounds"));
         }
 
         Ok(self.data[start..end].to_vec())
@@ -263,11 +259,7 @@ impl CanonicalMemory for SimpleMemory {
         let end = start + data.len();
 
         if end > self.data.len() {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_OUT_OF_BOUNDS,
-                "Memory write out of bounds",
-            ));
+            return Err(Error::memory_out_of_bounds("Memory write out of bounds"));
         }
 
         self.data[start..end].copy_from_slice(data);
@@ -522,11 +514,7 @@ impl CanonicalABI {
     pub fn lift_char<M: CanonicalMemory>(&self, memory: &M, offset: u32) -> Result<ComponentValue> {
         let code_point = memory.read_u32_le(offset)?;
         let ch = char::from_u32(code_point).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Invalid Unicode code point",
-            )
+            Error::validation_error("Invalid Unicode code point")
         })?;
         Ok(ComponentValue::Char(ch))
     }
@@ -543,11 +531,7 @@ impl CanonicalABI {
 
         // Safety check
         if len > MAX_STRING_LENGTH as u32 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "String too long",
-            ));
+            return Err(Error::validation_error("String too long"));
         }
 
         // Read string data
@@ -556,19 +540,11 @@ impl CanonicalABI {
         // Decode based on encoding
         let string = match self.string_options.encoding {
             StringEncoding::Utf8 => String::from_utf8(bytes).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Validation,
-                    codes::VALIDATION_ERROR,
-                    "Invalid UTF-8 string",
-                )
+                Error::validation_error("Invalid UTF-8 string")
             })?,
             StringEncoding::Utf16Le => {
                 if bytes.len() % 2 != 0 {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "UTF-16 byte sequence must have even length",
-                    ));
+                    return Err(Error::validation_error("UTF-16 byte sequence must have even length"));
                 }
                 
                 let mut code_units = Vec::new();
@@ -578,20 +554,12 @@ impl CanonicalABI {
                 }
                 
                 String::from_utf16(&code_units).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "Invalid UTF-16 sequence",
-                    )
+                    Error::validation_error("Invalid UTF-16 sequence")
                 })?
             }
             StringEncoding::Utf16Be => {
                 if bytes.len() % 2 != 0 {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "UTF-16 byte sequence must have even length",
-                    ));
+                    return Err(Error::validation_error("UTF-16 byte sequence must have even length"));
                 }
                 
                 let mut code_units = Vec::new();
@@ -601,11 +569,7 @@ impl CanonicalABI {
                 }
                 
                 String::from_utf16(&code_units).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "Invalid UTF-16 sequence",
-                    )
+                    Error::validation_error("Invalid UTF-16 sequence")
                 })?
             }
             StringEncoding::Latin1 => {
@@ -630,11 +594,7 @@ impl CanonicalABI {
 
         // Safety check
         if len > MAX_LIST_LENGTH as u32 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "List too long",
-            ));
+            return Err(Error::validation_error("List too long"));
         }
 
         let element_size = self.size_of(element_ty)?;
@@ -697,11 +657,7 @@ impl CanonicalABI {
         let discriminant = memory.read_u32_le(offset)?;
 
         if discriminant as usize >= cases.len() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Invalid variant discriminant",
-            ));
+            return Err(Error::validation_error("Invalid variant discriminant"));
         }
 
         let (case_name, payload_ty) = &cases[discriminant as usize];
@@ -724,11 +680,7 @@ impl CanonicalABI {
         let discriminant = memory.read_u32_le(offset)?;
 
         if discriminant as usize >= cases.len() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Invalid enum discriminant",
-            ));
+            return Err(Error::validation_error("Invalid enum discriminant"));
         }
 
         Ok(ComponentValue::Enum(cases[discriminant as usize].clone()))
@@ -780,11 +732,7 @@ impl CanonicalABI {
                     Ok(ComponentValue::Result(Err(None)))
                 }
             }
-            _ => Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Invalid result discriminant",
-            )),
+            _ => Err(Error::validation_error("Invalid result discriminant")),
         }
     }
 
@@ -984,11 +932,7 @@ impl CanonicalABI {
 
         // Safety check
         if len > MAX_STRING_LENGTH as u32 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "String too long",
-            ));
+            return Err(Error::validation_error("String too long"));
         }
 
         // For this simplified implementation, we'll assume the string data
@@ -1017,11 +961,7 @@ impl CanonicalABI {
 
         // Safety check
         if len > MAX_LIST_LENGTH as u32 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "List too long",
-            ));
+            return Err(Error::validation_error("List too long"));
         }
 
         // For this simplified implementation, we'll write a basic representation
@@ -1099,11 +1039,7 @@ impl CanonicalABI {
         // Find the discriminant for this case
         let discriminant = cases.iter()
             .position(|(name, _)| name == case_name)
-            .ok_or_else(|| Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_TYPE,
-                "Variant case not found"
-            ))?;
+            .ok_or_else(|| Error::validation_invalid_type("Variant case not found"))?;
         
         // Calculate discriminant size based on number of cases
         let discriminant_size = if cases.len() <= 256 { 1 } else if cases.len() <= 65536 { 2 } else { 4 };
@@ -1113,11 +1049,7 @@ impl CanonicalABI {
             1 => memory.write_u8(offset, discriminant as u8)?,
             2 => memory.write_u16_le(offset, discriminant as u16)?,
             4 => memory.write_u32_le(offset, discriminant as u32)?,
-            _ => return Err(Error::new(
-                ErrorCategory::Type,
-                codes::TYPE_ERROR,
-                "Invalid discriminant size calculated"
-            )),
+            _ => return Err(Error::type_error("Invalid discriminant size calculated")),
         }
         
         // If there's a payload, lower it after the discriminant with proper alignment
@@ -1145,11 +1077,7 @@ impl CanonicalABI {
         // Find the discriminant for this case
         let discriminant = cases.iter()
             .position(|name| name == case_name)
-            .ok_or_else(|| Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_TYPE,
-                "Enum case not found"
-            ))?;
+            .ok_or_else(|| Error::validation_invalid_type("Enum case not found"))?;
         
         // Calculate discriminant size based on number of cases
         let discriminant_size = if cases.len() <= 256 { 1 } else if cases.len() <= 65536 { 2 } else { 4 };
@@ -1159,11 +1087,7 @@ impl CanonicalABI {
             1 => memory.write_u8(offset, discriminant as u8),
             2 => memory.write_u16_le(offset, discriminant as u16),
             4 => memory.write_u32_le(offset, discriminant as u32),
-            _ => return Err(Error::new(
-                ErrorCategory::Type,
-                codes::TYPE_ERROR,
-                "Invalid discriminant size calculated"
-            )),
+            _ => return Err(Error::type_error("Invalid discriminant size calculated")),
         }
     }
 

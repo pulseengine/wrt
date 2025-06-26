@@ -493,7 +493,7 @@ impl CanonicalABI {
             // Convert items to T (simplified for testing)
             Ok(vec![])
         } else {
-            Err(Error::new("Not a list"))
+            Err(Error::runtime_execution_error("Not a list"))
         }
     }
 
@@ -502,9 +502,9 @@ impl CanonicalABI {
         let component_value = self.decode::<ComponentValue>(bytes, ty)?;
         if let ComponentValue::Tuple(_) = component_value {
             // Convert to T (simplified for testing)
-            Err(Error::new("Not implemented in tests"))
+            Err(Error::runtime_execution_error("Not implemented in tests"))
         } else {
-            Err(Error::new("Not a tuple"))
+            Err(Error::runtime_execution_error("Not a tuple"))
         }
     }
 }

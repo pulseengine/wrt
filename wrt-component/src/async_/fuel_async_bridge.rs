@@ -182,11 +182,7 @@ impl FuelAsyncBridge {
             };
 
             self.active_bridges.insert(task_id, bridge_context).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_LIMIT_EXCEEDED,
-                    "Too many active async bridges".to_string(),
-                )
+                Error::resource_limit_exceeded("Too many active async bridges")
             })?;
 
             // Run the async execution loop
@@ -195,20 +191,14 @@ impl FuelAsyncBridge {
 
         match outcome {
             TimeBoundedOutcome::Completed => result,
-            TimeBoundedOutcome::TimedOut => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::EXECUTION_TIMEOUT,
-                "Async function execution timed out".to_string(),
+            TimeBoundedOutcome::TimedOut => Err(Error::runtime_execution_error(".to_string(),
             )),
             TimeBoundedOutcome::Terminated => Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::EXECUTION_LIMIT_EXCEEDED,
-                "Async function execution was terminated".to_string(),
+                "),
             )),
-            TimeBoundedOutcome::Error(e) => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::EXECUTION_ERROR,
-                format!("Async function execution error: {}", e),
+            TimeBoundedOutcome::Error(e) => Err(Error::runtime_execution_error("Async function execution error: {}"),
             )),
         }
     }
@@ -264,17 +254,10 @@ impl FuelAsyncBridge {
                             results.push(Ok(self.get_task_result(task_id)?));
                         }
                         AsyncTaskState::Failed => {
-                            results.push(Err(Error::new(
-                                ErrorCategory::Runtime,
-                                codes::EXECUTION_ERROR,
-                                "Async task failed".to_string(),
-                            )));
+                            results.push(Err(Error::runtime_execution_error("Async task failed")));
                         }
                         _ => {
-                            results.push(Err(Error::new(
-                                ErrorCategory::Runtime,
-                                codes::EXECUTION_TIMEOUT,
-                                "Async task did not complete".to_string(),
+                            results.push(Err(Error::runtime_execution_error(".to_string(),
                             )));
                         }
                     }
@@ -283,7 +266,7 @@ impl FuelAsyncBridge {
                     results.push(Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::TASK_NOT_FOUND,
-                        "Task not found".to_string(),
+                        "),
                     )));
                 }
             }
@@ -407,18 +390,11 @@ impl FuelAsyncBridge {
                     }
                     AsyncTaskState::Failed => {
                         self.cleanup_bridge(task_id)?;
-                        return Err(Error::new(
-                            ErrorCategory::Runtime,
-                            codes::EXECUTION_ERROR,
-                            "Async task failed during execution".to_string(),
-                        ));
+                        return Err(Error::runtime_execution_error("Async task failed during execution"));
                     }
                     AsyncTaskState::FuelExhausted => {
                         self.cleanup_bridge(task_id)?;
-                        return Err(Error::new(
-                            ErrorCategory::Runtime,
-                            codes::EXECUTION_LIMIT_EXCEEDED,
-                            "Async task exhausted fuel".to_string(),
+                        return Err(Error::runtime_execution_error(".to_string(),
                         ));
                     }
                     _ => {
@@ -433,7 +409,7 @@ impl FuelAsyncBridge {
                 return Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::EXECUTION_LIMIT_EXCEEDED,
-                    "Async execution exceeded maximum poll count".to_string(),
+                    "),
                 ));
             }
 

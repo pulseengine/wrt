@@ -253,11 +253,7 @@ impl AdvancedSyncPrimitives {
         };
 
         self.component_contexts.insert(component_id, context).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many component sync contexts".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many component sync contexts")
         })?;
 
         Ok(())
@@ -270,11 +266,7 @@ impl AdvancedSyncPrimitives {
         is_reentrant: bool,
     ) -> Result<SyncPrimitiveId, Error> {
         let context = self.component_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not initialized for sync operations".to_string(),
-            )
+            Error::validation_invalid_input("Component not initialized for sync operations")
         })?;
 
         // Check limits
@@ -289,11 +281,7 @@ impl AdvancedSyncPrimitives {
             .count();
 
         if current_mutexes >= context.sync_limits.max_mutexes {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component mutex limit exceeded".to_string(),
-            ));
+            return Err(Error::resource_limit_exceeded("Component mutex limit exceeded"));
         }
 
         let primitive_id = SyncPrimitiveId(self.next_primitive_id.fetch_add(1, Ordering::AcqRel));
@@ -314,19 +302,11 @@ impl AdvancedSyncPrimitives {
         };
 
         self.primitives.insert(primitive_id, primitive).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many sync primitives".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many sync primitives")
         })?;
 
         context.owned_primitives.push(primitive_id).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component primitive list full".to_string(),
-            )
+            Error::resource_limit_exceeded("Component primitive list full")
         })?;
 
         self.sync_stats.total_mutexes_created.fetch_add(1, Ordering::Relaxed);
@@ -342,19 +322,11 @@ impl AdvancedSyncPrimitives {
         fair_scheduling: bool,
     ) -> Result<SyncPrimitiveId, Error> {
         let context = self.component_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not initialized for sync operations".to_string(),
-            )
+            Error::validation_invalid_input("Component not initialized for sync operations")
         })?;
 
         if permits == 0 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Semaphore must have at least 1 permit".to_string(),
-            ));
+            return Err(Error::validation_invalid_input("Semaphore must have at least 1 permit"));
         }
 
         let primitive_id = SyncPrimitiveId(self.next_primitive_id.fetch_add(1, Ordering::AcqRel));
@@ -374,11 +346,7 @@ impl AdvancedSyncPrimitives {
         };
 
         self.primitives.insert(primitive_id, primitive).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many sync primitives".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many sync primitives")
         })?;
 
         context.owned_primitives.push(primitive_id).ok();
@@ -395,11 +363,7 @@ impl AdvancedSyncPrimitives {
         parties: u32,
     ) -> Result<SyncPrimitiveId, Error> {
         if parties == 0 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Barrier must have at least 1 party".to_string(),
-            ));
+            return Err(Error::validation_invalid_input("Barrier must have at least 1 party"));
         }
 
         let primitive_id = SyncPrimitiveId(self.next_primitive_id.fetch_add(1, Ordering::AcqRel));
@@ -439,19 +403,11 @@ impl AdvancedSyncPrimitives {
         // Validate associated mutex if provided
         if let Some(mutex_id) = associated_mutex {
             let mutex = self.primitives.get(&mutex_id).ok_or_else(|| {
-                Error::new(
-                    ErrorCategory::Validation,
-                    codes::INVALID_INPUT,
-                    "Associated mutex not found".to_string(),
-                )
+                Error::validation_invalid_input("Associated mutex not found")
             })?;
 
             if !matches!(mutex.primitive_type, SyncPrimitiveType::AsyncMutex { .. }) {
-                return Err(Error::new(
-                    ErrorCategory::Validation,
-                    codes::INVALID_INPUT,
-                    "Associated primitive is not a mutex".to_string(),
-                ));
+                return Err(Error::validation_invalid_input("Associated primitive is not a mutex"));
             }
         }
 
@@ -489,11 +445,7 @@ impl AdvancedSyncPrimitives {
         component_id: ComponentInstanceId,
     ) -> Result<MutexLockResult, Error> {
         let primitive = self.primitives.get_mut(&primitive_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Mutex not found".to_string(),
-            )
+            Error::validation_invalid_input("Mutex not found")
         })?;
 
         match &mut primitive.primitive_type {
@@ -519,11 +471,7 @@ impl AdvancedSyncPrimitives {
                     };
 
                     primitive.waiters.push(waiter).map_err(|_| {
-                        Error::new(
-                            ErrorCategory::Resource,
-                            codes::RESOURCE_LIMIT_EXCEEDED,
-                            "Mutex waiter queue full".to_string(),
-                        )
+                        Error::resource_limit_exceeded("Mutex waiter queue full")
                     })?;
 
                     return Ok(MutexLockResult::WouldBlock);
@@ -539,11 +487,7 @@ impl AdvancedSyncPrimitives {
 
                 Ok(MutexLockResult::Acquired)
             },
-            _ => Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Primitive is not a mutex".to_string(),
-            )),
+            _ => Err(Error::validation_invalid_input("Primitive is not a mutex")),
         }
     }
 
@@ -554,31 +498,19 @@ impl AdvancedSyncPrimitives {
         task_id: TaskId,
     ) -> Result<(), Error> {
         let primitive = self.primitives.get_mut(&primitive_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Mutex not found".to_string(),
-            )
+            Error::validation_invalid_input("Mutex not found")
         })?;
 
         match &mut primitive.primitive_type {
             SyncPrimitiveType::AsyncMutex { locked, owner, lock_count, is_reentrant } => {
                 // Verify ownership
                 if owner.as_ref() != Some(&task_id) {
-                    return Err(Error::new(
-                        ErrorCategory::InvalidState,
-                        codes::INVALID_STATE,
-                        "Task does not own mutex".to_string(),
-                    ));
+                    return Err(Error::invalid_state_error("Task does not own mutex"));
                 }
 
                 let current_count = lock_count.load(Ordering::Acquire);
                 if current_count == 0 {
-                    return Err(Error::new(
-                        ErrorCategory::InvalidState,
-                        codes::INVALID_STATE,
-                        "Mutex is not locked".to_string(),
-                    ));
+                    return Err(Error::invalid_state_error("Mutex is not locked"));
                 }
 
                 // Handle reentrant unlock
@@ -602,11 +534,7 @@ impl AdvancedSyncPrimitives {
 
                 Ok(())
             },
-            _ => Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Primitive is not a mutex".to_string(),
-            )),
+            _ => Err(Error::validation_invalid_input("Primitive is not a mutex")),
         }
     }
 
@@ -618,11 +546,7 @@ impl AdvancedSyncPrimitives {
         component_id: ComponentInstanceId,
     ) -> Result<SemaphoreAcquireResult, Error> {
         let primitive = self.primitives.get_mut(&primitive_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Semaphore not found".to_string(),
-            )
+            Error::validation_invalid_input("Semaphore not found")
         })?;
 
         match &mut primitive.primitive_type {
@@ -641,11 +565,7 @@ impl AdvancedSyncPrimitives {
                     };
 
                     primitive.waiters.push(waiter).map_err(|_| {
-                        Error::new(
-                            ErrorCategory::Resource,
-                            codes::RESOURCE_LIMIT_EXCEEDED,
-                            "Semaphore waiter queue full".to_string(),
-                        )
+                        Error::resource_limit_exceeded("Semaphore waiter queue full")
                     })?;
 
                     return Ok(SemaphoreAcquireResult::WouldBlock);
@@ -658,22 +578,14 @@ impl AdvancedSyncPrimitives {
 
                 Ok(SemaphoreAcquireResult::Acquired)
             },
-            _ => Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Primitive is not a semaphore".to_string(),
-            )),
+            _ => Err(Error::validation_invalid_input("Primitive is not a semaphore")),
         }
     }
 
     /// Release semaphore permit
     pub fn release_semaphore(&mut self, primitive_id: SyncPrimitiveId) -> Result<(), Error> {
         let primitive = self.primitives.get_mut(&primitive_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Semaphore not found".to_string(),
-            )
+            Error::validation_invalid_input("Semaphore not found")
         })?;
 
         match &mut primitive.primitive_type {
@@ -681,11 +593,7 @@ impl AdvancedSyncPrimitives {
                 let current_permits = permits.load(Ordering::Acquire);
                 
                 if current_permits >= *max_permits {
-                    return Err(Error::new(
-                        ErrorCategory::InvalidState,
-                        codes::INVALID_STATE,
-                        "Semaphore already at maximum permits".to_string(),
-                    ));
+                    return Err(Error::invalid_state_error("Semaphore already at maximum permits"));
                 }
 
                 // Release permit
@@ -698,11 +606,7 @@ impl AdvancedSyncPrimitives {
 
                 Ok(())
             },
-            _ => Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Primitive is not a semaphore".to_string(),
-            )),
+            _ => Err(Error::validation_invalid_input("Primitive is not a semaphore")),
         }
     }
 
@@ -714,21 +618,13 @@ impl AdvancedSyncPrimitives {
         component_id: ComponentInstanceId,
     ) -> Result<BarrierWaitResult, Error> {
         let primitive = self.primitives.get_mut(&primitive_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Barrier not found".to_string(),
-            )
+            Error::validation_invalid_input("Barrier not found")
         })?;
 
         match &mut primitive.primitive_type {
             SyncPrimitiveType::AsyncBarrier { parties, waiting, generation, broken } => {
                 if broken.load(Ordering::Acquire) {
-                    return Err(Error::new(
-                        ErrorCategory::InvalidState,
-                        codes::INVALID_STATE,
-                        "Barrier is broken".to_string(),
-                    ));
+                    return Err(Error::invalid_state_error("Barrier is broken"));
                 }
 
                 let current_waiting = waiting.fetch_add(1, Ordering::AcqRel);
@@ -757,21 +653,13 @@ impl AdvancedSyncPrimitives {
                     };
 
                     primitive.waiters.push(waiter).map_err(|_| {
-                        Error::new(
-                            ErrorCategory::Resource,
-                            codes::RESOURCE_LIMIT_EXCEEDED,
-                            "Barrier waiter queue full".to_string(),
-                        )
+                        Error::resource_limit_exceeded("Barrier waiter queue full")
                     })?;
 
                     Ok(BarrierWaitResult::WouldBlock)
                 }
             },
-            _ => Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Primitive is not a barrier".to_string(),
-            )),
+            _ => Err(Error::validation_invalid_input("Primitive is not a barrier")),
         }
     }
 
@@ -987,18 +875,10 @@ impl CoreFuture for MutexLockFuture {
                     Err(e) => Poll::Ready(Err(e)),
                 }
             } else {
-                Poll::Ready(Err(Error::new(
-                    ErrorCategory::InvalidState,
-                    codes::INVALID_STATE,
-                    "Sync primitives manager unavailable".to_string(),
-                )))
+                Poll::Ready(Err(Error::invalid_state_error("Sync primitives manager unavailable")))
             }
         } else {
-            Poll::Ready(Err(Error::new(
-                ErrorCategory::InvalidState,
-                codes::INVALID_STATE,
-                "Sync primitives manager dropped".to_string(),
-            )))
+            Poll::Ready(Err(Error::invalid_state_error("Sync primitives manager dropped")))
         }
     }
 }

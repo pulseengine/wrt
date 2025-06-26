@@ -207,11 +207,7 @@ fn parse_locals_from_body(bytecode: &[u8]) -> Result<wrt_foundation::bounded::Bo
     // Parse each local entry
     for _ in 0..local_count {
         if offset >= bytecode.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unexpected end of bytecode while parsing locals"
-            ));
+            return Err(Error::parse_error("Unexpected end of bytecode while parsing locals"));
         }
         
         // Read count of this local type
@@ -219,11 +215,7 @@ fn parse_locals_from_body(bytecode: &[u8]) -> Result<wrt_foundation::bounded::Bo
         offset += consumed;
         
         if offset >= bytecode.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unexpected end of bytecode while parsing local type"
-            ));
+            return Err(Error::parse_error("Unexpected end of bytecode while parsing local type"));
         }
         
         // Read value type
@@ -232,11 +224,7 @@ fn parse_locals_from_body(bytecode: &[u8]) -> Result<wrt_foundation::bounded::Bo
             0x7E => wrt_foundation::types::ValueType::I64,
             0x7D => wrt_foundation::types::ValueType::F32,
             0x7C => wrt_foundation::types::ValueType::F64,
-            _ => return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Invalid value type for local variable"
-            )),
+            _ => return Err(Error::parse_error("Invalid value type for local variable")),
         };
         offset += 1;
         
@@ -255,11 +243,7 @@ fn read_leb128_u32(bytecode: &[u8], offset: usize) -> Result<(u32, usize)> {
     
     loop {
         if offset + consumed >= bytecode.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unexpected end of bytecode while reading LEB128"
-            ));
+            return Err(Error::parse_error("Unexpected end of bytecode while reading LEB128"));
         }
         
         let byte = bytecode[offset + consumed];
@@ -273,11 +257,7 @@ fn read_leb128_u32(bytecode: &[u8], offset: usize) -> Result<(u32, usize)> {
         
         shift += 7;
         if shift >= 32 {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "LEB128 value too large"
-            ));
+            return Err(Error::parse_error("LEB128 value too large"));
         }
     }
     
@@ -306,19 +286,11 @@ pub fn load_module_from_binary(binary: &[u8]) -> Result<Module> {
     #[cfg(all(not(feature = "decoder")))]
     {
         // Decoder not available - create an empty module
-        Err(Error::new(
-            ErrorCategory::Parse,
-            codes::INVALID_BINARY,
-            "Decoder not available",
-        ))
+        Err(Error::parse_invalid_binary("Decoder not available"))
     }
     #[cfg(not(feature = "std"))]
     {
         // Basic fallback for no_std - create an empty module
-        Err(Error::new(
-            ErrorCategory::Parse,
-            codes::INVALID_BINARY,
-            "Module loading from binary not supported in no_std mode"
-        ))
+        Err(Error::parse_invalid_binary("Module loading from binary not supported in no_std mode"))
     }
 }

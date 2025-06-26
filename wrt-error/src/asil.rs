@@ -11,7 +11,7 @@
 //! This module provides ASIL-specific functionality for safety-critical
 //! error handling as per ISO 26262 standard.
 
-use crate::{codes, Error, ErrorCategory};
+use crate::{Error, ErrorCategory};
 
 /// ASIL (Automotive Safety Integrity Level) as defined by ISO 26262
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -118,11 +118,7 @@ impl SafetyMonitor {
             if count > 100 {
                 // In a real system, this would trigger safe state transition
                 // For now, we just create a critical error
-                let _ = Error::new(
-                    ErrorCategory::Safety,
-                    codes::SAFETY_MONITOR_TIMEOUT,
-                    "Error storm detected - systematic failure",
-                );
+                let _ = Error::safety_violation("Error storm detected - systematic failure");
             }
         }
     }
@@ -231,11 +227,7 @@ pub fn create_asil_error(
 ) -> Result<Error, Error> {
     // Check if current ASIL level meets requirement
     if !AsilLevel::meets_requirement(required_level) {
-        return Err(Error::new(
-            ErrorCategory::Safety,
-            codes::ASIL_LEVEL_MISMATCH,
-            "ASIL level requirement not met",
-        ));
+        return Err(Error::safety_violation("ASIL level requirement not met"));
     }
 
     // Create error
@@ -245,9 +237,7 @@ pub fn create_asil_error(
     #[cfg(feature = "asil-d")]
     {
         if !validate_error_consistency(&error) {
-            return Err(Error::new(
-                ErrorCategory::Safety,
-                codes::VERIFICATION_FAILED,
+            return Err(Error::verification_failed(
                 "Error consistency validation failed",
             ));
         }

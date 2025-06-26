@@ -10,7 +10,13 @@ use std::{boxed::Box, fmt, vec::Vec};
 #[cfg(all(not(feature = "std")))]
 use std::{boxed::Box, vec::Vec};
 
-use crate::wit_parser::{WitBoundedString, WitBoundedStringSmall};
+// Temporarily disabled - wit_parser module is commented out
+// use crate::wit_parser::{WitBoundedString, WitBoundedStringSmall};
+use wrt_foundation::{BoundedString, NoStdProvider};
+
+// Type aliases to replace wit_parser types
+type WitBoundedString = BoundedString<64, NoStdProvider<1024>>;
+type WitBoundedStringSmall = BoundedString<32, NoStdProvider<1024>>;
 
 /// Source location span for AST nodes
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]

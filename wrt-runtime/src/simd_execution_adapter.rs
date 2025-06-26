@@ -49,16 +49,8 @@ impl SimdExecutionAdapter {
         let mut operands = Vec::with_capacity(operand_count);
         for _ in 0..operand_count {
             let value = engine.exec_stack.values.pop()
-                .map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Insufficient operands for SIMD operation"
-                ))?
-                .ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Empty stack for SIMD operation"
-                ))?;
+                .map_err(|_| Error::runtime_stack_underflow("Insufficient operands for SIMD operation"))?
+                .ok_or_else(|| Error::runtime_stack_underflow("Empty stack for SIMD operation"))?;
             operands.push(value);
         }
         
@@ -71,11 +63,7 @@ impl SimdExecutionAdapter {
         
         // Push the result back onto the stack
         engine.exec_stack.values.push(result)
-            .map_err(|_| Error::new(
-                ErrorCategory::Runtime,
-                codes::STACK_OVERFLOW,
-                "Failed to push SIMD result onto stack"
-            ))?;
+            .map_err(|_| Error::runtime_stack_overflow("Failed to push SIMD result onto stack"))?;
         
         Ok(())
     }
@@ -256,42 +244,22 @@ impl SimdExecutionAdapter {
             SimdOp::V128Load32Splat { .. } |
             SimdOp::V128Load64Splat { .. } => {
                 if operands.is_empty() {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::TYPE_MISMATCH,
-                        "SIMD load operation requires address operand"
-                    ));
+                    return Err(Error::validation_type_mismatch("SIMD load operation requires address operand"));
                 }
                 if !matches!(operands[0], Value::I32(_)) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::TYPE_MISMATCH,
-                        "SIMD load operation requires i32 address"
-                    ));
+                    return Err(Error::validation_type_mismatch("SIMD load operation requires i32 address"));
                 }
             }
             
             SimdOp::V128Store { .. } => {
                 if operands.len() < 2 {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::TYPE_MISMATCH,
-                        "SIMD store operation requires address and value operands"
-                    ));
+                    return Err(Error::validation_type_mismatch("SIMD store operation requires address and value operands"));
                 }
                 if !matches!(operands[0], Value::I32(_)) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::TYPE_MISMATCH,
-                        "SIMD store operation requires i32 address"
-                    ));
+                    return Err(Error::validation_type_mismatch("SIMD store operation requires i32 address"));
                 }
                 if !Self::is_v128_value(&operands[1]) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::TYPE_MISMATCH,
-                        "SIMD store operation requires v128 value"
-                    ));
+                    return Err(Error::validation_type_mismatch("SIMD store operation requires v128 value"));
                 }
             }
             
@@ -314,22 +282,14 @@ impl SimdExecutionAdapter {
                         SimdOp::F64x2ReplaceLane { .. } => {
                             // Replace lane: first operand is vector, second is scalar
                             if i == 0 && !Self::is_v128_value(operand) {
-                                return Err(Error::new(
-                                    ErrorCategory::Validation,
-                                    codes::TYPE_MISMATCH,
-                                    "Replace lane operation requires v128 vector as first operand"
-                                ));
+                                return Err(Error::validation_type_mismatch("Replace lane operation requires v128 vector as first operand"));
                             }
                         }
                         
                         // All other vector operations expect v128 operands
                         _ => {
                             if !Self::is_v128_value(operand) && !matches!(operand, Value::I32(_) | Value::I64(_) | Value::F32(_) | Value::F64(_)) {
-                                return Err(Error::new(
-                                    ErrorCategory::Validation,
-                                    codes::TYPE_MISMATCH,
-                                    "SIMD operation requires appropriate operand types"
-                                ));
+                                return Err(Error::validation_type_mismatch("SIMD operation requires appropriate operand types"));
                             }
                         }
                     }

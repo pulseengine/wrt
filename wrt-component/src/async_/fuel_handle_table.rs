@@ -176,11 +176,7 @@ impl<T> FuelHandleTable<T> {
     pub fn allocate(&mut self, data: T) -> Result<GenerationalHandle> {
         // Check fuel budget
         if !self.check_fuel(HANDLE_ALLOCATE_FUEL)? {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Handle table fuel budget exceeded",
-            ));
+            return Err(Error::resource_limit_exceeded("Handle table fuel budget exceeded"));
         }
         
         // Get index from free list or extend table
@@ -189,11 +185,7 @@ impl<T> FuelHandleTable<T> {
         } else {
             // Need to extend the table
             if self.entries.len() >= MAX_HANDLES_PER_TABLE {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_LIMIT_EXCEEDED,
-                    "Handle table capacity exceeded",
-                ));
+                return Err(Error::resource_limit_exceeded("Handle table capacity exceeded"));
             }
             
             let new_index = self.entries.len() as u32;
@@ -211,11 +203,7 @@ impl<T> FuelHandleTable<T> {
             entry.state = ResourceState::Available;
             entry.touch();
         } else {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_ERROR,
-                "Failed to update handle entry",
-            ));
+            return Err(Error::resource_error("Failed to update handle entry"));
         }
         
         // Update stats
@@ -229,30 +217,19 @@ impl<T> FuelHandleTable<T> {
     pub fn lookup(&self, handle: GenerationalHandle) -> Result<&T> {
         // Check fuel
         if !self.check_fuel(HANDLE_LOOKUP_FUEL)? {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Handle table fuel budget exceeded",
-            ));
+            return Err(Error::resource_limit_exceeded("Handle table fuel budget exceeded"));
         }
         
         // Validate index
         let entry = self.entries.get(handle.index as usize).ok_or_else(|| {
             self.stats.cache_misses.fetch_add(1, Ordering::Relaxed);
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "Invalid handle index",
-            )
+            Error::resource_not_found("Invalid handle index")
         })?;
         
         // Validate generation
         if entry.generation != handle.generation {
             self.stats.cache_misses.fetch_add(1, Ordering::Relaxed);
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_INVALID_HANDLE,
-                "Handle generation mismatch",
+            return Err(Error::runtime_execution_error(",
             ));
         }
         
@@ -261,17 +238,12 @@ impl<T> FuelHandleTable<T> {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ACCESS_ERROR,
-                "Resource not available",
-            ));
+                "));
         }
         
         // Get data
         let data = entry.data.as_ref().ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "Handle data not found",
-            )
+            Error::resource_not_found("Handle data not found")
         })?;
         
         // Update access tracking
@@ -287,28 +259,17 @@ impl<T> FuelHandleTable<T> {
     pub fn lookup_mut(&mut self, handle: GenerationalHandle) -> Result<&mut T> {
         // Check fuel
         if !self.check_fuel(HANDLE_UPDATE_FUEL)? {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Handle table fuel budget exceeded",
-            ));
+            return Err(Error::resource_limit_exceeded("Handle table fuel budget exceeded"));
         }
         
         // Validate index
         let entry = self.entries.get_mut(handle.index as usize).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "Invalid handle index",
-            )
+            Error::resource_not_found("Invalid handle index")
         })?;
         
         // Validate generation
         if entry.generation != handle.generation {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_INVALID_HANDLE,
-                "Handle generation mismatch",
+            return Err(Error::runtime_execution_error(",
             ));
         }
         
@@ -318,11 +279,7 @@ impl<T> FuelHandleTable<T> {
         
         // Get data
         let data = entry.data.as_mut().ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "Handle data not found",
-            )
+            Error::resource_not_found(")
         })?;
         
         self.consume_fuel(HANDLE_UPDATE_FUEL)?;
@@ -333,38 +290,23 @@ impl<T> FuelHandleTable<T> {
     pub fn deallocate(&mut self, handle: GenerationalHandle) -> Result<T> {
         // Check fuel
         if !self.check_fuel(HANDLE_DEALLOCATE_FUEL)? {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Handle table fuel budget exceeded",
-            ));
+            return Err(Error::resource_limit_exceeded("Handle table fuel budget exceeded"));
         }
         
         // Validate and remove
         let entry = self.entries.get_mut(handle.index as usize).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "Invalid handle index",
-            )
+            Error::resource_not_found("Invalid handle index")
         })?;
         
         // Validate generation
         if entry.generation != handle.generation {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_INVALID_HANDLE,
-                "Handle generation mismatch",
+            return Err(Error::runtime_execution_error(",
             ));
         }
         
         // Take data
         let data = entry.data.take().ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "Handle already deallocated",
-            )
+            Error::resource_not_found(")
         })?;
         
         // Update state
@@ -475,20 +417,12 @@ impl HandleTableManager {
         table_id: u64,
     ) -> Result<&FuelHandleTable<T>> {
         let table = self.tables.get(&table_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "Handle table not found",
-            )
+            Error::resource_not_found("Handle table not found")
         })?;
         
         // Downcast to specific type
         table.downcast_ref::<FuelHandleTable<T>>().ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Type,
-                codes::TYPE_MISMATCH,
-                "Handle table type mismatch",
-            )
+            Error::type_error("Handle table type mismatch")
         })
     }
     
@@ -498,31 +432,19 @@ impl HandleTableManager {
         table_id: u64,
     ) -> Result<&mut FuelHandleTable<T>> {
         let table = self.tables.get_mut(&table_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "Handle table not found",
-            )
+            Error::resource_not_found("Handle table not found")
         })?;
         
         // Downcast to specific type
         table.downcast_mut::<FuelHandleTable<T>>().ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Type,
-                codes::TYPE_MISMATCH,
-                "Handle table type mismatch",
-            )
+            Error::type_error("Handle table type mismatch")
         })
     }
     
     /// Drop a table
     pub fn drop_table(&mut self, table_id: u64) -> Result<()> {
         self.tables.remove(&table_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "Handle table not found",
-            )
+            Error::resource_not_found("Handle table not found")
         })?;
         
         Ok(())

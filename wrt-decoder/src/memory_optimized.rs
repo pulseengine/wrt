@@ -11,7 +11,7 @@
 
 use core::str;
 
-use wrt_error::{codes, errors::codes as error_codes, Error, ErrorCategory, Result};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice};
 
 use crate::prelude::read_leb128_u32;
@@ -82,19 +82,15 @@ impl<P: MemoryProvider> MemoryPool<P> {
 
 /// Binary std/no_std choice
 pub fn validate_utf8_slice(slice: &SafeSlice) -> Result<()> {
-    let data = slice.data().map_err(|_| {
-        Error::new(
-            ErrorCategory::Parse,
-            error_codes::INVALID_UTF8_ENCODING,
-            "Failed to access slice data",
-        )
-    })?;
+    let data = slice
+        .data()
+        .map_err(|_| Error::runtime_execution_error("Failed to access slice data"))?;
 
     str::from_utf8(data).map_err(|_| {
         Error::new(
             ErrorCategory::Parse,
-            error_codes::INVALID_UTF8_ENCODING,
-            "Invalid UTF-8 encoding",
+            codes::INVALID_UTF8_ENCODING,
+            "Invalid UTF8 encoding",
         )
     })?;
     Ok(())
@@ -105,40 +101,21 @@ pub fn parse_string_inplace<'a>(
     slice: &'a SafeSlice<'a>,
     offset: usize,
 ) -> Result<(&'a str, usize)> {
-    let data = slice.data().map_err(|_| {
-        Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Failed to access slice data",
-        )
-    })?;
+    let data = slice.data().map_err(|_| Error::parse_error("Failed to access slice data"))?;
 
     if offset >= data.len() {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Offset beyond slice boundary",
-        ));
+        return Err(Error::parse_error("Offset beyond slice boundary"));
     }
 
     let (length, new_offset) = read_leb128_u32(data, offset)?;
 
     if new_offset + length as usize > data.len() {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "String length exceeds available data",
-        ));
+        return Err(Error::parse_error("String length exceeds available data"));
     }
 
     let string_bytes = &data[new_offset..new_offset + length as usize];
-    let string_str = str::from_utf8(string_bytes).map_err(|_| {
-        Error::new(
-            ErrorCategory::Parse,
-            error_codes::INVALID_UTF8_ENCODING,
-            "Invalid UTF-8 in string",
-        )
-    })?;
+    let string_str = str::from_utf8(string_bytes)
+        .map_err(|_| Error::runtime_execution_error("Invalid UTF8 in string"))?;
 
     Ok((string_str, new_offset + length as usize))
 }
@@ -147,11 +124,7 @@ pub fn parse_string_inplace<'a>(
 pub fn copy_string_to_buffer(source: &str, buffer: &mut [u8]) -> Result<usize> {
     let bytes = source.as_bytes();
     if bytes.len() > buffer.len() {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "String too long for buffer",
-        ));
+        return Err(Error::parse_error("Buffer too small for string"));
     }
 
     buffer[..bytes.len()].copy_from_slice(bytes);
@@ -170,13 +143,7 @@ pub struct StreamingCollectionParser<'a> {
 impl<'a> StreamingCollectionParser<'a> {
     /// Create a new streaming parser for a collection
     pub fn new(slice: &'a SafeSlice<'a>, offset: usize) -> Result<Self> {
-        let data = slice.data().map_err(|_| {
-            Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Failed to access slice data",
-            )
-        })?;
+        let data = slice.data().map_err(|_| Error::parse_error("Failed to access slice data"))?;
 
         let (count, new_offset) = read_leb128_u32(data, offset)?;
 
@@ -306,11 +273,7 @@ impl<'a, T> Iterator for BoundedIterator<'a, T> {
 /// Memory-efficient bounds checking
 pub fn check_bounds_u32(value: u32, max_value: u32, _context: &str) -> Result<()> {
     if value > max_value {
-        Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Bounds check failed",
-        ))
+        Err(Error::parse_error("Bounds check failed"))
     } else {
         Ok(())
     }
@@ -319,11 +282,7 @@ pub fn check_bounds_u32(value: u32, max_value: u32, _context: &str) -> Result<()
 /// Safe usize conversion with bounds checking
 pub fn safe_usize_conversion(value: u32, _context: &str) -> Result<usize> {
     if value as usize as u32 != value {
-        Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Integer overflow in usize conversion",
-        ))
+        Err(Error::parse_error("Integer overflow in usize conversion"))
     } else {
         Ok(value as usize)
     }

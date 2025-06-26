@@ -63,11 +63,7 @@ impl ThreadBuiltins {
         
         // Validate function exists
         if !self.is_function_valid(function_index) {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_ARGUMENT,
-                "Invalid function reference for thread spawn"
-            ));
+            return Err(Error::validation_invalid_argument("Invalid function reference for thread spawn"));
         }
         
         // Validate argument count and types
@@ -169,11 +165,7 @@ impl ThreadBuiltins {
         // For now, we just validate and store the request
         
         if cpu_mask == 0 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_ARGUMENT,
-                "CPU affinity mask cannot be zero"
-            ));
+            return Err(Error::validation_invalid_argument("CPU affinity mask cannot be zero"));
         }
         
         // Store affinity for later use when thread is actually created
@@ -200,11 +192,7 @@ impl ThreadBuiltins {
         let context = self.thread_manager.get_thread_context_mut(thread_id)?;
         
         if priority > 100 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_ARGUMENT,
-                "Thread priority must be between 0 and 100"
-            ));
+            return Err(Error::validation_invalid_argument("Thread priority must be between 0 and 100"));
         }
         
         context.info.priority = priority;
@@ -238,11 +226,7 @@ impl ThreadBuiltins {
         const MAX_THREAD_ARGS: usize = 16;
         
         if args.len() > MAX_THREAD_ARGS {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_ARGUMENT,
-                "Too many arguments for thread function"
-            ));
+            return Err(Error::validation_invalid_argument("Too many arguments for thread function"));
         }
         
         // Validate each argument is a valid component model value
@@ -281,11 +265,7 @@ impl ThreadBuiltins {
             context.stored_arguments.clear();
             for arg in args {
                 context.stored_arguments.push(arg.clone())
-                    .map_err(|_| Error::new(
-                        ErrorCategory::ResourceExhausted,
-                        codes::RESOURCE_EXHAUSTED,
-                        "Thread argument storage full"
-                    ))?;
+                    .map_err(|_| Error::resource_exhausted("Thread argument storage full"))?;
             }
         }
         
@@ -297,20 +277,12 @@ impl ThreadBuiltins {
         #[cfg(feature = "std")]
         {
             if table_index as usize >= self.function_table.len() {
-                return Err(Error::new(
-                    ErrorCategory::Validation,
-                    codes::INVALID_ARGUMENT,
-                    "Table index out of bounds"
-                ));
+                return Err(Error::validation_invalid_argument("Table index out of bounds"));
             }
             
             let component_func = &self.function_table[table_index as usize];
             if function_index >= component_func.function_count {
-                return Err(Error::new(
-                    ErrorCategory::Validation,
-                    codes::INVALID_ARGUMENT,
-                    "Function index out of bounds in table"
-                ));
+                return Err(Error::validation_invalid_argument("Function index out of bounds in table"));
             }
             
             Ok(component_func.base_index + function_index)
@@ -318,29 +290,17 @@ impl ThreadBuiltins {
         #[cfg(not(feature = "std"))]
         {
             if table_index as usize >= self.function_table.len() {
-                return Err(Error::new(
-                    ErrorCategory::Validation,
-                    codes::INVALID_ARGUMENT,
-                    "Table index out of bounds"
-                ));
+                return Err(Error::validation_invalid_argument("Table index out of bounds"));
             }
             
             if let Some(component_func) = &self.function_table[table_index as usize] {
                 if function_index >= component_func.function_count {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::INVALID_ARGUMENT,
-                        "Function index out of bounds in table"
-                    ));
+                    return Err(Error::validation_invalid_argument("Function index out of bounds in table"));
                 }
                 
                 Ok(component_func.base_index + function_index)
             } else {
-                Err(Error::new(
-                    ErrorCategory::Validation,
-                    codes::INVALID_ARGUMENT,
-                    "Table slot is empty"
-                ))
+                Err(Error::validation_invalid_argument("Table slot is empty"))
             }
         }
     }
@@ -351,11 +311,7 @@ impl ThreadBuiltins {
         
         // Check if thread has completed
         if context.info.state != wrt_runtime::thread_manager::ThreadState::Terminated {
-            return Err(Error::new(
-                ErrorCategory::InvalidState,
-                codes::INVALID_STATE,
-                "Thread has not completed execution"
-            ));
+            return Err(Error::invalid_state_error("Thread has not completed execution"));
         }
         
         // Return the stored results
@@ -393,11 +349,7 @@ impl ThreadBuiltins {
                 }
             }
             
-            Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_EXHAUSTED,
-                "Function table full"
-            ))
+            Err(Error::resource_exhausted("Function table full"))
         }
     }
 }

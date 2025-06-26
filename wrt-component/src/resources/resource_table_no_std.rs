@@ -2,7 +2,8 @@
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
-    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
 };
 
 use super::{Instant, ResourceId};
@@ -51,7 +52,7 @@ pub struct Resource {
     /// Resource data pointer (simplified for no_std)
     pub data_ptr: usize,
     /// Debug name for the resource (optional)
-    pub name: Option<BoundedString<64, NoStdProvider<65536>>>,
+    pub name: Option<BoundedString<64>>,
     /// Creation timestamp
     pub created_at: Instant,
     /// Last access timestamp
@@ -136,7 +137,7 @@ pub trait BufferPoolTrait {
 #[derive(Debug)]
 pub struct ResourceTable {
     /// Storage for resources
-    resources: BoundedVec<Option<Resource>, MAX_RESOURCES, NoStdProvider<65536>>,
+    resources: BoundedVec<Option<Resource>, MAX_RESOURCES>,
     /// Next available resource ID
     next_id: u32,
     /// Memory strategy
@@ -147,23 +148,29 @@ pub struct ResourceTable {
 
 impl ResourceTable {
     /// Create a new resource table
-    pub fn new() -> Self {
-        Self {
-            resources: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+    pub fn new() -> wrt_foundation::WrtResult<Self> {
+        Ok(Self {
+            resources: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider)?
+            },
             next_id: 1,
             memory_strategy: MemoryStrategy::default(),
             verification_level: VerificationLevel::default(),
-        }
+        })
     }
 
     /// Create a new resource table with configuration
-    pub fn with_config(memory_strategy: MemoryStrategy, verification_level: VerificationLevel) -> Self {
-        Self {
-            resources: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+    pub fn with_config(memory_strategy: MemoryStrategy, verification_level: VerificationLevel) -> wrt_foundation::WrtResult<Self> {
+        Ok(Self {
+            resources: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider)?
+            },
             next_id: 1,
             memory_strategy,
             verification_level,
-        }
+        })
     }
 
     /// Insert a resource and return its ID
@@ -181,11 +188,7 @@ impl ResourceTable {
 
         // No empty slot found, try to add new one
         self.resources.push(Some(resource)).map_err(|_| {
-            wrt_foundation::Error::new(
-                wrt_foundation::ErrorCategory::Resource,
-                wrt_error::codes::RESOURCE_EXHAUSTED,
-                "Resource table full"
-            )
+            wrt_foundation::wrt_error::Error::resource_exhausted("Resource table full")
         })?;
 
         Ok(id)
@@ -237,12 +240,12 @@ impl ResourceTable {
 
 impl Default for ResourceTable {
     fn default() -> Self {
-        Self::new()
+        Self::new().expect("Failed to create default ResourceTable")
     }
 }
 
 // Apply traits to the main types
 impl_basic_traits!(Resource, Resource::new(0, 0));
-impl_basic_traits!(ResourceTable, ResourceTable::new());
+impl_basic_traits!(ResourceTable, ResourceTable::new().unwrap());
 impl_basic_traits!(MemoryStrategy, MemoryStrategy::default());
 impl_basic_traits!(VerificationLevel, VerificationLevel::default());

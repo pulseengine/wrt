@@ -128,7 +128,10 @@ impl IncrementalParser {
         self.source.clear();
         self.total_length = 0;
 
-        let provider = NoStdProvider::<1024>::default();
+        let provider = wrt_foundation::safe_managed_alloc!(
+            1024,
+            wrt_foundation::budget_aware_provider::CrateId::Format
+        )?;
 
         for line in content.lines() {
             let bounded_line = BoundedString::from_str(line, provider.clone())
@@ -212,7 +215,10 @@ impl IncrementalParser {
 
         // Parse using enhanced parser (when fixed) or simple parser
         // For now, create a stub AST
-        let _provider = NoStdProvider::<1024>::default();
+        let _provider = wrt_foundation::safe_managed_alloc!(
+            1024,
+            wrt_foundation::budget_aware_provider::CrateId::Format
+        )?;
         let doc = WitDocument {
             package: None,
             #[cfg(feature = "std")]

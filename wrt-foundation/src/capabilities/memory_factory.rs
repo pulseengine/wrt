@@ -60,7 +60,8 @@ impl MemoryFactory {
         let operation = MemoryOperation::Allocate { size: N };
         context.verify_operation(crate_id, &operation)?;
 
-        // Create the provider
+        // Create the provider directly to avoid circular dependency
+        // The capability verification above ensures this allocation is authorized
         Ok(NoStdProvider::<N>::default())
     }
 
@@ -104,7 +105,8 @@ impl MemoryFactory {
         let operation = MemoryOperation::Allocate { size: N };
         capability.verify_access(&operation)?;
 
-        // Create the underlying provider
+        // Create the underlying provider directly to avoid circular dependency
+        // The capability verification above ensures this allocation is authorized
         let provider = NoStdProvider::<N>::default();
 
         // Wrap with capability verification

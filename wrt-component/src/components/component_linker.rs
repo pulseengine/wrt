@@ -8,7 +8,12 @@ use std::{boxed::Box, collections::HashMap, format, string::String, vec::Vec};
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
 #[cfg(not(feature = "std"))]
-use wrt_foundation::{bounded::BoundedString as String, bounded::BoundedVec as Vec, safe_memory::NoStdProvider};
+use wrt_foundation::{
+    bounded::BoundedString as String, bounded::BoundedVec as Vec, 
+    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
+};
 
 use crate::components::component_instantiation::{
     create_component_export, create_component_import, ComponentExport, ComponentImport,
@@ -193,11 +198,7 @@ impl ComponentLinker {
     /// Add a component to the linker
     pub fn add_component(&mut self, id: ComponentId, binary: &[u8]) -> Result<()> {
         if self.components.len() >= MAX_LINKED_COMPONENTS {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_EXHAUSTED,
-                "Maximum number of components reached",
-            ));
+            return Err(Error::resource_exhausted("Maximum number of components reached"));
         }
 
         // Parse component binary (simplified)
@@ -227,11 +228,7 @@ impl ComponentLinker {
     pub fn remove_component(&mut self, id: &ComponentId) -> Result<()> {
         // Check if component exists
         if !self.components.contains_key(id) {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                wrt_error::codes::RESOURCE_NOT_FOUND,
-                "Component not found",
-            ));
+            return Err(Error::component_not_found("Component not found"));
         }
 
         // Check if any instances are using this component
@@ -243,10 +240,7 @@ impl ComponentLinker {
             .collect();
 
         if !dependent_instances.is_empty() {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::RESOURCE_ACCESS_ERROR,
-                "Component is in use by active instances",
+            return Err(Error::runtime_execution_error(",
             ));
         }
 
@@ -265,11 +259,7 @@ impl ComponentLinker {
     ) -> Result<InstanceId> {
         // Find component definition
         let component = self.components.get(component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Runtime,
-                wrt_error::codes::RESOURCE_NOT_FOUND,
-                "Component not found",
-            )
+            Error::component_not_found(")
         })?;
 
         // Resolve dependencies
@@ -345,15 +335,12 @@ impl ComponentLinker {
     ) -> core::result::Result<(Vec<ComponentExport>, Vec<ComponentImport>, ComponentMetadata)> {
         // Simplified component parsing
         if binary.is_empty() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_BINARY,
-                "Empty component binary",
+            return Err(Error::runtime_execution_error(",
             ));
         }
 
         // Create some example exports and imports based on binary content
-        #[cfg(feature = "std")]
+        #[cfg(feature = ")]
         let exports = vec![create_component_export(
             "main".to_string(),
             ExportType::Function(crate::component_instantiation::create_function_signature(
@@ -368,34 +355,18 @@ impl ComponentLinker {
             let mut exports = Vec::new();
             let mut params = Vec::new();
             let mut results = Vec::new();
-            results.push(crate::canonical_abi::ComponentType::S32).map_err(|_| Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_FAILED,
-                "Memory allocation failed"
-            ))?;
+            results.push(crate::canonical_abi::ComponentType::S32).map_err(|_| Error::platform_memory_allocation_failed("Memory allocation failed"))?;
             
             let signature = crate::component_instantiation::create_function_signature(
-                String::new_from_str("main").map_err(|_| Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ALLOCATION_FAILED,
-                    "Memory allocation failed"
-                ))?,
+                String::new_from_str("main").map_err(|_| Error::platform_memory_allocation_failed("Memory allocation failed"))?,
                 params,
                 results,
             );
             
             exports.push(create_component_export(
-                String::new_from_str("main").map_err(|_| Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ALLOCATION_FAILED,
-                    "Memory allocation failed"
-                ))?,
+                String::new_from_str("main").map_err(|_| Error::platform_memory_allocation_failed("Memory allocation failed"))?,
                 ExportType::Function(signature),
-            )).map_err(|_| Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_FAILED,
-                "Memory allocation failed"
-            ))?;
+            )).map_err(|_| Error::platform_memory_allocation_failed("Memory allocation failed"))?;
             exports
         };
 
@@ -449,11 +420,7 @@ impl ComponentLinker {
             }
         }
 
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::COMPONENT_IMPORT_NOT_FOUND_ERROR,
-            "Component not found",
-        ))
+        Err(Error::component_not_found("Component not found"))
     }
 
     fn is_compatible_import_export(
@@ -507,10 +474,7 @@ impl LinkGraph {
     pub fn add_component(&mut self, component_id: ComponentId) -> Result<()> {
         // Check if component already exists
         if self.find_node_index(&component_id).is_some() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::DUPLICATE_OPERATION,
-                "Component already exists in graph",
+            return Err(Error::runtime_execution_error(",
             ));
         }
 
@@ -531,8 +495,7 @@ impl LinkGraph {
             Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::RESOURCE_NOT_FOUND,
-                "Component not found in graph",
-            )
+                ")
         })?;
 
         // Remove all edges involving this node
@@ -578,22 +541,20 @@ impl LinkGraph {
         #[cfg(not(feature = "std"))]
         {
             // For no_std, create bounded vectors
-            let mut visited = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
-            let mut temp_visited = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
+            let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+            let mut visited = BoundedVec::new(provider).map_err(|_| {
+                Error::platform_memory_allocation_failed("Failed to create visited vector")
+            })?;
+            let provider2 = safe_managed_alloc!(65536, CrateId::Component)?;
+            let mut temp_visited = BoundedVec::new(provider2).map_err(|_| {
+                Error::platform_memory_allocation_failed("Failed to create temp_visited vector")
+            })?;
             let mut result = Vec::new();
             
             // Initialize with false values
             for _ in 0..self.nodes.len() {
-                visited.push(false).map_err(|_| Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ALLOCATION_FAILED,
-                    "Memory allocation failed"
-                ))?;
-                temp_visited.push(false).map_err(|_| Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ALLOCATION_FAILED,
-                    "Memory allocation failed"
-                ))?;
+                visited.push(false).map_err(|_| Error::platform_memory_allocation_failed("Memory allocation failed"))?;
+                temp_visited.push(false).map_err(|_| Error::platform_memory_allocation_failed("Memory allocation failed"))?;
             }
             
             for i in 0..self.nodes.len() {
@@ -615,11 +576,7 @@ impl LinkGraph {
         result: &mut Vec<ComponentId>,
     ) -> Result<()> {
         if temp_visited[node_index] {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Circular dependency detected",
-            ));
+            return Err(Error::validation_error("Circular dependency detected"));
         }
 
         if visited[node_index] {

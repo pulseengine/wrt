@@ -336,14 +336,14 @@ impl ModuleBranchPredictor {
         #[cfg(feature = "std")]
         {
             self.function_predictors.insert(predictor.function_index, predictor).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many function predictors")
+                Error::memory_error("Too many function predictors")
             })?;
             Ok(())
         }
         #[cfg(not(any(feature = "std", )))]
         {
             self.function_predictors.push(predictor).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Too many function predictors")
+                Error::memory_error("Too many function predictors")
             })
         }
     }

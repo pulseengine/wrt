@@ -11,9 +11,9 @@ use wrt_foundation::{
     capabilities::{MemoryCapabilityContext, MemoryOperation},
     budget_aware_provider::CrateId,
     memory_init::get_global_capability_context,
-    codes, Error, ErrorCategory, Result,
     prelude::*,
 };
+use wrt_error::{codes, Error, ErrorCategory, Result};
 
 /// Maximum string length for WASI values
 const MAX_WASI_STRING_LEN: usize = 4096;

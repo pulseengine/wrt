@@ -19,7 +19,12 @@ use std::collections::HashMap;
 use alloc::format;
 
 use crate::prelude::*;
-use wrt_foundation::{bounded::BoundedVec, safe_memory::NoStdProvider};
+use wrt_foundation::{
+    bounded::BoundedVec,
+    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
+};
 
 // Simple HashMap substitute for no_std using BoundedVec
 #[cfg(not(feature = "std"))]
@@ -29,10 +34,13 @@ pub struct SimpleMap<K, V> {
 
 #[cfg(not(feature = "std"))]
 impl<K: PartialEq + Clone, V: Clone> SimpleMap<K, V> {
-    pub fn new() -> Self {
-        Self {
-            entries: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-        }
+    pub fn new() -> Result<Self> {
+        Ok(Self {
+            entries: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider)?
+            },
+        })
     }
     
     pub fn insert(&mut self, key: K, value: V) {
@@ -104,53 +112,71 @@ pub struct WrtComponentType {
 
 impl WrtComponentType {
     /// Creates a new empty component type
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Result<Self> {
+        Ok(Self {
             imports: {
                 #[cfg(feature = "std")]
                 { std::vec::Vec::new() }
                 #[cfg(not(feature = "std"))]
-                { wrt_foundation::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap_or_default() }
+                {
+                    let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+                    wrt_foundation::BoundedVec::new(provider)?
+                }
             },
             exports: {
                 #[cfg(feature = "std")]
                 { std::vec::Vec::new() }
                 #[cfg(not(feature = "std"))]
-                { wrt_foundation::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap_or_default() }
+                {
+                    let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+                    wrt_foundation::BoundedVec::new(provider)?
+                }
             },
             instances: {
                 #[cfg(feature = "std")]
                 { std::vec::Vec::new() }
                 #[cfg(not(feature = "std"))]
-                { wrt_foundation::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap_or_default() }
+                {
+                    let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+                    wrt_foundation::BoundedVec::new(provider)?
+                }
             },
             verification_level: wrt_foundation::verification::VerificationLevel::Standard,
-        }
+        })
     }
 
     /// Create a new empty component type
-    pub fn empty() -> Self {
-        Self {
+    pub fn empty() -> Result<Self> {
+        Ok(Self {
             imports: {
                 #[cfg(feature = "std")]
                 { std::vec::Vec::new() }
                 #[cfg(not(feature = "std"))]
-                { wrt_foundation::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap_or_default() }
+                {
+                    let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+                    wrt_foundation::BoundedVec::new(provider)?
+                }
             },
             exports: {
                 #[cfg(feature = "std")]
                 { std::vec::Vec::new() }
                 #[cfg(not(feature = "std"))]
-                { wrt_foundation::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap_or_default() }
+                {
+                    let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+                    wrt_foundation::BoundedVec::new(provider)?
+                }
             },
             instances: {
                 #[cfg(feature = "std")]
                 { std::vec::Vec::new() }
                 #[cfg(not(feature = "std"))]
-                { wrt_foundation::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap_or_default() }
+                {
+                    let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+                    wrt_foundation::BoundedVec::new(provider)?
+                }
             },
             verification_level: wrt_foundation::verification::VerificationLevel::Standard,
-        }
+        })
     }
 
     /// Set the verification level for memory operations
@@ -169,7 +195,27 @@ impl WrtComponentType {
 
 impl Default for WrtComponentType {
     fn default() -> Self {
-        Self::new()
+        Self::new().unwrap_or_else(|_| Self {
+            imports: {
+                #[cfg(feature = "std")]
+                { std::vec::Vec::new() }
+                #[cfg(not(feature = "std"))]
+                { vec![] }
+            },
+            exports: {
+                #[cfg(feature = "std")]
+                { std::vec::Vec::new() }
+                #[cfg(not(feature = "std"))]
+                { vec![] }
+            },
+            instances: {
+                #[cfg(feature = "std")]
+                { std::vec::Vec::new() }
+                #[cfg(not(feature = "std"))]
+                { vec![] }
+            },
+            verification_level: wrt_foundation::verification::VerificationLevel::Standard,
+        })
     }
 }
 
@@ -256,10 +302,7 @@ impl RuntimeInstance {
             self.functions.insert(name, function);
             Ok(())
         } else {
-            Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Component not found",
+            Err(Error::validation_error("Component not found",
             ))
         }
     }
@@ -287,21 +330,14 @@ impl RuntimeInstance {
     pub fn execute_function(&self, name: &str, args: Vec<Value>) -> Result<Vec<Value>> {
         // Look up the function in our registered functions
         let function = self.functions.get(name).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::FUNCTION_NOT_FOUND,
-                "Component not found",
-            )
+            Error::runtime_function_not_found("Component not found")
         })?;
 
         // Get the function value
         if let ExternValue::Function(func_value) = function {
             // Validate arguments based on function signature
             if args.len() != func_value.ty.params.len() {
-                return Err(Error::new(
-                    ErrorCategory::Validation,
-                    codes::VALIDATION_ERROR,
-                    format!(
+                return Err(Error::validation_error(format!(
                         "Expected {} arguments, got {}",
                         func_value.ty.params.len(),
                         args.len()
@@ -315,10 +351,7 @@ impl RuntimeInstance {
                 let expected_type = &param_type;
 
                 if !self.is_type_compatible(&arg_type, expected_type) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        format!(
+                    return Err(Error::validation_error(format!(
                             "Type mismatch for argument {}: expected {:?}, got {:?}",
                             i, expected_type, arg_type
                         ),
@@ -336,10 +369,7 @@ impl RuntimeInstance {
 
                 // For MVP, we need to return that execution isn't implemented
                 // without hard-coding specific function behavior
-                return Err(Error::new(
-                    ErrorCategory::System,
-                    codes::IMPLEMENTATION_LIMIT,
-                    "Module instance execution not yet implemented".to_string(),
+                return Err(Error::runtime_execution_error(".to_string(),
                 ));
             }
 
@@ -349,16 +379,9 @@ impl RuntimeInstance {
             // Return a not implemented error for now
             // This will be extended to support function resolution from registered
             // callbacks
-            Err(Error::new(
-                ErrorCategory::System,
-                codes::NOT_IMPLEMENTED,
-                "Component not found",
-            ))
+            Err(Error::component_not_found("))
         } else {
-            Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Component not found",
+            Err(Error::validation_error("Component not found",
             ))
         }
     }
@@ -373,10 +396,7 @@ impl RuntimeInstance {
     /// Reads memory
     pub fn read_memory(&self, _offset: u32, _size: u32, _buffer: &mut [u8]) -> Result<()> {
         // Implementation would depend on the specific runtime
-        Err(Error::new(
-            ErrorCategory::System,
-            codes::NOT_IMPLEMENTED,
-            "Memory operations not implemented in this runtime",
+        Err(Error::runtime_execution_error(",
         ))
     }
 
@@ -386,8 +406,7 @@ impl RuntimeInstance {
         Err(Error::new(
             ErrorCategory::System,
             codes::NOT_IMPLEMENTED,
-            "Memory operations not implemented in this runtime",
-        ))
+            "))
     }
 
     /// Get an export by name (functions only for now)
@@ -563,19 +582,13 @@ impl MemoryValue {
     /// Returns an error if the read fails
     pub fn read(&self, offset: u32, size: u32) -> Result<Vec<u8>> {
         let memory = self.memory.read().map_err(|e| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
-                "Component not found",
+            Error::memory_error("Component not found",
             )
         })?;
 
         let mut buffer = vec![0; size as usize];
         memory.read(offset, &mut buffer).map_err(|e| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
-                "Component not found",
+            Error::memory_error("Component not found",
             )
         })?;
 
@@ -598,18 +611,12 @@ impl MemoryValue {
     /// Returns an error if the write fails
     pub fn write(&self, offset: u32, bytes: &[u8]) -> Result<()> {
         let mut memory = self.memory.write().map_err(|e| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
-                "Component not found",
+            Error::memory_error("Component not found",
             )
         })?;
 
         memory.write(offset, bytes).map_err(|e| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
-                "Component not found",
+            Error::memory_error("Component not found",
             )
         })
     }
@@ -629,18 +636,12 @@ impl MemoryValue {
     /// Returns an error if the memory cannot be grown
     pub fn grow(&self, pages: u32) -> Result<u32> {
         let mut memory = self.memory.write().map_err(|e| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
-                "Component not found",
+            Error::memory_error("Component not found",
             )
         })?;
 
         memory.grow(pages).map_err(|e| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
-                "Component not found",
+            Error::memory_error("Component not found",
             )
         })
     }
@@ -652,10 +653,7 @@ impl MemoryValue {
     /// The current size in pages
     pub fn size(&self) -> Result<u32> {
         let memory = self.memory.read().map_err(|e| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
-                "Component not found",
+            Error::memory_error("Component not found",
             )
         })?;
 
@@ -669,10 +667,7 @@ impl MemoryValue {
     /// The current size in bytes
     pub fn size_in_bytes(&self) -> Result<usize> {
         let memory = self.memory.read().map_err(|e| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
-                "Component not found",
+            Error::memory_error("Component not found",
             )
         })?;
 
@@ -686,10 +681,7 @@ impl MemoryValue {
     /// The peak memory usage in bytes
     pub fn peak_usage(&self) -> Result<usize> {
         let memory = self.memory.read().map_err(|e| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
-                "Component not found",
+            Error::memory_error("Component not found",
             )
         })?;
 
@@ -703,10 +695,7 @@ impl MemoryValue {
     /// The number of memory accesses
     pub fn access_count(&self) -> Result<u64> {
         let memory = self.memory.read().map_err(|e| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
-                "Component not found",
+            Error::memory_error("Component not found",
             )
         })?;
 
@@ -720,10 +709,7 @@ impl MemoryValue {
     /// The debug name, if any
     pub fn debug_name(&self) -> Result<Option<String>> {
         let memory = self.memory.read().map_err(|e| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
-                "Component not found",
+            Error::memory_error("Component not found",
             )
         })?;
 
@@ -737,10 +723,7 @@ impl MemoryValue {
     /// * `name` - The debug name to set
     pub fn set_debug_name(&self, name: &str) -> Result<()> {
         let mut memory = self.memory.write().map_err(|e| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
-                "Component not found",
+            Error::memory_error("Component not found",
             )
         })?;
 
@@ -759,10 +742,7 @@ impl MemoryValue {
     /// Returns an error if the memory is invalid
     pub fn verify_integrity(&self) -> Result<()> {
         let memory = self.memory.read().map_err(|e| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
-                "Component not found",
+            Error::memory_error("Component not found",
             )
         })?;
 
@@ -813,28 +793,18 @@ impl Host {
     pub fn call_function(&self, name: &str, args: &[Value]) -> Result<Vec<Value>> {
         // Find the function
         let function = self.get_function(name).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Component,
-                codes::COMPONENT_LINKING_ERROR,
-                "Component not found",
-            )
+            Error::component_not_found("Component not found")
         })?;
 
         // Validate arguments
         if args.len() != function.ty.params.len() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Component not found",
+            return Err(Error::validation_error("Component not found",
             ));
         }
 
         // Actual function calling would happen here
         // This requires integration with the actual host function mechanism
-        Err(Error::new(
-            ErrorCategory::System,
-            codes::NOT_IMPLEMENTED,
-            "Host function calling requires implementation by a concrete host".to_string(),
+        Err(Error::runtime_execution_error(".to_string(),
         ))
     }
 }
@@ -923,7 +893,7 @@ pub fn scan_builtins(bytes: &[u8]) -> Result<BuiltinRequirements> {
     let mut requirements = BuiltinRequirements::new();
 
     // Try to decode as component or module
-    #[cfg(feature = "decoder")]
+    #[cfg(feature = ")]
     {
         match wrt_decoder::component::decode_component(bytes) {
             Ok(component) => {
@@ -931,11 +901,7 @@ pub fn scan_builtins(bytes: &[u8]) -> Result<BuiltinRequirements> {
                 return Ok(requirements);
             }
             Err(err) => {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::DECODING_ERROR,
-                    "Component not found",
-                ));
+                return Err(Error::component_not_found("Component not found"));
             }
         }
     }
@@ -952,10 +918,7 @@ fn scan_module_for_builtins(module: &[u8], requirements: &mut BuiltinRequirement
     // For now, we'll just return success (decoder module not available in current build)
     // TODO: Implement proper module validation when decoder API is available
     if module.is_empty() {
-        Err(Error::new(
-            ErrorCategory::Parse,
-            codes::DECODING_ERROR,
-            "Empty module provided",
+        Err(Error::runtime_execution_error(",
         ))
     } else {
         Ok(())
@@ -994,7 +957,7 @@ fn scan_functions_for_builtins(
         }
     }
 
-    #[cfg(feature = "component-model-async")]
+    #[cfg(feature = ")]
     // Check for async functions which require the AsyncWait built-in
     for func in component.functions() {
         if func.is_async() {
@@ -1023,16 +986,15 @@ fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
                     #[cfg(feature = "std")]
                     { std::vec::Vec::new() }
                     #[cfg(not(feature = "std"))]
-                    { wrt_foundation::BoundedVec::<_, 16, _>::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap_or_default() }
+                    {
+                        let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+                        wrt_foundation::BoundedVec::<_, 16, _>::new(provider)?
+                    }
                 }; // Create an empty vector as a placeholder
                 return Ok(modules);
             }
             Err(err) => {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::DECODING_ERROR,
-                    "Component not found",
-                ));
+                return Err(Error::component_not_found("Component not found"));
             }
         }
     }
@@ -1043,7 +1005,10 @@ fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
             #[cfg(feature = "std")]
             { std::vec::Vec::new() }
             #[cfg(not(feature = "std"))]
-            { wrt_foundation::BoundedVec::<_, 16, _>::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap_or_default() }
+            {
+                let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+                wrt_foundation::BoundedVec::<_, 16, _>::new(provider)?
+            }
         })
     }
 }

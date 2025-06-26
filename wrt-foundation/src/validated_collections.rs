@@ -229,11 +229,7 @@ impl<const CAPACITY: usize, P: MemoryProvider> ValidatedBoundedString<CAPACITY, 
         
         // Runtime validation
         if s.len() > CAPACITY {
-            return Err(crate::Error::new(
-                crate::ErrorCategory::Capacity,
-                crate::codes::CAPACITY_EXCEEDED,
-                "String exceeds validated capacity"
-            ));
+            return Err(crate::Error::runtime_execution_error("String exceeds validated capacity"));
         }
         
         // Create the underlying string

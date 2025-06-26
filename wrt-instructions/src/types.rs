@@ -1,6 +1,6 @@
 //! Type aliases for `no_std` compatibility
 
-use crate::prelude::{Debug, Eq, PartialEq, Value};
+use crate::prelude::{Debug, Eq, PartialEq, Value, Error, ErrorCategory, codes};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::safe_memory::NoStdProvider;
 #[cfg(not(feature = "std"))]
@@ -174,11 +174,7 @@ impl wrt_foundation::traits::FromBytes for RefValue {
                 let id = u32::from_le_bytes(id_bytes);
                 Ok(Self::ExternRef(id))
             },
-            _ => Err(wrt_foundation::Error::new(
-                wrt_foundation::ErrorCategory::Validation,
-                wrt_foundation::codes::VALIDATION_ERROR,
-                "Invalid discriminant for RefValue",
-            )),
+            _ => Err(Error::validation_error("Invalid discriminant for RefValue")),
         }
     }
 }

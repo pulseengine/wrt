@@ -84,20 +84,12 @@ impl FuelDebtCreditSystem {
     pub fn register_task(&self, task_id: TaskId) -> Result<(), Error> {
         let mut credits = self.task_credits.lock()?;
         credits.insert(task_id, DEFAULT_CREDIT).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many tasks in credit system".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many tasks in credit system")
         })?;
         
         let mut debts = self.task_debts.lock()?;
         debts.insert(task_id, 0).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many tasks in debt system".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many tasks in debt system")
         })?;
         
         Ok(())

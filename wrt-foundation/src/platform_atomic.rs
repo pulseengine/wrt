@@ -66,27 +66,15 @@ pub struct NoAtomicProvider;
 
 impl PlatformAtomicProvider for NoAtomicProvider {
     fn create_atomic_view(&self, _base: *mut u8, _size: usize) -> Result<SafeAtomicMemory> {
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            "Atomic operations not supported on this platform"
-        ))
+        Err(Error::runtime_not_implemented("Atomic operations not supported on this platform"))
     }
     
     fn atomic_load_u32(&self, _view: &SafeAtomicMemory, _offset: usize, _ordering: Ordering) -> Result<u32> {
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            "Atomic operations not supported on this platform"
-        ))
+        Err(Error::runtime_not_implemented("Atomic operations not supported on this platform"))
     }
     
     fn atomic_store_u32(&self, _view: &SafeAtomicMemory, _offset: usize, _value: u32, _ordering: Ordering) -> Result<()> {
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            "Atomic operations not supported on this platform"
-        ))
+        Err(Error::runtime_not_implemented("Atomic operations not supported on this platform"))
     }
     
     fn atomic_cmpxchg_u32(
@@ -98,35 +86,19 @@ impl PlatformAtomicProvider for NoAtomicProvider {
         _success: Ordering,
         _failure: Ordering,
     ) -> Result<u32> {
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            "Atomic operations not supported on this platform"
-        ))
+        Err(Error::runtime_not_implemented("Atomic operations not supported on this platform"))
     }
     
     fn atomic_fetch_add_u32(&self, _view: &SafeAtomicMemory, _offset: usize, _val: u32, _ordering: Ordering) -> Result<u32> {
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            "Atomic operations not supported on this platform"
-        ))
+        Err(Error::runtime_not_implemented("Atomic operations not supported on this platform"))
     }
     
     fn atomic_load_u64(&self, _view: &SafeAtomicMemory, _offset: usize, _ordering: Ordering) -> Result<u64> {
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            "Atomic operations not supported on this platform"
-        ))
+        Err(Error::runtime_not_implemented("Atomic operations not supported on this platform"))
     }
     
     fn atomic_store_u64(&self, _view: &SafeAtomicMemory, _offset: usize, _value: u64, _ordering: Ordering) -> Result<()> {
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            "Atomic operations not supported on this platform"
-        ))
+        Err(Error::runtime_not_implemented("Atomic operations not supported on this platform"))
     }
     
     fn atomic_cmpxchg_u64(
@@ -138,19 +110,11 @@ impl PlatformAtomicProvider for NoAtomicProvider {
         _success: Ordering,
         _failure: Ordering,
     ) -> Result<u64> {
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            "Atomic operations not supported on this platform"
-        ))
+        Err(Error::runtime_not_implemented("Atomic operations not supported on this platform"))
     }
     
     fn atomic_fetch_add_u64(&self, _view: &SafeAtomicMemory, _offset: usize, _val: u64, _ordering: Ordering) -> Result<u64> {
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            "Atomic operations not supported on this platform"
-        ))
+        Err(Error::runtime_not_implemented("Atomic operations not supported on this platform"))
     }
 }
 

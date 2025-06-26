@@ -294,10 +294,7 @@ pub trait ErrorContextExt<T> {
 impl<T> ErrorContextExt<T> for Result<T> {
     fn context(self, context: &str) -> Result<T> {
         self.map_err(|e| {
-            Error::new(
-                e.category(),
-                e.code(),
-                &format!("{}: {}", context, e.message()),
+            Error::runtime_execution_error("{}: {}"),
             )
         })
     }
@@ -416,11 +413,7 @@ mod tests {
     
     #[test]
     fn test_contextual_error() {
-        let error = Error::new(
-            ErrorCategory::Async,
-            codes::ASYNC_ERROR,
-            "Test error",
-        );
+        let error = Error::async_async_error("Test error");
         
         let contextual = ContextualError::new(error, VerificationLevel::Basic);
         assert!(contextual.is_ok());
@@ -445,11 +438,7 @@ mod tests {
     fn test_error_propagator() {
         let propagator = ErrorPropagator::new(1, Some(42), VerificationLevel::Basic);
         
-        let error = Error::new(
-            ErrorCategory::Component,
-            codes::COMPONENT_ERROR,
-            "Component error",
-        );
+        let error = Error::component_error("Component error");
         
         let wrapped = propagator.wrap_error(
             error,

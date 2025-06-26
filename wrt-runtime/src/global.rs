@@ -56,19 +56,12 @@ impl Global {
     /// mismatches.
     pub fn set(&mut self, new_value: &WrtValue) -> Result<()> {
         if !self.ty.mutable {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_GLOBAL_TYPE_MISMATCH, // Attempting to modify immutable global
-                "Cannot modify immutable global",
+            return Err(Error::runtime_execution_error(",
             ));
         }
 
         if !new_value.matches_type(&self.ty.value_type) {
-            return Err(Error::new(
-                ErrorCategory::Type,
-                codes::TYPE_MISMATCH,
-                "Value type doesn't match global type",
-            ));
+            return Err(Error::type_error("));
         }
 
         self.value = new_value.clone();

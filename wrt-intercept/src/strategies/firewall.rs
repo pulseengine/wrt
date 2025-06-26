@@ -191,11 +191,7 @@ impl LinkInterceptorStrategy for FirewallStrategy {
         {
             // Check if the function call is allowed
             if !self.is_allowed(source, target, function) {
-                return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::RUNTIME_ERROR,
-                    "Security error: Function call not allowed by firewall policy",
-                ));
+                return Err(Error::runtime_error("Security error: Function call not allowed by firewall policy"));
             }
         }
 
@@ -241,11 +237,7 @@ impl LinkInterceptorStrategy for FirewallStrategy {
             }
 
             if !allowed {
-                return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::RUNTIME_ERROR,
-                    "Security error: Function call not allowed by firewall policy",
-                ));
+                return Err(Error::runtime_error("Security error: Function call not allowed by firewall policy"));
             }
         }
         
@@ -253,11 +245,7 @@ impl LinkInterceptorStrategy for FirewallStrategy {
         #[cfg(not(feature = "std"))]
         {
             if !self.config.default_allow {
-                return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::RUNTIME_ERROR,
-                    "Security error: Function call not allowed by firewall policy",
-                ));
+                return Err(Error::runtime_error("Security error: Function call not allowed by firewall policy"));
             }
         }
 
@@ -305,11 +293,7 @@ impl LinkInterceptorStrategy for FirewallStrategy {
     ) -> Result<()> {
         // In pure no_std mode, we just use the default policy
         if !self.config.default_allow {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::RUNTIME_ERROR,
-                "Security error: Function call not allowed by firewall policy",
-            ));
+            return Err(Error::runtime_error("Security error: Function call not allowed by firewall policy"));
         }
         Ok(())
     }

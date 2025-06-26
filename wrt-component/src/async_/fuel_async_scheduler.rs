@@ -132,11 +132,7 @@ impl FuelAsyncScheduler {
         };
 
         self.scheduled_tasks.insert(task_id, scheduled_task).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many scheduled tasks".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many scheduled tasks")
         })?;
 
         // Add to appropriate scheduling queue
@@ -152,11 +148,7 @@ impl FuelAsyncScheduler {
             }
             SchedulingPolicy::RoundRobin => {
                 self.round_robin_queue.push(task_id).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_LIMIT_EXCEEDED,
-                        "Round-robin queue is full".to_string(),
-                    )
+                    Error::resource_limit_exceeded("Round-robin queue is full")
                 })?;
             }
         }
@@ -366,22 +358,14 @@ impl FuelAsyncScheduler {
         }
 
         self.priority_queue.insert(insert_pos, task_id).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Priority queue is full".to_string(),
-            )
+            Error::resource_limit_exceeded("Priority queue is full")
         })
     }
 
     fn insert_deadline_queue(&mut self, task_id: TaskId) -> Result<(), Error> {
         // For deadline scheduling, we use the priority queue but order by deadline
         self.priority_queue.push(task_id).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Deadline queue is full".to_string(),
-            )
+            Error::resource_limit_exceeded("Deadline queue is full")
         })?;
 
         // Sort by deadline (earliest first)

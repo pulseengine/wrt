@@ -242,11 +242,7 @@ impl FuelDeadlineScheduler {
                 deadline_misses: AtomicUsize::new(0),
             };
             criticality_queues.push(queue).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_LIMIT_EXCEEDED,
-                    "Failed to initialize criticality queues".to_string(),
-                )
+                Error::resource_limit_exceeded("Failed to initialize criticality queues")
             })?;
         }
 
@@ -292,10 +288,7 @@ impl FuelDeadlineScheduler {
 
         // Validate constrained deadline (deadline ≤ period)
         if deadline > period {
-            return Err(Error::new(
-                ErrorCategory::InvalidInput,
-                codes::INVALID_ARGUMENT,
-                format!("Deadline {:?} must be ≤ period {:?}", deadline, period),
+            return Err(Error::runtime_execution_error(", deadline, period),
             ));
         }
 
@@ -304,7 +297,7 @@ impl FuelDeadlineScheduler {
             return Err(Error::new(
                 ErrorCategory::InvalidInput,
                 codes::INVALID_ARGUMENT,
-                "WCET fuel must be ≥ BCET fuel".to_string(),
+                "),
             ));
         }
 
@@ -338,21 +331,13 @@ impl FuelDeadlineScheduler {
         // Perform schedulability analysis
         let schedulability = self.analyze_schedulability_with_new_task(&task)?;
         if !schedulability.schedulable {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                format!("Task would make system unschedulable (utilization: {:.2})", 
-                        schedulability.total_utilization),
+            return Err(Error::runtime_execution_error("Task would make system unschedulable (utilization: {:.2})"),
             ));
         }
 
         // Add task to system
         self.task_info.insert(task_id, task).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many deadline tasks".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many deadline tasks")
         })?;
 
         // Add to appropriate criticality queue
@@ -459,11 +444,7 @@ impl FuelDeadlineScheduler {
                     if let Some(task) = self.task_info.get(&task_id) {
                         if task.utilization > self.config.max_utilization_per_level {
                             problematic_tasks.push(task_id).map_err(|_| {
-                                Error::new(
-                                    ErrorCategory::Resource,
-                                    codes::RESOURCE_LIMIT_EXCEEDED,
-                                    "Too many problematic tasks".to_string(),
-                                )
+                                Error::resource_limit_exceeded("Too many problematic tasks")
                             })?;
                         }
                     }
@@ -581,11 +562,7 @@ impl FuelDeadlineScheduler {
                 let insert_pos = self.find_rm_insert_position(&queue.rm_tasks, task.period)?;
                 
                 queue.rm_tasks.insert(insert_pos, task_id).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_LIMIT_EXCEEDED,
-                        "Criticality queue is full".to_string(),
-                    )
+                    Error::resource_limit_exceeded("Criticality queue is full")
                 })?;
                 
                 queue.total_utilization += task.utilization;
@@ -593,11 +570,7 @@ impl FuelDeadlineScheduler {
             }
         }
         
-        Err(Error::new(
-            ErrorCategory::Resource,
-            codes::RESOURCE_NOT_FOUND,
-            "Criticality level not found".to_string(),
-        ))
+        Err(Error::resource_not_found("Criticality level not found"))
     }
 
     fn find_rm_insert_position(&self, rm_tasks: &BoundedVec<TaskId, MAX_TASKS_PER_LEVEL>, period: Duration) -> Result<usize, Error> {
@@ -643,11 +616,7 @@ impl FuelDeadlineScheduler {
                    && task.active_in_mode 
                    && current_time >= task.release_time {
                     queue.edf_ready_queue.push(task_id).map_err(|_| {
-                        Error::new(
-                            ErrorCategory::Resource,
-                            codes::RESOURCE_LIMIT_EXCEEDED,
-                            "EDF ready queue is full".to_string(),
-                        )
+                        Error::resource_limit_exceeded("EDF ready queue is full")
                     })?;
                 }
             }
@@ -719,10 +688,7 @@ impl FuelDeadlineScheduler {
     fn verify_wcet_budget(&self, task_id: TaskId, _current_time: u64) -> Result<(), Error> {
         if let Some(task) = self.task_info.get(&task_id) {
             if task.current_fuel_consumed >= task.wcet_fuel {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_LIMIT_EXCEEDED,
-                    format!("Task {} exceeded WCET budget", task_id.0),
+                return Err(Error::runtime_execution_error(", task_id.0),
                 ));
             }
         }
@@ -734,7 +700,7 @@ impl FuelDeadlineScheduler {
         self.consume_scheduler_fuel(DEADLINE_MISS_PENALTY)?;
         
         // In a real system, this might trigger a safety response
-        log::warn!("WCET violation: Task {} consumed {} fuel, WCET limit {}", task_id.0, consumed, wcet);
+        log::warn!(");
         
         Ok(())
     }

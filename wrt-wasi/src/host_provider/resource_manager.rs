@@ -4,6 +4,7 @@
 //! Resource<P> patterns from wrt-foundation.
 
 use crate::prelude::*;
+use wrt_error::ErrorSource;
 use wrt_foundation::{
     safe_memory::NoStdProvider,
     resource::{Resource, ResourceRepr, ResourceOperation},
@@ -11,6 +12,7 @@ use wrt_foundation::{
     verification::Checksum,
     CrateId, Result as WrtResult,
     BoundedMap, BoundedVec, BoundedString,
+    safe_managed_alloc, budget_aware_provider::CrateId as BudgetCrateId,
 };
 
 #[cfg(feature = "std")]
@@ -27,20 +29,21 @@ type WasiProvider = CapabilityAwareProvider<NoStdProvider<8192>>;
 type WasiProvider = NoStdProvider<8192>;
 
 // Helper function to create provider
-fn create_wasi_provider() -> WasiProvider {
+fn create_wasi_provider() -> Result<WasiProvider> {
     #[cfg(feature = "std")]
     {
-        let base_provider = NoStdProvider::<8192>::default();
+        let base_provider = safe_managed_alloc!(8192, BudgetCrateId::Wasi)?;
         let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
             8192,
             wrt_foundation::CrateId::Wasi,
             wrt_foundation::verification::VerificationLevel::Standard,
         ));
-        CapabilityAwareProvider::new(base_provider, capability, wrt_foundation::CrateId::Wasi)
+        Ok(CapabilityAwareProvider::new(base_provider, capability, wrt_foundation::CrateId::Wasi))
     }
     #[cfg(not(feature = "std"))]
     {
-        NoStdProvider::<8192>::default()
+        let provider = safe_managed_alloc!(8192, BudgetCrateId::Wasi)?;
+        Ok(provider)
     }
 }
 
@@ -167,12 +170,12 @@ pub struct WasiResourceCapabilities {
 impl WasiResourceManager {
     /// Create a new WASI resource manager
     pub fn new() -> Result<Self> {
-        let provider = create_wasi_provider();
+        let provider = create_wasi_provider()?;
         #[cfg(feature = "std")]
         let resources = BoundedMap::new(provider.clone())?;
         #[cfg(not(feature = "std"))]
         let resources = {
-            let provider2 = create_wasi_provider();
+            let provider2 = create_wasi_provider()?;
             BoundedMap::new(provider2)?
         };
         
@@ -213,11 +216,7 @@ impl WasiResourceManager {
         
         // Store resource
         self.resources.insert(handle, wasi_resource)
-            .map_err(|_| Error::new(
-                ErrorCategory::Resource,
-                codes::WASI_RESOURCE_LIMIT,
-                "Too many WASI resources"
-            ))?;
+            .map_err(|_| Error::runtime_execution_error("Failed to insert resource into map"))?;
         
         Ok(handle)
     }
@@ -228,8 +227,7 @@ impl WasiResourceManager {
             .ok_or_else(|| Error::new(
                 ErrorCategory::Resource,
                 codes::WASI_INVALID_FD,
-                "Invalid WASI resource handle"
-            ))
+                "Invalid WASI handle"))
     }
     
     /// Get a WASI resource by handle (for modification via update_resource)
@@ -237,11 +235,7 @@ impl WasiResourceManager {
         // Note: BoundedMap doesn't support get_mut due to serialization constraints
         // Use get() and then update_resource() to modify
         self.resources.get(&handle)?
-            .ok_or_else(|| Error::new(
-                ErrorCategory::Resource,
-                codes::WASI_INVALID_FD,
-                "Invalid WASI resource handle"
-            ))
+            .ok_or_else(|| Error::runtime_execution_error("Resource not found"))
     }
     
     /// Remove a WASI resource by handle
@@ -250,8 +244,7 @@ impl WasiResourceManager {
             .ok_or_else(|| Error::new(
                 ErrorCategory::Resource,
                 codes::WASI_INVALID_FD,
-                "Invalid WASI resource handle"
-            ))
+                "Invalid WASI handle"))
     }
     
     /// Check if a handle is valid
@@ -272,11 +265,7 @@ impl WasiResourceManager {
         writable: bool,
     ) -> Result<WasiHandle> {
         let path_string = BoundedString::from_str(path, self.provider.clone())
-            .map_err(|_| Error::new(
-                ErrorCategory::Resource,
-                codes::WASI_RESOURCE_LIMIT,
-                "Path too long"
-            ))?;
+            .map_err(|_| Error::runtime_execution_error("Path string too long"))?;
         
         let resource_type = WasiResourceType::FileDescriptor {
             path: path_string,
@@ -300,8 +289,7 @@ impl WasiResourceManager {
             .map_err(|_| Error::new(
                 ErrorCategory::Resource,
                 codes::WASI_RESOURCE_LIMIT,
-                "Path too long"
-            ))?;
+                "Invalid WASI handle"))?;
         
         let resource_type = WasiResourceType::DirectoryHandle {
             path: path_string,
@@ -320,11 +308,7 @@ impl WasiResourceManager {
     /// Create an input stream resource
     pub fn create_input_stream(&mut self, name: &str) -> Result<WasiHandle> {
         let name_string = BoundedString::from_str(name, self.provider.clone())
-            .map_err(|_| Error::new(
-                ErrorCategory::Resource,
-                codes::WASI_RESOURCE_LIMIT,
-                "Stream name too long"
-            ))?;
+            .map_err(|_| Error::runtime_execution_error("Stream name too long"))?;
         
         let resource_type = WasiResourceType::InputStream {
             name: name_string,
@@ -347,8 +331,7 @@ impl WasiResourceManager {
             .map_err(|_| Error::new(
                 ErrorCategory::Resource,
                 codes::WASI_RESOURCE_LIMIT,
-                "Stream name too long"
-            ))?;
+                "Invalid WASI handle"))?;
         
         let resource_type = WasiResourceType::OutputStream {
             name: name_string,
@@ -437,11 +420,7 @@ impl WasiResource {
                 *position = new_position;
                 Ok(())
             }
-            _ => Err(Error::new(
-                ErrorCategory::Resource,
-                codes::WASI_INVALID_FD,
-                "Resource does not support position updates"
-            )),
+            _ => Err(Error::runtime_execution_error("Invalid resource type for file operations")),
         }
     }
     

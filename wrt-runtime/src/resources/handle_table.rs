@@ -66,7 +66,7 @@ impl wrt_foundation::traits::FromBytes for ResourceOwnership {
         match reader.read_u8()? {
             0 => Ok(ResourceOwnership::Owned),
             1 => Ok(ResourceOwnership::Borrowed),
-            _ => Err(Error::new(ErrorCategory::Validation, codes::INVALID_STATE, "Invalid ResourceOwnership discriminant")),
+            _ => Err(Error::validation_invalid_state("Invalid ResourceOwnership discriminant")),
         }
     }
 }
@@ -157,11 +157,7 @@ where
         // Initialize with None values
         for _ in 0..MAX_RESOURCES_PER_TYPE {
             entries.push(None).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ALLOCATION_ERROR,
-                    "Failed to initialize resource table"
-                )
+                Error::memory_error("Failed to initialize resource table")
             })?;
         }
         
@@ -183,19 +179,11 @@ where
         if handle.0 as usize >= self.entries.len() {
             // Extend the vector with None values if needed
             while self.entries.len() <= handle.0 as usize {
-                self.entries.push(None).map_err(|_| Error::new(
-                    ErrorCategory::Capacity,
-                    codes::CAPACITY_EXCEEDED,
-                    "Resource table capacity exceeded"
-                ))?;
+                self.entries.push(None).map_err(|_| Error::capacity_exceeded("Resource table capacity exceeded"))?;
             }
         }
         let _old_entry = self.entries.set(handle.0 as usize, Some(entry))
-            .map_err(|_| Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_ERROR,
-                "Failed to set resource entry"
-            ))?;
+            .map_err(|_| Error::resource_error("Failed to set resource entry"))?;
         // Binary std/no_std choice
         Ok(handle)
     }
@@ -203,36 +191,20 @@ where
     /// Create a borrowed handle from an owned handle
     pub fn new_borrow(&mut self, owned: ResourceHandle) -> Result<ResourceHandle, Error> {
         let current_entry = self.entries.get(owned.0 as usize)
-            .map_err(|_| Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_INVALID_HANDLE,
-                "Invalid owned handle index"
-            ))?;
+            .map_err(|_| Error::resource_invalid_handle("Invalid owned handle index"))?;
         
         if current_entry.is_none() {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_INVALID_HANDLE,
-                "Invalid owned handle - no entry"
-            ));
+            return Err(Error::resource_invalid_handle("Invalid owned handle - no entry"));
         }
         
         let mut entry = current_entry.unwrap();
         if entry.ownership != ResourceOwnership::Owned {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_INVALID_HANDLE,
-                "Can only borrow from owned resources"
-            ));
+            return Err(Error::resource_invalid_handle("Can only borrow from owned resources"));
         }
         
         entry.ref_count += 1;
         let _old = self.entries.set(owned.0 as usize, Some(entry))
-            .map_err(|_| Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_ERROR,
-                "Failed to update resource entry"
-            ))?;
+            .map_err(|_| Error::resource_error("Failed to update resource entry"))?;
         Ok(owned) // Borrowed handle is same as owned handle
     }
     
@@ -254,40 +226,20 @@ where
     /// Drop a resource handle
     pub fn drop_handle(&mut self, handle: ResourceHandle) -> Result<Option<T>, Error> {
         let entry = self.entries.get(handle.0 as usize)
-            .map_err(|_| Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_INVALID_HANDLE,
-                "Invalid handle index"
-            ))?
-            .ok_or_else(|| Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_INVALID_HANDLE,
-                "Invalid resource handle"
-            ))?;
+            .map_err(|_| Error::resource_invalid_handle("Invalid handle index"))?
+            .ok_or_else(|| Error::resource_invalid_handle("Invalid resource handle"))?;
             
         // Remove the entry by setting it to None
         let _old = self.entries.set(handle.0 as usize, None)
-            .map_err(|_| Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_ERROR,
-                "Failed to remove resource entry"
-            ))?;
+            .map_err(|_| Error::resource_error("Failed to remove resource entry"))?;
             
         match entry.ownership {
             ResourceOwnership::Owned => {
                 if entry.ref_count > 0 {
                     // Put it back, still has borrows
                     let _old = self.entries.set(handle.0 as usize, Some(entry))
-                        .map_err(|_| Error::new(
-                            ErrorCategory::Resource,
-                            codes::RESOURCE_ERROR,
-                            "Failed to restore resource entry"
-                        ))?;
-                    return Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_ERROR,
-                        "Cannot drop owned resource with active borrows"
-                    ));
+                        .map_err(|_| Error::resource_error("Failed to restore resource entry"))?;
+                    return Err(Error::resource_error("Cannot drop owned resource with active borrows"));
                 }
                 Ok(Some(entry.resource))
             }
@@ -297,11 +249,7 @@ where
                 if let Ok(Some(mut owned_entry)) = self.entries.get(handle.0 as usize) {
                     owned_entry.ref_count = owned_entry.ref_count.saturating_sub(1);
                     let _old = self.entries.set(handle.0 as usize, Some(owned_entry))
-                        .map_err(|_| Error::new(
-                            ErrorCategory::Resource,
-                            codes::RESOURCE_ERROR,
-                            "Failed to update ref count"
-                        ))?;
+                        .map_err(|_| Error::resource_error("Failed to update ref count"))?;
                 }
                 Ok(None)
             }
@@ -322,11 +270,7 @@ where
             }
         }
         
-        Err(Error::new(
-            ErrorCategory::Resource,
-            codes::RESOURCE_LIMIT_EXCEEDED,
-            "Resource table full"
-        ))
+        Err(Error::resource_limit_exceeded("Resource table full"))
     }
 }
 

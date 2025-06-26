@@ -102,10 +102,8 @@ impl CapabilityMemoryFactory {
 
         // Check if capability meets required verification level
         if capability.verification_level() < required_verification_level {
-            return Err(Error::new(
-                ErrorCategory::Security,
-                codes::VERIFICATION_REQUIRED,
-                "Capability verification level insufficient for request",
+            return Err(Error::runtime_execution_error(
+                "Capability verification level too low for verified provider"
             ));
         }
 
@@ -122,7 +120,7 @@ impl CapabilityMemoryFactory {
     }
 
     /// Register a new capability for a crate
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(any(feature = "std"))]
     pub fn register_capability(
         &mut self,
         crate_id: CrateId,
@@ -151,11 +149,7 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
         capability.verify_access(&operation)?;
 
         if capability.max_allocation_size() < N {
-            return Err(Error::new(
-                ErrorCategory::Security,
-                codes::ACCESS_DENIED,
-                "Provider size exceeds capability limit",
-            ));
+            return Err(Error::security_access_denied("Provider size exceeds capability limit"));
         }
 
         Ok(Self { capability, provider: None, _phantom: PhantomData })
@@ -171,11 +165,7 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
             self.provider = Some(provider);
         }
 
-        self.provider.as_mut().ok_or_else(|| Error::new(
-            ErrorCategory::Memory,
-            codes::MEMORY_ERROR,
-            "Provider not initialized",
-        ))
+        self.provider.as_mut().ok_or_else(|| Error::memory_error("Provider not initialized"))
     }
 
     /// Read data with capability verification
@@ -187,10 +177,8 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
 
         // Delegate to the provider's slice implementation
         if offset + len > N {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::OUT_OF_BOUNDS,
-                "Read operation exceeds provider bounds",
+            return Err(Error::runtime_execution_error(
+                "Read range exceeds provider capacity"
             ));
         }
 
@@ -210,8 +198,7 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::OUT_OF_BOUNDS,
-                "Write operation exceeds provider bounds",
-            ));
+                "Write range exceeds provider capacity"));
         }
 
         // Write to the provider's buffer

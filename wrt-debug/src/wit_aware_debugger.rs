@@ -458,11 +458,7 @@ impl WitAwareDebugger for WitDebugger {
         #[cfg(feature = "std")]
         {
             let error_str = error.message.as_str().unwrap_or("Unknown error");
-            let runtime_error = Error::new(
-                ErrorCategory::Runtime,
-                codes::RUNTIME_ERROR,
-                &format!("{}", error_str),
-            );
+            let runtime_error = Error::runtime_error(error_str);
             self.source_map.map_error_to_diagnostic(&runtime_error, error.binary_offset)
         }
         #[cfg(not(feature = "std"))]

@@ -25,11 +25,7 @@ mod tests {
 
         #[test]
         fn test_error_creation() {
-            let error = Error::new(
-                ErrorCategory::Core, 
-                codes::INVALID_MEMORY_ACCESS, 
-                "Invalid memory access"
-            );
+            let error = Error::core_invalid_memory_access("Invalid memory access");
 
             assert_eq!(error.category, ErrorCategory::Core);
             assert_eq!(error.code, codes::INVALID_MEMORY_ACCESS);
@@ -41,11 +37,7 @@ mod tests {
             assert!(ok_result.is_ok());
             assert_eq!(ok_result.unwrap(), 42);
 
-            let error = Error::new(
-                ErrorCategory::Core, 
-                codes::INVALID_MEMORY_ACCESS, 
-                "Invalid memory access"
-            );
+            let error = Error::core_invalid_memory_access("Invalid memory access");
             let err_result: Result<i32> = Err(error);
             assert!(err_result.is_err());
 
@@ -551,10 +543,7 @@ mod tests {
             use wrt_foundation::ValueType;
 
             // Test that we can use error handling with foundation types
-            let error = Error::new(
-                ErrorCategory::Validation,
-                1,
-                "Invalid value type",
+            let error = Error::runtime_execution_error(",
             );
 
             let _value_type = ValueType::I32;
@@ -587,7 +576,7 @@ mod tests {
 // ===========================================
 
 // Panic handler disabled to avoid conflicts with workspace builds
-// #[cfg(all(not(feature = "std"), not(test)))]
+// #[cfg(all(not(feature = "), not(test)))]
 // #[panic_handler]
 // fn panic(_info: &core::panic::PanicInfo) -> ! {
 //     loop {}

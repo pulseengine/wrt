@@ -18,6 +18,7 @@ use wrt_foundation::{
     safe_managed_alloc, BoundedVec, BoundedString,
     safe_memory::NoStdProvider,
     capabilities::CapabilityAwareProvider,
+    budget_aware_provider::CrateId as BudgetCrateId,
 };
 use core::any::Any;
 
@@ -51,7 +52,7 @@ pub fn wasi_filesystem_read(
     validate_file_descriptor_readable(fd)?;
     
     // Create safety-aware buffer for read operation
-    let base_provider = NoStdProvider::<8192>::default();
+    let base_provider = safe_managed_alloc!(8192, BudgetCrateId::Wasi)?;
     let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
         8192,
         WASI_CRATE_ID,
@@ -148,11 +149,7 @@ fn extract_file_descriptor(args: &[Value]) -> Result<u32> {
             Value::U32(fd) => Some(*fd),
             _ => None,
         })
-        .ok_or_else(|| Error::new(
-            ErrorCategory::Parameter,
-            codes::WASI_INVALID_FD,
-            "Invalid file descriptor argument"
-        ))
+        .ok_or_else(|| Error::parameter_wasi_invalid_fd("Invalid file descriptor argument"))
 }
 
 /// Helper function to extract length parameter from WASI arguments
@@ -163,11 +160,7 @@ fn extract_length(args: &[Value], index: usize) -> Result<u64> {
             Value::U32(len) => Some(*len as u64),
             _ => None,
         })
-        .ok_or_else(|| Error::new(
-            ErrorCategory::Parameter,
-            codes::WASI_INVALID_FD,
-            "Invalid length argument"
-        ))
+        .ok_or_else(|| Error::parameter_wasi_invalid_fd("Invalid length argument"))
 }
 
 /// Helper function to extract string from WASI arguments
@@ -177,11 +170,7 @@ fn extract_string(args: &[Value], index: usize) -> Result<&str> {
             Value::String(s) => Some(s.as_str()),
             _ => None,
         })
-        .ok_or_else(|| Error::new(
-            ErrorCategory::Parameter,
-            codes::WASI_INVALID_FD,
-            "Invalid string argument"
-        ))
+        .ok_or_else(|| Error::parameter_wasi_invalid_fd("Invalid string argument"))
 }
 
 /// Helper function to extract byte data from WASI arguments
@@ -200,11 +189,7 @@ fn extract_byte_data(args: &[Value], index: usize) -> Result<Vec<u8>> {
             },
             _ => None,
         })
-        .ok_or_else(|| Error::new(
-            ErrorCategory::Parameter,
-            codes::WASI_INVALID_FD,
-            "Invalid byte data argument"
-        ))
+        .ok_or_else(|| Error::parameter_wasi_invalid_fd("Invalid byte data argument"))
 }
 
 /// Validate that a file descriptor exists and is readable
@@ -212,11 +197,7 @@ fn validate_file_descriptor_readable(fd: u32) -> Result<()> {
     // In a real implementation, this would check the resource manager
     // For now, just validate that it's a reasonable fd value
     if fd > 1024 {
-        return Err(Error::new(
-            ErrorCategory::Resource,
-            codes::WASI_INVALID_FD,
-            "File descriptor out of range"
-        ));
+        return Err(Error::wasi_invalid_fd("File descriptor out of range"));
     }
     Ok(())
 }

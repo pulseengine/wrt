@@ -183,10 +183,7 @@ impl<T> FuelAsyncChannel<T> {
         enable_priority_inheritance: bool,
     ) -> Result<Self, Error> {
         if capacity > MAX_CHANNEL_CAPACITY {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                format!("Channel capacity {} exceeds maximum {}", capacity, MAX_CHANNEL_CAPACITY),
+            return Err(Error::runtime_execution_error(", capacity, MAX_CHANNEL_CAPACITY),
             ));
         }
 
@@ -305,11 +302,7 @@ impl<T> FuelAsyncChannel<T> {
         };
 
         self.waiting_senders.push(waiter).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many waiting senders".to_string(),
-            )
+            Error::resource_limit_exceeded(")
         })?;
 
         // Register priority inheritance if enabled
@@ -346,11 +339,7 @@ impl<T> FuelAsyncChannel<T> {
         };
 
         self.waiting_receivers.push(waiter).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many waiting receivers".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many waiting receivers")
         })?;
 
         // Register priority inheritance if enabled
@@ -490,11 +479,7 @@ impl<T> FuelAsyncChannelManager<T> {
         )?;
 
         self.channels.insert(channel_id, channel).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many active channels".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many active channels")
         })?;
 
         self.global_stats.total_channels_created.fetch_add(1, Ordering::AcqRel);
@@ -525,11 +510,7 @@ impl<T> FuelAsyncChannelManager<T> {
             channel.close();
             Ok(())
         } else {
-            Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "Channel not found".to_string(),
-            ))
+            Err(Error::resource_not_found("Channel not found"))
         }
     }
 

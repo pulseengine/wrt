@@ -189,11 +189,7 @@ impl AsyncCanonicalAbiSupport {
         };
 
         self.abi_contexts.insert(component_id, context).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many component ABI contexts".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many component ABI contexts")
         })?;
 
         Ok(())
@@ -209,11 +205,7 @@ impl AsyncCanonicalAbiSupport {
         options: Option<CanonicalOptions>,
     ) -> Result<AsyncAbiOperationId, Error> {
         let context = self.abi_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not initialized for async ABI".to_string(),
-            )
+            Error::validation_invalid_input("Component not initialized for async ABI")
         })?;
 
         let operation_id = AsyncAbiOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
@@ -264,20 +256,12 @@ impl AsyncCanonicalAbiSupport {
         stored_operation.task_id = Some(task_id);
         
         self.async_operations.insert(operation_id, stored_operation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many async ABI operations".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many async ABI operations")
         })?;
 
         // Add to component context
         context.active_calls.push(operation_id).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component active calls full".to_string(),
-            )
+            Error::resource_limit_exceeded("Component active calls full")
         })?;
 
         // Update statistics
@@ -329,11 +313,7 @@ impl AsyncCanonicalAbiSupport {
         stored_operation.task_id = Some(task_id);
 
         self.async_operations.insert(operation_id, stored_operation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many async operations".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many async operations")
         })?;
 
         // Track in component context
@@ -358,11 +338,7 @@ impl AsyncCanonicalAbiSupport {
     ) -> Result<AsyncAbiOperationId, Error> {
         let operation_id = AsyncAbiOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
         let context = self.abi_contexts.get(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not initialized".to_string(),
-            )
+            Error::validation_invalid_input("Component not initialized")
         })?;
 
         let options = options.unwrap_or_else(|| context.default_options.clone());
@@ -400,11 +376,7 @@ impl AsyncCanonicalAbiSupport {
         stored_operation.task_id = Some(task_id);
 
         self.async_operations.insert(operation_id, stored_operation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many async operations".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many async operations")
         })?;
 
         self.abi_stats.async_lifts.fetch_add(1, Ordering::Relaxed);
@@ -422,11 +394,7 @@ impl AsyncCanonicalAbiSupport {
     ) -> Result<AsyncAbiOperationId, Error> {
         let operation_id = AsyncAbiOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
         let context = self.abi_contexts.get(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not initialized".to_string(),
-            )
+            Error::validation_invalid_input("Component not initialized")
         })?;
 
         let options = options.unwrap_or_else(|| context.default_options.clone());
@@ -463,11 +431,7 @@ impl AsyncCanonicalAbiSupport {
         stored_operation.task_id = Some(task_id);
 
         self.async_operations.insert(operation_id, stored_operation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many async operations".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many async operations")
         })?;
 
         self.abi_stats.async_lowers.fetch_add(1, Ordering::Relaxed);
@@ -528,11 +492,7 @@ impl AsyncCanonicalAbiSupport {
         stored_operation.task_id = Some(task_id);
 
         self.async_operations.insert(operation_id, stored_operation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many async operations".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many async operations")
         })?;
 
         // Register callback
@@ -602,11 +562,7 @@ impl AsyncCanonicalAbiSupport {
         stored_operation.task_id = Some(task_id);
 
         self.async_operations.insert(operation_id, stored_operation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many async operations".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many async operations")
         })?;
 
         // Register callback
@@ -622,11 +578,7 @@ impl AsyncCanonicalAbiSupport {
     /// Check operation status
     pub fn check_operation_status(&self, operation_id: AsyncAbiOperationId) -> Result<AsyncAbiOperationStatus, Error> {
         let operation = self.async_operations.get(&operation_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Operation not found".to_string(),
-            )
+            Error::validation_invalid_input("Operation not found")
         })?;
 
         let task_status = if let Some(task_id) = operation.task_id {

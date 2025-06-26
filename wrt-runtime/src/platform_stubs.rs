@@ -475,11 +475,7 @@ impl PlatformInterface for MinimalPlatform {
 fn create_full_platform_interface() -> Result<Box<dyn PlatformInterface>> {
     // This would integrate with wrt-platform's full abstraction
     // For now, return error to indicate implementation needed
-    Err(Error::new(
-        ErrorCategory::NotImplemented,
-        codes::NOT_IMPLEMENTED,
-        "Full platform interface integration pending"
-    ))
+    Err(Error::not_implemented_error("Full platform interface integration pending"))
 }
 
 /// Create platform-appropriate limit provider (legacy compatibility)

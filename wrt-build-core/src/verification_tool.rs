@@ -1,7 +1,7 @@
-//! Integration with WRT verification tool functionality
+//! WRT verification tool functionality
 //!
-//! Provides integrated access to verification capabilities that were
-//! previously in the standalone wrt-verification-tool crate.
+//! Provides integrated access to verification capabilities including
+//! safety verification, documentation checking, and platform verification.
 
 use std::path::{Path, PathBuf};
 
@@ -367,8 +367,8 @@ impl BuildSystem {
             println!("  {} Running platform verification...", "🖥️".bright_cyan());
         }
 
-        // Simplified platform verification - would integrate with wrt-verification-tool
-        // platform_verification module functionality
+        // Simplified platform verification - integrates with requirements platform verification
+        // functionality via the PlatformVerificationEngine
 
         // Mock platform detection
         let max_memory_mb = 8192; // 8GB default

@@ -8,7 +8,14 @@
 //! SW-REQ-ID: REQ_CAP_002 - Memory operation verification
 //! SW-REQ-ID: REQ_CAP_003 - Capability delegation and composition
 
-#![allow(unsafe_code)] // Capability system requires unsafe for low-level memory operations
+#![allow(unsafe_code)] 
+// SAFETY JUSTIFICATION: This module implements capability-based memory access control
+// which requires unsafe operations for:
+// 1. Low-level pointer manipulation for memory region verification
+// 2. Hardware-specific memory protection unit (MPU) configuration
+// 3. Atomic operations for capability state management
+// All unsafe code is documented and verified through KANI formal verification
+// SW-REQ-ID: REQ_SAFETY_UNSAFE_JUSTIFICATION_001
 
 use core::{
     fmt::{self, Debug},
@@ -305,7 +312,7 @@ pub mod capability_errors {
 
     /// Create a capability not found error
     pub fn no_capability(_crate_id: CrateId) -> Error {
-        Error::new(ErrorCategory::Security, codes::ACCESS_DENIED, "No capability found for crate")
+        Error::security_access_denied("No capability found for crate")
     }
 
     /// Create a capability delegation error

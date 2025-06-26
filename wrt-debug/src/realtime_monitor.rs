@@ -14,7 +14,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use wrt_foundation::{codes, CrateId, Error, ErrorCategory, Result as WrtResult};
+use wrt_error::{codes, Error, ErrorCategory};
+use wrt_foundation::{CrateId, Result as WrtResult};
 
 /// Real-time monitoring configuration
 #[derive(Debug, Clone)]
@@ -133,11 +134,7 @@ impl RealtimeMonitor {
             .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
             .is_err()
         {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::RUNTIME_ERROR,
-                "Monitor is already running",
-            ));
+            return Err(Error::runtime_error("Monitor is already running"));
         }
 
         let config = self.config.clone();
@@ -426,13 +423,8 @@ impl RealtimeMonitor {
     pub fn export_to_csv(&self, filename: &str) -> WrtResult<()> {
         use std::{fs::File, io::Write};
 
-        let mut file = File::create(filename).map_err(|_e| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::RUNTIME_ERROR,
-                "Failed to create CSV file",
-            )
-        })?;
+        let mut file = File::create(filename)
+            .map_err(|_e| Error::runtime_error("Failed to create CSV file"))?;
 
         // Write CSV header
         writeln!(
@@ -440,13 +432,7 @@ impl RealtimeMonitor {
             "timestamp,total_allocated,active_providers,shared_pool_utilization,foundation_util,\
              runtime_util,component_util"
         )
-        .map_err(|_e| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::RUNTIME_ERROR,
-                "Failed to write CSV header",
-            )
-        })?;
+        .map_err(|_e| Error::runtime_error("Failed to write CSV header"))?;
 
         // Write data rows
         if let Ok(history) = self.history.lock() {
@@ -462,13 +448,7 @@ impl RealtimeMonitor {
                     sample.crate_utilization.get(1).unwrap_or(&0),
                     sample.crate_utilization.get(2).unwrap_or(&0),
                 )
-                .map_err(|_e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::RUNTIME_ERROR,
-                        "Failed to write CSV row",
-                    )
-                })?;
+                .map_err(|_e| Error::runtime_error("Failed to write CSV row"))?;
             }
         }
 
@@ -481,9 +461,7 @@ impl RealtimeMonitor {
 
 /// Initialize global realtime monitor (placeholder - not supported in no_std)
 pub fn init_global_monitor(_config: MonitorConfig) -> WrtResult<()> {
-    Err(Error::new(
-        ErrorCategory::Runtime,
-        codes::RUNTIME_ERROR,
+    Err(Error::runtime_error(
         "Global monitor not supported in no_std mode - create RealtimeMonitor instances directly",
     ))
 }
@@ -491,9 +469,7 @@ pub fn init_global_monitor(_config: MonitorConfig) -> WrtResult<()> {
 /// Start global monitoring (placeholder - not supported in no_std)
 #[cfg(feature = "std")]
 pub fn start_global_monitoring() -> WrtResult<()> {
-    Err(Error::new(
-        ErrorCategory::Runtime,
-        codes::RUNTIME_ERROR,
+    Err(Error::runtime_error(
         "Global monitor not supported in no_std mode - create RealtimeMonitor instances directly",
     ))
 }
@@ -506,9 +482,7 @@ pub fn stop_global_monitoring() {
 /// Get current memory sample from global monitor (placeholder - not supported
 /// in no_std)
 pub fn get_current_sample() -> WrtResult<MemorySample> {
-    Err(Error::new(
-        ErrorCategory::Runtime,
-        codes::RUNTIME_ERROR,
+    Err(Error::runtime_error(
         "Global monitor not supported in no_std mode - create RealtimeMonitor instances directly",
     ))
 }

@@ -58,36 +58,20 @@ impl MemoryType {
             MemoryType::Linear { min, max } => {
                 if let Some(max_val) = max {
                     if min > max_val {
-                        return Err(Error::new(
-                            ErrorCategory::Validation,
-                            codes::VALIDATION_ERROR,
-                            "Linear memory minimum exceeds maximum",
-                        ));
+                        return Err(Error::validation_error("Linear memory minimum exceeds maximum"));
                     }
                     if *max_val > (1 << 16) {
-                        return Err(Error::new(
-                            ErrorCategory::Validation,
-                            codes::VALIDATION_ERROR,
-                            "Linear memory maximum exceeds 64K pages",
-                        ));
+                        return Err(Error::validation_error("Linear memory maximum exceeds 64K pages"));
                     }
                 }
                 Ok(())
             }
             MemoryType::Shared { min, max } => {
                 if min > max {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "Shared memory minimum exceeds maximum",
-                    ));
+                    return Err(Error::validation_error("Shared memory minimum exceeds maximum"));
                 }
                 if *max > (1 << 16) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "Shared memory maximum exceeds 64K pages",
-                    ));
+                    return Err(Error::validation_error("Shared memory maximum exceeds 64K pages"));
                 }
                 // Shared memory requires maximum to be specified
                 Ok(())
@@ -161,11 +145,7 @@ impl FromBytes for MemoryType {
                 let max = reader.read_u32_le()?;
                 Ok(MemoryType::Shared { min, max })
             }
-            _ => Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Invalid memory type flag",
-            )),
+            _ => Err(Error::parse_error("Invalid memory type flag")),
         }
     }
 }
@@ -218,36 +198,20 @@ impl Validatable for MemoryType {
             MemoryType::Linear { min, max } => {
                 if let Some(max_val) = max {
                     if min > max_val {
-                        return Err(Error::new(
-                            ErrorCategory::Validation,
-                            codes::VALIDATION_ERROR,
-                            "Linear memory minimum exceeds maximum",
-                        ));
+                        return Err(Error::validation_error("Linear memory minimum exceeds maximum"));
                     }
                     if *max_val > (1 << 16) {
-                        return Err(Error::new(
-                            ErrorCategory::Validation,
-                            codes::VALIDATION_ERROR,
-                            "Linear memory maximum exceeds 64K pages",
-                        ));
+                        return Err(Error::validation_error("Linear memory maximum exceeds 64K pages"));
                     }
                 }
                 Ok(())
             }
             MemoryType::Shared { min, max } => {
                 if min > max {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "Shared memory minimum exceeds maximum",
-                    ));
+                    return Err(Error::validation_error("Shared memory minimum exceeds maximum"));
                 }
                 if *max > (1 << 16) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "Shared memory maximum exceeds 64K pages",
-                    ));
+                    return Err(Error::validation_error("Shared memory maximum exceeds 64K pages"));
                 }
                 Ok(())
             }
@@ -307,11 +271,7 @@ impl SharedMemorySegment {
         memory_type.validate()?;
 
         if !memory_type.is_shared() && atomic_capable {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Atomic operations require shared memory",
-            ));
+            return Err(Error::validation_error("Atomic operations require shared memory"));
         }
 
         Ok(Self { memory_type, access, offset, size, atomic_capable })
@@ -368,11 +328,7 @@ impl SharedMemoryManager {
         {
             for existing in &self.segments {
                 if segment.overlaps_with(existing) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "Memory segment overlaps with existing segment",
-                    ));
+                    return Err(Error::validation_error("Memory segment overlaps with existing segment"));
                 }
             }
 
@@ -386,11 +342,7 @@ impl SharedMemoryManager {
             for existing_slot in &self.segments {
                 if let Some(existing) = existing_slot {
                     if segment.overlaps_with(existing) {
-                        return Err(Error::new(
-                            ErrorCategory::Validation,
-                            codes::VALIDATION_ERROR,
-                            "Memory segment overlaps with existing segment",
-                        ));
+                        return Err(Error::validation_error("Memory segment overlaps with existing segment"));
                     }
                 }
             }
@@ -404,11 +356,7 @@ impl SharedMemoryManager {
                 }
             }
 
-            Err(Error::new(
-                ErrorCategory::Resource,
-                codes::MEMORY_ERROR,
-                "Maximum number of memory segments reached",
-            ))
+            Err(Error::memory_error("Maximum number of memory segments reached"))
         }
     }
 
@@ -449,21 +397,13 @@ impl SharedMemoryManager {
                 (SharedMemoryAccess::ReadOnly, SharedMemoryAccess::ReadOnly) => Ok(()),
                 (SharedMemoryAccess::ReadWrite, _) => Ok(()),
                 (SharedMemoryAccess::Execute, SharedMemoryAccess::Execute) => Ok(()),
-                _ => Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::EXECUTION_ERROR,
-                    "Memory access permission denied",
-                )),
+                _ => Err(Error::runtime_execution_error("Memory access permission denied")),
             }?;
 
             self.stats.memory_accesses += 1;
             Ok(())
         } else {
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::EXECUTION_ERROR,
-                "Memory address not in any registered segment",
-            ))
+            Err(Error::runtime_execution_error("Memory address not in any registered segment"))
         }
     }
 }

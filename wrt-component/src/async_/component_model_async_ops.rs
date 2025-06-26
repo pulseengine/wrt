@@ -12,7 +12,7 @@ use crate::{
         async_types::{Waitable, WaitableSet, FutureHandle, StreamHandle},
     },
     task_manager::{TaskId, TaskManager},
-    component_instance::ComponentInstance,
+    types::ComponentInstance,
     ComponentInstanceId,
     prelude::*,
 };
@@ -127,18 +127,11 @@ impl ComponentModelAsyncOps {
 
         // Validate waitables
         if waitables.waitables.is_empty() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Empty waitable set".to_string(),
-            ));
+            return Err(Error::validation_invalid_input("Empty waitable set"));
         }
 
         if waitables.waitables.len() > MAX_WAITABLES {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                format!("Too many waitables: {} > {}", waitables.waitables.len(), MAX_WAITABLES),
+            return Err(Error::runtime_execution_error(", waitables.waitables.len(), MAX_WAITABLES),
             ));
         }
 
@@ -162,11 +155,7 @@ impl ComponentModelAsyncOps {
 
         // Register wait operation
         self.active_waits.insert(current_task, wait_op).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many active wait operations".to_string(),
-            )
+            Error::resource_limit_exceeded(")
         })?;
 
         // Mark task as waiting
@@ -205,19 +194,11 @@ impl ComponentModelAsyncOps {
                 },
                 _ => {
                     // Task not in ready state, can't yield
-                    return Err(Error::new(
-                        ErrorCategory::InvalidState,
-                        codes::INVALID_STATE,
-                        "Task not in ready state".to_string(),
-                    ));
+                    return Err(Error::invalid_state_error("Task not in ready state"));
                 }
             }
         } else {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Task not found".to_string(),
-            ));
+            return Err(Error::validation_invalid_input("Task not found"));
         }
 
         Ok(())

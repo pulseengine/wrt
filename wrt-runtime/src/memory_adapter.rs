@@ -36,10 +36,7 @@ const SIZE_TOO_LARGE: u16 = 4007;
 /// 
 /// Ok(usize) if conversion is safe, error otherwise
 fn wasm_offset_to_usize(offset: u32) -> Result<usize> {
-    usize::try_from(offset).map_err(|_| Error::new(
-        ErrorCategory::Memory, 
-        INVALID_OFFSET, 
-        "Offset exceeds usize limit"
+    usize::try_from(offset).map_err(|_| Error::runtime_execution_error("
     ))
 }
 
@@ -56,8 +53,7 @@ fn usize_to_wasm_u32(size: usize) -> Result<u32> {
     u32::try_from(size).map_err(|_| Error::new(
         ErrorCategory::Memory, 
         SIZE_TOO_LARGE, 
-        "Size exceeds u32 limit"
-    ))
+        "))
 }
 
 /// Memory adapter interface for working with memory
@@ -110,10 +106,7 @@ impl wrt_foundation::MemoryProvider for StdMemoryProvider {
         // StdMemoryProvider doesn't manage its own memory buffer
         // It's used as a provider for BoundedVec operations
         // Return an error indicating this operation is not supported
-        Err(wrt_error::Error::new(
-            wrt_error::ErrorCategory::Memory,
-            wrt_error::codes::NOT_IMPLEMENTED,
-            "StdMemoryProvider does not manage direct memory access"
+        Err(wrt_error::Error::runtime_execution_error("
         ))
     }
 
@@ -153,11 +146,9 @@ impl wrt_foundation::MemoryProvider for StdMemoryProvider {
     }
 
     fn get_slice_mut(&mut self, _offset: usize, _len: usize) -> wrt_foundation::WrtResult<wrt_foundation::safe_memory::SliceMut<'_>> {
-        Err(wrt_error::Error::new(
-            wrt_error::ErrorCategory::Memory,
+        Err(wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
             wrt_error::codes::NOT_IMPLEMENTED,
-            "get_slice_mut not implemented for StdMemoryProvider"
-        ))
+            "))
     }
 
     fn copy_within(&mut self, _src: usize, _dst: usize, _len: usize) -> wrt_foundation::WrtResult<()> {
@@ -169,10 +160,7 @@ impl wrt_foundation::MemoryProvider for StdMemoryProvider {
     }
 
     fn acquire_memory(&self, _layout: core::alloc::Layout) -> wrt_foundation::WrtResult<*mut u8> {
-        Err(wrt_error::Error::new(
-            wrt_error::ErrorCategory::Memory,
-            wrt_error::codes::NOT_IMPLEMENTED,
-            "acquire_memory not implemented for StdMemoryProvider"
+        Err(wrt_error::Error::runtime_execution_error("
         ))
     }
 
@@ -194,11 +182,9 @@ impl wrt_foundation::MemoryProvider for StdMemoryProvider {
 
 impl wrt_foundation::safe_memory::Allocator for StdMemoryProvider {
     fn allocate(&self, _layout: core::alloc::Layout) -> wrt_foundation::WrtResult<*mut u8> {
-        Err(wrt_error::Error::new(
-            wrt_error::ErrorCategory::Memory,
+        Err(wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
             wrt_error::codes::NOT_IMPLEMENTED,
-            "allocate not implemented for StdMemoryProvider"
-        ))
+            "))
     }
 
     fn deallocate(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> wrt_foundation::WrtResult<()> {
@@ -230,11 +216,7 @@ impl StdMemoryProvider {
         len: usize,
     ) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>> {
         if offset + len > buffer.len() {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                "Memory access out of bounds",
-            ));
+            return Err(Error::memory_error("Memory access out of bounds"));
         }
 
         // Instead of returning a reference, copy the data into a BoundedVec
@@ -242,11 +224,7 @@ impl StdMemoryProvider {
 
         for i in offset..(offset + len) {
             bounded_vec.push(buffer[i]).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                    "Failed to push byte to bounded vector",
-                )
+                Error::memory_error("Failed to push byte to bounded vector")
             })?;
         }
 
@@ -308,11 +286,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
         // Copy the data from the slice into the bounded vector
         for &byte in data {
             bounded_vec.push(byte).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                    "Failed to push byte to bounded vector",
-                )
+                Error::memory_error("Failed to push byte to bounded vector")
             })?;
         }
 
@@ -358,11 +332,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
         let end_offset = wasm_offset_to_usize(offset)? + wasm_offset_to_usize(size)?;
 
         if end_offset > mem_size {
-            Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                "Memory access out of bounds",
-            ))
+            Err(Error::memory_error("Memory access out of bounds"))
         } else {
             Ok(())
         }
@@ -382,7 +352,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
         let mut bounded_vec = BoundedVec::with_verification_level(self.provider.clone(), self.provider.verification_level())?;
         for &byte in data {
             bounded_vec.push(byte).map_err(|_| {
-                Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "Failed to push byte to bounded vector")
+                Error::memory_error("Failed to push byte to bounded vector")
             })?;
         }
         Ok(bounded_vec)

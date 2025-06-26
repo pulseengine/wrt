@@ -196,36 +196,7 @@ impl CanonicalABI {
         } else {
             // For now, return a "not implemented" error
             // This simplified implementation focuses on basic types
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::NOT_IMPLEMENTED,
-                NotImplementedError(format!(
-                    "Lowering value {:?} not implemented in simplified implementation",
-                    value
-                )),
-            ))
-        }
-    }
-
-    fn lift_value(
-        &self,
-        ty: &ValType,
-        addr: u32,
-        resource_table: &ResourceTable,
-        memory_bytes: &[u8],
-    ) -> Result<wrt_foundation::values::Value> {
-        match ty {
-            ValType::Bool => {
-                // Boolean values are stored as i32 (0=false, non-zero=true)
-                let value = self.lift_s32(addr, memory_bytes)?;
-                if let Some(v) = value.as_i32() {
-                    return Ok(wrt_foundation::values::Value::I32(if v != 0 { 1 } else { 0 }));
-                }
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    "Expected i32 for bool".to_string(),
-                ))
+            Err(Error::unimplemented("Expected i32 for bool"))
             }
             ValType::S8 => self.lift_s8(addr, memory_bytes),
             ValType::U8 => self.lift_u8(addr, memory_bytes),
@@ -257,10 +228,7 @@ impl CanonicalABI {
             ValType::Flags(names) => self.lift_flags(names, addr, memory_bytes),
             ValType::Own(_) => self.lift_resource(addr, resource_table, memory_bytes),
             ValType::Borrow(_) => self.lift_borrow(addr, resource_table, memory_bytes),
-            _ => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::NOT_IMPLEMENTED,
-                NotImplementedError("Component not found"),
+            _ => Err(Error::unimplemented("Component not found"),
             )),
         }
     }
@@ -283,8 +251,7 @@ impl CanonicalABI {
             let value = self.lift_value(ty, current_addr, resource_table, memory_bytes)?;
             #[cfg(feature = "safety-critical")]
             values.push(Box::new(value)).map_err(|_| {
-                Error::new(ErrorCategory::Runtime, codes::RUNTIME_CAPACITY_ERROR_CODE, 
-                          "Tuple value count exceeds safety limit of 32")
+                Error::capacity_exceeded("Tuple value count exceeds safety limit of 32")
             })?;
             #[cfg(not(feature = "safety-critical"))]
             values.push(Box::new(value));
@@ -316,8 +283,7 @@ impl CanonicalABI {
             if (flag_byte & (1 << bit_position)) != 0 {
                 #[cfg(feature = "safety-critical")]
                 flags.push(i as u32).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::RUNTIME_CAPACITY_ERROR_CODE, 
-                              "Flag count exceeds safety limit of 64")
+                    Error::capacity_exceeded("Flag count exceeds safety limit of 64")
                 })?;
                 #[cfg(not(feature = "safety-critical"))]
                 flags.push(i as u32);
@@ -346,8 +312,7 @@ impl CanonicalABI {
             let value = self.lift_value(inner_ty, current_addr, resource_table, memory_bytes)?;
             #[cfg(feature = "safety-critical")]
             values.push(Box::new(value)).map_err(|_| {
-                Error::new(ErrorCategory::Runtime, codes::RUNTIME_CAPACITY_ERROR_CODE, 
-                          "Fixed list size exceeds safety limit of 256")
+                Error::capacity_exceeded("Fixed list size exceeds safety limit of 256")
             })?;
             #[cfg(not(feature = "safety-critical"))]
             values.push(Box::new(value));
@@ -402,10 +367,7 @@ impl CanonicalABI {
             let v = memory_bytes[addr as usize] != 0;
             Ok(Value::Bool(v))
         } else {
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::OUT_OF_BOUNDS_ERROR,
-                "Component not found"))
+            Err(Error::runtime_out_of_bounds("Component not found"))
         }
     }
 
@@ -414,10 +376,7 @@ impl CanonicalABI {
             let v = memory_bytes[addr as usize] as i8;
             Ok(Value::S8(v))
         } else {
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::OUT_OF_BOUNDS_ERROR,
-                "Component not found"))
+            Err(Error::runtime_out_of_bounds("Component not found"))
         }
     }
 
@@ -426,10 +385,7 @@ impl CanonicalABI {
             let v = memory_bytes[addr as usize];
             Ok(Value::U8(v))
         } else {
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::OUT_OF_BOUNDS_ERROR,
-                "Component not found"))
+            Err(Error::runtime_out_of_bounds("Component not found"))
         }
     }
 
@@ -535,11 +491,7 @@ impl CanonicalABI {
 
         match char::from_u32(code_point) {
             Some(c) => Ok(Value::Char(c)),
-            None => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_TYPE,
-                "Component not found",
-            )),
+            None => Err(Error::invalid_type_error("Component not found")),
         }
     }
 
@@ -578,21 +530,13 @@ impl CanonicalABI {
 
         // Validate the length
         if length > MAX_BUFFER_SIZE {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::OUT_OF_BOUNDS_ERROR,
-                "Component not found",
-            ));
+            return Err(Error::runtime_out_of_bounds("Component not found"));
         }
 
         // Calculate element size
         let element_size = calculate_layout(inner_ty).size as u32;
         let total_size = element_size.checked_mul(length as u32).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::OUT_OF_BOUNDS_ERROR,
-                "List size overflow".to_string(),
-            )
+            Error::runtime_out_of_bounds("List size overflow")
         })?;
 
         // Check bounds for the entire list data
@@ -609,8 +553,7 @@ impl CanonicalABI {
             let value = self.lift_value(inner_ty, current_addr, resource_table, memory_bytes)?;
             #[cfg(feature = "safety-critical")]
             values.push(Box::new(value)).map_err(|_| {
-                Error::new(ErrorCategory::Runtime, codes::RUNTIME_CAPACITY_ERROR_CODE, 
-                          "List length exceeds safety limit of 1024")
+                Error::capacity_exceeded("List length exceeds safety limit of 1024")
             })?;
             #[cfg(not(feature = "safety-critical"))]
             values.push(Box::new(value));
@@ -644,8 +587,7 @@ impl CanonicalABI {
                 self.lift_value(field_type, current_addr, resource_table, memory_bytes)?;
             #[cfg(feature = "safety-critical")]
             record_map.insert(field_name.clone(), Box::new(field_value)).map_err(|_| {
-                Error::new(ErrorCategory::Runtime, codes::RUNTIME_CAPACITY_ERROR_CODE, 
-                          "Record field count exceeds safety limit of 32")
+                Error::capacity_exceeded("Record field count exceeds safety limit of 32")
             })?;
             #[cfg(not(feature = "safety-critical"))]
             record_map.insert(field_name.clone(), Box::new(field_value));
@@ -673,11 +615,7 @@ impl CanonicalABI {
 
         // Check if the discriminant is valid
         if discriminant as usize >= cases.len() {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_TYPE,
-                "Component not found",
-            ));
+            return Err(Error::invalid_type_error("Component not found"));
         }
 
         let case_info = &cases[discriminant as usize];
@@ -721,11 +659,7 @@ impl CanonicalABI {
 
         // Validate discriminant
         if discriminant as usize >= cases.len() {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_TYPE,
-                "Component not found",
-            ));
+            return Err(Error::invalid_type_error("Component not found"));
         }
 
         Ok(Value::Enum(discriminant))
@@ -753,11 +687,7 @@ impl CanonicalABI {
                     self.lift_value(inner_ty, payload_addr, resource_table, memory_bytes)?;
                 Ok(Value::Option(Some(Box::new(payload))))
             }
-            _ => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_TYPE,
-                "Component not found",
-            )),
+            _ => Err(Error::invalid_type_error("Component not found")),
         }
     }
 
@@ -798,11 +728,7 @@ impl CanonicalABI {
                     Ok(Value::Result(Err(None)))
                 }
             }
-            _ => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_TYPE,
-                "Component not found",
-            )),
+            _ => Err(Error::invalid_type_error("Component not found")),
         }
     }
 
@@ -812,10 +738,7 @@ impl CanonicalABI {
             memory_bytes[addr as usize] = if value { 1 } else { 0 };
             Ok(())
         } else {
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::OUT_OF_BOUNDS_ERROR,
-                "Component not found"))
+            Err(Error::runtime_out_of_bounds("Component not found"))
         }
     }
 
@@ -824,10 +747,7 @@ impl CanonicalABI {
             memory_bytes[addr as usize] = value as u8;
             Ok(())
         } else {
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::OUT_OF_BOUNDS_ERROR,
-                "Component not found"))
+            Err(Error::runtime_out_of_bounds("Component not found"))
         }
     }
 
@@ -836,10 +756,7 @@ impl CanonicalABI {
             memory_bytes[addr as usize] = value;
             Ok(())
         } else {
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::OUT_OF_BOUNDS_ERROR,
-                "Component not found"))
+            Err(Error::runtime_out_of_bounds("Component not found"))
         }
     }
 
@@ -993,11 +910,7 @@ impl CanonicalABI {
                 } else if let Some(i) = value.as_i32() {
                     self.lower_bool(i != 0, addr, memory_bytes)
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::TYPE_MISMATCH,
-                        "Expected boolean value".to_string(),
-                    ))
+                    Err(Error::runtime_type_mismatch("Expected boolean value"))
                 }
             }
             ValType::S8 => {
@@ -1006,11 +919,7 @@ impl CanonicalABI {
                 } else if let Some(i) = value.as_i32() {
                     self.lower_s8(i as i8, addr, memory_bytes)
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::TYPE_MISMATCH,
-                        "Expected i8 value".to_string(),
-                    ))
+                    Err(Error::runtime_type_mismatch("Expected i8 value"))
                 }
             }
             ValType::U8 => {
@@ -1019,11 +928,7 @@ impl CanonicalABI {
                 } else if let Some(i) = value.as_i32() {
                     self.lower_u8(i as u8, addr, memory_bytes)
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::TYPE_MISMATCH,
-                        "Expected u8 value".to_string(),
-                    ))
+                    Err(Error::runtime_type_mismatch("Expected u8 value"))
                 }
             }
             ValType::S16 => {
@@ -1032,11 +937,7 @@ impl CanonicalABI {
                 } else if let Some(i) = value.as_i32() {
                     self.lower_s16(i as i16, addr, memory_bytes)
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::TYPE_MISMATCH,
-                        "Expected i16 value".to_string(),
-                    ))
+                    Err(Error::runtime_type_mismatch("Expected i16 value"))
                 }
             }
             ValType::U16 => {
@@ -1045,11 +946,7 @@ impl CanonicalABI {
                 } else if let Some(i) = value.as_i32() {
                     self.lower_u16(i as u16, addr, memory_bytes)
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::TYPE_MISMATCH,
-                        "Expected u16 value".to_string(),
-                    ))
+                    Err(Error::runtime_type_mismatch("Expected u16 value"))
                 }
             }
             ValType::S32 | ValType::U32 => {
@@ -1058,11 +955,7 @@ impl CanonicalABI {
                 } else if let Some(v) = value.as_u32() {
                     self.lower_u32(v, addr, memory_bytes)
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::TYPE_MISMATCH,
-                        "Expected i32/u32 value".to_string(),
-                    ))
+                    Err(Error::runtime_type_mismatch("Expected i32/u32 value"))
                 }
             }
             ValType::S64 | ValType::U64 => {
@@ -1071,72 +964,45 @@ impl CanonicalABI {
                 } else if let Some(v) = value.as_u64() {
                     self.lower_u64(v, addr, memory_bytes)
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::TYPE_MISMATCH,
-                        "Expected i64/u64 value".to_string(),
-                    ))
+                    Err(Error::runtime_type_mismatch("Expected i64/u64 value"))
                 }
             }
             ValType::F32 => {
                 if let Some(v) = value.as_f32() {
                     self.lower_f32(v, addr, memory_bytes)
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::TYPE_MISMATCH,
-                        "Expected f32 value".to_string(),
-                    ))
+                    Err(Error::runtime_type_mismatch("Expected f32 value"))
                 }
             }
             ValType::F64 => {
                 if let Some(v) = value.as_f64() {
                     self.lower_f64(v, addr, memory_bytes)
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::TYPE_MISMATCH,
-                        "Expected f64 value".to_string(),
-                    ))
+                    Err(Error::runtime_type_mismatch("Expected f64 value"))
                 }
             }
             ValType::Char => {
                 if let Some(c) = value.as_char() {
                     self.lower_char(c, addr, memory_bytes)
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::TYPE_MISMATCH,
-                        "Expected char value".to_string(),
-                    ))
+                    Err(Error::runtime_type_mismatch("Expected char value"))
                 }
             }
             ValType::String => {
                 if let Some(s) = value.as_str() {
                     self.lower_string(s, addr, memory_bytes)
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::TYPE_MISMATCH,
-                        "Expected string value".to_string(),
-                    ))
+                    Err(Error::runtime_type_mismatch("Expected string value"))
                 }
             }
             ValType::List(inner_ty) => {
                 if let Some(list) = value.as_list() {
                     self.lower_list(list, inner_ty, addr, resource_table, memory_bytes)
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::TYPE_MISMATCH,
-                        "Expected list value".to_string(),
-                    ))
+                    Err(Error::runtime_type_mismatch("Expected list value"))
                 }
             }
-            _ => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::NOT_IMPLEMENTED,
-                NotImplementedError("Component not found"),
+            _ => Err(Error::unimplemented("Component not found"),
             )),
         }
     }
@@ -1165,11 +1031,7 @@ impl CanonicalABI {
                 let layout = calculate_layout(field_type);
                 current_addr += layout.size as u32;
             } else {
-                return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    "Component not found",
-                ));
+                return Err(Error::runtime_type_mismatch("Component not found"));
             }
         }
 
@@ -1185,227 +1047,7 @@ impl CanonicalABI {
         _memory_bytes: &mut [u8],
     ) -> Result<()> {
         // Implementation details
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError("Lower variant not implemented".to_string()),
-        ))
-    }
-
-    fn lower_enum(&self, _idx: u32, _addr: u32, _memory_bytes: &mut [u8]) -> Result<()> {
-        // Placeholder implementation
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError("Enum lowering not yet implemented".to_string()),
-        ))
-    }
-
-    fn lower_option(
-        &self,
-        _value: Option<&Value>,
-        _addr: u32,
-        _resource_table: &ResourceTable,
-        _memory_bytes: &mut [u8],
-    ) -> Result<()> {
-        // Placeholder implementation
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError("Option lowering not yet implemented".to_string()),
-        ))
-    }
-
-    fn lower_result(
-        &self,
-        _result: &core::result::Result<Option<Box<Value>>, Option<Box<Value>>>,
-        _addr: u32,
-        _resource_table: &ResourceTable,
-        _memory_bytes: &mut [u8],
-    ) -> Result<()> {
-        // Placeholder implementation
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError("Result lowering not yet implemented".to_string()),
-        ))
-    }
-
-    fn lower_tuple(
-        &self,
-        _values: &[Value],
-        _addr: u32,
-        _resource_table: &ResourceTable,
-        _memory_bytes: &mut [u8],
-    ) -> Result<()> {
-        // Implementation details
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError("Lower tuple not implemented".to_string()),
-        ))
-    }
-
-    fn lower_flags(
-        &self,
-        _flags: &HashMap<String, bool>,
-        _addr: u32,
-        _memory_bytes: &mut [u8],
-    ) -> Result<()> {
-        // Placeholder implementation
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError("Flags lowering not yet implemented".to_string()),
-        ))
-    }
-
-    fn lower_resource(
-        &self,
-        _handle: u32,
-        _addr: u32,
-        _resource_table: &ResourceTable,
-        _memory_bytes: &mut [u8],
-    ) -> Result<()> {
-        // Placeholder implementation
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError("Resource lowering not yet implemented".to_string()),
-        ))
-    }
-
-    // Utility functions
-    fn check_bounds(&self, addr: u32, size: u32, memory_bytes: &[u8]) -> Result<()> {
-        let end_addr = addr.checked_add(size).ok_or_else(|| {
-            Error::out_of_bounds_access(format!(
-                "Memory address overflow: addr={}, size={}",
-                addr, size
-            ))
-        })?;
-
-        let memory_size = memory_bytes.len() as u32;
-        if end_addr > memory_size {
-            return Err(Error::out_of_bounds_access(format!(
-                "Memory access out of bounds: addr={}, size={}, memory_size={}",
-                addr, size, memory_size
-            )));
-        }
-
-        Ok(())
-    }
-
-    /// Get the current metrics
-    pub fn get_metrics(&self) -> &CanonicalMetrics {
-        &self.metrics
-    }
-
-    /// Reset the metrics to zero
-    pub fn reset_metrics(&mut self) {
-        self.metrics = CanonicalMetrics::default();
-    }
-
-    /// Get memory strategy from interceptor for canonical operations
-    fn get_strategy_from_interceptor(&self) -> MemoryStrategy {
-        if let Some(interceptor) = &self.interceptor {
-            for strategy in &interceptor.strategies {
-                if let Some(strategy_val) = strategy.get_memory_strategy(0) {
-                    if let Some(memory_strategy) =
-                        crate::resources::MemoryStrategy::from_u8(strategy_val)
-                    {
-                        return memory_strategy;
-                    }
-                }
-            }
-        }
-        self.memory_strategy
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_lift_primitive_values() {
-        let abi = CanonicalABI::default();
-        let memory = vec![1, 0, 0, 0, 2, 0, 0, 0];
-
-        let value = abi.lift_bool(0, &memory).unwrap();
-        assert_eq!(value, Value::Bool(true));
-
-        let value = abi.lift_u32(4, &memory).unwrap();
-        assert_eq!(value, Value::U32(2));
-    }
-
-    #[test]
-    fn test_lower_primitive_values() {
-        let abi = CanonicalABI::default();
-        let mut memory = vec![0; 8];
-
-        abi.lower_bool(true, 0, &mut memory).unwrap();
-        assert_eq!(memory[0], 1);
-
-        abi.lower_u32(2, 4, &mut memory).unwrap();
-        assert_eq!(&memory[4..8], &[2, 0, 0, 0]);
-    }
-
-    #[test]
-    fn test_bounds_checking() {
-        let abi = CanonicalABI::default();
-        let memory = vec![0; 8];
-
-        // This should work - just at the boundary
-        assert!(abi.check_bounds(4, 4, &memory).is_ok());
-
-        // This should fail - out of bounds
-        assert!(abi.check_bounds(6, 4, &memory).is_err());
-    }
-
-    #[test]
-    fn test_interceptor_strategy() {
-        // Create a mock interceptor for testing
-        struct TestStrategy {
-            memory_strategy: Option<u8>,
-        }
-
-        impl wrt_intercept::LinkInterceptorStrategy for TestStrategy {
-            fn before_call(
-                &self,
-                _source: &str,
-                _target: &str,
-                _function: &str,
-                args: &[wrt_intercept::Value],
-            ) -> wrt_error::Result<Vec<wrt_intercept::Value>> {
-                Ok(args.to_vec())
-            }
-
-            fn after_call(
-                &self,
-                _source: &str,
-                _target: &str,
-                _function: &str,
-                _args: &[wrt_intercept::Value],
-                result: wrt_error::Result<Vec<wrt_intercept::Value>>,
-            ) -> wrt_error::Result<Vec<wrt_intercept::Value>> {
-                result
-            }
-
-            fn get_memory_strategy(&self, _handle: u32) -> Option<u8> {
-                self.memory_strategy
-            }
-
-            fn clone_strategy(&self) -> Arc<dyn wrt_intercept::LinkInterceptorStrategy> {
-                Arc::new(Self { memory_strategy: self.memory_strategy })
-            }
-        }
-
-        // Test with no interceptor
-        let abi = CanonicalABI::default().with_memory_strategy(MemoryStrategy::ZeroCopy);
-        assert_eq!(abi.get_strategy_from_interceptor(), MemoryStrategy::ZeroCopy);
-
-        // Test with interceptor that returns None
-        let interceptor = Arc::new(wrt_intercept::LinkInterceptor::new("test"));
+        Err(Error::unimplemented("test"));
         let abi = CanonicalABI::default()
             .with_memory_strategy(MemoryStrategy::ZeroCopy)
             .with_interceptor(interceptor);
@@ -1449,10 +1091,7 @@ pub fn convert_value_for_canonical_abi(
             if let Some(b) = value.as_bool() {
                 Ok(wrt_foundation::values::Value::Bool(b))
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Expected boolean value".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
@@ -1463,17 +1102,11 @@ pub fn convert_value_for_canonical_abi(
                 if i >= i8::MIN as i32 && i <= i8::MAX as i32 {
                     Ok(wrt_foundation::values::Value::S8(i as i8))
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError("Component not found"),
+                    Err(Error::component_not_found("),
                     ))
                 }
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Expected i8-compatible value".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
@@ -1484,17 +1117,11 @@ pub fn convert_value_for_canonical_abi(
                 if i >= 0 && i <= u8::MAX as i32 {
                     Ok(wrt_foundation::values::Value::U8(i as u8))
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError("Component not found"),
+                    Err(Error::component_not_found("),
                     ))
                 }
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Expected u8-compatible value".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
@@ -1505,17 +1132,11 @@ pub fn convert_value_for_canonical_abi(
                 if i >= i16::MIN as i32 && i <= i16::MAX as i32 {
                     Ok(wrt_foundation::values::Value::S16(i as i16))
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError("Component not found"),
+                    Err(Error::component_not_found("),
                     ))
                 }
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Expected i16-compatible value".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
@@ -1526,17 +1147,11 @@ pub fn convert_value_for_canonical_abi(
                 if i >= 0 && i <= u16::MAX as i32 {
                     Ok(wrt_foundation::values::Value::U16(i as u16))
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError("Component not found"),
+                    Err(Error::component_not_found("),
                     ))
                 }
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Expected u16-compatible value".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
@@ -1547,17 +1162,11 @@ pub fn convert_value_for_canonical_abi(
                 if v >= i32::MIN as i64 && v <= i32::MAX as i64 {
                     Ok(wrt_foundation::values::Value::S32(v as i32))
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError("Component not found"),
+                    Err(Error::component_not_found("),
                     ))
                 }
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Expected i32-compatible value".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
@@ -1568,17 +1177,11 @@ pub fn convert_value_for_canonical_abi(
                 if i >= 0 && i <= u32::MAX as i64 {
                     Ok(wrt_foundation::values::Value::U32(i as u32))
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError("Component not found"),
+                    Err(Error::component_not_found("),
                     ))
                 }
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Expected u32-compatible value".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
@@ -1591,7 +1194,7 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError("Expected i64-compatible value".to_string()),
+                    NotImplementedError(")),
                 ))
             }
         }
@@ -1602,17 +1205,11 @@ pub fn convert_value_for_canonical_abi(
                 if i >= 0 {
                     Ok(wrt_foundation::values::Value::U64(i as u64))
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError("Component not found"),
+                    Err(Error::component_not_found("Component not found"),
                     ))
                 }
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Expected u64-compatible value".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
@@ -1629,7 +1226,7 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError("Cannot convert to f32".to_string()),
+                    NotImplementedError(")),
                 ))
             }
         }
@@ -1643,10 +1240,7 @@ pub fn convert_value_for_canonical_abi(
             } else if let Some(v) = value.as_i64() {
                 Ok(wrt_foundation::values::Value::F64(v as f64))
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Cannot convert to f64".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
@@ -1661,16 +1255,11 @@ pub fn convert_value_for_canonical_abi(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
                         ValueOutOfRangeError(format!(
-                            "Value {} is not a valid Unicode scalar value",
-                            i
-                        )),
+                            ")),
                     ))
                 }
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Expected char-compatible value".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
@@ -1681,7 +1270,7 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError("Expected string value".to_string()),
+                    NotImplementedError(")),
                 ))
             }
         }
@@ -1695,24 +1284,20 @@ pub fn convert_value_for_canonical_abi(
                     let converted_item = convert_value_for_canonical_abi(item, &inner_type)?;
                     #[cfg(feature = "safety-critical")]
                     converted_list.push(converted_item).map_err(|_| {
-                        Error::new(ErrorCategory::Runtime, codes::RUNTIME_CAPACITY_ERROR_CODE, 
-                                  "List conversion exceeds safety limit of 1024")
+                        Error::capacity_exceeded("List conversion exceeds safety limit of 1024")
                     })?;
                     #[cfg(not(feature = "safety-critical"))]
                     converted_list.push(converted_item);
                 }
                 Ok(wrt_foundation::values::Value::List(converted_list))
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Expected list value".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
         FoundationValType::<ComponentProvider>::Record(fields) => {
             if let Some(record) = value.as_record() {
-                #[cfg(feature = "safety-critical")]
+                #[cfg(feature = ")]
                 let mut converted_record: WrtHashMap<String, Value, {CrateId::Component as u8}, 64> = WrtHashMap::new();
                 #[cfg(not(feature = "safety-critical"))]
                 let mut converted_record = HashMap::new();
@@ -1722,25 +1307,18 @@ pub fn convert_value_for_canonical_abi(
                             convert_value_for_canonical_abi(field_value, field_type)?;
                         #[cfg(feature = "safety-critical")]
                         converted_record.insert(field_name.clone(), converted_field).map_err(|_| {
-                            Error::new(ErrorCategory::Runtime, codes::RUNTIME_CAPACITY_ERROR_CODE, 
-                                      "Record conversion exceeds safety limit of 64 fields")
+                            Error::capacity_exceeded("Record conversion exceeds safety limit of 64 fields")
                         })?;
                         #[cfg(not(feature = "safety-critical"))]
                         converted_record.insert(field_name.clone(), converted_field);
                     } else {
-                        return Err(Error::new(
-                            ErrorCategory::Runtime,
-                            codes::TYPE_MISMATCH,
-                            NotImplementedError("Component not found"),
+                        return Err(Error::component_not_found("Component not found"),
                         ));
                     }
                 }
                 Ok(wrt_foundation::values::Value::Record(converted_record))
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Expected record value".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
@@ -1751,8 +1329,7 @@ pub fn convert_value_for_canonical_abi(
                         ErrorCategory::Runtime,
                         codes::TYPE_MISMATCH,
                         NotImplementedError(format!(
-                            "Expected tuple of length {}, got length {}",
-                            types.len(),
+                            "),
                             tuple.len()
                         )),
                     ));
@@ -1765,18 +1342,14 @@ pub fn convert_value_for_canonical_abi(
                     let converted_item = convert_value_for_canonical_abi(item, item_type)?;
                     #[cfg(feature = "safety-critical")]
                     converted_tuple.push(converted_item).map_err(|_| {
-                        Error::new(ErrorCategory::Runtime, codes::RUNTIME_CAPACITY_ERROR_CODE, 
-                                  "Tuple conversion exceeds safety limit of 32 elements")
+                        Error::capacity_exceeded("Tuple conversion exceeds safety limit of 32 elements")
                     })?;
                     #[cfg(not(feature = "safety-critical"))]
                     converted_tuple.push(converted_item);
                 }
                 Ok(wrt_foundation::values::Value::Tuple(converted_tuple))
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Expected tuple value".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
@@ -1785,20 +1358,14 @@ pub fn convert_value_for_canonical_abi(
                 // Verify all required flags are present
                 for name in names {
                     if !flags.contains_key(name) {
-                        return Err(Error::new(
-                            ErrorCategory::Runtime,
-                            codes::TYPE_MISMATCH,
-                            NotImplementedError("Component not found"),
+                        return Err(Error::component_not_found("),
                         ));
                     }
                 }
                 // Verify no extra flags are present
                 for name in flags.keys() {
                     if !names.contains(name) {
-                        return Err(Error::new(
-                            ErrorCategory::Runtime,
-                            codes::TYPE_MISMATCH,
-                            NotImplementedError("Component not found"),
+                        return Err(Error::component_not_found("Component not found"),
                         ));
                     }
                 }
@@ -1811,16 +1378,12 @@ pub fn convert_value_for_canonical_abi(
                     if let Some(b) = value.as_bool() {
                         #[cfg(feature = "safety-critical")]
                         converted_flags.insert(name.clone(), b).map_err(|_| {
-                            Error::new(ErrorCategory::Runtime, codes::RUNTIME_CAPACITY_ERROR_CODE, 
-                                      "Flags conversion exceeds safety limit of 64 flags")
+                            Error::capacity_exceeded("Flags conversion exceeds safety limit of 64 flags")
                         })?;
                         #[cfg(not(feature = "safety-critical"))]
                         converted_flags.insert(name.clone(), b);
                     } else {
-                        return Err(Error::new(
-                            ErrorCategory::Runtime,
-                            codes::TYPE_MISMATCH,
-                            NotImplementedError("Flag '{}' must be a boolean value".to_string()),
+                        return Err(Error::runtime_execution_error(".to_string()),
                         ));
                     }
                 }
@@ -1829,7 +1392,7 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError("Expected flags value".to_string()),
+                    NotImplementedError(")),
                 ))
             }
         }
@@ -1838,11 +1401,7 @@ pub fn convert_value_for_canonical_abi(
                 if discriminant < cases.len() as u32 {
                     Ok(wrt_foundation::values::Value::Variant(discriminant, payload.map(Box::new)))
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(format!(
-                            "Invalid variant discriminant: {}",
+                    Err(Error::runtime_execution_error(",
                             discriminant
                         )),
                     ))
@@ -1851,7 +1410,7 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError("Expected variant value".to_string()),
+                    NotImplementedError(")),
                 ))
             }
         }
@@ -1871,10 +1430,7 @@ fn get_number_value(value: &wrt_foundation::values::Value) -> Result<i64> {
     } else if let Some(v) = value.as_u32() {
         Ok(v as i64)
     } else {
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::TYPE_MISMATCH,
-            NotImplementedError("Expected a numeric value".to_string()),
+        Err(Error::runtime_execution_error(".to_string()),
         ))
     }
 }
@@ -1893,7 +1449,7 @@ fn get_float_value(value: &wrt_foundation::values::Value) -> Result<f64> {
         Err(Error::new(
             ErrorCategory::Runtime,
             codes::TYPE_MISMATCH,
-            NotImplementedError("Expected a numeric or float value".to_string()),
+            NotImplementedError(")),
         ))
     }
 }
@@ -1910,10 +1466,7 @@ pub fn convert_value_for_type(
             } else if let Ok(num) = get_number_value(value) {
                 Ok(wrt_foundation::values::Value::I32(if num != 0 { 1 } else { 0 }))
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Cannot convert to bool".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
@@ -1924,37 +1477,25 @@ pub fn convert_value_for_type(
                 if v >= i32::MIN as i64 && v <= i32::MAX as i64 {
                     Ok(wrt_foundation::values::Value::I32(v as i32))
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::OUT_OF_BOUNDS_ERROR,
-                        OutOfBoundsAccess("Component not found"),
+                    Err(Error::component_not_found("),
                     ))
                 }
             } else if let Some(v) = value.as_f32() {
                 if v >= i32::MIN as f32 && v <= i32::MAX as f32 {
                     Ok(wrt_foundation::values::Value::I32(v as i32))
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::OUT_OF_BOUNDS_ERROR,
-                        OutOfBoundsAccess("Component not found"),
+                    Err(Error::component_not_found("Component not found"),
                     ))
                 }
             } else if let Some(v) = value.as_f64() {
                 if v >= i32::MIN as f64 && v <= i32::MAX as f64 {
                     Ok(wrt_foundation::values::Value::I32(v as i32))
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::OUT_OF_BOUNDS_ERROR,
-                        OutOfBoundsAccess("Component not found"),
+                    Err(Error::component_not_found("Component not found"),
                     ))
                 }
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Cannot convert to i32".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
@@ -1967,27 +1508,18 @@ pub fn convert_value_for_type(
                 if v >= i64::MIN as f32 && v <= i64::MAX as f32 {
                     Ok(wrt_foundation::values::Value::I64(v as i64))
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::OUT_OF_BOUNDS_ERROR,
-                        OutOfBoundsAccess("Component not found"),
+                    Err(Error::component_not_found("),
                     ))
                 }
             } else if let Some(v) = value.as_f64() {
                 if v >= i64::MIN as f64 && v <= i64::MAX as f64 {
                     Ok(wrt_foundation::values::Value::I64(v as i64))
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::OUT_OF_BOUNDS_ERROR,
-                        OutOfBoundsAccess("Component not found"),
+                    Err(Error::component_not_found("Component not found"),
                     ))
                 }
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Cannot convert to i64".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
@@ -2005,7 +1537,7 @@ pub fn convert_value_for_type(
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError("Cannot convert to f32".to_string()),
+                    NotImplementedError(")),
                 ))
             }
         }
@@ -2019,10 +1551,7 @@ pub fn convert_value_for_type(
             } else if let Some(v) = value.as_i64() {
                 Ok(wrt_foundation::values::Value::F64(v as f64))
             } else {
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    NotImplementedError("Cannot convert to f64".to_string()),
+                Err(Error::runtime_execution_error(".to_string()),
                 ))
             }
         }
@@ -2034,18 +1563,14 @@ pub fn convert_value_for_type(
     // SIMD-Optimized Bulk Operations for Performance Enhancement
     
     /// Bulk lower operation for arrays of i32 values using SIMD when available
-    #[cfg(feature = "std")]
+    #[cfg(feature = ")]
     pub fn bulk_lower_i32_array(&self, values: &[i32], addr: u32, memory_bytes: &mut [u8]) -> Result<()> {
         let start_addr = addr as usize;
         let required_size = values.len() * 4;
         
         // Bounds check
         if start_addr + required_size > memory_bytes.len() {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::OUT_OF_BOUNDS_ERROR,
-                "Bulk array write exceeds memory bounds"
-            ));
+            return Err(Error::memory_error("Bulk array write exceeds memory bounds"));
         }
         
         #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
@@ -2073,11 +1598,7 @@ pub fn convert_value_for_type(
                 memory_bytes[offset..offset + 4].copy_from_slice(&bytes);
                 offset += 4;
             } else {
-                return Err(Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ACCESS_ERROR,
-                    "Array lowering exceeded memory bounds"
-                ));
+                return Err(Error::memory_error("Array lowering exceeded memory bounds"));
             }
         }
         
@@ -2103,11 +1624,7 @@ pub fn convert_value_for_type(
         
         // Bounds check
         if start_addr + required_size > memory_bytes.len() {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::OUT_OF_BOUNDS_ERROR,
-                "Bulk array read exceeds memory bounds"
-            ));
+            return Err(Error::memory_error("Bulk array read exceeds memory bounds"));
         }
         
         #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
@@ -2135,11 +1652,7 @@ pub fn convert_value_for_type(
                 result.push(i32::from_le_bytes(bytes));
                 offset += 4;
             } else {
-                return Err(Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ACCESS_ERROR,
-                    "Array lifting exceeded memory bounds"
-                ));
+                return Err(Error::memory_error("Array lifting exceeded memory bounds"));
             }
         }
         
@@ -2169,11 +1682,7 @@ pub fn convert_value_for_type(
     #[cfg(feature = "std")]
     pub fn bulk_copy_string_data(&self, src: &[u8], dst: &mut [u8]) -> Result<usize> {
         if src.len() > dst.len() {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::OUT_OF_BOUNDS_ERROR,
-                "Source string too large for destination buffer"
-            ));
+            return Err(Error::memory_error("Source string too large for destination buffer"));
         }
         
         // Use optimized memory copy for large strings

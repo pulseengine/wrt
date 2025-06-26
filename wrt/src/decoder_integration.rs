@@ -39,11 +39,7 @@ pub fn load_module(binary: &[u8]) -> Result<Module> {
     
     // Ensure this is a core module
     if !wasm_info.is_core_module() {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::TYPE_MISMATCH,
-            "Binary is not a WebAssembly core module"
-        ));
+        return Err(Error::validation_type_mismatch("Binary is not a WebAssembly core module"));
     }
     
     // Create module using runtime's load_from_binary which now uses unified API
@@ -80,11 +76,7 @@ pub fn decode_and_validate(binary: &[u8]) -> Result<()> {
             if let Some((min, max)) = module_info.memory_pages {
                 if let Some(max_pages) = max {
                     if min > max_pages {
-                        return Err(Error::new(
-                            ErrorCategory::Validation,
-                            codes::VALIDATION_ERROR,
-                            "Memory minimum exceeds maximum"
-                        ));
+                        return Err(Error::validation_error("Memory minimum exceeds maximum"));
                     }
                 }
             }
@@ -100,11 +92,7 @@ pub fn decode_and_validate(binary: &[u8]) -> Result<()> {
             Ok(())
         }
         wrt_decoder::WasmFormat::Unknown => {
-            Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Unknown or invalid WASM format"
-            ))
+            Err(Error::validation_error("Unknown or invalid WASM format"))
         }
     }
 }

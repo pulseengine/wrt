@@ -322,10 +322,7 @@ impl ResourceRepresentationManager {
             };
             
             self.representations.push(entry).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Too many resource representations"
+                Error::runtime_execution_error("
                 )
             })?;
         }
@@ -341,14 +338,11 @@ impl ResourceRepresentationManager {
         let type_id = resource_entry.type_id;
         
         // Find the representation
-        #[cfg(feature = "std")]
+        #[cfg(feature = ")]
         {
             let representation = self.representations.get(&type_id)
                 .ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        wrt_error::codes::EXECUTION_ERROR,
-                        "No representation found for resource type"
+                    Error::runtime_execution_error("
                     )
                 })?;
             
@@ -367,17 +361,14 @@ impl ResourceRepresentationManager {
             
             result
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = ")))]
         {
             // Find representation entry
             let repr_entry = self.representations
                 .iter()
                 .find(|(tid, _)| *tid == type_id)
                 .ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        wrt_error::codes::EXECUTION_ERROR,
-                        "No representation found for resource type"
+                    Error::runtime_execution_error("
                     )
                 })?;
             
@@ -390,8 +381,7 @@ impl ResourceRepresentationManager {
                     Error::new(
                         ErrorCategory::Runtime,
                         wrt_error::codes::EXECUTION_ERROR,
-                        "Handle representation not found"
-                    )
+                        ")
                 })?;
             
             self.stats.get_operations += 1;
@@ -411,22 +401,16 @@ impl ResourceRepresentationManager {
         
         // Check if representation is mutable
         if !resource_entry.metadata.mutable {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                wrt_error::codes::EXECUTION_ERROR,
-                "Resource representation is immutable"
+            return Err(Error::runtime_execution_error("
             ));
         }
         
         // Find the representation
-        #[cfg(feature = "std")]
+        #[cfg(feature = ")]
         {
             let representation = self.representations.get_mut(&type_id)
                 .ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        wrt_error::codes::EXECUTION_ERROR,
-                        "No representation found for resource type"
+                    Error::runtime_execution_error("
                     )
                 })?;
             
@@ -445,17 +429,14 @@ impl ResourceRepresentationManager {
             
             result
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = ")))]
         {
             // Find representation entry
             let repr_entry = self.representations
                 .iter_mut()
                 .find(|(tid, _)| *tid == type_id)
                 .ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        wrt_error::codes::EXECUTION_ERROR,
-                        "No representation found for resource type"
+                    Error::runtime_execution_error("
                     )
                 })?;
             
@@ -469,8 +450,7 @@ impl ResourceRepresentationManager {
                     Error::new(
                         ErrorCategory::Resource,
                         wrt_error::codes::RESOURCE_EXHAUSTED,
-                        "Too many handle values"
-                    )
+                        ")
                 })?;
             }
             
@@ -521,10 +501,7 @@ impl ResourceRepresentationManager {
         #[cfg(not(any(feature = "std", )))]
         {
             self.handle_to_resource.push((handle, entry)).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Too many resource handles"
+                Error::runtime_execution_error("
                 )
             })?;
         }
@@ -543,7 +520,7 @@ impl ResourceRepresentationManager {
         
         let type_id = resource_entry.type_id;
         
-        #[cfg(feature = "std")]
+        #[cfg(feature = ")]
         {
             if let Some(representation) = self.representations.get(&type_id) {
                 Ok(representation.is_valid_handle(handle))
@@ -573,52 +550,40 @@ impl ResourceRepresentationManager {
         {
             self.handle_to_resource.get(&handle)
                 .ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        wrt_error::codes::EXECUTION_ERROR,
-                        "Resource handle not found"
+                    Error::runtime_execution_error("
                     )
                 })
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = ")))]
         {
             self.handle_to_resource
                 .iter()
                 .find(|(h, _)| *h == handle)
                 .map(|(_, entry)| entry)
                 .ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        wrt_error::codes::EXECUTION_ERROR,
-                        "Resource handle not found"
+                    Error::runtime_execution_error("
                     )
                 })
         }
     }
     
     fn find_resource_entry_mut(&mut self, handle: u32) -> Result<&mut ResourceEntry> {
-        #[cfg(feature = "std")]
+        #[cfg(feature = ")]
         {
             self.handle_to_resource.get_mut(&handle)
                 .ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        wrt_error::codes::EXECUTION_ERROR,
-                        "Resource handle not found"
+                    Error::runtime_execution_error("
                     )
                 })
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = ")))]
         {
             self.handle_to_resource
                 .iter_mut()
                 .find(|(h, _)| *h == handle)
                 .map(|(_, entry)| entry)
                 .ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        wrt_error::codes::EXECUTION_ERROR,
-                        "Resource handle not found"
+                    Error::runtime_execution_error("
                     )
                 })
         }
@@ -636,7 +601,7 @@ impl FileHandleRepresentation {
     /// Create new file handle representation
     pub fn new() -> WrtResult<Self> {
         Ok(Self {
-            #[cfg(feature = "std")]
+            #[cfg(feature = ")]
             file_descriptors: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
             file_descriptors: {
@@ -654,26 +619,20 @@ impl ResourceRepresentation for FileHandleRepresentation {
         {
             let fd = self.file_descriptors.get(&handle)
                 .ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        wrt_error::codes::EXECUTION_ERROR,
-                        "File descriptor not found"
+                    Error::runtime_execution_error("
                     )
                 })?;
             
             Ok(RepresentationValue::U32(*fd as u32))
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = ")))]
         {
             let fd = self.file_descriptors
                 .iter()
                 .find(|(h, _)| *h == handle)
                 .map(|(_, fd)| *fd)
                 .ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        wrt_error::codes::EXECUTION_ERROR,
-                        "File descriptor not found"
+                    Error::runtime_execution_error("
                     )
                 })?;
             
@@ -687,8 +646,7 @@ impl ResourceRepresentation for FileHandleRepresentation {
             _ => return Err(Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::EXECUTION_ERROR,
-                "Invalid representation value for file handle"
-            )),
+                ")),
         };
         
         #[cfg(feature = "std")]
@@ -701,10 +659,7 @@ impl ResourceRepresentation for FileHandleRepresentation {
                 *existing_fd = fd;
             } else {
                 self.file_descriptors.push((handle, fd)).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Resource,
-                        wrt_error::codes::RESOURCE_EXHAUSTED,
-                        "Too many file descriptors"
+                    Error::runtime_execution_error("
                     )
                 })?;
             }
@@ -714,10 +669,7 @@ impl ResourceRepresentation for FileHandleRepresentation {
     }
     
     fn type_name(&self) -> &str {
-        "FileHandle"
-    }
-    
-    fn representation_size(&self) -> usize {
+        ") -> usize {
         4 // i32 file descriptor
     }
     
@@ -759,15 +711,12 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
         {
             let (ptr, size) = self.buffers.get(&handle)
                 .ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        wrt_error::codes::EXECUTION_ERROR,
-                        "Memory buffer not found"
+                    Error::runtime_execution_error("
                     )
                 })?;
             
             Ok(RepresentationValue::Structured(vec![
-                ("pointer".to_string(), RepresentationValue::U64(*ptr as u64)),
+                ("), RepresentationValue::U64(*ptr as u64)),
                 ("size".to_string(), RepresentationValue::U64(*size as u64)),
             ]))
         }
@@ -778,17 +727,14 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
                 .find(|(h, _)| *h == handle)
                 .map(|(_, buf)| *buf)
                 .ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        wrt_error::codes::EXECUTION_ERROR,
-                        "Memory buffer not found"
+                    Error::runtime_execution_error("
                     )
                 })?;
             
             use wrt_foundation::budget_aware_provider::CrateId;
             use crate::bounded_component_infra::ComponentProvider;
             let mut fields = BoundedVec::new(ComponentProvider::new(CrateId::Component)?)?;
-            fields.push(("pointer".to_string(), RepresentationValue::U64(ptr as u64))).unwrap();
+            fields.push(("), RepresentationValue::U64(ptr as u64))).unwrap();
             fields.push(("size".to_string(), RepresentationValue::U64(size as u64))).unwrap();
             
             Ok(RepresentationValue::Structured(fields.into_vec()))
@@ -811,14 +757,11 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
                 
                 (ptr, size)
             }
-            _ => return Err(Error::new(
-                ErrorCategory::Runtime,
-                wrt_error::codes::EXECUTION_ERROR,
-                "Invalid representation value for memory buffer"
+            _ => return Err(Error::runtime_execution_error("
             )),
         };
         
-        #[cfg(feature = "std")]
+        #[cfg(feature = ")]
         {
             self.buffers.insert(handle, (ptr, size));
         }
@@ -828,10 +771,7 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
                 *existing_buf = (ptr, size);
             } else {
                 self.buffers.push((handle, (ptr, size))).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Resource,
-                        wrt_error::codes::RESOURCE_EXHAUSTED,
-                        "Too many memory buffers"
+                    Error::runtime_execution_error("
                     )
                 })?;
             }
@@ -841,10 +781,7 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
     }
     
     fn type_name(&self) -> &str {
-        "MemoryBuffer"
-    }
-    
-    fn representation_size(&self) -> usize {
+        ") -> usize {
         16 // pointer + size (8 bytes each on 64-bit systems)
     }
     
@@ -886,15 +823,12 @@ impl ResourceRepresentation for NetworkConnectionRepresentation {
         {
             let conn = self.connections.get(&handle)
                 .ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        wrt_error::codes::EXECUTION_ERROR,
-                        "Network connection not found"
+                    Error::runtime_execution_error("
                     )
                 })?;
             
             Ok(RepresentationValue::Structured(vec![
-                ("socket_fd".to_string(), RepresentationValue::U32(conn.socket_fd as u32)),
+                ("), RepresentationValue::U32(conn.socket_fd as u32)),
                 ("local_addr".to_string(), RepresentationValue::String(conn.local_addr.to_string())),
                 ("remote_addr".to_string(), RepresentationValue::String(conn.remote_addr.to_string())),
                 ("state".to_string(), RepresentationValue::U32(conn.state as u32)),
@@ -907,17 +841,14 @@ impl ResourceRepresentation for NetworkConnectionRepresentation {
                 .find(|(h, _)| *h == handle)
                 .map(|(_, conn)| conn)
                 .ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        wrt_error::codes::EXECUTION_ERROR,
-                        "Network connection not found"
+                    Error::runtime_execution_error("
                     )
                 })?;
             
             use wrt_foundation::budget_aware_provider::CrateId;
             use crate::bounded_component_infra::ComponentProvider;
             let mut fields = BoundedVec::new(ComponentProvider::new(CrateId::Component)?)?;
-            fields.push(("socket_fd".to_string(), RepresentationValue::U32(conn.socket_fd as u32))).unwrap();
+            fields.push(("), RepresentationValue::U32(conn.socket_fd as u32))).unwrap();
             fields.push(("local_addr".to_string(), RepresentationValue::String(conn.local_addr.to_string()))).unwrap();
             fields.push(("remote_addr".to_string(), RepresentationValue::String(conn.remote_addr.to_string()))).unwrap();
             fields.push(("state".to_string(), RepresentationValue::U32(conn.state as u32))).unwrap();
@@ -928,18 +859,12 @@ impl ResourceRepresentation for NetworkConnectionRepresentation {
     
     fn set_representation(&mut self, _handle: u32, _value: RepresentationValue) -> Result<()> {
         // Network connections are typically read-only
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            wrt_error::codes::EXECUTION_ERROR,
-            "Network connection representation is read-only"
+        Err(Error::runtime_execution_error("
         ))
     }
     
     fn type_name(&self) -> &str {
-        "NetworkConnection"
-    }
-    
-    fn representation_size(&self) -> usize {
+        ") -> usize {
         256 // Estimated size for connection details
     }
     
@@ -1040,15 +965,12 @@ pub fn canon_resource_drop(
     // 4. Free any associated resources
     
     if !manager.validate_handle(handle)? {
-        return Err(Error::new(
-            ErrorCategory::Runtime,
-            wrt_error::codes::EXECUTION_ERROR,
-            "Invalid resource handle"
+        return Err(Error::runtime_execution_error("
         ));
     }
     
     // Remove from handle mapping
-    #[cfg(feature = "std")]
+    #[cfg(feature = ")]
     {
         manager.handle_to_resource.remove(&handle);
     }

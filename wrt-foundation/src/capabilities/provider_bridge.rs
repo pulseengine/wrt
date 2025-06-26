@@ -325,13 +325,14 @@ mod tests {
     use super::*;
     use crate::{
         capabilities::{CapabilityMask, DynamicMemoryCapability},
+        safe_managed_alloc,
         safe_memory::NoStdProvider,
         verification::VerificationLevel,
     };
 
     #[test]
-    fn test_capability_aware_provider_creation() {
-        let provider = NoStdProvider::<1024>::default();
+    fn test_capability_aware_provider_creation() -> crate::Result<()> {
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
         let capability = Box::new(DynamicMemoryCapability::new(
             1024,
             CrateId::Foundation,
@@ -341,11 +342,12 @@ mod tests {
         let wrapped = provider.with_capability(capability, CrateId::Foundation);
         assert_eq!(wrapped.capacity(), 1024);
         assert_eq!(wrapped.owner_crate(), CrateId::Foundation);
+        Ok(())
     }
 
     #[test]
-    fn test_capability_verification_on_access() {
-        let provider = NoStdProvider::<1024>::default();
+    fn test_capability_verification_on_access() -> crate::Result<()> {
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
         // Create a capability that only allows read access
         let mut capability =
@@ -360,11 +362,12 @@ mod tests {
         // Borrow slice should work (read operation)
         let result = wrapped.borrow_slice(0, 100);
         assert!(result.is_ok());
+        Ok(())
     }
 
     #[test]
-    fn test_capability_verification_failure() {
-        let provider = NoStdProvider::<100>::default(); // Small provider
+    fn test_capability_verification_failure() -> crate::Result<()> {
+        let provider = safe_managed_alloc!(100, CrateId::Foundation)?; // Small provider
         let capability = Box::new(DynamicMemoryCapability::new(
             1024, // Capability allows more than provider capacity
             CrateId::Foundation,
@@ -376,11 +379,12 @@ mod tests {
         // Try to access beyond provider's capacity should fail at provider level
         let result = wrapped.borrow_slice(0, 200);
         assert!(result.is_err());
+        Ok(())
     }
 
     #[test]
-    fn test_verified_provider_creation() {
-        let provider = NoStdProvider::<1024>::default();
+    fn test_verified_provider_creation() -> crate::Result<()> {
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
         let capability = Box::new(DynamicMemoryCapability::new(
             1024,
             CrateId::Foundation,
@@ -390,11 +394,12 @@ mod tests {
         // Should succeed with valid size
         let result = provider.with_verified_capability(capability, CrateId::Foundation, 512);
         assert!(result.is_ok());
+        Ok(())
     }
 
     #[test]
-    fn test_verified_provider_creation_failure() {
-        let provider = NoStdProvider::<1024>::default();
+    fn test_verified_provider_creation_failure() -> crate::Result<()> {
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
         let capability = Box::new(DynamicMemoryCapability::new(
             512, // Capability only allows 512 bytes
             CrateId::Foundation,
@@ -404,5 +409,6 @@ mod tests {
         // Should fail with size exceeding capability
         let result = provider.with_verified_capability(capability, CrateId::Foundation, 1024);
         assert!(result.is_err());
+        Ok(())
     }
 }

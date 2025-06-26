@@ -9,7 +9,8 @@ use wrt_foundation::{
     bounded::{BoundedVec, MAX_GENERATIVE_TYPES},
     component_value::ComponentValue,
     resource::ResourceType,
-    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
 };
 
 use crate::{
@@ -43,8 +44,8 @@ pub enum BoundKind {
 pub struct GenerativeTypeRegistry {
     next_type_id: AtomicU32,
     instance_types:
-        BTreeMap<ComponentInstanceId, BoundedVec<GenerativeResourceType, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>, NoStdProvider<65536>>,
-    type_bounds: BTreeMap<TypeId, BoundedVec<TypeBound, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>, NoStdProvider<65536>>,
+        BTreeMap<ComponentInstanceId, BoundedVec<GenerativeResourceType, MAX_GENERATIVE_TYPES>>,
+    type_bounds: BTreeMap<TypeId, BoundedVec<TypeBound, MAX_GENERATIVE_TYPES>>,
     resource_mappings: BTreeMap<ResourceHandle, GenerativeResourceType>,
     bounds_checker: TypeBoundsChecker,
 }
@@ -71,7 +72,11 @@ impl GenerativeTypeRegistry {
             GenerativeResourceType { base_type, instance_id, unique_type_id, generation: 0 };
 
         let instance_types =
-            self.instance_types.entry(instance_id).or_insert_with(|| BoundedVec::new(NoStdProvider::<65536>::default()).unwrap());
+            self.instance_types.entry(instance_id).or_insert_with(|| {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)
+                    .expect("Failed to allocate memory for instance types");
+                BoundedVec::new(provider).expect("Failed to create BoundedVec")
+            });
 
         instance_types
             .push(generative_type.clone())
@@ -93,7 +98,11 @@ impl GenerativeTypeRegistry {
         type_id: TypeId,
         bound: TypeBound,
     ) -> core::result::Result<(), ComponentError> {
-        let bounds = self.type_bounds.entry(type_id).or_insert_with(|| BoundedVec::new(NoStdProvider::<65536>::default()).unwrap());
+        let bounds = self.type_bounds.entry(type_id).or_insert_with(|| {
+            let provider = safe_managed_alloc!(65536, CrateId::Component)
+                .expect("Failed to allocate memory for type bounds");
+            BoundedVec::new(provider).expect("Failed to create BoundedVec")
+        });
 
         bounds.push(bound.clone()).map_err(|_| ComponentError::TooManyTypeBounds)?;
 

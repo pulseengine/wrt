@@ -4,7 +4,12 @@
 //! Component Model, including resource handles, lifecycle management, and
 //! resource tables.
 
-use wrt_foundation::bounded::BoundedVec;
+use wrt_foundation::{
+    bounded::BoundedVec,
+    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
+};
 
 /// Invalid resource handle constant
 pub const INVALID_HANDLE: u32 = u32::MAX;
@@ -373,7 +378,8 @@ impl ResourceTable {
 
 /// Helper function to create resource data from bytes
 pub fn create_resource_data_bytes(data: &[u8]) -> core::result::Result<ResourceData, ResourceError> {
-    let mut vec = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
+    let provider = safe_managed_alloc!(65536, CrateId::Component).map_err(|_| ResourceError::LimitExceeded)?;
+    let mut vec = BoundedVec::new(provider).unwrap();
     for &byte in data {
         vec.push(byte).map_err(|_| ResourceError::LimitExceeded)?;
     }
@@ -393,7 +399,8 @@ pub fn create_resource_data_custom<T: std::any::Any + Send + Sync>(data: T) -> R
 
 /// Helper function to create a resource type
 pub fn create_resource_type(name: &str) -> core::result::Result<ResourceTypeMetadata, ResourceError> {
-    let mut name_vec = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
+    let provider = safe_managed_alloc!(65536, CrateId::Component).map_err(|_| ResourceError::LimitExceeded)?;
+    let mut name_vec = BoundedVec::new(provider).unwrap();
     for &byte in name.as_bytes() {
         name_vec.push(byte).map_err(|_| ResourceError::LimitExceeded)?;
     }
@@ -452,7 +459,10 @@ impl Default for ResourceTypeId {
 
 impl Default for ResourceData {
     fn default() -> Self {
-        Self::Binary(BoundedVec::new(NoStdProvider::<65536>::default()).unwrap())
+        Self::Bytes({
+            let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
+            BoundedVec::new(provider).unwrap()
+        })
     }
 }
 
@@ -473,12 +483,12 @@ mod tests {
     #[test]
     fn test_resource_handle_creation() {
         let handle = ResourceHandle::new(42);
-        assert_eq!(handle.value(), 42);
+        assert_eq!(handle.id(), 42);
         assert!(handle.is_valid());
 
-        let invalid = INVALID_HANDLE;
-        assert!(!invalid.is_valid());
-        assert_eq!(invalid.value(), u32::MAX);
+        let invalid_handle = ResourceHandle(INVALID_HANDLE);
+        assert!(!invalid_handle.is_valid());
+        assert_eq!(invalid_handle.id(), u32::MAX);
     }
 
     #[test]
@@ -495,10 +505,10 @@ mod tests {
     #[test]
     fn test_resource_type_id_creation() {
         let type_id = ResourceTypeId::new(123);
-        assert_eq!(type_id.value(), 123);
+        assert_eq!(type_id.id(), 123);
 
         let type_id2 = ResourceTypeId::new(456);
-        assert_eq!(type_id2.value(), 456);
+        assert_eq!(type_id2.id(), 456);
         assert_ne!(type_id, type_id2);
     }
 

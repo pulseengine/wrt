@@ -345,11 +345,7 @@ impl GlobalCleanupManager {
     /// Get cleanup context for a task
     pub fn get_context_mut(&mut self, task_id: u64) -> Result<&mut TaskCleanupContext> {
         self.contexts.get_mut(&task_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Async,
-                codes::ASYNC_ERROR,
-                "Task cleanup context not found",
-            )
+            Error::async_error("Task cleanup context not found")
         })
     }
     
@@ -357,11 +353,7 @@ impl GlobalCleanupManager {
     pub fn cancel_task(&mut self, task_id: u64) -> Result<Vec<ContextualError>> {
         // Remove context
         let mut context = self.contexts.remove(&task_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Async,
-                codes::ASYNC_ERROR,
-                "Task not found for cancellation",
-            )
+            Error::async_error("Task not found for cancellation")
         })?;
         
         // Consume cancellation fuel

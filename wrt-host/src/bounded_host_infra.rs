@@ -11,6 +11,7 @@ use wrt_foundation::{
     safe_memory::NoStdProvider,
     WrtResult,
     safe_capability_alloc, capability_context,
+    safe_managed_alloc,
 };
 
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -55,7 +56,9 @@ pub const MAX_ENV_VARS: usize = 256;
 /// Create a provider for host operations (unified implementation)
 pub fn create_host_provider() -> WrtResult<HostProvider> {
     // Use the standardized provider for consistency
-    Ok(NoStdProvider::<HOST_MEMORY_SIZE>::default())
+    safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).map_err(|_| {
+        wrt_error::Error::memory_allocation_failed("Failed to allocate host provider")
+    })
 }
 
 /// Maximum environment variable name length
@@ -158,11 +161,7 @@ where
 pub fn new_host_function_name() -> WrtResult<BoundedHostFunctionName> {
     let provider = create_host_provider()?;
     BoundedString::<MAX_HOST_FUNCTION_NAME_LEN, HostProvider>::from_str("", provider).map_err(|_| {
-        wrt_error::Error::new(
-            wrt_error::ErrorCategory::Memory,
-            wrt_error::codes::MEMORY_ALLOCATION_FAILED,
-            "Failed to create empty bounded string"
-        )
+        wrt_error::Error::memory_allocation_failed("Failed to create empty bounded string")
     })
 }
 
@@ -170,11 +169,7 @@ pub fn new_host_function_name() -> WrtResult<BoundedHostFunctionName> {
 pub fn bounded_host_function_name_from_str(s: &str) -> WrtResult<BoundedHostFunctionName> {
     let provider = create_host_provider()?;
     BoundedString::<MAX_HOST_FUNCTION_NAME_LEN, HostProvider>::from_str(s, provider).map_err(|_| {
-        wrt_error::Error::new(
-            wrt_error::ErrorCategory::Validation,
-            wrt_error::codes::VALIDATION_ERROR,
-            "String too long for bounded host function name"
-        )
+        wrt_error::Error::validation_error("String too long for bounded host function name")
     })
 }
 
@@ -182,11 +177,7 @@ pub fn bounded_host_function_name_from_str(s: &str) -> WrtResult<BoundedHostFunc
 pub fn new_host_module_name() -> WrtResult<BoundedHostModuleName> {
     let provider = create_host_provider()?;
     BoundedString::<MAX_HOST_MODULE_NAME_LEN, HostProvider>::from_str("", provider).map_err(|_| {
-        wrt_error::Error::new(
-            wrt_error::ErrorCategory::Memory,
-            wrt_error::codes::MEMORY_ALLOCATION_FAILED,
-            "Failed to create empty bounded string"
-        )
+        wrt_error::Error::memory_allocation_failed("Failed to create empty bounded string")
     })
 }
 
@@ -194,11 +185,7 @@ pub fn new_host_module_name() -> WrtResult<BoundedHostModuleName> {
 pub fn bounded_host_module_name_from_str(s: &str) -> WrtResult<BoundedHostModuleName> {
     let provider = create_host_provider()?;
     BoundedString::<MAX_HOST_MODULE_NAME_LEN, HostProvider>::from_str(s, provider).map_err(|_| {
-        wrt_error::Error::new(
-            wrt_error::ErrorCategory::Validation,
-            wrt_error::codes::VALIDATION_ERROR,
-            "String too long for bounded host module name"
-        )
+        wrt_error::Error::validation_error("String too long for bounded host module name")
     })
 }
 
@@ -206,11 +193,7 @@ pub fn bounded_host_module_name_from_str(s: &str) -> WrtResult<BoundedHostModule
 pub fn new_host_id() -> WrtResult<BoundedHostId> {
     let provider = create_host_provider()?;
     BoundedString::<MAX_HOST_ID_LEN, HostProvider>::from_str("", provider).map_err(|_| {
-        wrt_error::Error::new(
-            wrt_error::ErrorCategory::Memory,
-            wrt_error::codes::MEMORY_ALLOCATION_FAILED,
-            "Failed to create empty bounded string"
-        )
+        wrt_error::Error::memory_allocation_failed("Failed to create empty bounded string")
     })
 }
 
@@ -218,11 +201,7 @@ pub fn new_host_id() -> WrtResult<BoundedHostId> {
 pub fn bounded_host_id_from_str(s: &str) -> WrtResult<BoundedHostId> {
     let provider = create_host_provider()?;
     BoundedString::<MAX_HOST_ID_LEN, HostProvider>::from_str(s, provider).map_err(|_| {
-        wrt_error::Error::new(
-            wrt_error::ErrorCategory::Validation,
-            wrt_error::codes::VALIDATION_ERROR,
-            "String too long for bounded host ID"
-        )
+        wrt_error::Error::validation_error("String too long for bounded host ID")
     })
 }
 

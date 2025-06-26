@@ -208,10 +208,7 @@ where
 pub fn new_service_name() -> WrtResult<BoundedServiceName> {
     let provider = create_wrtd_provider()?;
     BoundedString::from_str("", provider)
-        .map_err(|_| wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Resource,
-            wrt_foundation::codes::ALLOCATION_FAILED,
-            "Failed to create bounded string"
+        .map_err(|_| wrt_error::Error::runtime_execution_error("
         ))
 }
 
@@ -219,21 +216,16 @@ pub fn new_service_name() -> WrtResult<BoundedServiceName> {
 pub fn bounded_service_name_from_str(s: &str) -> WrtResult<BoundedServiceName> {
     let provider = create_wrtd_provider()?;
     BoundedString::from_str(s, provider)
-        .map_err(|_| wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Resource,
+        .map_err(|_| wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
             wrt_foundation::codes::ALLOCATION_FAILED,
-            "Failed to create bounded string"
-        ))
+            "))
 }
 
 /// Create a new bounded configuration key
 pub fn new_config_key() -> WrtResult<BoundedConfigKey> {
     let provider = create_wrtd_provider()?;
     BoundedString::from_str("", provider)
-        .map_err(|_| wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Resource,
-            wrt_foundation::codes::ALLOCATION_FAILED,
-            "Failed to create bounded string"
+        .map_err(|_| wrt_error::Error::runtime_execution_error("
         ))
 }
 
@@ -241,21 +233,16 @@ pub fn new_config_key() -> WrtResult<BoundedConfigKey> {
 pub fn bounded_config_key_from_str(s: &str) -> WrtResult<BoundedConfigKey> {
     let provider = create_wrtd_provider()?;
     BoundedString::from_str(s, provider)
-        .map_err(|_| wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Resource,
+        .map_err(|_| wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
             wrt_foundation::codes::ALLOCATION_FAILED,
-            "Failed to create bounded string"
-        ))
+            "))
 }
 
 /// Create a new bounded configuration value
 pub fn new_config_value() -> WrtResult<BoundedConfigValue> {
     let provider = create_wrtd_provider()?;
     BoundedString::from_str("", provider)
-        .map_err(|_| wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Resource,
-            wrt_foundation::codes::ALLOCATION_FAILED,
-            "Failed to create bounded string"
+        .map_err(|_| wrt_error::Error::runtime_execution_error("
         ))
 }
 
@@ -263,21 +250,16 @@ pub fn new_config_value() -> WrtResult<BoundedConfigValue> {
 pub fn bounded_config_value_from_str(s: &str) -> WrtResult<BoundedConfigValue> {
     let provider = create_wrtd_provider()?;
     BoundedString::from_str(s, provider)
-        .map_err(|_| wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Resource,
+        .map_err(|_| wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
             wrt_foundation::codes::ALLOCATION_FAILED,
-            "Failed to create bounded string"
-        ))
+            "))
 }
 
 /// Create a new bounded log message
 pub fn new_log_message() -> WrtResult<BoundedLogMessage> {
     let provider = create_wrtd_provider()?;
     BoundedString::from_str("", provider)
-        .map_err(|_| wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Resource,
-            wrt_foundation::codes::ALLOCATION_FAILED,
-            "Failed to create bounded string"
+        .map_err(|_| wrt_error::Error::runtime_execution_error("
         ))
 }
 
@@ -285,11 +267,9 @@ pub fn new_log_message() -> WrtResult<BoundedLogMessage> {
 pub fn bounded_log_message_from_str(s: &str) -> WrtResult<BoundedLogMessage> {
     let provider = create_wrtd_provider()?;
     BoundedString::from_str(s, provider)
-        .map_err(|_| wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Resource,
+        .map_err(|_| wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
             wrt_foundation::codes::ALLOCATION_FAILED,
-            "Failed to create bounded string"
-        ))
+            "))
 }
 
 /// Create a new bounded service map

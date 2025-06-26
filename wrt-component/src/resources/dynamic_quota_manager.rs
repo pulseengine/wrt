@@ -20,6 +20,8 @@ use wrt_foundation::{
     prelude::*,
     resource::ResourceHandle,
     safe_memory::{NoStdProvider, CapabilityAwareProvider},
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
     MemoryProvider,
 };
 
@@ -394,40 +396,49 @@ impl QuotaNode {
 
 impl DynamicQuotaManager {
     /// Create a new dynamic quota manager
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> WrtResult<Self> {
+        Ok(Self {
             #[cfg(feature = "std")]
             nodes: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            nodes: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            nodes: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider).unwrap()
+            },
             #[cfg(feature = "std")]
             reservations: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            reservations: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            reservations: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider).unwrap()
+            },
             #[cfg(feature = "std")]
             policies: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            policies: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            policies: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider).unwrap()
+            },
             resource_manager: None,
             blast_zone_manager: None,
             next_node_id: 1,
             next_reservation_id: 1,
             memory_provider: None,
-        }
+        })
     }
 
     /// Create a new quota manager with resource manager integration
-    pub fn with_resource_manager(resource_manager: ResourceManager) -> Self {
-        let mut manager = Self::new();
+    pub fn with_resource_manager(resource_manager: ResourceManager) -> WrtResult<Self> {
+        let mut manager = Self::new()?;
         manager.resource_manager = Some(resource_manager);
-        manager
+        Ok(manager)
     }
 
     /// Create a new quota manager with blast zone integration
-    pub fn with_blast_zone_manager(blast_zone_manager: BlastZoneManager) -> Self {
-        let mut manager = Self::new();
+    pub fn with_blast_zone_manager(blast_zone_manager: BlastZoneManager) -> WrtResult<Self> {
+        let mut manager = Self::new()?;
         manager.blast_zone_manager = Some(blast_zone_manager);
-        manager
+        Ok(manager)
     }
 
     /// Set memory provider for quota enforcement
@@ -456,10 +467,7 @@ impl DynamicQuotaManager {
         #[cfg(not(any(feature = "std", )))]
         {
             self.nodes.push((node_id, node)).map_err(|_| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Too many quota nodes"
+                wrt_error::Error::resource_exhausted("Too many quota nodes")
                 )
             })?;
         }
@@ -496,10 +504,7 @@ impl DynamicQuotaManager {
             #[cfg(not(any(feature = "std", )))]
             {
                 self.reservations.push((reservation_id, (node_id, request.amount))).map_err(|_| {
-                    wrt_foundation::Error::new(
-                        wrt_foundation::ErrorCategory::Resource,
-                        wrt_error::codes::RESOURCE_EXHAUSTED,
-                        "Too many reservations"
+                    wrt_error::Error::resource_exhausted("Too many reservations")
                     )
                 })?;
             }
@@ -635,11 +640,7 @@ impl DynamicQuotaManager {
             }
         }
 
-        Err(wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Validation,
-            wrt_error::codes::INVALID_INPUT,
-            "Quota node not found"
-        ))
+        Err(wrt_foundation::wrt_error::Error::invalid_value("Quota node not found"))
     }
 
     /// Check hierarchical quota constraints
@@ -648,11 +649,7 @@ impl DynamicQuotaManager {
         
         while let Some(id) = current_id {
             let node = self.get_quota_status(id).ok_or_else(|| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Validation,
-                    wrt_error::codes::INVALID_INPUT,
-                    "Invalid node ID"
-                )
+                wrt_foundation::wrt_error::Error::invalid_value("Invalid node ID")
             })?;
 
             if !node.can_allocate(amount) {
@@ -668,7 +665,13 @@ impl DynamicQuotaManager {
     /// Allocate quota hierarchically up the tree
     fn allocate_hierarchical(&mut self, node_id: u32, amount: u64, timestamp: u64) -> WrtResult<bool> {
         let mut current_id = Some(node_id);
+        #[cfg(feature = "std")]
         let mut allocated_nodes = Vec::new();
+        #[cfg(not(feature = "std"))]
+        let mut allocated_nodes = {
+            let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+            BoundedVec::<u32, 64, NoStdProvider<65536>>::new(provider).unwrap()
+        };
         
         // First pass: check if all nodes can allocate
         while let Some(id) = current_id {
@@ -769,7 +772,7 @@ impl DynamicQuotaManager {
 
 impl Default for DynamicQuotaManager {
     fn default() -> Self {
-        Self::new()
+        Self::new().unwrap()
     }
 }
 
@@ -851,7 +854,7 @@ mod tests {
 
     #[test]
     fn test_quota_manager_creation() {
-        let mut manager = DynamicQuotaManager::new();
+        let mut manager = DynamicQuotaManager::new().unwrap();
         
         // Create global quota
         let global_id = manager.create_quota_node(
@@ -877,7 +880,7 @@ mod tests {
 
     #[test]
     fn test_quota_request() {
-        let mut manager = DynamicQuotaManager::new();
+        let mut manager = DynamicQuotaManager::new().unwrap();
         
         // Create quota hierarchy
         let global_id = manager.create_quota_node(
@@ -918,7 +921,7 @@ mod tests {
 
     #[test]
     fn test_hierarchical_quota_enforcement() {
-        let mut manager = DynamicQuotaManager::new();
+        let mut manager = DynamicQuotaManager::new().unwrap();
         
         // Create hierarchy with smaller parent quota
         let global_id = manager.create_quota_node(
@@ -953,7 +956,7 @@ mod tests {
 
     #[test]
     fn test_quota_release() {
-        let mut manager = DynamicQuotaManager::new();
+        let mut manager = DynamicQuotaManager::new().unwrap();
         
         let comp_id = manager.create_quota_node(
             QuotaNodeType::Component,

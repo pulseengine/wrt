@@ -43,31 +43,19 @@ use super::BuiltinHandler;
 /// Helper function to handle RwLock read operations safely for ASIL-D compliance
 #[cfg(feature = "std")]
 fn safe_read_lock<T>(lock: &RwLock<T>) -> Result<std::sync::RwLockReadGuard<T>> {
-    lock.read().map_err(|_| Error::new(
-        wrt_error::ErrorCategory::Threading,
-        wrt_error::codes::THREADING_ERROR,
-        "Lock poisoned"
-    ))
+    lock.read().map_err(|_| wrt_error::Error::threading_error("Lock poisoned"))
 }
 
 /// Helper function to handle RwLock write operations safely for ASIL-D compliance
 #[cfg(feature = "std")]
 fn safe_write_lock<T>(lock: &RwLock<T>) -> Result<std::sync::RwLockWriteGuard<T>> {
-    lock.write().map_err(|_| Error::new(
-        wrt_error::ErrorCategory::Threading,
-        wrt_error::codes::THREADING_ERROR,
-        "Lock poisoned"
-    ))
+    lock.write().map_err(|_| wrt_error::Error::threading_error("Lock poisoned"))
 }
 
 /// Helper function to handle Mutex operations safely for ASIL-D compliance
 #[cfg(feature = "std")]
 fn safe_mutex_lock<T>(mutex: &Mutex<T>) -> Result<std::sync::MutexGuard<T>> {
-    mutex.lock().map_err(|_| Error::new(
-        wrt_error::ErrorCategory::Threading,
-        wrt_error::codes::THREADING_ERROR,
-        "Mutex poisoned"
-    ))
+    mutex.lock().map_err(|_| wrt_error::Error::threading_error("Mutex poisoned"))
 }
 
 /// Thread handle identifier
@@ -216,7 +204,7 @@ impl ThreadManager {
         // Store the thread handle
         let thread_handle = ThreadHandle { handle: Some(handle), state, result, error };
 
-        if let Ok(mut threads) = self.threads.write() {\n            threads.insert(thread_id, thread_handle);\n        } else {\n            return Err(Error::new(\n                wrt_error::ErrorCategory::Threading,\n                wrt_error::codes::THREADING_ERROR,\n                \"Failed to store thread handle - thread manager corrupted\"\n            ));\n        }
+        if let Ok(mut threads) = self.threads.write() {\n            threads.insert(thread_id, thread_handle);\n        } else {\n            return Err(Error::runtime_execution_error("\n            ));\n        }
 
         Ok(thread_id)
     }
@@ -234,7 +222,7 @@ impl ThreadManager {
         // Find the thread
         let mut threads = self.threads.write().unwrap();
         let thread = threads.get_mut(&thread_id).ok_or_else(|| {
-            Error::new(ThreadingError("Component not found"))
+            Error::component_not_found("))
         })?;
 
         // Check if thread is already joined
@@ -247,7 +235,7 @@ impl ThreadManager {
                     // Return the cached result
                     let result =
                         thread.result.read().unwrap().clone().ok_or_else(|| {
-                            Error::new(ThreadingError("Thread result unavailable"))
+                            Error::threading_error("Thread result unavailable")
                         })?;
                     Ok(result)
                 }
@@ -263,7 +251,7 @@ impl ThreadManager {
                 }
                 ThreadState::Running => {
                     // This shouldn't happen if handle is None
-                    Err(Error::new(ThreadingError("Thread is still running but handle is missing")))
+                    Err(Error::threading_error("Thread is still running but handle is missing"))
                 }
             }
         } else {
@@ -271,7 +259,7 @@ impl ThreadManager {
             let handle = thread
                 .handle
                 .take()
-                .ok_or_else(|| Error::new(ThreadingError("Thread handle unavailable")))?;
+                .ok_or_else(|| Error::threading_error("Thread handle unavailable"))?;
 
             // Join the thread
             match handle.join() {
@@ -280,7 +268,7 @@ impl ThreadManager {
                     // Thread panicked
                     *thread.state.write().unwrap() = ThreadState::Error;
                     *thread.error.write().unwrap() = Some("Thread panicked".to_string());
-                    Err(Error::new(ThreadingError("Thread panicked during execution")))
+                    Err(Error::threading_error("Thread panicked during execution"))
                 }
             }
         }
@@ -299,7 +287,7 @@ impl ThreadManager {
         // Find the thread
         let threads = self.threads.read().unwrap();
         let thread = threads.get(&thread_id).ok_or_else(|| {
-            Error::new(ThreadingError("Component not found"))
+            Error::component_not_found("Component not found"))
         })?;
 
         // Check the state
@@ -379,9 +367,9 @@ impl ThreadManager {
                 Ok(previous)
             }
             Some(_) => {
-                Err(Error::new(ThreadingError("Component not found")))
+                Err(Error::component_not_found("Component not found")))
             }
-            None => Err(Error::new(ThreadingError("Component not found"))),
+            None => Err(Error::component_not_found("Component not found"))),
         }
     }
 
@@ -416,11 +404,10 @@ impl ThreadManager {
                 // Return the data
                 Ok(guard.clone())
             }
-            Some(_) => Err(Error::new(ThreadingError(format!(
-                "Sync ID {} is not a condition variable",
+            Some(_) => Err(Error::runtime_execution_error(",
                 sync_id
             )))),
-            None => Err(Error::new(ThreadingError("Component not found"))),
+            None => Err(Error::component_not_found("))),
         }
     }
 
@@ -456,11 +443,10 @@ impl ThreadManager {
 
                 Ok(previous)
             }
-            Some(_) => Err(Error::new(ThreadingError(format!(
-                "Sync ID {} is not a condition variable",
+            Some(_) => Err(Error::runtime_execution_error(",
                 sync_id
             )))),
-            None => Err(Error::new(ThreadingError("Component not found"))),
+            None => Err(Error::component_not_found("))),
         }
     }
 
@@ -485,11 +471,10 @@ impl ThreadManager {
                 // Return a clone of the data
                 Ok(guard.clone())
             }
-            Some(_) => Err(Error::new(ThreadingError(format!(
-                "Sync ID {} is not a read-write lock",
+            Some(_) => Err(Error::runtime_execution_error(",
                 sync_id
             )))),
-            None => Err(Error::new(ThreadingError("Component not found"))),
+            None => Err(Error::component_not_found("))),
         }
     }
 
@@ -522,11 +507,10 @@ impl ThreadManager {
 
                 Ok(previous)
             }
-            Some(_) => Err(Error::new(ThreadingError(format!(
-                "Sync ID {} is not a read-write lock",
+            Some(_) => Err(Error::runtime_execution_error(",
                 sync_id
             )))),
-            None => Err(Error::new(ThreadingError("Component not found"))),
+            None => Err(Error::component_not_found("))),
         }
     }
 }
@@ -568,16 +552,14 @@ impl BuiltinHandler for ThreadingSpawnHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.len() < 1 {
-            return Err(Error::new(ThreadingError("threading.spawn requires at least 1 argument")));
+            return Err(Error::threading_error("threading.spawn requires at least 1 argument"));
         }
 
         // Extract function ID
         let function_id = match args[0] {
             ComponentValue::U32(id) => id,
             _ => {
-                return Err(Error::new(ThreadingError(
-                    "threading.spawn first argument must be a function ID",
-                )));
+                return Err(Error::threading_error("threading.spawn first argument must be a function ID"));
             }
         };
 
@@ -630,16 +612,14 @@ impl BuiltinHandler for ThreadingJoinHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.len() != 1 {
-            return Err(Error::new(ThreadingError("threading.join requires exactly 1 argument")));
+            return Err(Error::threading_error("threading.join requires exactly 1 argument"));
         }
 
         // Extract thread ID
         let thread_id = match args[0] {
             ComponentValue::U64(id) => id,
             _ => {
-                return Err(Error::new(ThreadingError(
-                    "threading.join argument must be a thread ID",
-                )))
+                return Err(Error::threading_error("threading.join argument must be a thread ID"))
             }
         };
 
@@ -683,21 +663,19 @@ impl BuiltinHandler for ThreadingSyncHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Check if we're in no_std mode (should never happen if properly feature-gated)
         if self.no_std_mode.load(Ordering::Relaxed) {
-            return Err(Error::new(ThreadingError("Threading is not supported in no_std mode")));
+            return Err(Error::threading_error("Threading is not supported in no_std mode"));
         }
 
         // Validate arguments
         if args.len() < 1 {
-            return Err(Error::new(ThreadingError("threading.sync requires at least 1 argument")));
+            return Err(Error::threading_error("threading.sync requires at least 1 argument"));
         }
 
         // Extract operation type
         let op_type = match &args[0] {
             ComponentValue::String(s) => s.as_str(),
             _ => {
-                return Err(Error::new(ThreadingError(
-                    "threading.sync first argument must be a string",
-                )))
+                return Err(Error::threading_error("threading.sync first argument must be a string"))
             }
         };
 
@@ -710,15 +688,13 @@ impl BuiltinHandler for ThreadingSyncHandler {
             "lock-mutex" => {
                 // Lock a mutex
                 if args.len() < 2 {
-                    return Err(Error::new(ThreadingError("lock-mutex requires a mutex ID")));
+                    return Err(Error::threading_error("lock-mutex requires a mutex ID"));
                 }
 
                 let mutex_id = match args[1] {
                     ComponentValue::U64(id) => id,
                     _ => {
-                        return Err(Error::new(ThreadingError(
-                            "lock-mutex requires a mutex ID as second argument",
-                        )));
+                        return Err(Error::threading_error("lock-mutex requires a mutex ID as second argument"));
                     }
                 };
 
@@ -739,15 +715,13 @@ impl BuiltinHandler for ThreadingSyncHandler {
             "wait-condvar" => {
                 // Wait on a condition variable
                 if args.len() < 2 {
-                    return Err(Error::new(ThreadingError("wait-condvar requires a condvar ID")));
+                    return Err(Error::threading_error("wait-condvar requires a condvar ID"));
                 }
 
                 let condvar_id = match args[1] {
                     ComponentValue::U64(id) => id,
                     _ => {
-                        return Err(Error::new(ThreadingError(
-                            "wait-condvar requires a condvar ID as second argument",
-                        )));
+                        return Err(Error::threading_error("wait-condvar requires a condvar ID as second argument"));
                     }
                 };
 
@@ -763,15 +737,13 @@ impl BuiltinHandler for ThreadingSyncHandler {
             "signal-condvar" => {
                 // Signal a condition variable
                 if args.len() < 2 {
-                    return Err(Error::new(ThreadingError("signal-condvar requires a condvar ID")));
+                    return Err(Error::threading_error("signal-condvar requires a condvar ID"));
                 }
 
                 let condvar_id = match args[1] {
                     ComponentValue::U64(id) => id,
                     _ => {
-                        return Err(Error::new(ThreadingError(
-                            "signal-condvar requires a condvar ID as second argument",
-                        )));
+                        return Err(Error::threading_error("signal-condvar requires a condvar ID as second argument"));
                     }
                 };
 
@@ -792,15 +764,13 @@ impl BuiltinHandler for ThreadingSyncHandler {
             "read-rwlock" => {
                 // Read from a read-write lock
                 if args.len() < 2 {
-                    return Err(Error::new(ThreadingError("read-rwlock requires a rwlock ID")));
+                    return Err(Error::threading_error("read-rwlock requires a rwlock ID"));
                 }
 
                 let rwlock_id = match args[1] {
                     ComponentValue::U64(id) => id,
                     _ => {
-                        return Err(Error::new(ThreadingError(
-                            "read-rwlock requires a rwlock ID as second argument",
-                        )));
+                        return Err(Error::threading_error("read-rwlock requires a rwlock ID as second argument"));
                     }
                 };
 
@@ -813,15 +783,13 @@ impl BuiltinHandler for ThreadingSyncHandler {
             "write-rwlock" => {
                 // Write to a read-write lock
                 if args.len() < 2 {
-                    return Err(Error::new(ThreadingError("write-rwlock requires a rwlock ID")));
+                    return Err(Error::threading_error("write-rwlock requires a rwlock ID"));
                 }
 
                 let rwlock_id = match args[1] {
                     ComponentValue::U64(id) => id,
                     _ => {
-                        return Err(Error::new(ThreadingError(
-                            "write-rwlock requires a rwlock ID as second argument",
-                        )));
+                        return Err(Error::threading_error("write-rwlock requires a rwlock ID as second argument"));
                     }
                 };
 
@@ -834,8 +802,7 @@ impl BuiltinHandler for ThreadingSyncHandler {
                 // Return the previous data
                 Ok(previous.unwrap_or_default())
             }
-            _ => Err(Error::new(ThreadingError(format!(
-                "Unknown threading.sync operation: {}",
+            _ => Err(Error::runtime_execution_error(",
                 op_type
             )))),
         }
@@ -847,7 +814,7 @@ impl BuiltinHandler for ThreadingSyncHandler {
 }
 
 /// Create handlers for threading built-ins
-#[cfg(feature = "std")]
+#[cfg(feature = ")]
 pub fn create_threading_handlers(
     executor: Arc<dyn Fn(u32, Vec<ComponentValue>) -> Result<Vec<ComponentValue>> + Send + Sync>,
 ) -> Vec<Box<dyn BuiltinHandler>> {
@@ -902,10 +869,10 @@ mod tests {
             }
 
             // Function that returns an error
-            3 => Err(Error::new("Test error")),
+            3 => Err(Error::runtime_execution_error("Test error")),
 
             // Unknown function
-            _ => Err(Error::new(ThreadingError("Component not found"))),
+            _ => Err(Error::component_not_found("Component not found"))),
         }
     }
 

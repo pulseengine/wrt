@@ -50,9 +50,7 @@ pub fn format_limits_to_wrt_limits(
     limits: &crate::types::Limits,
 ) -> Result<wrt_foundation::types::Limits> {
     if limits.memory64 {
-        return Err(Error::new(
-            wrt_error::ErrorCategory::Validation,
-            wrt_error::codes::VALIDATION_UNSUPPORTED_FEATURE,
+        return Err(Error::runtime_execution_error(
             "memory64 limits are not supported by the current runtime type system (u32 limits).",
         ));
     }

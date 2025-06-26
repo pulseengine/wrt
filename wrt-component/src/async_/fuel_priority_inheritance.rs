@@ -179,11 +179,7 @@ impl FuelPriorityInheritanceProtocol {
         };
 
         self.blocking_relationships.insert(blocked_task, blocking_info).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many blocking relationships tracked".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many blocking relationships tracked")
         })?;
 
         // If there's a holder, initiate priority inheritance
@@ -210,11 +206,7 @@ impl FuelPriorityInheritanceProtocol {
             Some(existing_chain) => {
                 // Add to existing chain
                 existing_chain.waiters.push(blocked_task).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_LIMIT_EXCEEDED,
-                        "Inheritance chain too long".to_string(),
-                    )
+                    Error::resource_limit_exceeded("Inheritance chain too long")
                 })?;
                 
                 // Sort waiters by priority (highest first)
@@ -232,11 +224,7 @@ impl FuelPriorityInheritanceProtocol {
                 let provider = safe_managed_alloc!(1024, CrateId::Component)?;
                 let mut waiters = BoundedVec::new(provider)?;
                 waiters.push(blocked_task).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_LIMIT_EXCEEDED,
-                        "Failed to add waiter to new chain".to_string(),
-                    )
+                    Error::resource_limit_exceeded("Failed to add waiter to new chain")
                 })?;
 
                 let new_chain = InheritanceChain {
@@ -250,11 +238,7 @@ impl FuelPriorityInheritanceProtocol {
                 };
 
                 self.inheritance_chains.insert(resource_id, new_chain).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_LIMIT_EXCEEDED,
-                        "Too many inheritance chains".to_string(),
-                    )
+                    Error::resource_limit_exceeded("Too many inheritance chains")
                 })?;
 
                 self.protocol_stats.active_chains.fetch_add(1, Ordering::AcqRel);
@@ -268,11 +252,7 @@ impl FuelPriorityInheritanceProtocol {
             // In real implementation, this would query the actual task priority
             chain.holder_original_priority = Priority::Normal;
             self.original_priorities.insert(holder_task, Priority::Normal).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_LIMIT_EXCEEDED,
-                    "Too many original priorities tracked".to_string(),
-                )
+                Error::resource_limit_exceeded("Too many original priorities tracked")
             })?;
         }
 
@@ -287,11 +267,7 @@ impl FuelPriorityInheritanceProtocol {
         };
 
         self.priority_donations.insert(blocked_task, donation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many priority donations tracked".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many priority donations tracked")
         })?;
 
         // Update statistics

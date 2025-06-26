@@ -77,18 +77,17 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-// Binary std/no_std choice - use our own memory management
+// Standard library imports (grouped by feature flags)
 #[cfg(feature = "std")]
 use std::{format, string::String, vec::Vec};
 
-// Re-export error types directly from wrt-error
+// External crates
 pub use wrt_error::{Error, ErrorCategory};
-// In no_std mode, use our own bounded collections from wrt-foundation
+
+// Internal crates (wrt_* imports)
 #[cfg(not(feature = "std"))]
 use wrt_foundation::bounded::{BoundedString, BoundedVec};
-// Re-export resource types from wrt-foundation
 pub use wrt_foundation::resource::ResourceRepresentation;
-// Re-export Result type from wrt-foundation
 pub use wrt_foundation::Result;
 // Re-export core types from wrt-foundation (note: these now have generic parameters)
 // BlockType, FuncType, RefType, ValueType now require MemoryProvider parameters
@@ -261,8 +260,13 @@ pub mod valtype_builder;
 pub mod verify;
 pub mod version;
 // Binary std/no_std choice
-#[cfg(feature = "std")]
-pub mod wit_parser;
+// Temporarily disabled - causes circular dependency issues
+// #[cfg(feature = "std")]
+// pub mod wit_parser_types;
+// #[cfg(feature = "std")]
+// pub mod wit_parser_traits;
+// #[cfg(feature = "std")]
+// pub mod wit_parser;
 // Bounded WIT parser for no_std environments
 #[cfg(feature = "wit-parsing")]
 pub mod wit_parser_bounded;
@@ -307,6 +311,9 @@ pub use binary::with_alloc::{
 pub use binary::{
     read_leb128_i32, read_leb128_i64, read_leb128_u32, read_leb128_u64, read_u32, read_u8,
 };
+// Pure format parsing functions (recommended)
+#[cfg(feature = "std")]
+pub use binary::with_alloc::{parse_data_pure, parse_element_segment_pure};
 // Re-export no_std write functions
 #[cfg(not(any(feature = "std")))]
 pub use binary::{
@@ -334,11 +341,22 @@ pub use error::{
     parse_error, wrt_runtime_error as runtime_error, wrt_type_error as type_error,
     wrt_validation_error as validation_error,
 };
-pub use module::{Data, DataMode, Element, ElementInit, ElementMode, Module};
+pub use module::{Element, ElementInit, Module};
+// New pure format types (recommended)
+pub use pure_format_types::{PureDataMode, PureDataSegment, PureElementMode, PureElementSegment};
+// Note: Data, DataMode, ElementMode are deprecated - use pure_format_types instead
+#[deprecated(note = "Use pure_format_types::PureDataSegment for clean separation")]
+pub use module::Data;
+// DataMode and ElementMode exports removed - use pure_format_types instead
 
-// Type aliases for compatibility
-pub type DataSegment = module::Data;
-pub type ElementSegment = module::Element;
+// Type aliases for compatibility (recommended to use pure_format_types directly)
+pub type DataSegment = pure_format_types::PureDataSegment;
+pub type ElementSegment = pure_format_types::PureElementSegment;
+// Legacy aliases (deprecated)
+#[deprecated(note = "Use pure_format_types::PureDataSegment directly")]
+pub type LegacyDataSegment = module::Data;
+#[deprecated(note = "Use pure_format_types::PureElementSegment directly")]
+pub type LegacyElementSegment = module::Element;
 // Re-export safe memory utilities
 // Re-export enhanced bounded WIT parser (Agent C)
 pub use bounded_wit_parser::{
@@ -355,11 +373,12 @@ pub use version::{
     ComponentModelFeature, ComponentModelVersion, FeatureStatus, VersionInfo, STATE_VERSION,
 };
 // Binary std/no_std choice
-#[cfg(feature = "std")]
-pub use wit_parser::{
-    WitEnum, WitExport, WitFlags, WitFunction, WitImport, WitInterface, WitItem, WitParam,
-    WitParseError, WitParser, WitRecord, WitResult, WitType, WitTypeDef, WitVariant, WitWorld,
-};
+// Temporarily disabled - causes circular dependency issues
+// #[cfg(feature = "std")]
+// pub use wit_parser::{
+//     WitEnum, WitExport, WitFlags, WitFunction, WitImport, WitInterface, WitItem, WitParam,
+//     WitParseError, WitParser, WitRecord, WitResult, WitType, WitTypeDef, WitVariant, WitWorld,
+// };
 // Re-export bounded WIT parser (for no_std environments)
 #[cfg(feature = "wit-parsing")]
 pub use wit_parser_bounded::{
@@ -437,10 +456,13 @@ pub mod no_std_demo {
     }
 
     /// Example showing bounded string working
-    pub fn demo_bounded_string() -> wrt_error::Result<()> {
-        let wasm_str =
-            WasmString::<NoStdProvider<1024>>::from_str("hello", NoStdProvider::<1024>::default())
-                .map_err(|_| wrt_foundation::bounded::CapacityError)?;
+    pub fn demo_bounded_string() -> Result<()> {
+        let provider = wrt_foundation::safe_managed_alloc!(
+            1024,
+            wrt_foundation::budget_aware_provider::CrateId::Format
+        )?;
+        let wasm_str = WasmString::<NoStdProvider<1024>>::from_str("hello", provider)
+            .map_err(|_| wrt_foundation::bounded::CapacityError)?;
         assert_eq!(wasm_str.as_str().unwrap(), "hello");
         Ok(())
     }
@@ -469,7 +491,10 @@ pub mod no_std_demo {
         ];
 
         // Create streaming parser with bounded memory
-        let provider = NoStdProvider::<1024>::default();
+        let provider = wrt_foundation::safe_managed_alloc!(
+            1024,
+            wrt_foundation::budget_aware_provider::CrateId::Format
+        )?;
         let mut parser = StreamingParser::new(provider)?;
 
         // Process the WebAssembly data
@@ -481,23 +506,24 @@ pub mod no_std_demo {
                 assert_eq!(parser.bytes_processed(), 8); // 4 magic + 4 version bytes
                 Ok(())
             },
-            _ => Err(crate::Error::new(
-                crate::ErrorCategory::Validation,
-                wrt_error::codes::PARSE_ERROR,
-                "Parsing did not complete as expected",
+            _ => Err(crate::Error::runtime_execution_error(
+                "Unexpected parse result",
             )),
         }
     }
 
     /// Example showing module creation in pure no_std mode
     #[cfg(feature = "std")]
-    pub fn demo_module_creation() -> Result<(), wrt_foundation::bounded::CapacityError> {
+    pub fn demo_module_creation() -> Result<()> {
         use wrt_foundation::NoStdProvider;
 
         use crate::module::Module;
 
         // This demonstrates that the Module type system works in pure no_std
-        let provider = NoStdProvider::<1024>::default();
+        let provider = wrt_foundation::safe_managed_alloc!(
+            1024,
+            wrt_foundation::budget_aware_provider::CrateId::Format
+        )?;
         let _module = Module::<NoStdProvider<1024>>::default();
 
         // Binary std/no_std choice

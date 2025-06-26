@@ -208,10 +208,7 @@ impl PlatformMemoryOptimizer for MacOSOptimizedProvider {
     fn align_memory(&self, ptr: *mut u8, alignment: usize) -> WrtResult<*mut u8> {
         // Ensure alignment is a power of 2
         if !alignment.is_power_of_two() {
-            return Err(Error::new(
-                wrt_error::ErrorCategory::Memory, 1,
-                "Alignment must be a power of 2",
-            ));
+            return Err(Error::runtime_execution_error("Alignment must be a power of 2"));
         }
 
         // Calculate aligned pointer
@@ -367,10 +364,7 @@ impl PlatformMemoryOptimizer for LinuxOptimizedProvider {
     fn align_memory(&self, ptr: *mut u8, alignment: usize) -> WrtResult<*mut u8> {
         // Similar to macOS implementation
         if !alignment.is_power_of_two() {
-            return Err(Error::new(
-                wrt_error::ErrorCategory::Memory, 1,
-                "Alignment must be a power of 2",
-            ));
+            return Err(Error::runtime_execution_error("Alignment must be a power of 2"));
         }
 
         let addr = ptr as usize;
@@ -415,7 +409,7 @@ impl PlatformMemoryOptimizer for LinuxOptimizedProvider {
 /// use wrt_platform::memory_optimizations::{PlatformOptimizedProviderBuilder, MacOSOptimizedProvider, MemoryOptimization};
 /// use wrt_platform::memory::VerificationLevel;
 ///
-/// #[cfg(all(target_os = "macos", feature = "std"))]
+/// #[cfg(all(target_os = "))]
 /// let provider = PlatformOptimizedProviderBuilder::<MacOSOptimizedProvider>::new()
 ///     .with_size(8192)
 ///     .with_verification_level(VerificationLevel::Critical)

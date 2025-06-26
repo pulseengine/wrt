@@ -208,12 +208,7 @@ impl ValueType {
             0x79 => Ok(ValueType::I16x8),
             0x70 => Ok(ValueType::FuncRef),
             0x6F => Ok(ValueType::ExternRef),
-            _ => Err(Error::new(
-                // Replace format!
-                ErrorCategory::Parse,
-                wrt_error::codes::PARSE_INVALID_VALTYPE_BYTE,
-                // A static string, or pass byte to error for later formatting
-                "Invalid value type byte", // Potential: Add byte as context to Error
+            _ => Err(Error::runtime_execution_error(", // Potential: Add byte as context to Error
             )),
         }
     }
@@ -234,8 +229,7 @@ impl ValueType {
             _ => Err(Error::new(
                 ErrorCategory::Parse,
                 wrt_error::codes::PARSE_INVALID_VALTYPE_BYTE,
-                "Invalid value type byte",
-            )),
+                ")),
         }
     }
 
@@ -353,11 +347,7 @@ impl RefType {
         match vt {
             ValueType::FuncRef => Ok(RefType::Funcref),
             ValueType::ExternRef => Ok(RefType::Externref),
-            _ => Err(Error::new(
-                ErrorCategory::Type,
-                wrt_error::codes::TYPE_INVALID_CONVERSION,
-                "Cannot convert ValueType to RefType",
-            )),
+            _ => Err(Error::runtime_execution_error("Invalid ValueType for RefType conversion")),
         }
     }
 }
@@ -415,11 +405,7 @@ impl TryFrom<ValueType> for RefType {
         match vt {
             ValueType::FuncRef => Ok(RefType::Funcref),
             ValueType::ExternRef => Ok(RefType::Externref),
-            _ => Err(Error::new(
-                ErrorCategory::Type,
-                wrt_error::codes::TYPE_INVALID_CONVERSION,
-                "ValueType cannot be converted to RefType",
-            )),
+            _ => Err(Error::runtime_execution_error("Invalid ValueType for RefType try_from conversion")),
         }
     }
 }
@@ -534,11 +520,7 @@ impl<PFunc: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq
     ) -> WrtResult<Self> {
         let prefix = reader.read_u8()?;
         if prefix != 0x60 {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::DECODING_ERROR,
-                "Invalid FuncType prefix",
-            ));
+            return Err(Error::runtime_execution_error("Invalid function type prefix - expected 0x60"));
         }
         // PFunc must be Default + Clone for BoundedVec::from_bytes_with_provider
         // if BoundedVec needs to create its own provider. Here, we pass
@@ -2258,12 +2240,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Cu
             .map_err(|e| {
                 // Log or convert BoundedError to crate::Error
                 // For now, creating a generic error:
-                Error::new(
-                    ErrorCategory::Memory, /* Or a more specific category like `Resource` or
-                                            * `Validation` */
-                    wrt_error::codes::SYSTEM_ERROR, // Was INTERNAL_ERROR
-                    "Failed to create WasmName for custom section name",
-                )
+                Error::runtime_execution_error("Failed to create bounded string from custom section name")
             })?;
 
         // Create BoundedVec for the section data
@@ -2273,17 +2250,12 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Cu
                 Error::new(
                     ErrorCategory::Memory,
                     wrt_error::codes::SYSTEM_ERROR, // Was INTERNAL_ERROR
-                    "Failed to initialize BoundedVec for custom section data",
-                )
+                    "Failed to create bounded vector for custom section data")
             })?;
 
         data_vec.try_extend_from_slice(data).map_err(|e| {
             // Log or convert BoundedError from try_extend_from_slice to crate::Error
-            Error::new(
-                ErrorCategory::Memory,
-                wrt_error::codes::SYSTEM_ERROR, // Was INTERNAL_ERROR
-                "Failed to extend BoundedVec for custom section data",
-            )
+            Error::runtime_execution_error("Failed to extend custom section data vector")
         })?;
 
         Ok(Self { name, data: data_vec })
@@ -2298,18 +2270,14 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Cu
     ///
     /// Returns an error if the name or data cannot be stored due to capacity
     /// limits.
-    #[cfg(any(feature = "std", test))]
+    #[cfg(any(feature = "std"))]
     pub fn from_name_and_data(name_str: &str, data_slice: &[u8]) -> Result<Self>
     where
         P: Default, // Ensure P can be defaulted for this convenience function
     {
         let provider = P::default();
         let name = WasmName::from_str_truncate(name_str, provider.clone()).map_err(|_| {
-            Error::new(
-                ErrorCategory::Memory,
-                wrt_error::codes::SYSTEM_ERROR, // Was INTERNAL_ERROR
-                "Failed to create WasmName for custom section",
-            )
+            Error::runtime_execution_error("Failed to create WasmName from string")
         })?;
 
         let mut data_bounded_vec = BoundedVec::<u8, MAX_CUSTOM_SECTION_DATA_SIZE, P>::new(provider)
@@ -2317,16 +2285,11 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Cu
                 Error::new(
                     ErrorCategory::Memory,
                     wrt_error::codes::SYSTEM_ERROR, // Was INTERNAL_ERROR
-                    "Failed to create BoundedVec for custom section data",
-                )
+                    "Failed to create bounded vector for custom section data")
             })?;
 
         data_bounded_vec.try_extend_from_slice(data_slice).map_err(|_| {
-            Error::new(
-                ErrorCategory::Memory,
-                wrt_error::codes::SYSTEM_ERROR, // Was INTERNAL_ERROR
-                "Failed to extend BoundedVec for custom section data",
-            )
+            Error::runtime_execution_error("Failed to extend data vector with slice data")
         })?;
 
         Ok(CustomSection { name, data: data_bounded_vec })
@@ -2488,28 +2451,18 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Import<P> {
     ) -> Result<Self> {
         let module_name =
             WasmName::from_str(module_name_str, provider.clone()).map_err(|e| match e {
-                SerializationError::Custom(_) => Error::new(
-                    ErrorCategory::Capacity,
-                    wrt_error::codes::CAPACITY_EXCEEDED,
-                    "Import module name too long",
-                ),
+                SerializationError::Custom(_) => Error::runtime_execution_error("Custom serialization error in module name"),
                 _ => Error::new(
                     ErrorCategory::Validation,
                     wrt_error::codes::INVALID_VALUE,
-                    "Failed to create module name for import from SerializationError",
-                ),
+                    "Invalid module name serialization"),
             })?;
         let item_name = WasmName::from_str(item_name_str, provider).map_err(|e| match e {
-            SerializationError::Custom(_) => Error::new(
-                ErrorCategory::Capacity,
-                wrt_error::codes::CAPACITY_EXCEEDED,
-                "Import item name too long",
-            ),
+            SerializationError::Custom(_) => Error::runtime_execution_error("Custom serialization error in export item name"),
             _ => Error::new(
                 ErrorCategory::Validation,
                 wrt_error::codes::INVALID_VALUE,
-                "Failed to create item name for import from SerializationError",
-            ),
+                "Invalid export item name serialization"),
         })?;
         Ok(Self { module_name, item_name, desc })
     }
@@ -2777,14 +2730,10 @@ impl FromBytes for ExportDesc {
             2 => Ok(ExportDesc::Mem(reader.read_u32_le()?)),
             3 => Ok(ExportDesc::Global(reader.read_u32_le()?)),
             4 => Ok(ExportDesc::Tag(reader.read_u32_le()?)),
-            _ => Err(Error::new(
-                ErrorCategory::Parse,
-                codes::INVALID_VALUE, // Or a more specific code for invalid enum tag
-                "Invalid tag for ExportDesc deserialization",
-            )),
+            _ => Err(Error::runtime_execution_error("Invalid export descriptor tag")),
         }
     }
-    // Default from_bytes method will be used if #cfg(feature = "default-provider")
+    // Default from_bytes method will be used if #cfg(feature = ")
     // is active
 }
 
@@ -2917,16 +2866,12 @@ impl FromBytes for Limits {
             1 => Some(reader.read_u32_le()?),
             0 => None,
             _ => {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::INVALID_VALUE,
-                    "Invalid flag for Option<u32> in Limits deserialization",
-                ));
+                return Err(Error::runtime_execution_error("Invalid limits flag value"));
             }
         };
         Ok(Limits { min, max })
     }
-    // Default from_bytes method will be used if #cfg(feature = "default-provider")
+    // Default from_bytes method will be used if #cfg(feature = ")
     // is active
 }
 
@@ -3035,16 +2980,12 @@ impl FromBytes for MemoryType {
             0 => false,
             1 => true,
             _ => {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::INVALID_VALUE,
-                    "Invalid boolean flag for MemoryType.shared",
-                ));
+                return Err(Error::runtime_execution_error("Invalid memory shared flag value"));
             }
         };
         Ok(MemoryType { limits, shared })
     }
-    // Default from_bytes method will be used if #cfg(feature = "default-provider")
+    // Default from_bytes method will be used if #cfg(feature = ")
     // is active
 }
 
@@ -3092,16 +3033,12 @@ impl FromBytes for GlobalType {
             0 => false,
             1 => true,
             _ => {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::INVALID_VALUE,
-                    "Invalid boolean flag for GlobalType.mutable",
-                ));
+                return Err(Error::runtime_execution_error("Invalid global type mutability flag"));
             }
         };
         Ok(GlobalType { value_type, mutable })
     }
-    // Default from_bytes method will be used if #cfg(feature = "default-provider")
+    // Default from_bytes method will be used if #cfg(feature = ")
     // is active
 }
 
@@ -3483,11 +3420,7 @@ impl PackedType {
         match byte {
             0x78 => Ok(PackedType::I8),
             0x77 => Ok(PackedType::I16),
-            _ => Err(Error::new(
-                ErrorCategory::Parse,
-                wrt_error::codes::PARSE_INVALID_VALTYPE_BYTE,
-                "Invalid packed type byte",
-            )),
+            _ => Err(Error::runtime_execution_error("Invalid packed type binary representation")),
         }
     }
 }
@@ -3561,11 +3494,7 @@ impl FromBytes for FieldType {
             0 => false,
             1 => true,
             _ => {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::INVALID_VALUE,
-                    "Invalid boolean flag for FieldType.mutable",
-                ))
+                return Err(Error::runtime_execution_error("Invalid field type mutability flag"));
             }
         };
         Ok(FieldType { storage_type, mutable })
@@ -3620,11 +3549,7 @@ impl FromBytes for StorageType {
                 let pt = PackedType::from_binary(packed_byte)?;
                 Ok(StorageType::Packed(pt))
             }
-            _ => Err(Error::new(
-                ErrorCategory::Parse,
-                codes::INVALID_VALUE,
-                "Invalid tag for StorageType",
-            )),
+            _ => Err(Error::runtime_execution_error("Invalid storage type tag")),
         }
     }
 
@@ -3664,11 +3589,7 @@ impl FromBytes for ArrayType {
             0 => false,
             1 => true,
             _ => {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::INVALID_VALUE,
-                    "Invalid boolean flag for ArrayType.final_type",
-                ))
+                return Err(Error::runtime_execution_error("Invalid array type final flag"));
             }
         };
         Ok(ArrayType { element_type, final_type })
@@ -3716,11 +3637,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Fr
             0 => false,
             1 => true,
             _ => {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::INVALID_VALUE,
-                    "Invalid boolean flag for StructType.final_type",
-                ))
+                return Err(Error::runtime_execution_error("Invalid struct type final flag"));
             }
         };
         Ok(StructType { fields, final_type })

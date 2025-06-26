@@ -136,8 +136,12 @@ impl Component {
     /// Helper to create a new ComponentVec for no_std
     #[cfg(not(any(feature = "std")))]
     fn new_vec<T>() -> ComponentVec<T> {
-        WasmVec::new(NoStdProvider::<1024>::default())
-            .unwrap_or_else(|_| panic!("Failed to create WasmVec"))
+        let provider = wrt_foundation::safe_managed_alloc!(
+            1024,
+            wrt_foundation::budget_aware_provider::CrateId::Format
+        )
+        .unwrap_or_else(|_| panic!("Failed to allocate memory provider"));
+        WasmVec::new(provider).unwrap_or_else(|_| panic!("Failed to create WasmVec"))
     }
 }
 

@@ -336,11 +336,7 @@ impl TryFrom<ComponentTypeDefinition> for RuntimeComponentType {
                 let format_type = FormatComponentType::new(imports, exports);
                 format_type.try_into()
             }
-            _ => Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Expected Component type definition".to_string(),
-            )),
+            _ => Err(Error::validation_error("Expected Component type definition")),
         }
     }
 }
@@ -354,11 +350,7 @@ impl TryFrom<ComponentTypeDefinition> for RuntimeInstanceType {
                 let format_type = FormatInstanceType::new(exports);
                 format_type.try_into()
             }
-            _ => Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Expected Instance type definition".to_string(),
-            )),
+            _ => Err(Error::validation_error("Expected Instance type definition")),
         }
     }
 }

@@ -84,7 +84,9 @@ mod factory {
     impl<const BUFFER_SIZE: usize> RuntimeTypeFactory<BUFFER_SIZE> {
         /// Create a new runtime type factory
         pub fn new() -> Self {
-            Self { provider: NoStdProvider::<BUFFER_SIZE>::default() }
+            let provider = crate::safe_managed_alloc!(BUFFER_SIZE, crate::budget_aware_provider::CrateId::Foundation)
+                .unwrap_or_else(|_| NoStdProvider::<BUFFER_SIZE>::default());
+            Self { provider }
         }
 
         /// Create with custom provider
@@ -112,11 +114,7 @@ mod factory {
             s: &str,
         ) -> Result<BoundedString<N, Self::Provider>> {
             BoundedString::from_str(s, self.provider.clone()).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ALLOCATION_ERROR,
-                    "String too long for bounded string",
-                )
+                Error::memory_error("String too long for bounded string")
             })
         }
 
@@ -134,20 +132,12 @@ mod factory {
                 + crate::traits::FromBytes,
         {
             let mut bounded_vec = BoundedVec::new(self.provider.clone()).map_err(|e| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ALLOCATION_ERROR,
-                    "Failed to create bounded vector",
-                )
+                Error::memory_error("Failed to create bounded vector")
             })?;
 
             for item in items {
                 bounded_vec.push(item).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Memory,
-                        codes::MEMORY_ALLOCATION_ERROR,
-                        "Bounded vector capacity exceeded",
-                    )
+                    Error::memory_error("Bounded vector capacity exceeded")
                 })?;
             }
 
@@ -163,7 +153,9 @@ mod factory {
     impl<const BUFFER_SIZE: usize> ComponentTypeFactory<BUFFER_SIZE> {
         /// Create a new component type factory
         pub fn new() -> Self {
-            Self { provider: NoStdProvider::<BUFFER_SIZE>::default() }
+            let provider = crate::safe_managed_alloc!(BUFFER_SIZE, crate::budget_aware_provider::CrateId::Foundation)
+                .unwrap_or_else(|_| NoStdProvider::<BUFFER_SIZE>::default());
+            Self { provider }
         }
 
         /// Create with custom provider
@@ -191,11 +183,7 @@ mod factory {
             s: &str,
         ) -> Result<BoundedString<N, Self::Provider>> {
             BoundedString::from_str(s, self.provider.clone()).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ALLOCATION_ERROR,
-                    "String too long for bounded string",
-                )
+                Error::memory_error("String too long for bounded string")
             })
         }
 
@@ -213,20 +201,12 @@ mod factory {
                 + crate::traits::FromBytes,
         {
             let mut bounded_vec = BoundedVec::new(self.provider.clone()).map_err(|e| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ALLOCATION_ERROR,
-                    "Failed to create bounded vector",
-                )
+                Error::memory_error("Failed to create bounded vector")
             })?;
 
             for item in items {
                 bounded_vec.push(item).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Memory,
-                        codes::MEMORY_ALLOCATION_ERROR,
-                        "Bounded vector capacity exceeded",
-                    )
+                    Error::memory_error("Bounded vector capacity exceeded")
                 })?;
             }
 
@@ -317,13 +297,15 @@ mod factory {
         #[test]
         fn test_runtime_factory_creation() {
             let factory = RuntimeTypeFactory::<1024>::new();
-            assert!(!core::ptr::eq(factory.provider(), &NoStdProvider::<1024>::default()));
+            // Verify that factory was created successfully
+            assert!(factory.provider().size() > 0);
         }
 
         #[test]
         fn test_component_factory_creation() {
             let factory = ComponentTypeFactory::<1024>::new();
-            assert!(!core::ptr::eq(factory.provider(), &NoStdProvider::<1024>::default()));
+            // Verify that factory was created successfully
+            assert!(factory.provider().size() > 0);
         }
 
         #[test]

@@ -244,11 +244,7 @@ impl ResourceAsyncOperations {
         };
 
         self.resource_contexts.insert(component_id, context).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many component resource contexts".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many component resource contexts")
         })?;
 
         Ok(())
@@ -263,28 +259,17 @@ impl ResourceAsyncOperations {
         callback: Option<ResourceCompletionCallback>,
     ) -> Result<ResourceOperationId, Error> {
         let context = self.resource_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not initialized for async resources".to_string(),
-            )
+            Error::validation_invalid_input("Component not initialized for async resources")
         })?;
 
         if !context.async_config.enable_async_creation {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_OPERATION,
-                "Async resource creation not enabled".to_string(),
+            return Err(Error::runtime_execution_error(".to_string(),
             ));
         }
 
         // Check limits
         if context.owned_resources.len() >= context.resource_limits.max_owned_resources {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component resource limit exceeded".to_string(),
-            ));
+            return Err(Error::resource_limit_exceeded("));
         }
 
         let operation_id = ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
@@ -317,20 +302,12 @@ impl ResourceAsyncOperations {
 
         // Store operation
         self.active_operations.insert(operation_id, stored_operation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many active resource operations".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many active resource operations")
         })?;
 
         // Add to component context
         context.active_operations.push(operation_id).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component operation list full".to_string(),
-            )
+            Error::resource_limit_exceeded("Component operation list full")
         })?;
 
         // Update statistics
@@ -349,18 +326,11 @@ impl ResourceAsyncOperations {
         callback: Option<ResourceCompletionCallback>,
     ) -> Result<ResourceOperationId, Error> {
         let context = self.resource_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not initialized".to_string(),
-            )
+            Error::validation_invalid_input("Component not initialized")
         })?;
 
         if !context.async_config.enable_async_methods {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_OPERATION,
-                "Async resource methods not enabled".to_string(),
+            return Err(Error::runtime_execution_error(".to_string(),
             ));
         }
 
@@ -370,7 +340,7 @@ impl ResourceAsyncOperations {
                 context.borrowed_resources.get(&resource_handle)
                     .map(|borrow| &ResourceInfo {
                         handle: resource_handle,
-                        resource_type: ResourceType::new("borrowed".to_string()),
+                        resource_type: ResourceType::new(")),
                         state: ResourceState::Borrowed,
                         created_at: borrow.borrowed_at,
                         last_accessed: AtomicU64::new(self.get_timestamp()),
@@ -379,19 +349,11 @@ impl ResourceAsyncOperations {
                     })
             })
             .ok_or_else(|| {
-                Error::new(
-                    ErrorCategory::Validation,
-                    codes::INVALID_INPUT,
-                    "Resource not owned or borrowed by component".to_string(),
-                )
+                Error::validation_invalid_input("Resource not owned or borrowed by component")
             })?;
 
         if resource_info.state != ResourceState::Active && resource_info.state != ResourceState::Borrowed {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_STATE,
-                "Resource not in valid state for method calls".to_string(),
-            ));
+            return Err(Error::validation_invalid_state("Resource not in valid state for method calls"));
         }
 
         let operation_id = ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
@@ -423,19 +385,11 @@ impl ResourceAsyncOperations {
         stored_operation.abi_operation_id = Some(abi_op_id);
 
         self.active_operations.insert(operation_id, stored_operation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many active operations".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many active operations")
         })?;
 
         context.active_operations.push(operation_id).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component operation list full".to_string(),
-            )
+            Error::resource_limit_exceeded("Component operation list full")
         })?;
 
         // Update resource activity
@@ -455,20 +409,12 @@ impl ResourceAsyncOperations {
         borrow_type: ResourceBorrowType,
     ) -> Result<ResourceOperationId, Error> {
         let context = self.resource_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not initialized".to_string(),
-            )
+            Error::validation_invalid_input("Component not initialized")
         })?;
 
         // Check borrow limits
         if context.borrowed_resources.len() >= context.resource_limits.max_borrowed_resources {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component borrow limit exceeded".to_string(),
-            ));
+            return Err(Error::resource_limit_exceeded("Component borrow limit exceeded"));
         }
 
         let operation_id = ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
@@ -497,19 +443,11 @@ impl ResourceAsyncOperations {
         };
 
         context.borrowed_resources.insert(resource_handle, borrow_info).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Borrow table full".to_string(),
-            )
+            Error::resource_limit_exceeded("Borrow table full")
         })?;
 
         self.active_operations.insert(operation_id, operation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many operations".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many operations")
         })?;
 
         self.resource_stats.total_borrows.fetch_add(1, Ordering::Relaxed);
@@ -525,36 +463,21 @@ impl ResourceAsyncOperations {
         callback: Option<ResourceCompletionCallback>,
     ) -> Result<ResourceOperationId, Error> {
         let context = self.resource_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not initialized".to_string(),
-            )
+            Error::validation_invalid_input("Component not initialized")
         })?;
 
         if !context.async_config.enable_async_drop {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_OPERATION,
-                "Async resource drop not enabled".to_string(),
+            return Err(Error::runtime_execution_error(".to_string(),
             ));
         }
 
         // Verify ownership
         let resource_info = context.owned_resources.get_mut(&resource_handle).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Resource not owned by component".to_string(),
-            )
+            Error::validation_invalid_input(")
         })?;
 
         if resource_info.state == ResourceState::Dropped {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_STATE,
-                "Resource already dropped".to_string(),
-            ));
+            return Err(Error::validation_invalid_state("Resource already dropped"));
         }
 
         let operation_id = ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
@@ -575,11 +498,7 @@ impl ResourceAsyncOperations {
         resource_info.state = ResourceState::Finalizing;
 
         self.active_operations.insert(operation_id, operation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many operations".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many operations")
         })?;
 
         self.resource_stats.total_drops.fetch_add(1, Ordering::Relaxed);

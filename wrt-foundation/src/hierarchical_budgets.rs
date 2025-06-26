@@ -15,6 +15,7 @@ use crate::{
     verification::VerificationLevel,
     Error, ErrorCategory, Result,
 };
+use wrt_error::helpers::memory_limit_exceeded_error;
 
 // Capability-based imports
 use crate::wrt_memory_system::CapabilityWrtFactory;
@@ -56,15 +57,11 @@ impl SubBudget {
     pub fn try_allocate(&self, size: usize) -> Result<()> {
         let current = self.allocated.load(Ordering::Acquire);
         let new_total = current.checked_add(size).ok_or_else(|| {
-            Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Allocation would overflow")
+            Error::memory_error("Allocation would overflow")
         })?;
 
         if new_total > self.max_allocation {
-            return Err(Error::new(
-                ErrorCategory::Capacity,
-                codes::CAPACITY_EXCEEDED,
-                "Sub-budget exceeded",
-            ));
+            return Err(memory_limit_exceeded_error("Sub-budget exceeded"));
         }
 
         // Try atomic update
@@ -75,11 +72,7 @@ impl SubBudget {
             Ordering::Acquire,
         ) {
             Ok(_) => Ok(()),
-            Err(_) => Err(Error::new(
-                ErrorCategory::Concurrency,
-                codes::CONCURRENCY_ERROR,
-                "Concurrent allocation in sub-budget",
-            )),
+            Err(_) => Err(Error::runtime_execution_error("Failed to update sub-budget allocation: race condition")),
         }
     }
 
@@ -90,8 +83,7 @@ impl SubBudget {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_STATE,
-                "Deallocating more than allocated",
-            ));
+                "Attempted to deallocate more than was allocated"));
         }
 
         self.allocated.store(current - size, Ordering::Release);
@@ -140,20 +132,12 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
         priority: MemoryPriority,
     ) -> Result<usize> {
         if allocation > self.total_budget {
-            return Err(Error::new(
-                ErrorCategory::Capacity,
-                codes::CAPACITY_EXCEEDED,
-                "Sub-budget exceeds total budget",
-            ));
+            return Err(memory_limit_exceeded_error("Sub-budget exceeds total budget"));
         }
 
         let count = self.active_count.load(Ordering::Acquire);
         if count >= MAX_SUB_BUDGETS {
-            return Err(Error::new(
-                ErrorCategory::Capacity,
-                codes::CAPACITY_EXCEEDED,
-                "Maximum sub-budgets reached",
-            ));
+            return Err(memory_limit_exceeded_error("Maximum sub-budgets reached"));
         }
 
         // Find empty slot
@@ -165,11 +149,7 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
             }
         }
 
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::INVALID_STATE,
-            "No available sub-budget slots",
-        ))
+        Err(Error::runtime_execution_error("No available sub-budget slots"))
     }
 
     /// Allocate from the best available sub-budget
@@ -194,11 +174,7 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
         }
 
         let idx = best_idx.ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Capacity,
-                codes::CAPACITY_EXCEEDED,
-                "No suitable sub-budget found",
-            )
+            memory_limit_exceeded_error("No suitable sub-budget found with sufficient space and priority")
         })?;
 
         // Try to allocate from the selected sub-budget
@@ -210,11 +186,7 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
 
             Ok((guard, idx))
         } else {
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_STATE,
-                "Sub-budget disappeared during allocation",
-            ))
+            Err(Error::runtime_execution_error("Sub-budget index became invalid during allocation"))
         }
     }
 
@@ -224,14 +196,13 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
             return Err(Error::new(
                 ErrorCategory::Capacity,
                 codes::OUT_OF_BOUNDS_ERROR,
-                "Invalid sub-budget index",
-            ));
+                "Sub-budget index out of bounds"));
         }
 
         if let Some(sub_budget) = &self.sub_budgets[sub_budget_idx] {
             sub_budget.deallocate(size)
         } else {
-            Err(Error::new(ErrorCategory::Runtime, codes::INVALID_STATE, "Sub-budget not found"))
+            Err(Error::runtime_execution_error("No sub-budget at specified index"))
         }
     }
 

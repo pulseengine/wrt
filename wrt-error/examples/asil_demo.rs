@@ -68,20 +68,11 @@ fn demonstrate_asil_features() {
     println!("------------------");
 
     // Create errors and check their ASIL levels
-    let safety_error = Error::new(
-        ErrorCategory::Safety,
-        codes::SAFETY_VIOLATION,
-        "Critical safety violation detected",
+    let safety_error = Error::safety_violation("Critical safety violation detected");
+    let memory_error = Error::runtime_execution_error(
+        ",
     );
-    let memory_error = Error::new(
-        ErrorCategory::Memory,
-        codes::MEMORY_CORRUPTION_DETECTED,
-        "Memory corruption detected",
-    );
-    let type_error = Error::new(
-        ErrorCategory::Type,
-        codes::TYPE_MISMATCH_ERROR,
-        "Type mismatch",
+    let type_error = Error::type_mismatch_error(",
     );
 
     println!(
@@ -145,11 +136,7 @@ fn demonstrate_safety_monitoring() {
     let errors = vec![
         Error::memory_error("Out of bounds access"),
         Error::validation_error("Invalid parameter"),
-        Error::new(
-            ErrorCategory::Safety,
-            codes::SAFETY_VIOLATION,
-            "Safety check failed",
-        ),
+        Error::safety_violation("Safety check failed"),
         Error::runtime_error("Execution timeout"),
     ];
 
@@ -175,15 +162,10 @@ fn demonstrate_asil_d_features() {
     println!("-----------------------");
 
     // Demonstrate error integrity validation
-    let valid_error = Error::new(
-        ErrorCategory::Memory,
-        codes::MEMORY_OUT_OF_BOUNDS,
-        "Valid memory error",
+    let valid_error = Error::runtime_execution_error(
+        ",
     );
-    let valid_safety = Error::new(
-        ErrorCategory::Safety,
-        codes::SAFETY_VIOLATION,
-        "Valid safety error",
+    let valid_safety = Error::safety_violation(",
     );
 
     println!("Error Integrity Validation:");
@@ -199,16 +181,8 @@ fn demonstrate_asil_d_features() {
     );
 
     // Demonstrate determinism and redundancy errors
-    let det_error = Error::new(
-        ErrorCategory::Safety,
-        codes::DETERMINISM_VIOLATION,
-        "Non-deterministic behavior detected",
-    );
-    let red_error = Error::new(
-        ErrorCategory::Safety,
-        codes::REDUNDANCY_CHECK_FAILURE,
-        "Redundancy check failed",
-    );
+    let det_error = Error::safety_violation("Non-deterministic behavior detected");
+    let red_error = Error::safety_violation("Redundancy check failed");
 
     println!("\nASIL-D Specific Errors:");
     println!("Determinism Error: {}", det_error);
@@ -246,11 +220,7 @@ fn process_with_asil_checks() -> Result<(), Error> {
         // ASIL-C/D: Would panic on failure in real implementation
         let condition = true;
         if !condition {
-            return Err(Error::new(
-                ErrorCategory::Safety,
-                codes::SAFETY_VIOLATION,
-                "ASIL-C/D safety check failed",
-            ));
+            return Err(Error::safety_violation("ASIL-C/D safety check failed"));
         }
     }
 

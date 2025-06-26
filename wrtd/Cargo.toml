@@ -28,6 +28,7 @@ wrt-runtime = { workspace = true, default-features = false, optional = true }
 wrt-platform = { workspace = true, default-features = false, optional = true }
 wrt-host = { workspace = true, default-features = false, optional = true }
 wrt-component = { workspace = true, default-features = false, optional = true }
+wrt-decoder = { workspace = true, default-features = false, optional = true }
 
 # WASI support
 wrt-wasi = { path = "../wrt-wasi", default-features = false, optional = true }
@@ -38,7 +39,7 @@ linked_list_allocator = { version = "0.10", optional = true }
 # No external dependencies - use internal capabilities only
 
 [features]
-default = []
+default = ["std", "wrt-execution"]
 
 # Binary choice: std OR no_std (no alloc middle ground)
 std = [
@@ -57,6 +58,7 @@ wasi-cli = ["wasi", "wrt-wasi/wasi-cli"]
 wasi-clocks = ["wasi", "wrt-wasi/wasi-clocks"]
 wasi-io = ["wasi", "wrt-wasi/wasi-io"]
 wasi-random = ["wasi", "wrt-wasi/wasi-random"]
+wasi-nn = ["wasi", "wrt-wasi/wasi-nn"]
 
 # Component model support
 component-model = ["wrt-execution", "wrt-component/component-model-all", "wrt-wasi/component-model"]

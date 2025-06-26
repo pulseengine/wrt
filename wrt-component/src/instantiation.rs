@@ -14,8 +14,9 @@ use wrt_foundation::allocator::{WrtHashMap, WrtVec, CrateId};
 use std::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
 
 use wrt_foundation::{
-    bounded::BoundedVec, prelude::*,
+    bounded::BoundedVec, bounded::BoundedString, prelude::*,
     budget_aware_provider::CrateId,
+    safe_managed_alloc,
 };
 use crate::prelude::WrtComponentType;
 
@@ -36,6 +37,10 @@ const MAX_IMPORTS: usize = 256;
 const MAX_EXPORTS: usize = 256;
 /// Maximum number of instances in no_std environments
 const MAX_INSTANCES: usize = 64;
+
+// Type alias for instantiation provider - using capability-based allocation
+// Provider instances are created using safe_managed_alloc! macro
+type InstantiationProvider = wrt_foundation::safe_memory::NoStdProvider<65536>;
 
 /// Import value provided during instantiation
 #[derive(Debug, Clone)]
@@ -70,8 +75,8 @@ pub struct InstanceImport {
     pub exports: WrtHashMap<String, ExportValue, {CrateId::Component as u8}, 256>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub exports: BTreeMap<String, ExportValue>,
-    #[cfg(not(any(feature = "std", )))]
-    pub exports: BoundedVec<(BoundedString<64, NoStdProvider<65536>>, ExportValue), MAX_EXPORTS>,
+    #[cfg(not(feature = "std"))]
+    pub exports: BoundedVec<(BoundedString<64, InstantiationProvider>, ExportValue), MAX_EXPORTS, InstantiationProvider>,
 }
 
 /// Export value from an instance
@@ -103,33 +108,33 @@ pub struct ImportValues {
     imports: WrtHashMap<String, ImportValue, {CrateId::Component as u8}, 256>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     imports: BTreeMap<String, ImportValue>,
-    #[cfg(not(any(feature = "std", )))]
-    imports: BoundedVec<(BoundedString<64, NoStdProvider<65536>>, ImportValue), MAX_IMPORTS>,
+    #[cfg(not(feature = "std"))]
+    imports: BoundedVec<(BoundedString<64, InstantiationProvider>, ImportValue), MAX_IMPORTS, InstantiationProvider>,
 }
 
 impl ImportValues {
     /// Create new import values
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> WrtResult<Self> {
+        Ok(Self {
             #[cfg(all(feature = "std", feature = "safety-critical"))]
             imports: WrtHashMap::new(),
             #[cfg(all(feature = "std", not(feature = "safety-critical")))]
             imports: BTreeMap::new(),
-            #[cfg(not(any(feature = "std", )))]
-            imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-        }
+            #[cfg(not(feature = "std"))]
+            imports: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider)?
+            },
+        })
     }
 
     /// Add an import value
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     pub fn add(&mut self, name: String, value: ImportValue) -> WrtResult<()> {
         self.imports.insert(name, value).map_err(|_| {
-            wrt_foundation::Error::new(
-                wrt_foundation::ErrorCategory::Resource,
-                wrt_error::codes::RESOURCE_EXHAUSTED,
-                "Too many imports (limit: 256)"
-            )
-        })
+            wrt_error::Error::resource_exhausted("Too many imports (limit: 256)")
+        })?;
+        Ok(())
     }
     
     /// Add an import value
@@ -141,10 +146,10 @@ impl ImportValues {
 
     /// Add an import value (no_std version)
     #[cfg(not(any(feature = "std", )))]
-    pub fn add(&mut self, name: BoundedString<64, NoStdProvider<65536>>, value: ImportValue) -> WrtResult<()> {
+    pub fn add(&mut self, name: BoundedString<64, InstantiationProvider>, value: ImportValue) -> WrtResult<()> {
         self.imports
             .push((name, value))
-            .map_err(|_| wrt_foundation::Error::new(wrt_foundation::ErrorCategory::Resource, wrt_error::codes::RESOURCE_EXHAUSTED, "Too many imports"))
+            .map_err(|_| wrt_error::Error::resource_exhausted("Too many imports"))
     }
 
     /// Get an import value by name
@@ -168,7 +173,21 @@ impl ImportValues {
 
 impl Default for ImportValues {
     fn default() -> Self {
-        Self::new()
+        Self::new().unwrap_or_else(|_| {
+            // Fallback for default construction in case allocation fails
+            Self {
+                #[cfg(all(feature = "std", feature = "safety-critical"))]
+                imports: WrtHashMap::new(),
+                #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+                imports: BTreeMap::new(),
+                #[cfg(not(feature = "std"))]
+                imports: {
+                    // Use fallback provider only in default construction
+                    let provider = InstantiationProvider::default();
+                    BoundedVec::new(provider).unwrap()
+                },
+            }
+        })
     }
 }
 
@@ -255,14 +274,26 @@ impl Component {
             resource_tables,
             #[cfg(all(feature = "std", not(feature = "safety-critical")))]
             module_instances,
-            #[cfg(not(any(feature = "std", )))]
-            imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            #[cfg(not(any(feature = "std", )))]
-            exports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            #[cfg(not(any(feature = "std", )))]
-            resource_tables: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            #[cfg(not(any(feature = "std", )))]
-            module_instances: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            #[cfg(not(feature = "std"))]
+            imports: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider)?
+            },
+            #[cfg(not(feature = "std"))]
+            exports: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider)?
+            },
+            #[cfg(not(feature = "std"))]
+            resource_tables: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider)?
+            },
+            #[cfg(not(feature = "std"))]
+            module_instances: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider)?
+            },
         };
 
         Ok(instance)
@@ -279,7 +310,7 @@ impl Component {
                         self.validate_import_type(import, value)?;
                     }
                     None => {
-                        return Err(wrt_foundation::Error::new(wrt_foundation::ErrorCategory::Validation, wrt_error::errors::codes::INVALID_INPUT, "Invalid input"));
+                        return Err(wrt_error::Error::validation_invalid_input("Invalid input"));
                     }
                 }
             }
@@ -289,7 +320,7 @@ impl Component {
             // In no_std, we have limited validation
             // Just check that we have some imports if required
             if self.imports.len() > 0 && imports.imports.len() == 0 {
-                return Err(wrt_foundation::Error::new(wrt_foundation::ErrorCategory::Validation, wrt_error::errors::codes::INVALID_INPUT, "Invalid input"));
+                return Err(wrt_error::Error::validation_invalid_input("Invalid input"));
             }
         }
 
@@ -302,21 +333,13 @@ impl Component {
             (crate::import::ImportType::Function(expected), ImportValue::Function(actual)) => {
                 // Check function signature compatibility
                 if !self.is_function_compatible(expected, &actual.signature) {
-                    return Err(wrt_foundation::Error::new(
-                        wrt_foundation::ErrorCategory::Type,
-                        wrt_error::codes::TYPE_MISMATCH_ERROR,
-                        "Function import type mismatch"
-                    ));
+                    return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Function import type mismatch"));
                 }
             }
             (crate::import::ImportType::Value(expected), ImportValue::Value(actual)) => {
                 // Check value type compatibility
                 if !self.is_value_compatible(expected, actual) {
-                    return Err(wrt_foundation::Error::new(
-                        wrt_foundation::ErrorCategory::Type,
-                        wrt_error::codes::TYPE_MISMATCH_ERROR,
-                        "Value import type mismatch"
-                    ));
+                    return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Value import type mismatch"));
                 }
             }
             (crate::import::ImportType::Instance(_), ImportValue::Instance(_)) => {
@@ -328,11 +351,7 @@ impl Component {
                 // TODO: Implement type equality checking
             }
             _ => {
-                return Err(wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Type,
-                    wrt_error::codes::TYPE_MISMATCH_ERROR,
-                    "Import kind mismatch"
-                ));
+                return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Import kind mismatch"));
             }
         }
         Ok(())
@@ -370,11 +389,7 @@ impl Component {
             // Create a budget-aware table for this resource type
             let table = ResourceTable::new()?;
             tables.push(table).map_err(|_| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Too many resource tables (limit: 16)"
-                )
+                wrt_error::Error::resource_exhausted("Too many resource tables (limit: 16)")
             })?;
         }
 
@@ -409,11 +424,7 @@ impl Component {
         for _type_id in 0..self.types.len().min(16) {
             let table = ResourceTable::new()?;
             tables.push(table).map_err(|_| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Too many resource tables"
-                )
+                wrt_error::Error::resource_exhausted("Too many resource tables")
             })?;
         }
 
@@ -433,11 +444,7 @@ impl Component {
             if let Some(value) = imports.get(&import.name) {
                 let resolved_import = self.resolve_import(import, value, context)?;
                 resolved.push(resolved_import).map_err(|_| {
-                    wrt_foundation::Error::new(
-                        wrt_foundation::ErrorCategory::Resource,
-                        wrt_error::codes::RESOURCE_EXHAUSTED,
-                        "Too many resolved imports (limit: 256)"
-                    )
+                    wrt_error::Error::resource_exhausted("Too many resolved imports (limit: 256)")
                 })?;
             }
         }
@@ -469,8 +476,9 @@ impl Component {
         &self,
         imports: &ImportValues,
         context: &mut InstantiationContext,
-    ) -> Wrtcore::result::Result<BoundedVec<ResolvedImport, MAX_IMPORTS, NoStdProvider<65536>>, NoStdProvider<65536>> {
-        let mut resolved = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
+    ) -> WrtResult<BoundedVec<ResolvedImport, MAX_IMPORTS, InstantiationProvider>> {
+        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let mut resolved = BoundedVec::new(provider)?;
 
         for import in &self.imports {
             // Find matching import by name
@@ -478,11 +486,7 @@ impl Component {
                 if name.as_str() == import.name.as_str() {
                     let resolved_import = self.resolve_import(import, value, context)?;
                     resolved.push(resolved_import).map_err(|_| {
-                        wrt_foundation::Error::new(
-                            wrt_foundation::ErrorCategory::Resource,
-                            wrt_error::codes::RESOURCE_EXHAUSTED,
-                            "Too many resolved imports"
-                        )
+                        wrt_error::Error::resource_exhausted("Too many resolved imports")
                     })?;
                     break;
                 }
@@ -536,11 +540,7 @@ impl Component {
             // Create module instance
             let instance = ModuleInstance { module_index: module_index as u32 };
             instances.push(instance).map_err(|_| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Too many module instances (limit: 64)"
-                )
+                wrt_error::Error::resource_exhausted("Too many module instances (limit: 64)")
             })?;
         }
 
@@ -569,20 +569,17 @@ impl Component {
     #[cfg(not(any(feature = "std", )))]
     fn initialize_modules(
         &self,
-        resolved_imports: &BoundedVec<ResolvedImport, MAX_IMPORTS, NoStdProvider<65536>>,
+        resolved_imports: &BoundedVec<ResolvedImport, MAX_IMPORTS, InstantiationProvider>,
         context: &mut InstantiationContext,
-    ) -> Wrtcore::result::Result<BoundedVec<ModuleInstance, MAX_INSTANCES, NoStdProvider<65536>>, NoStdProvider<65536>> {
-        let mut instances = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
+    ) -> WrtResult<BoundedVec<ModuleInstance, MAX_INSTANCES, InstantiationProvider>> {
+        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let mut instances = BoundedVec::new(provider)?;
 
         // Initialize each embedded module
         for (module_index, _module) in self.modules.iter().enumerate() {
             let instance = ModuleInstance { module_index: module_index as u32 };
             instances.push(instance).map_err(|_| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Too many module instances"
-                )
+                wrt_error::Error::resource_exhausted("Too many module instances")
             })?;
         }
 
@@ -635,11 +632,7 @@ impl Component {
                 }
             };
             exports.push(resolved).map_err(|_| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Too many exports (limit: 256)"
-                )
+                wrt_error::Error::resource_exhausted("Too many exports (limit: 256)")
             })?;
         }
 
@@ -700,10 +693,11 @@ impl Component {
     #[cfg(not(any(feature = "std", )))]
     fn extract_exports(
         &self,
-        module_instances: &BoundedVec<ModuleInstance, MAX_INSTANCES, NoStdProvider<65536>>,
+        module_instances: &BoundedVec<ModuleInstance, MAX_INSTANCES, InstantiationProvider>,
         context: &mut InstantiationContext,
-    ) -> Wrtcore::result::Result<BoundedVec<ResolvedExport, MAX_EXPORTS, NoStdProvider<65536>>, NoStdProvider<65536>> {
-        let mut exports = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
+    ) -> WrtResult<BoundedVec<ResolvedExport, MAX_EXPORTS, InstantiationProvider>> {
+        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let mut exports = BoundedVec::new(provider)?;
 
         for export in &self.exports {
             let resolved = match &export.kind {
@@ -729,11 +723,7 @@ impl Component {
                 },
             };
             exports.push(resolved).map_err(|_| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Too many exports"
-                )
+                wrt_error::Error::resource_exhausted("Too many exports")
             })?;
         }
 
@@ -756,7 +746,7 @@ pub struct ResolvedExport {
     #[cfg(feature = "std")]
     pub name: String,
     #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64, NoStdProvider<65536>>,
+    pub name: BoundedString<64, InstantiationProvider>,
     pub value: ExportValue,
 }
 

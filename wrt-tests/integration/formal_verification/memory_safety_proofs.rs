@@ -32,7 +32,6 @@ use wrt_foundation::{
     safe_managed_alloc,
     budget_aware_provider::CrateId,
     safe_memory::NoStdProvider,
-    MemoryProvider,
 };
 
 /// Enhanced memory budget verification harness

@@ -137,6 +137,10 @@ use host_provider::component_model_provider::ExternType;
 // WASI capabilities and security model
 pub mod capabilities;
 
+// Neural network support (preview-agnostic)
+#[cfg(feature = "wasi-nn")]
+pub mod nn;
+
 // WIT interface bindings
 #[cfg(feature = "preview2")]
 pub mod wit_bindings;
@@ -144,8 +148,11 @@ pub mod wit_bindings;
 // Re-export main types for convenience
 pub use capabilities::{WasiCapabilities, WasiFileSystemCapabilities, WasiEnvironmentCapabilities};
 
+#[cfg(feature = "wasi-nn")]
+pub use capabilities::WasiNeuralNetworkCapabilities;
+
 #[cfg(feature = "preview2")]
-pub use host_provider::component_model_provider::ComponentModelProvider;
+pub use host_provider::component_model_provider::{ComponentModelProvider, WasiProviderBuilder};
 
 #[cfg(feature = "preview2")]
 pub use host_provider::resource_manager::WasiResourceManager;
@@ -293,7 +300,7 @@ mod tests {
         // Ensure all codes are unique
         for (i, &code1) in codes.iter().enumerate() {
             for &code2 in codes.iter().skip(i + 1) {
-                assert_ne!(code1.0, code2.0, "Error codes must be unique");
+                assert_ne!(code1, code2, "Error codes must be unique");
             }
         }
     }

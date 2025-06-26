@@ -26,7 +26,7 @@ impl ResourceStrategy for MemoryStrategy {
             MemoryStrategy::ZeroCopy => match operation {
                 ResourceOperation::Read => Ok(data.to_vec()),
                 ResourceOperation::Write => Ok(data.to_vec()),
-                _ => Err(Error::new("Unsupported operation for ZeroCopy strategy")),
+                _ => Err(Error::runtime_execution_error("Unsupported operation for ZeroCopy strategy")),
             },
 
             // Bounded-copy strategy - always copies but reuses buffers
@@ -72,64 +72,40 @@ impl ResourceStrategy for MemoryStrategy {
             MemoryStrategy::ZeroCopy => match operation {
                 ResourceOperation::Read => {
                     let mut result = BoundedVec::with_capacity(data.len()).map_err(|e| {
-                        Error::new(
-                            wrt_error::ErrorCategory::Memory,
-                            wrt_error::codes::MEMORY_ERROR,
-                            "Component not found",
-                        )
+                        Error::component_not_found("Component not found")
                     })?;
 
                     for &byte in data {
                         result.push(byte).map_err(|e| {
-                            Error::new(
-                                wrt_error::ErrorCategory::Memory,
-                                wrt_error::codes::MEMORY_ERROR,
-                                "Component not found",
-                            )
+                            Error::component_not_found("Component not found")
                         })?;
                     }
                     Ok(result)
                 }
                 ResourceOperation::Write => {
                     let mut result = BoundedVec::with_capacity(data.len()).map_err(|e| {
-                        Error::new(
-                            wrt_error::ErrorCategory::Memory,
-                            wrt_error::codes::MEMORY_ERROR,
-                            "Component not found",
-                        )
+                        Error::component_not_found("Component not found")
                     })?;
 
                     for &byte in data {
                         result.push(byte).map_err(|e| {
-                            Error::new(
-                                wrt_error::ErrorCategory::Memory,
-                                wrt_error::codes::MEMORY_ERROR,
-                                "Component not found",
-                            )
+                            Error::component_not_found("Component not found")
                         })?;
                     }
                     Ok(result)
                 }
-                _ => Err(Error::new("Unsupported operation for ZeroCopy strategy")),
+                _ => Err(Error::runtime_execution_error("Unsupported operation for ZeroCopy strategy")),
             },
 
             // Bounded-copy strategy - always copies but reuses buffers
             MemoryStrategy::BoundedCopy => {
                 let mut result = BoundedVec::with_capacity(data.len()).map_err(|e| {
-                    Error::new(
-                        wrt_error::ErrorCategory::Memory,
-                        wrt_error::codes::MEMORY_ERROR,
-                        "Component not found",
-                    )
+                    Error::component_not_found("Component not found")
                 })?;
 
                 for &byte in data {
                     result.push(byte).map_err(|e| {
-                        Error::new(
-                            wrt_error::ErrorCategory::Memory,
-                            wrt_error::codes::MEMORY_ERROR,
-                            "Component not found",
-                        )
+                        Error::component_not_found("Component not found")
                     })?;
                 }
                 Ok(result)
@@ -141,20 +117,12 @@ impl ResourceStrategy for MemoryStrategy {
             | MemoryStrategy::Reference
             | MemoryStrategy::FullIsolation => {
                 let mut result = BoundedVec::with_capacity(data.len()).map_err(|e| {
-                    Error::new(
-                        wrt_error::ErrorCategory::Memory,
-                        wrt_error::codes::MEMORY_ERROR,
-                        "Component not found",
-                    )
+                    Error::component_not_found("Component not found")
                 })?;
 
                 for &byte in data {
                     result.push(byte).map_err(|e| {
-                        Error::new(
-                            wrt_error::ErrorCategory::Memory,
-                            wrt_error::codes::MEMORY_ERROR,
-                            "Component not found",
-                        )
+                        Error::component_not_found("Component not found")
                     })?;
                 }
                 Ok(result)

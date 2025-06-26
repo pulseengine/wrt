@@ -80,11 +80,7 @@ impl PlatformRandom {
         use std::fs::File;
         use std::io::Read;
         
-        let mut urandom = File::open("/dev/urandom").map_err(|e| Error::new(
-            ErrorCategory::Resource,
-            codes::SYSTEM_IO_ERROR_CODE,
-            &format!("Failed to open /dev/urandom: {}", e),
-        ))?;
+        let mut urandom = File::open("/dev/urandom").map_err(|_| Error::runtime_execution_error("Failed to open /dev/urandom"))?;
         
         urandom.read_exact(buffer).map_err(|e| Error::new(
             ErrorCategory::Resource,
@@ -115,11 +111,7 @@ impl PlatformRandom {
             };
             
             if result != 0 {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::SYSTEM_IO_ERROR_CODE,
-                    "getentropy failed",
-                ));
+                return Err(Error::system_io_error("getentropy failed"));
             }
         }
         
@@ -157,11 +149,7 @@ impl PlatformRandom {
         };
         
         if result != STATUS_SUCCESS {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::SYSTEM_IO_ERROR_CODE,
-                &format!("BCryptGenRandom failed with status: {}", result),
-            ));
+            return Err(Error::runtime_execution_error(&format!("ProcessPrng failed with status: {}", result)));
         }
         
         Ok(())
@@ -174,11 +162,7 @@ impl PlatformRandom {
         use std::io::Read;
         
         // QNX recommends /dev/random for cryptographic purposes
-        let mut random = File::open("/dev/random").map_err(|e| Error::new(
-            ErrorCategory::Resource,
-            codes::SYSTEM_IO_ERROR_CODE,
-            &format!("Failed to open /dev/random: {}", e),
-        ))?;
+        let mut random = File::open("/dev/random").map_err(|_| Error::runtime_execution_error("Failed to open /dev/random"))?;
         
         random.read_exact(buffer).map_err(|e| Error::new(
             ErrorCategory::Resource,
@@ -202,11 +186,7 @@ impl PlatformRandom {
         };
         
         if result != 0 {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::SYSTEM_IO_ERROR_CODE,
-                "randBytes failed",
-            ));
+            return Err(Error::system_io_error("randBytes failed"));
         }
         
         Ok(())
@@ -228,11 +208,7 @@ impl PlatformRandom {
         
         // If no secure source is available, return an error
         // We don't want to silently fall back to insecure randomness
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            "No secure random source available on this platform",
-        ))
+        Err(Error::runtime_not_implemented("No secure random source available on this platform"))
     }
     
     /// No-std implementation with limited entropy
@@ -247,11 +223,7 @@ impl PlatformRandom {
         
         #[cfg(not(feature = "platform-tock"))]
         {
-            Err(Error::new(
-                ErrorCategory::System,
-                codes::NOT_IMPLEMENTED,
-                "Random generation not available in no_std",
-            ))
+            Err(Error::runtime_execution_error("No secure random source available in no_std environment"))
         }
     }
     
@@ -269,11 +241,7 @@ impl PlatformRandom {
         };
         
         if result != 0 {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::SYSTEM_IO_ERROR_CODE,
-                "Tock random syscall failed",
-            ));
+            return Err(Error::system_io_error("Tock random syscall failed"));
         }
         
         Ok(())

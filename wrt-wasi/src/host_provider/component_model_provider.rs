@@ -11,7 +11,7 @@ use wrt_host::{HostFunctionHandler, CloneableFn};
 use crate::HostFunction;
 #[cfg(feature = "std")]
 use wrt_format::component::ExternType;
-use wrt_foundation::{safe_managed_alloc, BoundedVec, BoundedString};
+use wrt_foundation::{safe_managed_alloc, BoundedVec, BoundedString, budget_aware_provider::CrateId};
 use core::any::Any;
 // Use foundation Value type for compatibility with host functions
 use wrt_foundation::values::Value;
@@ -24,13 +24,53 @@ type WasiHostString = BoundedString<256, wrt_foundation::safe_memory::NoStdProvi
 
 // Helper to create strings
 #[cfg(not(feature = "std"))]
-fn make_string(s: &str) -> WasiHostString {
-    let provider = wrt_foundation::safe_memory::NoStdProvider::<1024>::default();
-    BoundedString::from_str(s, provider).unwrap_or_else(|_| {
-        // Fallback to empty string on error
-        let provider2 = wrt_foundation::safe_memory::NoStdProvider::<1024>::default();
-        BoundedString::from_str("", provider2).unwrap()
-    })
+fn make_string(s: &str) -> Result<WasiHostString> {
+    let provider = safe_managed_alloc!(1024, CrateId::Wasi)?;
+    BoundedString::from_str(s, provider).map_err(|_| Error::wasi_invalid_argument("Failed to create bounded string"))
+}
+
+/// Convert foundation Value types to value_compat Value types
+#[cfg(feature = "std")]
+fn convert_foundation_values_to_compat(args: FoundationValueVec) -> Result<Vec<crate::Value>> {
+    let mut converted = Vec::new();
+    for arg in args {
+        match arg {
+            wrt_foundation::values::Value::I32(v) => converted.push(crate::Value::S32(v)),
+            wrt_foundation::values::Value::I64(v) => converted.push(crate::Value::S64(v)),
+            wrt_foundation::values::Value::F32(v) => converted.push(crate::Value::F32(v.value())),
+            wrt_foundation::values::Value::F64(v) => converted.push(crate::Value::F64(v.value())),
+            _ => return Err(Error::wasi_invalid_argument("Unsupported value type for conversion")),
+        }
+    }
+    Ok(converted)
+}
+
+/// Convert value_compat Value types back to foundation Value types
+#[cfg(feature = "std")]
+fn convert_compat_values_to_foundation(values: Vec<crate::Value>) -> Result<FoundationValueVec> {
+    let mut converted = Vec::new();
+    for value in values {
+        match value {
+            crate::Value::Bool(v) => converted.push(wrt_foundation::values::Value::I32(if v { 1 } else { 0 })),
+            crate::Value::U8(v) => converted.push(wrt_foundation::values::Value::I32(v as i32)),
+            crate::Value::U16(v) => converted.push(wrt_foundation::values::Value::I32(v as i32)),
+            crate::Value::U32(v) => converted.push(wrt_foundation::values::Value::I64(v as i64)),
+            crate::Value::U64(v) => converted.push(wrt_foundation::values::Value::I64(v as i64)),
+            crate::Value::S8(v) => converted.push(wrt_foundation::values::Value::I32(v as i32)),
+            crate::Value::S16(v) => converted.push(wrt_foundation::values::Value::I32(v as i32)),
+            crate::Value::S32(v) => converted.push(wrt_foundation::values::Value::I32(v)),
+            crate::Value::S64(v) => converted.push(wrt_foundation::values::Value::I64(v)),
+            crate::Value::F32(v) => converted.push(wrt_foundation::values::Value::F32(wrt_foundation::values::FloatBits32::from_float(v))),
+            crate::Value::F64(v) => converted.push(wrt_foundation::values::Value::F64(wrt_foundation::values::FloatBits64::from_float(v))),
+            crate::Value::List(list) => {
+                // For lists, we'll need to convert to an appropriate foundation type
+                // This is a simplification - real implementation would need proper list support
+                return Err(Error::wasi_invalid_argument("List values not yet supported in conversion"));
+            }
+            _ => return Err(Error::wasi_invalid_argument("Unsupported value type for conversion")),
+        }
+    }
+    Ok(converted)
 }
 
 #[cfg(feature = "std")]
@@ -99,11 +139,7 @@ impl wrt_foundation::traits::FromBytes for ValType {
             1 => Ok(ValType::I64),
             2 => Ok(ValType::F32),
             3 => Ok(ValType::F64),
-            _ => Err(wrt_foundation::Error::new(
-                wrt_error::ErrorCategory::Parse,
-                wrt_error::codes::PARSE_ERROR,
-                "Invalid ValType discriminant",
-            )),
+            _ => Err(wrt_error::Error::parse_error("Invalid ValType discriminant")),
         }
     }
 }
@@ -136,25 +172,24 @@ type TypeVec = wrt_foundation::BoundedVec<ValType, 16, wrt_foundation::safe_memo
 #[cfg(not(feature = "std"))]
 fn empty_value_vec() -> Result<ValueVec> {
     use wrt_foundation::safe_memory::NoStdProvider;
-    let provider = NoStdProvider::<65536>::default();
-    ValueVec::new(provider).map_err(|_| Error::new(
-        ErrorCategory::Memory,
-        wrt_error::codes::MEMORY_ALLOCATION_FAILED,
-        "Failed to create empty value vector"
-    ))
+    let provider = safe_managed_alloc!(65536, CrateId::Wasi)?;
+    ValueVec::new(provider).map_err(|_| Error::runtime_execution_error("Failed to create value vector"))
 }
 
 // Helper function to create empty type vector
 #[cfg(not(feature = "std"))]
 fn empty_type_vec() -> Result<TypeVec> {
     use wrt_foundation::safe_memory::NoStdProvider;
-    let provider = NoStdProvider::<1024>::default();
-    TypeVec::new(provider).map_err(|_| Error::new(
-        ErrorCategory::Memory,
-        wrt_error::codes::MEMORY_ALLOCATION_FAILED,
-        "Failed to create empty type vector"
-    ))
+    let provider = safe_managed_alloc!(1024, CrateId::Wasi)?;
+    TypeVec::new(provider).map_err(|_| Error::runtime_execution_error("Failed to create type vector"))
 }
+
+// Type alias for Value vectors from foundation
+#[cfg(feature = "std")]
+type FoundationValueVec = Vec<wrt_foundation::values::Value>;
+
+#[cfg(not(feature = "std"))]
+type FoundationValueVec = wrt_foundation::BoundedVec<wrt_foundation::values::Value, 16, wrt_foundation::safe_memory::NoStdProvider<65536>>;
 
 // Macro to create value vector in both std and no_std modes
 macro_rules! value_vec {
@@ -268,6 +303,12 @@ impl ComponentModelProvider {
             functions.push(self.create_random_get_function()?);
         }
         
+        // Add neural network functions if capabilities allow
+        #[cfg(all(feature = "wasi-nn", feature = "nn-preview2", feature = "std"))]
+        if self.capabilities.nn.dynamic_loading {
+            functions.extend(self.create_nn_functions()?);
+        }
+        
         self.cached_functions = Some(functions);
         Ok(self.cached_functions.as_ref().unwrap())
     }
@@ -286,6 +327,8 @@ impl ComponentModelProvider {
         if self.capabilities.clocks.monotonic_access { count += 1; }
         if self.capabilities.io.stdout_access { count += 1; }
         if self.capabilities.random.secure_random { count += 1; }
+        #[cfg(feature = "wasi-nn")]
+        if self.capabilities.nn.dynamic_loading { count += 5; } // 5 NN functions
         
         self.cached_functions = Some(count);
         Ok(count)
@@ -299,11 +342,14 @@ impl ComponentModelProvider {
         use crate::value_capability_aware::CapabilityAwareValue;
         
         Ok(HostFunction {
+            #[cfg(feature = "std")]
             name: make_string("wasi:filesystem/types.read"),
+            #[cfg(not(feature = "std"))]
+            name: make_string("wasi:filesystem/types.read")?,
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
                 // Return capability-aware empty result
                 // Return empty result vector
-                Ok(value_vec!())
+                Ok(vec![])
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
@@ -314,9 +360,12 @@ impl ComponentModelProvider {
         // use crate::preview2::filesystem::wasi_filesystem_write;
         
         Ok(HostFunction {
+            #[cfg(feature = "std")]
             name: make_string("wasi:filesystem/types.write"),
+            #[cfg(not(feature = "std"))]
+            name: make_string("wasi:filesystem/types.write")?,
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(value_vec!())
+                Ok(vec![])
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
@@ -327,9 +376,12 @@ impl ComponentModelProvider {
         // use crate::preview2::filesystem::wasi_filesystem_open_at;
         
         Ok(HostFunction {
+            #[cfg(feature = "std")]
             name: make_string("wasi:filesystem/types.open-at"),
+            #[cfg(not(feature = "std"))]
+            name: make_string("wasi:filesystem/types.open-at")?,
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(value_vec!())
+                Ok(vec![])
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
@@ -338,7 +390,10 @@ impl ComponentModelProvider {
     /// Create host function for WASI CLI arguments
     fn create_cli_args_function(&self) -> Result<HostFunction> {
         Ok(HostFunction {
+            #[cfg(feature = "std")]
             name: make_string("wasi:cli/environment.get-arguments"),
+            #[cfg(not(feature = "std"))]
+            name: make_string("wasi:cli/environment.get-arguments")?,
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
                 // Placeholder implementation for no_std
                 #[cfg(feature = "wasi-cli")]
@@ -352,7 +407,7 @@ impl ComponentModelProvider {
                 }
                 #[cfg(not(feature = "wasi-cli"))]
                 {
-                    Ok(value_vec!())
+                    Ok(vec![])
                 }
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
@@ -362,7 +417,10 @@ impl ComponentModelProvider {
     /// Create host function for WASI CLI environment variables
     fn create_cli_environ_function(&self) -> Result<HostFunction> {
         Ok(HostFunction {
+            #[cfg(feature = "std")]
             name: make_string("wasi:cli/environment.get-environment"),
+            #[cfg(not(feature = "std"))]
+            name: make_string("wasi:cli/environment.get-environment")?,
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
                 // Placeholder implementation for no_std
                 #[cfg(feature = "wasi-cli")]
@@ -376,7 +434,7 @@ impl ComponentModelProvider {
                 }
                 #[cfg(not(feature = "wasi-cli"))]
                 {
-                    Ok(value_vec!())
+                    Ok(vec![])
                 }
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
@@ -388,9 +446,12 @@ impl ComponentModelProvider {
         // use crate::preview2::clocks::wasi_monotonic_clock_now;
         
         Ok(HostFunction {
+            #[cfg(feature = "std")]
             name: make_string("wasi:clocks/monotonic-clock.now"),
+            #[cfg(not(feature = "std"))]
+            name: make_string("wasi:clocks/monotonic-clock.now")?,
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(value_vec!())
+                Ok(vec![])
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
@@ -401,9 +462,12 @@ impl ComponentModelProvider {
         // use crate::preview2::io::wasi_stream_write;
         
         Ok(HostFunction {
+            #[cfg(feature = "std")]
             name: make_string("wasi:io/streams.write"),
+            #[cfg(not(feature = "std"))]
+            name: make_string("wasi:io/streams.write")?,
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(value_vec!())
+                Ok(vec![])
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
@@ -414,12 +478,108 @@ impl ComponentModelProvider {
         // use crate::preview2::random::wasi_get_random_bytes;
         
         Ok(HostFunction {
+            #[cfg(feature = "std")]
             name: make_string("wasi:random/random.get-random-bytes"),
+            #[cfg(not(feature = "std"))]
+            name: make_string("wasi:random/random.get-random-bytes")?,
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(value_vec!())
+                Ok(vec![])
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
+    }
+    
+    /// Create host functions for WASI neural network interface
+    #[cfg(all(feature = "wasi-nn", feature = "nn-preview2", feature = "std"))]
+    fn create_nn_functions(&self) -> Result<Vec<HostFunction>> {
+        use crate::nn::sync_bridge::{
+            wasi_nn_load, wasi_nn_init_execution_context, wasi_nn_set_input,
+            wasi_nn_compute, wasi_nn_get_output,
+        };
+        
+        let mut functions = Vec::new();
+        
+        // Load function
+        functions.push(HostFunction {
+            name: make_string("wasi:nn/inference.load"),
+            handler: HostFunctionHandler::new_with_args(|target: &mut dyn Any, args: FoundationValueVec| {
+                // Convert wrt_foundation::Value to crate::Value
+                let converted_args = convert_foundation_values_to_compat(args)?;
+                
+                // Call the actual function
+                let result = wasi_nn_load(target, converted_args)?;
+                
+                // Convert back from crate::Value to wrt_foundation::Value
+                convert_compat_values_to_foundation(result)
+            }),
+            extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
+        });
+        
+        // Init execution context function
+        functions.push(HostFunction {
+            name: make_string("wasi:nn/inference.init-execution-context"),
+            handler: HostFunctionHandler::new_with_args(|target: &mut dyn Any, args: FoundationValueVec| {
+                // Convert wrt_foundation::Value to crate::Value
+                let converted_args = convert_foundation_values_to_compat(args)?;
+                
+                // Call the actual function
+                let result = wasi_nn_init_execution_context(target, converted_args)?;
+                
+                // Convert back from crate::Value to wrt_foundation::Value
+                convert_compat_values_to_foundation(result)
+            }),
+            extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
+        });
+        
+        // Set input function
+        functions.push(HostFunction {
+            name: make_string("wasi:nn/inference.set-input"),
+            handler: HostFunctionHandler::new_with_args(|target: &mut dyn Any, args: FoundationValueVec| {
+                // Convert wrt_foundation::Value to crate::Value
+                let converted_args = convert_foundation_values_to_compat(args)?;
+                
+                // Call the actual function
+                let result = wasi_nn_set_input(target, converted_args)?;
+                
+                // Convert back from crate::Value to wrt_foundation::Value
+                convert_compat_values_to_foundation(result)
+            }),
+            extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
+        });
+        
+        // Compute function
+        functions.push(HostFunction {
+            name: make_string("wasi:nn/inference.compute"),
+            handler: HostFunctionHandler::new_with_args(|target: &mut dyn Any, args: FoundationValueVec| {
+                // Convert wrt_foundation::Value to crate::Value
+                let converted_args = convert_foundation_values_to_compat(args)?;
+                
+                // Call the actual function
+                let result = wasi_nn_compute(target, converted_args)?;
+                
+                // Convert back from crate::Value to wrt_foundation::Value
+                convert_compat_values_to_foundation(result)
+            }),
+            extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
+        });
+        
+        // Get output function
+        functions.push(HostFunction {
+            name: make_string("wasi:nn/inference.get-output"),
+            handler: HostFunctionHandler::new_with_args(|target: &mut dyn Any, args: FoundationValueVec| {
+                // Convert wrt_foundation::Value to crate::Value
+                let converted_args = convert_foundation_values_to_compat(args)?;
+                
+                // Call the actual function
+                let result = wasi_nn_get_output(target, converted_args)?;
+                
+                // Convert back from crate::Value to wrt_foundation::Value
+                convert_compat_values_to_foundation(result)
+            }),
+            extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
+        });
+        
+        Ok(functions)
     }
     
     /// Extract module name from full WASI function name

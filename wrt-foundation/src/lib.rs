@@ -79,6 +79,9 @@ extern crate std;
 #[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
+// External crates
+use wrt_error::{codes, kinds, Error, ErrorCategory};
+
 // WRT - wrt-foundation
 // SW-REQ-ID: REQ_MEM_SAFETY_001
 //
@@ -89,37 +92,20 @@ extern crate alloc;
 // SW-REQ-ID: REQ_LANG_RUST_PROJECT_SETUP_001
 // SW-REQ-ID: REQ_LANG_RUST_EDITION_001
 
-// #![deny(
-//     warnings,
-//     missing_docs,
-//     missing_debug_implementations,
-//     missing_copy_implementations,
-//     trivial_casts,
-//     trivial_numeric_casts,
-//     unstable_features,
-//     unused_import_braces,
-//     unused_qualifications
-// )]
-#[forbid(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#[forbid(clippy::unwrap_used, clippy::panic)]
 #[warn(clippy::pedantic, clippy::nursery)]
+// Note: clippy::expect_used is allowed at crate level (line 53) for documented safety cases
 #[allow(clippy::missing_errors_doc)]
 #[allow(clippy::missing_panics_doc)]
 #[allow(clippy::return_self_not_must_use)]
 #[allow(clippy::doc_markdown)]
-// #![deny(pointer_cast)] // Removed, as it's not a standard lint
-// Binary std/no_std choice
-// custom
-// Conditionally import log if std feature is enabled
-// #[cfg(feature = "std")] // Removed
-// extern crate log; // Removed
+
 // Prelude module for consistent imports across std and no_std environments
 pub mod prelude;
 pub mod safety_features;
 
 // Re-export common types from prelude
 pub use prelude::*;
-// Re-export error related types for convenience
-pub use wrt_error::{codes, kinds, Error, ErrorCategory};
 
 /// `Result` type alias for WRT operations using `wrt_error::Error`
 pub type WrtResult<T> = core::result::Result<T, Error>;
@@ -229,6 +215,12 @@ pub mod capabilities;
 pub mod capability_allocators;
 // Platform abstraction for safe atomic operations
 pub mod platform_atomic;
+// Systematic fault detection for memory safety (ASIL-A)
+pub mod fault_detection;
+// Runtime safety monitoring for production deployments (ASIL-A)
+pub mod safety_monitor;
+// Production telemetry and logging infrastructure (ASIL-A)
+pub mod telemetry;
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
@@ -498,6 +490,7 @@ mod tests {
     use crate::budget_aware_provider::CrateId;
     use crate::safe_memory::{NoStdProvider, SafeMemoryHandler};
     use crate::traits::BoundedCapacity;
+    use crate::safe_managed_alloc;
 
     // Helper function to initialize memory system for tests
     fn init_test_memory_system() {
@@ -505,93 +498,92 @@ mod tests {
     }
 
     #[test]
-    fn test_boundedvec_is_empty() {
+    fn test_boundedvec_is_empty() -> WrtResult<()> {
         init_test_memory_system();
         // Use capability-driven approach instead of unsafe release
         use crate::capabilities::{CapabilityFactoryBuilder, ProviderCapabilityExt};
         use crate::safe_memory::NoStdProvider;
 
-        let base_provider = NoStdProvider::<1024>::default();
+        let base_provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
         let factory = CapabilityFactoryBuilder::new()
-            .with_dynamic_capability(CrateId::Foundation, 1024)
-            .unwrap()
+            .with_dynamic_capability(CrateId::Foundation, 1024)?
             .build();
-        let provider = factory.create_provider::<1024>(CrateId::Foundation).unwrap();
-        let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
+        let provider = factory.create_provider::<1024>(CrateId::Foundation)?;
+        let mut vec = BoundedVec::<u32, 10, _>::new(provider)?;
 
         // Test is_empty
         assert!(vec.is_empty());
 
         // Add an item
-        vec.push(42).unwrap();
+        vec.push(42)?;
 
         // Test not empty
         assert!(!vec.is_empty());
         assert_eq!(vec.len(), 1);
+        Ok(())
     }
 
     #[test]
     #[cfg(feature = "std")]
-    fn test_boundedvec_to_vec_std() {
+    fn test_boundedvec_to_vec_std() -> WrtResult<()> {
         init_test_memory_system();
         // Use capability-driven approach instead of unsafe release
         use crate::capabilities::CapabilityFactoryBuilder;
 
         let factory = CapabilityFactoryBuilder::new()
-            .with_dynamic_capability(CrateId::Foundation, 1024)
-            .unwrap()
+            .with_dynamic_capability(CrateId::Foundation, 1024)?
             .build();
-        let provider = factory.create_provider::<1024>(CrateId::Foundation).unwrap();
-        let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
+        let provider = factory.create_provider::<1024>(CrateId::Foundation)?;
+        let mut vec = BoundedVec::<u32, 10, _>::new(provider)?;
 
-        vec.push(1).unwrap();
-        vec.push(2).unwrap();
-        vec.push(3).unwrap();
+        vec.push(1)?;
+        vec.push(2)?;
+        vec.push(3)?;
 
-        let std_vec = vec.to_vec().unwrap();
+        let std_vec = vec.to_vec()?;
         assert_eq!(std_vec, vec![1, 2, 3]);
+        Ok(())
     }
 
     #[test]
     #[cfg(not(feature = "std"))]
-    fn test_boundedvec_to_vec_no_std() {
+    fn test_boundedvec_to_vec_no_std() -> WrtResult<()> {
         init_test_memory_system();
         // Use capability-driven approach instead of unsafe release
         use crate::capabilities::CapabilityFactoryBuilder;
 
         let factory = CapabilityFactoryBuilder::new()
-            .with_dynamic_capability(CrateId::Foundation, 1024)
-            .unwrap()
+            .with_dynamic_capability(CrateId::Foundation, 1024)?
             .build();
-        let provider = factory.create_provider::<1024>(CrateId::Foundation).unwrap();
-        let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
+        let provider = factory.create_provider::<1024>(CrateId::Foundation)?;
+        let mut vec = BoundedVec::<u32, 10, _>::new(provider)?;
 
-        vec.push(1).unwrap();
-        vec.push(2).unwrap();
-        vec.push(3).unwrap();
+        vec.push(1)?;
+        vec.push(2)?;
+        vec.push(3)?;
 
-        let cloned_vec = vec.to_vec().unwrap();
+        let cloned_vec = vec.to_vec()?;
         assert_eq!(cloned_vec.len(), 3);
-        assert_eq!(cloned_vec.get(0).unwrap(), 1);
-        assert_eq!(cloned_vec.get(1).unwrap(), 2);
-        assert_eq!(cloned_vec.get(2).unwrap(), 3);
+        assert_eq!(cloned_vec.get(0)?, 1);
+        assert_eq!(cloned_vec.get(1)?, 2);
+        assert_eq!(cloned_vec.get(2)?, 3);
+        Ok(())
     }
 
     #[test]
-    fn test_safe_memory_handler_to_vec() {
+    fn test_safe_memory_handler_to_vec() -> WrtResult<()> {
         init_test_memory_system();
         // Use capability-driven approach instead of unsafe release
         use crate::capabilities::CapabilityFactoryBuilder;
 
         let factory = CapabilityFactoryBuilder::new()
-            .with_dynamic_capability(CrateId::Foundation, 1024)
-            .unwrap()
+            .with_dynamic_capability(CrateId::Foundation, 1024)?
             .build();
-        let provider = factory.create_provider::<1024>(CrateId::Foundation).unwrap();
+        let provider = factory.create_provider::<1024>(CrateId::Foundation)?;
         let handler = SafeMemoryHandler::new(provider);
 
         // Test to_vec on empty handler
-        let data = handler.to_vec().unwrap();
+        let data = handler.to_vec()?;
 
         #[cfg(feature = "std")]
         {
@@ -602,6 +594,7 @@ mod tests {
         {
             assert!(data.is_empty());
         }
+        Ok(())
     }
 
     // TODO: Add comprehensive tests for all public functionality in

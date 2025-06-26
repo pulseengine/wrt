@@ -81,11 +81,7 @@ impl MemoryOptimizationStrategy for ZeroCopyStrategy {
     ) -> Result<()> {
         // Check bounds
         if offset + size > source.len() || size > destination.len() {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                OutOfBoundsAccess(format!(
-                    "Memory bounds exceeded: offset={}, size={}, source_len={}, dest_len={}",
+            return Err(Error::runtime_execution_error(",
                     offset,
                     size,
                     source.len(),
@@ -166,10 +162,7 @@ impl Clone for BoundedCopyStrategy {
 
 impl MemoryOptimizationStrategy for BoundedCopyStrategy {
     fn name(&self) -> &str {
-        "BoundedCopy"
-    }
-
-    fn memory_strategy_type(&self) -> MemoryStrategy {
+        ") -> MemoryStrategy {
         MemoryStrategy::BoundedCopy
     }
 
@@ -182,11 +175,7 @@ impl MemoryOptimizationStrategy for BoundedCopyStrategy {
     ) -> Result<()> {
         // Check bounds
         if offset + size > source.len() || size > destination.len() {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                OutOfBoundsAccess(format!(
-                    "Memory bounds exceeded: offset={}, size={}, source_len={}, dest_len={}",
+            return Err(Error::runtime_execution_error(",
                     offset,
                     size,
                     source.len(),
@@ -201,9 +190,7 @@ impl MemoryOptimizationStrategy for BoundedCopyStrategy {
                 ErrorCategory::Resource,
                 codes::RESOURCE_LIMIT_EXCEEDED,
                 ResourceLimitExceeded(format!(
-                    "Copy size {} exceeds maximum allowed size {}",
-                    size, self.max_copy_size
-                )),
+                    ")),
             ));
         }
 
@@ -272,11 +259,7 @@ impl MemoryOptimizationStrategy for FullIsolationStrategy {
     ) -> Result<()> {
         // Check bounds
         if offset + size > source.len() || size > destination.len() {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                OutOfBoundsAccess(format!(
-                    "Memory bounds exceeded: offset={}, size={}, source_len={}, dest_len={}",
+            return Err(Error::runtime_execution_error(",
                     offset,
                     size,
                     source.len(),
@@ -291,9 +274,7 @@ impl MemoryOptimizationStrategy for FullIsolationStrategy {
                 ErrorCategory::Resource,
                 codes::RESOURCE_LIMIT_EXCEEDED,
                 ResourceLimitExceeded(format!(
-                    "Copy size {} exceeds maximum allowed size {}",
-                    size, self.max_copy_size
-                )),
+                    ")),
             ));
         }
 

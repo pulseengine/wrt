@@ -751,11 +751,7 @@ impl SafetyContext {
         let compile_level_u8 = self.compile_time_asil as u8;
 
         if new_level_u8 < compile_level_u8 {
-            return Err(Error::new(
-                ErrorCategory::Safety,
-                codes::SAFETY_VIOLATION,
-                "Cannot downgrade ASIL below compile-time level",
-            ));
+            return Err(Error::safety_violation("Cannot downgrade ASIL below compile-time level"));
         }
 
         self.runtime_asil.store(new_level_u8, Ordering::Release);
@@ -963,11 +959,7 @@ impl UniversalSafetyContext {
                 return Ok(());
             }
         }
-        Err(Error::new(
-            ErrorCategory::Safety,
-            codes::SAFETY_VIOLATION,
-            "Too many secondary standards",
-        ))
+        Err(Error::safety_violation("Too many secondary standards"))
     }
 
     /// Get the effective severity (highest of all standards)
@@ -1188,11 +1180,7 @@ impl<'a> SafetyGuard<'a> {
         // Check if the context is in a safe state
         if !context.is_safe() {
             context.record_violation();
-            return Err(Error::new(
-                ErrorCategory::Safety,
-                codes::SAFETY_VIOLATION,
-                "Safety context is not in a safe state",
-            ));
+            return Err(Error::safety_violation("Safety context is not in a safe state"));
         }
 
         Ok(Self {
@@ -1221,11 +1209,7 @@ impl<'a> SafetyGuard<'a> {
         if self.context.should_verify() {
             verifier().map_err(|_| {
                 self.context.record_violation();
-                Error::new(
-                    ErrorCategory::Safety,
-                    codes::VERIFICATION_FAILED,
-                    "Safety verification failed",
-                )
+                Error::verification_failed("Safety verification failed")
             })?;
         }
         Ok(())
@@ -1298,11 +1282,7 @@ impl<'a> SafeMemoryAllocation<'a> {
             let current_checksum = Self::calculate_checksum(self.data);
             if current_checksum != self.checksum {
                 self.context.record_violation();
-                return Err(Error::new(
-                    ErrorCategory::Safety,
-                    codes::MEMORY_CORRUPTION_DETECTED,
-                    "Memory corruption detected",
-                ));
+                return Err(Error::memory_error("Memory corruption detected"));
             }
         }
         Ok(())

@@ -39,6 +39,30 @@ pub trait FnWithVecValue: Send + Sync {
     fn call(&self, target: &mut dyn Any, args: ValueVec) -> Result<ValueVec>;
 }
 
+/// Wrapper for functions that take both target and arguments
+#[cfg(feature = "std")]
+#[derive(Clone)]
+struct ArgsWrapper<F>
+where
+    F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + Clone + 'static,
+{
+    func: F,
+}
+
+#[cfg(feature = "std")]
+impl<F> FnWithVecValue for ArgsWrapper<F>
+where
+    F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + Clone + 'static,
+{
+    fn call(&self, target: &mut dyn Any, args: ValueVec) -> Result<ValueVec> {
+        (self.func)(target, args)
+    }
+
+    fn clone_box(&self) -> Box<dyn FnWithVecValue> {
+        Box::new(self.clone())
+    }
+}
+
 #[cfg(feature = "std")]
 impl<F> FnWithVecValue for F
 where
@@ -52,6 +76,26 @@ where
 
     fn clone_box(&self) -> Box<dyn FnWithVecValue> {
         Box::new(self.clone())
+    }
+}
+
+/// Wrapper for functions that take both target and arguments (no_std version)
+#[cfg(not(feature = "std"))]
+#[derive(Clone)]
+struct ArgsWrapper<F>
+where
+    F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + Clone + 'static,
+{
+    func: F,
+}
+
+#[cfg(not(feature = "std"))]
+impl<F> FnWithVecValue for ArgsWrapper<F>
+where
+    F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + Clone + 'static,
+{
+    fn call(&self, target: &mut dyn Any, args: ValueVec) -> Result<ValueVec> {
+        (self.func)(target, args)
     }
 }
 
@@ -88,6 +132,16 @@ impl CloneableFn {
         Self(Box::new(f))
     }
 
+    /// Creates a new `CloneableFn` from a closure that takes both target and arguments.
+    ///
+    /// The closure must be `Send`, `Sync`, `Clone`, and `'static`.
+    pub fn new_with_args<F>(f: F) -> Self
+    where
+        F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + Clone + 'static,
+    {
+        Self(Box::new(ArgsWrapper { func: f }))
+    }
+
     /// Calls the wrapped function.
     pub fn call(&self, target: &mut dyn Any, args: ValueVec) -> Result<ValueVec> {
         self.0.call(target, args)
@@ -102,6 +156,16 @@ impl CloneableFn {
     pub fn new<F>(_f: F) -> Self
     where
         F: Fn(&mut dyn Any) -> Result<ValueVec> + Send + Sync + Clone + 'static,
+    {
+        Self
+    }
+
+    /// Creates a new `CloneableFn` from a closure that takes both target and arguments.
+    ///
+    /// In `no_std` mode, this is a no-op since we can't store dynamic functions.
+    pub fn new_with_args<F>(_f: F) -> Self
+    where
+        F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + Clone + 'static,
     {
         Self
     }

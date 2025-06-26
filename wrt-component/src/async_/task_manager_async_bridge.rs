@@ -226,11 +226,7 @@ impl TaskManagerAsyncBridge {
         };
 
         self.async_contexts.insert(component_id, context).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many component async contexts".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many component async contexts")
         })?;
 
         Ok(())
@@ -250,28 +246,16 @@ impl TaskManagerAsyncBridge {
     {
         // Check component async context
         let context = self.async_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not initialized for async".to_string(),
-            )
+            Error::validation_invalid_input("Component not initialized for async")
         })?;
 
         if context.async_state != ComponentAsyncState::Active {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_STATE,
-                "Component async operations not active".to_string(),
-            ));
+            return Err(Error::validation_invalid_state("Component async operations not active"));
         }
 
         // Check resource limits
         if context.active_tasks.len() >= context.resource_limits.max_concurrent_tasks {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component async task limit exceeded".to_string(),
-            ));
+            return Err(Error::resource_limit_exceeded("Component async task limit exceeded"));
         }
 
         // Create Component Model task
@@ -311,28 +295,16 @@ impl TaskManagerAsyncBridge {
 
         // Store task mappings
         self.async_tasks.insert(component_task_id, async_task).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many async tasks".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many async tasks")
         })?;
 
         self.task_mapping.insert(component_task_id, executor_task_id).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Task mapping table full".to_string(),
-            )
+            Error::resource_limit_exceeded("Task mapping table full")
         })?;
 
         // Update component context
         context.active_tasks.push(component_task_id).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component task list full".to_string(),
-            )
+            Error::resource_limit_exceeded("Component task list full")
         })?;
 
         // Update statistics
@@ -348,19 +320,11 @@ impl TaskManagerAsyncBridge {
         future: Box<dyn Future + Send>,
     ) -> Result<FutureHandle, Error> {
         let context = self.async_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not initialized".to_string(),
-            )
+            Error::validation_invalid_input("Component not initialized")
         })?;
 
         if context.futures.len() >= context.resource_limits.max_futures {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component future limit exceeded".to_string(),
-            ));
+            return Err(Error::resource_limit_exceeded("Component future limit exceeded"));
         }
 
         // Generate unique handle
@@ -380,11 +344,7 @@ impl TaskManagerAsyncBridge {
 
         // Store handle mapping
         context.futures.insert(handle, task_id).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Future handle table full".to_string(),
-            )
+            Error::resource_limit_exceeded("Future handle table full")
         })?;
 
         self.bridge_stats.futures_created.fetch_add(1, Ordering::Relaxed);
@@ -399,19 +359,11 @@ impl TaskManagerAsyncBridge {
         stream: Box<dyn Stream + Send>,
     ) -> Result<StreamHandle, Error> {
         let context = self.async_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not initialized".to_string(),
-            )
+            Error::validation_invalid_input("Component not initialized")
         })?;
 
         if context.streams.len() >= context.resource_limits.max_streams {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component stream limit exceeded".to_string(),
-            ));
+            return Err(Error::resource_limit_exceeded("Component stream limit exceeded"));
         }
 
         let handle = StreamHandle::new(self.generate_handle_id());
@@ -429,11 +381,7 @@ impl TaskManagerAsyncBridge {
         )?;
 
         context.streams.insert(handle, task_id).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Stream handle table full".to_string(),
-            )
+            Error::resource_limit_exceeded("Stream handle table full")
         })?;
 
         self.bridge_stats.streams_created.fetch_add(1, Ordering::Relaxed);
@@ -446,11 +394,7 @@ impl TaskManagerAsyncBridge {
         let current_task = {
             let tm = self.task_manager.lock()?;
             tm.current_task_id().ok_or_else(|| {
-                Error::new(
-                    ErrorCategory::Validation,
-                    codes::INVALID_STATE,
-                    "No current task".to_string(),
-                )
+                Error::validation_invalid_state("No current task")
             })?
         };
 
@@ -481,11 +425,7 @@ impl TaskManagerAsyncBridge {
         let current_task = {
             let tm = self.task_manager.lock()?;
             tm.current_task_id().ok_or_else(|| {
-                Error::new(
-                    ErrorCategory::Validation,
-                    codes::INVALID_STATE,
-                    "No current task".to_string(),
-                )
+                Error::validation_invalid_state("No current task")
             })?
         };
 
@@ -529,11 +469,7 @@ impl TaskManagerAsyncBridge {
     /// Suspend component async operations
     pub fn suspend_component_async(&mut self, component_id: ComponentInstanceId) -> Result<(), Error> {
         let context = self.async_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not found".to_string(),
-            )
+            Error::validation_invalid_input("Component not found")
         })?;
 
         context.async_state = ComponentAsyncState::Suspending;

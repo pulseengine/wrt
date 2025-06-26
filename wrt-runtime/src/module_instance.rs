@@ -52,17 +52,29 @@ pub struct ModuleInstance {
 
 impl ModuleInstance {
     /// Create a new module instance from a module
-    pub fn new(module: Module, instance_id: usize) -> Self {
-        Self {
+    pub fn new(module: Module, instance_id: usize) -> Result<Self> {
+        // Allocate memory for memories collection
+        let memories_provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+        let memories_vec = wrt_foundation::bounded::BoundedVec::new(memories_provider)?;
+        
+        // Allocate memory for tables collection
+        let tables_provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+        let tables_vec = wrt_foundation::bounded::BoundedVec::new(tables_provider)?;
+        
+        // Allocate memory for globals collection
+        let globals_provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+        let globals_vec = wrt_foundation::bounded::BoundedVec::new(globals_provider)?;
+        
+        Ok(Self {
             module: Arc::new(module),
-            memories: Arc::new(Mutex::new(wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())),
-            tables: Arc::new(Mutex::new(wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())),
-            globals: Arc::new(Mutex::new(wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())),
+            memories: Arc::new(Mutex::new(memories_vec)),
+            tables: Arc::new(Mutex::new(tables_vec)),
+            globals: Arc::new(Mutex::new(globals_vec)),
             instance_id,
             imports: Default::default(),
             #[cfg(feature = "debug")]
             debug_info: None,
-        }
+        })
     }
 
     /// Get the module associated with this instance
@@ -76,31 +88,31 @@ impl ModuleInstance {
         let memories = self
             .memories
             .lock()
-            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to lock memories"))?;
+            .map_err(|_| Error::runtime_error("Failed to lock memories"))?;
         
         #[cfg(not(feature = "std"))]
         let memories = self.memories.lock();
 
         let memory = memories
             .get(idx as usize)
-            .map_err(|_| Error::new(ErrorCategory::Resource, codes::MEMORY_NOT_FOUND, "Runtime operation error"))?;
+            .map_err(|_| Error::runtime_execution_error("))?;
         Ok(memory.clone())
     }
 
     /// Get a table from this instance
     pub fn table(&self, idx: u32) -> Result<TableWrapper> {
-        #[cfg(feature = "std")]
+        #[cfg(feature = ")]
         let tables = self
             .tables
             .lock()
-            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to lock tables"))?;
+            .map_err(|_| Error::runtime_error("Failed to lock tables"))?;
         
         #[cfg(not(feature = "std"))]
         let tables = self.tables.lock();
 
         let table = tables
             .get(idx as usize)
-            .map_err(|_| Error::new(ErrorCategory::Resource, codes::TABLE_NOT_FOUND, "Runtime operation error"))?;
+            .map_err(|_| Error::resource_table_not_found("Runtime operation error"))?;
         Ok(table.clone())
     }
 
@@ -110,14 +122,14 @@ impl ModuleInstance {
         let globals = self
             .globals
             .lock()
-            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to lock globals"))?;
+            .map_err(|_| Error::runtime_error("Failed to lock globals"))?;
         
         #[cfg(not(feature = "std"))]
         let globals = self.globals.lock();
 
         let global = globals
             .get(idx as usize)
-            .map_err(|_| Error::new(ErrorCategory::Resource, codes::GLOBAL_NOT_FOUND, "Runtime operation error"))?;
+            .map_err(|_| Error::resource_global_not_found("Runtime operation error"))?;
         Ok(global.clone())
     }
 
@@ -125,32 +137,32 @@ impl ModuleInstance {
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn function_type(&self, idx: u32) -> Result<crate::prelude::CoreFuncType> {
         let function = self.module.functions.get(idx as usize).map_err(|_| {
-            Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, "Function index not found")
+            Error::runtime_function_not_found("Function index not found")
         })?;
 
         let ty = self.module.types.get(function.type_idx as usize).map_err(|_| {
-            Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH, "Type index not found")
+            Error::validation_type_mismatch("Type index not found")
         })?;
 
         // Convert from provider-aware FuncType to clean CoreFuncType
         // Create BoundedVecs manually since FromIterator isn't implemented
-        let params_slice = ty.params.as_slice().map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to access params"))?;
-        let results_slice = ty.results.as_slice().map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to access results"))?;
+        let params_slice = ty.params.as_slice().map_err(|_| Error::runtime_error("Failed to access params"))?;
+        let results_slice = ty.results.as_slice().map_err(|_| Error::runtime_error("Failed to access results"))?;
         
         let mut params = wrt_foundation::bounded::BoundedVec::<wrt_foundation::ValueType, 128, crate::memory_adapter::StdMemoryProvider>::new(
             crate::memory_adapter::StdMemoryProvider::default()
-        ).map_err(|_| Error::new(ErrorCategory::Memory, codes::MEMORY_ALLOCATION_ERROR, "Failed to create params vec"))?;
+        ).map_err(|_| Error::memory_error("Failed to create params vec"))?;
         
         let mut results = wrt_foundation::bounded::BoundedVec::<wrt_foundation::ValueType, 128, crate::memory_adapter::StdMemoryProvider>::new(
             crate::memory_adapter::StdMemoryProvider::default()
-        ).map_err(|_| Error::new(ErrorCategory::Memory, codes::MEMORY_ALLOCATION_ERROR, "Failed to create results vec"))?;
+        ).map_err(|_| Error::memory_error("Failed to create results vec"))?;
         
         for param in params_slice {
-            params.push(param.clone()).map_err(|_| Error::new(ErrorCategory::Capacity, codes::CAPACITY_EXCEEDED, "Too many params"))?;
+            params.push(param.clone()).map_err(|_| Error::capacity_exceeded("Too many params"))?;
         }
         
         for result in results_slice {
-            results.push(result.clone()).map_err(|_| Error::new(ErrorCategory::Capacity, codes::CAPACITY_EXCEEDED, "Too many results"))?;
+            results.push(result.clone()).map_err(|_| Error::capacity_exceeded("Too many results"))?;
         }
         
         Ok(crate::prelude::CoreFuncType {
@@ -163,11 +175,11 @@ impl ModuleInstance {
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     pub fn function_type(&self, idx: u32) -> Result<WrtFuncType> {
         let function = self.module.functions.get(idx as usize).map_err(|_| {
-            Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, "Function index not found")
+            Error::runtime_function_not_found("Function index not found")
         })?;
 
         let ty = self.module.types.get(function.type_idx as usize).map_err(|_| {
-            Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH, "Type index not found")
+            Error::validation_type_mismatch("Type index not found")
         })?;
 
         Ok(ty.clone())
@@ -179,13 +191,13 @@ impl ModuleInstance {
         let mut memories = self
             .memories
             .lock()
-            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to lock memories"))?;
+            .map_err(|_| Error::runtime_error("Failed to lock memories"))?;
         
         #[cfg(not(feature = "std"))]
         let mut memories = self.memories.lock();
 
         memories.push(MemoryWrapper::new(memory))
-            .map_err(|_| Error::new(ErrorCategory::Memory, codes::CAPACITY_EXCEEDED, "Memory capacity exceeded"))?;
+            .map_err(|_| Error::capacity_exceeded("Memory capacity exceeded"))?;
         Ok(())
     }
 
@@ -195,13 +207,13 @@ impl ModuleInstance {
         let mut tables = self
             .tables
             .lock()
-            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to lock tables"))?;
+            .map_err(|_| Error::runtime_error("Failed to lock tables"))?;
         
         #[cfg(not(feature = "std"))]
         let mut tables = self.tables.lock();
 
         tables.push(TableWrapper::new(table))
-            .map_err(|_| Error::new(ErrorCategory::Memory, codes::CAPACITY_EXCEEDED, "Table capacity exceeded"))?;
+            .map_err(|_| Error::capacity_exceeded("Table capacity exceeded"))?;
         Ok(())
     }
 
@@ -211,13 +223,13 @@ impl ModuleInstance {
         let mut globals = self
             .globals
             .lock()
-            .map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Failed to lock globals"))?;
+            .map_err(|_| Error::runtime_error("Failed to lock globals"))?;
         
         #[cfg(not(feature = "std"))]
         let mut globals = self.globals.lock();
 
         globals.push(GlobalWrapper::new(global))
-            .map_err(|_| Error::new(ErrorCategory::Memory, codes::CAPACITY_EXCEEDED, "Global capacity exceeded"))?;
+            .map_err(|_| Error::capacity_exceeded("Global capacity exceeded"))?;
         Ok(())
     }
 
@@ -239,7 +251,7 @@ impl ModuleInstance {
         if let Some(ref mut debug_info) = self.debug_info {
             debug_info
                 .find_line_info(pc)
-                .map_err(|e| Error::new(ErrorCategory::Runtime, codes::DEBUG_INFO_ERROR, "Runtime operation error"))
+                .map_err(|e| Error::runtime_debug_info_error("Runtime operation error"))
         } else {
             Ok(None)
         }
@@ -260,18 +272,18 @@ impl ModuleInstance {
     /// Get a function by index - alias for compatibility with tail_call.rs
     pub fn get_function(&self, idx: usize) -> Result<crate::module::Function> {
         self.module.functions.get(idx).map_err(|_| {
-            Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, "Function index not found")
+            Error::runtime_function_not_found("Function index not found")
         })
     }
 
     /// Get function type by index - alias for compatibility with tail_call.rs  
     pub fn get_function_type(&self, idx: usize) -> Result<WrtFuncType> {
         let function = self.module.functions.get(idx).map_err(|_| {
-            Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, "Function index not found")
+            Error::runtime_function_not_found("Function index not found")
         })?;
 
         self.module.types.get(function.type_idx as usize).map_err(|_| {
-            Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH, "Type index not found")
+            Error::validation_type_mismatch("Type index not found")
         })
     }
 
@@ -283,7 +295,7 @@ impl ModuleInstance {
     /// Get a type by index - alias for compatibility with tail_call.rs
     pub fn get_type(&self, idx: usize) -> Result<WrtFuncType> {
         self.module.types.get(idx).map_err(|_| {
-            Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH, "Type index not found")
+            Error::validation_type_mismatch("Type index not found")
         })
     }
 }
@@ -303,7 +315,7 @@ impl ReferenceOperations for ModuleInstance {
         if (function_index as usize) < self.module.functions.len() {
             Ok(())
         } else {
-            Err(Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, "Function index out of bounds"))
+            Err(Error::runtime_function_not_found("Function index out of bounds"))
         }
     }
 }

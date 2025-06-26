@@ -53,11 +53,7 @@ fn create_provider_1024() -> Result<CapabilityAwareProvider<NoStdProvider<1024>>
 /// Returns (name_bytes, total_bytes_read)
 fn read_name(data: &[u8], offset: usize) -> Result<(&[u8], usize)> {
     if offset >= data.len() {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Offset beyond data",
-        ));
+        return Err(Error::parse_error("Offset beyond data"));
     }
 
     // Read length as LEB128
@@ -66,11 +62,7 @@ fn read_name(data: &[u8], offset: usize) -> Result<(&[u8], usize)> {
     let name_end = name_start + name_len as usize;
 
     if name_end > data.len() {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Name extends beyond data",
-        ));
+        return Err(Error::parse_error("Name extends beyond data"));
     }
 
     Ok((&data[name_start..name_end], leb_bytes + name_len as usize))
@@ -517,13 +509,8 @@ fn scan_component_imports(
             // For now, just store the name
             let import = ComponentImport {
                 name: {
-                    let name_str = core::str::from_utf8(name).map_err(|_| {
-                        Error::new(
-                            ErrorCategory::Parse,
-                            codes::PARSE_ERROR,
-                            "Invalid UTF-8 in name",
-                        )
-                    })?;
+                    let name_str = core::str::from_utf8(name)
+                        .map_err(|_| Error::parse_error("Invalid UTF-8 in name"))?;
                     BoundedString::from_str_truncate(name_str, create_provider_1024()?)?
                 },
                 type_index: 0, // Placeholder
@@ -588,13 +575,8 @@ fn scan_component_exports(
             // For now, just store the name
             let export = ComponentExport {
                 name: {
-                    let name_str = core::str::from_utf8(name).map_err(|_| {
-                        Error::new(
-                            ErrorCategory::Parse,
-                            codes::PARSE_ERROR,
-                            "Invalid UTF-8 in name",
-                        )
-                    })?;
+                    let name_str = core::str::from_utf8(name)
+                        .map_err(|_| Error::parse_error("Invalid UTF-8 in name"))?;
                     BoundedString::from_str_truncate(name_str, create_provider_1024()?)?
                 },
                 type_index: 0, // Placeholder

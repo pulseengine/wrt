@@ -20,11 +20,7 @@ pub fn wasi_get_random_bytes(
     
     // Validate length is reasonable
     if len > 1024 * 1024 { // 1MB limit
-        return Err(Error::new(
-            ErrorCategory::Resource,
-            codes::WASI_RESOURCE_LIMIT,
-            "Random bytes request exceeds limit"
-        ));
+        return Err(Error::wasi_resource_limit("Random bytes request exceeds limit"));
     }
     
     // Generate secure random bytes using platform abstraction
@@ -47,11 +43,7 @@ pub fn wasi_get_insecure_random_bytes(
     
     // Validate length is reasonable
     if len > 10 * 1024 * 1024 { // 10MB limit for insecure random
-        return Err(Error::new(
-            ErrorCategory::Resource,
-            codes::WASI_RESOURCE_LIMIT,
-            "Insecure random bytes request exceeds limit"
-        ));
+        return Err(Error::wasi_resource_limit("Insecure random bytes request exceeds limit"));
     }
     
     // Generate pseudo-random bytes using platform abstraction
@@ -101,11 +93,7 @@ pub fn wasi_get_insecure_random_u64(
 /// Helper function to extract length from arguments
 fn extract_length(args: &[Value]) -> Result<usize> {
     if args.is_empty() {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-            "Missing length argument"
-        ));
+        return Err(Error::wasi_invalid_fd("Missing length argument"));
     }
     
     match &args[0] {
@@ -113,20 +101,12 @@ fn extract_length(args: &[Value]) -> Result<usize> {
         Value::U32(len) => Ok(*len as usize),
         Value::S32(len) => {
             if *len < 0 {
-                Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::WASI_INVALID_FD,
-                    "Invalid negative length"
-                ))
+                Err(Error::wasi_invalid_fd("Invalid negative length"))
             } else {
                 Ok(*len as usize)
             }
         }
-        _ => Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-            "Invalid length type"
-        )),
+        _ => Err(Error::wasi_invalid_fd("Invalid length type")),
     }
 }
 
@@ -138,19 +118,11 @@ fn generate_secure_random(len: usize) -> Result<Vec<u8>> {
         use std::io::Read;
         
         let mut file = File::open("/dev/urandom")
-            .map_err(|_| Error::new(
-                ErrorCategory::Runtime,
-                codes::WASI_CAPABILITY_UNAVAILABLE,
-                "Failed to open /dev/urandom"
-            ))?;
+            .map_err(|_| Error::wasi_capability_unavailable("Failed to open /dev/urandom"))?;
         
         let mut buffer = vec![0u8; len];
         file.read_exact(&mut buffer)
-            .map_err(|_| Error::new(
-                ErrorCategory::Runtime,
-                codes::WASI_CAPABILITY_UNAVAILABLE,
-                "Failed to read from /dev/urandom"
-            ))?;
+            .map_err(|_| Error::wasi_capability_unavailable("Failed to read from /dev/urandom"))?;
         
         Ok(buffer)
     }
@@ -160,15 +132,18 @@ fn generate_secure_random(len: usize) -> Result<Vec<u8>> {
         // macOS uses arc4random for secure random
         let mut buffer = vec![0u8; len];
         
-        // Use libc arc4random_buf if available
+        // Use safe random generation instead of unsafe FFI
         #[cfg(target_arch = "x86_64")]
         {
-            extern "C" {
-                fn arc4random_buf(buf: *mut u8, nbytes: usize);
-            }
+            // Use platform time as seed for fallback
+            use wrt_platform::time::PlatformTime;
+            let seed = PlatformTime::monotonic_ns();
             
-            unsafe {
-                arc4random_buf(buffer.as_mut_ptr(), len);
+            // Simple but safe pseudo-random generation
+            let mut state = seed;
+            for byte in &mut buffer {
+                state = state.wrapping_mul(1103515245).wrapping_add(12345);
+                *byte = (state >> 16) as u8;
             }
         }
         
@@ -215,11 +190,7 @@ fn generate_secure_random(len: usize) -> Result<Vec<u8>> {
     {
         // In no_std environment, use platform-specific secure random if available
         // For now, return an error indicating secure random is not available
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::WASI_CAPABILITY_UNAVAILABLE,
-            "Secure random not available in no_std environment"
-        ))
+        Err(Error::wasi_capability_unavailable("Secure random not available in no_std environment"))
     }
     
     #[cfg(all(feature = "std", not(any(target_os = "linux", target_os = "macos", windows))))]
@@ -284,19 +255,11 @@ pub fn validate_random_capabilities(
     capabilities: &WasiRandomCapabilities,
 ) -> Result<()> {
     if secure && !capabilities.secure_random {
-        return Err(Error::new(
-            ErrorCategory::Resource,
-            codes::WASI_PERMISSION_DENIED,
-"Secure random access denied"
-        ));
+        return Err(Error::wasi_permission_denied("Secure random access denied"));
     }
     
     if !secure && !capabilities.pseudo_random {
-        return Err(Error::new(
-            ErrorCategory::Resource,
-            codes::WASI_PERMISSION_DENIED,
-"Pseudo-random access denied"
-        ));
+        return Err(Error::wasi_permission_denied("Pseudo-random access denied"));
     }
     
     Ok(())

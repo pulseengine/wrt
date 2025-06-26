@@ -11,6 +11,9 @@ use alloc::{collections::BTreeMap, vec::Vec};
 use wrt_foundation::{
     bounded::{BoundedString, BoundedVec, MAX_GENERATIVE_TYPES},
     prelude::*,
+    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
 };
 
 use crate::{
@@ -441,23 +444,45 @@ impl Default for ComponentValue {
     }
 }
 
-impl Default for ImportResolution {
-    fn default() -> Self {
-        Self {
-            name: BoundedString::new(NoStdProvider::<65536>::default()).unwrap(),
+impl ImportResolution {
+    pub fn new() -> Result<Self, ComponentError> {
+        let provider = safe_managed_alloc!(65536, CrateId::Component)
+            .map_err(|_| ComponentError::AllocationFailed)?;
+        let name = BoundedString::new(provider)
+            .map_err(|_| ComponentError::AllocationFailed)?;
+        
+        Ok(Self {
+            name,
             instance_id: ComponentInstanceId(0),
             resolved_value: ComponentValue::default(),
-        }
+        })
+    }
+}
+
+impl Default for ImportResolution {
+    fn default() -> Self {
+        Self::new().expect("ImportResolution allocation should not fail in default construction")
+    }
+}
+
+impl ExportResolution {
+    pub fn new() -> Result<Self, ComponentError> {
+        let provider = safe_managed_alloc!(65536, CrateId::Component)
+            .map_err(|_| ComponentError::AllocationFailed)?;
+        let name = BoundedString::new(provider)
+            .map_err(|_| ComponentError::AllocationFailed)?;
+        
+        Ok(Self {
+            name,
+            instance_id: ComponentInstanceId(0),
+            exported_value: ComponentValue::default(),
+        })
     }
 }
 
 impl Default for ExportResolution {
     fn default() -> Self {
-        Self {
-            name: BoundedString::new(NoStdProvider::<65536>::default()).unwrap(),
-            instance_id: ComponentInstanceId(0),
-            exported_value: ComponentValue::default(),
-        }
+        Self::new().expect("ExportResolution allocation should not fail in default construction")
     }
 }
 

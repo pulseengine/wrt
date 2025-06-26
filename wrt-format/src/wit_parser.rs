@@ -18,206 +18,19 @@ use wrt_foundation::{
 
 use wrt_error::Error;
 
-// Include trait implementations  
+// Include type definitions
+#[path = "wit_parser_types.rs"]
+mod wit_parser_types;
 #[path = "wit_parser_traits.rs"]
 mod wit_parser_traits;
 
-/// Type aliases for WIT parser using a fixed memory provider
+// Re-export all types and traits
+pub use wit_parser_types::*;
+pub use wit_parser_traits::*;
 
-/// Bounded string for WIT identifiers and names (64 bytes max)
-pub type WitBoundedString = BoundedString<64, NoStdProvider<1024>>;
-/// Small bounded string for WIT parameters and short names (32 bytes max)
-pub type WitBoundedStringSmall = BoundedString<32, NoStdProvider<1024>>;
-/// Large bounded string for WIT error messages and long strings (128 bytes max)
-pub type WitBoundedStringLarge = BoundedString<128, NoStdProvider<1024>>;
+// Type aliases and type definitions are now in wit_parser_types.rs
 
-/// A WIT world definition containing imports, exports, and type definitions
-#[derive(Debug, Clone, PartialEq)]
-pub struct WitWorld {
-    /// World name
-    pub name: WitBoundedString,
-    /// Imported items
-    pub imports: BoundedVec<WitImport, MAX_GENERATIVE_TYPES, NoStdProvider<1024>>,
-    /// Exported items
-    pub exports: BoundedVec<WitExport, MAX_GENERATIVE_TYPES, NoStdProvider<1024>>,
-    /// Type definitions
-    pub types: BoundedVec<WitTypeDef, MAX_GENERATIVE_TYPES, NoStdProvider<1024>>,
-}
-
-/// A WIT interface definition containing functions and types
-#[derive(Debug, Clone, PartialEq)]
-pub struct WitInterface {
-    /// Interface name
-    pub name: WitBoundedString,
-    /// Functions in this interface
-    pub functions: BoundedVec<WitFunction, MAX_GENERATIVE_TYPES, NoStdProvider<1024>>,
-    /// Type definitions in this interface
-    pub types: BoundedVec<WitTypeDef, MAX_GENERATIVE_TYPES, NoStdProvider<1024>>,
-}
-
-/// A WIT import statement
-#[derive(Debug, Clone, PartialEq)]
-pub struct WitImport {
-    /// Import name
-    pub name: WitBoundedString,
-    /// Imported item
-    pub item: WitItem,
-}
-
-/// A WIT export statement
-#[derive(Debug, Clone, PartialEq)]
-pub struct WitExport {
-    /// Export name
-    pub name: WitBoundedString,
-    /// Exported item
-    pub item: WitItem,
-}
-
-/// A WIT item that can be imported or exported
-#[derive(Debug, Clone, PartialEq)]
-pub enum WitItem {
-    /// Function item
-    Function(WitFunction),
-    /// Interface item
-    Interface(WitInterface),
-    /// Type item
-    Type(WitType),
-    /// Instance item
-    Instance(WitInstance),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct WitFunction {
-    pub name: WitBoundedString,
-    pub params: BoundedVec<WitParam, 32, NoStdProvider<1024>>,
-    pub results: BoundedVec<WitResult, 16, NoStdProvider<1024>>,
-    pub is_async: bool,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct WitParam {
-    pub name: WitBoundedStringSmall,
-    pub ty: WitType,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct WitResult {
-    pub name: Option<WitBoundedStringSmall>,
-    pub ty: WitType,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct WitInstance {
-    pub interface_name: WitBoundedString,
-    pub args: BoundedVec<WitInstanceArg, 32, NoStdProvider<1024>>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct WitInstanceArg {
-    pub name: WitBoundedStringSmall,
-    pub value: WitValue,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum WitValue {
-    Type(WitType),
-    Instance(WitBoundedString),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct WitTypeDef {
-    pub name: WitBoundedString,
-    pub ty: WitType,
-    pub is_resource: bool,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum WitType {
-    /// Basic primitive types
-    Bool,
-    U8,
-    U16,
-    U32,
-    U64,
-    S8,
-    S16,
-    S32,
-    S64,
-    F32,
-    F64,
-    Char,
-    String,
-    
-    /// Compound types
-    List(Box<WitType>),
-    Option(Box<WitType>),
-    Result {
-        ok: Option<Box<WitType>>,
-        err: Option<Box<WitType>>,
-    },
-    Tuple(BoundedVec<WitType, 16, NoStdProvider<1024>>),
-    Record(WitRecord),
-    Variant(WitVariant),
-    Enum(WitEnum),
-    Flags(WitFlags),
-    
-    /// Resource types
-    Own(WitBoundedString),
-    Borrow(WitBoundedString),
-    
-    /// Named type reference
-    Named(WitBoundedString),
-    
-    /// Stream and Future for async support
-    Stream(Box<WitType>),
-    Future(Box<WitType>),
-}
-
-/// A WIT record type with named fields
-#[derive(Debug, Clone, PartialEq)]
-pub struct WitRecord {
-    /// The fields of the record
-    pub fields: BoundedVec<WitRecordField, 32, NoStdProvider<1024>>,
-}
-
-/// A field in a WIT record
-#[derive(Debug, Clone, PartialEq)]
-pub struct WitRecordField {
-    /// The name of the field
-    pub name: WitBoundedStringSmall,
-    /// The type of the field
-    pub ty: WitType,
-}
-
-/// A WIT variant type with multiple cases
-#[derive(Debug, Clone, PartialEq)]
-pub struct WitVariant {
-    /// The cases of the variant
-    pub cases: BoundedVec<WitVariantCase, 32, NoStdProvider<1024>>,
-}
-
-/// A case in a WIT variant
-#[derive(Debug, Clone, PartialEq)]
-pub struct WitVariantCase {
-    /// The name of the case
-    pub name: WitBoundedStringSmall,
-    /// The optional type of the case
-    pub ty: Option<WitType>,
-}
-
-/// A WIT enumeration type
-#[derive(Debug, Clone, PartialEq)]
-pub struct WitEnum {
-    /// The enumeration cases
-    pub cases: BoundedVec<WitBoundedStringSmall, 64, NoStdProvider<1024>>,
-}
-
-/// A WIT flags type for bitwise operations
-#[derive(Debug, Clone, PartialEq)]
-pub struct WitFlags {
-    /// The individual flags
-    pub flags: BoundedVec<WitBoundedStringSmall, 64, NoStdProvider<1024>>,
-}
+// WIT parser implementation starts here
 
 /// A parser for WIT (WebAssembly Interface Types) source code
 #[derive(Debug, Clone)]
@@ -228,22 +41,7 @@ pub struct WitParser {
     provider: NoStdProvider<1024>,
 }
 
-/// Errors that can occur during WIT parsing
-#[derive(Debug, Clone, PartialEq)]
-pub enum WitParseError {
-    /// Unexpected end of input
-    UnexpectedEnd,
-    /// Invalid syntax encountered
-    InvalidSyntax(WitBoundedStringLarge),
-    /// Unknown type referenced
-    UnknownType(WitBoundedString),
-    /// Too many items for bounded collections
-    TooManyItems,
-    /// Invalid identifier format
-    InvalidIdentifier(WitBoundedString),
-    /// Duplicate definition found
-    DuplicateDefinition(WitBoundedString),
-}
+// WitParseError is defined in wit_parser_types.rs
 
 impl From<WitParseError> for Error {
     fn from(err: WitParseError) -> Self {
@@ -269,12 +67,12 @@ impl WitParser {
     }
 
     /// Parse a WIT world definition from source code
-    pub fn parse_world(&mut self, source: &str) -> Result<WitWorld, WitParseError> {
+    pub fn parse_world(&mut self, source: &str) -> Result<WitWorld<P>, WitParseError<P>> {
         let mut world = WitWorld {
-            name: BoundedString::from_str("", self.provider.clone()).unwrap_or_default(),
-            imports: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
-            exports: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
-            types: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
+            name: BoundedString::default(),
+            imports: BoundedVec::default(),
+            exports: BoundedVec::default(),
+            types: BoundedVec::default(),
         };
 
         #[cfg(feature = "std")]
@@ -315,11 +113,11 @@ impl WitParser {
     }
 
     /// Parse a WIT interface definition from source code
-    pub fn parse_interface(&mut self, source: &str) -> Result<WitInterface, WitParseError> {
+    pub fn parse_interface(&mut self, source: &str) -> Result<WitInterface<P>, WitParseError<P>> {
         let mut interface = WitInterface {
-            name: BoundedString::from_str("", self.provider.clone()).unwrap_or_default(),
-            functions: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
-            types: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
+            name: BoundedString::default(),
+            functions: BoundedVec::default(),
+            types: BoundedVec::default(),
         };
 
         #[cfg(feature = "std")]
@@ -896,3 +694,5 @@ mod tests {
         assert_eq!(list_val, crate::types::ValueType::I32); // Lists are represented as pointers
     }
 }
+
+// Trait implementations are already included at the top of the file

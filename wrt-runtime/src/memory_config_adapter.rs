@@ -147,15 +147,11 @@ pub mod platform_types {
     /// Create a platform-aware bounded string type
     pub fn create_bounded_string() -> Result<BoundedString<512, NoStdProvider<1024>>> {
         let _config = runtime_memory_config();
-        let provider = NoStdProvider::<1024>::default();
+        let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
         
         // Use from_str_truncate to create an empty string
         BoundedString::from_str_truncate("", provider)
-            .map_err(|e| Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
-                "Failed to create bounded string"
-            ))
+            .map_err(|_| Error::memory_error("Failed to create bounded string"))
     }
     
     /// Create a platform-aware bounded vector type
@@ -167,7 +163,7 @@ pub mod platform_types {
            wrt_foundation::traits::FromBytes,
     {
         let _config = runtime_memory_config();
-        let provider = NoStdProvider::<2048>::default();
+        let provider = wrt_foundation::safe_managed_alloc!(2048, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
         
         // Create a new bounded vector with the provider
         BoundedVec::new(provider)

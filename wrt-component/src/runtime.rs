@@ -94,10 +94,7 @@ impl Global {
     /// Sets the global value
     pub fn set(&mut self, value: u64) -> Result<()> {
         if !self.ty.mutable {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                kinds::ValidationError("Cannot modify immutable global".to_string()),
+            return Err(Error::runtime_execution_error("Cannot modify immutable global")),
             ));
         }
 

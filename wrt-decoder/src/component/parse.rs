@@ -22,11 +22,7 @@ mod std_parsing {
     fn bytes_to_string_safe(bytes: &[u8]) -> Result<String> {
         match core::str::from_utf8(bytes) {
             Ok(s) => Ok(s.to_string()),
-            Err(_) => Err(Error::new(
-                wrt_error::ErrorCategory::Validation,
-                wrt_error::codes::VALIDATION_ERROR,
-                "Invalid UTF-8 string",
-            )),
+            Err(_) => Err(Error::runtime_execution_error("Invalid UTF-8")),
         }
     }
 
@@ -81,7 +77,7 @@ mod std_parsing {
             offset += bytes_read;
 
             if offset + module_size as usize > bytes.len() {
-                return Err(Error::parse_error("Module size exceeds section size"));
+                return Err(Error::parse_error("Module size exceeds section size "));
             }
 
             // Extract the module binary
@@ -219,7 +215,7 @@ mod std_parsing {
                     offset,
                 ))
             },
-            _ => Err(Error::parse_error("Invalid core instance expression tag")),
+            _ => Err(Error::parse_error("Invalid core instance expression tag ")),
         }
     }
 
@@ -1273,27 +1269,30 @@ mod std_parsing {
                         resource::MAX_RESOURCE_FIELD_NAME_LEN, BoundedString, BoundedVec,
                         NoStdProvider,
                     };
-                    let provider = NoStdProvider::<4096>::default();
+                    let provider = wrt_foundation::safe_managed_alloc!(
+                        4096,
+                        wrt_foundation::budget_aware_provider::CrateId::Decoder
+                    )?;
                     let mut bounded = BoundedVec::new(provider.clone())?;
                     for field in fields {
                         let bounded_string = BoundedString::<
                             MAX_RESOURCE_FIELD_NAME_LEN,
                             NoStdProvider<4096>,
                         >::from_str(
-                            &field, NoStdProvider::<4096>::default()
+                            &field,
+                            wrt_foundation::safe_managed_alloc!(
+                                4096,
+                                wrt_foundation::budget_aware_provider::CrateId::Decoder
+                            )?,
                         )
                         .map_err(|_| {
-                            Error::new(
-                                wrt_error::ErrorCategory::Memory,
-                                wrt_error::codes::MEMORY_ALLOCATION_FAILED,
-                                "Field name too long",
-                            )
+                            Error::runtime_execution_error("Failed to create bounded string")
                         })?;
                         if bounded.push(bounded_string).is_err() {
                             return Err(Error::new(
                                 wrt_error::ErrorCategory::Memory,
                                 wrt_error::codes::MEMORY_ALLOCATION_FAILED,
-                                "Too many fields in resource record",
+                                "Failed to allocate memory for string",
                             ));
                         }
                     }
@@ -1347,14 +1346,15 @@ mod std_parsing {
                 #[cfg(feature = "std")]
                 let repr = {
                     use wrt_foundation::{BoundedVec, NoStdProvider};
-                    let provider = NoStdProvider::<4096>::default();
+                    let provider = wrt_foundation::safe_managed_alloc!(
+                        4096,
+                        wrt_foundation::budget_aware_provider::CrateId::Decoder
+                    )?;
                     let mut bounded_indices = BoundedVec::new(provider)?;
                     for idx in indices {
                         if bounded_indices.push(idx).is_err() {
-                            return Err(Error::new(
-                                wrt_error::ErrorCategory::Memory,
-                                wrt_error::codes::MEMORY_ALLOCATION_FAILED,
-                                "Too many indices in resource aggregate",
+                            return Err(Error::runtime_execution_error(
+                                "Failed to push index to bounded vector",
                             ));
                         }
                     }
@@ -1365,7 +1365,7 @@ mod std_parsing {
 
                 Ok((repr, offset))
             },
-            _ => Err(Error::parse_error("Invalid resource representation tag")),
+            _ => Err(Error::parse_error("Invalid resource representation tag ")),
         }
     }
 
@@ -1527,7 +1527,7 @@ mod std_parsing {
                     offset,
                 ))
             },
-            _ => Err(Error::parse_error("Invalid external type tag")),
+            _ => Err(Error::parse_error("Invalid external type tag ")),
         }
     }
 
@@ -1707,11 +1707,7 @@ mod std_parsing {
                 // TODO: Fix FormatValType enum to support ResultErr variant
                 // Ok((wrt_format::component::FormatValType::ResultErr(Box::new(err_type)),
                 // offset))
-                Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "ResultErr variant not implemented",
-                ))
+                Err(Error::parse_error("ResultErr variant not implemented "))
             },
             0x67 => {
                 // Result type (ok and err)
@@ -1730,11 +1726,7 @@ mod std_parsing {
                 //     wrt_format::component::FormatValType::ResultBoth(Box::new(ok_type),
                 // Box::new(err_type)),     offset,
                 // ))
-                Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "ResultBoth variant not implemented",
-                ))
+                Err(Error::parse_error("ResultBoth variant not implemented "))
             },
             0x66 => {
                 // Own a resource
@@ -1752,7 +1744,7 @@ mod std_parsing {
                 // Error context type
                 Ok((wrt_format::component::FormatValType::ErrorContext, offset))
             },
-            _ => Err(Error::parse_error("Invalid value type tag")),
+            _ => Err(Error::parse_error("Invalid value type tag ")),
         }
     }
 
@@ -2287,13 +2279,8 @@ mod std_parsing {
                 offset += bytes_read;
 
                 // Convert bytes to string and validate that it's a single Unicode scalar value
-                let value_string = core::str::from_utf8(value_str).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Invalid UTF-8 in char value",
-                    )
-                })?;
+                let value_string = core::str::from_utf8(value_str)
+                    .map_err(|_| Error::parse_error("Invalid UTF-8 in char value "))?;
                 let mut chars = value_string.chars();
                 let first_char = chars.next().ok_or_else(|| {
                     Error::from(kinds::ParseError(
@@ -2472,13 +2459,8 @@ mod std_parsing {
     #[allow(dead_code)]
     pub fn parse_name(bytes: &[u8]) -> Result<(String, usize)> {
         let (name_bytes, length) = binary::read_string(bytes, 0)?;
-        let name_str = core::str::from_utf8(name_bytes).map_err(|_| {
-            Error::new(
-                wrt_error::ErrorCategory::Parse,
-                wrt_error::codes::PARSE_ERROR,
-                "Invalid UTF-8 in name",
-            )
-        })?;
+        let name_str = core::str::from_utf8(name_bytes)
+            .map_err(|_| Error::runtime_execution_error("Invalid UTF-8 in name"))?;
         Ok((name_str.to_string(), length))
     }
 
@@ -2689,7 +2671,7 @@ mod no_std_parsing {
             + Eq,
     {
         let provider = create_parse_provider()?;
-        ParseVec::new().map_err(|_| Error::parse_error("Failed to create empty parse vector"))
+        ParseVec::new().map_err(|_| Error::parse_error("Failed to create empty parse vector "))
     }
 
     /// No_std parse core module section with safety bounds
@@ -2701,11 +2683,7 @@ mod no_std_parsing {
     pub fn parse_core_module_section(_bytes: &[u8]) -> Result<(ParseVec<Module>, usize)> {
         // Simplified parsing for no_std - only basic validation
         if _bytes.len() < 8 {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Section data too short",
-            ));
+            return Err(Error::parse_error("Section data too short "));
         }
 
         // Return empty parsed result - complex module parsing requires std

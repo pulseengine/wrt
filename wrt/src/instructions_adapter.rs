@@ -128,10 +128,7 @@ impl<'a> ExecutionContext for WrtExecutionContextAdapter<'a> {
     fn pop_value_expected(&mut self, expected_type: ValueType) -> Result<Value> {
         let value = self.pop_value()?;
         if value.value_type() != expected_type {
-            return Err(Error::new(
-                ErrorCategory::Type,
-                codes::TYPE_MISMATCH,
-                format!("Expected {:?}, got {:?}", expected_type, value.value_type()),
+            return Err(Error::runtime_execution_error("Expected {:?}, got {:?}"),
             ));
         }
         Ok(value)
@@ -194,10 +191,7 @@ impl<'a> SimdContext for WrtExecutionContextAdapter<'a> {
 fn extract_v128_bytes(value: &Value) -> Result<[u8; 16]> {
     match value {
         Value::V128(bytes) => Ok(*bytes),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            format!("Expected v128 value, got {:?}", value.value_type())
+        _ => Err(Error::runtime_execution_error("Expected v128 value, got {:?}")
         ))
     }
 }
@@ -244,11 +238,7 @@ impl<'a> AggregateOperations for WrtExecutionContextAdapter<'a> {
         if type_index < 100 {
             Ok(())
         } else {
-            Err(Error::new(
-                ErrorCategory::Validation,
-                codes::TYPE_MISMATCH,
-                format!("Invalid struct type index: {}", type_index)
-            ))
+            Err(Error::runtime_execution_error("Invalid struct type index: {}"))
         }
     }
     
@@ -257,11 +247,7 @@ impl<'a> AggregateOperations for WrtExecutionContextAdapter<'a> {
         if type_index < 100 {
             Ok(())
         } else {
-            Err(Error::new(
-                ErrorCategory::Validation,
-                codes::TYPE_MISMATCH,
-                format!("Invalid array type index: {}", type_index)
-            ))
+            Err(Error::runtime_execution_error("Invalid array type index: {}"))
         }
     }
 }

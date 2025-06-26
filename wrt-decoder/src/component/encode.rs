@@ -106,11 +106,7 @@ mod std_encoding {
         for module in modules {
             // Encode module binary
             let module_binary = module.binary.as_ref().ok_or_else(|| {
-                wrt_error::Error::new(
-                    wrt_error::ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    "Module binary not available for encoding",
-                )
+                wrt_error::Error::parse_error("Module binary not available for encoding")
             })?;
 
             // Write module size
@@ -804,33 +800,20 @@ mod no_std_encoding {
     pub fn encode_component(
         component: &Component,
     ) -> Result<BoundedVec<u8, 1024, NoStdProvider<2048>>> {
-        let provider = NoStdProvider::<2048>::default();
-        let mut binary = BoundedVec::new(provider).map_err(|_| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_FAILED,
-                "Failed to create encoding buffer",
-            )
-        })?;
+        let provider = wrt_foundation::safe_managed_alloc!(2048, wrt_foundation::CrateId::Decoder)?;
+        let mut binary = BoundedVec::new(provider)
+            .map_err(|_| Error::memory_allocation_failed("Failed to create encoding buffer"))?;
 
         // Write magic and version - these are fixed size and safe
         for &byte in &component.magic {
             binary.push(byte).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ALLOCATION_FAILED,
-                    "Component encoding buffer overflow",
-                )
+                Error::memory_allocation_failed("Component encoding buffer overflow")
             })?;
         }
 
         for &byte in &component.version {
             binary.push(byte).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ALLOCATION_FAILED,
-                    "Component encoding buffer overflow",
-                )
+                Error::memory_allocation_failed("Component encoding buffer overflow")
             })?;
         }
 

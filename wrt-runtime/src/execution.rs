@@ -108,10 +108,7 @@ impl ExecutionStats {
         self.gas_used = self.gas_used.saturating_add(amount);
 
         if self.is_gas_exceeded() {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::GAS_LIMIT_EXCEEDED,
-"Gas limit exceeded",
+            return Err(Error::runtime_execution_error(",
             ));
         }
 
@@ -168,8 +165,7 @@ impl ExecutionContext {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::CALL_STACK_EXHAUSTED,
-"Call stack exhausted",
-            ));
+"));
         }
 
         self.stats.increment_function_calls(1);
@@ -229,14 +225,15 @@ pub struct InstrumentationPoint {
 
 impl InstrumentationPoint {
     /// Create a new instrumentation point
-    #[must_use] pub fn new(location: usize, point_type: &str) -> Self {
+    pub fn new(location: usize, point_type: &str) -> Result<Self> {
+        let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
         let bounded_point_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<1024>> = wrt_foundation::bounded::BoundedString::from_str_truncate(
             point_type,
-            wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
-        ).unwrap_or_else(|_| wrt_foundation::bounded::BoundedString::from_str_truncate("", wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap());
-        Self {
+            provider.clone()
+        ).unwrap_or_else(|_| wrt_foundation::bounded::BoundedString::from_str_truncate("", provider).unwrap());
+        Ok(Self {
             location,
             point_type: bounded_point_type,
-        }
+        })
     }
 }

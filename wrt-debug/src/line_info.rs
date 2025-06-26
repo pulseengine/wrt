@@ -185,21 +185,13 @@ impl LineNumberState {
         // Read unit length (32-bit for now, skip 64-bit DWARF)
         let unit_length = cursor.read_u32()?;
         if unit_length == 0xffffffff {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "64-bit DWARF not supported",
-            ));
+            return Err(Error::parse_error("64-bit DWARF not supported"));
         }
 
         // Read version
         let version = cursor.read_u16()?;
         if version < 2 || version > 5 {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Unsupported DWARF line version",
-            ));
+            return Err(Error::parse_error("Unsupported DWARF line version"));
         }
 
         // Read header length

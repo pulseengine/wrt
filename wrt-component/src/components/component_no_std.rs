@@ -19,6 +19,10 @@ use wrt_foundation::{
     types::ValueType,
     values::Value,
     verification::VerificationLevel,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
+    safe_memory::NoStdProvider,
+    MemoryProvider,
 };
 use wrt_runtime::types::{MemoryType, TableType};
 
@@ -26,8 +30,11 @@ use crate::{
     export::Export,
     import::Import,
     instance_no_std::InstanceValue,
-    resources::{ResourceStrategyNoStd}, // ResourceTable not available in no_std
+    resources::{ResourceStrategyNoStd, ResourceTable},
 };
+
+// Type alias for component provider
+type ComponentProvider = NoStdProvider<65536>;
 
 // Implement required traits for BoundedVec compatibility
 use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream};
@@ -127,13 +134,15 @@ pub struct MemoryValue {
 impl MemoryValue {
     /// Creates a new memory value
     pub fn new(ty: MemoryType) -> Result<Self> {
-        let memory = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
+        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let memory = BoundedVec::new(provider)?;
         Ok(Self { ty, memory, access_count: 0, debug_name: None })
     }
 
     /// Creates a new memory value with a debug name
     pub fn new_with_name(ty: MemoryType, name: &str) -> Result<Self> {
-        let memory = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
+        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let memory = BoundedVec::new(provider)?;
         let debug_name = Some(BoundedString::from_str(name).map_err(|_| {
             Error::new(ErrorCategory::Parameter, codes::VALIDATION_ERROR, "Memory name too long")
         })?);
@@ -339,17 +348,21 @@ pub struct WrtComponentType {
 
 impl WrtComponentType {
     /// Creates a new empty component type
-    pub fn new() -> Self {
-        Self {
-            imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            exports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            instances: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+    pub fn new() -> Result<Self> {
+        let imports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let exports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let instances_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        
+        Ok(Self {
+            imports: BoundedVec::new(imports_provider)?,
+            exports: BoundedVec::new(exports_provider)?,
+            instances: BoundedVec::new(instances_provider)?,
             verification_level: VerificationLevel::Standard,
-        }
+        })
     }
 
     /// Create a new empty component type
-    pub fn empty() -> Self {
+    pub fn empty() -> Result<Self> {
         Self::new()
     }
 
@@ -428,7 +441,9 @@ impl WrtComponentType {
 
 impl Default for WrtComponentType {
     fn default() -> Self {
-        Self::new()
+        Self::new().unwrap_or_else(|_| {
+            panic!("Failed to allocate memory for WrtComponentType::default")
+        })
     }
 }
 
@@ -505,7 +520,7 @@ impl WrtComponentTypeBuilder {
 
     /// Build the component type
     pub fn build(self) -> Result<WrtComponentType> {
-        let mut component_type = WrtComponentType::new();
+        let mut component_type = WrtComponentType::new()?;
         component_type.verification_level = self.verification_level;
 
         // Add imports
@@ -534,13 +549,27 @@ impl Default for WrtComponentTypeBuilder {
 }
 
 /// Struct representing built-in dependencies
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct BuiltinRequirements {
     /// List of required builtins
-    pub required: BoundedVec<BuiltinType, MAX_COMPONENT_TYPES, NoStdProvider<65536>>,
+    pub required: BoundedVec<BuiltinType, MAX_COMPONENT_TYPES, ComponentProvider>,
     /// Map of required builtin instances
     pub instances:
-        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>, BuiltinType), MAX_COMPONENT_INSTANCES, NoStdProvider<65536>>,
+        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>, BuiltinType), MAX_COMPONENT_INSTANCES, ComponentProvider>,
+}
+
+impl Default for BuiltinRequirements {
+    fn default() -> Self {
+        let required_provider = safe_managed_alloc!(65536, CrateId::Component)
+            .expect("Failed to allocate memory for BuiltinRequirements::required");
+        let instances_provider = safe_managed_alloc!(65536, CrateId::Component)
+            .expect("Failed to allocate memory for BuiltinRequirements::instances");
+        
+        Self {
+            required: BoundedVec::new(required_provider).expect("Failed to create BoundedVec for BuiltinRequirements::required"),
+            instances: BoundedVec::new(instances_provider).expect("Failed to create BoundedVec for BuiltinRequirements::instances"),
+        }
+    }
 }
 
 /// Runtime instance type for no_std
@@ -561,14 +590,19 @@ pub struct RuntimeInstance {
 
 impl RuntimeInstance {
     /// Creates a new runtime instance
-    pub fn new() -> Self {
-        Self {
-            functions: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            memories: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            tables: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            globals: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+    pub fn new() -> Result<Self> {
+        let functions_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let memories_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let tables_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let globals_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        
+        Ok(Self {
+            functions: BoundedVec::new(functions_provider)?,
+            memories: BoundedVec::new(memories_provider)?,
+            tables: BoundedVec::new(tables_provider)?,
+            globals: BoundedVec::new(globals_provider)?,
             verification_level: VerificationLevel::Standard,
-        }
+        })
     }
 
     /// Register an exported function
@@ -635,7 +669,9 @@ impl RuntimeInstance {
 
 impl Default for RuntimeInstance {
     fn default() -> Self {
-        Self::new()
+        Self::new().unwrap_or_else(|_| {
+            panic!("Failed to allocate memory for RuntimeInstance::default")
+        })
     }
 }
 
@@ -667,35 +703,45 @@ pub struct Component {
 
 impl Component {
     /// Creates a new, empty component instance
-    pub fn new() -> Self {
-        Self {
-            component_type: WrtComponentType::new(),
-            exports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            instances: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            linked_components: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+    pub fn new() -> Result<Self> {
+        let exports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let imports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let instances_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let linked_components_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        
+        Ok(Self {
+            component_type: WrtComponentType::new()?,
+            exports: BoundedVec::new(exports_provider)?,
+            imports: BoundedVec::new(imports_provider)?,
+            instances: BoundedVec::new(instances_provider)?,
+            linked_components: BoundedVec::new(linked_components_provider)?,
             runtime: None,
             resource_table: ResourceTable::new(),
             built_in_requirements: None,
             original_binary: None,
             verification_level: VerificationLevel::Standard,
-        }
+        })
     }
 
     /// Creates a new, empty component instance with an explicit resource table
-    pub fn new_with_resource_table(resource_table: ResourceTable) -> Self {
-        Self {
-            component_type: WrtComponentType::new(),
-            exports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            instances: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            linked_components: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+    pub fn new_with_resource_table(resource_table: ResourceTable) -> Result<Self> {
+        let exports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let imports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let instances_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let linked_components_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        
+        Ok(Self {
+            component_type: WrtComponentType::new()?,
+            exports: BoundedVec::new(exports_provider)?,
+            imports: BoundedVec::new(imports_provider)?,
+            instances: BoundedVec::new(instances_provider)?,
+            linked_components: BoundedVec::new(linked_components_provider)?,
             runtime: None,
             resource_table,
             built_in_requirements: None,
             original_binary: None,
             verification_level: VerificationLevel::Standard,
-        }
+        })
     }
 
     /// Creates a new component from a binary WebAssembly module
@@ -710,19 +756,24 @@ impl Component {
     }
 
     /// Creates a new component from a type definition
-    pub fn from_type(component_type: WrtComponentType) -> Self {
-        Self {
+    pub fn from_type(component_type: WrtComponentType) -> Result<Self> {
+        let exports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let imports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let instances_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let linked_components_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        
+        Ok(Self {
             component_type,
-            exports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            instances: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            linked_components: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            exports: BoundedVec::new(exports_provider)?,
+            imports: BoundedVec::new(imports_provider)?,
+            instances: BoundedVec::new(instances_provider)?,
+            linked_components: BoundedVec::new(linked_components_provider)?,
             runtime: None,
             resource_table: ResourceTable::new(),
             built_in_requirements: None,
             original_binary: None,
             verification_level: VerificationLevel::Standard,
-        }
+        })
     }
 
     /// Add an export to the component
@@ -807,14 +858,16 @@ impl Component {
     }
 
     /// Creates an empty component
-    pub fn empty() -> Self {
+    pub fn empty() -> Result<Self> {
         Self::new()
     }
 }
 
 impl Default for Component {
     fn default() -> Self {
-        Self::new()
+        Self::new().unwrap_or_else(|_| {
+            panic!("Failed to allocate memory for Component::default")
+        })
     }
 }
 
@@ -942,12 +995,17 @@ impl ComponentBuilder {
         let component_type = self.component_type.unwrap_or_default();
         let resource_table = self.resource_table.unwrap_or_else(ResourceTable::new);
 
+        let exports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let imports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let instances_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let linked_components_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        
         let mut component = Component {
             component_type,
-            exports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            instances: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            linked_components: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            exports: BoundedVec::new(exports_provider)?,
+            imports: BoundedVec::new(imports_provider)?,
+            instances: BoundedVec::new(instances_provider)?,
+            linked_components: BoundedVec::new(linked_components_provider)?,
             runtime: self.runtime,
             resource_table,
             built_in_requirements: self.built_in_requirements,
@@ -977,7 +1035,8 @@ impl ComponentBuilder {
 
         // Set original binary if provided
         if let Some(binary) = self.original_binary {
-            let mut bounded_binary = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
+            let binary_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+            let mut bounded_binary = BoundedVec::new(binary_provider)?;
             for byte in binary {
                 bounded_binary.push(byte).map_err(|_| {
                     Error::new(
@@ -1052,7 +1111,7 @@ mod tests {
 
     #[test]
     fn test_component_operations() {
-        let mut component = Component::new(WrtComponentType::default());
+        let mut component = Component::new().unwrap();
 
         // Add an export
         let export = Export {
@@ -1147,16 +1206,8 @@ macro_rules! impl_basic_traits {
 // Note: These implementations assume the external types have appropriate characteristics
 
 // Default implementations for complex types
-impl Default for ComponentTypeDefinition {
-    fn default() -> Self {
-        Self {
-            id: String::new(),
-            component_type: ComponentType::Function,
-            exports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-        }
-    }
-}
+// Note: ComponentTypeDefinition is an external type from wrt_format::component
+// Default implementation removed as it should not be implemented here
 
 impl Default for ExternValue {
     fn default() -> Self {
@@ -1166,9 +1217,12 @@ impl Default for ExternValue {
 
 impl Default for FunctionValue {
     fn default() -> Self {
+        let provider = safe_managed_alloc!(65536, CrateId::Component)
+            .expect("Failed to allocate memory for FunctionValue::default");
         Self {
             ty: FuncType::default(),
-            export_name: BoundedString::new().unwrap(),
+            export_name: BoundedString::new_with_provider(provider)
+                .expect("Failed to create BoundedString for FunctionValue::default"),
         }
     }
 }
@@ -1176,11 +1230,9 @@ impl Default for FunctionValue {
 
 impl Default for MemoryValue {
     fn default() -> Self {
-        Self {
-            memory_type: MemoryType::default(),
-            data: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            debug_name: None,
-        }
+        Self::new(MemoryType::default()).unwrap_or_else(|_| {
+            panic!("Failed to allocate memory for MemoryValue::default")
+        })
     }
 }
 
@@ -1204,10 +1256,11 @@ impl Default for Limits {
 
 impl Default for TableValue {
     fn default() -> Self {
+        let provider = safe_managed_alloc!(65536, CrateId::Component)
+            .expect("Failed to allocate memory for TableValue::default");
         Self {
-            table_type: TableType::default(),
-            elements: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            debug_name: None,
+            ty: TableType::default(),
+            table: BoundedVec::new(provider).expect("Failed to create BoundedVec for TableValue::default"),
         }
     }
 }

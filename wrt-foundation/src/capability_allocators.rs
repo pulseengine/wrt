@@ -179,10 +179,7 @@ mod no_std_impl {
             _context: &MemoryCapabilityContext,
             _crate_id: CrateId,
         ) -> Result<()> {
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::UNSUPPORTED_OPERATION,
-                "Box allocation not supported in no_std without alloc"
+            Err(Error::runtime_execution_error("
             ))
         }
     }
@@ -196,8 +193,7 @@ mod no_std_impl {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::UNSUPPORTED_OPERATION,
-                "Vec allocation not supported in no_std without alloc"
-            ))
+                "))
         }
     }
 }

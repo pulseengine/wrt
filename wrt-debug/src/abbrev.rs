@@ -150,13 +150,9 @@ impl AbbreviationTable {
                     form: AttributeForm::from_u16(form),
                 };
 
-                attributes.push(attr_spec).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Capacity,
-                        codes::CAPACITY_EXCEEDED,
-                        "Too many attributes in abbreviation",
-                    )
-                })?;
+                attributes
+                    .push(attr_spec)
+                    .map_err(|_| Error::capacity_exceeded("Too many attributes in abbreviation"))?;
             }
 
             let abbrev = Abbreviation {
@@ -166,13 +162,9 @@ impl AbbreviationTable {
                 attributes,
             };
 
-            self.entries.push(abbrev).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Capacity,
-                    codes::CAPACITY_EXCEEDED,
-                    "Abbreviation cache full",
-                )
-            })?;
+            self.entries
+                .push(abbrev)
+                .map_err(|_| Error::capacity_exceeded("Abbreviation cache full"))?;
         }
 
         Ok(())

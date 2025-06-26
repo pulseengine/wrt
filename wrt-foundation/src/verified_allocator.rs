@@ -73,19 +73,11 @@ impl VerifiedAllocator {
     pub fn allocate(&self, size: usize) -> WrtResult<VerifiedAllocation> {
         // Check preconditions
         if !self.enabled.load(Ordering::Acquire) {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::RUNTIME_ERROR,
-                "Allocator is disabled"
-            ));
+            return Err(Error::runtime_error("Allocator is disabled"));
         }
         
         if size == 0 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_PARAMETER,
-                "Cannot allocate zero bytes"
-            ));
+            return Err(Error::validation_invalid_parameter("Cannot allocate zero bytes"));
         }
         
         // Atomic allocation with overflow checking
@@ -93,18 +85,11 @@ impl VerifiedAllocator {
         loop {
             // Check budget constraint
             let new_total = current.checked_add(size).ok_or_else(|| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    codes::INTEGER_OVERFLOW,
-                    "Allocation would overflow"
-                )
+                Error::memory_integer_overflow("Allocation would overflow")
             })?;
             
             if new_total > self.total_budget {
-                return Err(Error::new(
-                    ErrorCategory::Memory,
-                    codes::CAPACITY_EXCEEDED,
-                    "Allocation would exceed budget"
+                return Err(Error::runtime_execution_error("
                 ));
             }
             
@@ -123,7 +108,7 @@ impl VerifiedAllocator {
                     return Ok(VerifiedAllocation {
                         allocator: self,
                         size,
-                        #[cfg(feature = "formal-verification")]
+                        #[cfg(feature = ")]
                         allocation_id: crate::formal_verification::ghost::record_allocation(size),
                     });
                 }

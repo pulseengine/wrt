@@ -210,15 +210,15 @@ pub struct FuelTrackedThreadManager {
 }
 
 impl FuelTrackedThreadManager {
-    pub fn new() -> Self {
-        Self {
-            base_manager: ComponentThreadManager::new(),
+    pub fn new() -> ThreadSpawnResult<Self> {
+        Ok(Self {
+            base_manager: ComponentThreadManager::new()?,
             thread_contexts: BoundedHashMap::new(),
             time_bounds: BoundedHashMap::new(),
             global_fuel_limit: AtomicU64::new(u64::MAX),
             global_fuel_consumed: AtomicU64::new(0),
             fuel_enforcement: AtomicBool::new(true),
-        }
+        })
     }
 
     pub fn set_global_fuel_limit(&self, limit: u64) {
@@ -392,7 +392,14 @@ impl FuelTrackedThreadManager {
 
 impl Default for FuelTrackedThreadManager {
     fn default() -> Self {
-        Self::new()
+        Self::new().unwrap_or_else(|_| FuelTrackedThreadManager {
+            base_manager: ComponentThreadManager::default(),
+            thread_contexts: BoundedHashMap::new(),
+            time_bounds: BoundedHashMap::new(),
+            global_fuel_limit: AtomicU64::new(u64::MAX),
+            global_fuel_consumed: AtomicU64::new(0),
+            fuel_enforcement: AtomicBool::new(true),
+        })
     }
 }
 

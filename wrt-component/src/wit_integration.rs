@@ -1,11 +1,13 @@
 #[cfg(not(feature = "std"))]
-use std::{collections::BTreeMap, vec::Vec};
+use alloc::{collections::BTreeMap, vec::Vec};
 #[cfg(feature = "std")]
 use std::collections::BTreeMap;
 
 use wrt_foundation::{
     bounded_collections::{BoundedString, BoundedVec, MAX_GENERATIVE_TYPES},
     prelude::*,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
 };
 
 use crate::{
@@ -18,55 +20,57 @@ use wrt_format::wit_parser::{
     WitFunction, WitInterface, WitParseError, WitParser, WitType, WitWorld,
 };
 
+// Type aliases for WIT integration - removed legacy NoStdProvider usage
+
 #[derive(Debug, Clone)]
 pub struct WitComponentBuilder {
     parser: WitParser,
     type_registry: GenerativeTypeRegistry,
-    wit_type_mappings: BTreeMap<BoundedString<64, NoStdProvider<65536>>, TypeId>,
+    wit_type_mappings: BTreeMap<BoundedString<64>, TypeId>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComponentInterface {
-    pub name: BoundedString<64, NoStdProvider<65536>>,
-    pub imports: BoundedVec<InterfaceFunction, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>,
-    pub exports: BoundedVec<InterfaceFunction, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>,
-    pub async_imports: BoundedVec<AsyncInterfaceFunction, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>,
-    pub async_exports: BoundedVec<AsyncInterfaceFunction, MAX_GENERATIVE_TYPES, NoStdProvider<65536>>,
+    pub name: BoundedString<64>,
+    pub imports: BoundedVec<InterfaceFunction, MAX_GENERATIVE_TYPES>,
+    pub exports: BoundedVec<InterfaceFunction, MAX_GENERATIVE_TYPES>,
+    pub async_imports: BoundedVec<AsyncInterfaceFunction, MAX_GENERATIVE_TYPES>,
+    pub async_exports: BoundedVec<AsyncInterfaceFunction, MAX_GENERATIVE_TYPES>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct InterfaceFunction {
-    pub name: BoundedString<64, NoStdProvider<65536>>,
-    pub params: BoundedVec<TypedParam, 32, NoStdProvider<65536>>,
-    pub results: BoundedVec<TypedResult, 16, NoStdProvider<65536>>,
+    pub name: BoundedString<64>,
+    pub params: BoundedVec<TypedParam, 32>,
+    pub results: BoundedVec<TypedResult, 16>,
     pub component_type_id: Option<TypeId>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AsyncInterfaceFunction {
-    pub name: BoundedString<64, NoStdProvider<65536>>,
-    pub params: BoundedVec<TypedParam, 32, NoStdProvider<65536>>,
-    pub results: BoundedVec<AsyncTypedResult, 16, NoStdProvider<65536>>,
+    pub name: BoundedString<64>,
+    pub params: BoundedVec<TypedParam, 32>,
+    pub results: BoundedVec<AsyncTypedResult, 16>,
     pub component_type_id: Option<TypeId>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedParam {
-    pub name: BoundedString<32, NoStdProvider<65536>>,
+    pub name: BoundedString<32>,
     pub val_type: ValType,
     pub wit_type: WitType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedResult {
-    pub name: Option<BoundedString<32, NoStdProvider<65536>>>,
+    pub name: Option<BoundedString<32>>,
     pub val_type: ValType,
     pub wit_type: WitType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AsyncTypedResult {
-    pub name: Option<BoundedString<32, NoStdProvider<65536>>>,
+    pub name: Option<BoundedString<32>>,
     pub val_type: ValType,
     pub wit_type: WitType,
     pub is_stream: bool,
@@ -145,12 +149,17 @@ impl WitComponentBuilder {
         world: WitWorld,
         instance_id: ComponentInstanceId,
     ) -> core::result::Result<ComponentInterface, ComponentError> {
+        let imports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let exports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let async_imports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let async_exports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        
         let mut interface = ComponentInterface {
             name: world.name,
-            imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            exports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            async_imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            async_exports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            imports: BoundedVec::new(imports_provider)?,
+            exports: BoundedVec::new(exports_provider)?,
+            async_imports: BoundedVec::new(async_imports_provider)?,
+            async_exports: BoundedVec::new(async_exports_provider)?,
         };
 
         for import in world.imports.iter() {
@@ -207,12 +216,17 @@ impl WitComponentBuilder {
         wit_interface: WitInterface,
         instance_id: ComponentInstanceId,
     ) -> core::result::Result<ComponentInterface, ComponentError> {
+        let imports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let exports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let async_imports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let async_exports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        
         let mut interface = ComponentInterface {
             name: wit_interface.name,
-            imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            exports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            async_imports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            async_exports: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            imports: BoundedVec::new(imports_provider)?,
+            exports: BoundedVec::new(exports_provider)?,
+            async_imports: BoundedVec::new(async_imports_provider)?,
+            async_exports: BoundedVec::new(async_exports_provider)?,
         };
 
         for func in wit_interface.functions.iter() {
@@ -239,10 +253,13 @@ impl WitComponentBuilder {
         wit_func: &WitFunction,
         instance_id: ComponentInstanceId,
     ) -> core::result::Result<InterfaceFunction, ComponentError> {
+        let params_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let results_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        
         let mut interface_func = InterfaceFunction {
             name: wit_func.name.clone(),
-            params: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            results: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            params: BoundedVec::new(params_provider)?,
+            results: BoundedVec::new(results_provider)?,
             component_type_id: None,
         };
 
@@ -274,10 +291,13 @@ impl WitComponentBuilder {
         wit_func: &WitFunction,
         instance_id: ComponentInstanceId,
     ) -> core::result::Result<AsyncInterfaceFunction, ComponentError> {
+        let params_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let results_provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        
         let mut async_func = AsyncInterfaceFunction {
             name: wit_func.name.clone(),
-            params: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-            results: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            params: BoundedVec::new(params_provider)?,
+            results: BoundedVec::new(results_provider)?,
             component_type_id: None,
         };
 

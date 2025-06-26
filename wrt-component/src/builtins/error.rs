@@ -141,20 +141,13 @@ impl BuiltinHandler for ErrorNewHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.len() != 1 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "error.new requires exactly 1 argument"
-            ));
+            return Err(Error::validation_invalid_input("error.new requires exactly 1 argument"));
         }
 
         // Extract error message
         let message = match &args[0] {
             ComponentValue::String(s) => s.as_str(),
-            _ => return Err(Error::new(
-                ErrorCategory::Type,
-                codes::TYPE_MISMATCH_ERROR,
-                "error.new argument must be a string"
+            _ => return Err(Error::runtime_execution_error("
             )),
         };
 
@@ -192,21 +185,14 @@ impl BuiltinHandler for ErrorTraceHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.len() != 2 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "error.trace requires exactly 2 arguments"
-            ));
+            return Err(Error::validation_invalid_input("));
         }
 
         // Extract error context ID
         let error_id = match args[0] {
             ComponentValue::U64(id) => id,
             _ => {
-                return Err(Error::new(
-                    ErrorCategory::Type,
-                    codes::TYPE_MISMATCH_ERROR,
-                    "error.trace first argument must be an error context ID"
+                return Err(Error::runtime_execution_error("
                 ))
             }
         };
@@ -218,19 +204,14 @@ impl BuiltinHandler for ErrorTraceHandler {
                 return Err(Error::new(
                     ErrorCategory::Type,
                     codes::TYPE_MISMATCH_ERROR,
-                    "error.trace second argument must be a string"
-                ))
+                    "))
             }
         };
 
         // Add trace to the error context
         let mut store = self.store.lock().unwrap();
         let error_context = store.get_error_mut(error_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "Component not found"
-            )
+            Error::resource_not_found("Component not found")
         })?;
         error_context.add_trace(trace_message);
 

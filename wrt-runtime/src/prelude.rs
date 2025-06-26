@@ -11,19 +11,18 @@
 extern crate alloc;
 
 // Binary std/no_std choice
-#[cfg(not(feature = "std"))]
-pub use wrt_foundation::{
-    NoStdProvider,
-};
+// Note: NoStdProvider import removed - use safe_managed_alloc! instead
 
 // Platform-aware collection type aliases that adapt to target platform capabilities
+// Note: These type aliases are now generic over the provider type P
+// Users must specify their own provider when using these types
 /// `BoundedHashMap` type for `no_std` environments with bounded capacity
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub type BoundedHashMap<K, V> = wrt_foundation::bounded_collections::BoundedMap<K, V, 128, wrt_foundation::NoStdProvider<1024>>;
+pub type BoundedHashMap<K, V, P> = wrt_foundation::bounded_collections::BoundedMap<K, V, 128, P>;
 
 /// `BoundedHashSet` type for `no_std` environments with bounded capacity  
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub type BoundedHashSet<T> = wrt_foundation::bounded_collections::BoundedSet<T, 128, wrt_foundation::NoStdProvider<1024>>;
+pub type BoundedHashSet<T, P> = wrt_foundation::bounded_collections::BoundedSet<T, 128, P>;
 
 // Platform-aware string and vector types
 #[cfg(not(feature = "std"))]
@@ -218,10 +217,12 @@ pub trait ToString {
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 impl ToString for &str {
     fn to_string(&self) -> RuntimeString {
-        let provider = wrt_foundation::NoStdProvider::<1024>::default();
-        RuntimeString::from_str(self, provider.clone()).unwrap_or_else(|_| 
+        let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)
+            .expect("Failed to allocate memory for string conversion");
+        RuntimeString::from_str(self, provider.clone()).unwrap_or_else(|_| {
+            // If conversion fails, create empty string with same provider
             RuntimeString::from_str("", provider).unwrap()
-        )
+        })
     }
 }
 
@@ -353,26 +354,26 @@ pub use wrt_foundation::types::{
     FuncType, MemoryType, TableType, GlobalType, ValueType as ValType,
 };
 
-// Default provider for legacy compatibility
-/// Default memory provider with 64KB allocation capacity
+// Default provider factory for capability-based allocation
+/// Default memory provider factory with 64KB allocation capacity
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub type DefaultProvider = wrt_foundation::NoStdProvider<65536>;
+pub type DefaultProviderFactory = wrt_foundation::type_factory::RuntimeFactory64K;
 
-/// Default memory provider for pure no_std (smaller capacity)
+/// Default memory provider factory for pure no_std (smaller capacity)
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-pub type DefaultProvider = wrt_foundation::NoStdProvider<16384>;
+pub type DefaultProviderFactory = wrt_foundation::type_factory::RuntimeFactory8K;
 
 /// Runtime function type alias for consistency  
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub type RuntimeFuncType = FuncType<crate::memory_adapter::StdMemoryProvider>;
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-pub type RuntimeFuncType = wrt_foundation::types::FuncType<wrt_foundation::NoStdProvider<1024>>;
+pub type RuntimeFuncType<P> = wrt_foundation::types::FuncType<P>;
 
 /// Runtime string type alias for consistency
 #[cfg(feature = "std")]
 pub type RuntimeString = String;
 #[cfg(not(feature = "std"))]
-pub type RuntimeString = wrt_foundation::bounded::BoundedString<256, wrt_foundation::NoStdProvider<1024>>;
+pub type RuntimeString = wrt_foundation::bounded::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
 
 // Safety-critical wrapper types for runtime (deterministic, verifiable)
 pub use crate::module::{TableWrapper as RuntimeTable, MemoryWrapper as RuntimeMemory, GlobalWrapper as RuntimeGlobal};
@@ -484,10 +485,7 @@ impl wrt_foundation::traits::FromBytes for Instruction {
                 let func_idx = u32::from_le_bytes(func_bytes);
                 Ok(Instruction::Call(func_idx))
             }
-            _ => Err(wrt_foundation::Error::new(
-                wrt_foundation::ErrorCategory::Validation,
-                wrt_foundation::codes::INVALID_VALUE,
-                "Invalid instruction discriminant"
+            _ => Err(wrt_error::Error::runtime_execution_error("
             ))
         }
     }
@@ -496,7 +494,7 @@ impl wrt_foundation::traits::FromBytes for Instruction {
 pub use wrt_intercept::prelude::LinkInterceptor as InterceptorRegistry;
 pub use wrt_intercept::prelude::LinkInterceptorStrategy as InterceptStrategy;
 // Binary std/no_std choice
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "))]
 pub use wrt_sync::{
     WrtMutex as Mutex, WrtMutexGuard as MutexGuard, WrtRwLock as RwLock,
     WrtRwLockReadGuard as RwLockReadGuard, WrtRwLockWriteGuard as RwLockWriteGuard,

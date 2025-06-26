@@ -97,6 +97,13 @@ pub mod branch_hint_section;
 #[cfg(feature = "std")]
 pub mod custom_section_handler;
 
+// Resource limits section - now ASIL-D compatible (no external dependencies)
+pub mod resource_limits_section;
+
+// TOML configuration parser for resource limits (std only for tooling)
+#[cfg(feature = "std")]
+pub mod toml_config;
+
 // Most re-exports temporarily disabled for demo - keep only essential ones
 // Component functionality (std only)
 #[cfg(feature = "std")]

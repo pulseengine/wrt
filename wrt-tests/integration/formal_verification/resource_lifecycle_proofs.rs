@@ -28,12 +28,50 @@ use kani;
 
 #[cfg(feature = "kani")]
 use wrt_foundation::{
-    resource::{Resource, ResourceId, ResourceRepr, ResourceTableIdx},
     safe_memory::NoStdProvider,
     verification::VerificationLevel,
     bounded::{BoundedVec, WasmName, MAX_WASM_NAME_LENGTH},
     types::ValueType,
 };
+
+// Simplified Resource types for KANI verification
+#[cfg(feature = "kani")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Resource {
+    pub id: u32,
+    pub repr: ResourceRepr,
+    verification_level: VerificationLevel,
+}
+
+#[cfg(feature = "kani")]
+impl Resource {
+    pub fn new(id: u32, repr: ResourceRepr, _name: Option<WasmName<MAX_WASM_NAME_LENGTH, NoStdProvider<4096>>>, verification_level: VerificationLevel) -> Self {
+        Self { id, repr, verification_level }
+    }
+    
+    pub fn verification_level(&self) -> VerificationLevel {
+        self.verification_level
+    }
+    
+    pub fn set_verification_level(&mut self, level: VerificationLevel) {
+        self.verification_level = level;
+    }
+}
+
+#[cfg(feature = "kani")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ResourceRepr {
+    Primitive(ValueType),
+    Opaque,
+}
+
+#[cfg(feature = "kani")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ResourceTableIdx(pub u32);
+
+#[cfg(feature = "kani")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ResourceId(pub u64);
 
 use crate::utils::{any_memory_size, MAX_VERIFICATION_MEMORY, MAX_VERIFICATION_ALLOCATIONS};
 

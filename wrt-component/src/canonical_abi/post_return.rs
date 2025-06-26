@@ -13,6 +13,8 @@ use wrt_error::{Error, ErrorCategory, Result};
 use wrt_foundation::{
     bounded::BoundedVec,
     safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
     values::Value,
 };
 
@@ -138,31 +140,33 @@ pub struct PostReturnStats {
 
 impl Default for PostReturnContext {
     fn default() -> Self {
-        Self::new()
+        // For Default trait, we prefer to panic rather than return invalid state
+        // This ensures capability-based allocation is always properly initialized
+        Self::new().expect("Failed to create PostReturnContext with proper capability allocation")
     }
 }
 
 impl PostReturnContext {
     /// Create a new post-return context
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Result<Self> {
+        Ok(Self {
             #[cfg(feature = "std")]
             entries: Vec::new(),
             #[cfg(not(feature = "std"))]
-            entries: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            entries: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider)?
+            },
             is_executing: false,
             error_recovery: ErrorRecoveryMode::BestEffort,
             stats: PostReturnStats::default(),
-        }
+        })
     }
 
     /// Add a cleanup entry to be executed during post-return
     pub fn add_cleanup(&mut self, entry: PostReturnEntry) -> Result<()> {
         if self.is_executing {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                wrt_error::codes::INVALID_STATE,
-                "Cannot add cleanup during post-return execution"
+            return Err(Error::runtime_invalid_state("Cannot add cleanup during post-return execution")
             ));
         }
 
@@ -173,10 +177,7 @@ impl PostReturnContext {
         #[cfg(not(feature = "std"))]
         {
             self.entries.push(entry).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Post-return cleanup queue full"
+                Error::resource_exhausted("Post-return cleanup queue full")
                 )
             })?;
         }
@@ -208,10 +209,7 @@ impl PostReturnContext {
     /// Execute all pending post-return cleanup operations
     pub fn execute_post_return(&mut self, instance: &mut Instance, memory: &mut Memory, options: &CanonicalOptions) -> Result<()> {
         if self.is_executing {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                wrt_error::codes::INVALID_STATE,
-                "Post-return already executing"
+            return Err(Error::runtime_invalid_state("Post-return already executing")
             ));
         }
 
@@ -256,11 +254,7 @@ impl PostReturnContext {
         // Handle collected errors based on recovery mode
         if !errors.is_empty() && self.error_recovery == ErrorRecoveryMode::StopOnError {
             let (resource_type, error) = errors.into_iter().next().unwrap();
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                wrt_error::codes::CLEANUP_FAILED,
-                &format!("Post-return cleanup failed for {}: {}", resource_type, error)
-            ));
+            return Err(Error::runtime_execution_error(&format!("Post-return cleanup failed for {}: {}", resource_type, error)));
         }
 
         Ok(())
@@ -288,11 +282,7 @@ impl PostReturnContext {
 
         // Call the post-return function
         instance.call_function(entry.func_index, &raw_args)
-            .map_err(|e| Error::new(
-                ErrorCategory::Runtime,
-                wrt_error::codes::FUNCTION_CALL_FAILED,
-                &format!("Post-return function call failed: {}", e)
-            ))?;
+            .map_err(|e| Error::runtime_execution_error(&format!("Post-return function call failed: {}", e)))?;
 
         Ok(())
     }
@@ -322,11 +312,7 @@ impl PostReturnContext {
             ComponentValue::String(s) => {
                 Ok(Value::I32(s.as_str().as_ptr() as i32))
             }
-            _ => Err(Error::new(
-                ErrorCategory::Type,
-                wrt_error::codes::TYPE_CONVERSION_ERROR,
-                "Unsupported component value type in post-return"
-            ))
+            _ => Err(Error::runtime_execution_error("Unsupported ComponentValue type for post-return conversion"))
         }
     }
 
@@ -361,55 +347,58 @@ pub mod helpers {
     use super::*;
 
     /// Create a memory cleanup entry
-    pub fn create_memory_cleanup(func_index: u32, ptr: u32, size: u32) -> PostReturnEntry {
-        PostReturnEntry {
+    pub fn create_memory_cleanup(func_index: u32, ptr: u32, size: u32) -> Result<PostReturnEntry> {
+        Ok(PostReturnEntry {
             func_index,
             #[cfg(feature = "std")]
             args: vec![ComponentValue::U32(ptr), ComponentValue::U32(size)],
             #[cfg(not(feature = "std"))]
             args: {
-                let mut args = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
-                args.push(ComponentValue::U32(ptr)).unwrap();
-                args.push(ComponentValue::U32(size)).unwrap();
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                let mut args = BoundedVec::new(provider)?;
+                args.push(ComponentValue::U32(ptr))?;
+                args.push(ComponentValue::U32(size))?;
                 args
             },
             priority: CleanupPriority::High,
             resource_type: ResourceType::Memory,
-        }
+        })
     }
 
     /// Create a resource handle cleanup entry
-    pub fn create_resource_cleanup(func_index: u32, handle: u32, resource_type: ResourceType) -> PostReturnEntry {
-        PostReturnEntry {
+    pub fn create_resource_cleanup(func_index: u32, handle: u32, resource_type: ResourceType) -> Result<PostReturnEntry> {
+        Ok(PostReturnEntry {
             func_index,
             #[cfg(feature = "std")]
             args: vec![ComponentValue::U32(handle)],
             #[cfg(not(feature = "std"))]
             args: {
-                let mut args = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
-                args.push(ComponentValue::U32(handle)).unwrap();
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                let mut args = BoundedVec::new(provider)?;
+                args.push(ComponentValue::U32(handle))?;
                 args
             },
             priority: CleanupPriority::Critical,
             resource_type,
-        }
+        })
     }
 
     /// Create a component cleanup entry
-    pub fn create_component_cleanup(func_index: u32, instance_id: u32) -> PostReturnEntry {
-        PostReturnEntry {
+    pub fn create_component_cleanup(func_index: u32, instance_id: u32) -> Result<PostReturnEntry> {
+        Ok(PostReturnEntry {
             func_index,
             #[cfg(feature = "std")]
             args: vec![ComponentValue::U32(instance_id)],
             #[cfg(not(feature = "std"))]
             args: {
-                let mut args = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
-                args.push(ComponentValue::U32(instance_id)).unwrap();
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                let mut args = BoundedVec::new(provider)?;
+                args.push(ComponentValue::U32(instance_id))?;
                 args
             },
             priority: CleanupPriority::Normal,
             resource_type: ResourceType::Component,
-        }
+        })
     }
 }
 
@@ -438,7 +427,7 @@ mod tests {
 
     #[test]
     fn test_post_return_context_creation() {
-        let context = PostReturnContext::new();
+        let context = PostReturnContext::new().unwrap();
         assert_eq!(context.pending_operations(), 0);
         assert!(!context.is_executing());
         assert_eq!(context.stats().operations_executed, 0);
@@ -446,7 +435,7 @@ mod tests {
 
     #[test]
     fn test_cleanup_entry_creation() {
-        let entry = helpers::create_memory_cleanup(1, 0x1000, 4096);
+        let entry = helpers::create_memory_cleanup(1, 0x1000, 4096).unwrap();
         assert_eq!(entry.func_index, 1);
         assert_eq!(entry.priority, CleanupPriority::High);
         assert_eq!(entry.resource_type, ResourceType::Memory);
@@ -463,14 +452,17 @@ mod tests {
 
     #[test]
     fn test_cleanup_priority_ordering() {
-        let mut context = PostReturnContext::new();
+        let mut context = PostReturnContext::new().unwrap();
         
         let low_entry = PostReturnEntry {
             func_index: 1,
             #[cfg(feature = "std")]
             args: vec![],
             #[cfg(not(feature = "std"))]
-            args: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            args: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
+                BoundedVec::new(provider).unwrap()
+            },
             priority: CleanupPriority::Low,
             resource_type: ResourceType::Generic,
         };
@@ -480,7 +472,10 @@ mod tests {
             #[cfg(feature = "std")]
             args: vec![],
             #[cfg(not(feature = "std"))]
-            args: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            args: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
+                BoundedVec::new(provider).unwrap()
+            },
             priority: CleanupPriority::High,
             resource_type: ResourceType::Generic,
         };

@@ -4,7 +4,8 @@
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
     prelude::*,
-    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
     WrtResult,
 };
 
@@ -116,7 +117,7 @@ impl ComponentRuntimeBridge {
     #[cfg(not(feature = "std"))]
     pub fn register_host_function(
         &mut self,
-        _name: BoundedString<64, NoStdProvider::<65536>>,
+        _name: BoundedString<64>,
         _signature: crate::component_instantiation::FunctionSignature,
         _func: fn(&[WrtComponentValue]) -> core::result::Result<WrtComponentValue, wrt_error::Error>,
     ) -> core::result::Result<usize, wrt_error::Error> {
@@ -244,13 +245,13 @@ pub mod cfi_stubs {
     }
     
     /// CFI execution context stub
-    #[derive(Debug, Default, Clone)]
+    #[derive(Debug, Clone)]
     pub struct CfiExecutionContext {
         pub current_function: u32,
         pub current_instruction: u32,
-        pub shadow_stack: BoundedVec<u32, 1024, NoStdProvider::<65536, NoStdProvider<65536>>>,
+        pub shadow_stack: BoundedVec<u32, 1024>,
         pub violation_count: u32,
-        pub landing_pad_expectations: BoundedVec<LandingPadExpectation, 16, NoStdProvider::<65536, NoStdProvider<65536>>>,
+        pub landing_pad_expectations: BoundedVec<LandingPadExpectation, 16>,
         pub metrics: CfiMetrics,
     }
     
@@ -324,16 +325,22 @@ pub mod cfi_stubs {
         }
     }
     
-    impl Default for CfiExecutionContext {
-        fn default() -> Self {
-            Self {
+    impl CfiExecutionContext {
+        pub fn new() -> WrtResult<Self> {
+            Ok(Self {
                 current_function: 0,
                 current_instruction: 0,
-                shadow_stack: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+                shadow_stack: {
+                    let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                    BoundedVec::new(provider)?
+                },
                 violation_count: 0,
-                landing_pad_expectations: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+                landing_pad_expectations: {
+                    let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                    BoundedVec::new(provider)?
+                },
                 metrics: CfiMetrics::default(),
-            }
+            })
         }
     }
 }

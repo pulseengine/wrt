@@ -17,10 +17,7 @@ mod tests {
     impl InstructionContext for MockContext {
         fn read_u8(&mut self) -> Result<u8, crate::prelude::Error> {
             if self.position >= self.bytecode.len() {
-                return Err(crate::prelude::Error::new(
-                    crate::prelude::ErrorCategory::Parse,
-                    crate::prelude::codes::PARSE_ERROR,
-                    "Unexpected end of bytecode"
+                return Err(crate::prelude::Error::runtime_execution_error("
                 ));
             }
             let byte = self.bytecode[self.position];
@@ -44,8 +41,7 @@ mod tests {
                     return Err(crate::prelude::Error::new(
                         crate::prelude::ErrorCategory::Parse,
                         crate::prelude::codes::PARSE_ERROR,
-                        "LEB128 overflow"
-                    ));
+                        "));
                 }
             }
             

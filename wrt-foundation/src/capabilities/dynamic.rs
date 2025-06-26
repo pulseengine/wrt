@@ -104,10 +104,8 @@ impl DynamicMemoryCapability {
         if old_value.saturating_add(size) > self.max_allocation {
             // Rollback the allocation
             self.current_allocated.fetch_sub(size, Ordering::AcqRel);
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::INSUFFICIENT_MEMORY,
-                "Allocation would exceed capability limit",
+            return Err(Error::runtime_execution_error(
+                "Allocation would exceed memory budget limit"
             ));
         }
         Ok(())
@@ -139,8 +137,7 @@ impl MemoryCapability for DynamicMemoryCapability {
         // Check if operation type is allowed
         if !operation.requires_capability(&self.allowed_operations) {
             return Err(super::capability_errors::capability_violation(
-                "Operation not allowed by capability mask",
-            ));
+                "Operation not supported by capability mask"));
         }
 
         // Additional checks based on operation type
@@ -207,13 +204,12 @@ impl MemoryCapability for DynamicMemoryCapability {
         // Create raw provider directly for internal use within the capability
         let provider = if size <= 65536 {
             // Create raw provider without capability wrapping (we are the capability!)
+            // Note: Using default here is safe because this is internal to the capability system
             crate::safe_memory::NoStdProvider::<65536>::default()
         } else {
             // For larger allocations, we'd need a different strategy
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::CAPACITY_EXCEEDED,
-                "Dynamic allocation size exceeds maximum provider capacity",
+            return Err(Error::runtime_execution_error(
+                "Allocation size exceeds maximum allowed for dynamic capability"
             ));
         };
 
@@ -223,7 +219,7 @@ impl MemoryCapability for DynamicMemoryCapability {
         Ok(guard)
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(any(feature = "std"))]
     fn delegate(
         &self,
         subset: CapabilityMask,
@@ -343,10 +339,8 @@ impl MemoryGuard for DynamicMemoryGuard {
         self.get_capability().verify_access(&operation)?;
 
         if !self.region.contains_range(offset, len) {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::OUT_OF_BOUNDS,
-                "Read operation exceeds region bounds",
+            return Err(Error::runtime_execution_error(
+                "Read range exceeds dynamic memory region bounds"
             ));
         }
 
@@ -364,8 +358,7 @@ impl MemoryGuard for DynamicMemoryGuard {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::OUT_OF_BOUNDS,
-                "Write operation exceeds region bounds",
-            ));
+                "Write range exceeds dynamic memory region bounds"));
         }
 
         // Write to the provider using get_slice_mut

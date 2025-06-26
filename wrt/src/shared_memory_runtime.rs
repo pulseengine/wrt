@@ -125,11 +125,7 @@ impl SharedMemoryInstance {
         capability_context: wrt_foundation::capabilities::MemoryCapabilityContext,
     ) -> Result<Self> {
         if !memory_type.is_shared() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "SharedMemoryInstance requires shared memory type"
-            ));
+            return Err(Error::validation_error("SharedMemoryInstance requires shared memory type"));
         }
 
         memory_type.validate()?;
@@ -162,7 +158,7 @@ impl SharedMemoryInstance {
         match operation {
             SharedMemoryOperation::AtomicLoad { address, ordering, .. } => {
                 let mut atomic_context = self.atomic_context.lock().map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Failed to acquire atomic context lock")
+                    Error::runtime_execution_error("Failed to acquire atomic context lock")
                 })?;
                 
                 // Validate access
@@ -177,13 +173,13 @@ impl SharedMemoryInstance {
                 if result.len() == 1 {
                     Ok(Some(Value::I32(result[0] as i32)))
                 } else {
-                    Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Invalid atomic load result"))
+                    Err(Error::runtime_execution_error("Invalid atomic load result"))
                 }
             },
             
             SharedMemoryOperation::AtomicStore { address, value, .. } => {
                 let mut atomic_context = self.atomic_context.lock().map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Failed to acquire atomic context lock")
+                    Error::runtime_execution_error("Failed to acquire atomic context lock")
                 })?;
                 
                 // Validate access
@@ -200,7 +196,7 @@ impl SharedMemoryInstance {
             
             SharedMemoryOperation::AtomicWait { address, expected, timeout, .. } => {
                 let mut atomic_context = self.atomic_context.lock().map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Failed to acquire atomic context lock")
+                    Error::runtime_execution_error("Failed to acquire atomic context lock")
                 })?;
                 
                 // Validate access
@@ -211,11 +207,7 @@ impl SharedMemoryInstance {
                 let wait_op = match expected {
                     Value::I32(_) => AtomicWaitNotifyOp::MemoryAtomicWait32 { memarg },
                     Value::I64(_) => AtomicWaitNotifyOp::MemoryAtomicWait64 { memarg },
-                    _ => return Err(Error::new(
-                        ErrorCategory::Type,
-                        codes::TYPE_MISMATCH,
-                        "Atomic wait expects i32 or i64 value"
-                    )),
+                    _ => return Err(Error::type_error("Atomic wait expects i32 or i64 value")),
                 };
                 let atomic_op = wrt_instructions::atomic_ops::AtomicOp::WaitNotify(wait_op);
                 
@@ -223,13 +215,13 @@ impl SharedMemoryInstance {
                 if result.len() == 1 {
                     Ok(Some(Value::I32(result[0] as i32)))
                 } else {
-                    Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Invalid atomic wait result"))
+                    Err(Error::runtime_execution_error("Invalid atomic wait result"))
                 }
             },
             
             SharedMemoryOperation::AtomicNotify { address, count, .. } => {
                 let mut atomic_context = self.atomic_context.lock().map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Failed to acquire atomic context lock")
+                    Error::runtime_execution_error("Failed to acquire atomic context lock")
                 })?;
                 
                 // Validate access
@@ -244,13 +236,13 @@ impl SharedMemoryInstance {
                 if result.len() == 1 {
                     Ok(Some(Value::I32(result[0] as i32)))
                 } else {
-                    Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Invalid atomic notify result"))
+                    Err(Error::runtime_execution_error("Invalid atomic notify result"))
                 }
             },
             
             SharedMemoryOperation::Grow { delta_pages, .. } => {
                 let mut memory = self.memory.write().map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Failed to acquire memory write lock")
+                    Error::runtime_execution_error("Failed to acquire memory write lock")
                 })?;
                 
                 let current_size = memory.size_in_bytes()?;
@@ -272,20 +264,16 @@ impl SharedMemoryInstance {
     /// Validate atomic access to shared memory
     fn validate_atomic_access(&self, thread_id: ThreadId, address: u64) -> Result<()> {
         let manager = self.manager.lock().map_err(|_| {
-            Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Failed to acquire manager lock")
+            Error::runtime_execution_error("Failed to acquire manager lock")
         })?;
         
         if !manager.allows_atomic_at(address) {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::EXECUTION_ERROR,
-                "Atomic operations not allowed at this address"
-            ));
+            return Err(Error::runtime_execution_error("Atomic operations not allowed at this address"));
         }
         
         // Update statistics
         let mut stats = self.stats.lock().map_err(|_| {
-            Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Failed to acquire stats lock")
+            Error::runtime_execution_error("Failed to acquire stats lock")
         })?;
         stats.record_atomic_operation();
         
@@ -295,7 +283,7 @@ impl SharedMemoryInstance {
     /// Get shared memory statistics
     pub fn get_stats(&self) -> Result<SharedMemoryStats> {
         let stats = self.stats.lock().map_err(|_| {
-            Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Failed to acquire stats lock")
+            Error::runtime_execution_error("Failed to acquire stats lock")
         })?;
         Ok(stats.clone())
     }
@@ -303,7 +291,7 @@ impl SharedMemoryInstance {
     /// Get atomic execution statistics
     pub fn get_atomic_stats(&self) -> Result<AtomicExecutionStats> {
         let atomic_context = self.atomic_context.lock().map_err(|_| {
-            Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Failed to acquire atomic context lock")
+            Error::runtime_execution_error("Failed to acquire atomic context lock")
         })?;
         Ok(atomic_context.stats.clone())
     }
@@ -345,11 +333,7 @@ impl SharedMemoryContext {
         #[cfg(feature = "std")]
         {
             if self.memories.len() >= MAX_SHARED_MEMORIES {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::MEMORY_ERROR,
-                    "Maximum number of shared memories reached"
-                ));
+                return Err(Error::memory_error("Maximum number of shared memories reached"));
             }
             self.memories.insert(memory_index, memory);
         }
@@ -359,17 +343,13 @@ impl SharedMemoryContext {
             if let Some(slot) = self.memories.iter_mut().find(|(_, mem)| mem.is_none()) {
                 slot.1 = Some(memory);
             } else {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::MEMORY_ERROR,
-                    "Maximum number of shared memories reached"
-                ));
+                return Err(Error::memory_error("Maximum number of shared memories reached"));
             }
         }
         
         // Update global statistics
         let mut global_stats = self.global_stats.lock().map_err(|_| {
-            Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Failed to acquire global stats lock")
+            Error::runtime_execution_error("Failed to acquire global stats lock")
         })?;
         global_stats.registered_segments += 1;
         
@@ -381,11 +361,7 @@ impl SharedMemoryContext {
         #[cfg(feature = "std")]
         {
             self.memories.get(&memory_index).cloned().ok_or_else(|| {
-                Error::new(
-                    ErrorCategory::Runtime,
-                    codes::EXECUTION_ERROR,
-                    "Shared memory index not found"
-                )
+                Error::runtime_execution_error("Shared memory index not found")
             })
         }
         
@@ -397,11 +373,7 @@ impl SharedMemoryContext {
                 .and_then(|(_, mem)| mem.as_ref())
                 .cloned()
                 .ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::EXECUTION_ERROR,
-                        "Shared memory index not found"
-                    )
+                    Error::runtime_execution_error("Shared memory index not found")
                 })
         }
     }
@@ -428,7 +400,7 @@ impl SharedMemoryContext {
     /// Get global shared memory statistics
     pub fn get_global_stats(&self) -> Result<SharedMemoryStats> {
         let stats = self.global_stats.lock().map_err(|_| {
-            Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Failed to acquire global stats lock")
+            Error::runtime_execution_error("Failed to acquire global stats lock")
         })?;
         Ok(stats.clone())
     }
@@ -465,11 +437,7 @@ impl SharedMemoryProvider for ASILCompliantSharedMemoryProvider {
     ) -> Result<()> {
         // Basic validation - in real implementation would use capability system
         if addr > u32::MAX as u64 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Memory address exceeds 32-bit range"
-            ));
+            return Err(Error::validation_error("Memory address exceeds 32-bit range"));
         }
         
         Ok(())
@@ -494,11 +462,7 @@ pub fn create_shared_memory(
             initial: vec![],
             maximum: memory_type.max_pages(),
         }
-    ).map_err(|_| Error::new(
-        ErrorCategory::Runtime,
-        codes::EXECUTION_ERROR,
-        "Failed to create memory instance"
-    ))?;
+    ).map_err(|_| Error::runtime_execution_error("Failed to create memory instance"))?;
     
     let shared_memory = SharedMemoryInstance::new(
         memory_type,
@@ -528,11 +492,7 @@ pub fn shared_memory_compare_and_swap(
     let result = memory.execute_atomic_operation(thread_id, operation)?;
     match result {
         Some(Value::I32(old_value)) => Ok(old_value),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            "Expected i32 result from atomic operation"
-        ))
+        _ => Err(Error::type_error("Expected i32 result from atomic operation"))
     }
 }
 
@@ -554,11 +514,7 @@ pub fn shared_memory_wait(
     let result = memory.execute_atomic_operation(thread_id, operation)?;
     match result {
         Some(Value::I32(wait_result)) => Ok(wait_result),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            "Expected i32 result from wait operation"
-        ))
+        _ => Err(Error::type_error("Expected i32 result from wait operation"))
     }
 }
 
@@ -578,10 +534,6 @@ pub fn shared_memory_notify(
     let result = memory.execute_atomic_operation(thread_id, operation)?;
     match result {
         Some(Value::I32(notify_count)) => Ok(notify_count as u32),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            "Expected i32 result from notify operation"
-        ))
+        _ => Err(Error::type_error("Expected i32 result from notify operation"))
     }
 }

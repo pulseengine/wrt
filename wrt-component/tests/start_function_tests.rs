@@ -68,7 +68,7 @@ impl LinkInterceptorStrategy for TestInterceptor {
                 // Interceptor handles the call completely
                 Ok((true, vec![1, 2, 3, 4]))
             },
-            InterceptMode::ThrowError => Err(Error::new("Interceptor blocked function call")),
+            InterceptMode::ThrowError => Err(Error::runtime_execution_error("Interceptor blocked function call")),
             _ => Ok((false, arguments)),
         }
     }
@@ -94,7 +94,7 @@ impl LinkInterceptorStrategy for TestInterceptor {
                     result
                 }
             },
-            InterceptMode::ThrowError => Err(Error::new("Interceptor blocked function result")),
+            InterceptMode::ThrowError => Err(Error::runtime_execution_error("Interceptor blocked function result")),
             _ => result,
         }
     }
@@ -168,12 +168,11 @@ impl Component {
     fn execute_start_function_with_integrity(&self) -> Result<(), Error> {
         // For testing, simulate execution or failure based on configuration
         if self.start_should_fail {
-            Err(Error::new("Start function failed"))
+            Err(Error::runtime_execution_error("Start function failed"))
         } else if let Some(timeout) = self.options.execution_timeout {
             if timeout.as_millis() < 100 {
                 // Simulate timeout for very short timeouts
-                Err(Error::from(ExecutionTimeoutError::new(
-                    "Start function timed out",
+                Err(Error::from(ExecutionTimeoutError::runtime_execution_error(",
                     timeout,
                 )))
             } else {
@@ -191,7 +190,7 @@ impl Component {
 fn test_execute_start_basic() {
     let component = MockComponentBuilder::new().build();
     let result = component.execute_start();
-    assert!(result.is_ok(), "Basic start execution should succeed");
+    assert!(result.is_ok(), ");
 }
 
 #[test]

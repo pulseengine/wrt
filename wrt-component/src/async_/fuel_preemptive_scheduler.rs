@@ -206,11 +206,7 @@ impl FuelPreemptiveScheduler {
                 context_switches: AtomicUsize::new(0),
             };
             priority_queues.push(queue).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_LIMIT_EXCEEDED,
-                    "Failed to initialize priority queues".to_string(),
-                )
+                Error::resource_limit_exceeded("Failed to initialize priority queues")
             })?;
         }
 
@@ -271,11 +267,7 @@ impl FuelPreemptiveScheduler {
         };
 
         self.task_info.insert(task_id, task_info).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many tasks in scheduler".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many tasks in scheduler")
         })?;
 
         // Add to appropriate priority queue
@@ -553,20 +545,12 @@ impl FuelPreemptiveScheduler {
         for queue in self.priority_queues.iter_mut() {
             if queue.priority == priority {
                 queue.tasks.push(task_id).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_LIMIT_EXCEEDED,
-                        "Priority queue is full".to_string(),
-                    )
+                    Error::resource_limit_exceeded("Priority queue is full")
                 })?;
                 return Ok(());
             }
         }
-        Err(Error::new(
-            ErrorCategory::Resource,
-            codes::RESOURCE_NOT_FOUND,
-            "Priority queue not found".to_string(),
-        ))
+        Err(Error::resource_not_found("Priority queue not found"))
     }
 
     fn remove_task_from_priority_queues(&mut self, task_id: TaskId) -> Result<(), Error> {

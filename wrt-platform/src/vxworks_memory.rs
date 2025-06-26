@@ -93,10 +93,7 @@ impl VxWorksAllocator {
             // Create memory partition
             let mem_part_id = unsafe { memPartCreate(pool_ptr, partition_size) };
             if mem_part_id == 0 {
-                return Err(Error::new(
-                    ErrorKind::Memory,
-                    "Failed to create VxWorks memory partition"
-                ));
+                return Err(Error::runtime_execution_error("Failed to create VxWorks memory partition"));
             }
 
             self.mem_part_id = Some(mem_part_id);
@@ -105,10 +102,7 @@ impl VxWorksAllocator {
         
         #[cfg(not(target_os = "vxworks"))]
         {
-            return Err(Error::new(
-                ErrorKind::Platform,
-                "VxWorks memory partition not supported on this platform"
-            ));
+            return Err(Error::runtime_execution_error("VxWorks memory partition creation not supported on this platform"));
         }
 
         Ok(())
@@ -138,13 +132,7 @@ impl VxWorksAllocator {
             };
 
             if ptr.is_null() {
-                return Err(Error::new(
-                    ErrorKind::Memory,
-                    match self.config.context {
-                        VxWorksContext::Lkm => "VxWorks LKM memory allocation failed",
-                        VxWorksContext::Rtp => "VxWorks RTP memory allocation failed",
-                    }
-                ));
+                return Err(Error::runtime_execution_error("Failed to allocate memory"));
             }
 
             Ok(ptr)
@@ -152,10 +140,7 @@ impl VxWorksAllocator {
         
         #[cfg(not(target_os = "vxworks"))]
         {
-            Err(Error::new(
-                ErrorKind::Platform,
-                "VxWorks memory allocation not supported on this platform"
-            ))
+            Err(Error::runtime_execution_error("VxWorks memory allocation not supported on this platform"))
         }
     }
 
@@ -167,10 +152,7 @@ impl VxWorksAllocator {
                 Some(mem_part_id) => {
                     let result = unsafe { memPartFree(mem_part_id, ptr) };
                     if result != 0 {
-                        return Err(Error::new(
-                            ErrorKind::Memory,
-                            "VxWorks memory partition free failed"
-                        ));
+                        return Err(Error::runtime_execution_error("Failed to free memory from partition"));
                     }
                 }
                 None => {
@@ -181,10 +163,7 @@ impl VxWorksAllocator {
         
         #[cfg(not(target_os = "vxworks"))]
         {
-            return Err(Error::new(
-                ErrorKind::Platform,
-                "VxWorks memory free not supported on this platform"
-            ));
+            return Err(Error::runtime_execution_error("VxWorks memory free not supported on this platform"));
         }
 
         Ok(())
@@ -196,7 +175,7 @@ impl PageAllocator for VxWorksAllocator {
         if self.allocated_pages + pages > self.config.max_pages {
             return Err(Error::new(
                 ErrorKind::Memory,
-                "VxWorks allocator page limit exceeded"
+                "Maximum page allocation exceeded",
             ));
         }
 
@@ -213,7 +192,7 @@ impl PageAllocator for VxWorksAllocator {
         self.allocated_pages += pages;
 
         NonNull::new(ptr).ok_or_else(|| {
-            Error::new(ErrorKind::Memory, "Allocated null pointer")
+            Error::runtime_execution_error(")
         })
     }
 
@@ -221,8 +200,7 @@ impl PageAllocator for VxWorksAllocator {
         if pages > self.allocated_pages {
             return Err(Error::new(
                 ErrorKind::Memory,
-                "Attempting to deallocate more pages than allocated"
-            ));
+                "));
         }
 
         self.free_memory(ptr.as_ptr())?;
@@ -238,9 +216,7 @@ impl PageAllocator for VxWorksAllocator {
 
         let additional_pages = new_pages - old_pages;
         if self.allocated_pages + additional_pages > self.config.max_pages {
-            return Err(Error::new(
-                ErrorKind::Memory,
-                "VxWorks allocator page limit exceeded during growth"
+            return Err(Error::runtime_execution_error("
             ));
         }
 
@@ -271,7 +247,7 @@ impl PageAllocator for VxWorksAllocator {
 
 impl Drop for VxWorksAllocator {
     fn drop(&mut self) {
-        #[cfg(target_os = "vxworks")]
+        #[cfg(target_os = ")]
         {
             if let Some(mem_part_id) = self.mem_part_id {
                 unsafe {

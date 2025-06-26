@@ -31,10 +31,44 @@ use wrt_foundation::{
     safe_memory::NoStdProvider,
     budget_aware_provider::CrateId,
     safety_system::{AsilLevel, SafetyContext},
-    resource::{Resource, ResourceRepr, ResourceTableIdx},
     types::ValueType,
     verification::VerificationLevel,
 };
+
+// Simplified Resource types for KANI verification
+#[cfg(feature = "kani")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Resource {
+    pub id: u32,
+    pub repr: ResourceRepr,
+    verification_level: VerificationLevel,
+}
+
+#[cfg(feature = "kani")]
+impl Resource {
+    pub fn new(id: u32, repr: ResourceRepr, _name: Option<()>, verification_level: VerificationLevel) -> Self {
+        Self { id, repr, verification_level }
+    }
+    
+    pub fn verification_level(&self) -> VerificationLevel {
+        self.verification_level
+    }
+    
+    pub fn set_verification_level(&mut self, level: VerificationLevel) {
+        self.verification_level = level;
+    }
+}
+
+#[cfg(feature = "kani")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ResourceRepr {
+    Primitive(ValueType),
+    Opaque,
+}
+
+#[cfg(feature = "kani")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ResourceTableIdx(pub u32);
 
 use crate::utils::{
     any_memory_size, any_crate_id, any_asil_level,

@@ -48,7 +48,7 @@ impl<T> Mutex<T> {
     
     pub fn lock(&self) -> Result<core::cell::RefMut<T>> {
         self.0.try_borrow_mut().map_err(|_| {
-            Error::new(ErrorCategory::Runtime, codes::POISONED_LOCK, "Mutex poisoned")
+            Error::poisoned_lock("Mutex poisoned")
         })
     }
 }
@@ -341,10 +341,7 @@ impl StacklessEngine {
             )?;
             
             if *fuel < cost {
-                return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::FUEL_EXHAUSTED,
-                    "Fuel exhausted during operation",
+                return Err(Error::runtime_execution_error(",
                 ));
             }
             
@@ -400,7 +397,7 @@ impl StacklessEngine {
         self.instance_count += 1;
         
         // Create a module instance from the module
-        let module_instance = ModuleInstance::new(module, instance_idx);
+        let module_instance = ModuleInstance::new(module, instance_idx)?;
         
         // Store the module instance as the current module
         // In a full implementation, we'd store multiple instances
@@ -427,20 +424,12 @@ impl StacklessEngine {
     fn get_memory_safe(&self, memory_idx: u32) -> Result<MemoryWrapper> {
         // ASIL-B: Validate module instance exists
         let module_instance = self.current_module.as_ref()
-            .ok_or_else(|| Error::new(
-                ErrorCategory::Runtime, 
-                codes::RUNTIME_ERROR, 
-                "No module instance set for memory access"
-            ))?;
+            .ok_or_else(|| Error::runtime_error("))?;
         
         // ASIL-B: Bounds check memory index
         if memory_idx > 0 {
             // Multi-memory support - validate index
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::MEMORY_NOT_FOUND,
-                "Memory index out of bounds"
-            ));
+            return Err(Error::memory_not_found("Memory index out of bounds"));
         }
         
         // Get memory with error propagation
@@ -457,20 +446,12 @@ impl StacklessEngine {
         let addr_value = self.pop_control_value()?;
         let base_addr = match addr_value {
             Value::I32(addr) => addr as u32,
-            _ => return Err(Error::new(
-                ErrorCategory::Type, 
-                codes::TYPE_MISMATCH, 
-                "Memory address must be i32"
-            )),
+            _ => return Err(Error::type_error("Memory address must be i32")),
         };
         
         // ASIL-B: Calculate effective address with overflow check
         let effective_addr = base_addr.checked_add(mem_op.offset)
-            .ok_or_else(|| Error::new(
-                ErrorCategory::Runtime,
-                codes::MEMORY_OUT_OF_BOUNDS,
-                "Memory address overflow"
-            ))?;
+            .ok_or_else(|| Error::memory_out_of_bounds("Memory address overflow"))?;
         
         // Execute the load operation using MemoryOperations trait
         let result = mem_op.execute(memory.as_ref(), &Value::I32(effective_addr as i32))?;
@@ -487,11 +468,6 @@ impl StacklessEngine {
         // ASIL-B: Get memory with safety checks
         let memory_wrapper = self.get_memory_safe(memory_idx)?;
         
-        // For store operations, we need mutable access
-        // TODO: This is a temporary workaround - memory should support interior mutability
-        // or we should use a different approach for memory access
-        let memory_arc = memory_wrapper.inner();
-        
         // Pop the value to store
         let value = self.pop_control_value()?;
         
@@ -499,29 +475,47 @@ impl StacklessEngine {
         let addr_value = self.pop_control_value()?;
         let base_addr = match addr_value {
             Value::I32(addr) => addr as u32,
-            _ => return Err(Error::new(
-                ErrorCategory::Type, 
-                codes::TYPE_MISMATCH, 
-                "Memory address must be i32"
-            )),
+            _ => return Err(Error::type_error("Memory address must be i32")),
         };
         
         // ASIL-B: Calculate effective address with overflow check
         let effective_addr = base_addr.checked_add(mem_op.offset)
-            .ok_or_else(|| Error::new(
-                ErrorCategory::Runtime,
-                codes::MEMORY_OUT_OF_BOUNDS,
-                "Memory address overflow"
-            ))?;
+            .ok_or_else(|| Error::memory_out_of_bounds("Memory address overflow"))?;
         
-        // Execute the store operation
-        // TODO: This needs to be fixed to handle Arc<Memory> properly
-        // For now, return unimplemented error
-        return Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::EXECUTION_ERROR,
-            "Memory store operations not yet implemented for Arc<Memory>"
-        ));
+        // Execute the store operation using thread-safe memory methods
+        match mem_op.value_type {
+            wrt_instructions::ValueType::I32 => {
+                if let Value::I32(val) = value {
+                    memory_wrapper.write_i32(effective_addr, val)?;
+                } else {
+                    return Err(Error::type_error("Expected i32 value"));
+                }
+            },
+            wrt_instructions::ValueType::I64 => {
+                if let Value::I64(val) = value {
+                    memory_wrapper.write_i64(effective_addr, val)?;
+                } else {
+                    return Err(Error::type_error("Expected i64 value"));
+                }
+            },
+            wrt_instructions::ValueType::F32 => {
+                if let Value::F32(val) = value {
+                    memory_wrapper.write_f32(effective_addr, f32::from_bits(val.to_bits()))?;
+                } else {
+                    return Err(Error::type_error("Expected f32 value"));
+                }
+            },
+            wrt_instructions::ValueType::F64 => {
+                if let Value::F64(val) = value {
+                    memory_wrapper.write_f64(effective_addr, f64::from_bits(val.to_bits()))?;
+                } else {
+                    return Err(Error::type_error("Expected f64 value"));
+                }
+            },
+            _ => {
+                return Err(Error::runtime_execution_error("Unsupported data type for memory store"));
+            }
+        }
         
         // Update statistics
         self.stats.increment_memory_writes(1);
@@ -557,7 +551,7 @@ impl StacklessEngine {
         // Initialize local variables with function parameters
         for arg in args {
             self.locals.push(arg).map_err(|_| {
-                Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Local variable overflow")
+                Error::runtime_stack_overflow("Local variable overflow")
             })?;
         }
         
@@ -576,11 +570,7 @@ impl StacklessEngine {
         loop {
             instruction_count += 1;
             if instruction_count >= MAX_INSTRUCTIONS {
-                return Err(Error::new(
-                    ErrorCategory::Runtime, 
-                    codes::EXECUTION_ERROR, 
-                    "Instruction limit exceeded"
-                ));
+                return Err(Error::runtime_execution_error("Instruction limit exceeded"));
             }
             
             match &self.exec_stack.state {
@@ -601,18 +591,10 @@ impl StacklessEngine {
                             // Increment program counter
                             self.exec_stack.pc += 1;
                         } else {
-                            return Err(Error::new(
-                                ErrorCategory::Runtime, 
-                                codes::EXECUTION_ERROR, 
-                                "Invalid function index"
-                            ));
+                            return Err(Error::runtime_execution_error("Invalid function index"));
                         }
                     } else {
-                        return Err(Error::new(
-                            ErrorCategory::Runtime, 
-                            codes::EXECUTION_ERROR, 
-                            "No module available for execution"
-                        ));
+                        return Err(Error::runtime_execution_error("No module available for execution"));
                     }
                 }
                 StacklessExecutionState::Completed | StacklessExecutionState::Finished => {
@@ -996,7 +978,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 2 { // 2^2 = 4 bytes max for i32
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i32.load"));
+                    return Err(Error::validation_error("Invalid alignment for i32.load"));
                 }
                 
                 // Create memory load operation
@@ -1014,7 +996,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 3 { // 2^3 = 8 bytes max for i64
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.load"));
+                    return Err(Error::validation_error("Invalid alignment for i64.load"));
                 }
                 
                 // Create memory load operation
@@ -1032,7 +1014,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 2 { // 2^2 = 4 bytes max for f32
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for f32.load"));
+                    return Err(Error::validation_error("Invalid alignment for f32.load"));
                 }
                 
                 // Create memory load operation
@@ -1050,7 +1032,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 3 { // 2^3 = 8 bytes max for f64
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for f64.load"));
+                    return Err(Error::validation_error("Invalid alignment for f64.load"));
                 }
                 
                 // Create memory load operation
@@ -1068,7 +1050,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 0 { // 2^0 = 1 byte max for i8
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i32.load8_s"));
+                    return Err(Error::validation_error("Invalid alignment for i32.load8_s"));
                 }
                 
                 // Create memory load operation (signed 8-bit)
@@ -1086,7 +1068,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 0 { // 2^0 = 1 byte max for i8
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i32.load8_u"));
+                    return Err(Error::validation_error("Invalid alignment for i32.load8_u"));
                 }
                 
                 // Create memory load operation (unsigned 8-bit)
@@ -1104,7 +1086,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 1 { // 2^1 = 2 bytes max for i16
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i32.load16_s"));
+                    return Err(Error::validation_error("Invalid alignment for i32.load16_s"));
                 }
                 
                 // Create memory load operation (signed 16-bit)
@@ -1122,7 +1104,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 1 { // 2^1 = 2 bytes max for i16
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i32.load16_u"));
+                    return Err(Error::validation_error("Invalid alignment for i32.load16_u"));
                 }
                 
                 // Create memory load operation (unsigned 16-bit)
@@ -1140,7 +1122,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 0 { // 2^0 = 1 byte max for i8
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.load8_s"));
+                    return Err(Error::validation_error("Invalid alignment for i64.load8_s"));
                 }
                 
                 // Create memory load operation (signed 8-bit to i64)
@@ -1158,7 +1140,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 0 { // 2^0 = 1 byte max for i8
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.load8_u"));
+                    return Err(Error::validation_error("Invalid alignment for i64.load8_u"));
                 }
                 
                 // Create memory load operation (unsigned 8-bit to i64)
@@ -1176,7 +1158,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 1 { // 2^1 = 2 bytes max for i16
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.load16_s"));
+                    return Err(Error::validation_error("Invalid alignment for i64.load16_s"));
                 }
                 
                 // Create memory load operation (signed 16-bit to i64)
@@ -1194,7 +1176,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 1 { // 2^1 = 2 bytes max for i16
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.load16_u"));
+                    return Err(Error::validation_error("Invalid alignment for i64.load16_u"));
                 }
                 
                 // Create memory load operation (unsigned 16-bit to i64)
@@ -1212,7 +1194,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 2 { // 2^2 = 4 bytes max for i32
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.load32_s"));
+                    return Err(Error::validation_error("Invalid alignment for i64.load32_s"));
                 }
                 
                 // Create memory load operation (signed 32-bit to i64)
@@ -1230,7 +1212,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 2 { // 2^2 = 4 bytes max for i32
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.load32_u"));
+                    return Err(Error::validation_error("Invalid alignment for i64.load32_u"));
                 }
                 
                 // Create memory load operation (unsigned 32-bit to i64)
@@ -1248,7 +1230,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 2 { // 2^2 = 4 bytes max for i32
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i32.store"));
+                    return Err(Error::validation_error("Invalid alignment for i32.store"));
                 }
                 
                 // Create memory store operation
@@ -1266,7 +1248,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 3 { // 2^3 = 8 bytes max for i64
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.store"));
+                    return Err(Error::validation_error("Invalid alignment for i64.store"));
                 }
                 
                 // Create memory store operation
@@ -1284,7 +1266,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 2 { // 2^2 = 4 bytes max for f32
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for f32.store"));
+                    return Err(Error::validation_error("Invalid alignment for f32.store"));
                 }
                 
                 // Create memory store operation
@@ -1302,7 +1284,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 3 { // 2^3 = 8 bytes max for f64
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for f64.store"));
+                    return Err(Error::validation_error("Invalid alignment for f64.store"));
                 }
                 
                 // Create memory store operation
@@ -1320,7 +1302,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 0 { // 2^0 = 1 byte max for i8
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i32.store8"));
+                    return Err(Error::validation_error("Invalid alignment for i32.store8"));
                 }
                 
                 // Create memory store operation (8-bit)
@@ -1338,7 +1320,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 1 { // 2^1 = 2 bytes max for i16
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i32.store16"));
+                    return Err(Error::validation_error("Invalid alignment for i32.store16"));
                 }
                 
                 // Create memory store operation (16-bit)
@@ -1356,7 +1338,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 0 { // 2^0 = 1 byte max for i8
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.store8"));
+                    return Err(Error::validation_error("Invalid alignment for i64.store8"));
                 }
                 
                 // Create memory store operation (8-bit from i64)
@@ -1374,7 +1356,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 1 { // 2^1 = 2 bytes max for i16
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.store16"));
+                    return Err(Error::validation_error("Invalid alignment for i64.store16"));
                 }
                 
                 // Create memory store operation (16-bit from i64)
@@ -1392,7 +1374,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 2 { // 2^2 = 4 bytes max for i32
-                    return Err(Error::new(ErrorCategory::Validation, codes::MEMORY_ALIGNMENT_ERROR, "Invalid alignment for i64.store32"));
+                    return Err(Error::validation_error("Invalid alignment for i64.store32"));
                 }
                 
                 // Create memory store operation (32-bit from i64)
@@ -1409,7 +1391,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate memory index
                 if mem_idx != 0 {
-                    return Err(Error::new(ErrorCategory::Resource, codes::MEMORY_NOT_FOUND, "Invalid memory index"));
+                    return Err(Error::memory_not_found("Invalid memory index"));
                 }
                 
                 // Get memory with safety checks
@@ -1427,7 +1409,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate memory index
                 if mem_idx != 0 {
-                    return Err(Error::new(ErrorCategory::Resource, codes::MEMORY_NOT_FOUND, "Invalid memory index"));
+                    return Err(Error::memory_not_found("Invalid memory index"));
                 }
                 
                 // Pop delta pages from stack
@@ -1436,25 +1418,21 @@ impl StacklessEngine {
                     Value::I32(d) => {
                         // ASIL-B: Validate non-negative growth
                         if d < 0 {
-                            return Err(Error::new(ErrorCategory::Runtime, codes::INVALID_PARAMETER, "Memory grow delta must be non-negative"));
+                            return Err(Error::runtime_invalid_parameter("Memory grow delta must be non-negative"));
                         }
                         d as u32
                     },
-                    _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Memory grow delta must be i32")),
+                    _ => return Err(Error::type_error("Memory grow delta must be i32")),
                 };
                 
                 // Get memory with safety checks
                 let memory_wrapper = self.get_memory_safe(mem_idx as u32)?;
                 
-                // For grow operations, we need mutable access - clone the Arc
-                // TODO: Memory growth requires mutable access to Arc<Memory>
-                // This needs architectural changes to support interior mutability
-                // For now, return unimplemented error
-                return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::EXECUTION_ERROR,
-                    "Memory grow operation not yet implemented for Arc<Memory>"
-                ))
+                // Use the new thread-safe grow method
+                let result = memory_wrapper.grow(delta)?;
+                
+                // Push the previous size (in pages) to the stack
+                self.push_control_value(Value::I32(result as i32))
             }
 
             // Comparison instructions (i32)
@@ -2114,11 +2092,7 @@ impl StacklessEngine {
             
             _ => {
                 // Unknown instruction
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::EXECUTION_ERROR,
-                    "Unknown instruction opcode"
-                ))
+                Err(Error::runtime_execution_error("Unknown instruction opcode"))
             }
         }
     }
@@ -2132,238 +2106,234 @@ impl StacklessEngine {
             // Vector load operations
             0 => {
                 // v128.load - Vector load 128-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD v128.load not yet implemented"))
             }
             1 => {
                 // v128.load8x8_s - Load 8 bytes as 8x8-bit signed vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load8x8_s not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD v128.load8x8_s not yet implemented"))
             }
             2 => {
                 // v128.load8x8_u - Load 8 bytes as 8x8-bit unsigned vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load8x8_u not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD v128.load8x8_u not yet implemented"))
             }
             3 => {
                 // v128.load16x4_s - Load 8 bytes as 4x16-bit signed vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load16x4_s not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD v128.load16x4_s not yet implemented"))
             }
             4 => {
                 // v128.load16x4_u - Load 8 bytes as 4x16-bit unsigned vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load16x4_u not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD v128.load16x4_u not yet implemented"))
             }
             5 => {
                 // v128.load32x2_s - Load 8 bytes as 2x32-bit signed vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load32x2_s not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD v128.load32x2_s not yet implemented"))
             }
             6 => {
                 // v128.load32x2_u - Load 8 bytes as 2x32-bit unsigned vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load32x2_u not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD v128.load32x2_u not yet implemented"))
             }
             7 => {
                 // v128.load8_splat - Load 1 byte and splat to 16x8-bit vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load8_splat not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD v128.load8_splat not yet implemented"))
             }
             8 => {
                 // v128.load16_splat - Load 2 bytes and splat to 8x16-bit vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load16_splat not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD v128.load16_splat not yet implemented"))
             }
             9 => {
                 // v128.load32_splat - Load 4 bytes and splat to 4x32-bit vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load32_splat not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD v128.load32_splat not yet implemented"))
             }
             10 => {
                 // v128.load64_splat - Load 8 bytes and splat to 2x64-bit vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.load64_splat not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD v128.load64_splat not yet implemented"))
             }
             11 => {
                 // v128.store - Store 128-bit vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.store not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD v128.store not yet implemented"))
             }
             
             // Vector constants
             12 => {
                 // v128.const - 128-bit vector constant
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD v128.const not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD v128.const not yet implemented"))
             }
             
             // Vector lane operations
             13 => {
                 // i8x16.shuffle - Shuffle lanes using indices
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.shuffle not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i8x16.shuffle not yet implemented"))
             }
             14 => {
                 // i8x16.swizzle - Swizzle lanes
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.swizzle not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i8x16.swizzle not yet implemented"))
             }
             
             // Lane access operations
             15 => {
                 // i8x16.splat - Splat i32 to 16x8-bit vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.splat not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i8x16.splat not yet implemented"))
             }
             16 => {
                 // i16x8.splat - Splat i32 to 8x16-bit vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i16x8.splat not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i16x8.splat not yet implemented"))
             }
             17 => {
                 // i32x4.splat - Splat i32 to 4x32-bit vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i32x4.splat not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i32x4.splat not yet implemented"))
             }
             18 => {
                 // i64x2.splat - Splat i64 to 2x64-bit vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i64x2.splat not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i64x2.splat not yet implemented"))
             }
             19 => {
                 // f32x4.splat - Splat f32 to 4x32-bit vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f32x4.splat not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD f32x4.splat not yet implemented"))
             }
             20 => {
                 // f64x2.splat - Splat f64 to 2x64-bit vector
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f64x2.splat not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD f64x2.splat not yet implemented"))
             }
             
             // Vector arithmetic operations (i8x16)
             96 => {
                 // i8x16.add - Add 16x8-bit vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.add not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i8x16.add not yet implemented"))
             }
             97 => {
                 // i8x16.add_sat_s - Add 16x8-bit vectors with signed saturation
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.add_sat_s not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i8x16.add_sat_s not yet implemented"))
             }
             98 => {
                 // i8x16.add_sat_u - Add 16x8-bit vectors with unsigned saturation
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.add_sat_u not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i8x16.add_sat_u not yet implemented"))
             }
             99 => {
                 // i8x16.sub - Subtract 16x8-bit vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.sub not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i8x16.sub not yet implemented"))
             }
             100 => {
                 // i8x16.sub_sat_s - Subtract 16x8-bit vectors with signed saturation
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.sub_sat_s not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i8x16.sub_sat_s not yet implemented"))
             }
             101 => {
                 // i8x16.sub_sat_u - Subtract 16x8-bit vectors with unsigned saturation
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i8x16.sub_sat_u not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i8x16.sub_sat_u not yet implemented"))
             }
             
             // Vector arithmetic operations (i16x8)
             126 => {
                 // i16x8.add - Add 8x16-bit vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i16x8.add not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i16x8.add not yet implemented"))
             }
             127 => {
                 // i16x8.add_sat_s - Add 8x16-bit vectors with signed saturation
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i16x8.add_sat_s not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i16x8.add_sat_s not yet implemented"))
             }
             128 => {
                 // i16x8.add_sat_u - Add 8x16-bit vectors with unsigned saturation
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i16x8.add_sat_u not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i16x8.add_sat_u not yet implemented"))
             }
             129 => {
                 // i16x8.sub - Subtract 8x16-bit vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i16x8.sub not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i16x8.sub not yet implemented"))
             }
             130 => {
                 // i16x8.sub_sat_s - Subtract 8x16-bit vectors with signed saturation
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i16x8.sub_sat_s not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i16x8.sub_sat_s not yet implemented"))
             }
             131 => {
                 // i16x8.sub_sat_u - Subtract 8x16-bit vectors with unsigned saturation
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i16x8.sub_sat_u not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i16x8.sub_sat_u not yet implemented"))
             }
             132 => {
                 // i16x8.mul - Multiply 8x16-bit vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i16x8.mul not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i16x8.mul not yet implemented"))
             }
             
             // Vector arithmetic operations (i32x4)
             158 => {
                 // i32x4.add - Add 4x32-bit vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i32x4.add not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i32x4.add not yet implemented"))
             }
             159 => {
                 // i32x4.sub - Subtract 4x32-bit vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i32x4.sub not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i32x4.sub not yet implemented"))
             }
             160 => {
                 // i32x4.mul - Multiply 4x32-bit vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i32x4.mul not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i32x4.mul not yet implemented"))
             }
             
             // Vector arithmetic operations (i64x2)
             174 => {
                 // i64x2.add - Add 2x64-bit vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i64x2.add not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i64x2.add not yet implemented"))
             }
             175 => {
                 // i64x2.sub - Subtract 2x64-bit vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i64x2.sub not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i64x2.sub not yet implemented"))
             }
             176 => {
                 // i64x2.mul - Multiply 2x64-bit vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD i64x2.mul not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD i64x2.mul not yet implemented"))
             }
             
             // Vector arithmetic operations (f32x4)
             182 => {
                 // f32x4.add - Add 4x32-bit float vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f32x4.add not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD f32x4.add not yet implemented"))
             }
             183 => {
                 // f32x4.sub - Subtract 4x32-bit float vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f32x4.sub not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD f32x4.sub not yet implemented"))
             }
             184 => {
                 // f32x4.mul - Multiply 4x32-bit float vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f32x4.mul not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD f32x4.mul not yet implemented"))
             }
             185 => {
                 // f32x4.div - Divide 4x32-bit float vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f32x4.div not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD f32x4.div not yet implemented"))
             }
             186 => {
                 // f32x4.min - Minimum of 4x32-bit float vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f32x4.min not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD f32x4.min not yet implemented"))
             }
             187 => {
                 // f32x4.max - Maximum of 4x32-bit float vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f32x4.max not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD f32x4.max not yet implemented"))
             }
             
             // Vector arithmetic operations (f64x2)
             192 => {
                 // f64x2.add - Add 2x64-bit float vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f64x2.add not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD f64x2.add not yet implemented"))
             }
             193 => {
                 // f64x2.sub - Subtract 2x64-bit float vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f64x2.sub not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD f64x2.sub not yet implemented"))
             }
             194 => {
                 // f64x2.mul - Multiply 2x64-bit float vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f64x2.mul not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD f64x2.mul not yet implemented"))
             }
             195 => {
                 // f64x2.div - Divide 2x64-bit float vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f64x2.div not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD f64x2.div not yet implemented"))
             }
             196 => {
                 // f64x2.min - Minimum of 2x64-bit float vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f64x2.min not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD f64x2.min not yet implemented"))
             }
             197 => {
                 // f64x2.max - Maximum of 2x64-bit float vectors
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "SIMD f64x2.max not yet implemented"))
+                Err(Error::runtime_execution_error("SIMD f64x2.max not yet implemented"))
             }
             
             _ => {
                 // Unknown SIMD instruction
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::EXECUTION_ERROR,
-                    "Unknown SIMD instruction"
-                ))
+                Err(Error::runtime_execution_error("Unknown SIMD instruction"))
             }
         }
     }
@@ -2377,162 +2347,158 @@ impl StacklessEngine {
             // Atomic memory operations
             0 => {
                 // memory.atomic.notify - Notify waiting threads
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic memory.atomic.notify not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic memory.atomic.notify not yet implemented"))
             }
             1 => {
                 // memory.atomic.wait32 - Wait on 32-bit value
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic memory.atomic.wait32 not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic memory.atomic.wait32 not yet implemented"))
             }
             2 => {
                 // memory.atomic.wait64 - Wait on 64-bit value
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic memory.atomic.wait64 not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic memory.atomic.wait64 not yet implemented"))
             }
             3 => {
                 // atomic.fence - Memory fence
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic atomic.fence not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic atomic.fence not yet implemented"))
             }
             
             // Atomic load operations
             16 => {
                 // i32.atomic.load - Atomic load 32-bit integer
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.load not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i32.atomic.load not yet implemented"))
             }
             17 => {
                 // i64.atomic.load - Atomic load 64-bit integer
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.load not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i64.atomic.load not yet implemented"))
             }
             18 => {
                 // i32.atomic.load8_u - Atomic load 8-bit as unsigned 32-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.load8_u not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i32.atomic.load8_u not yet implemented"))
             }
             19 => {
                 // i32.atomic.load16_u - Atomic load 16-bit as unsigned 32-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.load16_u not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i32.atomic.load16_u not yet implemented"))
             }
             20 => {
                 // i64.atomic.load8_u - Atomic load 8-bit as unsigned 64-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.load8_u not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i64.atomic.load8_u not yet implemented"))
             }
             21 => {
                 // i64.atomic.load16_u - Atomic load 16-bit as unsigned 64-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.load16_u not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i64.atomic.load16_u not yet implemented"))
             }
             22 => {
                 // i64.atomic.load32_u - Atomic load 32-bit as unsigned 64-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.load32_u not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i64.atomic.load32_u not yet implemented"))
             }
             
             // Atomic store operations
             23 => {
                 // i32.atomic.store - Atomic store 32-bit integer
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.store not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i32.atomic.store not yet implemented"))
             }
             24 => {
                 // i64.atomic.store - Atomic store 64-bit integer
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.store not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i64.atomic.store not yet implemented"))
             }
             25 => {
                 // i32.atomic.store8 - Atomic store 8-bit from 32-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.store8 not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i32.atomic.store8 not yet implemented"))
             }
             26 => {
                 // i32.atomic.store16 - Atomic store 16-bit from 32-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.store16 not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i32.atomic.store16 not yet implemented"))
             }
             27 => {
                 // i64.atomic.store8 - Atomic store 8-bit from 64-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.store8 not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i64.atomic.store8 not yet implemented"))
             }
             28 => {
                 // i64.atomic.store16 - Atomic store 16-bit from 64-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.store16 not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i64.atomic.store16 not yet implemented"))
             }
             29 => {
                 // i64.atomic.store32 - Atomic store 32-bit from 64-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.store32 not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i64.atomic.store32 not yet implemented"))
             }
             
             // Atomic RMW (Read-Modify-Write) operations
             30 => {
                 // i32.atomic.rmw.add - Atomic read-modify-write add 32-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw.add not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i32.atomic.rmw.add not yet implemented"))
             }
             31 => {
                 // i64.atomic.rmw.add - Atomic read-modify-write add 64-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.rmw.add not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i64.atomic.rmw.add not yet implemented"))
             }
             32 => {
                 // i32.atomic.rmw8.add_u - Atomic RMW add 8-bit to 32-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw8.add_u not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i32.atomic.rmw8.add_u not yet implemented"))
             }
             33 => {
                 // i32.atomic.rmw16.add_u - Atomic RMW add 16-bit to 32-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw16.add_u not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i32.atomic.rmw16.add_u not yet implemented"))
             }
             
             // Atomic RMW subtract operations
             46 => {
                 // i32.atomic.rmw.sub - Atomic read-modify-write subtract 32-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw.sub not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i32.atomic.rmw.sub not yet implemented"))
             }
             47 => {
                 // i64.atomic.rmw.sub - Atomic read-modify-write subtract 64-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.rmw.sub not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i64.atomic.rmw.sub not yet implemented"))
             }
             
             // Atomic RMW bitwise operations
             62 => {
                 // i32.atomic.rmw.and - Atomic read-modify-write AND 32-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw.and not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i32.atomic.rmw.and not yet implemented"))
             }
             63 => {
                 // i64.atomic.rmw.and - Atomic read-modify-write AND 64-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.rmw.and not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i64.atomic.rmw.and not yet implemented"))
             }
             78 => {
                 // i32.atomic.rmw.or - Atomic read-modify-write OR 32-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw.or not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i32.atomic.rmw.or not yet implemented"))
             }
             79 => {
                 // i64.atomic.rmw.or - Atomic read-modify-write OR 64-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.rmw.or not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i64.atomic.rmw.or not yet implemented"))
             }
             94 => {
                 // i32.atomic.rmw.xor - Atomic read-modify-write XOR 32-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw.xor not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i32.atomic.rmw.xor not yet implemented"))
             }
             95 => {
                 // i64.atomic.rmw.xor - Atomic read-modify-write XOR 64-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.rmw.xor not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i64.atomic.rmw.xor not yet implemented"))
             }
             
             // Atomic RMW exchange operations
             110 => {
                 // i32.atomic.rmw.xchg - Atomic read-modify-write exchange 32-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw.xchg not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i32.atomic.rmw.xchg not yet implemented"))
             }
             111 => {
                 // i64.atomic.rmw.xchg - Atomic read-modify-write exchange 64-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.rmw.xchg not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i64.atomic.rmw.xchg not yet implemented"))
             }
             
             // Atomic compare-and-swap operations
             126 => {
                 // i32.atomic.rmw.cmpxchg - Atomic compare-and-swap 32-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i32.atomic.rmw.cmpxchg not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i32.atomic.rmw.cmpxchg not yet implemented"))
             }
             127 => {
                 // i64.atomic.rmw.cmpxchg - Atomic compare-and-swap 64-bit
-                Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Atomic i64.atomic.rmw.cmpxchg not yet implemented"))
+                Err(Error::runtime_execution_error("Atomic i64.atomic.rmw.cmpxchg not yet implemented"))
             }
             
             _ => {
                 // Unknown atomic instruction
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::EXECUTION_ERROR,
-                    "Unknown atomic instruction"
-                ))
+                Err(Error::runtime_execution_error("Unknown atomic instruction"))
             }
         }
     }
@@ -2548,7 +2514,7 @@ impl StacklessEngine {
     fn read_block_type(&mut self, code: &[u8]) -> Result<wrt_foundation::BlockType> {
         self.exec_stack.pc += 1;
         if self.exec_stack.pc >= code.len() {
-            return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Unexpected end of bytecode while reading block type"));
+            return Err(Error::runtime_execution_error("Unexpected end of bytecode while reading block type"));
         }
         
         let byte = code[self.exec_stack.pc];
@@ -2569,7 +2535,7 @@ impl StacklessEngine {
     /// Read single byte from bytecode
     fn read_u8(&mut self, code: &[u8]) -> Result<u8> {
         if self.exec_stack.pc >= code.len() {
-            return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Insufficient data for u8"));
+            return Err(Error::runtime_execution_error("Insufficient data for u8"));
         }
         
         let byte = code[self.exec_stack.pc];
@@ -2580,7 +2546,7 @@ impl StacklessEngine {
     /// Read 32-bit float from bytecode
     fn read_f32(&mut self, code: &[u8]) -> Result<f32> {
         if self.exec_stack.pc + 4 >= code.len() {
-            return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Insufficient data for f32 constant"));
+            return Err(Error::runtime_execution_error("Insufficient data for f32 constant"));
         }
         
         let bytes = [
@@ -2597,7 +2563,7 @@ impl StacklessEngine {
     /// Read 64-bit float from bytecode
     fn read_f64(&mut self, code: &[u8]) -> Result<f64> {
         if self.exec_stack.pc + 8 >= code.len() {
-            return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Insufficient data for f64 constant"));
+            return Err(Error::runtime_execution_error("Insufficient data for f64 constant"));
         }
         
         let mut bytes = [0u8; 8];
@@ -2636,23 +2602,23 @@ impl StacklessEngine {
                         return Ok(());
                     }
                 }
-                None => return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Label access error")),
+                None => return Err(Error::runtime_execution_error("Label access error")),
             }
         }
-        Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "No matching if for else"))
+        Err(Error::runtime_execution_error("No matching if for else"))
     }
     
     /// Conditional branch
     fn branch_if(&mut self, label_idx: u32) -> Result<()> {
         // Pop condition from stack
         let condition = self.exec_stack.values.pop()?.ok_or_else(|| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+            Error::runtime_stack_underflow("Stack underflow")
         })?;
         
         // Check if condition is true (non-zero)
         let is_true = match condition {
             Value::I32(v) => v != 0,
-            _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 condition")),
+            _ => return Err(Error::type_error("Expected i32 condition")),
         };
         
         if is_true {
@@ -2670,12 +2636,12 @@ impl StacklessEngine {
         
         // Pop index from stack
         let index = self.exec_stack.values.pop()?.ok_or_else(|| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+            Error::runtime_stack_underflow("Stack underflow")
         })?;
         
         let index_u32 = match index {
             Value::I32(i) => i as u32,
-            _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 index")),
+            _ => return Err(Error::type_error("Expected i32 index")),
         };
         
         // Select target based on index
@@ -2696,7 +2662,7 @@ impl StacklessEngine {
         loop {
             self.exec_stack.pc += 1;
             if self.exec_stack.pc >= code.len() {
-                return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Unexpected end of bytecode while reading LEB128"));
+                return Err(Error::runtime_execution_error("Unexpected end of bytecode while reading LEB128"));
             }
             
             let byte = code[self.exec_stack.pc];
@@ -2708,7 +2674,7 @@ impl StacklessEngine {
             
             shift += 7;
             if shift >= 32 {
-                return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "LEB128 value too large"));
+                return Err(Error::runtime_execution_error("LEB128 value too large"));
             }
         }
         
@@ -2723,7 +2689,7 @@ impl StacklessEngine {
         loop {
             self.exec_stack.pc += 1;
             if self.exec_stack.pc >= code.len() {
-                return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Unexpected end of bytecode while reading LEB128"));
+                return Err(Error::runtime_execution_error("Unexpected end of bytecode while reading LEB128"));
             }
             
             let byte = code[self.exec_stack.pc];
@@ -2739,7 +2705,7 @@ impl StacklessEngine {
             
             shift += 7;
             if shift >= 32 {
-                return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "LEB128 value too large"));
+                return Err(Error::runtime_execution_error("LEB128 value too large"));
             }
         }
         
@@ -2754,7 +2720,7 @@ impl StacklessEngine {
         loop {
             self.exec_stack.pc += 1;
             if self.exec_stack.pc >= code.len() {
-                return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Unexpected end of bytecode while reading LEB128"));
+                return Err(Error::runtime_execution_error("Unexpected end of bytecode while reading LEB128"));
             }
             
             let byte = code[self.exec_stack.pc];
@@ -2770,7 +2736,7 @@ impl StacklessEngine {
             
             shift += 7;
             if shift >= 64 {
-                return Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "LEB128 value too large"));
+                return Err(Error::runtime_execution_error("LEB128 value too large"));
             }
         }
         
@@ -2876,13 +2842,13 @@ impl StacklessEngine {
                 wrt_foundation::types::Instruction::If { block_type_idx } => {
                     // Pop condition
                     let condition = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     
                     // Check if condition is true (non-zero)
                     let is_true = match condition {
                         Value::I32(v) => v != 0,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 condition")),
+                        _ => return Err(Error::type_error("Expected i32 condition")),
                     };
                     
                     if is_true {
@@ -2925,12 +2891,12 @@ impl StacklessEngine {
                 wrt_foundation::types::Instruction::BrIf(label_idx) => {
                     // Conditional branch
                     let condition = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     
                     let should_branch = match condition {
                         Value::I32(v) => v != 0,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 condition")),
+                        _ => return Err(Error::type_error("Expected i32 condition")),
                     };
                     
                     if should_branch {
@@ -2948,13 +2914,13 @@ impl StacklessEngine {
                 wrt_foundation::types::Instruction::I32Load(mem_arg) => {
                     // Pop address from stack
                     let addr = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     
                     // Convert to u32 address
                     let addr_u32 = match addr {
                         Value::I32(a) => a as u32,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 address")),
+                        _ => return Err(Error::type_error("Expected i32 address")),
                     };
                     
                     // Calculate effective address
@@ -2972,27 +2938,27 @@ impl StacklessEngine {
                         let value = i32::from_le_bytes(bytes);
                         self.exec_stack.values.push(Value::I32(value))?;
                     } else {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+                        return Err(Error::runtime_error("No module instance"));
                     }
                     Ok(())
                 }
                 wrt_foundation::types::Instruction::I32Store(mem_arg) => {
                     // Pop value and address from stack
                     let value = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     let addr = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     
                     // Convert to i32 value and u32 address
                     let value_i32 = match value {
                         Value::I32(v) => v,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 value")),
+                        _ => return Err(Error::type_error("Expected i32 value")),
                     };
                     let addr_u32 = match addr {
                         Value::I32(a) => a as u32,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 address")),
+                        _ => return Err(Error::type_error("Expected i32 address")),
                     };
                     
                     // Calculate effective address
@@ -3006,18 +2972,18 @@ impl StacklessEngine {
                         let bytes = value_i32.to_le_bytes();
                         memory.write(effective_addr, &bytes)?;
                     } else {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+                        return Err(Error::runtime_error("No module instance"));
                     }
                     Ok(())
                 }
                 wrt_foundation::types::Instruction::I64Load(mem_arg) => {
                     // Similar to I32Load but for 8 bytes
                     let addr = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     let addr_u32 = match addr {
                         Value::I32(a) => a as u32,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 address")),
+                        _ => return Err(Error::type_error("Expected i32 address")),
                     };
                     let effective_addr = addr_u32.wrapping_add(mem_arg.offset);
                     
@@ -3028,25 +2994,25 @@ impl StacklessEngine {
                         let value = i64::from_le_bytes(bytes);
                         self.exec_stack.values.push(Value::I64(value))?;
                     } else {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+                        return Err(Error::runtime_error("No module instance"));
                     }
                     Ok(())
                 }
                 wrt_foundation::types::Instruction::I64Store(mem_arg) => {
                     let value = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     let addr = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     
                     let value_i64 = match value {
                         Value::I64(v) => v,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i64 value")),
+                        _ => return Err(Error::type_error("Expected i64 value")),
                     };
                     let addr_u32 = match addr {
                         Value::I32(a) => a as u32,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 address")),
+                        _ => return Err(Error::type_error("Expected i32 address")),
                     };
                     let effective_addr = addr_u32.wrapping_add(mem_arg.offset);
                     
@@ -3055,7 +3021,7 @@ impl StacklessEngine {
                         let bytes = value_i64.to_le_bytes();
                         memory.write(effective_addr, &bytes)?;
                     } else {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+                        return Err(Error::runtime_error("No module instance"));
                     }
                     Ok(())
                 }
@@ -3065,17 +3031,17 @@ impl StacklessEngine {
                         let size = memory.size(); // Returns size in pages
                         self.exec_stack.values.push(Value::I32(size as i32))?;
                     } else {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+                        return Err(Error::runtime_error("No module instance"));
                     }
                     Ok(())
                 }
                 wrt_foundation::types::Instruction::MemoryGrow(mem_idx) => {
                     let delta = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     let delta_u32 = match delta {
                         Value::I32(d) => d as u32,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 delta")),
+                        _ => return Err(Error::type_error("Expected i32 delta")),
                     };
                     
                     if let Some(module_instance) = &self.current_module {
@@ -3083,7 +3049,7 @@ impl StacklessEngine {
                         let prev_size = memory.grow(delta_u32)?;
                         self.exec_stack.values.push(Value::I32(prev_size as i32))?;
                     } else {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+                        return Err(Error::runtime_error("No module instance"));
                     }
                     Ok(())
                 }
@@ -3102,7 +3068,7 @@ impl StacklessEngine {
                             let mut args = BoundedVec::new(provider)?;
                             for _ in 0..func_type.params.len() {
                                 let arg = self.exec_stack.values.pop()?.ok_or_else(|| {
-                                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                                    Error::runtime_stack_underflow("Stack underflow")
                                 })?;
                                 args.push(arg)?;
                             }
@@ -3152,33 +3118,25 @@ impl StacklessEngine {
                                 return_pc,
                             };
                             } else {
-                                return Err(Error::new(
-                                    ErrorCategory::Runtime,
-                                    codes::TYPE_MISMATCH,
-                                    "Function type not found"
-                                ));
+                                return Err(Error::runtime_type_mismatch("Function type not found"));
                             }
                         } else {
-                            return Err(Error::new(
-                                ErrorCategory::Runtime,
-                                codes::FUNCTION_NOT_FOUND,
-                                "Function not found"
-                            ));
+                            return Err(Error::runtime_function_not_found("Function not found"));
                         }
                     } else {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+                        return Err(Error::runtime_error("No module instance"));
                     }
                     Ok(())
                 }
                 wrt_foundation::types::Instruction::CallIndirect(type_idx, table_idx) => {
                     // Pop function index from stack
                     let func_ref = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     
                     let func_idx = match func_ref {
                         Value::I32(idx) => idx as u32,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 function index")),
+                        _ => return Err(Error::type_error("Expected i32 function index")),
                     };
                     
                     // Validate function type and get function from table
@@ -3189,41 +3147,25 @@ impl StacklessEngine {
                         // Extract actual function index from reference
                         let actual_func_idx = match func_ref {
                             Some(Value::FuncRef(Some(func_ref))) => func_ref.index,
-                            Some(Value::FuncRef(None)) => return Err(Error::new(
-                                ErrorCategory::Runtime,
-                                codes::NULL_REFERENCE,
-                                "Null function reference"
-                            )),
-                            None => return Err(Error::new(
-                                ErrorCategory::Runtime,
-                                codes::NULL_REFERENCE,
-                                "Table entry is empty"
-                            )),
-                            _ => return Err(Error::new(
-                                ErrorCategory::Type,
-                                codes::TYPE_MISMATCH,
-                                "Expected function reference"
-                            )),
+                            Some(Value::FuncRef(None)) => return Err(Error::runtime_null_reference("Null function reference")),
+                            None => return Err(Error::runtime_null_reference("Table entry is empty")),
+                            _ => return Err(Error::type_error("Expected function reference")),
                         };
                         
                         // Validate function type matches expected type
                         let module = module_instance.module();
                         let expected_type = module.get_function_type(type_idx).ok_or_else(|| {
-                            Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected function type not found")
+                            Error::type_error("Expected function type not found")
                         })?;
                         let actual_func = module.get_function(actual_func_idx).ok_or_else(|| {
-                            Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, "Function not found")
+                            Error::runtime_function_not_found("Function not found")
                         })?;
                         let actual_type = module.get_function_type(actual_func.type_idx).ok_or_else(|| {
-                            Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Actual function type not found")
+                            Error::type_error("Actual function type not found")
                         })?;
                         
                         if expected_type != actual_type {
-                            return Err(Error::new(
-                                ErrorCategory::Type,
-                                codes::TYPE_MISMATCH,
-                                "Function type mismatch in indirect call"
-                            ));
+                            return Err(Error::type_error("Function type mismatch in indirect call"));
                         }
                         
                         // Now perform the call with the actual function index
@@ -3238,7 +3180,7 @@ impl StacklessEngine {
                             let mut args = BoundedVec::new(provider)?;
                             for _ in 0..func_type.params.len() {
                                 let arg = self.exec_stack.values.pop()?.ok_or_else(|| {
-                                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                                    Error::runtime_stack_underflow("Stack underflow")
                                 })?;
                                 args.push(arg)?;
                             }
@@ -3288,21 +3230,13 @@ impl StacklessEngine {
                                 return_pc,
                             };
                             } else {
-                                return Err(Error::new(
-                                    ErrorCategory::Type,
-                                    codes::TYPE_MISMATCH,
-                                    "Function type not found for indirect call"
-                                ));
+                                return Err(Error::type_error("Function type not found for indirect call"));
                             }
                         } else {
-                            return Err(Error::new(
-                                ErrorCategory::Runtime,
-                                codes::FUNCTION_NOT_FOUND,
-                                "Function not found in indirect call"
-                            ));
+                            return Err(Error::runtime_function_not_found("Function not found in indirect call"));
                         }
                     } else {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+                        return Err(Error::runtime_error("No module instance"));
                     }
                     Ok(())
                 }
@@ -3310,25 +3244,25 @@ impl StacklessEngine {
                 // Stack operations
                 wrt_foundation::types::Instruction::Drop => {
                     self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     Ok(())
                 }
                 wrt_foundation::types::Instruction::Select => {
                     let condition = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     let val2 = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     let val1 = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     
                     let selected = match condition {
                         Value::I32(0) => val2,
                         Value::I32(_) => val1,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 condition")),
+                        _ => return Err(Error::type_error("Expected i32 condition")),
                     };
                     self.exec_stack.values.push(selected)?;
                     Ok(())
@@ -3555,12 +3489,12 @@ impl StacklessEngine {
                 // Table operations
                 wrt_foundation::types::Instruction::TableGet(table_idx) => {
                     let index = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     
                     let index_u32 = match index {
                         Value::I32(i) => i as u32,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 index")),
+                        _ => return Err(Error::type_error("Expected i32 index")),
                     };
                     
                     // Get table element
@@ -3569,24 +3503,24 @@ impl StacklessEngine {
                         if let Some(value) = table.get(index_u32)? {
                             self.exec_stack.values.push(value)?;
                         } else {
-                            return Err(Error::new(ErrorCategory::Runtime, codes::NULL_REFERENCE, "Table entry is null"));
+                            return Err(Error::runtime_null_reference("Table entry is null"));
                         }
                     } else {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+                        return Err(Error::runtime_error("No module instance"));
                     }
                     Ok(())
                 }
                 wrt_foundation::types::Instruction::TableSet(table_idx) => {
                     let value = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     let index = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     
                     let index_u32 = match index {
                         Value::I32(i) => i as u32,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 index")),
+                        _ => return Err(Error::type_error("Expected i32 index")),
                     };
                     
                     // Set table element
@@ -3594,7 +3528,7 @@ impl StacklessEngine {
                         let table = module_instance.table(table_idx)?;
                         table.set(index_u32, Some(value))?;
                     } else {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+                        return Err(Error::runtime_error("No module instance"));
                     }
                     Ok(())
                 }
@@ -3604,21 +3538,21 @@ impl StacklessEngine {
                         let size = table.size();
                         self.exec_stack.values.push(Value::I32(size as i32))?;
                     } else {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+                        return Err(Error::runtime_error("No module instance"));
                     }
                     Ok(())
                 }
                 wrt_foundation::types::Instruction::TableGrow(table_idx) => {
                     let delta = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     let init_value = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     
                     let delta_u32 = match delta {
                         Value::I32(d) => d as u32,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 delta")),
+                        _ => return Err(Error::type_error("Expected i32 delta")),
                     };
                     
                     if let Some(module_instance) = &self.current_module {
@@ -3626,7 +3560,7 @@ impl StacklessEngine {
                         let prev_size = table.grow(delta_u32, init_value)?;
                         self.exec_stack.values.push(Value::I32(prev_size as i32))?;
                     } else {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+                        return Err(Error::runtime_error("No module instance"));
                     }
                     Ok(())
                 }
@@ -3634,11 +3568,11 @@ impl StacklessEngine {
                 // Additional load/store operations
                 wrt_foundation::types::Instruction::I32Load8S(mem_arg) => {
                     let addr = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     let addr_u32 = match addr {
                         Value::I32(a) => a as u32,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 address")),
+                        _ => return Err(Error::type_error("Expected i32 address")),
                     };
                     let effective_addr = addr_u32.wrapping_add(mem_arg.offset);
                     
@@ -3649,17 +3583,17 @@ impl StacklessEngine {
                         let value = bytes[0] as i8 as i32; // Sign extend
                         self.exec_stack.values.push(Value::I32(value))?;
                     } else {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+                        return Err(Error::runtime_error("No module instance"));
                     }
                     Ok(())
                 }
                 wrt_foundation::types::Instruction::I32Load8U(mem_arg) => {
                     let addr = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     let addr_u32 = match addr {
                         Value::I32(a) => a as u32,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 address")),
+                        _ => return Err(Error::type_error("Expected i32 address")),
                     };
                     let effective_addr = addr_u32.wrapping_add(mem_arg.offset);
                     
@@ -3670,17 +3604,17 @@ impl StacklessEngine {
                         let value = bytes[0] as i32; // Zero extend
                         self.exec_stack.values.push(Value::I32(value))?;
                     } else {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+                        return Err(Error::runtime_error("No module instance"));
                     }
                     Ok(())
                 }
                 wrt_foundation::types::Instruction::I32Load16S(mem_arg) => {
                     let addr = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     let addr_u32 = match addr {
                         Value::I32(a) => a as u32,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 address")),
+                        _ => return Err(Error::type_error("Expected i32 address")),
                     };
                     let effective_addr = addr_u32.wrapping_add(mem_arg.offset);
                     
@@ -3691,17 +3625,17 @@ impl StacklessEngine {
                         let value = i16::from_le_bytes(bytes) as i32; // Sign extend
                         self.exec_stack.values.push(Value::I32(value))?;
                     } else {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+                        return Err(Error::runtime_error("No module instance"));
                     }
                     Ok(())
                 }
                 wrt_foundation::types::Instruction::I32Load16U(mem_arg) => {
                     let addr = self.exec_stack.values.pop()?.ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                        Error::runtime_stack_underflow("Stack underflow")
                     })?;
                     let addr_u32 = match addr {
                         Value::I32(a) => a as u32,
-                        _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected i32 address")),
+                        _ => return Err(Error::type_error("Expected i32 address")),
                     };
                     let effective_addr = addr_u32.wrapping_add(mem_arg.offset);
                     
@@ -3712,7 +3646,7 @@ impl StacklessEngine {
                         let value = u16::from_le_bytes(bytes) as i32; // Zero extend
                         self.exec_stack.values.push(Value::I32(value))?;
                     } else {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+                        return Err(Error::runtime_error("No module instance"));
                     }
                     Ok(())
                 }
@@ -3720,19 +3654,11 @@ impl StacklessEngine {
                 _ => {
                     // All core WebAssembly instructions are implemented
                     // Any unmatched instruction is likely an extension or invalid opcode
-                    Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_INVALID_INSTRUCTION,
-                        "Unsupported or invalid instruction"
-                    ))
+                    Err(Error::validation_error("Unsupported or invalid instruction"))
                 }
             }
         } else {
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::EXECUTION_ERROR,
-                "Instruction index out of bounds"
-            ))
+            Err(Error::runtime_execution_error("Instruction index out of bounds"))
         }
     }
 }
@@ -3779,11 +3705,7 @@ impl StacklessEngine {
             pc += 1;
         }
         
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::EXECUTION_ERROR,
-            "Matching else/end not found"
-        ))
+        Err(Error::runtime_execution_error("Matching else/end not found"))
     }
     
     /// Skip to the matching end instruction
@@ -3812,28 +3734,20 @@ impl StacklessEngine {
             pc += 1;
         }
         
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::EXECUTION_ERROR,
-            "Matching end not found"
-        ))
+        Err(Error::runtime_execution_error("Matching end not found"))
     }
     
     /// Branch to a label at the given depth
     fn branch_to_label(&mut self, label_depth: u32) -> Result<()> {
         let labels_len = self.exec_stack.labels.len();
         if label_depth as usize >= labels_len {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::EXECUTION_ERROR,
-                "Invalid label depth"
-            ));
+            return Err(Error::runtime_execution_error("Invalid label depth"));
         }
         
         // Get the target label
         let target_idx = labels_len - 1 - label_depth as usize;
         let target_label = self.exec_stack.labels.get(target_idx).map_err(|_| {
-            Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Label not found")
+            Error::runtime_execution_error("Label not found")
         })?;
         
         // Branch behavior depends on label kind
@@ -3876,21 +3790,13 @@ impl wrt_instructions::comparison_ops::ComparisonContext for StacklessEngine {
 impl VariableContext for StacklessEngine {
     fn get_local(&self, index: u32) -> Result<Value> {
         self.locals.get(index as usize).map_err(|_| {
-            Error::new(
-                ErrorCategory::Runtime, 
-                codes::OUT_OF_BOUNDS_ERROR, 
-                "Local variable index out of bounds"
-            )
+            Error::runtime_out_of_bounds("Local variable index out of bounds")
         })
     }
 
     fn set_local(&mut self, index: u32, value: Value) -> Result<()> {
         self.locals.set(index as usize, value).map_err(|_| {
-            Error::new(
-                ErrorCategory::Runtime, 
-                codes::OUT_OF_BOUNDS_ERROR,
-                "Local variable index out of bounds"
-            )
+            Error::runtime_out_of_bounds("Local variable index out of bounds")
         })?;
         Ok(())
     }
@@ -3900,7 +3806,7 @@ impl VariableContext for StacklessEngine {
             let global = module_instance.global(index)?;
             global.get()
         } else {
-            Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"))
+            Err(Error::runtime_error("No module instance"))
         }
     }
 
@@ -3909,7 +3815,7 @@ impl VariableContext for StacklessEngine {
             let global = module_instance.global(index)?;
             global.set(value)
         } else {
-            Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"))
+            Err(Error::runtime_error("No module instance"))
         }
     }
 
@@ -3937,20 +3843,12 @@ impl wrt_instructions::memory_ops::MemoryContext for StacklessEngine {
     fn get_memory(&mut self, memory_idx: u32) -> Result<&mut dyn MemoryOperations> {
         // For ASIL-B compliance, we need proper error handling here
         // Since we can't return a mutable reference from an Arc<Memory>, we'll need to handle this differently
-        Err(Error::new(
-            ErrorCategory::Resource,
-            codes::MEMORY_NOT_FOUND,
-            "Memory access through trait not yet implemented - use direct memory access"
-        ))
+        Err(Error::memory_not_found("Memory access through trait not yet implemented - use direct memory access"))
     }
     
     fn get_data_segments(&mut self) -> Result<&mut dyn DataSegmentOperations> {
         // Data segment operations not yet implemented
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            "Data segment operations not yet implemented"
-        ))
+        Err(Error::runtime_not_implemented("Data segment operations not yet implemented"))
     }
     
     fn execute_memory_init(
@@ -3962,11 +3860,7 @@ impl wrt_instructions::memory_ops::MemoryContext for StacklessEngine {
         _size: i32,
     ) -> Result<()> {
         // Memory init operation not yet implemented
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            "Memory init operation not yet implemented"
-        ))
+        Err(Error::runtime_not_implemented("Memory init operation not yet implemented"))
     }
 }
 
@@ -3984,7 +3878,7 @@ impl ControlContext for StacklessEngine {
     /// Push a value to the operand stack
     fn push_control_value(&mut self, value: Value) -> Result<()> {
         self.exec_stack.values.push(value).map_err(|_| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Operand stack overflow")
+            Error::runtime_stack_overflow("Operand stack overflow")
         })?;
         Ok(())
     }
@@ -3993,11 +3887,7 @@ impl ControlContext for StacklessEngine {
     fn pop_control_value(&mut self) -> Result<Value> {
         match self.exec_stack.values.pop()? {
             Some(value) => Ok(value),
-            None => Err(Error::new(
-                ErrorCategory::Runtime, 
-                codes::STACK_UNDERFLOW, 
-                "Operand stack underflow"
-            ))
+            None => Err(Error::runtime_stack_underflow("Operand stack underflow"))
         }
     }
 
@@ -4037,7 +3927,7 @@ impl ControlContext for StacklessEngine {
         };
         
         self.exec_stack.labels.push(label).map_err(|_| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Label stack overflow")
+            Error::runtime_stack_overflow("Label stack overflow")
         })?;
         Ok(())
     }
@@ -4045,11 +3935,11 @@ impl ControlContext for StacklessEngine {
     /// Exit the current block
     fn exit_block(&mut self) -> Result<Block> {
         if self.exec_stack.labels.is_empty() {
-            return Err(Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "No block to exit"));
+            return Err(Error::runtime_stack_underflow("No block to exit"));
         }
         let last_idx = self.exec_stack.labels.len() - 1;
         let label = self.exec_stack.labels.remove(last_idx).map_err(|_| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "No block to exit")
+            Error::runtime_stack_underflow("No block to exit")
         })?;
         
         // Convert label back to block type (simplified)
@@ -4078,15 +3968,11 @@ impl ControlContext for StacklessEngine {
                     Some(value) => {
                         // Insert at beginning to maintain order (since we're popping in reverse)
                         values.insert(0, value).map_err(|_| {
-                            Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Branch values overflow")
+                            Error::runtime_stack_overflow("Branch values overflow")
                         })?;
                     }
                     None => {
-                        return Err(Error::new(
-                            ErrorCategory::Runtime, 
-                            codes::STACK_UNDERFLOW, 
-                            "Not enough values for branch"
-                        ));
+                        return Err(Error::runtime_stack_underflow("Not enough values for branch"));
                     }
                 }
             }
@@ -4116,15 +4002,11 @@ impl ControlContext for StacklessEngine {
                         Some(value) => {
                             // Insert at beginning to maintain order (since we're popping in reverse)
                             values.insert(0, value).map_err(|_| {
-                                Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Return values overflow")
+                                Error::runtime_stack_overflow("Return values overflow")
                             })?;
                         }
                         None => {
-                            return Err(Error::new(
-                                ErrorCategory::Runtime, 
-                                codes::STACK_UNDERFLOW, 
-                                "Not enough values for function return"
-                            ));
+                            return Err(Error::runtime_stack_underflow("Not enough values for function return"));
                         }
                     }
                 }
@@ -4155,15 +4037,11 @@ impl ControlContext for StacklessEngine {
                         Some(value) => {
                             // Insert at beginning to maintain order (since we're popping in reverse)
                             args.insert(0, value).map_err(|_| {
-                                Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Function args overflow")
+                                Error::runtime_stack_overflow("Function args overflow")
                             })?;
                         }
                         None => {
-                            return Err(Error::new(
-                                ErrorCategory::Runtime, 
-                                codes::STACK_UNDERFLOW, 
-                                "Not enough arguments for function call"
-                            ));
+                            return Err(Error::runtime_stack_underflow("Not enough arguments for function call"));
                         }
                     }
                 }
@@ -4203,14 +4081,10 @@ impl ControlContext for StacklessEngine {
         if let Some(module_instance) = &self.current_module {
             let module = module_instance.module();
             if (func_idx as usize) >= module.functions.len() {
-                return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::FUNCTION_NOT_FOUND,
-                    "Function index out of bounds for tail call"
-                ));
+                return Err(Error::runtime_function_not_found("Function index out of bounds for tail call"));
             }
         } else {
-            return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"));
+            return Err(Error::runtime_error("No module instance"));
         }
         
         self.call_function(func_idx)
@@ -4233,7 +4107,7 @@ impl ControlContext for StacklessEngine {
 
     /// Trap the execution (unreachable)
     fn trap(&mut self, _message: &str) -> Result<()> {
-        let error = Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Execution trapped");
+        let error = Error::runtime_execution_error("Execution trapped");
         self.exec_stack.state = StacklessExecutionState::Error(error.clone());
         Err(error)
     }
@@ -4264,20 +4138,13 @@ impl ControlContext for StacklessEngine {
         if let Some(module_instance) = &self.current_module {
             // Check table exists
             if (table_idx as usize) >= module_instance.module().tables.len() {
-                return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TABLE_NOT_FOUND,
-                    "Table index out of bounds"
+                return Err(Error::runtime_execution_error("
                 ));
             }
             
             // Check type exists
             if (type_idx as usize) >= module_instance.module().types.len() {
-                return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::TYPE_MISMATCH,
-                    "Type index out of bounds"
-                ));
+                return Err(Error::runtime_type_mismatch("));
             }
             
             // Get table and validate function reference
@@ -4287,46 +4154,30 @@ impl ControlContext for StacklessEngine {
             // Extract function index from reference
             let actual_func_idx = match func_ref {
                 Some(Value::FuncRef(Some(func_ref))) => func_ref.index,
-                Some(Value::FuncRef(None)) => return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::NULL_REFERENCE,
-                    "Null function reference in table"
-                )),
-                None => return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::NULL_REFERENCE,
-                    "Table entry is empty"
-                )),
-                _ => return Err(Error::new(
-                    ErrorCategory::Type,
-                    codes::TYPE_MISMATCH,
-                    "Expected function reference in table"
-                )),
+                Some(Value::FuncRef(None)) => return Err(Error::runtime_null_reference("Null function reference in table")),
+                None => return Err(Error::runtime_null_reference("Table entry is empty")),
+                _ => return Err(Error::type_error("Expected function reference in table")),
             };
             
             // Validate function type matches expected
             let module = module_instance.module();
             let expected_type = module.get_function_type(type_idx as u32).ok_or_else(|| {
-                Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Expected function type not found")
+                Error::type_error("Expected function type not found")
             })?;
             let actual_func = module.get_function(actual_func_idx).ok_or_else(|| {
-                Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, "Function not found in indirect tail call")
+                Error::runtime_function_not_found("Function not found in indirect tail call")
             })?;
             let actual_type = module.get_function_type(actual_func.type_idx).ok_or_else(|| {
-                Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH, "Actual function type not found")
+                Error::type_error("Actual function type not found")
             })?;
             
             if expected_type != actual_type {
-                return Err(Error::new(
-                    ErrorCategory::Type,
-                    codes::TYPE_MISMATCH,
-                    "Function type mismatch in indirect tail call"
-                ));
+                return Err(Error::type_error("Function type mismatch in indirect tail call"));
             }
             
             self.call_function(actual_func_idx)
         } else {
-            Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"))
+            Err(Error::runtime_error("No module instance"))
         }
     }
 

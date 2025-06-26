@@ -74,10 +74,7 @@ impl ResourceManager {
     /// Create a new resource
     pub fn create_resource(&self, type_idx: u32, data: Box<dyn Any + Send + Sync>) -> Result<u32> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::POISONED_LOCK,
-                PoisonedLockError("Component not found"),
+            Error::runtime_poisoned_lock("Component not found"),
             )
         })?;
 
@@ -92,10 +89,7 @@ impl ResourceManager {
         name: &str,
     ) -> Result<u32> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::POISONED_LOCK,
-                PoisonedLockError("Component not found"),
+            Error::runtime_poisoned_lock("Component not found"),
             )
         })?;
 
@@ -115,10 +109,7 @@ impl ResourceManager {
     /// Get a resource by handle
     pub fn get_resource(&self, handle: u32) -> Result<Box<Mutex<Resource>>> {
         let table = self.table.lock().map_err(|e| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::POISONED_LOCK,
-                PoisonedLockError("Component not found"),
+            Error::runtime_poisoned_lock("Component not found"),
             )
         })?;
 
@@ -128,10 +119,7 @@ impl ResourceManager {
     /// Drop a resource
     pub fn drop_resource(&self, handle: u32) -> Result<()> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::POISONED_LOCK,
-                PoisonedLockError("Component not found"),
+            Error::runtime_poisoned_lock("Component not found"),
             )
         })?;
 
@@ -149,10 +137,7 @@ impl ResourceManager {
     /// Set memory strategy for a resource
     pub fn set_memory_strategy(&self, handle: u32, strategy: MemoryStrategy) -> Result<()> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::POISONED_LOCK,
-                PoisonedLockError("Component not found"),
+            Error::runtime_poisoned_lock("Component not found"),
             )
         })?;
 
@@ -162,10 +147,7 @@ impl ResourceManager {
     /// Set verification level for a resource
     pub fn set_verification_level(&self, handle: u32, level: VerificationLevel) -> Result<()> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::POISONED_LOCK,
-                PoisonedLockError("Component not found"),
+            Error::runtime_poisoned_lock("Component not found"),
             )
         })?;
 
@@ -195,10 +177,7 @@ impl ResourceManager {
     /// Get the number of resources
     pub fn resource_count(&self) -> Result<usize> {
         let table = self.table.lock().map_err(|e| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::POISONED_LOCK,
-                PoisonedLockError("Component not found"),
+            Error::runtime_poisoned_lock("Component not found"),
             )
         })?;
 

@@ -187,11 +187,7 @@ impl FuelPreemptionManager {
         };
 
         self.task_states.insert(task_id, state).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many tasks registered for preemption".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many tasks registered for preemption")
         })?;
 
         // Initialize preemption points
@@ -214,11 +210,7 @@ impl FuelPreemptionManager {
         }
 
         let state = self.task_states.get(&current_task).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Task not registered for preemption".to_string(),
-            )
+            Error::validation_invalid_input("Task not registered for preemption")
         })?;
 
         // Update fuel tracking
@@ -252,11 +244,7 @@ impl FuelPreemptionManager {
         safe_to_preempt: bool,
     ) -> Result<(), Error> {
         let points = self.preemption_points.get_mut(&task_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Task not registered".to_string(),
-            )
+            Error::validation_invalid_input("Task not registered")
         })?;
 
         let point = PreemptionPoint {
@@ -267,11 +255,7 @@ impl FuelPreemptionManager {
         };
 
         points.push(point).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many preemption points".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many preemption points")
         })?;
 
         Ok(())
@@ -289,11 +273,7 @@ impl FuelPreemptionManager {
     /// Resume a preempted task
     pub fn resume_task(&mut self, task_id: TaskId) -> Result<Option<StateCheckpoint>, Error> {
         let state = self.task_states.get(&task_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Task not registered".to_string(),
-            )
+            Error::validation_invalid_input("Task not registered")
         })?;
 
         state.is_preempted.store(false, Ordering::Release);

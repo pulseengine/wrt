@@ -141,19 +141,11 @@ impl AsyncCombinators {
         futures: Vec<BoxedFuture>,
     ) -> Result<CombinatorId, Error> {
         if futures.is_empty() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Cannot select from empty futures collection".to_string(),
-            ));
+            return Err(Error::validation_invalid_input("Cannot select from empty futures collection"));
         }
 
         if futures.len() > MAX_COMBINATOR_FUTURES {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many futures for select operation".to_string(),
-            ));
+            return Err(Error::resource_limit_exceeded("Too many futures for select operation"));
         }
 
         let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel));
@@ -200,11 +192,7 @@ impl AsyncCombinators {
         stored_operation.task_id = Some(task_id);
 
         self.active_combinators.insert(combinator_id, stored_operation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many active combinators".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many active combinators")
         })?;
 
         self.combinator_stats.total_selects.fetch_add(1, Ordering::Relaxed);
@@ -219,19 +207,11 @@ impl AsyncCombinators {
         futures: Vec<BoxedFuture>,
     ) -> Result<CombinatorId, Error> {
         if futures.is_empty() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Cannot join empty futures collection".to_string(),
-            ));
+            return Err(Error::validation_invalid_input("Cannot join empty futures collection"));
         }
 
         if futures.len() > MAX_COMBINATOR_FUTURES {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many futures for join operation".to_string(),
-            ));
+            return Err(Error::resource_limit_exceeded("Too many futures for join operation"));
         }
 
         let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel));
@@ -274,11 +254,7 @@ impl AsyncCombinators {
         stored_operation.task_id = Some(task_id);
 
         self.active_combinators.insert(combinator_id, stored_operation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many active combinators".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many active combinators")
         })?;
 
         self.combinator_stats.total_joins.fetch_add(1, Ordering::Relaxed);
@@ -293,11 +269,7 @@ impl AsyncCombinators {
         futures: Vec<BoxedFuture>,
     ) -> Result<CombinatorId, Error> {
         if futures.is_empty() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Cannot race empty futures collection".to_string(),
-            ));
+            return Err(Error::validation_invalid_input("Cannot race empty futures collection"));
         }
 
         let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel));
@@ -341,11 +313,7 @@ impl AsyncCombinators {
         stored_operation.task_id = Some(task_id);
 
         self.active_combinators.insert(combinator_id, stored_operation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many active combinators".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many active combinators")
         })?;
 
         self.combinator_stats.total_races.fetch_add(1, Ordering::Relaxed);
@@ -390,10 +358,7 @@ impl AsyncCombinators {
                     // In real implementation, would race future against timer
                     if timeout_ms_copy < 1000 {
                         // Simulate timeout
-                        Err(Error::new(
-                            ErrorCategory::Timeout,
-                            codes::OPERATION_TIMEOUT,
-                            "Operation timed out".to_string(),
+                        Err(Error::runtime_execution_error(".to_string(),
                         ))
                     } else {
                         Ok(vec![ComponentValue::U32(42)])
@@ -408,11 +373,7 @@ impl AsyncCombinators {
         stored_operation.task_id = Some(task_id);
 
         self.active_combinators.insert(combinator_id, stored_operation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many active combinators".to_string(),
-            )
+            Error::resource_limit_exceeded(")
         })?;
 
         self.combinator_stats.total_timeouts.fetch_add(1, Ordering::Relaxed);
@@ -427,11 +388,7 @@ impl AsyncCombinators {
         futures: Vec<BoxedFuture>,
     ) -> Result<CombinatorId, Error> {
         if futures.is_empty() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Cannot try_join empty futures collection".to_string(),
-            ));
+            return Err(Error::validation_invalid_input("Cannot try_join empty futures collection"));
         }
 
         let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel));
@@ -472,11 +429,7 @@ impl AsyncCombinators {
         stored_operation.task_id = Some(task_id);
 
         self.active_combinators.insert(combinator_id, stored_operation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many active combinators".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many active combinators")
         })?;
 
         Ok(combinator_id)
@@ -527,11 +480,7 @@ impl AsyncCombinators {
         stored_operation.task_id = Some(task_id);
 
         self.active_combinators.insert(combinator_id, stored_operation).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many active combinators".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many active combinators")
         })?;
 
         Ok(combinator_id)
@@ -540,11 +489,7 @@ impl AsyncCombinators {
     /// Check combinator operation status
     pub fn check_combinator_status(&self, combinator_id: CombinatorId) -> Result<CombinatorStatus, Error> {
         let operation = self.active_combinators.get(&combinator_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Combinator operation not found".to_string(),
-            )
+            Error::validation_invalid_input("Combinator operation not found")
         })?;
 
         let is_ready = if let Some(task_id) = operation.task_id {
@@ -699,10 +644,7 @@ pub fn create_timeout_future(duration_ms: u64) -> BoxedFuture {
         if duration_ms > 0 {
             Ok(ComponentValue::U32(1)) // Success
         } else {
-            Err(Error::new(
-                ErrorCategory::Timeout,
-                codes::OPERATION_TIMEOUT,
-                "Timeout expired".to_string(),
+            Err(Error::runtime_execution_error("Timeout expired"),
             ))
         }
     })

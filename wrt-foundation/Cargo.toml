@@ -48,6 +48,9 @@ static-memory-safety = [
     "component-isolation"
 ]
 
+# Fault detection system
+fault-detection = ["basic-monitoring"]
+
 maximum-safety = [
     "verified-static-allocation",
     "mathematical-proofs",

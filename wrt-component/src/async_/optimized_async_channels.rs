@@ -267,11 +267,7 @@ impl OptimizedAsyncChannels {
         };
 
         self.component_contexts.insert(component_id, context).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many component channel contexts".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many component channel contexts")
         })?;
 
         Ok(())
@@ -284,20 +280,12 @@ impl OptimizedAsyncChannels {
         channel_type: ChannelType,
     ) -> Result<(ChannelSender, ChannelReceiver), Error> {
         let context = self.component_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not initialized for channels".to_string(),
-            )
+            Error::validation_invalid_input("Component not initialized for channels")
         })?;
 
         // Check limits
         if context.owned_channels.len() >= context.channel_limits.max_channels {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component channel limit exceeded".to_string(),
-            ));
+            return Err(Error::resource_limit_exceeded("Component channel limit exceeded"));
         }
 
         let channel_id = ChannelId(self.next_channel_id.fetch_add(1, Ordering::AcqRel));
@@ -330,11 +318,7 @@ impl OptimizedAsyncChannels {
 
         // Store channel
         self.channels.insert(channel_id, channel).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many active channels".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many active channels")
         })?;
 
         // Create sender and receiver
@@ -354,11 +338,7 @@ impl OptimizedAsyncChannels {
 
         // Add to component context
         context.owned_channels.push(channel_id).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component channel list full".to_string(),
-            )
+            Error::resource_limit_exceeded("Component channel list full")
         })?;
 
         context.senders.insert(channel_id, sender.clone()).ok();
@@ -379,11 +359,7 @@ impl OptimizedAsyncChannels {
         priority: Option<u8>,
     ) -> Result<SendResult, Error> {
         let channel = self.channels.get_mut(&channel_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Channel not found".to_string(),
-            )
+            Error::validation_invalid_input("Channel not found")
         })?;
 
         if channel.closed.load(Ordering::Acquire) {
@@ -421,11 +397,7 @@ impl OptimizedAsyncChannels {
                     SendResult::Full
                 } else {
                     data.push(channel_message).map_err(|_| {
-                        Error::new(
-                            ErrorCategory::Resource,
-                            codes::RESOURCE_LIMIT_EXCEEDED,
-                            "Channel buffer full".to_string(),
-                        )
+                        Error::resource_limit_exceeded("Channel buffer full")
                     })?;
                     SendResult::Sent
                 }
@@ -444,11 +416,7 @@ impl OptimizedAsyncChannels {
                     priority: priority.unwrap_or(0),
                 };
                 data.push(priority_msg).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_LIMIT_EXCEEDED,
-                        "Priority channel full".to_string(),
-                    )
+                    Error::resource_limit_exceeded("Priority channel full")
                 })?;
                 SendResult::Sent
             },
@@ -474,11 +442,7 @@ impl OptimizedAsyncChannels {
         receiver_id: ComponentInstanceId,
     ) -> Result<ReceiveResult, Error> {
         let channel = self.channels.get_mut(&channel_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Channel not found".to_string(),
-            )
+            Error::validation_invalid_input("Channel not found")
         })?;
 
         // Try to receive message
@@ -555,11 +519,7 @@ impl OptimizedAsyncChannels {
     /// Close a channel
     pub fn close_channel(&mut self, channel_id: ChannelId) -> Result<(), Error> {
         let channel = self.channels.get_mut(&channel_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Channel not found".to_string(),
-            )
+            Error::validation_invalid_input("Channel not found")
         })?;
 
         channel.closed.store(true, Ordering::Release);
@@ -725,38 +685,18 @@ impl CoreFuture for SendFuture {
                             }
                             Poll::Pending
                         },
-                        Ok(SendResult::Closed) => Poll::Ready(Err(Error::new(
-                            ErrorCategory::InvalidState,
-                            codes::INVALID_STATE,
-                            "Channel closed".to_string(),
-                        ))),
-                        Ok(SendResult::Full) => Poll::Ready(Err(Error::new(
-                            ErrorCategory::Resource,
-                            codes::RESOURCE_LIMIT_EXCEEDED,
-                            "Channel full".to_string(),
-                        ))),
+                        Ok(SendResult::Closed) => Poll::Ready(Err(Error::invalid_state_error("Channel closed"))),
+                        Ok(SendResult::Full) => Poll::Ready(Err(Error::resource_limit_exceeded("Channel full"))),
                         Err(e) => Poll::Ready(Err(e)),
                     }
                 } else {
-                    Poll::Ready(Err(Error::new(
-                        ErrorCategory::InvalidState,
-                        codes::INVALID_STATE,
-                        "Message already sent".to_string(),
-                    )))
+                    Poll::Ready(Err(Error::invalid_state_error("Message already sent")))
                 }
             } else {
-                Poll::Ready(Err(Error::new(
-                    ErrorCategory::InvalidState,
-                    codes::INVALID_STATE,
-                    "Channel manager unavailable".to_string(),
-                )))
+                Poll::Ready(Err(Error::invalid_state_error("Channel manager unavailable")))
             }
         } else {
-            Poll::Ready(Err(Error::new(
-                ErrorCategory::InvalidState,
-                codes::INVALID_STATE,
-                "Channel manager dropped".to_string(),
-            )))
+            Poll::Ready(Err(Error::invalid_state_error("Channel manager dropped")))
         }
     }
 }
@@ -781,26 +721,14 @@ impl CoreFuture for ReceiveFuture {
                         }
                         Poll::Pending
                     },
-                    Ok(ReceiveResult::Closed) => Poll::Ready(Err(Error::new(
-                        ErrorCategory::InvalidState,
-                        codes::INVALID_STATE,
-                        "Channel closed".to_string(),
-                    ))),
+                    Ok(ReceiveResult::Closed) => Poll::Ready(Err(Error::invalid_state_error("Channel closed"))),
                     Err(e) => Poll::Ready(Err(e)),
                 }
             } else {
-                Poll::Ready(Err(Error::new(
-                    ErrorCategory::InvalidState,
-                    codes::INVALID_STATE,
-                    "Channel manager unavailable".to_string(),
-                )))
+                Poll::Ready(Err(Error::invalid_state_error("Channel manager unavailable")))
             }
         } else {
-            Poll::Ready(Err(Error::new(
-                ErrorCategory::InvalidState,
-                codes::INVALID_STATE,
-                "Channel manager dropped".to_string(),
-            )))
+            Poll::Ready(Err(Error::invalid_state_error("Channel manager dropped")))
         }
     }
 }

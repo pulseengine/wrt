@@ -75,11 +75,7 @@ impl IpcChannel for LinuxDomainSocket {
         
         // Create Unix domain socket listener
         let listener = UnixListener::bind(&socket_path)
-            .map_err(|e| Error::new(
-                ErrorCategory::System,
-                codes::SYSTEM_ERROR,
-                &format!("Failed to bind Unix socket: {}", e),
-            ))?;
+            .map_err(|e| Error::runtime_execution_error(&format!("Failed to bind Unix socket: {}", e)))?
         
         let mut socket = Self::new(socket_path);
         socket.listener = Some(Arc::new(Mutex::new(listener)));
@@ -92,15 +88,11 @@ impl IpcChannel for LinuxDomainSocket {
     where
         Self: Sized,
     {
-        let socket_path = format!("/tmp/wrt_{}.sock", name);
+        let socket_path = format!("/tmp/wrt_ipc_{}.sock", name);
         
         // Connect to existing socket
         let _stream = UnixStream::connect(&socket_path)
-            .map_err(|e| Error::new(
-                ErrorCategory::System,
-                codes::SYSTEM_ERROR,
-                &format!("Failed to connect to Unix socket: {}", e),
-            ))?;
+            .map_err(|e| Error::runtime_execution_error(&format!("Failed to connect to Unix socket: {}", e)))?;
         
         Ok(Self::new(socket_path))
     }
@@ -112,19 +104,14 @@ impl IpcChannel for LinuxDomainSocket {
         Err(Error::new(
             ErrorCategory::System,
             codes::NOT_IMPLEMENTED,
-            "LinuxDomainSocket::send not fully implemented",
-        ))
+            "Unix domain socket send not implemented"))
     }
 
     /// Receive a message (blocking)
     fn receive(&self) -> Result<(Message, ClientId)> {
         // Implementation would accept connections and receive messages
         // For now, return a placeholder error
-        Err(Error::new(
-            ErrorCategory::System,
-            codes::NOT_IMPLEMENTED,
-            "LinuxDomainSocket::receive not fully implemented",
-        ))
+        Err(Error::runtime_execution_error("Unix domain socket receive not implemented"))
     }
 
     /// Send and wait for reply (synchronous RPC)
@@ -134,19 +121,14 @@ impl IpcChannel for LinuxDomainSocket {
         Err(Error::new(
             ErrorCategory::System,
             codes::NOT_IMPLEMENTED,
-            "LinuxDomainSocket::send_receive not fully implemented",
-        ))
+            "Unix domain socket send_receive not implemented"))
     }
 
     /// Reply to a client
     fn reply(&self, _client: ClientId, _msg: &Message) -> Result<()> {
         // Implementation would send reply to specific client
         // For now, return a placeholder error
-        Err(Error::new(
-            ErrorCategory::System,
-            codes::NOT_IMPLEMENTED,
-            "LinuxDomainSocket::reply not fully implemented",
-        ))
+        Err(Error::runtime_execution_error("Unix domain socket reply not implemented"))
     }
 
     /// Get channel identifier

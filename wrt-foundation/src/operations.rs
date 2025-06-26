@@ -661,21 +661,48 @@ fn global_counter() -> &'static Counter {
 }
 
 /// Record an operation using the global counter.
+///
+/// This function records an operation type with a verification level using the global
+/// operation counter. It's useful for tracking operations when a local counter
+/// isn't available or when global statistics are needed.
+///
+/// # Arguments
+///
+/// * `op_type` - The type of operation being performed
+/// * `level` - The verification level for cost calculation
 pub fn record_global_operation(op_type: Type, level: VerificationLevel) {
     global_counter().record_operation(op_type, level);
 }
 
 /// Get a summary from the global operation counter.
+///
+/// Returns a snapshot of all operation counts and fuel consumption
+/// from the global counter. This provides aggregate statistics
+/// across all operations recorded globally.
+///
+/// # Returns
+///
+/// A `Summary` containing operation counts and total fuel consumed
 pub fn global_operation_summary() -> Summary {
     global_counter().get_summary()
 }
 
 /// Reset the global operation counter.
+///
+/// Clears all operation counts and fuel consumption in the global counter.
+/// This is useful for benchmarking or when starting a new measurement period.
 pub fn reset_global_operations() {
     global_counter().reset();
 }
 
 /// Get the global fuel consumed count.
+///
+/// Returns the total fuel consumed across all operations recorded
+/// in the global counter. This is useful for fuel-based execution limits.
+///
+/// # Returns
+///
+/// Total fuel consumed as a u64 value
 pub fn global_fuel_consumed() -> u64 {
     global_counter().get_fuel_consumed()
 }

@@ -33,6 +33,22 @@ pub const TYPE_MISMATCH: u16 = 1009;
 pub const PARSE_ERROR: u16 = 1010;
 /// Invalid version error
 pub const INVALID_VERSION: u16 = 1011;
+/// Invalid operation error
+pub const INVALID_OPERATION: u16 = 1019;
+/// Instance not found error
+pub const INSTANCE_NOT_FOUND: u16 = 1020;
+/// Threading error
+pub const THREADING_ERROR: u16 = 1021;
+/// Cleanup failed error
+pub const CLEANUP_FAILED: u16 = 1022;
+/// Function call failed error
+pub const FUNCTION_CALL_FAILED: u16 = 1023;
+/// Type conversion error
+pub const TYPE_CONVERSION_ERROR: u16 = 1024;
+/// Configuration error
+pub const CONFIGURATION_ERROR: u16 = 1025;
+/// Operation cancelled error
+pub const OPERATION_CANCELLED: u16 = 1026;
 /// Out of bounds error
 pub const OUT_OF_BOUNDS_ERROR: u16 = 1012;
 /// Execution instruction index out of bounds error
@@ -83,14 +99,34 @@ pub const MEMORY_NOT_FOUND: u16 = 3006;
 pub const TABLE_NOT_FOUND: u16 = 3007;
 /// Resource exhausted error
 pub const RESOURCE_EXHAUSTED: u16 = 3008;
+/// WASI invalid file descriptor
+pub const WASI_INVALID_FD: u16 = 3009;
+/// WASI permission denied
+pub const WASI_PERMISSION_DENIED: u16 = 3010;
+/// WASI resource limit
+pub const WASI_RESOURCE_LIMIT: u16 = 3011;
+/// WASI invalid argument
+pub const WASI_INVALID_ARGUMENT: u16 = 3012;
+/// WASI invalid encoding
+pub const WASI_INVALID_ENCODING: u16 = 3013;
+/// WASI runtime error
+pub const WASI_RUNTIME_ERROR: u16 = 3014;
+/// WASI resource exhausted
+pub const WASI_RESOURCE_EXHAUSTED: u16 = 3015;
+/// WASI unsupported operation
+pub const WASI_UNSUPPORTED_OPERATION: u16 = 3016;
+/// WASI verification failed
+pub const WASI_VERIFICATION_FAILED: u16 = 3017;
+/// WASI timeout
+pub const WASI_TIMEOUT: u16 = 3018;
 /// Allocation failed error
-pub const ALLOCATION_FAILED: u16 = 3009;
+pub const ALLOCATION_FAILED: u16 = 3012;
 /// Memory access denied through wrapper
-pub const MEMORY_ACCESS_DENIED: u16 = 3010;
+pub const MEMORY_ACCESS_DENIED: u16 = 3013;
 /// Table access denied through wrapper
-pub const TABLE_ACCESS_DENIED: u16 = 3011;
+pub const TABLE_ACCESS_DENIED: u16 = 3014;
 /// Global access denied through wrapper
-pub const GLOBAL_ACCESS_DENIED: u16 = 3012;
+pub const GLOBAL_ACCESS_DENIED: u16 = 3015;
 
 // Memory error codes (4000-4999)
 /// Memory out of bounds error
@@ -395,6 +431,12 @@ pub const ASYNC_STREAM_CLOSED: u16 = 9604;
 /// Async operation timeout
 pub const ASYNC_TIMEOUT: u16 = 9605;
 
+/// Out of memory error
+pub const OUT_OF_MEMORY: u16 = 9010;
+
+/// I/O error
+pub const IO_ERROR: u16 = 8801;
+
 /// Unknown error
 pub const UNKNOWN: u16 = 9999;
 
@@ -425,10 +467,12 @@ pub const PARSE_INVALID_LEB128_ENCODING: u16 = 8115;
 pub const PARSE_UNEXPECTED_EOF: u16 = 8116;
 /// Parse malformed UTF-8 string error
 pub const PARSE_MALFORMED_UTF8_STRING: u16 = 8117;
+/// Invalid UTF-8 encoding error
+pub const INVALID_UTF8_ENCODING: u16 = 8118;
 /// Parse invalid alignment value error
-pub const PARSE_INVALID_ALIGNMENT_VALUE: u16 = 8118;
+pub const PARSE_INVALID_ALIGNMENT_VALUE: u16 = 8119;
 /// Parse invalid reference type byte error
-pub const PARSE_INVALID_REFERENCE_TYPE_BYTE: u16 = 8119;
+pub const PARSE_INVALID_REFERENCE_TYPE_BYTE: u16 = 8120;
 
 // Validation error codes (8200-8299)
 /// Validation memory type mismatch error
@@ -499,6 +543,10 @@ pub const RUNTIME_CALL_INDIRECT_TYPE_MISMATCH_ERROR: u16 = 8610;
 pub const RUNTIME_INVALID_ARGUMENT_ERROR: u16 = 8611;
 /// Runtime export not found error
 pub const RUNTIME_EXPORT_NOT_FOUND_ERROR: u16 = 8612;
+/// WASI capability unavailable
+pub const WASI_CAPABILITY_UNAVAILABLE: u16 = 8613;
+/// Runtime capacity error code
+pub const RUNTIME_CAPACITY_ERROR_CODE: u16 = 8614;
 
 // System errors (8800-8899)
 /// System IO error code
@@ -532,6 +580,51 @@ pub const MUTEX_ERROR: u16 = 7010;
 /// Function not found error
 pub const FUNCTION_NOT_FOUND: u16 = 2010;
 
+/// Component not found error
+pub const COMPONENT_NOT_FOUND: u16 = 2011;
+
+/// Too many components error
+pub const TOO_MANY_COMPONENTS: u16 = 2012;
+
+/// Component error
+pub const COMPONENT_ERROR: u16 = 2013;
+
+/// WIT parse error
+pub const WIT_PARSE_ERROR: u16 = 2014;
+
+/// Invalid input error
+pub const INVALID_INPUT: u16 = 2015;
+
+/// Unsupported operation
+pub const UNSUPPORTED: u16 = 2016;
+
+/// No WIT definitions found
+pub const NO_WIT_DEFINITIONS_FOUND: u16 = 2017;
+
+/// Unsupported WASM 2.0 feature error
+pub const UNSUPPORTED_WASM20_FEATURE_ERROR: u16 = 2018;
+
+/// Invalid reference type usage error
+pub const INVALID_REFERENCE_TYPE_USAGE_ERROR: u16 = 2019;
+
+/// Bulk operation error
+pub const BULK_OPERATION_ERROR: u16 = 2020;
+
+/// SIMD operation error
+pub const SIMD_OPERATION_ERROR: u16 = 2021;
+
+/// Tail call error
+pub const TAIL_CALL_ERROR: u16 = 2022;
+
+/// Debug info error
+pub const DEBUG_INFO_ERROR: u16 = 2023;
+
+/// Would block error
+pub const WOULD_BLOCK: u16 = 2024;
+
+/// Platform error
+pub const PLATFORM_ERROR: u16 = 2025;
+
 // INVALID_STATE already defined above as 5003
 
 // Additional missing error codes
@@ -544,6 +637,86 @@ pub const NULL_REFERENCE: u16 = 8201;
 // RESOURCE_EXHAUSTED already defined above as 3008
 
 // INVALID_ARGUMENT already defined above as 5002
+
+// Component Runtime error codes (24000-24999)
+/// Component thread spawn failed
+pub const COMPONENT_THREAD_SPAWN_FAILED: u16 = 24000;
+/// Component handle representation error
+pub const COMPONENT_HANDLE_REPRESENTATION_ERROR: u16 = 24001;
+/// Component resource lifecycle error
+pub const COMPONENT_RESOURCE_LIFECYCLE_ERROR: u16 = 24002;
+/// Component instantiation runtime error
+pub const COMPONENT_INSTANTIATION_RUNTIME_ERROR: u16 = 24003;
+/// Component ABI runtime error
+pub const COMPONENT_ABI_RUNTIME_ERROR: u16 = 24004;
+/// Component virtualization error
+pub const COMPONENT_VIRTUALIZATION_ERROR: u16 = 24005;
+/// Component capability denied
+pub const COMPONENT_CAPABILITY_DENIED: u16 = 24006;
+/// Component thread join failed
+pub const COMPONENT_THREAD_JOIN_FAILED: u16 = 24007;
+/// Component thread not found
+pub const COMPONENT_THREAD_NOT_FOUND: u16 = 24008;
+/// Component configuration invalid
+pub const COMPONENT_CONFIGURATION_INVALID: u16 = 24009;
+
+// Platform Runtime error codes (25000-25999)
+/// Platform memory allocation failed
+pub const PLATFORM_MEMORY_ALLOCATION_FAILED: u16 = 25000;
+/// Platform thread creation failed
+pub const PLATFORM_THREAD_CREATION_FAILED: u16 = 25001;
+/// Platform sync primitive failed
+pub const PLATFORM_SYNC_PRIMITIVE_FAILED: u16 = 25002;
+/// Platform hardware acceleration failed
+pub const PLATFORM_HARDWARE_ACCELERATION_FAILED: u16 = 25003;
+/// Platform realtime constraint violated
+pub const PLATFORM_REALTIME_CONSTRAINT_VIOLATED: u16 = 25004;
+/// Platform page allocator failed
+pub const PLATFORM_PAGE_ALLOCATOR_FAILED: u16 = 25005;
+/// Platform memory protection failed
+pub const PLATFORM_MEMORY_PROTECTION_FAILED: u16 = 25006;
+/// Platform watchdog timeout
+pub const PLATFORM_WATCHDOG_TIMEOUT: u16 = 25007;
+/// Platform IPC failed
+pub const PLATFORM_IPC_FAILED: u16 = 25008;
+
+// Foundation Runtime error codes (26000-26999)
+/// Foundation bounded capacity exceeded
+pub const FOUNDATION_BOUNDED_CAPACITY_EXCEEDED: u16 = 26000;
+/// Foundation memory provider failed
+pub const FOUNDATION_MEMORY_PROVIDER_FAILED: u16 = 26001;
+/// Foundation safety constraint violated
+pub const FOUNDATION_SAFETY_CONSTRAINT_VIOLATED: u16 = 26002;
+/// Foundation verification failed
+pub const FOUNDATION_VERIFICATION_FAILED: u16 = 26003;
+/// Foundation allocation budget exceeded
+pub const FOUNDATION_ALLOCATION_BUDGET_EXCEEDED: u16 = 26004;
+/// Foundation capability verification failed
+pub const FOUNDATION_CAPABILITY_VERIFICATION_FAILED: u16 = 26005;
+/// Foundation checksum mismatch
+pub const FOUNDATION_CHECKSUM_MISMATCH: u16 = 26006;
+/// Foundation memory coordination failed
+pub const FOUNDATION_MEMORY_COORDINATION_FAILED: u16 = 26007;
+
+// Async Runtime error codes (27000-27999)
+/// Async task spawn failed
+pub const ASYNC_TASK_SPAWN_FAILED: u16 = 27000;
+/// Async fuel exhausted
+pub const ASYNC_FUEL_EXHAUSTED: u16 = 27001;
+/// Async deadline exceeded
+pub const ASYNC_DEADLINE_EXCEEDED: u16 = 27002;
+/// Async channel full
+pub const ASYNC_CHANNEL_FULL: u16 = 27003;
+/// Async channel closed
+pub const ASYNC_CHANNEL_CLOSED: u16 = 27004;
+/// Async priority inheritance failed
+pub const ASYNC_PRIORITY_INHERITANCE_FAILED: u16 = 27005;
+/// Async WCET analysis failed
+pub const ASYNC_WCET_ANALYSIS_FAILED: u16 = 27006;
+/// Async preemption failed
+pub const ASYNC_PREEMPTION_FAILED: u16 = 27007;
+/// Async resource cleanup failed
+pub const ASYNC_RESOURCE_CLEANUP_FAILED: u16 = 27008;
 
 /// Codes representing WebAssembly runtime trap conditions.
 /// These are used when an operation cannot complete normally due to a runtime

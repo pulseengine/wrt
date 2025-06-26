@@ -71,20 +71,12 @@ impl<'a> CapabilityAtomicMemory<'a> {
     fn verify_atomic_access(&self, offset: usize, size: usize, alignment: usize) -> Result<()> {
         // Check bounds
         if offset + size > self.size {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::EXECUTION_ERROR,
-                "Atomic operation address out of bounds"
-            ));
+            return Err(Error::runtime_execution_error("Atomic operation address out of bounds"));
         }
         
         // Check alignment
         if offset % alignment != 0 {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::EXECUTION_ERROR,
-                "Unaligned atomic access"
-            ));
+            return Err(Error::runtime_execution_error("Unaligned atomic access"));
         }
         
         // Verify capability allows this operation
@@ -109,11 +101,7 @@ impl<'a> CapabilityAtomicMemory<'a> {
         
         // For ASIL compliance, we avoid unsafe and use a different approach
         // We'll need to add this as a platform-provided safe abstraction
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            "Safe atomic transmute not yet implemented - needs platform abstraction"
-        ))
+        Err(Error::runtime_not_implemented("Safe atomic transmute not yet implemented - needs platform abstraction"))
     }
     
     /// Atomic load with capability verification
@@ -122,11 +110,7 @@ impl<'a> CapabilityAtomicMemory<'a> {
         
         // For now, return error until we have safe transmute
         // In production, this would use a platform-provided safe atomic accessor
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            "Safe atomic operations pending platform abstraction"
-        ))
+        Err(Error::runtime_not_implemented("Safe atomic operations pending platform abstraction"))
     }
     
     /// Atomic store with capability verification
@@ -138,11 +122,7 @@ impl<'a> CapabilityAtomicMemory<'a> {
         self.capability.verify_access(&operation)?;
         
         // For now, return error until we have safe transmute
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            "Safe atomic operations pending platform abstraction"
-        ))
+        Err(Error::runtime_not_implemented("Safe atomic operations pending platform abstraction"))
     }
     
     /// Atomic compare-and-exchange with capability verification
@@ -162,11 +142,7 @@ impl<'a> CapabilityAtomicMemory<'a> {
         self.capability.verify_access(&write_op)?;
         
         // For now, return error until we have safe transmute
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            "Safe atomic operations pending platform abstraction"
-        ))
+        Err(Error::runtime_not_implemented("Safe atomic operations pending platform abstraction"))
     }
 }
 
@@ -263,19 +239,11 @@ impl<'a> AtomicOperationBuilder<'a> {
     /// Build and verify the operation can be performed
     pub fn verify(&self) -> Result<()> {
         let capability = self.capability.ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Parameter,
-                codes::INVALID_PARAMETER,
-                "Capability not specified for atomic operation"
-            )
+            Error::parameter_invalid_parameter("Capability not specified for atomic operation")
         })?;
         
         let offset = self.offset.ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Parameter,
-                codes::INVALID_PARAMETER,
-                "Offset not specified for atomic operation"
-            )
+            Error::parameter_invalid_parameter("Offset not specified for atomic operation")
         })?;
         
         // Verify basic read capability

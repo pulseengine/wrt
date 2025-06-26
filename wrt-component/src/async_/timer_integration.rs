@@ -250,11 +250,7 @@ impl TimerIntegration {
         };
 
         self.component_contexts.insert(component_id, context).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many component timer contexts".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many component timer contexts")
         })?;
 
         Ok(())
@@ -268,37 +264,21 @@ impl TimerIntegration {
         duration_ms: u64,
     ) -> Result<TimerId, Error> {
         let context = self.component_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not initialized for timers".to_string(),
-            )
+            Error::validation_invalid_input("Component not initialized for timers")
         })?;
 
         // Check limits
         if context.owned_timers.len() >= context.timer_limits.max_timers {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component timer limit exceeded".to_string(),
-            ));
+            return Err(Error::resource_limit_exceeded("Component timer limit exceeded"));
         }
 
         // Validate duration
         if duration_ms > context.timer_limits.max_timeout_duration_ms {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Timer duration exceeds maximum".to_string(),
-            ));
+            return Err(Error::validation_invalid_input("Timer duration exceeds maximum"));
         }
 
         if duration_ms < self.timer_config.min_timer_resolution_ms {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Timer duration below minimum resolution".to_string(),
-            ));
+            return Err(Error::validation_invalid_input("Timer duration below minimum resolution"));
         }
 
         let timer_id = TimerId(self.next_timer_id.fetch_add(1, Ordering::AcqRel));
@@ -329,29 +309,17 @@ impl TimerIntegration {
         };
 
         self.timer_queue.push(timer_entry).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Timer queue full".to_string(),
-            )
+            Error::resource_limit_exceeded("Timer queue full")
         })?;
 
         // Store timer
         self.timers.insert(timer_id, timer).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many active timers".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many active timers")
         })?;
 
         // Add to component context
         context.owned_timers.push(timer_id).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component timer list full".to_string(),
-            )
+            Error::resource_limit_exceeded("Component timer list full")
         })?;
 
         // Update statistics
@@ -392,11 +360,7 @@ impl TimerIntegration {
     /// Cancel a timer
     pub fn cancel_timer(&mut self, timer_id: TimerId) -> Result<bool, Error> {
         let timer = self.timers.get_mut(&timer_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Timer not found".to_string(),
-            )
+            Error::validation_invalid_input("Timer not found")
         })?;
 
         let was_cancelled = timer.cancelled.compare_exchange(
@@ -522,11 +486,7 @@ impl TimerIntegration {
     /// Get timer status
     pub fn get_timer_status(&self, timer_id: TimerId) -> Result<TimerStatus, Error> {
         let timer = self.timers.get(&timer_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Timer not found".to_string(),
-            )
+            Error::validation_invalid_input("Timer not found")
         })?;
 
         let current_time = self.get_current_time();
@@ -570,11 +530,7 @@ impl TimerIntegration {
 
     fn check_rate_limit(&mut self, component_id: ComponentInstanceId) -> Result<bool, Error> {
         let context = self.component_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not found".to_string(),
-            )
+            Error::validation_invalid_input("Component not found")
         })?;
 
         let current_time = self.get_current_time();
@@ -658,10 +614,7 @@ impl CoreFuture for TimerFuture {
             if let Ok(mut timers) = timer_integration.lock() {
                 if let Some(timer) = timers.timers.get_mut(&self.timer_id) {
                     if timer.cancelled.load(Ordering::Acquire) {
-                        return Poll::Ready(Err(Error::new(
-                            ErrorCategory::Cancelled,
-                            codes::OPERATION_CANCELLED,
-                            "Timer was cancelled".to_string(),
+                        return Poll::Ready(Err(Error::runtime_execution_error(".to_string(),
                         )));
                     }
 
@@ -674,25 +627,13 @@ impl CoreFuture for TimerFuture {
                         Poll::Pending
                     }
                 } else {
-                    Poll::Ready(Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::INVALID_INPUT,
-                        "Timer not found".to_string(),
-                    )))
+                    Poll::Ready(Err(Error::validation_invalid_input(")))
                 }
             } else {
-                Poll::Ready(Err(Error::new(
-                    ErrorCategory::InvalidState,
-                    codes::INVALID_STATE,
-                    "Timer manager unavailable".to_string(),
-                )))
+                Poll::Ready(Err(Error::invalid_state_error("Timer manager unavailable")))
             }
         } else {
-            Poll::Ready(Err(Error::new(
-                ErrorCategory::InvalidState,
-                codes::INVALID_STATE,
-                "Timer manager dropped".to_string(),
-            )))
+            Poll::Ready(Err(Error::invalid_state_error("Timer manager dropped")))
         }
     }
 }

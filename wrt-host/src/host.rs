@@ -30,11 +30,7 @@ fn create_host_provider() -> Result<HostProvider> {
     use crate::bounded_host_infra;
     
     bounded_host_infra::create_host_provider()
-        .map_err(|_| Error::new(
-            ErrorCategory::Memory,
-            codes::MEMORY_OUT_OF_BOUNDS,
-            "Failed to create host provider"
-        ))
+        .map_err(|_| Error::memory_out_of_bounds("Failed to create host provider"))
 }
 
 #[cfg(not(feature = "std"))]
@@ -403,11 +399,7 @@ impl BuiltinHost {
                     // After interceptor - convert result to component values and back
                     let component_result = match &result {
                         Ok(values) => Ok(convert_to_component_values(values)),
-                        Err(_e) => Err(Error::new(
-                            ErrorCategory::Runtime,
-                            codes::RUNTIME_ERROR,
-                            "Runtime error during interception",
-                        )),
+                        Err(_e) => Err(Error::runtime_error("Runtime error during interception")),
                     };
 
                     let modified_result =
@@ -452,11 +444,7 @@ impl BuiltinHost {
         }
         
         // No handler or fallback found
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::RUNTIME_ERROR,
-            "Built-in function not implemented",
-        ))
+        Err(Error::runtime_error("Built-in function not implemented"))
     }
 
     /// Internal implementation of `execute_builtin` without interception (`no_std` version)
@@ -468,11 +456,7 @@ impl BuiltinHost {
         _args: ValueVec,
     ) -> Result<ValueVec> {
         // In no_std mode, built-in functions are not supported
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::RUNTIME_ERROR,
-            "Built-in functions not supported in no_std mode",
-        ))
+        Err(Error::runtime_error("Built-in functions not supported in no_std mode"))
     }
 }
 

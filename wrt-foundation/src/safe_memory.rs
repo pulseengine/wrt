@@ -429,11 +429,7 @@ impl<'a> SliceMut<'a> {
     /// creating the new `SliceMut` fails (e.g., internal verification error).
     pub fn slice_mut<'s>(&'s mut self, start: usize, len: usize) -> Result<SliceMut<'s>> {
         if start.checked_add(len).map_or(true, |end| end > self.length) {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_OUT_OF_BOUNDS,
-                "Attempted to slice SliceMut out of bounds",
-            ));
+            return Err(Error::runtime_execution_error("Operation failed"));
         }
 
         // Integrity of the parent slice should ideally be checked before creating a
@@ -940,11 +936,7 @@ impl Provider for StdProvider {
         // handles potential resizing. Let's assume verify_access checks against
         // current data.len() for reads and initial write checks.
         if end > self.data.len() {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::MEMORY_ACCESS_ERROR,
-                "Access out of bounds",
-            ));
+            return Err(Error::runtime_execution_error("Operation failed"));
         }
         Ok(())
     }
@@ -1373,11 +1365,7 @@ impl<const N: usize> NoStdProvider<N> {
 
         // Simple length check
         if self.used > N {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INTEGRITY_VIOLATION,
-                "Memory corruption detected: used > capacity",
-            ));
+            return Err(Error::runtime_execution_error("Operation failed"));
         }
 
         // Verify that the last access was valid
@@ -1385,11 +1373,7 @@ impl<const N: usize> NoStdProvider<N> {
         let length = self.last_access_length.load(Ordering::SeqCst);
 
         if length > 0 && offset + length > self.used {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                "Last access out of bounds",
-            ));
+            return Err(Error::memory_access_out_of_bounds("Access out of bounds"));
         }
 
         Ok(())
@@ -1527,11 +1511,7 @@ impl<const N: usize> Provider for NoStdProvider<N> {
 
     fn ensure_used_up_to(&mut self, byte_offset: usize) -> Result<()> {
         if byte_offset > N {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::CAPACITY_EXCEEDED,
-                "Cannot ensure used up to an offset beyond capacity",
-            ));
+            return Err(Error::runtime_execution_error("Operation failed"));
         }
         self.used = core::cmp::max(self.used, byte_offset);
         Ok(())
@@ -1543,7 +1523,7 @@ impl<const N: usize> Provider for NoStdProvider<N> {
                                           // to extend 'used'. For now, ensure
                                           // it's within capacity N for mutable access.
         if offset + len > N {
-            return Err(Error::memory_out_of_bounds("get_slice_mut out of capacity"));
+            return Err(Error::memory_out_of_bounds("Offset + length exceeds capacity"));
         }
         // If strict init checks are on, we might want to restrict len to self.used -
         // offset. However, SliceMut is often used to write new data.
@@ -1605,23 +1585,14 @@ impl<const N: usize> Allocator for NoStdProvider<N> {
         // NoStdProvider<0>, this will fail.
         if N == 0 || layout.size() > N || layout.size() == 0 {
             // Binary std/no_std choice
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
-                "NoStdProvider cannot satisfy allocation request (zero capacity or request too \
-                 large/zero)",
-            ));
+            return Err(Error::memory_error("NoStdProvider cannot satisfy allocation request (zero capacity or request too large/zero)"));
         }
         // Binary std/no_std choice
         // would need to manage free blocks, alignment, etc.
         // Returning self.data.as_ptr() is not safe without proper management.
         // Binary std/no_std choice
         // implemented.
-        Err(Error::new(
-            ErrorCategory::Memory,
-            codes::UNSUPPORTED_OPERATION, // Or MEMORY_ALLOCATION_ERROR
-            "NoStdProvider dynamic allocation not implemented; use pre-allocated buffer.",
-        ))
+        Err(Error::runtime_execution_error("Raw allocation not implemented"))
     }
 
     fn deallocate(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> WrtResult<()> {
@@ -1770,21 +1741,17 @@ impl<P: Provider> SafeMemoryHandler<P> {
 
         let size = self.provider.size();
         if size == 0 {
-            let provider = NoStdProvider::<4096>::default();
+            let provider = crate::safe_managed_alloc!(4096, crate::budget_aware_provider::CrateId::Foundation)?;
             return crate::bounded::BoundedVec::new(provider);
         }
 
         let slice = self.provider.borrow_slice(0, size)?;
-        let provider = NoStdProvider::<4096>::default();
+        let provider = crate::safe_managed_alloc!(4096, crate::budget_aware_provider::CrateId::Foundation)?;
         let mut result = crate::bounded::BoundedVec::new(provider)?;
 
         for byte in slice.as_ref() {
             result.push(*byte).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Memory,
-                    crate::codes::INVALID_VALUE,
-                    "Failed to push byte during to_vec conversion",
-                )
+                Error::runtime_execution_error("Failed to push byte")
             })?;
         }
 
@@ -1907,7 +1874,7 @@ mod tests {
     #[test]
     fn test_safe_memory_handler_copy_within() {
         // Create a NoStdProvider with capacity 50
-        let mut provider = NoStdProvider::<50>::default();
+        let mut provider = crate::safe_managed_alloc!(50, crate::budget_aware_provider::CrateId::Foundation).unwrap();
 
         // Set initial data "Hello, World!"
         let test_data = b"Hello, World!";
@@ -1932,7 +1899,7 @@ mod tests {
     #[test]
     fn test_safe_memory_handler_copy_within_overlapping() {
         // Test overlapping copy operation
-        let mut provider = NoStdProvider::<20>::default();
+        let mut provider = crate::safe_managed_alloc!(20, crate::budget_aware_provider::CrateId::Foundation).unwrap();
 
         // Set data "ABCDEFGHIJ"
         let test_data = b"ABCDEFGHIJ";
@@ -1952,7 +1919,7 @@ mod tests {
 
     #[test]
     fn test_safe_memory_handler_copy_within_bounds_check() {
-        let mut provider = NoStdProvider::<10>::default();
+        let mut provider = crate::safe_managed_alloc!(10, crate::budget_aware_provider::CrateId::Foundation).unwrap();
         provider.set_data(b"123456789").unwrap();
 
         let mut handler = SafeMemoryHandler::new(provider);
@@ -1968,7 +1935,7 @@ mod tests {
 
     #[test]
     fn test_safe_memory_handler_copy_within_zero_length() {
-        let mut provider = NoStdProvider::<10>::default();
+        let mut provider = crate::safe_managed_alloc!(10, crate::budget_aware_provider::CrateId::Foundation).unwrap();
         provider.set_data(b"ABCDEFG").unwrap();
 
         let mut handler = SafeMemoryHandler::new(provider);

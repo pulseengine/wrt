@@ -608,20 +608,12 @@ pub fn safe_simd_load<T: Copy>(memory: &[u8], offset: usize, len: usize) -> Resu
     // For ASIL compliance, we'll return an error if alignment is not guaranteed
     // rather than using unsafe pointer casting
     if offset % core::mem::align_of::<T>() != 0 {
-        return Err(WrtError::new(
-            ErrorCategory::Memory,
-            wrt_error::codes::UNALIGNED_MEMORY_ACCESS,
-            "SIMD load requires proper alignment"
-        ));
+        return Err(WrtError::runtime_execution_error("Misaligned SIMD memory access"));
     }
     
     // Since we can't safely cast without unsafe code, we'll provide a different API
     // This is a placeholder - real SIMD operations would need platform-specific handling
-    Err(WrtError::new(
-        ErrorCategory::Runtime,
-        wrt_error::codes::NOT_IMPLEMENTED,
-        "Safe SIMD load requires platform-specific implementation"
-    ))
+    Err(WrtError::runtime_not_implemented("SIMD operations require unsafe code"))
 }
 
 /// Safe memory store for SIMD operations
@@ -632,20 +624,12 @@ pub fn safe_simd_store<T: Copy>(memory: &mut [u8], offset: usize, data: &[T]) ->
     
     // For ASIL compliance, we'll return an error if alignment is not guaranteed
     if offset % core::mem::align_of::<T>() != 0 {
-        return Err(WrtError::new(
-            ErrorCategory::Memory,
-            wrt_error::codes::UNALIGNED_MEMORY_ACCESS,
-            "SIMD store requires proper alignment"
-        ));
+        return Err(WrtError::runtime_execution_error("Misaligned SIMD memory access"));
     }
     
     // Since we can't safely store without unsafe code, we'll provide a different API
     // This is a placeholder - real SIMD operations would need platform-specific handling
-    Err(WrtError::new(
-        ErrorCategory::Runtime,
-        wrt_error::codes::NOT_IMPLEMENTED,
-        "Safe SIMD store requires platform-specific implementation"
-    ))
+    Err(WrtError::runtime_not_implemented("SIMD operations require unsafe code"))
 }
 
 // Formal verification hooks (no-op in normal compilation)

@@ -11,7 +11,8 @@ use core::marker::PhantomData;
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
     prelude::*,
-    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
 };
 
 use crate::{
@@ -35,13 +36,13 @@ pub struct AgentRegistry {
     #[cfg(feature = "std")]
     unified_agents: HashMap<AgentId, Box<UnifiedExecutionAgent>>,
     #[cfg(not(feature = "std"))]
-    unified_agents: BoundedVec<(AgentId, UnifiedExecutionAgent), MAX_AGENTS, NoStdProvider::<65536, NoStdProvider<65536>>>,
+    unified_agents: BoundedVec<(AgentId, UnifiedExecutionAgent), MAX_AGENTS>,
     
     /// Legacy agents (deprecated)
     #[cfg(feature = "std")]
     legacy_agents: HashMap<AgentId, Box<dyn LegacyExecutionAgent>>,
     #[cfg(not(feature = "std"))]
-    legacy_agents: BoundedVec<(AgentId, LegacyAgentType), 16, NoStdProvider::<65536, NoStdProvider<65536>>>,
+    legacy_agents: BoundedVec<(AgentId, LegacyAgentType), 16>,
     
     /// Next agent ID
     next_agent_id: u32,
@@ -77,7 +78,7 @@ pub struct MigrationStatus {
     #[cfg(feature = "std")]
     pub pending_migrations: Vec<AgentId>,
     #[cfg(not(feature = "std"))]
-    pub pending_migrations: BoundedVec<AgentId, MAX_AGENTS, NoStdProvider::<65536, NoStdProvider<65536>>>,
+    pub pending_migrations: BoundedVec<AgentId, MAX_AGENTS>,
     
     /// Completed migrations
     pub completed_migrations: u32,
@@ -86,7 +87,7 @@ pub struct MigrationStatus {
     #[cfg(feature = "std")]
     pub warnings: Vec<MigrationWarning>,
     #[cfg(not(feature = "std"))]
-    pub warnings: BoundedVec<MigrationWarning, 16, NoStdProvider::<65536, NoStdProvider<65536>>>,
+    pub warnings: BoundedVec<MigrationWarning, 16>,
 }
 
 /// Migration warning information
@@ -94,7 +95,7 @@ pub struct MigrationStatus {
 pub struct MigrationWarning {
     pub agent_id: AgentId,
     pub warning_type: WarningType,
-    pub message: BoundedString<256, NoStdProvider::<65536>>,
+    pub message: BoundedString<256>,
 }
 
 /// Types of migration warnings
@@ -163,19 +164,19 @@ pub enum PreferredAgentType {
 
 impl AgentRegistry {
     /// Create a new agent registry
-    pub fn new() -> Self {
-        let provider = NoStdProvider::<65536>::default();
+    pub fn new() -> WrtResult<Self> {
+        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
         
-        Self {
+        Ok(Self {
             #[cfg(feature = "std")]
             unified_agents: HashMap::new(),
             #[cfg(not(feature = "std"))]
-            unified_agents: BoundedVec::new(provider.clone()).unwrap(),
+            unified_agents: BoundedVec::new(provider.clone())?,
             
             #[cfg(feature = "std")]
             legacy_agents: HashMap::new(),
             #[cfg(not(feature = "std"))]
-            legacy_agents: BoundedVec::new(provider.clone()).unwrap(),
+            legacy_agents: BoundedVec::new(provider.clone())?,
             
             next_agent_id: 1,
             stats: RegistryStatistics::default(),
@@ -183,14 +184,14 @@ impl AgentRegistry {
                 #[cfg(feature = "std")]
                 pending_migrations: Vec::new(),
                 #[cfg(not(feature = "std"))]
-                pending_migrations: BoundedVec::new(provider.clone()).unwrap(),
+                pending_migrations: BoundedVec::new(provider.clone())?,
                 completed_migrations: 0,
                 #[cfg(feature = "std")]
                 warnings: Vec::new(),
                 #[cfg(not(feature = "std"))]
-                warnings: BoundedVec::new(provider).unwrap(),
+                warnings: BoundedVec::new(provider)?,
             },
-        }
+        })
     }
 
     /// Create a new unified execution agent (recommended)
@@ -207,10 +208,7 @@ impl AgentRegistry {
         #[cfg(not(feature = "std"))]
         {
             self.unified_agents.push((agent_id, agent)).map_err(|_| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Too many agents"
+                wrt_error::Error::resource_exhausted("Too many agents")
                 )
             })?;
         }
@@ -231,10 +229,7 @@ impl AgentRegistry {
                 if options.allow_legacy_fallback {
                     self.create_legacy_component_agent()
                 } else {
-                    Err(wrt_foundation::Error::new(
-                        wrt_foundation::ErrorCategory::Validation,
-                        wrt_error::errors::codes::INVALID_INPUT,
-                        "Invalid input"
+                    Err(wrt_error::Error::validation_invalid_input("Invalid input")
                     ))
                 }
             }
@@ -243,10 +238,7 @@ impl AgentRegistry {
                 if options.allow_legacy_fallback {
                     self.create_legacy_async_agent()
                 } else {
-                    Err(wrt_foundation::Error::new(
-                        wrt_foundation::ErrorCategory::Validation,
-                        wrt_error::errors::codes::INVALID_INPUT,
-                        "Invalid input"
+                    Err(wrt_error::Error::validation_invalid_input("Invalid input")
                     ))
                 }
             }
@@ -271,10 +263,7 @@ impl AgentRegistry {
         #[cfg(not(feature = "std"))]
         {
             self.legacy_agents.push((agent_id, LegacyAgentType::Component(agent))).map_err(|_| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Too many legacy agents"
+                wrt_error::Error::resource_exhausted("Too many legacy agents")
                 )
             })?;
         }
@@ -303,10 +292,7 @@ impl AgentRegistry {
         #[cfg(not(feature = "std"))]
         {
             self.legacy_agents.push((agent_id, LegacyAgentType::Async(agent))).map_err(|_| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Too many legacy agents"
+                wrt_error::Error::resource_exhausted("Too many legacy agents")
                 )
             })?;
         }
@@ -362,10 +348,7 @@ impl AgentRegistry {
                         #[cfg(feature = "async")]
                         LegacyAgentType::Async(_engine) => {
                             // Async execution would require different API
-                            Err(wrt_foundation::Error::new(
-                                wrt_foundation::ErrorCategory::Runtime,
-                                wrt_error::codes::RUNTIME_ERROR,
-                                "Async agent requires different API"
+                            Err(wrt_error::Error::runtime_error("Async agent requires different API")
                             ))
                         }
                     };
@@ -373,10 +356,7 @@ impl AgentRegistry {
             }
         }
 
-        Err(wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Validation,
-            wrt_error::errors::codes::INVALID_INPUT,
-            "Invalid input"
+        Err(wrt_error::Error::validation_invalid_input("Invalid input")
         ))
     }
 
@@ -387,18 +367,12 @@ impl AgentRegistry {
         let migration_config = {
             if let Some(agent) = self.legacy_agents.get(&agent_id) {
                 if !agent.can_migrate() {
-                    return Err(wrt_foundation::Error::new(
-                        wrt_foundation::ErrorCategory::Runtime,
-                        wrt_error::codes::RUNTIME_ERROR,
-                        "Agent cannot be migrated"
+                    return Err(wrt_error::Error::runtime_error("Agent cannot be migrated")
                     ));
                 }
                 agent.migration_config()
             } else {
-                return Err(wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Validation,
-                    wrt_error::errors::codes::INVALID_INPUT,
-                    "Invalid input"
+                return Err(wrt_error::Error::validation_invalid_input("Invalid input")
                 ));
             }
         };
@@ -427,10 +401,7 @@ impl AgentRegistry {
             }
             
             if !found {
-                return Err(wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Validation,
-                    wrt_error::errors::codes::INVALID_INPUT,
-                    "Invalid input"
+                return Err(wrt_error::Error::validation_invalid_input("Invalid input")
                 ));
             }
             config
@@ -451,10 +422,7 @@ impl AgentRegistry {
             self.legacy_agents.retain(|(id, _)| *id != agent_id);
             // Add to unified agents
             self.unified_agents.push((agent_id, unified_agent)).map_err(|_| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Too many unified agents"
+                wrt_error::Error::resource_exhausted("Too many unified agents")
                 )
             })?;
         }
@@ -569,10 +537,7 @@ impl AgentRegistry {
             self.stats.active_agents = self.stats.active_agents.saturating_sub(1);
             Ok(())
         } else {
-            Err(wrt_foundation::Error::new(
-                wrt_foundation::ErrorCategory::Validation,
-                wrt_error::errors::codes::INVALID_INPUT,
-                "Invalid input"
+            Err(wrt_error::Error::validation_invalid_input("Invalid input")
             ))
         }
     }
@@ -595,8 +560,9 @@ impl AgentRegistry {
         #[cfg(feature = "std")]
         let legacy_ids: Vec<AgentId> = self.legacy_agents.keys().copied().collect();
         #[cfg(not(feature = "std"))]
-        let legacy_ids: BoundedVec<AgentId, MAX_AGENTS, NoStdProvider::<65536, NoStdProvider<65536>>> = {
-            let mut ids = BoundedVec::new(NoStdProvider::<65536>::default()).unwrap();
+        let legacy_ids: BoundedVec<AgentId, MAX_AGENTS> = {
+            let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+            let mut ids = BoundedVec::new(provider)?;
             for (id, _) in &self.legacy_agents {
                 let _ = ids.push(*id);
             }
@@ -659,7 +625,7 @@ pub enum AgentMigrationStatus {
 
 impl Default for AgentRegistry {
     fn default() -> Self {
-        Self::new()
+        Self::new().expect("Failed to create default AgentRegistry")
     }
 }
 
@@ -701,10 +667,7 @@ impl LegacyExecutionAgent for ComponentExecutionEngine {
 impl LegacyExecutionAgent for AsyncExecutionEngine {
     fn call_function(&mut self, _instance_id: u32, _function_index: u32, _args: &[Value]) -> WrtResult<Value> {
         // Async engines need different API - this is just a placeholder
-        Err(wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Runtime,
-            wrt_error::codes::RUNTIME_ERROR,
-            "Async agent requires different API"
+        Err(wrt_error::Error::runtime_error("Async agent requires different API")
         ))
     }
 
@@ -730,7 +693,7 @@ mod tests {
 
     #[test]
     fn test_registry_creation() {
-        let registry = AgentRegistry::new();
+        let registry = AgentRegistry::new().unwrap();
         assert_eq!(registry.stats.active_agents, 0);
         assert_eq!(registry.stats.unified_agents_created, 0);
         assert_eq!(registry.stats.legacy_agents_created, 0);
@@ -738,7 +701,7 @@ mod tests {
 
     #[test]
     fn test_unified_agent_creation() {
-        let mut registry = AgentRegistry::new();
+        let mut registry = AgentRegistry::new().unwrap();
         let config = AgentConfiguration::default();
         
         let agent_id = registry.create_unified_agent(config).unwrap();
@@ -749,7 +712,7 @@ mod tests {
 
     #[test]
     fn test_legacy_agent_creation() {
-        let mut registry = AgentRegistry::new();
+        let mut registry = AgentRegistry::new().unwrap();
         
         let agent_id = registry.create_legacy_component_agent().unwrap();
         assert_eq!(agent_id.0, 1);
@@ -762,7 +725,7 @@ mod tests {
 
     #[test]
     fn test_agent_migration() {
-        let mut registry = AgentRegistry::new();
+        let mut registry = AgentRegistry::new().unwrap();
         
         // Create legacy agent
         let agent_id = registry.create_legacy_component_agent().unwrap();
@@ -781,7 +744,7 @@ mod tests {
 
     #[test]
     fn test_agent_creation_options() {
-        let mut registry = AgentRegistry::new();
+        let mut registry = AgentRegistry::new().unwrap();
         
         let options = AgentCreationOptions {
             agent_type: PreferredAgentType::Unified,
@@ -796,7 +759,7 @@ mod tests {
 
     #[test]
     fn test_function_execution() {
-        let mut registry = AgentRegistry::new();
+        let mut registry = AgentRegistry::new().unwrap();
         let config = AgentConfiguration::default();
         
         let agent_id = registry.create_unified_agent(config).unwrap();
@@ -808,7 +771,7 @@ mod tests {
 
     #[test]
     fn test_agent_removal() {
-        let mut registry = AgentRegistry::new();
+        let mut registry = AgentRegistry::new().unwrap();
         let config = AgentConfiguration::default();
         
         let agent_id = registry.create_unified_agent(config).unwrap();
@@ -891,13 +854,20 @@ impl PartialEq for LegacyAgentType {
 #[cfg(not(feature = "std"))]
 impl Eq for LegacyAgentType {}
 
-impl Default for MigrationWarning {
-    fn default() -> Self {
-        Self {
+impl MigrationWarning {
+    fn new() -> WrtResult<Self> {
+        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        Ok(Self {
             agent_id: AgentId::default(),
             warning_type: WarningType::FeatureNotSupported,
-            message: BoundedString::new(NoStdProvider::<65536>::default()).unwrap(),
-        }
+            message: BoundedString::new(provider)?,
+        })
+    }
+}
+
+impl Default for MigrationWarning {
+    fn default() -> Self {
+        Self::new().unwrap()
     }
 }
 
@@ -913,4 +883,4 @@ impl Eq for MigrationWarning {}
 impl_basic_traits!(AgentId, AgentId::default());
 #[cfg(not(feature = "std"))]
 impl_basic_traits!(LegacyAgentType, LegacyAgentType::default());
-impl_basic_traits!(MigrationWarning, MigrationWarning::default());
+impl_basic_traits!(MigrationWarning, MigrationWarning::new().unwrap());

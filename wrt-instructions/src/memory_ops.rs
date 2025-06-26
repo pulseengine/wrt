@@ -61,6 +61,11 @@
 
 use crate::prelude::{Debug, Error, PartialEq, PureInstruction, Result, Value, ValueType, BoundedCapacity};
 use crate::validation::{Validate, ValidationContext, validate_memory_op};
+use wrt_foundation::{
+    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
+};
 
 
 /// Memory trait defining the requirements for memory operations
@@ -1233,13 +1238,17 @@ mod tests {
         }
 
         #[cfg(not(feature = "std"))]
-        fn new(size: usize) -> Self {
-            let provider = wrt_foundation::NoStdProvider::<65536>::default();
-            let mut data = wrt_foundation::BoundedVec::new(provider).unwrap();
+        fn new(size: usize) -> Result<Self> {
+            let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
+            let mut data = wrt_foundation::BoundedVec::new(provider).map_err(|_| {
+                Error::memory_error("Failed to create BoundedVec")
+            })?;
             for _ in 0..core::cmp::min(size, 65536) { 
-                data.push(0).unwrap(); 
+                data.push(0).map_err(|_| {
+                    Error::memory_error("Failed to push to BoundedVec")
+                })?; 
             }
-            Self { data }
+            Ok(Self { data })
         }
     }
 
@@ -1265,7 +1274,7 @@ mod tests {
                 return Err(Error::memory_error("Memory access out of bounds"));
             }
 
-            let provider = wrt_foundation::NoStdProvider::<65536>::default();
+            let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
             let mut result = wrt_foundation::BoundedVec::new(provider)?;
             for i in start..end {
                 let byte = self.data.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
@@ -1425,7 +1434,7 @@ mod tests {
 
     #[test]
     fn test_memory_load() {
-        let mut memory = MockMemory::new(65_536);
+        let mut memory = MockMemory::new(65_536).unwrap();
 
         // Store some test values
         memory.write_bytes(0, &[42, 0, 0, 0]).unwrap(); // i32 = 42
@@ -1483,7 +1492,7 @@ mod tests {
 
     #[test]
     fn test_memory_store() {
-        let mut memory = MockMemory::new(65_536);
+        let mut memory = MockMemory::new(65_536).unwrap();
 
         // Test i32.store
         let store = MemoryStore::i32(0, 4);
@@ -1544,7 +1553,7 @@ mod tests {
 
     #[test]
     fn test_memory_access_errors() {
-        let mut memory = MockMemory::new(100);
+        let mut memory = MockMemory::new(100).unwrap();
 
         // Out of bounds access
         let load = MemoryLoad::i32(100, 4);
@@ -1650,7 +1659,7 @@ mod tests {
 
     #[test]
     fn test_memory_fill() {
-        let mut memory = MockMemory::new(1024);
+        let mut memory = MockMemory::new(1024).unwrap();
         let fill_op = MemoryFill::new(0);
 
         // Fill 10 bytes with value 0x42 starting at offset 100
@@ -1671,7 +1680,7 @@ mod tests {
 
     #[test]
     fn test_memory_copy() {
-        let mut memory = MockMemory::new(1024);
+        let mut memory = MockMemory::new(1024).unwrap();
         
         // Set up source data
         memory.write_bytes(0, &[1, 2, 3, 4, 5]).unwrap();
@@ -1701,7 +1710,7 @@ mod tests {
 
     #[test]
     fn test_memory_copy_overlapping() {
-        let mut memory = MockMemory::new(1024);
+        let mut memory = MockMemory::new(1024).unwrap();
         
         // Set up source data
         memory.write_bytes(0, &[1, 2, 3, 4, 5, 6, 7, 8]).unwrap();
@@ -1731,7 +1740,7 @@ mod tests {
 
     #[test]
     fn test_memory_init() {
-        let mut memory = MockMemory::new(1024);
+        let mut memory = MockMemory::new(1024).unwrap();
         let data_segments = MockDataSegments::new();
         let init_op = MemoryInit::new(0, 0);
 
@@ -1779,7 +1788,7 @@ mod tests {
 
     #[test]
     fn test_memory_init_dropped_segment() {
-        let mut memory = MockMemory::new(1024);
+        let mut memory = MockMemory::new(1024).unwrap();
         let mut data_segments = MockDataSegments::new();
         
         // Drop segment 0 first
@@ -1800,7 +1809,7 @@ mod tests {
 
     #[test]
     fn test_bulk_memory_bounds_checking() {
-        let mut memory = MockMemory::new(100);
+        let mut memory = MockMemory::new(100).unwrap();
         
         // Test memory.fill out of bounds
         let fill_op = MemoryFill::new(0);
@@ -1816,14 +1825,14 @@ mod tests {
     #[test]
     fn test_memory_size() {
         // Create memory with 2 pages (128 KiB)
-        let memory = MockMemory::new(2 * 65_536);
+        let memory = MockMemory::new(2 * 65_536).unwrap();
         let size_op = MemorySize::new(0);
         
         let result = size_op.execute(&memory).unwrap();
         assert_eq!(result, Value::I32(2));
         
         // Test with partial page
-        let memory = MockMemory::new(65_536 + 100); // 1 page + 100 bytes
+        let memory = MockMemory::new(65_536 + 100).unwrap(); // 1 page + 100 bytes
         let result = size_op.execute(&memory).unwrap();
         assert_eq!(result, Value::I32(1)); // Should return 1 (partial pages are truncated)
     }
@@ -1831,7 +1840,7 @@ mod tests {
     #[test]
     fn test_memory_grow() {
         // Create memory with 1 page (64 KiB)
-        let mut memory = MockMemory::new(65_536);
+        let mut memory = MockMemory::new(65_536).unwrap();
         let grow_op = MemoryGrow::new(0);
         
         // Grow by 2 pages
@@ -1861,7 +1870,7 @@ mod tests {
         fn new(memory_size: usize) -> Self {
             Self {
                 stack: Vec::new(),
-                memory: MockMemory::new(memory_size),
+                memory: MockMemory::new(memory_size).unwrap(),
                 data_segments: MockDataSegments::new(),
             }
         }
@@ -1870,7 +1879,7 @@ mod tests {
     impl MemoryContext for MockMemoryContext {
         fn pop_value(&mut self) -> Result<Value> {
             self.stack.pop().ok_or_else(|| {
-                Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                Error::runtime_stack_underflow("Stack underflow")
             })
         }
 

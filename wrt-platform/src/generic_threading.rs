@@ -39,17 +39,13 @@ impl PlatformThreadHandle for GenericThreadHandle {
         if let Some(handle) = self.handle.take() {
             match handle.join() {
                 Ok(result) => result,
-                Err(_) => Err(Error::new(
-                    ErrorCategory::System,
-                    1,
-                    "Thread panicked during execution",
-                )),
+                Err(_) => Err(Error::runtime_execution_error("Thread panicked during execution")),
             }
         } else {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 1,
-                "Thread handle already consumed",
+                "No thread handle available to join",
             ))
         }
     }
@@ -127,20 +123,16 @@ impl PlatformThreadPool for GenericThreadPool {
     fn spawn_wasm_thread(&self, task: WasmTask) -> Result<ThreadHandle> {
         // Check if shutting down
         if self.shutdown.load(Ordering::Acquire) {
-            return Err(Error::new(
-                ErrorCategory::System,
-                1,
-                "Thread pool is shutting down",
-            ));
+            return Err(Error::runtime_execution_error("Thread pool is shutting down"));
         }
 
         // Check thread limit
         let active_count = self.active_threads.read().len();
         if active_count >= self.config.max_threads {
             return Err(Error::new(
-                ErrorCategory::Resource, 1,
-                
-                "Thread pool limit reached",
+                ErrorCategory::Resource,
+                1,
+                "Thread pool has reached maximum thread limit",
             ));
         }
 
@@ -180,11 +172,7 @@ impl PlatformThreadPool for GenericThreadPool {
                 result
             })
             .map_err(|_| {
-                Error::new(
-                    ErrorCategory::System,
-                    1,
-                    "Failed to spawn thread",
-                )
+                Error::runtime_execution_error("Failed to spawn thread")
             })?;
 
         // Create platform handle

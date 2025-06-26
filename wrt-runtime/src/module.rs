@@ -24,6 +24,8 @@ use wrt_foundation::{
         ValueType, // Also import without alias
     },
     values::{Value as WrtValue, Value}, // Also import without alias
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
 };
 
 // Re-export for module_builder
@@ -45,16 +47,17 @@ use alloc::{vec::Vec, string::String, sync::Arc};
 use wrt_foundation::bounded_collections::BoundedMap;
 use wrt_foundation::traits::{BoundedCapacity, Checksummable, ToBytes, FromBytes};
 
-// Platform-aware type aliases to replace hardcoded NoStdProvider usage
+// Platform-aware type aliases using capability-based allocation
 // Note: BoundedVec uses a different MemoryProvider trait than memory_system
-pub type PlatformProvider = wrt_foundation::safe_memory::NoStdProvider<8192>;  // Larger buffer for runtime
-pub type RuntimeProvider = wrt_foundation::safe_memory::NoStdProvider<131072>; // Runtime memory provider
-pub type ImportMap = BoundedMap<PlatformBoundedString<256>, Import, 32, RuntimeProvider>;
-pub type ModuleImports = BoundedMap<PlatformBoundedString<256>, ImportMap, 32, RuntimeProvider>;
-pub type CustomSections = BoundedMap<PlatformBoundedString<256>, PlatformBoundedVec<u8, 4096>, 16, RuntimeProvider>;
-pub type ExportMap = BoundedMap<PlatformBoundedString<256>, Export, 64, RuntimeProvider>;
-pub type PlatformBoundedVec<T, const N: usize> = wrt_foundation::bounded::BoundedVec<T, N, PlatformProvider>;
-pub type PlatformBoundedString<const N: usize> = wrt_foundation::bounded::BoundedString<N, PlatformProvider>;
+// These types now use safe_managed_alloc for capability-based allocation
+pub type PlatformProvider8K = wrt_foundation::safe_memory::NoStdProvider<8192>;  // Larger buffer for runtime
+pub type RuntimeProvider128K = wrt_foundation::safe_memory::NoStdProvider<131072>; // Runtime memory provider
+pub type ImportMap = BoundedMap<PlatformBoundedString<256>, Import, 32, RuntimeProvider128K>;
+pub type ModuleImports = BoundedMap<PlatformBoundedString<256>, ImportMap, 32, RuntimeProvider128K>;
+pub type CustomSections = BoundedMap<PlatformBoundedString<256>, PlatformBoundedVec<u8, 4096>, 16, RuntimeProvider128K>;
+pub type ExportMap = BoundedMap<PlatformBoundedString<256>, Export, 64, RuntimeProvider128K>;
+pub type PlatformBoundedVec<T, const N: usize> = wrt_foundation::bounded::BoundedVec<T, N, PlatformProvider8K>;
+pub type PlatformBoundedString<const N: usize> = wrt_foundation::bounded::BoundedString<N, PlatformProvider8K>;
 
 /// Convert MemoryType to CoreMemoryType
 fn to_core_memory_type(memory_type: WrtMemoryType) -> CoreMemoryType {
@@ -111,10 +114,8 @@ pub struct Export {
 impl Export {
     /// Creates a new export
     pub fn new(name: String, kind: ExportKind, index: u32) -> Result<Self> {
-        let bounded_name = PlatformBoundedString::from_str_truncate(
-            &name,
-            wrt_foundation::safe_memory::NoStdProvider::<8192>::default()
-        )?;
+        let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        let bounded_name = PlatformBoundedString::from_str_truncate(&name, provider)?;
         Ok(Self { name: bounded_name, kind, index })
     }
 }
@@ -181,24 +182,22 @@ pub struct Import {
 
 impl Import {
     /// Creates a new import
-    pub fn new(module: String, name: String, ty: ExternType<PlatformProvider>) -> Result<Self> {
-        let bounded_module = PlatformBoundedString::from_str_truncate(
-            &module,
-            wrt_foundation::safe_memory::NoStdProvider::<8192>::default()
-        )?;
-        let bounded_name = PlatformBoundedString::from_str_truncate(
-            &name,
-            wrt_foundation::safe_memory::NoStdProvider::<8192>::default()
-        )?;
+    pub fn new(module: String, name: String, ty: ExternType<PlatformProvider8K>) -> Result<Self> {
+        let provider1 = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        let provider2 = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        let bounded_module = PlatformBoundedString::from_str_truncate(&module, provider1)?;
+        let bounded_name = PlatformBoundedString::from_str_truncate(&name, provider2)?;
         Ok(Self { module: bounded_module, name: bounded_name, ty })
     }
 }
 
 impl Default for Import {
     fn default() -> Self {
+        let provider1 = safe_managed_alloc!(8192, CrateId::Runtime).unwrap();
+        let provider2 = safe_managed_alloc!(8192, CrateId::Runtime).unwrap();
         Self {
-            module: PlatformBoundedString::from_str_truncate("", wrt_foundation::safe_memory::NoStdProvider::<8192>::default()).unwrap(),
-            name: PlatformBoundedString::from_str_truncate("", wrt_foundation::safe_memory::NoStdProvider::<8192>::default()).unwrap(),
+            module: PlatformBoundedString::from_str_truncate("", provider1).unwrap(),
+            name: PlatformBoundedString::from_str_truncate("", provider2).unwrap(),
             ty: ExternType::default(),
         }
     }
@@ -262,9 +261,10 @@ pub struct Function {
 
 impl Default for Function {
     fn default() -> Self {
+        let provider = safe_managed_alloc!(8192, CrateId::Runtime).unwrap();
         Self {
             type_idx: 0,
-            locals: PlatformBoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<8192>::default()).unwrap(),
+            locals: PlatformBoundedVec::new(provider).unwrap(),
             body: WrtExpr::default(),
         }
     }
@@ -306,9 +306,10 @@ impl wrt_foundation::traits::FromBytes for Function {
         let mut bytes = [0u8; 4];
         reader.read_exact(&mut bytes)?;
         let type_idx = u32::from_le_bytes(bytes);
+        let provider = safe_managed_alloc!(8192, CrateId::Runtime).map_err(|_| wrt_error::Error::memory("Failed to allocate provider for function locals"))?;
         Ok(Self {
             type_idx,
-            locals: PlatformBoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<8192>::default()).unwrap(),
+            locals: PlatformBoundedVec::new(provider).unwrap(),
             body: WrtExpr::default(),
         })
     }
@@ -398,7 +399,7 @@ impl wrt_foundation::traits::FromBytes for Element {
             table_idx,
             offset_expr: None,
             element_type: WrtRefType::Funcref,
-            items: PlatformBoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<8192>::default()).unwrap(),
+            items: PlatformBoundedVec::new(safe_managed_alloc!(8192, CrateId::Runtime).unwrap()).unwrap(),
         })
     }
 }
@@ -473,7 +474,7 @@ impl wrt_foundation::traits::FromBytes for Data {
             mode,
             memory_idx,
             offset_expr: None,
-            init: PlatformBoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<8192>::default())?,
+            init: PlatformBoundedVec::new(safe_managed_alloc!(8192, CrateId::Runtime).map_err(|_| wrt_error::Error::memory("Failed to allocate provider for data init"))?)?,
         })
     }
 }
@@ -521,10 +522,13 @@ pub struct Module {
 impl Module {
     /// Creates a new empty module
     pub fn new() -> Result<Self> {
-        let provider = wrt_foundation::safe_memory::NoStdProvider::<8192>::default();
+        let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        let runtime_provider1 = safe_managed_alloc!(131072, CrateId::Runtime)?;
+        let runtime_provider2 = safe_managed_alloc!(131072, CrateId::Runtime)?;
+        let runtime_provider3 = safe_managed_alloc!(131072, CrateId::Runtime)?;
         Ok(Self {
             types: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            imports: BoundedMap::new(RuntimeProvider::default())?,
+            imports: BoundedMap::new(runtime_provider1)?,
             functions: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             memories: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
@@ -532,8 +536,8 @@ impl Module {
             elements: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             data: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             start: None,
-            custom_sections: BoundedMap::new(RuntimeProvider::default())?,
-            exports: BoundedMap::new(RuntimeProvider::default())?,
+            custom_sections: BoundedMap::new(runtime_provider2)?,
+            exports: BoundedMap::new(runtime_provider3)?,
             name: None,
             binary: None,
             validated: false,
@@ -549,8 +553,62 @@ impl Module {
         // Map start function if present
         runtime_module.start = wrt_module.start;
         
-        // For now, just return the empty module as a placeholder
-        // TODO: Implement full conversion from wrt_format::Module to runtime Module
+        // Convert types
+        for func_type in &wrt_module.types {
+            let provider = safe_managed_alloc!(4096, CrateId::Runtime)?;
+            let mut params = wrt_foundation::bounded::BoundedVec::new(provider.clone())?;
+            let mut results = wrt_foundation::bounded::BoundedVec::new(provider.clone())?;
+            
+            for param in &func_type.params {
+                params.push(*param)?;
+            }
+            for result in &func_type.results {
+                results.push(*result)?;
+            }
+            
+            let wrt_func_type = WrtFuncType {
+                params,
+                results,
+            };
+            runtime_module.types.push(wrt_func_type)?;
+        }
+        
+        // Convert functions
+        for func in &wrt_module.functions {
+            let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+            let locals = wrt_foundation::bounded::BoundedVec::new(provider)?;
+            let body = WrtExpr::default(); // Placeholder for now
+            
+            let runtime_func = Function {
+                type_idx: func.type_idx,
+                locals,
+                body,
+            };
+            runtime_module.functions.push(runtime_func)?;
+        }
+        
+        // Convert exports
+        for export in &wrt_module.exports {
+            let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+            let name = PlatformBoundedString::from_str_truncate(&export.name, provider)?;
+            
+            let kind = match export.kind {
+                wrt_format::module::ExportKind::Function => ExportKind::Function,
+                wrt_format::module::ExportKind::Table => ExportKind::Table,
+                wrt_format::module::ExportKind::Memory => ExportKind::Memory,
+                wrt_format::module::ExportKind::Global => ExportKind::Global,
+                wrt_format::module::ExportKind::Tag => ExportKind::Function, // Map to function for now
+            };
+            
+            let runtime_export = Export {
+                name,
+                kind,
+                index: export.index,
+            };
+            
+            runtime_module.exports.insert(name.clone(), runtime_export)?;
+        }
+        
         Ok(runtime_module)
     }
     
@@ -578,11 +636,7 @@ impl Module {
                         .types
                         .get(*type_idx as usize)
                         .map_err(|_| {
-                            Error::new(
-                                ErrorCategory::Validation,
-                                codes::TYPE_MISMATCH,
-                                "Imported function type index out of bounds",
-                            )
+                            Error::validation_type_mismatch("Imported function type index out of bounds")
                         })?
                         .clone();
                     ExternType::Func(ft)
@@ -600,25 +654,13 @@ impl Module {
                     })
                 }
                 WrtImportDesc::Extern(_) => {
-                    return Err(Error::new(
-                        ErrorCategory::NotSupported,
-                        codes::UNSUPPORTED_OPERATION,
-                        "Extern imports not supported",
-                    ))
+                    return Err(Error::not_supported_unsupported_operation("Extern imports not supported"))
                 }
                 WrtImportDesc::Resource(_) => {
-                    return Err(Error::new(
-                        ErrorCategory::NotSupported,
-                        codes::UNSUPPORTED_OPERATION,
-                        "Resource imports not supported",
-                    ))
+                    return Err(Error::not_supported_unsupported_operation("Resource imports not supported"))
                 }
                 _ => {
-                    return Err(Error::new(
-                        ErrorCategory::NotSupported,
-                        codes::UNSUPPORTED_OPERATION,
-                        "Unsupported import type",
-                    ))
+                    return Err(Error::not_supported_unsupported_operation("Unsupported import type"))
                 }
             };
             // Create bounded strings for the import - avoid as_str() which is broken in no_std
@@ -666,22 +708,15 @@ impl Module {
             // and code_entries matches this.
             let func_idx_in_defined_funcs = runtime_module.functions.len(); // 0-indexed among defined functions
             if func_idx_in_defined_funcs >= wrt_module.functions.len() {
-                return Err(Error::new(
-                    ErrorCategory::Validation,
-                    codes::VALIDATION_ERROR,
-                    "Mismatch between code entries and function type declarations",
-                ));
+                return Err(Error::validation_error("Mismatch between code entries and function type declarations"));
             }
-            let type_idx = wrt_module.functions.get(func_idx_in_defined_funcs).map_err(|_| Error::new(ErrorCategory::Validation, codes::FUNCTION_NOT_FOUND, "Function index out of bounds"))?;
+            let type_idx = wrt_module.functions.get(func_idx_in_defined_funcs).map_err(|_| Error::validation_function_not_found("Function index out of bounds"))?;
 
             // Convert locals from foundation format to runtime format
             let mut runtime_locals = PlatformBoundedVec::<WrtLocalEntry, 64>::new(PlatformProvider::default())?;
             for local in &code_entry.locals {
                 if runtime_locals.push(local).is_err() {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::CAPACITY_EXCEEDED,
-                        "Too many local variables for function",
+                    return Err(Error::runtime_execution_error(",
                     ));
                 }
             }
@@ -720,32 +755,16 @@ impl Module {
                 ValueType::FuncRef => Value::FuncRef(None),
                 ValueType::ExternRef => Value::ExternRef(None),
                 ValueType::V128 => {
-                    return Err(Error::new(
-                        ErrorCategory::NotSupported,
-                        codes::UNSUPPORTED_OPERATION,
-                        "V128 globals not supported",
-                    ))
+                    return Err(Error::not_supported_unsupported_operation("))
                 }
                 ValueType::I16x8 => {
-                    return Err(Error::new(
-                        ErrorCategory::NotSupported,
-                        codes::UNSUPPORTED_OPERATION,
-                        "I16x8 globals not supported",
-                    ))
+                    return Err(Error::not_supported_unsupported_operation("I16x8 globals not supported"))
                 }
                 ValueType::StructRef(_) => {
-                    return Err(Error::new(
-                        ErrorCategory::NotSupported,
-                        codes::UNSUPPORTED_OPERATION,
-                        "StructRef globals not supported",
-                    ))
+                    return Err(Error::not_supported_unsupported_operation("StructRef globals not supported"))
                 }
                 _ => {
-                    return Err(Error::new(
-                        ErrorCategory::NotSupported,
-                        codes::UNSUPPORTED_OPERATION,
-                        "Unsupported global value type",
-                    ))
+                    return Err(Error::not_supported_unsupported_operation("Unsupported global value type"))
                 }
             };
             
@@ -773,18 +792,10 @@ impl Module {
                     (ExportKind::Global, 0) // TODO: proper global index tracking
                 },
                 wrt_foundation::component::ExternType::Tag(_) => {
-                    return Err(Error::new(
-                        ErrorCategory::NotSupported,
-                        codes::UNSUPPORTED_OPERATION,
-                        "Tag exports not supported",
-                    ))
+                    return Err(Error::not_supported_unsupported_operation("Tag exports not supported"))
                 }
                 _ => {
-                    return Err(Error::new(
-                        ErrorCategory::NotSupported,
-                        codes::UNSUPPORTED_OPERATION,
-                        "Unsupported export type",
-                    ))
+                    return Err(Error::not_supported_unsupported_operation("Unsupported export type"))
                 }
             };
             let export = crate::module::Export::new(export_def.name.as_str()?.to_string(), kind, index)?;
@@ -838,10 +849,7 @@ impl Module {
     /// Gets a global by index
     pub fn get_global(&self, idx: usize) -> Result<GlobalWrapper> {
         self.globals.get(idx).map_err(|_| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::GLOBAL_NOT_FOUND,
-                "Runtime operation error",
+            Error::runtime_execution_error(",
             )
         })
     }
@@ -852,18 +860,14 @@ impl Module {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::MEMORY_NOT_FOUND,
-                "Runtime operation error",
-            )
+                ")
         })
     }
 
     /// Gets a table by index
     pub fn get_table(&self, idx: usize) -> Result<TableWrapper> {
         self.tables.get(idx).map_err(|_| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::TABLE_NOT_FOUND,
-                "Runtime operation error",
+            Error::runtime_execution_error(",
             )
         })
     }
@@ -871,7 +875,7 @@ impl Module {
     /// Adds a function export
     pub fn add_function_export(&mut self, name: String, index: u32) -> Result<()> {
         let export = Export::new(name.clone(), ExportKind::Function, index)?;
-        #[cfg(feature = "std")]
+        #[cfg(feature = ")]
         {
             let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
@@ -964,18 +968,14 @@ impl Module {
             wrt_format::module::ExportKind::Memory => ExportKind::Memory,
             wrt_format::module::ExportKind::Global => ExportKind::Global,
             wrt_format::module::ExportKind::Tag => {
-                return Err(Error::new(
-                    ErrorCategory::NotSupported,
-                    codes::UNSUPPORTED_OPERATION,
-                    "Tag exports not supported",
-                ))
+                return Err(Error::not_supported_unsupported_operation("Tag exports not supported"))
             }
         };
         // Convert BoundedString to String - use default empty string if conversion fails
         let export_name_string = String::from("export"); // Use a placeholder name
         let runtime_export = Export::new(export_name_string, runtime_export_kind, format_export.index)?;
         let name_key = PlatformBoundedString::from_str_truncate(
-            runtime_export.name.as_str().map_err(|_| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Invalid export name"))?,
+            runtime_export.name.as_str().map_err(|_| Error::runtime_error("Invalid export name"))?,
             PlatformProvider::default()
         )?;
         self.exports.insert(name_key, runtime_export)?;
@@ -1015,11 +1015,7 @@ impl Module {
             .types
             .get(type_idx as usize)
             .map_err(|_| {
-                Error::new(
-                    ErrorCategory::Validation,
-                    codes::TYPE_MISMATCH,
-                    "Type index out of bounds for import func",
-                )
+                Error::validation_type_mismatch("Type index out of bounds for import func")
             })?
             .clone();
 
@@ -1216,16 +1212,13 @@ impl Module {
     /// Add a function to the module
     pub fn add_function_type(&mut self, type_idx: u32) -> Result<()> {
         if type_idx as usize >= self.types.len() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::TYPE_MISMATCH,
-                "Function type index out of bounds",
-            ));
+            return Err(Error::validation_type_mismatch("Function type index out of bounds"));
         }
 
+        let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
         let function = Function { 
             type_idx, 
-            locals: PlatformBoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<8192>::default())?, 
+            locals: PlatformBoundedVec::new(provider)?, 
             body: WrtExpr::default() 
         };
 
@@ -1329,7 +1322,8 @@ impl Module {
         let items = match &element.init {
             wrt_format::module::ElementInit::FuncIndices(func_indices) => {
                 // For function indices, copy them
-                let mut bounded_items = PlatformBoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<8192>::default())?;
+                let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+                let mut bounded_items = PlatformBoundedVec::new(provider)?;
                 for idx in func_indices.iter() {
                     bounded_items.push(*idx)?;
                 }
@@ -1337,7 +1331,8 @@ impl Module {
             }
             wrt_format::module::ElementInit::Expressions(_expressions) => {
                 // For expressions, create empty items list for now (TODO: process expressions)
-                PlatformBoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<8192>::default())?
+                let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+                PlatformBoundedVec::new(provider)?
             }
         };
         
@@ -1369,11 +1364,7 @@ impl Module {
     ) -> Result<()> {
         if func_idx as usize > self.functions.len() {
             // Allow appending
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::FUNCTION_NOT_FOUND,
-                "Function index out of bounds for set_function_body",
-            ));
+            return Err(Error::runtime_function_not_found("Function index out of bounds for set_function_body"));
         }
         
         // Convert Vec<WrtLocalEntry> to BoundedVec
@@ -1386,11 +1377,7 @@ impl Module {
         if func_idx as usize == self.functions.len() {
             self.functions.push(func_entry)?;
         } else {
-            let _ = self.functions.set(func_idx as usize, func_entry).map_err(|_| Error::new(
-                ErrorCategory::Runtime,
-                codes::COMPONENT_LIMIT_EXCEEDED,
-                "Failed to set function entry"
-            ))?;
+            let _ = self.functions.set(func_idx as usize, func_entry).map_err(|_| Error::runtime_component_limit_exceeded("Failed to set function entry"))?;
         }
         Ok(())
     }
@@ -1398,7 +1385,8 @@ impl Module {
     /// Add a data segment to the module
     pub fn add_data(&mut self, data: wrt_format::module::Data) -> Result<()> {
         // Convert format data to runtime data
-        let mut init_4096 = PlatformBoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<8192>::default())?;
+        let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        let mut init_4096 = PlatformBoundedVec::new(provider)?;
         
         // Copy data from the format's init (1024 capacity) to runtime's init (4096 capacity)
         for byte in data.init.iter() {
@@ -1515,11 +1503,7 @@ impl Module {
             WrtExportDesc::Mem(idx) => (ExportKind::Memory, idx),
             WrtExportDesc::Global(idx) => (ExportKind::Global, idx),
             WrtExportDesc::Tag(_) => {
-                return Err(Error::new(
-                    ErrorCategory::NotSupported,
-                    codes::UNSUPPORTED_OPERATION,
-                    "Tag exports not supported",
-                ))
+                return Err(Error::not_supported_unsupported_operation("Tag exports not supported"))
             }
         };
         let runtime_export = crate::module::Export::new(name.clone(), kind, index)?;
@@ -1534,7 +1518,8 @@ impl Module {
         // indices. This is a placeholder and assumes items can be derived or
         // handled during instantiation.
         // TODO: ElementItems type not available yet, using empty items for now
-        let items_resolved = PlatformBoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<8192>::default())?;
+        let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        let items_resolved = PlatformBoundedVec::new(provider)?;
 
         // Convert element mode from wrt_format to wrt_foundation
         let runtime_mode = match &element_segment.mode {
@@ -1620,11 +1605,7 @@ impl Module {
         
         // Ensure this is a core module
         if !wasm_info.is_core_module() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::TYPE_MISMATCH,
-                "Binary is not a WebAssembly core module"
-            ));
+            return Err(Error::validation_type_mismatch("Binary is not a WebAssembly core module"));
         }
         
         let module_info = wasm_info.require_module_info()?;
@@ -1764,6 +1745,42 @@ impl Module {
 
         Ok(runtime_module)
     }
+
+    /// Find a function export by name
+    pub fn find_function_by_name(&self, name: &str) -> Option<u32> {
+        let bounded_name = PlatformBoundedString::from_str_truncate(
+            name, 
+            PlatformProvider::default()
+        ).ok()?;
+        
+        if let Ok(Some(export)) = self.exports.get(&bounded_name) {
+            if export.kind == ExportKind::Function {
+                return Some(export.index);
+            }
+        }
+        None
+    }
+
+    /// Get function signature by function index
+    pub fn get_function_signature(&self, func_idx: u32) -> Option<WrtFuncType<PlatformProvider>> {
+        let function = self.get_function(func_idx)?;
+        self.get_function_type(function.type_idx)
+    }
+
+    /// Validate that a function exists and can be called
+    pub fn validate_function_call(&self, name: &str) -> Result<u32> {
+        match self.find_function_by_name(name) {
+            Some(func_idx) => {
+                // Verify function exists
+                if self.get_function(func_idx).is_some() {
+                    Ok(func_idx)
+                } else {
+                    Err(Error::runtime_function_not_found("Function index is invalid"))
+                }
+            }
+            None => Err(Error::runtime_function_not_found("Function not found in exports"))
+        }
+    }
 }
 
 /// Additional exports that are not part of the standard WebAssembly exports
@@ -1872,10 +1889,7 @@ impl TableWrapper {
     pub fn set(&self, idx: u32, value: Option<WrtValue>) -> Result<()> {
         // Note: This requires unsafe because we can't get mutable access to Arc<Table>
         // For now, we'll return an error
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            crate::codes::TABLE_ACCESS_DENIED,
-            "Set operation not supported through TableWrapper",
+        Err(Error::runtime_execution_error(",
         ))
     }
     
@@ -1886,18 +1900,14 @@ impl TableWrapper {
         Err(Error::new(
             ErrorCategory::Runtime,
             crate::codes::TABLE_ACCESS_DENIED,
-            "Grow operation not supported through TableWrapper",
-        ))
+            "))
     }
     
     /// Initialize table (requires mutable access)
     pub fn init(&self, offset: u32, init_data: &[Option<WrtValue>]) -> Result<()> {
         // Note: This requires unsafe because we can't get mutable access to Arc<Table>
         // For now, we'll return an error
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            crate::codes::TABLE_ACCESS_DENIED,
-            "Init operation not supported through TableWrapper",
+        Err(Error::runtime_execution_error(",
         ))
     }
 }
@@ -1988,18 +1998,14 @@ impl MemoryWrapper {
         Err(Error::new(
             ErrorCategory::Runtime,
             crate::codes::MEMORY_ACCESS_DENIED,
-            "Write access not supported through MemoryWrapper",
-        ))
+            "))
     }
     
     /// Grow memory (requires mutable access)
     pub fn grow(&self, pages: u32) -> Result<u32> {
         // Note: This requires unsafe because we can't get mutable access to Arc<Memory>
         // For now, we'll return an error
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            crate::codes::MEMORY_ACCESS_DENIED,
-            "Grow operation not supported through MemoryWrapper",
+        Err(Error::runtime_execution_error(",
         ))
     }
     
@@ -2010,8 +2016,7 @@ impl MemoryWrapper {
         Err(Error::new(
             ErrorCategory::Runtime,
             crate::codes::MEMORY_ACCESS_DENIED,
-            "Fill operation not supported through MemoryWrapper",
-        ))
+            "))
     }
     
     /// Get a memory guard for atomic operations
@@ -2054,10 +2059,7 @@ impl GlobalWrapper {
     pub fn set(&self, value: WrtValue) -> Result<()> {
         // Since Global is behind Arc, we can't mutate it directly
         // This is a design limitation - for now return an error
-        Err(crate::Error::new(
-            crate::ErrorCategory::Runtime,
-            crate::codes::RUNTIME_ERROR,
-            "Cannot modify global through Arc - need interior mutability"
+        Err(crate::Error::runtime_execution_error("
         ))
     }
     
@@ -2078,8 +2080,7 @@ impl GlobalWrapper {
         Err(Error::new(
             ErrorCategory::Runtime,
             crate::codes::GLOBAL_ACCESS_DENIED,
-            "Set operation not supported through GlobalWrapper",
-        ))
+            "))
     }
     
     /// Get global value type
@@ -2139,10 +2140,7 @@ impl FromBytes for TableWrapper {
         };
         
         let table = Table::new(table_type).map_err(|_| {
-            wrt_foundation::Error::new(
-                wrt_foundation::ErrorCategory::Memory,
-                wrt_foundation::codes::INVALID_VALUE,
-                "Failed to create table from bytes"
+            wrt_error::Error::runtime_execution_error("
             )
         })?;
         
@@ -2193,11 +2191,9 @@ impl FromBytes for MemoryWrapper {
         };
         
         let memory = Memory::new(to_core_memory_type(memory_type)).map_err(|_| {
-            wrt_foundation::Error::new(
-                wrt_foundation::ErrorCategory::Memory,
+            wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
                 wrt_foundation::codes::INVALID_VALUE,
-                "Failed to create memory from bytes"
-            )
+                ")
         })?;
         
         Ok(MemoryWrapper::new(memory))
@@ -2260,11 +2256,7 @@ impl FromBytes for GlobalWrapper {
         use wrt_foundation::values::Value;
         
         let global = Global::new(ValueType::I32, false, Value::I32(0)).map_err(|_| {
-            wrt_foundation::Error::new(
-                wrt_foundation::ErrorCategory::Memory,
-                wrt_foundation::codes::INVALID_VALUE,
-                "Failed to create global from bytes"
-            ) 
+            wrt_error::Error::runtime_execution_error("Failed to create global from bytes") 
         })?;
         
         Ok(GlobalWrapper::new(global))

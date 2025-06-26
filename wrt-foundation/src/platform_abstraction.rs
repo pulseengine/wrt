@@ -142,11 +142,7 @@ pub fn initialize_platform_services(services: PlatformServices) -> Result<()> {
             unsafe {
                 drop(Box::from_raw(boxed));
             }
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_STATE,
-                "Platform services already initialized",
-            ))
+            Err(Error::runtime_execution_error("Platform services already initialized"))
         }
     }
 }
@@ -155,11 +151,7 @@ pub fn initialize_platform_services(services: PlatformServices) -> Result<()> {
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 pub fn initialize_platform_services(_services: PlatformServices) -> Result<()> {
     // In pure no_std, we can't dynamically allocate
-    Err(Error::new(
-        ErrorCategory::NotSupported,
-        codes::NOT_IMPLEMENTED,
-        "Dynamic platform services not supported in pure no_std",
-    ))
+    Err(Error::runtime_execution_error("Dynamic platform services not supported in pure no_std"))
 }
 
 /// Get platform services (returns minimal defaults if not initialized)

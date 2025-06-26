@@ -249,19 +249,13 @@ impl WebAssembly3Runtime {
                 // Basic throw implementation
                 self.stats.throw_operations += 1;
                 // For now, return error to simulate exception
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::EXECUTION_ERROR,
-                    format!("Exception thrown with tag {}", tag_index)
+                Err(Error::runtime_execution_error("Exception thrown with tag {}")
                 ))
             },
             ExceptionOperation::Rethrow { relative_depth } => {
                 // Basic rethrow implementation
                 self.stats.rethrow_operations += 1;
-                Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::EXECUTION_ERROR,
-                    format!("Exception rethrown at depth {}", relative_depth)
+                Err(Error::runtime_execution_error("Exception rethrown at depth {}")
                 ))
             },
         }
@@ -427,11 +421,7 @@ pub fn webassembly3_atomic_cas(
     let result = runtime.execute_feature(feature)?;
     match result {
         Some(Value::I32(old_value)) => Ok(old_value),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            "Expected i32 result from atomic CAS"
-        ))
+        _ => Err(Error::type_error("Expected i32 result from atomic CAS"))
     }
 }
 
@@ -447,11 +437,7 @@ pub fn webassembly3_spawn_thread(
     let result = runtime.execute_feature(feature)?;
     match result {
         Some(Value::I32(thread_id_val)) => Ok(ThreadId::from_u32(thread_id_val as u32)),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            "Expected i32 thread ID from spawn operation"
-        ))
+        _ => Err(Error::type_error("Expected i32 thread ID from spawn operation"))
     }
 }
 
@@ -487,11 +473,7 @@ pub fn webassembly3_load_from_memory(
     let result = runtime.execute_feature(feature)?;
     match result {
         Some(Value::I32(value)) => Ok(value),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            "Expected i32 result from memory load"
-        ))
+        _ => Err(Error::type_error("Expected i32 result from memory load"))
     }
 }
 

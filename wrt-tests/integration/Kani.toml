@@ -103,6 +103,47 @@ name = "kani_verify_end_to_end_safety_preservation"
 unwind = 10
 profile = "asil-d"
 
+# New ASIL-A verification harnesses for error handling and fault detection
+[[harness]]
+name = "kani_verify_asil_error_classification"
+unwind = 5
+profile = "asil-a"
+
+[[harness]]
+name = "kani_verify_error_propagation"
+unwind = 6
+profile = "asil-a"
+
+[[harness]]
+name = "kani_verify_graceful_degradation"
+unwind = 8
+profile = "asil-a"
+
+[[harness]]
+name = "kani_verify_error_recovery"
+unwind = 7
+profile = "asil-a"
+
+[[harness]]
+name = "kani_verify_memory_violation_detection"
+unwind = 6
+profile = "asil-a"
+
+[[harness]]
+name = "kani_verify_budget_violation_detection"
+unwind = 8
+profile = "asil-a"
+
+[[harness]]
+name = "kani_verify_fault_isolation"
+unwind = 9
+profile = "asil-a"
+
+[[harness]]
+name = "kani_verify_safe_state_maintenance"
+unwind = 10
+profile = "asil-a"
+
 # Stub configurations for external dependencies
 [[stub]]
 original = "std::alloc::alloc"

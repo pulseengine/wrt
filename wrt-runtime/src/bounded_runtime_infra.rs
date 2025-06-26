@@ -317,25 +317,25 @@ where
 /// Create a new bounded module name
 pub fn new_module_name() -> WrtResult<BoundedModuleName> {
     let provider = create_runtime_provider()?;
-    BoundedString::from_str("", provider).map_err(|e| Error::new(ErrorCategory::Memory, codes::SERIALIZATION_ERROR, "Failed to create bounded string"))
+    BoundedString::from_str("", provider).map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
 }
 
 /// Create a bounded module name from str
 pub fn bounded_module_name_from_str(s: &str) -> WrtResult<BoundedModuleName> {
     let provider = create_runtime_provider()?;
-    BoundedString::from_str(s, provider).map_err(|e| Error::new(ErrorCategory::Memory, codes::SERIALIZATION_ERROR, "Failed to create bounded string"))
+    BoundedString::from_str(s, provider).map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
 }
 
 /// Create a new bounded function name
 pub fn new_function_name() -> WrtResult<BoundedFunctionName> {
     let provider = create_runtime_provider()?;
-    BoundedString::from_str("", provider).map_err(|e| Error::new(ErrorCategory::Memory, codes::SERIALIZATION_ERROR, "Failed to create bounded string"))
+    BoundedString::from_str("", provider).map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
 }
 
 /// Create a bounded function name from str
 pub fn bounded_function_name_from_str(s: &str) -> WrtResult<BoundedFunctionName> {
     let provider = create_runtime_provider()?;
-    BoundedString::from_str(s, provider).map_err(|e| Error::new(ErrorCategory::Memory, codes::SERIALIZATION_ERROR, "Failed to create bounded string"))
+    BoundedString::from_str(s, provider).map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
 }
 
 /// Create a new bounded branch prediction map

@@ -135,22 +135,14 @@ mod component_validation {
         fn add_type(&mut self, idx: u32) -> Result<(), Error> {
             #[cfg(not(any(feature = "std",)))]
             {
-                self.defined_types.push(idx).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "too many types in component",
-                    )
-                })?;
+                self.defined_types
+                    .push(idx)
+                    .map_err(|_| Error::validation_error("too many types in component"))?;
             }
             #[cfg(feature = "std")]
             {
                 if self.defined_types.len() >= MAX_TYPES as usize {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "too many types in component",
-                    ));
+                    return Err(Error::validation_error("too many types in component"));
                 }
                 self.defined_types.push(idx);
             }
@@ -166,45 +158,22 @@ mod component_validation {
         fn add_import_name(&mut self, name: &str) -> Result<(), Error> {
             #[cfg(not(any(feature = "std",)))]
             {
-                let wasm_name = WasmName::try_from(name).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "import name too long",
-                    )
-                })?;
+                let wasm_name = WasmName::try_from(name)
+                    .map_err(|_| Error::validation_error("import name too long"))?;
                 if self.import_names.contains_key(&wasm_name) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "duplicate import name",
-                    ));
+                    return Err(Error::validation_error("duplicate import name"));
                 }
-                self.import_names.insert(wasm_name, self.import_names.len() as u32).map_err(
-                    |_| {
-                        Error::new(
-                            ErrorCategory::Validation,
-                            codes::VALIDATION_ERROR,
-                            "too many imports",
-                        )
-                    },
-                )?;
+                self.import_names
+                    .insert(wasm_name, self.import_names.len() as u32)
+                    .map_err(|_| Error::validation_error("too many imports"))?;
             }
             #[cfg(feature = "std")]
             {
                 if self.import_names.contains_key(name) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "duplicate import name",
-                    ));
+                    return Err(Error::validation_error("duplicate import name"));
                 }
                 if self.import_names.len() >= MAX_IMPORTS_EXPORTS as usize {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "too many imports",
-                    ));
+                    return Err(Error::validation_error("too many imports"));
                 }
                 self.import_names.insert(name.to_string(), self.import_names.len() as u32);
             }
@@ -215,45 +184,22 @@ mod component_validation {
         fn add_export_name(&mut self, name: &str) -> Result<(), Error> {
             #[cfg(not(any(feature = "std",)))]
             {
-                let wasm_name = WasmName::try_from(name).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "export name too long",
-                    )
-                })?;
+                let wasm_name = WasmName::try_from(name)
+                    .map_err(|_| Error::validation_error("export name too long"))?;
                 if self.export_names.contains_key(&wasm_name) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "duplicate export name",
-                    ));
+                    return Err(Error::validation_error("duplicate export name"));
                 }
-                self.export_names.insert(wasm_name, self.export_names.len() as u32).map_err(
-                    |_| {
-                        Error::new(
-                            ErrorCategory::Validation,
-                            codes::VALIDATION_ERROR,
-                            "too many exports",
-                        )
-                    },
-                )?;
+                self.export_names
+                    .insert(wasm_name, self.export_names.len() as u32)
+                    .map_err(|_| Error::validation_error("too many exports"))?;
             }
             #[cfg(feature = "std")]
             {
                 if self.export_names.contains_key(name) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "duplicate export name",
-                    ));
+                    return Err(Error::validation_error("duplicate export name"));
                 }
                 if self.export_names.len() >= MAX_IMPORTS_EXPORTS as usize {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "too many exports",
-                    ));
+                    return Err(Error::validation_error("too many exports"));
                 }
                 self.export_names.insert(name.to_string(), self.export_names.len() as u32);
             }
@@ -264,22 +210,14 @@ mod component_validation {
         fn add_instance(&mut self, idx: u32) -> Result<(), Error> {
             #[cfg(not(any(feature = "std",)))]
             {
-                self.defined_instances.push(idx).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "too many instances in component",
-                    )
-                })?;
+                self.defined_instances
+                    .push(idx)
+                    .map_err(|_| Error::validation_error("too many instances in component"))?;
             }
             #[cfg(feature = "std")]
             {
                 if self.defined_instances.len() >= MAX_TYPES as usize {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "too many instances in component",
-                    ));
+                    return Err(Error::validation_error("too many instances in component"));
                 }
                 self.defined_instances.push(idx);
             }
@@ -352,9 +290,7 @@ mod component_validation {
                 kind,
             } => {
                 if !ctx.is_instance_valid(*instance_idx) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
+                    return Err(Error::validation_error(
                         "invalid instance index in core export alias",
                     ));
                 }
@@ -367,9 +303,7 @@ mod component_validation {
                 kind,
             } => {
                 if !ctx.is_instance_valid(*instance_idx) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
+                    return Err(Error::validation_error(
                         "invalid instance index in export alias",
                     ));
                 }
@@ -402,11 +336,7 @@ mod component_validation {
         match &import.ty {
             ExternType::Type(type_idx) => {
                 if !ctx.is_type_valid(*type_idx) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "invalid type index in import",
-                    ));
+                    return Err(Error::validation_error("invalid type index in import"));
                 }
             },
             _ => {
@@ -435,11 +365,7 @@ mod component_validation {
             Sort::Core(_) => {
                 // Core module export
                 if export.idx >= ctx.component.modules.len() as u32 {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "invalid module index in export",
-                    ));
+                    return Err(Error::validation_error("invalid module index in export"));
                 }
             },
             Sort::Function => {
@@ -449,31 +375,19 @@ mod component_validation {
             Sort::Type => {
                 // Type export
                 if !ctx.is_type_valid(export.idx) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "invalid type index in export",
-                    ));
+                    return Err(Error::validation_error("invalid type index in export"));
                 }
             },
             Sort::Instance => {
                 // Instance export
                 if !ctx.is_instance_valid(export.idx) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "invalid instance index in export",
-                    ));
+                    return Err(Error::validation_error("invalid instance index in export"));
                 }
             },
             Sort::Component => {
                 // Component export
                 if export.idx >= ctx.component.components.len() as u32 {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "invalid component index in export",
-                    ));
+                    return Err(Error::validation_error("invalid component index in export"));
                 }
             },
             Sort::Value => {
@@ -521,9 +435,7 @@ mod component_validation {
             } => {
                 // Validate function type index
                 if !ctx.is_type_valid(*type_idx) {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
+                    return Err(Error::validation_error(
                         "invalid function type in canon lift",
                     ));
                 }
@@ -536,11 +448,7 @@ mod component_validation {
             },
             CanonOperation::Resource(resource_op) => {
                 if !ctx.config.enable_resource_types {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "resource types not enabled",
-                    ));
+                    return Err(Error::validation_error("resource types not enabled"));
                 }
                 // Validate resource operation if needed
                 _ = resource_op; // Suppress unused warning for now
@@ -645,10 +553,8 @@ pub mod no_std_stubs {
 
     /// Validate a component (no_std stub)
     pub fn validate_component(_component: &Component) -> Result<()> {
-        Err(Error::new(
-            ErrorCategory::Validation,
-            codes::UNSUPPORTED_OPERATION,
-            "Component validation requires std feature",
+        Err(Error::runtime_execution_error(
+            ",
         ))
     }
 
@@ -660,7 +566,7 @@ pub mod no_std_stubs {
         Err(Error::new(
             ErrorCategory::Validation,
             codes::UNSUPPORTED_OPERATION,
-            "Component validation requires std feature",
+            ",
         ))
     }
 }

@@ -441,20 +441,13 @@ impl CallRouter {
 
         // Check call stack depth
         if self.call_stack.current_depth >= self.config.max_call_stack_depth {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::STACK_OVERFLOW,
-                "Call stack depth exceeded",
-            ));
+            return Err(Error::runtime_stack_overflow("Call stack depth exceeded"));
         }
 
         // Check concurrent call limits
         let active_calls_for_target = self.count_active_calls_for_instance(context.target_instance);
         if active_calls_for_target >= self.config.max_concurrent_calls_per_instance {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::RESOURCE_EXHAUSTED,
-                "Too many concurrent calls for target instance",
+            return Err(Error::runtime_execution_error(",
             ));
         }
 
@@ -503,7 +496,7 @@ impl CallRouter {
                 self.stats.successful_calls += 1;
             }
             Err(e) => {
-                context.state = CallState::Failed("Component not found");
+                context.state = CallState::Failed(");
                 self.stats.failed_calls += 1;
             }
         }
@@ -531,19 +524,11 @@ impl CallRouter {
         return_types: Vec<ComponentType>,
     ) -> Result<CallContext> {
         if parameters.len() > MAX_CALL_PARAMETERS {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Too many parameters for function call",
-            ));
+            return Err(Error::validation_error("Too many parameters for function call"));
         }
 
         if return_types.len() > MAX_CALL_RETURN_VALUES {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Too many return values for function call",
-            ));
+            return Err(Error::validation_error("Too many return values for function call"));
         }
 
         Ok(CallContext {
@@ -580,19 +565,11 @@ impl CallRouter {
 
     fn validate_call_context(&self, context: &CallContext) -> Result<()> {
         if context.target_function.is_empty() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Target function name cannot be empty",
-            ));
+            return Err(Error::validation_error("Target function name cannot be empty"));
         }
 
         if context.source_instance == context.target_instance {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Source and target instances cannot be the same",
-            ));
+            return Err(Error::validation_error("Source and target instances cannot be the same"));
         }
 
         Ok(())
@@ -643,11 +620,7 @@ impl CallStack {
     /// Push a call frame onto the stack
     pub fn push_frame(&mut self, frame: CallFrame) -> Result<()> {
         if self.current_depth >= self.max_depth {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::STACK_OVERFLOW,
-                "Call stack overflow",
-            ));
+            return Err(Error::runtime_stack_overflow("Call stack overflow"));
         }
 
         self.frames.push(frame);
@@ -658,10 +631,7 @@ impl CallStack {
     /// Pop a call frame from the stack
     pub fn pop_frame(&mut self) -> Result<CallFrame> {
         if self.frames.is_empty() {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_STATE,
-                "Cannot pop from empty call stack",
+            return Err(Error::runtime_execution_error(",
             ));
         }
 
@@ -723,11 +693,7 @@ impl ParameterBridge {
 
     fn validate_parameters(&self, parameters: &[ComponentValue]) -> Result<()> {
         if parameters.len() > MAX_CALL_PARAMETERS {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Too many parameters",
-            ));
+            return Err(Error::validation_error("));
         }
 
         // Additional parameter validation would go here

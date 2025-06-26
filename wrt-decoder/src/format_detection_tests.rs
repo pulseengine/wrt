@@ -4,7 +4,7 @@
 //! ensuring robust identification of Core Modules vs Component Model binaries.
 
 use wrt_error::Result;
-use wrt_foundation::{BoundedVec, safe_managed_alloc, CrateId, traits::BoundedCapacity};
+use wrt_foundation::{safe_managed_alloc, traits::BoundedCapacity, BoundedVec, CrateId};
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
@@ -64,29 +64,29 @@ impl FormatTestData {
     pub fn minimal_core_module() -> Result<TestData> {
         let provider = safe_managed_alloc!(1024, CrateId::Decoder)?;
         let mut data = BoundedVec::new(provider)?;
-        
+
         // WASM magic number
         data.push(0x00)?;
         data.push(0x61)?;
         data.push(0x73)?;
         data.push(0x6d)?;
-        
+
         // Version 1
         data.push(0x01)?;
         data.push(0x00)?;
         data.push(0x00)?;
         data.push(0x00)?;
-        
+
         // Type section (section 1)
         data.push(0x01)?;
         data.push(0x04)?;
         data.push(0x01)?;
-        
+
         // Function type: () -> ()
         data.push(0x60)?;
         data.push(0x00)?;
         data.push(0x00)?;
-        
+
         Ok(data)
     }
 
@@ -94,30 +94,30 @@ impl FormatTestData {
     pub fn minimal_component() -> Result<TestData> {
         let provider = safe_managed_alloc!(1024, CrateId::Decoder)?;
         let mut data = BoundedVec::new(provider)?;
-        
+
         // WASM magic number
         data.push(0x00)?;
         data.push(0x61)?;
         data.push(0x73)?;
         data.push(0x6d)?;
-        
+
         // Component version (0x0a)
         data.push(0x0a)?;
         data.push(0x00)?;
         data.push(0x01)?;
         data.push(0x00)?;
-        
+
         // Component type section
         data.push(0x01)?;
         data.push(0x03)?;
         data.push(0x00)?;
         data.push(0x01)?;
-        
+
         // Empty component type
         data.push(0x60)?;
         data.push(0x00)?;
         data.push(0x00)?;
-        
+
         Ok(data)
     }
 
@@ -125,19 +125,19 @@ impl FormatTestData {
     pub fn invalid_magic() -> Result<TestData> {
         let provider = safe_managed_alloc!(1024, CrateId::Decoder)?;
         let mut data = BoundedVec::new(provider)?;
-        
+
         // Wrong magic number
         data.push(0xFF)?;
         data.push(0x61)?;
         data.push(0x73)?;
         data.push(0x6d)?;
-        
+
         // Version 1
         data.push(0x01)?;
         data.push(0x00)?;
         data.push(0x00)?;
         data.push(0x00)?;
-        
+
         Ok(data)
     }
 
@@ -145,12 +145,12 @@ impl FormatTestData {
     pub fn too_short() -> Result<TestData> {
         let provider = safe_managed_alloc!(1024, CrateId::Decoder)?;
         let mut data = BoundedVec::new(provider)?;
-        
+
         // Only 3 bytes
         data.push(0x00)?;
         data.push(0x61)?;
         data.push(0x73)?;
-        
+
         Ok(data)
     }
 
@@ -158,52 +158,52 @@ impl FormatTestData {
     pub fn complex_core_module() -> Result<TestData> {
         let provider = safe_managed_alloc!(1024, CrateId::Decoder)?;
         let mut data = BoundedVec::new(provider)?;
-        
+
         // WASM magic and version
         for &b in &[0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00] {
             data.push(b)?;
         }
-        
+
         // Type section
         for &b in &[0x01, 0x07, 0x02] {
             data.push(b)?;
         }
-        
+
         // Function type 0: () -> ()
         for &b in &[0x60, 0x00, 0x00] {
             data.push(b)?;
         }
-        
+
         // Function type 1: (i32) -> (i32)
         for &b in &[0x60, 0x01, 0x7f, 0x01, 0x7f] {
             data.push(b)?;
         }
-        
+
         // Function section
         for &b in &[0x03, 0x02, 0x01, 0x00] {
             data.push(b)?;
         }
-        
+
         // Export section
         for &b in &[0x07, 0x07, 0x01] {
             data.push(b)?;
         }
-        
+
         // Export "test" as function 0
         for &b in &[0x04, b't', b'e', b's', b't', 0x00, 0x00] {
             data.push(b)?;
         }
-        
+
         // Code section
         for &b in &[0x0a, 0x04, 0x01] {
             data.push(b)?;
         }
-        
+
         // Function body
         for &b in &[0x02, 0x00, 0x0b] {
             data.push(b)?;
         }
-        
+
         Ok(data)
     }
 
@@ -211,7 +211,7 @@ impl FormatTestData {
     pub fn complex_component() -> Result<TestData> {
         let provider = safe_managed_alloc!(1024, CrateId::Decoder)?;
         let mut data = BoundedVec::new(provider)?;
-        
+
         let bytes = [
             // WASM magic and component version
             0x00, 0x61, 0x73, 0x6d, 0x0a, 0x00, 0x01, 0x00, // Component type section
@@ -225,11 +225,11 @@ impl FormatTestData {
             0x07, 0x08, 0x01, // Export "main"
             0x04, b'm', b'a', b'i', b'n', 0x03, 0x00, 0x00,
         ];
-        
+
         for &b in &bytes {
             data.push(b)?;
         }
-        
+
         Ok(data)
     }
 
@@ -237,19 +237,19 @@ impl FormatTestData {
     pub fn unsupported_version() -> Result<TestData> {
         let provider = safe_managed_alloc!(1024, CrateId::Decoder)?;
         let mut data = BoundedVec::new(provider)?;
-        
+
         // WASM magic number
         data.push(0x00)?;
         data.push(0x61)?;
         data.push(0x73)?;
         data.push(0x6d)?;
-        
+
         // Unsupported version (99)
         data.push(0x63)?;
         data.push(0x00)?;
         data.push(0x00)?;
         data.push(0x00)?;
-        
+
         Ok(data)
     }
 }
@@ -454,7 +454,9 @@ impl FormatDetectionTests {
 
         // Test binary with empty sections
         let mut empty_sections = BoundedVec::<u8, 256, _>::new(provider)?;
-        for &b in &[0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00] {
+        for &b in &[
+            0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+        ] {
             empty_sections.push(b)?;
         }
         #[cfg(feature = "std")]

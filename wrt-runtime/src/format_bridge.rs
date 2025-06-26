@@ -263,11 +263,7 @@ impl RuntimeModuleInitializer {
     fn validate_asil_constraints(&self, runtime_data: &FormatModuleRuntimeData) -> Result<()> {
         // Check initialization step limits
         if runtime_data.estimated_initialization_steps > self.context.max_initialization_steps {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_EXHAUSTED,
-                "Too many initialization steps for ASIL constraints"
-            ));
+            return Err(Error::resource_exhausted("Too many initialization steps for ASIL constraints"));
         }
         
         // Check memory allocation limits for ASIL-D
@@ -278,11 +274,7 @@ impl RuntimeModuleInitializer {
                 .sum();
                 
             if total_data_size > self.context.asil_constraints.max_memory_allocation {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_EXHAUSTED,
-                    "Data size exceeds ASIL-D memory limits"
-                ));
+                return Err(Error::resource_exhausted("Data size exceeds ASIL-D memory limits"));
             }
         }
         

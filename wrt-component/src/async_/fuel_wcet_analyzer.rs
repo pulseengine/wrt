@@ -219,11 +219,7 @@ impl FuelWcetAnalyzer {
 
         // Store analysis result
         self.analysis_results.insert(task_id, result.clone()).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many WCET analysis results".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many WCET analysis results")
         })?;
 
         self.stats.total_analyses.fetch_add(1, Ordering::AcqRel);
@@ -258,11 +254,7 @@ impl FuelWcetAnalyzer {
             let provider = safe_managed_alloc!(4096, CrateId::Component)?;
             let samples = BoundedVec::new(provider)?;
             self.execution_samples.insert(task_id, samples).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_LIMIT_EXCEEDED,
-                    "Too many task sample collections".to_string(),
-                )
+                Error::resource_limit_exceeded("Too many task sample collections")
             })?;
         }
 
@@ -273,11 +265,7 @@ impl FuelWcetAnalyzer {
             }
             
             samples.push(sample).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_LIMIT_EXCEEDED,
-                    "Sample collection is full".to_string(),
-                )
+                Error::resource_limit_exceeded("Sample collection is full")
             })?;
         }
 
@@ -317,11 +305,7 @@ impl FuelWcetAnalyzer {
         let mut bb_vec = BoundedVec::new(provider.clone())?;
         for &bb in basic_blocks {
             bb_vec.push(bb).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_LIMIT_EXCEEDED,
-                    "Too many basic blocks in path".to_string(),
-                )
+                Error::resource_limit_exceeded("Too many basic blocks in path")
             })?;
         }
 
@@ -339,21 +323,13 @@ impl FuelWcetAnalyzer {
             let provider = safe_managed_alloc!(2048, CrateId::Component)?;
             let paths = BoundedVec::new(provider)?;
             self.task_paths.insert(task_id, paths).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_LIMIT_EXCEEDED,
-                    "Too many task path collections".to_string(),
-                )
+                Error::resource_limit_exceeded("Too many task path collections")
             })?;
         }
 
         if let Some(paths) = self.task_paths.get_mut(&task_id) {
             paths.push(path).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_LIMIT_EXCEEDED,
-                    "Too many paths for task".to_string(),
-                )
+                Error::resource_limit_exceeded("Too many paths for task")
             })?;
         }
 
@@ -406,11 +382,7 @@ impl FuelWcetAnalyzer {
 
             Ok(within_estimate)
         } else {
-            Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "No WCET analysis result found for task".to_string(),
-            ))
+            Err(Error::resource_not_found("No WCET analysis result found for task"))
         }
     }
 
@@ -457,17 +429,10 @@ impl FuelWcetAnalyzer {
 
     fn perform_measurement_analysis(&mut self, task_id: TaskId) -> Result<WcetAnalysisResult, Error> {
         let samples = self.execution_samples.get(&task_id)
-            .ok_or_else(|| Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "No execution samples available for measurement-based analysis".to_string(),
-            ))?;
+            .ok_or_else(|| Error::resource_not_found("No execution samples available for measurement-based analysis"))?;
 
         if samples.len() < self.config.min_samples_for_stats {
-            return Err(Error::new(
-                ErrorCategory::InvalidInput,
-                codes::INSUFFICIENT_DATA,
-                "Insufficient samples for reliable measurement-based analysis".to_string(),
+            return Err(Error::runtime_execution_error(".to_string(),
             ));
         }
 
@@ -533,17 +498,10 @@ impl FuelWcetAnalyzer {
         self.consume_analysis_fuel(STATISTICAL_ANALYSIS_FUEL)?;
 
         let samples = self.execution_samples.get(&task_id)
-            .ok_or_else(|| Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "No execution samples available for probabilistic analysis".to_string(),
-            ))?;
+            .ok_or_else(|| Error::resource_not_found("))?;
 
         if samples.len() < self.config.min_samples_for_stats {
-            return Err(Error::new(
-                ErrorCategory::InvalidInput,
-                codes::INSUFFICIENT_DATA,
-                "Insufficient samples for probabilistic analysis".to_string(),
+            return Err(Error::runtime_execution_error(".to_string(),
             ));
         }
 
@@ -573,7 +531,7 @@ impl FuelWcetAnalyzer {
             return Err(Error::new(
                 ErrorCategory::InvalidInput,
                 codes::INSUFFICIENT_DATA,
-                "No values provided for statistics calculation".to_string(),
+                "),
             ));
         }
 
@@ -601,10 +559,7 @@ impl FuelWcetAnalyzer {
 
     fn calculate_percentile(&self, values: &[u64], percentile: f64) -> Result<u64, Error> {
         if values.is_empty() {
-            return Err(Error::new(
-                ErrorCategory::InvalidInput,
-                codes::INSUFFICIENT_DATA,
-                "No values provided for percentile calculation".to_string(),
+            return Err(Error::runtime_execution_error(".to_string(),
             ));
         }
 
@@ -657,21 +612,13 @@ impl FuelWcetAnalyzer {
                     // Add sample if there's space
                     if path.measured_samples.len() < MAX_EXECUTION_SAMPLES {
                         path.measured_samples.push(fuel_consumed).map_err(|_| {
-                            Error::new(
-                                ErrorCategory::Resource,
-                                codes::RESOURCE_LIMIT_EXCEEDED,
-                                "Path sample collection is full".to_string(),
-                            )
+                            Error::resource_limit_exceeded(")
                         })?;
                     } else {
                         // Replace oldest sample
                         path.measured_samples.remove(0);
                         path.measured_samples.push(fuel_consumed).map_err(|_| {
-                            Error::new(
-                                ErrorCategory::Resource,
-                                codes::RESOURCE_LIMIT_EXCEEDED,
-                                "Failed to add path sample".to_string(),
-                            )
+                            Error::resource_limit_exceeded("Failed to add path sample")
                         })?;
                     }
                     break;
@@ -687,11 +634,7 @@ impl FuelWcetAnalyzer {
         
         // Update stored result
         self.analysis_results.insert(task_id, refined_result).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Failed to update WCET analysis result".to_string(),
-            )
+            Error::resource_limit_exceeded("Failed to update WCET analysis result")
         })?;
 
         Ok(())

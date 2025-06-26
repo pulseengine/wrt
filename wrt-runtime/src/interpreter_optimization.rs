@@ -51,16 +51,11 @@ pub struct ExecutionPath {
 impl ExecutionPath {
     /// Create new execution path
     pub fn new(instruction_sequence: Vec<u32>, probability: f64) -> Result<Self> {
-        let mut bounded_sequence = wrt_foundation::bounded::BoundedVec::new(
-            wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
-        )?;
+        let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+        let mut bounded_sequence = wrt_foundation::bounded::BoundedVec::new(provider)?;
         
         for instruction in instruction_sequence {
-            bounded_sequence.push(instruction).map_err(|_| Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ERROR,
-                "Too many instructions in execution path"
-            ))?;
+            bounded_sequence.push(instruction).map_err(|_| Error::memory_error("Too many instructions in execution path"))?;
         }
         
         Ok(Self {

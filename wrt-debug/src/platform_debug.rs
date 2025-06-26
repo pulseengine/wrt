@@ -209,11 +209,7 @@ impl PlatformDebugManager {
     /// Allocate debug memory if possible
     pub fn allocate_debug_memory(&mut self, size: usize) -> Result<(), Error> {
         if !self.can_allocate_debug_memory(size) {
-            return Err(Error::new(
-                wrt_error::ErrorCategory::Resource,
-                wrt_error::codes::RESOURCE_EXHAUSTED,
-                "Debug memory limit exceeded",
-            ));
+            return Err(Error::resource_exhausted("Debug memory limit exceeded"));
         }
 
         self.current_debug_memory += size;
@@ -236,11 +232,7 @@ impl PlatformDebugManager {
     /// Add a debug section
     pub fn add_debug_section(&mut self) -> Result<(), Error> {
         if !self.can_add_debug_section() {
-            return Err(Error::new(
-                wrt_error::ErrorCategory::Resource,
-                wrt_error::codes::RESOURCE_EXHAUSTED,
-                "Debug section limit exceeded",
-            ));
+            return Err(Error::resource_exhausted("Debug section limit exceeded"));
         }
 
         self.active_sections += 1;
@@ -260,11 +252,7 @@ impl PlatformDebugManager {
     /// Add a breakpoint
     pub fn add_breakpoint(&mut self) -> Result<(), Error> {
         if !self.can_add_breakpoint() {
-            return Err(Error::new(
-                wrt_error::ErrorCategory::Resource,
-                wrt_error::codes::RESOURCE_EXHAUSTED,
-                "Breakpoint limit exceeded",
-            ));
+            return Err(Error::resource_exhausted("Breakpoint limit exceeded"));
         }
 
         self.active_breakpoints += 1;
@@ -284,11 +272,7 @@ impl PlatformDebugManager {
     /// Add a stack trace
     pub fn add_stack_trace(&mut self) -> Result<(), Error> {
         if !self.can_add_stack_trace() {
-            return Err(Error::new(
-                wrt_error::ErrorCategory::Resource,
-                wrt_error::codes::RESOURCE_EXHAUSTED,
-                "Stack trace limit exceeded",
-            ));
+            return Err(Error::resource_exhausted("Stack trace limit exceeded"));
         }
 
         self.active_stack_traces += 1;

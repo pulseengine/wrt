@@ -90,7 +90,7 @@ mod tests {
     use alloc::string::ToString;
 
     #[test]
-    fn test_log_operation_creation() {
+    fn test_log_operation_creation() -> wrt_foundation::Result<()> {
         #[cfg(feature = "std")]
         {
             // Test basic creation
@@ -118,10 +118,10 @@ mod tests {
         
         #[cfg(not(feature = "std"))]
         {
-            use wrt_foundation::safe_memory::NoStdProvider;
+            use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
             
             // Create a provider for testing
-            let provider = NoStdProvider::<512>::default();
+            let provider = safe_managed_alloc!(512, CrateId::Runtime)?;
             
             // Test basic creation
             let op = LogOperation::new(LogLevel::Info, "test message", provider.clone()).unwrap();
@@ -135,5 +135,7 @@ mod tests {
             assert_eq!(op.message.as_str().unwrap(), "test message");
             assert_eq!(op.component_id.as_ref().map(|s| s.as_str().unwrap()), Some("component-1"));
         }
+        
+        Ok(())
     }
 }

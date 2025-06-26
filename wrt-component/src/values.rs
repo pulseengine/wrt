@@ -8,7 +8,8 @@
 use wrt_format::component::FormatValType;
 use wrt_foundation::{
     component_value::{ComponentValue, ValType as TypesValType},
-    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
     traits::{ReadStream, WriteStream},
     values::Value,
 };
@@ -587,66 +588,42 @@ pub fn deserialize_component_value(
     match format_type {
         WrtFormatValType::Bool => {
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize bool".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize bool"));
             }
             let value = data[offset] != 0;
             Ok(ComponentComponentValue::Bool(value))
         }
         WrtFormatValType::S8 => {
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize S8".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize S8"));
             }
             let value = data[offset] as i8;
             Ok(ComponentComponentValue::S8(value))
         }
         WrtFormatValType::U8 => {
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize U8".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize U8"));
             }
             let value = data[offset];
             Ok(ComponentComponentValue::U8(value))
         }
         WrtFormatValType::S16 => {
             if offset + 2 > data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize S16".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize S16"));
             }
             let value = i16::from_le_bytes([data[offset], data[offset + 1]]);
             Ok(ComponentComponentValue::S16(value))
         }
         WrtFormatValType::U16 => {
             if offset + 2 > data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize U16".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize U16"));
             }
             let value = u16::from_le_bytes([data[offset], data[offset + 1]]);
             Ok(ComponentComponentValue::U16(value))
         }
         WrtFormatValType::S32 => {
             if offset + 4 > data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize S32".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize S32"));
             }
             let value = i32::from_le_bytes([
                 data[offset],
@@ -658,11 +635,7 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::U32 => {
             if offset + 4 > data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize U32".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize U32"));
             }
             let value = u32::from_le_bytes([
                 data[offset],
@@ -674,11 +647,7 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::S64 => {
             if offset + 8 > data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize S64".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize S64"));
             }
             let value = i64::from_le_bytes([
                 data[offset],
@@ -694,11 +663,7 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::U64 => {
             if offset + 8 > data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize U64".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize U64"));
             }
             let value = u64::from_le_bytes([
                 data[offset],
@@ -714,11 +679,7 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::F32 => {
             if offset + 4 > data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize F32".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize F32"));
             }
             let value = f32::from_bits(u32::from_le_bytes([
                 data[offset],
@@ -730,11 +691,7 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::F64 => {
             if offset + 8 > data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize F64".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize F64"));
             }
             let value = f64::from_bits(u64::from_le_bytes([
                 data[offset],
@@ -750,22 +707,14 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::Char => {
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize Char".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize Char"));
             }
             let value = data[offset] as char;
             Ok(ComponentComponentValue::Char(value))
         }
         WrtFormatValType::String => {
             if offset + 4 > data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize String length".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize String length"));
             }
             let len = u32::from_le_bytes([
                 data[offset],
@@ -775,29 +724,17 @@ pub fn deserialize_component_value(
             ]);
             offset += 4;
             if offset + len as usize > data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize String".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize String"));
             }
             let value =
                 String::from_utf8(data[offset..offset + len as usize].to_vec()).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Component not found".to_string(),
-                    )
+                    Error::parse_error("Component not found")
                 })?;
             Ok(ComponentComponentValue::String(value))
         }
         WrtFormatValType::List(elem_type) => {
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize List length".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize List length"));
             }
             let len = u32::from_le_bytes([
                 data[offset],
@@ -807,11 +744,7 @@ pub fn deserialize_component_value(
             ]);
             offset += 4;
             if offset + len as usize * size_in_bytes(elem_type) > data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize List".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize List"));
             }
             let mut values = Vec::with_capacity(len as usize);
             for _ in 0..len {
@@ -823,11 +756,7 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::Record(fields) => {
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize Record".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize Record"));
             }
             let mut values = Vec::new();
             for (name, val_type) in fields {
@@ -839,11 +768,7 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::Tuple(types) => {
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize Tuple".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize Tuple"));
             }
             let mut values = Vec::with_capacity(types.len());
             for val_type in types {
@@ -855,11 +780,7 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::Variant(cases) => {
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize Variant".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize Variant"));
             }
             let len = u32::from_le_bytes([
                 data[offset],
@@ -869,18 +790,10 @@ pub fn deserialize_component_value(
             ]);
             offset += 4;
             if offset + len as usize > data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize Variant".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize Variant"));
             }
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize Variant case".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize Variant case"));
             }
 
             // Get the case index
@@ -888,11 +801,7 @@ pub fn deserialize_component_value(
             // No need to update offset anymore as we return immediately
 
             if case_idx >= cases.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Component not found".to_string(),
-                ));
+                return Err(Error::parse_error("Component not found"));
             }
 
             // Get the case name and type
@@ -902,11 +811,7 @@ pub fn deserialize_component_value(
             match case_type_opt {
                 Some(case_type) => {
                     if offset >= data.len() {
-                        return Err(Error::new(
-                            ErrorCategory::Parse,
-                            codes::PARSE_ERROR,
-                            "Not enough data to deserialize Variant value".to_string(),
-                        ));
+                        return Err(Error::parse_error("Not enough data to deserialize Variant value"));
                     }
                     let inner_value = deserialize_component_value(&data[offset..], case_type)?;
                     // We've already read the needed value, no need to update offset
@@ -920,11 +825,7 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::Enum(variants) => {
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize Enum".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize Enum"));
             }
             let len = u32::from_le_bytes([
                 data[offset],
@@ -934,11 +835,7 @@ pub fn deserialize_component_value(
             ]);
             offset += 4;
             if offset + len as usize > data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize Enum".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize Enum"));
             }
             let value = data[offset] as char;
             // No need to update offset anymore as we return immediately
@@ -946,11 +843,7 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::Option(inner_type) => {
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize Option".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize Option"));
             }
             let value = data[offset] != 0;
             // No need to update offset anymore as we return immediately
@@ -963,11 +856,7 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::Result(result_type) => {
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize Result".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize Result"));
             }
             let value = data[offset] != 0;
             // No need to update offset anymore as we return immediately
@@ -981,11 +870,7 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::Own(idx) => {
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize Own".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize Own"));
             }
             let value = data[offset] as u32;
             // No need to update offset anymore as we return immediately
@@ -993,11 +878,7 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::Borrow(idx) => {
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize Borrow".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize Borrow"));
             }
             let value = data[offset] as u32;
             // No need to update offset anymore as we return immediately
@@ -1005,11 +886,7 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::Flags(names) => {
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize Flags".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize Flags"));
             }
             let flag_byte = data[offset];
             // No need to update offset anymore as we return immediately
@@ -1028,11 +905,7 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::FixedList(elem_type, size) => {
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize FixedList length".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize FixedList length"));
             }
             let len = u32::from_le_bytes([
                 data[offset],
@@ -1042,11 +915,7 @@ pub fn deserialize_component_value(
             ]);
             offset += 4;
             if offset + len as usize * size_in_bytes(elem_type) > data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize FixedList".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize FixedList"));
             }
             let mut values = Vec::with_capacity(len as usize);
             for _ in 0..len {
@@ -1058,11 +927,7 @@ pub fn deserialize_component_value(
         }
         WrtFormatValType::ErrorContext => {
             if offset >= data.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Not enough data to deserialize ErrorContext".to_string(),
-                ));
+                return Err(Error::parse_error("Not enough data to deserialize ErrorContext"));
             }
             let value = data[offset] != 0;
             // No need to update offset anymore as we return immediately
@@ -1070,11 +935,7 @@ pub fn deserialize_component_value(
             Ok(ComponentComponentValue::ErrorContext(Vec::new()))
         }
         // Handle any other unimplemented cases
-        _ => Err(Error::new(
-            ErrorCategory::System,
-            codes::UNSUPPORTED_OPERATION,
-            "Type not supported for deserialization".to_string(),
-        )),
+        _ => Err(Error::system_unsupported_operation("Type not supported for deserialization")),
     }
 }
 
@@ -1132,11 +993,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
         WrtFormatValType::Char => {
             let value_u32 = reader.read_u32_le()?;
             let value = char::from_u32(value_u32).ok_or_else(|| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Component not found",
-                )
+                Error::parse_error("Component not found")
             })?;
             Ok(ComponentComponentValue::Char(value))
         }
@@ -1150,11 +1007,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             // Convert to a String
             let value = String::from_utf8(bytes).map_err(|e| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Component not found",
-                )
+                Error::parse_error("Component not found")
             })?;
 
             Ok(ComponentComponentValue::String(value))
@@ -1177,10 +1030,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
             let count = reader.read_u32_le()? as usize;
 
             if count != fields.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    &format!("Record field count mismatch: expected {}, got {}", fields.len(), count)
+                return Err(Error::runtime_execution_error(", fields.len(), count)
                 ));
             }
 
@@ -1194,11 +1044,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 let mut name_bytes = vec![0u8; name_len];
                 reader.read_exact(&mut name_bytes)?;
                 let field_name = String::from_utf8(name_bytes).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Component not found",
-                    )
+                    Error::parse_error(")
                 })?;
 
                 // Read field value
@@ -1213,10 +1059,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
             let count = reader.read_u32_le()? as usize;
 
             if count != types.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    &format!("Tuple type count mismatch: expected {}, got {}", types.len(), count)
+                return Err(Error::runtime_execution_error(", types.len(), count)
                 ));
             }
 
@@ -1237,21 +1080,13 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
             let mut name_bytes = vec![0u8; name_len];
             reader.read_exact(&mut name_bytes)?;
             let case_name = String::from_utf8(name_bytes).map_err(|e| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Component not found",
-                )
+                Error::parse_error(")
             })?;
 
             // Find the case in the list
             let case_idx =
                 cases.iter().position(|(name, _)| name == &case_name).ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Component not found",
-                    )
+                    Error::parse_error("Component not found")
                 })?;
 
             // Read presence flag
@@ -1265,11 +1100,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                         deserialize_component_value_with_stream(reader, case_type, provider)?;
                     Ok(ComponentComponentValue::Variant(case_name, Some(Box::new(value))))
                 } else {
-                    Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Component not found",
-                    ))
+                    Err(Error::parse_error("Component not found"))
                 }
             } else {
                 Ok(ComponentComponentValue::Variant(case_name, None))
@@ -1283,20 +1114,12 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
             let mut name_bytes = vec![0u8; name_len];
             reader.read_exact(&mut name_bytes)?;
             let variant_name = String::from_utf8(name_bytes).map_err(|e| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Component not found",
-                )
+                Error::parse_error("Component not found")
             })?;
 
             // Validate the variant name
             if !variants.contains(&variant_name) {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Component not found",
-                ));
+                return Err(Error::parse_error("Component not found"));
             }
 
             Ok(ComponentComponentValue::Enum(variant_name))
@@ -1337,10 +1160,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
             let count = reader.read_u32_le()? as usize;
 
             if count != names.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    &format!("Flags name count mismatch: expected {}, got {}", names.len(), count)
+                return Err(Error::runtime_execution_error(", names.len(), count)
                 ));
             }
 
@@ -1379,11 +1199,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
             let fixed_size = reader.read_u32_le()?;
 
             if fixed_size != *size {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Component not found",
-                ));
+                return Err(Error::parse_error("));
             }
 
             // Read each item
@@ -1407,11 +1223,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 let mut item_bytes = vec![0u8; item_len];
                 reader.read_exact(&mut item_bytes)?;
                 let item_str = String::from_utf8(item_bytes).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Component not found",
-                    )
+                    Error::parse_error("Component not found")
                 })?;
                 items.push(ComponentComponentValue::String(item_str));
             }
@@ -1424,11 +1236,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
             Ok(ComponentComponentValue::Void)
         }
         // Handle any other unimplemented cases
-        _ => Err(Error::new(
-            ErrorCategory::System,
-            codes::UNSUPPORTED_OPERATION,
-            "Component not found",
-        )),
+        _ => Err(Error::system_unsupported_operation("Component not found")),
     }
 }
 
@@ -1479,11 +1287,7 @@ pub fn deserialize_component_values(
 ) -> Result<Vec<ComponentComponentValue>, Error> {
     // Need at least 4 bytes for the count
     if data.len() < 4 {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Not enough data to read value count".to_string(),
-        ));
+        return Err(Error::parse_error("Not enough data to read value count"));
     }
 
     // Read the count
@@ -1493,11 +1297,7 @@ pub fn deserialize_component_values(
 
     // Validate that we have enough types
     if count > types.len() {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            "Validation error"
-        ));
+        return Err(Error::validation_error("Validation error"));
     }
 
     // Read each value
@@ -1505,11 +1305,7 @@ pub fn deserialize_component_values(
     for type_idx in 0..count {
         // Need at least 4 more bytes for the size
         if offset + 4 > data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Not enough data to read value size".to_string(),
-            ));
+            return Err(Error::parse_error("Not enough data to read value size"));
         }
 
         // Read the size
@@ -1523,11 +1319,7 @@ pub fn deserialize_component_values(
 
         // Validate that we have enough data
         if offset + size > data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Not enough data to read value".to_string(),
-            ));
+            return Err(Error::parse_error("Not enough data to read value"));
         }
 
         // Read the value
@@ -1553,11 +1345,7 @@ pub fn deserialize_component_values_with_stream<'a, P: wrt_foundation::MemoryPro
 
     // Validate that we have enough types
     if count > types.len() {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            "Validation error"
-        ));
+        return Err(Error::validation_error("Validation error"));
     }
 
     // Read each value
@@ -1602,11 +1390,7 @@ pub fn core_to_component_value(value: &Value, ty: &WrtFormatValType) -> crate::W
         (ComponentComponentValue::S64(v), ComponentValType::U64) => Ok(ComponentComponentValue::U64(*v as u64)),
 
         // Error for type mismatch
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::CONVERSION_ERROR,
-            format!(
-                "Type mismatch: cannot convert {:?} to component value of type {:?}",
+        _ => Err(Error::runtime_execution_error(",
                 value, types_val_type
             ),
         )),
@@ -1656,7 +1440,7 @@ pub fn size_in_bytes(ty: &WrtFormatValType) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use wrt_foundation::safe_memory::{NoStdProvider, SafeMemoryHandler, Slice, SliceMut};
+    use wrt_foundation::safe_memory::{SafeMemoryHandler, Slice, SliceMut};
 
     use super::*;
 
@@ -1682,7 +1466,7 @@ mod tests {
     #[test]
     fn test_stream_serialization() {
         // Create a memory provider
-        let provider = NoStdProvider::<1024>::default();
+        let provider = safe_managed_alloc!(1024, CrateId::Component).unwrap();
         let handler = SafeMemoryHandler::new(provider).unwrap();
 
         // Get a mutable slice for the output buffer
@@ -1714,7 +1498,7 @@ mod tests {
     #[test]
     fn test_multiple_values_stream() {
         // Create a memory provider
-        let provider = NoStdProvider::<1024>::default();
+        let provider = safe_managed_alloc!(1024, CrateId::Component).unwrap();
         let handler = SafeMemoryHandler::new(provider).unwrap();
 
         // Get a mutable slice for the output buffer
@@ -1725,7 +1509,7 @@ mod tests {
         let values = vec![
             ComponentComponentValue::Bool(true),
             ComponentComponentValue::S32(42),
-            ComponentComponentValue::String("hello".to_string()),
+            ComponentComponentValue::String(")),
         ];
 
         // Serialize using stream

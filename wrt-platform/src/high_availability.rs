@@ -280,11 +280,7 @@ impl HighAvailabilityManager for GenericHaMonitor {
             .iter_mut()
             .find(|e| e.id == entity)
             .ok_or_else(|| {
-                Error::new(
-                    ErrorCategory::Validation,
-                    1,
-                    "Entity not found",
-                )
+                Error::runtime_execution_error("Entity not found")
             })?;
 
         // Convert Vec<RecoveryAction> to bounded (simplified for now)
@@ -294,18 +290,13 @@ impl HighAvailabilityManager for GenericHaMonitor {
                 return Err(Error::new(
                     ErrorCategory::Memory,
                     wrt_error::codes::CAPACITY_EXCEEDED,
-                    "Too many recovery actions"
-                ));
+                    "Too many actions for entity"));
             }
             bounded_actions.push(action);
         }
         
         if entity.conditions.len() >= MAX_ENTITIES {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                wrt_error::codes::CAPACITY_EXCEEDED,
-                "Too many monitor conditions"
-            ));
+            return Err(Error::runtime_execution_error("Too many conditions for entity"));
         }
         entity.conditions.push((condition, bounded_actions));
         Ok(())
@@ -317,8 +308,7 @@ impl HighAvailabilityManager for GenericHaMonitor {
             Error::new(
                 ErrorCategory::Validation,
                 1,
-                "Entity not found",
-            )
+                "Entity not found")
         })?;
 
         entity.monitoring.store(true, Ordering::Release);
@@ -328,11 +318,7 @@ impl HighAvailabilityManager for GenericHaMonitor {
     fn stop_monitoring(&mut self, entity: EntityId) -> Result<()> {
         let entities = self.entities.read();
         let entity = entities.iter().find(|e| e.id == entity).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                1,
-                "Entity not found",
-            )
+            Error::runtime_execution_error("Entity not found")
         })?;
 
         entity.monitoring.store(false, Ordering::Release);
@@ -345,8 +331,7 @@ impl HighAvailabilityManager for GenericHaMonitor {
             Error::new(
                 ErrorCategory::Validation,
                 1,
-                "Entity not found",
-            )
+                "Entity not found")
         })?;
 
         *entity.last_heartbeat.lock() = 0; // Update timestamp
@@ -357,11 +342,7 @@ impl HighAvailabilityManager for GenericHaMonitor {
     fn get_health(&self, entity: EntityId) -> Result<HealthStatus> {
         let entities = self.entities.read();
         let entity = entities.iter().find(|e| e.id == entity).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                1,
-                "Entity not found",
-            )
+            Error::runtime_execution_error("Entity not found")
         })?;
 
         let status = *entity.status.lock();

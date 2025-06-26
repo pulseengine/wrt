@@ -91,9 +91,7 @@ mod component_val_type {
                 result.extend_from_slice(&write_leb128_u32(*idx));
             },
             FormatValType::Own(_) | FormatValType::Borrow(_) => {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
+                return Err(Error::parse_error(
                     "Resource types are not supported for encoding yet",
                 ));
             },
@@ -117,11 +115,7 @@ mod component_val_type {
             },
             // Add a catch-all for any new variants that might be added in the future
             _ => {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Unsupported value type for encoding",
-                ));
+                return Err(Error::parse_error("Unsupported value type for encoding"));
             },
         }
         Ok(())
@@ -146,10 +140,8 @@ pub mod no_std_stubs {
         _result: &mut wrt_foundation::BoundedVec<u8, 1024, wrt_foundation::NoStdProvider<2048>>,
         _val_type: &FormatValType,
     ) -> Result<()> {
-        Err(Error::new(
-            ErrorCategory::Validation,
-            codes::UNSUPPORTED_OPERATION,
-            "Value type encoding requires std feature",
+        Err(Error::runtime_execution_error(
+            "No-std encoding not supported",
         ))
     }
 }

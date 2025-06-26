@@ -48,19 +48,13 @@ fn scan_for_builtins_fallback(binary: &[u8]) -> Result<Vec<String>> {
     
     // Validate WebAssembly magic number and version
     if binary.len() < 8 {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            wrt_error::codes::PARSE_ERROR,
-            "Binary too short to be a valid WebAssembly module"
+        return Err(Error::parse_error("Binary too short to be a valid WebAssembly module")
         ));
     }
     
     // Check magic number
     if &binary[0..4] != b"\0asm" {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            wrt_error::codes::PARSE_ERROR,
-            "Invalid WebAssembly magic number"
+        return Err(Error::parse_error("Invalid WebAssembly magic number")
         ));
     }
     
@@ -78,10 +72,7 @@ fn scan_for_builtins_fallback(binary: &[u8]) -> Result<Vec<String>> {
         
         // Read section size
         let (section_size, new_offset) = binary::read_leb128_u32(binary, offset)
-            .map_err(|e| Error::new(
-                ErrorCategory::Parse,
-                wrt_error::codes::PARSE_ERROR,
-                "Failed to read section size"
+            .map_err(|e| Error::parse_error("Failed to read section size")
             ))?;
         offset = new_offset;
         
@@ -166,10 +157,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
 
     for i in 0..5 { // Max 5 bytes for u32
         if offset + i >= data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                wrt_error::codes::PARSE_ERROR,
-                "Unexpected end of data while reading LEB128"
+            return Err(Error::parse_error("Unexpected end of data while reading LEB128")
             ));
         }
 
@@ -184,10 +172,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
 
         shift += 7;
         if shift >= 32 {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                wrt_error::codes::PARSE_ERROR,
-                "LEB128 value too large for u32"
+            return Err(Error::parse_error("LEB128 value too large for u32")
             ));
         }
     }

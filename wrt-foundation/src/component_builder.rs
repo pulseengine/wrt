@@ -10,13 +10,12 @@
 //! This module provides builders for complex types in the WebAssembly Component
 //! Model, ensuring proper initialization, validation, and resource management.
 
-#[cfg(all(not(feature = "std")))]
+#[cfg(not(feature = "std"))]
 extern crate alloc;
 
 #[cfg(feature = "std")]
 use core::fmt::Debug;
 
-#[cfg(feature = "std")]
 // Builder capacity limits for bounded collections
 const MAX_BUILDER_IMPORTS: usize = 256;
 const MAX_BUILDER_EXPORTS: usize = 256;
@@ -553,14 +552,14 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTypeBuilder<P
 #[cfg(all(test,))]
 mod tests {
     use super::*;
-    use crate::{safe_memory::NoStdProvider, traits::BoundedCapacity};
+    use crate::{safe_managed_alloc, budget_aware_provider::CrateId, traits::BoundedCapacity};
 
     #[test]
-    fn test_component_type_builder() {
-        let provider = NoStdProvider::<1024>::default();
+    fn test_component_type_builder() -> WrtResult<()> {
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
         let component_type =
-            ComponentTypeBuilder::new().with_provider(provider.clone()).build().unwrap();
+            ComponentTypeBuilder::new().with_provider(provider.clone()).build()?;
 
         // Verify empty collections were created
         assert_eq!(component_type.imports.len(), 0);
@@ -570,46 +569,43 @@ mod tests {
         assert_eq!(component_type.core_instances.len(), 0);
         assert_eq!(component_type.component_types.len(), 0);
         assert_eq!(component_type.core_types.len(), 0);
+        Ok(())
     }
 
     #[test]
-    fn test_namespace_builder() {
-        let provider = NoStdProvider::<1024>::default();
+    fn test_namespace_builder() -> WrtResult<()> {
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
         // Test building from parts
         let namespace_builder = NamespaceBuilder::new()
             .with_provider(provider.clone())
-            .with_element_str("wasm")
-            .unwrap()
-            .with_element_str("component")
-            .unwrap();
+            .with_element_str("wasm")?
+            .with_element_str("component")?;
 
-        let namespace = namespace_builder.build().unwrap();
+        let namespace = namespace_builder.build()?;
         assert_eq!(namespace.elements.len(), 2);
 
         // Test building from string
-        let namespace = NamespaceBuilder::from_str("wasm:component:model", provider.clone())
-            .unwrap()
-            .build()
-            .unwrap();
+        let namespace = NamespaceBuilder::from_str("wasm:component:model", provider.clone())?
+            .build()?;
 
         assert_eq!(namespace.elements.len(), 3);
+        Ok(())
     }
 
     #[test]
-    fn test_resource_type_builder() {
-        let provider = NoStdProvider::<1024>::default();
+    fn test_resource_type_builder() -> WrtResult<()> {
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
         // Test record resource type
-        let field_name = BoundedString::from_str("field", provider.clone()).unwrap();
-        let mut field_names = BoundedVec::new(provider.clone()).unwrap();
-        field_names.push(field_name).unwrap();
+        let field_name = BoundedString::from_str("field", provider.clone())?;
+        let mut field_names = BoundedVec::new(provider.clone())?;
+        field_names.push(field_name)?;
 
         let resource_type = ResourceTypeBuilder::new()
             .with_provider(provider.clone())
             .as_record(field_names)
-            .build()
-            .unwrap();
+            .build()?;
 
         match resource_type {
             ResourceType::Record(fields) => assert_eq!(fields.len(), 1),
@@ -617,20 +613,20 @@ mod tests {
         }
 
         // Test aggregate resource type
-        let mut resource_ids = BoundedVec::new(provider.clone()).unwrap();
-        resource_ids.push(1).unwrap();
-        resource_ids.push(2).unwrap();
-        resource_ids.push(3).unwrap();
+        let mut resource_ids = BoundedVec::new(provider.clone())?;
+        resource_ids.push(1)?;
+        resource_ids.push(2)?;
+        resource_ids.push(3)?;
 
         let resource_type = ResourceTypeBuilder::new()
             .with_provider(provider.clone())
             .as_aggregate(resource_ids)
-            .build()
-            .unwrap();
+            .build()?;
 
         match resource_type {
             ResourceType::Aggregate(ids) => assert_eq!(ids.len(), 3),
             _ => panic!("Expected ResourceType::Aggregate"),
         }
+        Ok(())
     }
 }

@@ -20,7 +20,7 @@ use wrt_foundation::allocator::{CrateId, WrtHashMap};
 
 use crate::{
     branch_hint_section::{parse_branch_hint_section, BranchHintSection, BRANCH_HINT_SECTION_NAME},
-    prelude::*,
+    resource_limits_section::{ResourceLimitsSection, RESOURCE_LIMITS_SECTION_NAME},
 };
 
 /// Represents a parsed custom section
@@ -29,6 +29,8 @@ use crate::{
 pub enum CustomSection {
     /// Branch hint section for performance optimization
     BranchHint(BranchHintSection),
+    /// Resource limits section for execution constraints
+    ResourceLimits(ResourceLimitsSection),
     /// Name section for debugging information
     Name {
         /// Module name
@@ -82,6 +84,17 @@ impl CustomSectionHandler {
                 let branch_hints = parse_branch_hint_section(data)?;
                 CustomSection::BranchHint(branch_hints)
             },
+            RESOURCE_LIMITS_SECTION_NAME => {
+                let resource_limits = ResourceLimitsSection::decode(data)
+                    .map_err(|_| Error::parse_error("Failed to parse resource limits section"))?;
+
+                // Validate the resource limits
+                resource_limits
+                    .validate()
+                    .map_err(|_| Error::parse_error("Invalid resource limits"))?;
+
+                CustomSection::ResourceLimits(resource_limits)
+            },
             "name" => {
                 let name_section = parse_name_section(data)?;
                 name_section
@@ -98,11 +111,7 @@ impl CustomSectionHandler {
         #[cfg(feature = "safety-critical")]
         {
             self.sections.insert(name.to_string(), section).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Runtime,
-                    codes::CAPACITY_EXCEEDED,
-                    "Custom sections capacity exceeded (limit: 64)",
-                )
+                Error::runtime_execution_error("Custom sections capacity exceeded (limit: 64)")
             })?;
         }
 
@@ -119,6 +128,17 @@ impl CustomSectionHandler {
         if let Some(CustomSection::BranchHint(hints)) = self.sections.get(BRANCH_HINT_SECTION_NAME)
         {
             Some(hints)
+        } else {
+            None
+        }
+    }
+
+    /// Get resource limits section if present
+    pub fn get_resource_limits(&self) -> Option<&ResourceLimitsSection> {
+        if let Some(CustomSection::ResourceLimits(limits)) =
+            self.sections.get(RESOURCE_LIMITS_SECTION_NAME)
+        {
+            Some(limits)
         } else {
             None
         }
@@ -155,6 +175,11 @@ impl CustomSectionHandler {
     /// Check if branch hints are available
     pub fn has_branch_hints(&self) -> bool {
         self.get_branch_hints().is_some()
+    }
+
+    /// Check if resource limits are available
+    pub fn has_resource_limits(&self) -> bool {
+        self.get_resource_limits().is_some()
     }
 
     /// Get all section names
@@ -208,21 +233,14 @@ pub fn extract_custom_section(section_data: &[u8]) -> Result<(String, &[u8])> {
 
     // Read name string
     if offset + name_len as usize > section_data.len() {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
+        return Err(Error::parse_error(
             "Custom section name length exceeds section size",
         ));
     }
 
     let name_bytes = section_data[offset..offset + name_len as usize].to_vec();
-    let name = String::from_utf8(name_bytes).map_err(|_| {
-        Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Invalid UTF-8 in custom section name",
-        )
-    })?;
+    let name = String::from_utf8(name_bytes)
+        .map_err(|_| Error::parse_error("Invalid UTF-8 in custom section name"))?;
 
     offset += name_len as usize;
 

@@ -147,27 +147,18 @@ mod tests {
                 },
                 FailureMode::PanicOnPoll => {
                     self.error_harness.record_error();
-                    Poll::Ready(Err(Error::new(
-                        ErrorCategory::InvalidState,
-                        codes::INVALID_STATE,
-                        format!("Task {} panicked during poll", self.id),
+                    Poll::Ready(Err(Error::runtime_execution_error(", self.id),
                     )))
                 },
                 FailureMode::ExcessiveFuelConsumption => {
                     self.error_harness.record_error();
                     // Simulate excessive fuel consumption
-                    Poll::Ready(Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_EXHAUSTED,
-                        format!("Task {} consumed excessive fuel", self.id),
+                    Poll::Ready(Err(Error::resource_exhausted("),
                     )))
                 },
                 FailureMode::ResourceExhaustion => {
                     self.error_harness.record_error();
-                    Poll::Ready(Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_LIMIT_EXCEEDED,
-                        format!("Task {} exhausted resources", self.id),
+                    Poll::Ready(Err(Error::runtime_execution_error(", self.id),
                     )))
                 },
                 FailureMode::InvalidOperations => {
@@ -175,15 +166,12 @@ mod tests {
                     Poll::Ready(Err(Error::new(
                         ErrorCategory::Validation,
                         codes::INVALID_INPUT,
-                        format!("Task {} performed invalid operation", self.id),
+                        format!("),
                     )))
                 },
                 FailureMode::TimeoutFailure => {
                     self.error_harness.record_error();
-                    Poll::Ready(Err(Error::new(
-                        ErrorCategory::Timeout,
-                        codes::OPERATION_TIMEOUT,
-                        format!("Task {} timed out", self.id),
+                    Poll::Ready(Err(Error::runtime_execution_error(", self.id),
                     )))
                 },
                 FailureMode::RecoveryAfterFailure => {
@@ -296,7 +284,7 @@ mod tests {
 
         // Verify that exhaustion was detected and handled
         assert!(channel_creation_errors > 0 || channels_created < 100, 
-            "Channel exhaustion not properly handled");
+            ");
         assert!(timer_creation_errors > 0 || timers_created < 200, 
             "Timer exhaustion not properly handled");
         assert!(mutex_creation_errors > 0 || mutexes_created < 100, 

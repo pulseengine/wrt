@@ -100,11 +100,7 @@ fn validate_input_count(op: &BulkMemoryOp, inputs: &[Value]) -> Result<()> {
     let actual = inputs.len();
     
     if actual != expected {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("Bulk memory operation {:?} expects {} inputs, got {}", op, expected, actual)
-        ));
+        return Err(Error::runtime_execution_error("Bulk memory operation {:?} expects {} inputs, got {}"));
     }
     
     Ok(())
@@ -117,30 +113,18 @@ fn validate_bulk_memory_result(op: &BulkMemoryOp, result: &Option<Value>) -> Res
     let has_result = result.is_some();
     
     if expects_result && !has_result {
-        return Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            format!("Bulk memory operation {:?} should produce a result but didn't", op)
-        ));
+        return Err(Error::runtime_execution_error("Bulk memory operation {:?} should produce a result but didn't"));
     }
     
     if !expects_result && has_result {
-        return Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            format!("Bulk memory operation {:?} should not produce a result but did", op)
-        ));
+        return Err(Error::runtime_execution_error("Bulk memory operation {:?} should not produce a result but did"));
     }
     
     // Validate result type for operations that produce values
     if let Some(value) = result {
         match value {
             Value::I32(_) => Ok(()),
-            _ => Err(Error::new(
-                ErrorCategory::Type,
-                codes::TYPE_MISMATCH,
-                format!("Invalid result type for bulk memory operation {:?}", op)
-            ))
+            _ => Err(Error::runtime_execution_error("Invalid result type for bulk memory operation {:?}"))
         }
     } else {
         Ok(())
@@ -194,20 +178,12 @@ impl BulkMemoryProvider for AssilCompliantBulkMemoryProvider {
                 Ok(None)
             },
             BulkMemoryOp::Init(init_op) => {
-                let data_segments = data_segments.ok_or_else(|| Error::new(
-                    ErrorCategory::Validation,
-                    codes::VALIDATION_ERROR,
-                    "Data segments required for memory.init operation"
-                ))?;
+                let data_segments = data_segments.ok_or_else(|| Error::validation_error("Data segments required for memory.init operation"))?;
                 execute_memory_init(init_op, inputs, memory, data_segments)?;
                 Ok(None)
             },
             BulkMemoryOp::DataDrop(drop_op) => {
-                let data_segments = data_segments.ok_or_else(|| Error::new(
-                    ErrorCategory::Validation,
-                    codes::VALIDATION_ERROR,
-                    "Data segments required for data.drop operation"
-                ))?;
+                let data_segments = data_segments.ok_or_else(|| Error::validation_error("Data segments required for data.drop operation"))?;
                 execute_data_drop(drop_op, data_segments)?;
                 Ok(None)
             },
@@ -235,11 +211,7 @@ fn execute_memory_fill(
 ) -> Result<()> {
     // Validate inputs
     if inputs.len() != 3 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            "memory.fill requires exactly 3 inputs: dest, value, size"
-        ));
+        return Err(Error::validation_error("memory.fill requires exactly 3 inputs: dest, value, size"));
     }
     
     fill_op.execute(memory, &inputs[0], &inputs[1], &inputs[2])
@@ -253,11 +225,7 @@ fn execute_memory_copy(
 ) -> Result<()> {
     // Validate inputs
     if inputs.len() != 3 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            "memory.copy requires exactly 3 inputs: dest, src, size"
-        ));
+        return Err(Error::validation_error("memory.copy requires exactly 3 inputs: dest, src, size"));
     }
     
     copy_op.execute(memory, &inputs[0], &inputs[1], &inputs[2])
@@ -272,11 +240,7 @@ fn execute_memory_init(
 ) -> Result<()> {
     // Validate inputs
     if inputs.len() != 3 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            "memory.init requires exactly 3 inputs: dest, src, size"
-        ));
+        return Err(Error::validation_error("memory.init requires exactly 3 inputs: dest, src, size"));
     }
     
     init_op.execute(memory, data_segments, &inputs[0], &inputs[1], &inputs[2])
@@ -306,11 +270,7 @@ fn execute_memory_grow(
 ) -> Result<Value> {
     // Validate inputs
     if inputs.len() != 1 {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            "memory.grow requires exactly 1 input: delta_pages"
-        ));
+        return Err(Error::validation_error("memory.grow requires exactly 1 input: delta_pages"));
     }
     
     grow_op.execute(memory, &inputs[0])
@@ -321,10 +281,7 @@ fn execute_memory_grow(
 fn extract_i32(value: &Value) -> Result<i32> {
     match value {
         Value::I32(val) => Ok(*val),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            format!("Expected i32 value, got {:?}", value.value_type())
+        _ => Err(Error::runtime_execution_error("Expected i32 value, got {:?}")
         ))
     }
 }
@@ -452,11 +409,7 @@ pub fn memory_size(memory: &dyn MemoryOperations) -> Result<u32> {
     let result = size_op.execute(memory)?;
     match result {
         Value::I32(pages) => Ok(pages as u32),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            "memory.size should return i32"
-        ))
+        _ => Err(Error::type_error("memory.size should return i32"))
     }
 }
 
@@ -485,11 +438,7 @@ pub fn memory_grow(
                 Ok(old_pages as u32)
             }
         }
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            "memory.grow should return i32"
-        ))
+        _ => Err(Error::type_error("memory.grow should return i32"))
     }
 }
 
@@ -499,16 +448,16 @@ struct EmptyMemory;
 impl MemoryOperations for EmptyMemory {
     #[cfg(feature = "std")]
     fn read_bytes(&self, _offset: u32, _len: u32) -> Result<Vec<u8>> {
-        Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "EmptyMemory read not supported"))
+        Err(Error::runtime_unsupported_operation("EmptyMemory read not supported"))
     }
     
     #[cfg(not(feature = "std"))]
     fn read_bytes(&self, _offset: u32, _len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::safe_memory::NoStdProvider<65_536>>> {
-        Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "EmptyMemory read not supported"))
+        Err(Error::runtime_unsupported_operation("EmptyMemory read not supported"))
     }
 
     fn write_bytes(&mut self, _offset: u32, _bytes: &[u8]) -> Result<()> {
-        Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "EmptyMemory write not supported"))
+        Err(Error::runtime_unsupported_operation("EmptyMemory write not supported"))
     }
 
     fn size_in_bytes(&self) -> Result<usize> {
@@ -516,14 +465,14 @@ impl MemoryOperations for EmptyMemory {
     }
 
     fn grow(&mut self, _bytes: usize) -> Result<()> {
-        Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "EmptyMemory grow not supported"))
+        Err(Error::runtime_unsupported_operation("EmptyMemory grow not supported"))
     }
 
     fn fill(&mut self, _offset: u32, _value: u8, _size: u32) -> Result<()> {
-        Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "EmptyMemory fill not supported"))
+        Err(Error::runtime_unsupported_operation("EmptyMemory fill not supported"))
     }
 
     fn copy(&mut self, _dest: u32, _src: u32, _size: u32) -> Result<()> {
-        Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "EmptyMemory copy not supported"))
+        Err(Error::runtime_unsupported_operation("EmptyMemory copy not supported"))
     }
 }

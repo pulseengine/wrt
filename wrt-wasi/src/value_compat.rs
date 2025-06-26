@@ -8,6 +8,7 @@ use wrt_foundation::{
     safe_memory::NoStdProvider,
     bounded::{BoundedVec, BoundedString},
     prelude::*,
+    safe_managed_alloc, budget_aware_provider::CrateId,
 };
 
 #[cfg(feature = "std")]
@@ -22,9 +23,11 @@ use alloc::boxed::Box;
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 type Box<T> = T; // Simple workaround for no_std without alloc
 #[cfg(not(feature = "std"))]
-type WasiString = BoundedString<256, NoStdProvider<1024>>;
+type WasiProvider = wrt_foundation::safe_memory::NoStdProvider<1024>;
 #[cfg(not(feature = "std"))]
-type WasiVec<T> = BoundedVec<T, 32, NoStdProvider<1024>>;
+type WasiString = BoundedString<256, WasiProvider>;
+#[cfg(not(feature = "std"))]
+type WasiVec<T> = BoundedVec<T, 32, WasiProvider>;
 
 /// Simplified Value enum for WASI component interface
 /// 
@@ -230,11 +233,11 @@ impl Value {
                 { String::new() }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = NoStdProvider::<1024>::default();
+                    let provider = safe_managed_alloc!(1024, CrateId::Wasi)?;
                     BoundedString::from_str("", provider).unwrap_or_else(|_| {
-                        // This should never fail for empty string
-                        let provider2 = NoStdProvider::<1024>::default();
-                        BoundedString::from_str("", provider2).unwrap()
+                        // Fallback to default provider for empty string
+                        let fallback_provider = WasiProvider::default();
+                        BoundedString::from_str("", fallback_provider).unwrap()
                     })
                 }
             }

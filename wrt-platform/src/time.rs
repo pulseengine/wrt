@@ -17,11 +17,7 @@ impl PlatformTime {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|d| d.as_nanos() as u64)
-            .map_err(|_| Error::new(
-                ErrorCategory::Resource,
-                codes::SYSTEM_IO_ERROR_CODE,
-                "System time before epoch",
-            ))
+            .map_err(|_| Error::system_io_error("System time before epoch"))
     }
     
     /// Get monotonic time in nanoseconds

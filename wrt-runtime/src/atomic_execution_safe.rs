@@ -35,7 +35,7 @@ use std::{vec::Vec, sync::Arc, collections::BTreeMap};
 use alloc::{vec::Vec, sync::Arc, collections::BTreeMap};
 
 // Type alias for thread ID vectors - use bounded collections consistently
-type ThreadIdVec = wrt_foundation::bounded::BoundedVec<ThreadId, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+type ThreadIdVec = wrt_foundation::bounded::BoundedVec<ThreadId, 64>;
 
 /// Conversion from WebAssembly memory ordering to platform ordering
 fn convert_memory_ordering(ordering: MemoryOrdering) -> AtomicOrdering {
@@ -629,11 +629,7 @@ impl SafeAtomicMemoryContext {
     fn calculate_address(&self, memarg: MemArg) -> Result<usize> {
         let addr = memarg.offset as usize;
         if addr >= self.memory_size.load(AtomicOrdering::Relaxed) {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::EXECUTION_ERROR,
-                "Atomic operation address out of bounds"
-            ));
+            return Err(Error::runtime_execution_error("Atomic operation address out of bounds"));
         }
         Ok(addr)
     }
@@ -665,7 +661,7 @@ impl SafeAtomicMemoryContext {
         // Add thread to wait queue
         #[cfg(feature = "std")]
         {
-            let provider = wrt_foundation::safe_memory::NoStdProvider::<1024>::default();
+            let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
             let default_vec = wrt_foundation::bounded::BoundedVec::new(provider).map_err(|_| {
                 Error::runtime_error("Failed to create thread wait queue")
             })?;

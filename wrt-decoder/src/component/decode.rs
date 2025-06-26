@@ -27,20 +27,14 @@ mod component_decode {
 
         // Check magic and version
         if bytes.len() < 8 {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
+            return Err(Error::parse_error(
                 "Component too small (less than 8 bytes)",
             ));
         }
 
         // Check magic number
         if bytes[0..4] != binary::COMPONENT_MAGIC {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Invalid component magic number",
-            ));
+            return Err(Error::parse_error("Invalid component magic number"));
         }
 
         offset = 8;
@@ -58,21 +52,13 @@ mod component_decode {
             let (section_size, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
                 Ok(result) => result,
                 Err(_) => {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Invalid section size",
-                    ));
+                    return Err(Error::parse_error("Invalid section size "));
                 },
             };
             offset += bytes_read;
 
             if offset + section_size as usize > bytes.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Section size exceeds binary size",
-                ));
+                return Err(Error::parse_error("Section size exceeds binary size "));
             }
 
             // Extract section bytes
@@ -250,11 +236,7 @@ mod component_decode {
 
     /// Helper function to create a decode error
     pub fn decode_error(_message: &str) -> Error {
-        Error::new(
-            ErrorCategory::Parse,
-            codes::DECODING_ERROR,
-            "Component decode error",
-        )
+        Error::runtime_execution_error("Component decoding error")
     }
 
     /// Helper function to create a decode error with context
@@ -262,17 +244,13 @@ mod component_decode {
         Error::new(
             ErrorCategory::Parse,
             codes::DECODING_ERROR,
-            "Component decode error with context",
+            "Component decoding error",
         )
     }
 
     /// Helper function to create a decode error with position
     pub fn decode_error_with_position(_message: &str, _position: usize) -> Error {
-        Error::new(
-            ErrorCategory::Parse,
-            codes::DECODING_ERROR,
-            "Component decode error at position",
-        )
+        Error::runtime_execution_error("Component decoding error")
     }
 
     /// Helper function to create a decode error with type
@@ -280,36 +258,28 @@ mod component_decode {
         Error::new(
             ErrorCategory::Parse,
             codes::DECODING_ERROR,
-            "Component decode error with type",
+            "Component decoding error",
         )
     }
 
     /// Helper function to create a decode error with value
     pub fn decode_error_with_value(_message: &str, _value: &str) -> Error {
-        Error::new(
-            ErrorCategory::Parse,
-            codes::DECODING_ERROR,
-            "Component decode error with value",
-        )
+        Error::runtime_execution_error("Component decoding error")
     }
 
     /// Helper function to create a parse error
     pub fn parse_error(_message: &str) -> Error {
-        Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Component parse error",
-        )
+        Error::parse_error("Parse error ")
     }
 
     /// Helper function to create a parse error with context
     pub fn parse_error_with_context(_message: &str, _context: &str) -> Error {
-        Error::parse_error("Parse error")
+        Error::parse_error("Parse error ")
     }
 
     /// Helper function to create a parse error with position
     pub fn parse_error_with_position(_message: &str, _position: usize) -> Error {
-        Error::parse_error("Parse error at position")
+        Error::parse_error("Parse error at position ")
     }
 } // end of component_decode module
 
@@ -332,10 +302,8 @@ pub mod no_std_stubs {
 
     /// Decode component (no_std stub)
     pub fn decode_component(_bytes: &[u8]) -> Result<Component> {
-        Err(Error::new(
-            ErrorCategory::Validation,
-            codes::UNSUPPORTED_OPERATION,
-            "Component decoding requires std feature",
+        Err(Error::runtime_execution_error(
+            "Component decoding not available in no_std",
         ))
     }
 
@@ -344,60 +312,44 @@ pub mod no_std_stubs {
         Error::new(
             ErrorCategory::Parse,
             codes::DECODING_ERROR,
-            "Component decode error",
+            "Component decoding error",
         )
     }
 
     pub fn decode_error_with_context(_message: &str, _context: &str) -> Error {
-        Error::new(
-            ErrorCategory::Parse,
-            codes::DECODING_ERROR,
-            "Component decode error with context",
-        )
+        Error::runtime_execution_error("Component decoding error")
     }
 
     pub fn decode_error_with_position(_message: &str, _position: usize) -> Error {
         Error::new(
             ErrorCategory::Parse,
             codes::DECODING_ERROR,
-            "Component decode error at position",
+            "Component decoding error",
         )
     }
 
     pub fn decode_error_with_type(_message: &str, _type_name: &str) -> Error {
-        Error::new(
-            ErrorCategory::Parse,
-            codes::DECODING_ERROR,
-            "Component decode error with type",
-        )
+        Error::runtime_execution_error("Component decoding error")
     }
 
     pub fn decode_error_with_value(_message: &str, _value: &str) -> Error {
         Error::new(
             ErrorCategory::Parse,
             codes::DECODING_ERROR,
-            "Component decode error with value",
+            "Component decoding error",
         )
     }
 
     pub fn parse_error(_message: &str) -> Error {
-        Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Component parse error",
-        )
+        Error::parse_error("Component parse error ")
     }
 
     pub fn parse_error_with_context(_message: &str, _context: &str) -> Error {
-        Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Parse error")
+        Error::parse_error("Parse error ")
     }
 
     pub fn parse_error_with_position(_message: &str, _position: usize) -> Error {
-        Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Parse error at position",
-        )
+        Error::parse_error("Parse error at position ")
     }
 }
 

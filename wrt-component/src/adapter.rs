@@ -18,7 +18,12 @@ use wrt_foundation::{
 use crate::execution_engine::ComponentExecutionEngine;
 
 #[cfg(not(feature = "std"))]
-use wrt_foundation::{BoundedString, safe_memory::NoStdProvider};
+use wrt_foundation::{
+    BoundedString, 
+    safe_memory::NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
+};
 
 #[cfg(feature = "std")]
 use wrt_foundation::component_value::ComponentValue;
@@ -199,7 +204,7 @@ impl CoreModuleAdapter {
     /// Create a new core module adapter (no_std version)
     #[cfg(not(any(feature = "std", )))]
     pub fn new(name: BoundedString<64, NoStdProvider<65536>>) -> core::result::Result<Self, Error> {
-        let provider = NoStdProvider::<65536>::default();
+        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
         Ok(Self {
             name,
             functions: BoundedVec::new(provider.clone())?,
@@ -219,10 +224,7 @@ impl CoreModuleAdapter {
         #[cfg(not(any(feature = "std", )))]
         {
             self.functions.push(adapter).map_err(|_| {
-                wrt_foundation::Error::new(
-                    wrt_foundation::ErrorCategory::Resource,
-                    wrt_error::codes::RESOURCE_EXHAUSTED,
-                    "Too many function adapters"
+                wrt_error::Error::resource_exhausted("Too many function adapters")
                 )
             })
         }
@@ -450,17 +452,23 @@ impl FunctionAdapter {
 
 impl CoreFunctionSignature {
     /// Create a new core function signature
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Result<Self> {
+        Ok(Self {
             #[cfg(feature = "std")]
             params: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            params: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
+            params: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider)?
+            },
             #[cfg(feature = "std")]
             results: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
-            results: BoundedVec::new(NoStdProvider::<65536>::default()).unwrap(),
-        }
+            results: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedVec::new(provider)?
+            },
+        })
     }
 
     /// Add a parameter type
@@ -496,7 +504,18 @@ impl CoreFunctionSignature {
 
 impl Default for CoreFunctionSignature {
     fn default() -> Self {
-        Self::new()
+        Self::new().unwrap_or_else(|_| {
+            Self {
+                #[cfg(feature = "std")]
+                params: Vec::new(),
+                #[cfg(not(any(feature = "std", )))]
+                params: BoundedVec::new_with_default_provider().unwrap(),
+                #[cfg(feature = "std")]
+                results: Vec::new(),
+                #[cfg(not(any(feature = "std", )))]
+                results: BoundedVec::new_with_default_provider().unwrap(),
+            }
+        })
     }
 }
 
@@ -606,7 +625,7 @@ mod tests {
         #[cfg(not(any(feature = "std", )))]
         {
             let name = BoundedString::from_str("test_module").unwrap();
-            let adapter = CoreModuleAdapter::new(name);
+            let adapter = CoreModuleAdapter::new(name).unwrap();
             assert_eq!(adapter.name.as_str(), "test_module");
             assert_eq!(adapter.functions.len(), 0);
         }
@@ -614,7 +633,7 @@ mod tests {
 
     #[test]
     fn test_function_adapter() {
-        let mut core_sig = CoreFunctionSignature::new();
+        let mut core_sig = CoreFunctionSignature::new().unwrap();
         core_sig.add_param(CoreValType::I32).unwrap();
         core_sig.add_result(CoreValType::I32).unwrap();
 

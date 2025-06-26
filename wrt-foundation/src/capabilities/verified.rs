@@ -180,11 +180,7 @@ impl VerificationProofs {
     pub fn verify_all(&self) -> Result<()> {
         if let Some(ref proof) = self.bounds_proof {
             proof.verify().map_err(|_| {
-                Error::new(
-                    ErrorCategory::Verification,
-                    codes::VERIFICATION_FAILED,
-                    "Bounds proof verification failed",
-                )
+                Error::runtime_execution_error("Bounds proof verification failed")
             })?;
         }
 
@@ -193,18 +189,13 @@ impl VerificationProofs {
                 Error::new(
                     ErrorCategory::Verification,
                     codes::VERIFICATION_FAILED,
-                    "Corruption proof verification failed",
-                )
+                    "Corruption proof verification failed")
             })?;
         }
 
         if let Some(ref proof) = self.concurrency_proof {
             proof.verify().map_err(|_| {
-                Error::new(
-                    ErrorCategory::Verification,
-                    codes::VERIFICATION_FAILED,
-                    "Concurrency proof verification failed",
-                )
+                Error::runtime_execution_error("Concurrency proof verification failed")
             })?;
         }
 
@@ -213,8 +204,7 @@ impl VerificationProofs {
                 Error::new(
                     ErrorCategory::Verification,
                     codes::VERIFICATION_FAILED,
-                    "Temporal proof verification failed",
-                )
+                    "Temporal proof verification failed")
             })?;
         }
 
@@ -236,10 +226,8 @@ impl<const N: usize> VerifiedMemoryCapability<N> {
     ) -> Result<Self> {
         // For ASIL-D, require all proofs to be present
         if !proofs.is_asil_d_complete() {
-            return Err(Error::new(
-                ErrorCategory::Verification,
-                codes::VERIFICATION_REQUIRED,
-                "ASIL-D verified capability requires complete formal proofs",
+            return Err(Error::runtime_execution_error(
+                "ASIL-D requires all verification proofs to be present"
             ));
         }
 
@@ -279,8 +267,7 @@ impl<const N: usize> VerifiedMemoryCapability<N> {
             return Err(Error::new(
                 ErrorCategory::Verification,
                 codes::BOUNDS_VIOLATION,
-                "Buffer offset exceeds verified capability size",
-            ));
+                "Buffer offset exceeds capability bounds"));
         }
         
         let mut capability = Self::new(owner_crate, proofs, runtime_verification)?;
@@ -303,10 +290,8 @@ impl<const N: usize> VerifiedMemoryCapability<N> {
             MemoryOperation::Read { offset, len } => {
                 // Verify bounds with runtime checks
                 if offset.saturating_add(*len) > N {
-                    return Err(Error::new(
-                        ErrorCategory::Verification,
-                        codes::BOUNDS_VIOLATION,
-                        "Runtime bounds verification failed for read operation",
+                    return Err(Error::runtime_execution_error(
+                        "Read operation exceeds verified bounds"
                     ));
                 }
 
@@ -317,16 +302,13 @@ impl<const N: usize> VerifiedMemoryCapability<N> {
                     return Err(Error::new(
                         ErrorCategory::Verification,
                         codes::BOUNDS_VIOLATION,
-                        "Runtime bounds verification failed for write operation",
-                    ));
+                        "Write operation exceeds verified bounds"));
                 }
             }
             MemoryOperation::Allocate { size } => {
                 if *size > N {
-                    return Err(Error::new(
-                        ErrorCategory::Verification,
-                        codes::BOUNDS_VIOLATION,
-                        "Runtime verification: allocation exceeds verified bounds",
+                    return Err(Error::runtime_execution_error(
+                        "Allocation size exceeds verified bounds"
                     ));
                 }
             }
@@ -347,8 +329,7 @@ impl<const N: usize> MemoryCapability for VerifiedMemoryCapability<N> {
         // First, verify against capability mask
         if !operation.requires_capability(&self.allowed_operations) {
             return Err(Error::capability_violation(
-                "Operation not allowed by verified capability mask",
-            ));
+                "Operation not supported by verified capability"));
         }
 
         // Perform formal verification checks
@@ -461,10 +442,8 @@ impl<const N: usize> VerifiedMemoryRegion<N> {
         runtime_verification: bool,
     ) -> Result<Self> {
         if size > N {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::CAPACITY_EXCEEDED,
-                "Requested size exceeds verified limit",
+            return Err(Error::runtime_execution_error(
+                "Verified region size exceeds capability bounds"
             ));
         }
 
@@ -495,8 +474,7 @@ impl<const N: usize> VerifiedMemoryRegion<N> {
             return Err(Error::new(
                 ErrorCategory::Verification,
                 codes::INTEGRITY_VIOLATION,
-                "Memory region integrity verification failed",
-            ));
+                "Buffer integrity checksum mismatch"));
         }
 
         Ok(())
@@ -570,10 +548,8 @@ impl<const N: usize> MemoryGuard for VerifiedMemoryGuard<N> {
     fn read_bytes(&self, offset: usize, len: usize) -> Result<&[u8]> {
         // Perform verification directly in the guard without capability reference
         if offset.saturating_add(len) > N {
-            return Err(Error::new(
-                ErrorCategory::Verification,
-                codes::BOUNDS_VIOLATION,
-                "Read operation exceeds verified bounds",
+            return Err(Error::runtime_execution_error(
+                "Read operation exceeds guard bounds"
             ));
         }
 
@@ -581,8 +557,7 @@ impl<const N: usize> MemoryGuard for VerifiedMemoryGuard<N> {
             return Err(Error::new(
                 ErrorCategory::Verification,
                 codes::BOUNDS_VIOLATION,
-                "Read operation exceeds verified region bounds",
-            ));
+                "Read range exceeds verified region bounds"));
         }
 
         let buffer = self.region.buffer()?;
@@ -592,10 +567,8 @@ impl<const N: usize> MemoryGuard for VerifiedMemoryGuard<N> {
     fn write_bytes(&mut self, offset: usize, data: &[u8]) -> Result<()> {
         // Perform verification directly in the guard without capability reference
         if offset.saturating_add(data.len()) > N {
-            return Err(Error::new(
-                ErrorCategory::Verification,
-                codes::BOUNDS_VIOLATION,
-                "Write operation exceeds verified bounds",
+            return Err(Error::runtime_execution_error(
+                "Write operation exceeds guard bounds"
             ));
         }
 
@@ -603,8 +576,7 @@ impl<const N: usize> MemoryGuard for VerifiedMemoryGuard<N> {
             return Err(Error::new(
                 ErrorCategory::Verification,
                 codes::BOUNDS_VIOLATION,
-                "Write operation exceeds verified region bounds",
-            ));
+                "Write range exceeds verified region bounds"));
         }
 
         let buffer = self.region.buffer_mut();

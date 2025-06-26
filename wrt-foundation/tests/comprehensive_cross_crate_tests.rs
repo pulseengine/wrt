@@ -25,7 +25,7 @@ use std::time::{Duration, Instant};
 use wrt_error::Error as WrtError;
 use wrt_foundation::{
     budget_aware_provider::{BudgetAwareProviderFactory, CrateId},
-    budget_provider::BudgetProvider,
+    safe_managed_alloc,
     memory_pressure_handler::{MemoryPressureHandler, RecoveryConfig},
     memory_system_initializer::{self, MemoryEnforcementLevel},
     safe_memory::Allocator,
@@ -39,13 +39,13 @@ struct ResourceHandle {
     id: u32,
     crate_id: CrateId,
     data: Vec<u8>,
-    _provider: BudgetProvider<4096>,
 }
 
 impl ResourceHandle {
     fn new(id: u32, crate_id: CrateId, size: usize) -> WrtResult<Self> {
-        let provider = BudgetProvider::<4096>::new(crate_id)?;
-        Ok(Self { id, crate_id, data: vec![0u8; size], _provider: provider })
+        // Use safe_managed_alloc! for capability-based allocation
+        let _provider = safe_managed_alloc!(4096, crate_id)?;
+        Ok(Self { id, crate_id, data: vec![0u8; size] })
     }
 
     fn transfer_to(&mut self, new_crate: CrateId) -> WrtResult<()> {

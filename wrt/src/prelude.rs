@@ -153,32 +153,23 @@ pub use wrt_foundation::clean_types::{
 pub use wrt_platform::{
     BranchTargetIdentification, BtiExceptionLevel, BtiMode, CfiExceptionMode, ControlFlowIntegrity,
 };
-// Re-export from wrt-runtime (runtime execution) - temporarily disabled due to compilation issues
-// TODO: Re-enable after fixing dependency compilation issues in wrt-instructions
-// pub use wrt_runtime::{
-//     // Standard runtime exports
-//     component::{Component, Host, InstanceValue},
-//     execution::ExecutionStats,
-//     func::Function,
-//     global::Global,
-//     memory::Memory,
-//     module::{
-//         Data, Element, Export, ExportItem, ExportKind, Function as RuntimeFunction, Import, Module,
-//         OtherExport,
-//     },
-//     module_instance::ModuleInstance,
-//     stackless::{
-//         StacklessCallbackRegistry, StacklessEngine, StacklessExecutionState, StacklessFrame,
-//     },
-//     table::Table,
-//     // CFI-related exports
-//     CfiEngineStatistics,
-//     CfiExecutionEngine,
-//     CfiExecutionResult,
-//     CfiViolationPolicy,
-//     CfiViolationType,
-//     ExecutionResult,
-// };
+// Re-export from wrt-runtime (runtime execution)
+// Selectively re-export working components to avoid compilation issues
+pub use wrt_runtime::{
+    // Module types
+    module::Module,
+    module_instance::ModuleInstance,
+    // Stackless engine
+    stackless::{
+        StacklessEngine, StacklessExecutionState, StacklessFrame,
+    },
+    // Capability-based engine (when available)
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    engine::{
+        CapabilityEngine, CapabilityAwareEngine, EnginePreset,
+        ModuleHandle, InstanceHandle, EngineBuilder,
+    },
+};
 // Note: wrt-sync exports would go here if available
 // Import synchronization primitives for no_std
 #[cfg(not(feature = "std"))]

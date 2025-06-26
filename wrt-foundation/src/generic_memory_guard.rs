@@ -214,27 +214,15 @@ where
 
     pub fn build(self) -> Result<GenericMemoryGuard<P, C, I>> {
         let provider = self.provider.ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Initialization,
-                codes::INITIALIZATION_ERROR,
-                "Provider not specified",
-            )
+            Error::initialization_error("Provider not specified")
         })?;
 
         let coordinator = self.coordinator.ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Initialization,
-                codes::INITIALIZATION_ERROR,
-                "Coordinator not specified",
-            )
+            Error::initialization_error("Coordinator not specified")
         })?;
 
         let crate_id = self.crate_id.ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Initialization,
-                codes::INITIALIZATION_ERROR,
-                "Crate ID not specified",
-            )
+            Error::initialization_error("Crate ID not specified")
         })?;
 
         GenericMemoryGuard::new(provider, coordinator, crate_id)

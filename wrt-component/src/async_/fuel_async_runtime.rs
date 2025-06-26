@@ -9,7 +9,7 @@ use crate::{
         fuel_resource_cleanup::{GlobalCleanupManager, TaskCleanupGuard},
         fuel_error_context::{AsyncErrorKind, async_error, ContextualError},
     },
-    component_instance::{ComponentInstance, ComponentInstanceId},
+    types::{ComponentInstance, ComponentInstanceId},
     task_manager::TaskId,
     prelude::*,
 };
@@ -196,11 +196,7 @@ impl FuelAsyncRuntime {
     ) -> Result<TaskId> {
         // Check runtime state
         if self.state != RuntimeState::Running && self.state != RuntimeState::Initializing {
-            return Err(Error::new(
-                ErrorCategory::Async,
-                codes::ASYNC_ERROR,
-                "Runtime not in running state",
-            ));
+            return Err(Error::async_executor_state_violation("Runtime not in running state"));
         }
         
         // Check fuel budget
@@ -208,10 +204,7 @@ impl FuelAsyncRuntime {
         
         // Get component instance
         let component = self.components.get(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Component,
-                codes::COMPONENT_NOT_FOUND,
-                "Component not registered",
+            Error::component_resource_lifecycle_error("Component not registered")
             )
         })?.clone();
         
@@ -252,11 +245,7 @@ impl FuelAsyncRuntime {
             // Check global fuel budget
             if self.total_fuel_consumed >= self.global_fuel_budget {
                 self.state = RuntimeState::Error;
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::FUEL_EXHAUSTED,
-                    "Global runtime fuel budget exhausted",
-                ));
+                return Err(Error::async_fuel_exhausted("Global runtime fuel budget exhausted"));
             }
             
             // Poll tasks
@@ -413,11 +402,7 @@ impl FuelAsyncRuntime {
         if let Some(result) = self.task_results.get(&task_id) {
             Ok(result.clone())
         } else {
-            Err(Error::new(
-                ErrorCategory::Async,
-                codes::ASYNC_ERROR,
-                "Task result not available",
-            ))
+            Err(Error::async_task_execution_failed("Task result not available"))
         }
     }
     
@@ -463,11 +448,7 @@ impl FuelAsyncRuntime {
     ) -> Result<u32> {
         // Check if the function export exists
         if !component.has_function_export(function_name) {
-            return Err(Error::new(
-                ErrorCategory::Component,
-                codes::COMPONENT_LINKING_ERROR,
-                format!("Function '{}' not found in component exports", function_name),
-            ));
+            return Err(Error::component_instantiation_runtime_error("Function not found in component exports"));
         }
 
         // Get the function index for the export
@@ -475,19 +456,11 @@ impl FuelAsyncRuntime {
             Some(function_index) => {
                 // Validate that the function index is reasonable
                 if function_index >= 65536 {
-                    return Err(Error::new(
-                        ErrorCategory::Component,
-                        codes::COMPONENT_LINKING_ERROR,
-                        format!("Function index {} out of range for function '{}'", function_index, function_name),
-                    ));
+                    return Err(Error::component_instantiation_runtime_error("Function index out of range"));
                 }
                 Ok(function_index)
             },
-            None => Err(Error::new(
-                ErrorCategory::Component,
-                codes::COMPONENT_LINKING_ERROR,
-                format!("Could not resolve function index for function '{}'", function_name),
-            )),
+            None => Err(Error::component_instantiation_runtime_error("Could not resolve function index")),
         }
     }
     
@@ -501,11 +474,7 @@ impl FuelAsyncRuntime {
         let total_cost = amount.saturating_add(adjusted);
         
         if self.total_fuel_consumed.saturating_add(total_cost) > self.global_fuel_budget {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::FUEL_EXHAUSTED,
-                "Runtime fuel budget exceeded",
-            ));
+            return Err(Error::async_fuel_exhausted("Runtime fuel budget exceeded"));
         }
         
         self.total_fuel_consumed = self.total_fuel_consumed.saturating_add(total_cost);
@@ -579,11 +548,7 @@ impl SimpleAsyncExecutor {
         match self.runtime.run_until_task_complete(task_id)? {
             TaskResult::Completed(result) => Ok(result),
             TaskResult::Failed(error) => Err(Error::from(error)),
-            TaskResult::Cancelled => Err(Error::new(
-                ErrorCategory::Async,
-                codes::ASYNC_CANCELLED,
-                "Task was cancelled",
-            )),
+            TaskResult::Cancelled => Err(Error::async_task_execution_failed("Task was cancelled")),
         }
     }
 }

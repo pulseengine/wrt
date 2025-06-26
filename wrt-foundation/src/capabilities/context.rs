@@ -13,18 +13,13 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
 
-#[cfg(feature = "std")]
-use std::collections::HashMap;
-
-#[cfg(not(feature = "std"))]
-use crate::no_std_hashmap::BoundedHashMap;
-#[cfg(not(feature = "std"))]
-use crate::safe_memory::NoStdProvider;
+// No HashMap needed - always using static arrays for ASIL-A compliance
 
 use crate::{
     budget_aware_provider::CrateId, codes, verification::VerificationLevel, Error, ErrorCategory,
     Result,
 };
+use wrt_error::helpers::memory_limit_exceeded_error;
 
 use super::{
     dynamic::DynamicMemoryCapability, static_alloc::StaticMemoryCapability,
@@ -38,12 +33,12 @@ const MAX_CAPABILITIES: usize = 32;
 ///
 /// This replaces global state with explicit capability injection, ensuring
 /// that all memory operations are capability-gated.
+///
+/// For ASIL-A compliance, this always uses static arrays to avoid any dynamic
+/// memory allocation, even when std is available.
 pub struct MemoryCapabilityContext {
-    /// Map of crate IDs to their capabilities
-    #[cfg(feature = "std")]
-    capabilities: HashMap<CrateId, Box<dyn AnyMemoryCapability>>,
-
-    #[cfg(not(feature = "std"))]
+    /// Static array of capabilities to ensure no dynamic allocation
+    /// Each slot contains an optional (CrateId, Capability) pair
     capabilities: [(Option<CrateId>, Option<Box<dyn AnyMemoryCapability>>); MAX_CAPABILITIES],
 
     /// Default verification level for new capabilities
@@ -106,12 +101,8 @@ impl MemoryCapabilityContext {
     /// Create a new capability context
     pub fn new(default_verification_level: VerificationLevel, runtime_verification: bool) -> Self {
         Self {
-            #[cfg(feature = "std")]
-            capabilities: HashMap::new(),
-
-            #[cfg(not(feature = "std"))]
+            // Always use static array for ASIL-A compliance (no dynamic allocation)
             capabilities: core::array::from_fn(|_| (None, None)),
-
             default_verification_level,
             runtime_verification,
         }
@@ -120,6 +111,11 @@ impl MemoryCapabilityContext {
     /// Create a context with default settings
     pub fn default() -> Self {
         Self::new(VerificationLevel::Standard, false)
+    }
+
+    /// Get the default verification level for this context
+    pub fn default_verification_level(&self) -> VerificationLevel {
+        self.default_verification_level
     }
 
     /// Register a dynamic memory capability for a crate
@@ -160,30 +156,19 @@ impl MemoryCapabilityContext {
         crate_id: CrateId,
         capability: Box<dyn AnyMemoryCapability>,
     ) -> Result<()> {
-        #[cfg(feature = "std")]
-        {
-            self.capabilities.insert(crate_id, capability);
+        // Always use static array logic for ASIL-A compliance
+        // Find an empty slot or replace existing crate capability
+        let mut inserted = false;
+        for (key, value) in self.capabilities.iter_mut() {
+            if key.is_none() || *key == Some(crate_id) {
+                *key = Some(crate_id);
+                *value = Some(capability);
+                inserted = true;
+                break;
+            }
         }
-
-        #[cfg(not(feature = "std"))]
-        {
-            // Find an empty slot or replace existing crate capability
-            let mut inserted = false;
-            for (key, value) in self.capabilities.iter_mut() {
-                if key.is_none() || *key == Some(crate_id) {
-                    *key = Some(crate_id);
-                    *value = Some(capability);
-                    inserted = true;
-                    break;
-                }
-            }
-            if !inserted {
-                return Err(Error::new(
-                    ErrorCategory::Capacity,
-                    codes::CAPACITY_EXCEEDED,
-                    "Maximum number of capabilities exceeded",
-                ));
-            }
+        if !inserted {
+            return Err(memory_limit_exceeded_error("Maximum number of capabilities exceeded"));
         }
 
         Ok(())
@@ -191,25 +176,15 @@ impl MemoryCapabilityContext {
 
     /// Get a capability for a crate
     pub fn get_capability(&self, crate_id: CrateId) -> Result<&dyn AnyMemoryCapability> {
-        #[cfg(feature = "std")]
-        {
-            self.capabilities
-                .get(&crate_id)
-                .map(|cap| cap.as_ref())
-                .ok_or_else(|| Error::no_capability("No capability found for crate"))
-        }
-
-        #[cfg(not(feature = "std"))]
-        {
-            for (key, value) in self.capabilities.iter() {
-                if *key == Some(crate_id) {
-                    if let Some(ref cap) = value {
-                        return Ok(cap.as_ref());
-                    }
+        // Always use static array logic for ASIL-A compliance
+        for (key, value) in self.capabilities.iter() {
+            if *key == Some(crate_id) {
+                if let Some(ref cap) = value {
+                    return Ok(cap.as_ref());
                 }
             }
-            Err(Error::no_capability("No capability found for crate"))
         }
+        Err(Error::no_capability("No capability found for crate"))
     }
 
     /// Verify that a crate can perform a memory operation
@@ -242,65 +217,37 @@ impl MemoryCapabilityContext {
 
     /// Remove a capability for a crate
     pub fn remove_capability(&mut self, crate_id: CrateId) -> Result<()> {
-        #[cfg(feature = "std")]
-        {
-            self.capabilities
-                .remove(&crate_id)
-                .ok_or_else(|| Error::no_capability("No capability found for crate"))?;
+        // Always use static array logic for ASIL-A compliance
+        let mut found = false;
+        for (key, value) in self.capabilities.iter_mut() {
+            if *key == Some(crate_id) {
+                *key = None;
+                *value = None;
+                found = true;
+                break;
+            }
         }
-
-        #[cfg(not(feature = "std"))]
-        {
-            let mut found = false;
-            for (key, value) in self.capabilities.iter_mut() {
-                if *key == Some(crate_id) {
-                    *key = None;
-                    *value = None;
-                    found = true;
-                    break;
-                }
-            }
-            if !found {
-                return Err(Error::no_capability("No capability found for crate"));
-            }
+        if !found {
+            return Err(Error::no_capability("No capability found for crate"));
         }
         Ok(())
     }
 
     /// Get the number of registered capabilities
     pub fn capability_count(&self) -> usize {
-        #[cfg(feature = "std")]
-        {
-            self.capabilities.len()
-        }
-
-        #[cfg(not(feature = "std"))]
-        {
-            self.capabilities.iter().filter(|(key, _)| key.is_some()).count()
-        }
+        // Always use static array logic for ASIL-A compliance
+        self.capabilities.iter().filter(|(key, _)| key.is_some()).count()
     }
 
     /// Check if a crate has a registered capability
     pub fn has_capability(&self, crate_id: CrateId) -> bool {
-        #[cfg(feature = "std")]
-        {
-            self.capabilities.contains_key(&crate_id)
-        }
-
-        #[cfg(not(feature = "std"))]
-        {
-            self.capabilities.iter().any(|(key, value)| *key == Some(crate_id) && value.is_some())
-        }
+        // Always use static array logic for ASIL-A compliance
+        self.capabilities.iter().any(|(key, value)| *key == Some(crate_id) && value.is_some())
     }
 
     /// List all registered crate IDs
-    #[cfg(feature = "std")]
-    pub fn registered_crates(&self) -> Vec<CrateId> {
-        self.capabilities.keys().copied().collect()
-    }
-
-    #[cfg(not(feature = "std"))]
-    pub fn registered_crates(&self) -> Result<[Option<CrateId>; MAX_CAPABILITIES]> {
+    /// Returns a static array to avoid any dynamic allocation
+    pub fn registered_crates(&self) -> [Option<CrateId>; MAX_CAPABILITIES] {
         let mut result = [None; MAX_CAPABILITIES];
         let mut index = 0;
 
@@ -315,7 +262,7 @@ impl MemoryCapabilityContext {
             }
         }
 
-        Ok(result)
+        result
     }
 }
 

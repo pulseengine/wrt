@@ -167,16 +167,8 @@ impl StacklessFrame {
     fn pop_value(engine: &mut StacklessEngine) -> Result<Value> {
         match engine.exec_stack.values.pop() {
             Ok(Some(value)) => Ok(value),
-            Ok(None) => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::STACK_UNDERFLOW,
-                "Stack underflow"
-            )),
-            Err(_) => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::STACK_UNDERFLOW,
-                "Stack operation error"
-            )),
+            Ok(None) => Err(Error::runtime_stack_underflow("Stack underflow")),
+            Err(_) => Err(Error::runtime_stack_underflow("Stack operation error")),
         }
     }
 
@@ -185,11 +177,7 @@ impl StacklessFrame {
         let value = Self::pop_value(engine)?;
         match value {
             Value::I32(i) => Ok(i),
-            _ => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::TYPE_MISMATCH_ERROR,
-                "Expected i32 value"
-            )),
+            _ => Err(Error::runtime_type_mismatch("Expected i32 value")),
         }
     }
 
@@ -198,11 +186,7 @@ impl StacklessFrame {
         let value = Self::pop_value(engine)?;
         match value {
             Value::I64(i) => Ok(i),
-            _ => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::TYPE_MISMATCH_ERROR,
-                "Expected i64 value"
-            )),
+            _ => Err(Error::runtime_type_mismatch("Expected i64 value")),
         }
     }
 
@@ -211,11 +195,7 @@ impl StacklessFrame {
         let value = Self::pop_value(engine)?;
         match value {
             Value::F32(f) => Ok(f.value()),
-            _ => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::TYPE_MISMATCH_ERROR,
-                "Expected f32 value"
-            )),
+            _ => Err(Error::runtime_type_mismatch("Expected f32 value")),
         }
     }
 
@@ -224,11 +204,7 @@ impl StacklessFrame {
         let value = Self::pop_value(engine)?;
         match value {
             Value::F64(f) => Ok(f.value()),
-            _ => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::TYPE_MISMATCH_ERROR,
-                "Expected f64 value"
-            )),
+            _ => Err(Error::runtime_type_mismatch("Expected f64 value")),
         }
     }
 }
@@ -263,7 +239,8 @@ impl StacklessFrame {
 
         #[cfg(not(feature = "std"))]
         let mut locals_vec = {
-            let mut bounded_vec = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?;
+            let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+            let mut bounded_vec = wrt_foundation::bounded::BoundedVec::new(provider)?;
             for value in invocation_inputs.iter() {
                 bounded_vec.push(value.clone())?;
             }
@@ -286,21 +263,13 @@ impl StacklessFrame {
                 }
             }
         } else {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::FUNCTION_NOT_FOUND,
-                "Function body not found",
-            ));
+            return Err(Error::runtime_function_not_found("Function body not found"));
         }
 
         let locals = locals_vec;
 
         if locals.len() > max_locals {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_STATE,
-                "Too many locals for configured max_locals",
-            ));
+            return Err(Error::validation_invalid_state("Too many locals for configured max_locals"));
         }
 
         Ok(Self {
@@ -369,25 +338,18 @@ impl FrameBehavior for StacklessFrame {
                 #[cfg(feature = "std")]
                 return Ok(ControlFlow::Return { values: Vec::new() });
                 #[cfg(not(feature = "std"))]
-                return Ok(ControlFlow::Return { 
-                    values: wrt_foundation::bounded::BoundedVec::new(
-                        wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
-                    ).unwrap() 
-                });
+                {
+                    let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+                    return Ok(ControlFlow::Return { 
+                        values: wrt_foundation::bounded::BoundedVec::new(provider)? 
+                    });
+                }
             } else {
-                return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::RUNTIME_ERROR,
-                    "Function ended without returning expected values",
-                ));
+                return Err(Error::runtime_error("Function ended without returning expected values"));
             }
         }
 
-        let instruction = instructions.get(self.pc).map_err(|_| Error::new(
-            ErrorCategory::Runtime,
-            codes::RUNTIME_ERROR,
-            "Invalid program counter",
-        ))?;
+        let instruction = instructions.get(self.pc).map_err(|_| Error::runtime_error("Invalid program counter"))?;
         self.pc += 1;
 
         // --- Execute Instruction ---
@@ -395,10 +357,7 @@ impl FrameBehavior for StacklessFrame {
         // For now, a placeholder.
         use wrt_foundation::types::Instruction;
         match instruction {
-            Instruction::Unreachable => Ok(ControlFlow::Trap(Error::new(
-                ErrorCategory::Runtime,
-                codes::RUNTIME_TRAP_ERROR,
-                "Unreachable instruction executed",
+            Instruction::Unreachable => Ok(ControlFlow::Trap(Error::runtime_execution_error(",
             ))),
             Instruction::Nop => Ok(ControlFlow::Next),
             Instruction::Block { block_type_idx } => {
@@ -412,7 +371,7 @@ impl FrameBehavior for StacklessFrame {
                     arity: 0, // Should be determined from block type
                 };
                 
-                #[cfg(feature = "std")]
+                #[cfg(feature = ")]
                 self.block_depths.push(block_context);
                 #[cfg(not(feature = "std"))]
                 {
@@ -426,7 +385,7 @@ impl FrameBehavior for StacklessFrame {
                         }
                     }
                     if !found {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Too many nested blocks"));
+                        return Err(Error::runtime_stack_overflow("Too many nested blocks"));
                     }
                 }
                 
@@ -458,7 +417,7 @@ impl FrameBehavior for StacklessFrame {
                         }
                     }
                     if !found {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Too many nested blocks"));
+                        return Err(Error::runtime_stack_overflow("Too many nested blocks"));
                     }
                 }
                 
@@ -467,12 +426,12 @@ impl FrameBehavior for StacklessFrame {
             Instruction::If { block_type_idx } => {
                 // Pop condition from stack
                 let condition_val_opt = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let condition = match condition_val_opt {
                     Some(Value::I32(val)) => val != 0,
-                    Some(_) => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "If condition not i32")),
-                    None => return Err(Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")),
+                    Some(_) => return Err(Error::validation_error("If condition not i32")),
+                    None => return Err(Error::runtime_stack_underflow("Stack underflow")),
                 };
                 
                 // Enter If block scope
@@ -499,7 +458,7 @@ impl FrameBehavior for StacklessFrame {
                         }
                     }
                     if !found {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Too many nested blocks"));
+                        return Err(Error::runtime_stack_overflow("Too many nested blocks"));
                     }
                 }
                 
@@ -509,22 +468,14 @@ impl FrameBehavior for StacklessFrame {
                 } else {
                     // Jump to else or end - for now, we'll need to scan forward to find it
                     // This is a simplified implementation
-                    return Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::NOT_IMPLEMENTED,
-                        "If false branch - need to implement else/end scanning"
-                    ))
+                    return Err(Error::runtime_not_implemented("If false branch - need to implement else/end scanning"))
                 }
             }
             Instruction::Else => {
                 // TODO: Jump to end of current If block's 'then' part.
                 // let current_block = self.block_depths.last().ok_or_else(...)?;
                 // self.pc = current_block.end_pc;
-                Ok(ControlFlow::Trap(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::NOT_IMPLEMENTED,
-                    "Else instruction not implemented"
-                )))
+                Ok(ControlFlow::Trap(Error::runtime_not_implemented("Else instruction not implemented")))
             }
             Instruction::End => {
                 // Check if this is the end of the function itself or a nested block
@@ -541,16 +492,12 @@ impl FrameBehavior for StacklessFrame {
                     #[cfg(feature = "std")]
                     let mut return_values = ValueStackVec::with_capacity(self.arity);
                     #[cfg(not(feature = "std"))]
-                    let mut return_values = wrt_foundation::bounded::BoundedVec::new(
-                        wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
-                    ).unwrap();
-                    for _ in 0..self.arity {
+                    {
+                        let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+                        let mut return_values = wrt_foundation::bounded::BoundedVec::new(provider)?;
+                        for _ in 0..self.arity {
                         let value = engine.exec_stack.values.pop().map_err(|e| {
-                            Error::new(
-                                ErrorCategory::Runtime,
-                                codes::STACK_UNDERFLOW,
-                                "Stack operation error",
-                            )
+                            Error::runtime_stack_underflow("Stack operation error")
                         })?;
                         match value {
                             Some(v) => {
@@ -559,21 +506,18 @@ impl FrameBehavior for StacklessFrame {
                                 #[cfg(not(feature = "std"))]
                                 return_values.push(v)?;
                             }
-                            None => return Err(Error::new(
-                                ErrorCategory::Runtime,
-                                codes::STACK_UNDERFLOW,
-                                "Stack underflow during return",
-                            )),
+                            None => return Err(Error::runtime_stack_underflow("Stack underflow during return")),
                         }
+                        }
+                        return_values.reverse(); // Values are popped in reverse order
+                        return Ok(ControlFlow::Return { values: return_values });
                     }
-                    return_values.reverse(); // Values are popped in reverse order
-                    return Ok(ControlFlow::Return { values: return_values });
                 } else {
                     // Pop the most recent block context
                     #[cfg(feature = "std")]
                     {
                         let _block_context = self.block_depths.pop().ok_or_else(|| {
-                            Error::new(ErrorCategory::Runtime, codes::INVALID_STATE, "No block to end")
+                            Error::runtime_invalid_state("No block to end")
                         })?;
                     }
                     #[cfg(not(feature = "std"))]
@@ -588,7 +532,7 @@ impl FrameBehavior for StacklessFrame {
                             }
                         }
                         if !found {
-                            return Err(Error::new(ErrorCategory::Runtime, codes::INVALID_STATE, "No block to end"));
+                            return Err(Error::runtime_invalid_state("No block to end"));
                         }
                     }
                     
@@ -603,12 +547,12 @@ impl FrameBehavior for StacklessFrame {
             Instruction::BrIf(label_idx) => {
                 // Pop condition from stack
                 let condition_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let condition = match condition_val {
                     Some(Value::I32(val)) => val != 0,
-                    Some(_) => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "BrIf condition not i32")),
-                    None => return Err(Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")),
+                    Some(_) => return Err(Error::validation_error("BrIf condition not i32")),
+                    None => return Err(Error::runtime_stack_underflow("Stack underflow")),
                 };
                 
                 if condition {
@@ -624,16 +568,12 @@ impl FrameBehavior for StacklessFrame {
                 #[cfg(feature = "std")]
                 let mut return_values = ValueStackVec::with_capacity(self.arity);
                 #[cfg(not(feature = "std"))]
-                let mut return_values = wrt_foundation::bounded::BoundedVec::new(
-                    wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
-                ).unwrap();
-                for _ in 0..self.arity {
+                {
+                    let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+                    let mut return_values = wrt_foundation::bounded::BoundedVec::new(provider)?;
+                    for _ in 0..self.arity {
                     let value = engine.exec_stack.values.pop().map_err(|e| {
-                        Error::new(
-                            ErrorCategory::Runtime,
-                            codes::STACK_UNDERFLOW,
-                            "Stack operation error",
-                        )
+                        Error::runtime_stack_underflow("Stack operation error")
                     })?;
                     match value {
                         Some(v) => {
@@ -642,15 +582,12 @@ impl FrameBehavior for StacklessFrame {
                             #[cfg(not(feature = "std"))]
                             return_values.push(v)?;
                         }
-                        None => return Err(Error::new(
-                            ErrorCategory::Runtime,
-                            codes::STACK_UNDERFLOW,
-                            "Stack underflow during return",
-                        )),
+                        None => return Err(Error::runtime_stack_underflow("Stack underflow during return")),
                     }
+                    }
+                    return_values.reverse();
+                    Ok(ControlFlow::Return { values: return_values })
                 }
-                return_values.reverse();
-                Ok(ControlFlow::Return { values: return_values })
             }
             Instruction::Call(func_idx_val) => {
                 // Get the target function type to know how many arguments to pop
@@ -658,14 +595,14 @@ impl FrameBehavior for StacklessFrame {
                 #[cfg(feature = "std")]
                 let mut args = ValueStackVec::with_capacity(target_func_type.params.len());
                 #[cfg(not(feature = "std"))]
-                let mut args = wrt_foundation::bounded::BoundedVec::new(
-                    wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
-                ).unwrap();
-                
-                // Pop arguments from stack in reverse order (last param first)
-                for _ in 0..target_func_type.params.len() {
+                {
+                    let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+                    let mut args = wrt_foundation::bounded::BoundedVec::new(provider)?;
+                    
+                    // Pop arguments from stack in reverse order (last param first)
+                    for _ in 0..target_func_type.params.len() {
                     let value = engine.exec_stack.values.pop().map_err(|e| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                        Error::runtime_stack_underflow("Stack operation error")
                     })?;
                     match value {
                         Some(v) => {
@@ -674,64 +611,61 @@ impl FrameBehavior for StacklessFrame {
                             #[cfg(not(feature = "std"))]
                             args.push(v)?;
                         }
-                        None => return Err(Error::new(
-                            ErrorCategory::Runtime,
-                            codes::STACK_UNDERFLOW,
-                            "Stack underflow during call",
-                        )),
+                        None => return Err(Error::runtime_stack_underflow("Stack underflow during call")),
                     }
+                    }
+                    args.reverse(); // Restore correct argument order
+                    
+                    Ok(ControlFlow::Call { func_idx: func_idx_val, inputs: args })
                 }
-                args.reverse(); // Restore correct argument order
-                
-                Ok(ControlFlow::Call { func_idx: func_idx_val, inputs: args })
             }
             Instruction::CallIndirect(type_idx, table_idx) => {
                 // 1. Pop function index from stack
                 let elem_idx_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let elem_idx = match elem_idx_val {
                     Some(Value::I32(val)) => val as u32,
-                    Some(_) => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "CallIndirect index not i32")),
-                    None => return Err(Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")),
+                    Some(_) => return Err(Error::validation_error("CallIndirect index not i32")),
+                    None => return Err(Error::runtime_stack_underflow("Stack underflow")),
                 };
                 
                 // 2. Get table and validate index
                 let table = self.module_instance.table(table_idx)?;
                 let func_ref_opt = table.get(elem_idx)?;
                 let func_ref = func_ref_opt.ok_or_else(|| {
-                    Error::new(ErrorCategory::Runtime, codes::RUNTIME_TRAP_ERROR, "CallIndirect: null function reference")
+                    Error::runtime_trap("CallIndirect: null function reference")
                 })?;
                 
                 // 3. Extract function index from the function reference
                 let actual_func_idx = match func_ref {
                     Value::FuncRef(Some(func_ref)) => func_ref.index,
-                    Value::FuncRef(None) => return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_TRAP_ERROR, "CallIndirect: null function reference")),
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "CallIndirect: table element not a function reference")),
+                    Value::FuncRef(None) => return Err(Error::runtime_trap("CallIndirect: null function reference")),
+                    _ => return Err(Error::validation_error("CallIndirect: table element not a function reference")),
                 };
                 
                 // 4. Type checking - get expected type and actual type
                 let expected_func_type = self.module_instance.module().types.get(type_idx as usize).map_err(|_| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH, "CallIndirect: invalid type index")
+                    Error::validation_error("CallIndirect: invalid type index")
                 })?;
                 let actual_func_type = self.module_instance.function_type(actual_func_idx)?;
                 
                 // 5. Verify type compatibility (simplified check)
                 if expected_func_type.params.len() != actual_func_type.params.len() ||
                    expected_func_type.results.len() != actual_func_type.results.len() {
-                    return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH, "CallIndirect: function signature mismatch"));
+                    return Err(Error::validation_error("CallIndirect: function signature mismatch"));
                 }
                 
                 // 6. Pop arguments from stack
                 #[cfg(feature = "std")]
                 let mut args = ValueStackVec::with_capacity(actual_func_type.params.len());
                 #[cfg(not(feature = "std"))]
-                let mut args = wrt_foundation::bounded::BoundedVec::new(
-                    wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
-                ).unwrap();
-                for _ in 0..actual_func_type.params.len() {
+                {
+                    let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+                    let mut args = wrt_foundation::bounded::BoundedVec::new(provider)?;
+                    for _ in 0..actual_func_type.params.len() {
                     let value = engine.exec_stack.values.pop().map_err(|e| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                        Error::runtime_stack_underflow("Stack operation error")
                     })?;
                     match value {
                         Some(v) => {
@@ -740,67 +674,43 @@ impl FrameBehavior for StacklessFrame {
                             #[cfg(not(feature = "std"))]
                             args.push(v)?;
                         }
-                        None => return Err(Error::new(
-                            ErrorCategory::Runtime,
-                            codes::STACK_UNDERFLOW,
-                            "Stack underflow during call indirect",
-                        )),
+                        None => return Err(Error::runtime_stack_underflow("Stack underflow during call indirect")),
                     }
+                    }
+                    args.reverse(); // Restore correct argument order
+                    
+                    Ok(ControlFlow::Call { func_idx: actual_func_idx, inputs: args })
                 }
-                args.reverse(); // Restore correct argument order
-                
-                Ok(ControlFlow::Call { func_idx: actual_func_idx, inputs: args })
             }
 
             // Local variable instructions
             Instruction::LocalGet(local_idx) => {
                 let value = self.locals.get(local_idx as usize).ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::INVALID_VALUE,
-                        "Invalid local index for get",
+                    Error::runtime_execution_error(",
                     )
                 })?;
                 engine.exec_stack.values.push(value.clone()).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::STACK_OVERFLOW,
-                        "Stack overflow on local.get",
-                    )
+                    Error::runtime_stack_overflow(")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::LocalSet(local_idx) => {
                 let value = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::STACK_UNDERFLOW,
-                        "Stack underflow on local.set",
-                    )
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty on local.set",
-                ))?;
+                    Error::runtime_stack_underflow("Stack underflow on local.set")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty on local.set"))?;
                 // Handle both Vec and BoundedVec cases
                 #[cfg(feature = "std")]
                 {
                     if local_idx as usize >= self.locals.len() {
-                        return Err(Error::new(
-                            ErrorCategory::Runtime,
-                            codes::INVALID_VALUE,
-                            "Invalid local index for set",
+                        return Err(Error::runtime_execution_error(",
                         ));
                     }
                     self.locals[local_idx as usize] = value;
                 }
-                #[cfg(not(feature = "std"))]
+                #[cfg(not(feature = "))]
                 {
                     self.locals.set(local_idx as usize, value).map_err(|e| {
-                        Error::new(
-                            ErrorCategory::Runtime,
-                            codes::INVALID_VALUE,
-                            "Invalid local index for set",
+                        Error::runtime_execution_error(",
                         )
                     })?;
                 }
@@ -814,24 +724,18 @@ impl FrameBehavior for StacklessFrame {
                     .get(engine.exec_stack.values.len() - 1).unwrap()
                     .clone();
                 // Handle both Vec and BoundedVec cases
-                #[cfg(feature = "std")]
+                #[cfg(feature = ")]
                 {
                     if local_idx as usize >= self.locals.len() {
-                        return Err(Error::new(
-                            ErrorCategory::Runtime,
-                            codes::INVALID_VALUE,
-                            "Invalid local index for tee",
+                        return Err(Error::runtime_execution_error(",
                         ));
                     }
                     self.locals[local_idx as usize] = value;
                 }
-                #[cfg(not(feature = "std"))]
+                #[cfg(not(feature = "))]
                 {
                     self.locals.set(local_idx as usize, value).map_err(|e| {
-                        Error::new(
-                            ErrorCategory::Runtime,
-                            codes::INVALID_VALUE,
-                            "Invalid local index for tee",
+                        Error::runtime_execution_error(",
                         )
                     })?;
                 }
@@ -842,34 +746,18 @@ impl FrameBehavior for StacklessFrame {
             Instruction::GlobalGet(global_idx) => {
                 let global = self.module_instance.global(global_idx)?;
                 engine.exec_stack.values.push(global.get_value().clone()).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::STACK_OVERFLOW,
-                        "Stack overflow on global.get",
-                    )
+                    Error::runtime_stack_overflow(")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::GlobalSet(global_idx) => {
                 let global = self.module_instance.global(global_idx)?;
                 if !global.is_mutable() {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "Cannot set immutable global",
-                    ));
+                    return Err(Error::validation_error("Cannot set immutable global"));
                 }
                 let value = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::STACK_UNDERFLOW,
-                        "Stack underflow on global.set",
-                    )
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty on global.set",
-                ))?;
+                    Error::runtime_stack_underflow("Stack underflow on global.set")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty on global.set"))?;
                 global.set_value(&value)?;
                 Ok(ControlFlow::Next)
             }
@@ -878,31 +766,19 @@ impl FrameBehavior for StacklessFrame {
             Instruction::TableGet(table_idx) => {
                 let table = self.module_instance.table(table_idx)?;
                 let elem_idx_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::STACK_UNDERFLOW,
-                        "Stack underflow for TableGet index",
-                    )
+                    Error::runtime_stack_underflow("Stack underflow for TableGet index")
                 })?;
                 let elem_idx = match elem_idx_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "TableGet index not i32")),
+                    _ => return Err(Error::type_error("TableGet index not i32")),
                 };
 
                 match table.get(elem_idx)? {
                     Some(val) => engine.exec_stack.values.push(val).map_err(|e| {
-                        Error::new(
-                            ErrorCategory::Runtime,
-                            codes::STACK_OVERFLOW,
-                            "Stack overflow on TableGet",
-                        )
+                        Error::runtime_stack_overflow("Stack overflow on TableGet")
                     })?,
                     None => {
-                        return Err(Error::new(
-                            ErrorCategory::Runtime,
-                            codes::OUT_OF_BOUNDS_ERROR,
-                            "TableGet returned None (null ref or OOB)",
-                        ))
+                        return Err(Error::runtime_out_of_bounds("TableGet returned None (null ref or OOB)"))
                     } // Or specific error for null if needed
                 }
                 Ok(ControlFlow::Next)
@@ -910,21 +786,13 @@ impl FrameBehavior for StacklessFrame {
             Instruction::TableSet(table_idx) => {
                 let table = self.module_instance.table(table_idx)?;
                 let val_to_set = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::STACK_UNDERFLOW,
-                        "Stack underflow for TableSet value",
-                    )
+                    Error::runtime_stack_underflow("Stack underflow for TableSet value")
                 })?;
                 let elem_idx_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::STACK_UNDERFLOW,
-                        "Stack operation error",
-                    )
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let elem_idx = elem_idx_val.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "TableSet index not i32")
+                    Error::type_error("TableSet index not i32")
                 })? as u32;
 
                 // TODO: Type check val_to_set against table.element_type()
@@ -934,45 +802,25 @@ impl FrameBehavior for StacklessFrame {
             Instruction::TableSize(table_idx) => {
                 let table = self.module_instance.table(table_idx)?;
                 engine.exec_stack.values.push(Value::I32(table.size() as i32)).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::STACK_OVERFLOW,
-                        "Stack operation error",
-                    )
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::TableGrow(table_idx) => {
                 let table = self.module_instance.table(table_idx)?;
                 let init_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::STACK_UNDERFLOW,
-                        "Stack operation error",
-                    )
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty for table init value",
-                ))?;
+                    Error::runtime_stack_underflow("Stack operation error")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty for table init value"))?;
                 let delta_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::STACK_UNDERFLOW,
-                        "Stack operation error",
-                    )
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let delta = delta_val.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "TableGrow delta not i32")
+                    Error::type_error("TableGrow delta not i32")
                 })? as u32;
 
                 let old_size = table.grow(delta, init_val)?;
                 engine.exec_stack.values.push(Value::I32(old_size as i32)).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::STACK_OVERFLOW,
-                        "Stack operation error",
-                    )
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -1002,22 +850,22 @@ impl FrameBehavior for StacklessFrame {
             //          `push(value)`
             Instruction::I32Load(mem_arg) => {
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Load address not i32")),
+                    _ => return Err(Error::validation_error("I32Load address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I32Load address overflow")
+                    Error::memory_error("I32Load address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?; // Assuming memory index 0
                 
                 // Check bounds
                 if effective_addr.checked_add(4).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I32Load out of bounds"));
+                    return Err(Error::memory_error("I32Load out of bounds"));
                 }
                 
                 // Read 4 bytes as little-endian i32
@@ -1026,27 +874,27 @@ impl FrameBehavior for StacklessFrame {
                 let value = i32::from_le_bytes(bytes);
                 
                 engine.exec_stack.values.push(Value::I32(value)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Load(mem_arg) => {
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Load address not i32")),
+                    _ => return Err(Error::validation_error("I64Load address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Load address overflow")
+                    Error::memory_error("I64Load address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr.checked_add(8).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Load out of bounds"));
+                    return Err(Error::memory_error("I64Load out of bounds"));
                 }
                 
                 let mut bytes = [0u8; 8];
@@ -1054,27 +902,27 @@ impl FrameBehavior for StacklessFrame {
                 let value = i64::from_le_bytes(bytes);
                 
                 engine.exec_stack.values.push(Value::I64(value)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Load(mem_arg) => {
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Load address not i32")),
+                    _ => return Err(Error::validation_error("F32Load address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "F32Load address overflow")
+                    Error::memory_error("F32Load address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr.checked_add(4).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "F32Load out of bounds"));
+                    return Err(Error::memory_error("F32Load out of bounds"));
                 }
                 
                 let mut bytes = [0u8; 4];
@@ -1083,27 +931,27 @@ impl FrameBehavior for StacklessFrame {
                 let value = f32::from_bits(bits);
                 
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(bits))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Load(mem_arg) => {
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Load address not i32")),
+                    _ => return Err(Error::validation_error("F64Load address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "F64Load address overflow")
+                    Error::memory_error("F64Load address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr.checked_add(8).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "F64Load out of bounds"));
+                    return Err(Error::memory_error("F64Load out of bounds"));
                 }
                 
                 let mut bytes = [0u8; 8];
@@ -1112,27 +960,27 @@ impl FrameBehavior for StacklessFrame {
                 let value = f64::from_bits(bits);
                 
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(bits))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32Load8S(mem_arg) => {
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Load8S address not i32")),
+                    _ => return Err(Error::validation_error("I32Load8S address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I32Load8S address overflow")
+                    Error::memory_error("I32Load8S address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr as usize >= memory.size_in_bytes() {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I32Load8S out of bounds"));
+                    return Err(Error::memory_error("I32Load8S out of bounds"));
                 }
                 
                 let mut byte = [0u8; 1];
@@ -1141,27 +989,27 @@ impl FrameBehavior for StacklessFrame {
                 let value = byte[0] as i8 as i32;
                 
                 engine.exec_stack.values.push(Value::I32(value)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32Load8U(mem_arg) => {
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Load8U address not i32")),
+                    _ => return Err(Error::validation_error("I32Load8U address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I32Load8U address overflow")
+                    Error::memory_error("I32Load8U address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr as usize >= memory.size_in_bytes() {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I32Load8U out of bounds"));
+                    return Err(Error::memory_error("I32Load8U out of bounds"));
                 }
                 
                 let mut byte = [0u8; 1];
@@ -1170,27 +1018,27 @@ impl FrameBehavior for StacklessFrame {
                 let value = byte[0] as i32;
                 
                 engine.exec_stack.values.push(Value::I32(value)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32Load16S(mem_arg) => {
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Load16S address not i32")),
+                    _ => return Err(Error::validation_error("I32Load16S address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I32Load16S address overflow")
+                    Error::memory_error("I32Load16S address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr.checked_add(2).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I32Load16S out of bounds"));
+                    return Err(Error::memory_error("I32Load16S out of bounds"));
                 }
                 
                 let mut bytes = [0u8; 2];
@@ -1199,27 +1047,27 @@ impl FrameBehavior for StacklessFrame {
                 let value = i16::from_le_bytes(bytes) as i32;
                 
                 engine.exec_stack.values.push(Value::I32(value)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32Load16U(mem_arg) => {
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Load16U address not i32")),
+                    _ => return Err(Error::validation_error("I32Load16U address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I32Load16U address overflow")
+                    Error::memory_error("I32Load16U address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr.checked_add(2).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I32Load16U out of bounds"));
+                    return Err(Error::memory_error("I32Load16U out of bounds"));
                 }
                 
                 let mut bytes = [0u8; 2];
@@ -1228,27 +1076,27 @@ impl FrameBehavior for StacklessFrame {
                 let value = u16::from_le_bytes(bytes) as i32;
                 
                 engine.exec_stack.values.push(Value::I32(value)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Load8S(mem_arg) => {
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Load8S address not i32")),
+                    _ => return Err(Error::validation_error("I64Load8S address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Load8S address overflow")
+                    Error::memory_error("I64Load8S address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr as usize >= memory.size_in_bytes() {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Load8S out of bounds"));
+                    return Err(Error::memory_error("I64Load8S out of bounds"));
                 }
                 
                 let mut bytes = [0u8; 1];
@@ -1256,27 +1104,27 @@ impl FrameBehavior for StacklessFrame {
                 let value = i8::from_le_bytes(bytes) as i64; // Sign extend
                 
                 engine.exec_stack.values.push(Value::I64(value)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Load8U(mem_arg) => {
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Load8U address not i32")),
+                    _ => return Err(Error::validation_error("I64Load8U address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Load8U address overflow")
+                    Error::memory_error("I64Load8U address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr as usize >= memory.size_in_bytes() {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Load8U out of bounds"));
+                    return Err(Error::memory_error("I64Load8U out of bounds"));
                 }
                 
                 let mut bytes = [0u8; 1];
@@ -1284,27 +1132,27 @@ impl FrameBehavior for StacklessFrame {
                 let value = u8::from_le_bytes(bytes) as i64; // Zero extend
                 
                 engine.exec_stack.values.push(Value::I64(value)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Load16S(mem_arg) => {
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Load16S address not i32")),
+                    _ => return Err(Error::validation_error("I64Load16S address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Load16S address overflow")
+                    Error::memory_error("I64Load16S address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr.checked_add(2).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Load16S out of bounds"));
+                    return Err(Error::memory_error("I64Load16S out of bounds"));
                 }
                 
                 let mut bytes = [0u8; 2];
@@ -1312,27 +1160,27 @@ impl FrameBehavior for StacklessFrame {
                 let value = i16::from_le_bytes(bytes) as i64; // Sign extend
                 
                 engine.exec_stack.values.push(Value::I64(value)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Load16U(mem_arg) => {
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Load16U address not i32")),
+                    _ => return Err(Error::validation_error("I64Load16U address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Load16U address overflow")
+                    Error::memory_error("I64Load16U address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr.checked_add(2).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Load16U out of bounds"));
+                    return Err(Error::memory_error("I64Load16U out of bounds"));
                 }
                 
                 let mut bytes = [0u8; 2];
@@ -1340,27 +1188,27 @@ impl FrameBehavior for StacklessFrame {
                 let value = u16::from_le_bytes(bytes) as i64; // Zero extend
                 
                 engine.exec_stack.values.push(Value::I64(value)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Load32S(mem_arg) => {
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Load32S address not i32")),
+                    _ => return Err(Error::validation_error("I64Load32S address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Load32S address overflow")
+                    Error::memory_error("I64Load32S address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr.checked_add(4).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Load32S out of bounds"));
+                    return Err(Error::memory_error("I64Load32S out of bounds"));
                 }
                 
                 let mut bytes = [0u8; 4];
@@ -1368,27 +1216,27 @@ impl FrameBehavior for StacklessFrame {
                 let value = i32::from_le_bytes(bytes) as i64; // Sign extend
                 
                 engine.exec_stack.values.push(Value::I64(value)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Load32U(mem_arg) => {
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Load32U address not i32")),
+                    _ => return Err(Error::validation_error("I64Load32U address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Load32U address overflow")
+                    Error::memory_error("I64Load32U address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr.checked_add(4).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Load32U out of bounds"));
+                    return Err(Error::memory_error("I64Load32U out of bounds"));
                 }
                 
                 let mut bytes = [0u8; 4];
@@ -1396,36 +1244,36 @@ impl FrameBehavior for StacklessFrame {
                 let value = u32::from_le_bytes(bytes) as i64; // Zero extend
                 
                 engine.exec_stack.values.push(Value::I64(value)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
 
             Instruction::I32Store(mem_arg) => {
                 let value_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let value = match value_val {
                     Some(Value::I32(val)) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Store value not i32")),
+                    _ => return Err(Error::validation_error("I32Store value not i32")),
                 };
                 
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Store address not i32")),
+                    _ => return Err(Error::validation_error("I32Store address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I32Store address overflow")
+                    Error::memory_error("I32Store address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr.checked_add(4).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I32Store out of bounds"));
+                    return Err(Error::memory_error("I32Store out of bounds"));
                 }
                 
                 let bytes = value.to_le_bytes();
@@ -1434,29 +1282,29 @@ impl FrameBehavior for StacklessFrame {
             }
             Instruction::I64Store(mem_arg) => {
                 let value_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let value = match value_val {
                     Some(Value::I64(val)) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Store value not i64")),
+                    _ => return Err(Error::validation_error("I64Store value not i64")),
                 };
                 
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Store address not i32")),
+                    _ => return Err(Error::validation_error("I64Store address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Store address overflow")
+                    Error::memory_error("I64Store address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr.checked_add(8).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Store out of bounds"));
+                    return Err(Error::memory_error("I64Store out of bounds"));
                 }
                 
                 let bytes = value.to_le_bytes();
@@ -1465,29 +1313,29 @@ impl FrameBehavior for StacklessFrame {
             }
             Instruction::F32Store(mem_arg) => {
                 let value_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let value = match value_val {
                     Some(Value::F32(val)) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Store value not f32")),
+                    _ => return Err(Error::validation_error("F32Store value not f32")),
                 };
                 
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Store address not i32")),
+                    _ => return Err(Error::validation_error("F32Store address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "F32Store address overflow")
+                    Error::memory_error("F32Store address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr.checked_add(4).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "F32Store out of bounds"));
+                    return Err(Error::memory_error("F32Store out of bounds"));
                 }
                 
                 let bits = value.to_bits();
@@ -1497,29 +1345,29 @@ impl FrameBehavior for StacklessFrame {
             }
             Instruction::F64Store(mem_arg) => {
                 let value_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let value = match value_val {
                     Some(Value::F64(val)) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Store value not f64")),
+                    _ => return Err(Error::validation_error("F64Store value not f64")),
                 };
                 
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Store address not i32")),
+                    _ => return Err(Error::validation_error("F64Store address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "F64Store address overflow")
+                    Error::memory_error("F64Store address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr.checked_add(8).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "F64Store out of bounds"));
+                    return Err(Error::memory_error("F64Store out of bounds"));
                 }
                 
                 let bits = value.to_bits();
@@ -1529,29 +1377,29 @@ impl FrameBehavior for StacklessFrame {
             }
             Instruction::I32Store8(mem_arg) => {
                 let value_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let value = match value_val {
                     Some(Value::I32(val)) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Store8 value not i32")),
+                    _ => return Err(Error::validation_error("I32Store8 value not i32")),
                 };
                 
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Store8 address not i32")),
+                    _ => return Err(Error::validation_error("I32Store8 address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I32Store8 address overflow")
+                    Error::memory_error("I32Store8 address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr as usize >= memory.size_in_bytes() {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I32Store8 out of bounds"));
+                    return Err(Error::memory_error("I32Store8 out of bounds"));
                 }
                 
                 // Truncate to 8 bits
@@ -1561,29 +1409,29 @@ impl FrameBehavior for StacklessFrame {
             }
             Instruction::I32Store16(mem_arg) => {
                 let value_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let value = match value_val {
                     Some(Value::I32(val)) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Store16 value not i32")),
+                    _ => return Err(Error::validation_error("I32Store16 value not i32")),
                 };
                 
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Store16 address not i32")),
+                    _ => return Err(Error::validation_error("I32Store16 address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I32Store16 address overflow")
+                    Error::memory_error("I32Store16 address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr.checked_add(2).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I32Store16 out of bounds"));
+                    return Err(Error::memory_error("I32Store16 out of bounds"));
                 }
                 
                 // Truncate to 16 bits
@@ -1593,30 +1441,30 @@ impl FrameBehavior for StacklessFrame {
             }
             Instruction::I64Store8(mem_arg) => {
                 let value_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 
                 let value = match value_val {
                     Some(Value::I64(val)) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Store8 value not i64")),
+                    _ => return Err(Error::validation_error("I64Store8 value not i64")),
                 };
                 
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Store8 address not i32")),
+                    _ => return Err(Error::validation_error("I64Store8 address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Store8 address overflow")
+                    Error::memory_error("I64Store8 address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr as usize >= memory.size_in_bytes() {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Store8 out of bounds"));
+                    return Err(Error::memory_error("I64Store8 out of bounds"));
                 }
                 
                 // Store lower 8 bits
@@ -1626,30 +1474,30 @@ impl FrameBehavior for StacklessFrame {
             }
             Instruction::I64Store16(mem_arg) => {
                 let value_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 
                 let value = match value_val {
                     Some(Value::I64(val)) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Store16 value not i64")),
+                    _ => return Err(Error::validation_error("I64Store16 value not i64")),
                 };
                 
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Store16 address not i32")),
+                    _ => return Err(Error::validation_error("I64Store16 address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Store16 address overflow")
+                    Error::memory_error("I64Store16 address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr.checked_add(2).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Store16 out of bounds"));
+                    return Err(Error::memory_error("I64Store16 out of bounds"));
                 }
                 
                 // Store lower 16 bits
@@ -1659,30 +1507,30 @@ impl FrameBehavior for StacklessFrame {
             }
             Instruction::I64Store32(mem_arg) => {
                 let value_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 
                 let value = match value_val {
                     Some(Value::I64(val)) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Store32 value not i64")),
+                    _ => return Err(Error::validation_error("I64Store32 value not i64")),
                 };
                 
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Store32 address not i32")),
+                    _ => return Err(Error::validation_error("I64Store32 address not i32")),
                 };
                 
                 let effective_addr = addr.checked_add(mem_arg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Store32 address overflow")
+                    Error::memory_error("I64Store32 address overflow")
                 })?;
                 
                 let memory = self.module_instance.memory(0)?;
                 
                 if effective_addr.checked_add(4).map_or(true, |end| end as usize > memory.size_in_bytes()) {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "I64Store32 out of bounds"));
+                    return Err(Error::memory_error("I64Store32 out of bounds"));
                 }
                 
                 // Store lower 32 bits
@@ -1695,11 +1543,7 @@ impl FrameBehavior for StacklessFrame {
                 // mem_idx is always 0 in Wasm MVP
                 let mem = self.module_instance.memory(0)?; // Assuming memory index 0
                 engine.exec_stack.values.push(Value::I32(mem.size_pages() as i32)).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::STACK_OVERFLOW,
-                        "Stack operation error",
-                    )
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -1707,23 +1551,15 @@ impl FrameBehavior for StacklessFrame {
                 // mem_idx is always 0 in Wasm MVP
                 let mem = self.module_instance.memory(0)?;
                 let delta_pages_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::STACK_UNDERFLOW,
-                        "Stack operation error",
-                    )
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let delta_pages = delta_pages_val.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "MemoryGrow delta not i32")
+                    Error::type_error("MemoryGrow delta not i32")
                 })? as u32;
 
                 let old_size_pages = mem.grow(delta_pages)?;
                 engine.exec_stack.values.push(Value::I32(old_size_pages as i32)).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::STACK_OVERFLOW,
-                        "Stack operation error",
-                    )
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -1751,21 +1587,13 @@ impl FrameBehavior for StacklessFrame {
             // Numeric Const instructions
             Instruction::I32Const(val) => {
                 engine.exec_stack.values.push(Value::I32(val)).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::STACK_OVERFLOW,
-                        "Stack operation error",
-                    )
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Const(val) => {
                 engine.exec_stack.values.push(Value::I64(val)).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::STACK_OVERFLOW,
-                        "Stack operation error",
-                    )
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -1775,11 +1603,7 @@ impl FrameBehavior for StacklessFrame {
                     .values
                     .push(Value::F32(FloatBits32::from_bits(val))) // Assuming val is u32 bits
                     .map_err(|e| {
-                        Error::new(
-                            ErrorCategory::Runtime,
-                            codes::STACK_OVERFLOW,
-                            "Stack operation error",
-                        )
+                        Error::runtime_stack_overflow("Stack operation error")
                     })?;
                 Ok(ControlFlow::Next)
             }
@@ -1789,11 +1613,7 @@ impl FrameBehavior for StacklessFrame {
                     .values
                     .push(Value::F64(FloatBits64::from_bits(val))) // Assuming val is u64 bits
                     .map_err(|e| {
-                        Error::new(
-                            ErrorCategory::Runtime,
-                            codes::STACK_OVERFLOW,
-                            "Stack operation error",
-                        )
+                        Error::runtime_stack_overflow("Stack operation error")
                     })?;
                 Ok(ControlFlow::Next)
             }
@@ -1803,7 +1623,7 @@ impl FrameBehavior for StacklessFrame {
                 let b = Self::pop_i32(engine)?;
                 let a = Self::pop_i32(engine)?;
                 engine.exec_stack.values.push(Value::I32(a.wrapping_add(b))).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -1811,7 +1631,7 @@ impl FrameBehavior for StacklessFrame {
                 let b = Self::pop_i32(engine)?;
                 let a = Self::pop_i32(engine)?;
                 engine.exec_stack.values.push(Value::I32(a.wrapping_sub(b))).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -1819,7 +1639,7 @@ impl FrameBehavior for StacklessFrame {
                 let b = Self::pop_i32(engine)?;
                 let a = Self::pop_i32(engine)?;
                 engine.exec_stack.values.push(Value::I32(a.wrapping_mul(b))).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -1828,168 +1648,168 @@ impl FrameBehavior for StacklessFrame {
             Instruction::I32RemS => {
                 let b = Self::pop_i32(engine)?;
                 if b == 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_DIVISION_BY_ZERO_ERROR, "I32RemS division by zero"));
+                    return Err(Error::runtime_division_by_zero("I32RemS division by zero"));
                 }
                 let a = Self::pop_i32(engine)?;
                 // Check for overflow: i32::MIN % -1 would panic, but result should be 0
                 let result = if a == i32::MIN && b == -1 { 0 } else { a % b };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32RemU => {
                 let b = Self::pop_i32(engine)?;
                 if b == 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::DIVISION_BY_ZERO, "I32RemU division by zero"));
+                    return Err(Error::runtime_division_by_zero("I32RemU division by zero"));
                 }
                 let a = Self::pop_i32(engine)?;
                 // Unsigned remainder - cast to u32
                 let result = (a as u32) % (b as u32);
                 engine.exec_stack.values.push(Value::I32(result as i32)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32And => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32And second operand not i32")
+                    Error::validation_error("I32And second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32And first operand not i32")
+                    Error::validation_error("I32And first operand not i32")
                 })?;
                 engine.exec_stack.values.push(Value::I32(a & b)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32Or => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Or second operand not i32")
+                    Error::validation_error("I32Or second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Or first operand not i32")
+                    Error::validation_error("I32Or first operand not i32")
                 })?;
                 engine.exec_stack.values.push(Value::I32(a | b)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32Xor => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Xor second operand not i32")
+                    Error::validation_error("I32Xor second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Xor first operand not i32")
+                    Error::validation_error("I32Xor first operand not i32")
                 })?;
                 engine.exec_stack.values.push(Value::I32(a ^ b)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32Shl => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Shl second operand not i32")
+                    Error::validation_error("I32Shl second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Shl first operand not i32")
+                    Error::validation_error("I32Shl first operand not i32")
                 })?;
                 // Shift amount is masked to 5 bits (0-31) as per WebAssembly spec
                 let shift = (b as u32) & 0x1F;
                 engine.exec_stack.values.push(Value::I32(a << shift)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32ShrS => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32ShrS second operand not i32")
+                    Error::validation_error("I32ShrS second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32ShrS first operand not i32")
+                    Error::validation_error("I32ShrS first operand not i32")
                 })?;
                 // Shift amount is masked to 5 bits (0-31) as per WebAssembly spec
                 let shift = (b as u32) & 0x1F;
                 engine.exec_stack.values.push(Value::I32(a >> shift)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32ShrU => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32ShrU second operand not i32")
+                    Error::validation_error("I32ShrU second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32ShrU first operand not i32")
+                    Error::validation_error("I32ShrU first operand not i32")
                 })?;
                 // Shift amount is masked to 5 bits (0-31) as per WebAssembly spec
                 let shift = (b as u32) & 0x1F;
                 // Unsigned right shift
                 let result = (a as u32) >> shift;
                 engine.exec_stack.values.push(Value::I32(result as i32)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32Rotl => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Rotl second operand not i32")
+                    Error::validation_error("I32Rotl second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Rotl first operand not i32")
+                    Error::validation_error("I32Rotl first operand not i32")
                 })?;
                 // Rotate amount is masked to 5 bits (0-31) as per WebAssembly spec
                 let rotate = (b as u32) & 0x1F;
                 let result = (a as u32).rotate_left(rotate);
                 engine.exec_stack.values.push(Value::I32(result as i32)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32Rotr => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Rotr second operand not i32")
+                    Error::validation_error("I32Rotr second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Rotr first operand not i32")
+                    Error::validation_error("I32Rotr first operand not i32")
                 })?;
                 // Rotate amount is masked to 5 bits (0-31) as per WebAssembly spec
                 let rotate = (b as u32) & 0x1F;
                 let result = (a as u32).rotate_right(rotate);
                 engine.exec_stack.values.push(Value::I32(result as i32)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -1997,7 +1817,7 @@ impl FrameBehavior for StacklessFrame {
             // Stack manipulation
             Instruction::Drop => {
                 engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -2005,43 +1825,43 @@ impl FrameBehavior for StacklessFrame {
             // Additional I32 arithmetic instructions
             Instruction::I32DivS => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "I32DivS second operand not i32")
+                    Error::type_error("I32DivS second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "I32DivS first operand not i32")
+                    Error::type_error("I32DivS first operand not i32")
                 })?;
                 if b == 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Division by zero"));
+                    return Err(Error::runtime_error("Division by zero"));
                 }
                 if a == i32::MIN && b == -1 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Integer overflow"));
+                    return Err(Error::runtime_error("Integer overflow"));
                 }
                 engine.exec_stack.values.push(Value::I32(a / b)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32DivU => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "I32DivU second operand not i32")
+                    Error::type_error("I32DivU second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "I32DivU first operand not i32")
+                    Error::type_error("I32DivU first operand not i32")
                 })?;
                 if b == 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Division by zero"));
+                    return Err(Error::runtime_error("Division by zero"));
                 }
                 let result = (a as u32) / (b as u32);
                 engine.exec_stack.values.push(Value::I32(result as i32)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -2049,49 +1869,49 @@ impl FrameBehavior for StacklessFrame {
             // I32 comparison instructions
             Instruction::I32Eq => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "I32Eq second operand not i32")
+                    Error::type_error("I32Eq second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "I32Eq first operand not i32")
+                    Error::type_error("I32Eq first operand not i32")
                 })?;
                 engine.exec_stack.values.push(Value::I32(if a == b { 1 } else { 0 })).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32Ne => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "I32Ne second operand not i32")
+                    Error::type_error("I32Ne second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "I32Ne first operand not i32")
+                    Error::type_error("I32Ne first operand not i32")
                 })?;
                 engine.exec_stack.values.push(Value::I32(if a != b { 1 } else { 0 })).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32LtS => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "I32LtS second operand not i32")
+                    Error::type_error("I32LtS second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "I32LtS first operand not i32")
+                    Error::type_error("I32LtS first operand not i32")
                 })?;
                 engine.exec_stack.values.push(Value::I32(if a < b { 1 } else { 0 })).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -2099,291 +1919,291 @@ impl FrameBehavior for StacklessFrame {
             // I64 arithmetic instructions  
             Instruction::I64Add => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "I64Add second operand not i64")
+                    Error::type_error("I64Add second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "I64Add first operand not i64")
+                    Error::type_error("I64Add first operand not i64")
                 })?;
                 engine.exec_stack.values.push(Value::I64(a.wrapping_add(b))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Sub => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "I64Sub second operand not i64")
+                    Error::type_error("I64Sub second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "I64Sub first operand not i64")
+                    Error::type_error("I64Sub first operand not i64")
                 })?;
                 engine.exec_stack.values.push(Value::I64(a.wrapping_sub(b))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Mul => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Mul second operand not i64")
+                    Error::validation_error("I64Mul second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Mul first operand not i64")
+                    Error::validation_error("I64Mul first operand not i64")
                 })?;
                 engine.exec_stack.values.push(Value::I64(a.wrapping_mul(b))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64DivS => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64DivS second operand not i64")
+                    Error::validation_error("I64DivS second operand not i64")
                 })?;
                 
                 if b == 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::DIVISION_BY_ZERO, "I64DivS division by zero"));
+                    return Err(Error::runtime_division_by_zero("I64DivS division by zero"));
                 }
                 
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64DivS first operand not i64")
+                    Error::validation_error("I64DivS first operand not i64")
                 })?;
                 
                 // Check for overflow: i64::MIN / -1 would overflow
                 if a == i64::MIN && b == -1 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::INTEGER_OVERFLOW, "I64DivS integer overflow"));
+                    return Err(Error::runtime_integer_overflow("I64DivS integer overflow"));
                 }
                 
                 engine.exec_stack.values.push(Value::I64(a / b)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64DivU => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64DivU second operand not i64")
+                    Error::validation_error("I64DivU second operand not i64")
                 })?;
                 
                 if b == 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::DIVISION_BY_ZERO, "I64DivU division by zero"));
+                    return Err(Error::runtime_division_by_zero("I64DivU division by zero"));
                 }
                 
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64DivU first operand not i64")
+                    Error::validation_error("I64DivU first operand not i64")
                 })?;
                 
                 // Unsigned division - cast to u64
                 let result = (a as u64) / (b as u64);
                 engine.exec_stack.values.push(Value::I64(result as i64)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64And => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64And second operand not i64")
+                    Error::validation_error("I64And second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64And first operand not i64")
+                    Error::validation_error("I64And first operand not i64")
                 })?;
                 engine.exec_stack.values.push(Value::I64(a & b)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Or => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Or second operand not i64")
+                    Error::validation_error("I64Or second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Or first operand not i64")
+                    Error::validation_error("I64Or first operand not i64")
                 })?;
                 engine.exec_stack.values.push(Value::I64(a | b)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Xor => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Xor second operand not i64")
+                    Error::validation_error("I64Xor second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Xor first operand not i64")
+                    Error::validation_error("I64Xor first operand not i64")
                 })?;
                 engine.exec_stack.values.push(Value::I64(a ^ b)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64RemS => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64RemS second operand not i64")
+                    Error::validation_error("I64RemS second operand not i64")
                 })?;
                 
                 if b == 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::DIVISION_BY_ZERO, "I64RemS division by zero"));
+                    return Err(Error::runtime_division_by_zero("I64RemS division by zero"));
                 }
                 
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64RemS first operand not i64")
+                    Error::validation_error("I64RemS first operand not i64")
                 })?;
                 
                 // Check for overflow: i64::MIN % -1 would panic, but result should be 0
                 let result = if a == i64::MIN && b == -1 { 0 } else { a % b };
                 
                 engine.exec_stack.values.push(Value::I64(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64RemU => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64RemU second operand not i64")
+                    Error::validation_error("I64RemU second operand not i64")
                 })?;
                 
                 if b == 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::DIVISION_BY_ZERO, "I64RemU division by zero"));
+                    return Err(Error::runtime_division_by_zero("I64RemU division by zero"));
                 }
                 
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64RemU first operand not i64")
+                    Error::validation_error("I64RemU first operand not i64")
                 })?;
                 
                 // Unsigned remainder - cast to u64
                 let result = (a as u64) % (b as u64);
                 engine.exec_stack.values.push(Value::I64(result as i64)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Shl => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Shl second operand not i64")
+                    Error::validation_error("I64Shl second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Shl first operand not i64")
+                    Error::validation_error("I64Shl first operand not i64")
                 })?;
                 // Shift amount is masked to 6 bits (0-63) as per WebAssembly spec for i64
                 let shift = (b as u64) & 0x3F;
                 engine.exec_stack.values.push(Value::I64(a << shift)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64ShrS => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64ShrS second operand not i64")
+                    Error::validation_error("I64ShrS second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64ShrS first operand not i64")
+                    Error::validation_error("I64ShrS first operand not i64")
                 })?;
                 // Shift amount is masked to 6 bits (0-63) as per WebAssembly spec for i64
                 let shift = (b as u64) & 0x3F;
                 engine.exec_stack.values.push(Value::I64(a >> shift)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64ShrU => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64ShrU second operand not i64")
+                    Error::validation_error("I64ShrU second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64ShrU first operand not i64")
+                    Error::validation_error("I64ShrU first operand not i64")
                 })?;
                 // Shift amount is masked to 6 bits (0-63) as per WebAssembly spec for i64
                 let shift = (b as u64) & 0x3F;
                 // Unsigned right shift
                 let result = (a as u64) >> shift;
                 engine.exec_stack.values.push(Value::I64(result as i64)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Rotl => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Rotl second operand not i64")
+                    Error::validation_error("I64Rotl second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Rotl first operand not i64")
+                    Error::validation_error("I64Rotl first operand not i64")
                 })?;
                 // Rotate amount is masked to 6 bits (0-63) as per WebAssembly spec for i64
                 let rotate = (b as u64) & 0x3F;
                 let result = (a as u64).rotate_left(rotate as u32);
                 engine.exec_stack.values.push(Value::I64(result as i64)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Rotr => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Rotr second operand not i64")
+                    Error::validation_error("I64Rotr second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Rotr first operand not i64")
+                    Error::validation_error("I64Rotr first operand not i64")
                 })?;
                 // Rotate amount is masked to 6 bits (0-63) as per WebAssembly spec for i64
                 let rotate = (b as u64) & 0x3F;
                 let result = (a as u64).rotate_right(rotate as u32);
                 engine.exec_stack.values.push(Value::I64(result as i64)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -2391,65 +2211,65 @@ impl FrameBehavior for StacklessFrame {
             // Floating-point arithmetic operations
             Instruction::F32Add => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Add second operand not f32")
+                    Error::validation_error("F32Add second operand not f32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Add first operand not f32")
+                    Error::validation_error("F32Add first operand not f32")
                 })?;
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits((a + b).to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Sub => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Sub second operand not f32")
+                    Error::validation_error("F32Sub second operand not f32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Sub first operand not f32")
+                    Error::validation_error("F32Sub first operand not f32")
                 })?;
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits((a - b).to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Mul => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Mul second operand not f32")
+                    Error::validation_error("F32Mul second operand not f32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Mul first operand not f32")
+                    Error::validation_error("F32Mul first operand not f32")
                 })?;
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits((a * b).to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Div => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Div second operand not f32")
+                    Error::validation_error("F32Div second operand not f32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Div first operand not f32")
+                    Error::validation_error("F32Div first operand not f32")
                 })?;
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits((a / b).to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -2457,34 +2277,22 @@ impl FrameBehavior for StacklessFrame {
             // Stack manipulation
             Instruction::Select => {
                 let condition_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty for select condition",
-                ))?;
+                    Error::runtime_stack_underflow("Stack operation error")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty for select condition"))?;
                 let condition = match condition_val {
                     Value::I32(val) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "Select condition not i32")),
+                    _ => return Err(Error::validation_error("Select condition not i32")),
                 };
                 let val2 = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty for select val2",
-                ))?;
+                    Error::runtime_stack_underflow("Stack operation error")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty for select val2"))?;
                 let val1 = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty for select val1",
-                ))?;
+                    Error::runtime_stack_underflow("Stack operation error")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty for select val1"))?;
                 
                 let result = if condition != 0 { val1 } else { val2 };
                 engine.exec_stack.values.push(result).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -2492,120 +2300,120 @@ impl FrameBehavior for StacklessFrame {
             // I32 comparison operations
             Instruction::I32LtU => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32LtU second operand not i32")
+                    Error::validation_error("I32LtU second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32LtU first operand not i32")
+                    Error::validation_error("I32LtU first operand not i32")
                 })?;
                 let result = if (a as u32) < (b as u32) { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32GtS => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32GtS second operand not i32")
+                    Error::validation_error("I32GtS second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32GtS first operand not i32")
+                    Error::validation_error("I32GtS first operand not i32")
                 })?;
                 let result = if a > b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32GtU => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32GtU second operand not i32")
+                    Error::validation_error("I32GtU second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32GtU first operand not i32")
+                    Error::validation_error("I32GtU first operand not i32")
                 })?;
                 let result = if (a as u32) > (b as u32) { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32LeS => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32LeS second operand not i32")
+                    Error::validation_error("I32LeS second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32LeS first operand not i32")
+                    Error::validation_error("I32LeS first operand not i32")
                 })?;
                 let result = if a <= b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32LeU => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32LeU second operand not i32")
+                    Error::validation_error("I32LeU second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32LeU first operand not i32")
+                    Error::validation_error("I32LeU first operand not i32")
                 })?;
                 let result = if (a as u32) <= (b as u32) { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32GeS => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32GeS second operand not i32")
+                    Error::validation_error("I32GeS second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32GeS first operand not i32")
+                    Error::validation_error("I32GeS first operand not i32")
                 })?;
                 let result = if a >= b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32GeU => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32GeU second operand not i32")
+                    Error::validation_error("I32GeU second operand not i32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32GeU first operand not i32")
+                    Error::validation_error("I32GeU first operand not i32")
                 })?;
                 let result = if (a as u32) >= (b as u32) { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -2613,13 +2421,13 @@ impl FrameBehavior for StacklessFrame {
             // I32 unary operations
             Instruction::I32Eqz => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Eqz operand not i32")
+                    Error::validation_error("I32Eqz operand not i32")
                 })?;
                 let result = if a == 0 { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -2627,53 +2435,53 @@ impl FrameBehavior for StacklessFrame {
             // Type conversion operations
             Instruction::I32WrapI64 => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32WrapI64 operand not i64")
+                    Error::validation_error("I32WrapI64 operand not i64")
                 })?;
                 // Wrap i64 to i32 by truncating upper 32 bits
                 let result = a as i32;
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64ExtendI32S => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64ExtendI32S operand not i32")
+                    Error::validation_error("I64ExtendI32S operand not i32")
                 })?;
                 // Sign-extend i32 to i64
                 let result = a as i64;
                 engine.exec_stack.values.push(Value::I64(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64ExtendI32U => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64ExtendI32U operand not i32")
+                    Error::validation_error("I64ExtendI32U operand not i32")
                 })?;
                 // Zero-extend i32 to i64
                 let result = (a as u32) as i64;
                 engine.exec_stack.values.push(Value::I64(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32TruncF32S => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32TruncF32S operand not f32")
+                    Error::validation_error("I32TruncF32S operand not f32")
                 })?;
                 
                 // Check for NaN or out-of-range values
                 if a.is_nan() || a.is_infinite() || a < -2_147_483_649.0 || a >= 2_147_483_648.0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::INTEGER_OVERFLOW, "I32TruncF32S out of range"));
+                    return Err(Error::runtime_integer_overflow("I32TruncF32S out of range"));
                 }
                 
                 let result = {
@@ -2686,20 +2494,20 @@ impl FrameBehavior for StacklessFrame {
                     }
                 } as i32;
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32TruncF32U => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32TruncF32U operand not f32")
+                    Error::validation_error("I32TruncF32U operand not f32")
                 })?;
                 
                 // Check for NaN or out-of-range values for unsigned
                 if a.is_nan() || a.is_infinite() || a < -1.0 || a >= 4_294_967_296.0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::INTEGER_OVERFLOW, "I32TruncF32U out of range"));
+                    return Err(Error::runtime_integer_overflow("I32TruncF32U out of range"));
                 }
                 
                 let result = ({
@@ -2712,7 +2520,7 @@ impl FrameBehavior for StacklessFrame {
                     }
                 } as u32) as i32;
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -2720,171 +2528,171 @@ impl FrameBehavior for StacklessFrame {
             // I64 comparison operations
             Instruction::I64Eq => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Eq second operand not i64")
+                    Error::validation_error("I64Eq second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Eq first operand not i64")
+                    Error::validation_error("I64Eq first operand not i64")
                 })?;
                 let result = if a == b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Ne => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Ne second operand not i64")
+                    Error::validation_error("I64Ne second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Ne first operand not i64")
+                    Error::validation_error("I64Ne first operand not i64")
                 })?;
                 let result = if a != b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64LtS => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64LtS second operand not i64")
+                    Error::validation_error("I64LtS second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64LtS first operand not i64")
+                    Error::validation_error("I64LtS first operand not i64")
                 })?;
                 let result = if a < b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64LtU => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64LtU second operand not i64")
+                    Error::validation_error("I64LtU second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64LtU first operand not i64")
+                    Error::validation_error("I64LtU first operand not i64")
                 })?;
                 let result = if (a as u64) < (b as u64) { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64GtS => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64GtS second operand not i64")
+                    Error::validation_error("I64GtS second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64GtS first operand not i64")
+                    Error::validation_error("I64GtS first operand not i64")
                 })?;
                 let result = if a > b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64GtU => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64GtU second operand not i64")
+                    Error::validation_error("I64GtU second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64GtU first operand not i64")
+                    Error::validation_error("I64GtU first operand not i64")
                 })?;
                 let result = if (a as u64) > (b as u64) { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64LeS => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64LeS second operand not i64")
+                    Error::validation_error("I64LeS second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64LeS first operand not i64")
+                    Error::validation_error("I64LeS first operand not i64")
                 })?;
                 let result = if a <= b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64LeU => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64LeU second operand not i64")
+                    Error::validation_error("I64LeU second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64LeU first operand not i64")
+                    Error::validation_error("I64LeU first operand not i64")
                 })?;
                 let result = if (a as u64) <= (b as u64) { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64GeS => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64GeS second operand not i64")
+                    Error::validation_error("I64GeS second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64GeS first operand not i64")
+                    Error::validation_error("I64GeS first operand not i64")
                 })?;
                 let result = if a >= b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64GeU => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64GeU second operand not i64")
+                    Error::validation_error("I64GeU second operand not i64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64GeU first operand not i64")
+                    Error::validation_error("I64GeU first operand not i64")
                 })?;
                 let result = if (a as u64) >= (b as u64) { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -2892,13 +2700,13 @@ impl FrameBehavior for StacklessFrame {
             // I64 unary operations
             Instruction::I64Eqz => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Eqz operand not i64")
+                    Error::validation_error("I64Eqz operand not i64")
                 })?;
                 let result = if a == 0 { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -2906,103 +2714,103 @@ impl FrameBehavior for StacklessFrame {
             // F32 comparison operations
             Instruction::F32Eq => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Eq second operand not f32")
+                    Error::validation_error("F32Eq second operand not f32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Eq first operand not f32")
+                    Error::validation_error("F32Eq first operand not f32")
                 })?;
                 let result = if a == b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Ne => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Ne second operand not f32")
+                    Error::validation_error("F32Ne second operand not f32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Ne first operand not f32")
+                    Error::validation_error("F32Ne first operand not f32")
                 })?;
                 let result = if a != b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Lt => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Lt second operand not f32")
+                    Error::validation_error("F32Lt second operand not f32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Lt first operand not f32")
+                    Error::validation_error("F32Lt first operand not f32")
                 })?;
                 let result = if a < b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Gt => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Gt second operand not f32")
+                    Error::validation_error("F32Gt second operand not f32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Gt first operand not f32")
+                    Error::validation_error("F32Gt first operand not f32")
                 })?;
                 let result = if a > b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Le => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Le second operand not f32")
+                    Error::validation_error("F32Le second operand not f32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Le first operand not f32")
+                    Error::validation_error("F32Le first operand not f32")
                 })?;
                 let result = if a <= b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Ge => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Ge second operand not f32")
+                    Error::validation_error("F32Ge second operand not f32")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Ge first operand not f32")
+                    Error::validation_error("F32Ge first operand not f32")
                 })?;
                 let result = if a >= b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -3010,103 +2818,103 @@ impl FrameBehavior for StacklessFrame {
             // F64 comparison operations
             Instruction::F64Eq => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Eq second operand not f64")
+                    Error::validation_error("F64Eq second operand not f64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Eq first operand not f64")
+                    Error::validation_error("F64Eq first operand not f64")
                 })?;
                 let result = if a == b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Ne => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Ne second operand not f64")
+                    Error::validation_error("F64Ne second operand not f64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Ne first operand not f64")
+                    Error::validation_error("F64Ne first operand not f64")
                 })?;
                 let result = if a != b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Lt => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Lt second operand not f64")
+                    Error::validation_error("F64Lt second operand not f64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Lt first operand not f64")
+                    Error::validation_error("F64Lt first operand not f64")
                 })?;
                 let result = if a < b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Gt => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Gt second operand not f64")
+                    Error::validation_error("F64Gt second operand not f64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Gt first operand not f64")
+                    Error::validation_error("F64Gt first operand not f64")
                 })?;
                 let result = if a > b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Le => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Le second operand not f64")
+                    Error::validation_error("F64Le second operand not f64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Le first operand not f64")
+                    Error::validation_error("F64Le first operand not f64")
                 })?;
                 let result = if a <= b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Ge => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Ge second operand not f64")
+                    Error::validation_error("F64Ge second operand not f64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Ge first operand not f64")
+                    Error::validation_error("F64Ge first operand not f64")
                 })?;
                 let result = if a >= b { 1 } else { 0 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -3114,57 +2922,57 @@ impl FrameBehavior for StacklessFrame {
             // F32 unary operations
             Instruction::F32Abs => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Abs operand not f32")
+                    Error::validation_error("F32Abs operand not f32")
                 })?;
                 let result = a.abs();
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Neg => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Neg operand not f32")
+                    Error::validation_error("F32Neg operand not f32")
                 })?;
                 let result = -a;
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Ceil => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Ceil operand not f32")
+                    Error::validation_error("F32Ceil operand not f32")
                 })?;
                 let result = a.ceil();
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Floor => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Floor operand not f32")
+                    Error::validation_error("F32Floor operand not f32")
                 })?;
                 let result = a.floor();
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Trunc => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Trunc operand not f32")
+                    Error::validation_error("F32Trunc operand not f32")
                 })?;
                 let result = {
                     #[cfg(feature = "std")]
@@ -3176,31 +2984,31 @@ impl FrameBehavior for StacklessFrame {
                     }
                 };
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Nearest => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Nearest operand not f32")
+                    Error::validation_error("F32Nearest operand not f32")
                 })?;
                 let result = a.round();
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Sqrt => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Sqrt operand not f32")
+                    Error::validation_error("F32Sqrt operand not f32")
                 })?;
                 let result = a.sqrt();
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -3208,65 +3016,65 @@ impl FrameBehavior for StacklessFrame {
             // F64 arithmetic operations
             Instruction::F64Add => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Add second operand not f64")
+                    Error::validation_error("F64Add second operand not f64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Add first operand not f64")
+                    Error::validation_error("F64Add first operand not f64")
                 })?;
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits((a + b).to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Sub => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Sub second operand not f64")
+                    Error::validation_error("F64Sub second operand not f64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Sub first operand not f64")
+                    Error::validation_error("F64Sub first operand not f64")
                 })?;
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits((a - b).to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Mul => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Mul second operand not f64")
+                    Error::validation_error("F64Mul second operand not f64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Mul first operand not f64")
+                    Error::validation_error("F64Mul first operand not f64")
                 })?;
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits((a * b).to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Div => {
                 let b = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Div second operand not f64")
+                    Error::validation_error("F64Div second operand not f64")
                 })?;
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Div first operand not f64")
+                    Error::validation_error("F64Div first operand not f64")
                 })?;
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits((a / b).to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -3274,14 +3082,14 @@ impl FrameBehavior for StacklessFrame {
             // More type conversion operations
             Instruction::I32TruncF64S => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32TruncF64S operand not f64")
+                    Error::validation_error("I32TruncF64S operand not f64")
                 })?;
                 
                 // Check for NaN or out-of-range values
                 if a.is_nan() || a.is_infinite() || a < -2_147_483_649.0 || a >= 2_147_483_648.0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::INTEGER_OVERFLOW, "I32TruncF64S out of range"));
+                    return Err(Error::runtime_integer_overflow("I32TruncF64S out of range"));
                 }
                 
                 let result = {
@@ -3294,20 +3102,20 @@ impl FrameBehavior for StacklessFrame {
                     }
                 } as i32;
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32TruncF64U => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32TruncF64U operand not f64")
+                    Error::validation_error("I32TruncF64U operand not f64")
                 })?;
                 
                 // Check for NaN or out-of-range values for unsigned
                 if a.is_nan() || a.is_infinite() || a < -1.0 || a >= 4_294_967_296.0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::INTEGER_OVERFLOW, "I32TruncF64U out of range"));
+                    return Err(Error::runtime_integer_overflow("I32TruncF64U out of range"));
                 }
                 
                 let result = ({
@@ -3320,20 +3128,20 @@ impl FrameBehavior for StacklessFrame {
                     }
                 } as u32) as i32;
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64TruncF32S => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64TruncF32S operand not f32")
+                    Error::validation_error("I64TruncF32S operand not f32")
                 })?;
                 
                 // Check for NaN or out-of-range values
                 if a.is_nan() || a.is_infinite() || a < -9_223_372_036_854_775_808.0 || a >= 9_223_372_036_854_775_808.0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::INTEGER_OVERFLOW, "I64TruncF32S out of range"));
+                    return Err(Error::runtime_integer_overflow("I64TruncF32S out of range"));
                 }
                 
                 let result = {
@@ -3346,20 +3154,20 @@ impl FrameBehavior for StacklessFrame {
                     }
                 } as i64;
                 engine.exec_stack.values.push(Value::I64(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64TruncF32U => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64TruncF32U operand not f32")
+                    Error::validation_error("I64TruncF32U operand not f32")
                 })?;
                 
                 // Check for NaN or out-of-range values for unsigned
                 if a.is_nan() || a.is_infinite() || a < -1.0 || a >= 18_446_744_073_709_551_616.0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::INTEGER_OVERFLOW, "I64TruncF32U out of range"));
+                    return Err(Error::runtime_integer_overflow("I64TruncF32U out of range"));
                 }
                 
                 let result = ({
@@ -3372,20 +3180,20 @@ impl FrameBehavior for StacklessFrame {
                     }
                 } as u64) as i64;
                 engine.exec_stack.values.push(Value::I64(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64TruncF64S => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64TruncF64S operand not f64")
+                    Error::validation_error("I64TruncF64S operand not f64")
                 })?;
                 
                 // Check for NaN or out-of-range values
                 if a.is_nan() || a.is_infinite() || a < -9_223_372_036_854_775_808.0 || a >= 9_223_372_036_854_775_808.0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::INTEGER_OVERFLOW, "I64TruncF64S out of range"));
+                    return Err(Error::runtime_integer_overflow("I64TruncF64S out of range"));
                 }
                 
                 let result = {
@@ -3398,20 +3206,20 @@ impl FrameBehavior for StacklessFrame {
                     }
                 } as i64;
                 engine.exec_stack.values.push(Value::I64(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64TruncF64U => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64TruncF64U operand not f64")
+                    Error::validation_error("I64TruncF64U operand not f64")
                 })?;
                 
                 // Check for NaN or out-of-range values for unsigned
                 if a.is_nan() || a.is_infinite() || a < -1.0 || a >= 18_446_744_073_709_551_616.0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::INTEGER_OVERFLOW, "I64TruncF64U out of range"));
+                    return Err(Error::runtime_integer_overflow("I64TruncF64U out of range"));
                 }
                 
                 let result = ({
@@ -3424,7 +3232,7 @@ impl FrameBehavior for StacklessFrame {
                     }
                 } as u64) as i64;
                 engine.exec_stack.values.push(Value::I64(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -3432,61 +3240,61 @@ impl FrameBehavior for StacklessFrame {
             // Float to float conversions
             Instruction::F32ConvertI32S => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32ConvertI32S operand not i32")
+                    Error::validation_error("F32ConvertI32S operand not i32")
                 })?;
                 let result = a as f32;
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32ConvertI32U => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32ConvertI32U operand not i32")
+                    Error::validation_error("F32ConvertI32U operand not i32")
                 })?;
                 let result = (a as u32) as f32;
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32ConvertI64S => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32ConvertI64S operand not i64")
+                    Error::validation_error("F32ConvertI64S operand not i64")
                 })?;
                 let result = a as f32;
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32ConvertI64U => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32ConvertI64U operand not i64")
+                    Error::validation_error("F32ConvertI64U operand not i64")
                 })?;
                 let result = (a as u64) as f32;
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32DemoteF64 => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32DemoteF64 operand not f64")
+                    Error::validation_error("F32DemoteF64 operand not f64")
                 })?;
                 let result = a as f32;
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -3494,61 +3302,61 @@ impl FrameBehavior for StacklessFrame {
             // F64 conversion operations
             Instruction::F64ConvertI32S => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64ConvertI32S operand not i32")
+                    Error::validation_error("F64ConvertI32S operand not i32")
                 })?;
                 let result = a as f64;
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64ConvertI32U => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64ConvertI32U operand not i32")
+                    Error::validation_error("F64ConvertI32U operand not i32")
                 })?;
                 let result = (a as u32) as f64;
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64ConvertI64S => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64ConvertI64S operand not i64")
+                    Error::validation_error("F64ConvertI64S operand not i64")
                 })?;
                 let result = a as f64;
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64ConvertI64U => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64ConvertI64U operand not i64")
+                    Error::validation_error("F64ConvertI64U operand not i64")
                 })?;
                 let result = (a as u64) as f64;
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64PromoteF32 => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64PromoteF32 operand not f32")
+                    Error::validation_error("F64PromoteF32 operand not f32")
                 })?;
                 let result = a as f64;
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -3556,49 +3364,49 @@ impl FrameBehavior for StacklessFrame {
             // Reinterpret operations
             Instruction::I32ReinterpretF32 => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32ReinterpretF32 operand not f32")
+                    Error::validation_error("I32ReinterpretF32 operand not f32")
                 })?;
                 let result = a.to_bits() as i32;
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64ReinterpretF64 => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64ReinterpretF64 operand not f64")
+                    Error::validation_error("I64ReinterpretF64 operand not f64")
                 })?;
                 let result = a.to_bits() as i64;
                 engine.exec_stack.values.push(Value::I64(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32ReinterpretI32 => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32ReinterpretI32 operand not i32")
+                    Error::validation_error("F32ReinterpretI32 operand not i32")
                 })?;
                 let result = f32::from_bits(a as u32);
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64ReinterpretI64 => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64ReinterpretI64 operand not i64")
+                    Error::validation_error("F64ReinterpretI64 operand not i64")
                 })?;
                 let result = f64::from_bits(a as u64);
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -3606,57 +3414,57 @@ impl FrameBehavior for StacklessFrame {
             // F64 unary operations
             Instruction::F64Abs => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Abs operand not f64")
+                    Error::validation_error("F64Abs operand not f64")
                 })?;
                 let result = a.abs();
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Neg => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Neg operand not f64")
+                    Error::validation_error("F64Neg operand not f64")
                 })?;
                 let result = -a;
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Ceil => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Ceil operand not f64")
+                    Error::validation_error("F64Ceil operand not f64")
                 })?;
                 let result = a.ceil();
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Floor => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Floor operand not f64")
+                    Error::validation_error("F64Floor operand not f64")
                 })?;
                 let result = a.floor();
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Trunc => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Trunc operand not f64")
+                    Error::validation_error("F64Trunc operand not f64")
                 })?;
                 let result = {
                     #[cfg(feature = "std")]
@@ -3668,31 +3476,31 @@ impl FrameBehavior for StacklessFrame {
                     }
                 };
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Nearest => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Nearest operand not f64")
+                    Error::validation_error("F64Nearest operand not f64")
                 })?;
                 let result = a.round();
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Sqrt => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Sqrt operand not f64")
+                    Error::validation_error("F64Sqrt operand not f64")
                 })?;
                 let result = a.sqrt();
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -3700,66 +3508,66 @@ impl FrameBehavior for StacklessFrame {
             // Sign extension operations
             Instruction::I32Extend8S => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Extend8S operand not i32")
+                    Error::validation_error("I32Extend8S operand not i32")
                 })?;
                 // Sign-extend from 8 bits to 32 bits
                 let result = (a as i8) as i32;
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32Extend16S => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Extend16S operand not i32")
+                    Error::validation_error("I32Extend16S operand not i32")
                 })?;
                 // Sign-extend from 16 bits to 32 bits
                 let result = (a as i16) as i32;
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Extend8S => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Extend8S operand not i64")
+                    Error::validation_error("I64Extend8S operand not i64")
                 })?;
                 // Sign-extend from 8 bits to 64 bits
                 let result = (a as i8) as i64;
                 engine.exec_stack.values.push(Value::I64(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Extend16S => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Extend16S operand not i64")
+                    Error::validation_error("I64Extend16S operand not i64")
                 })?;
                 // Sign-extend from 16 bits to 64 bits
                 let result = (a as i16) as i64;
                 engine.exec_stack.values.push(Value::I64(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Extend32S => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Extend32S operand not i64")
+                    Error::validation_error("I64Extend32S operand not i64")
                 })?;
                 // Sign-extend from 32 bits to 64 bits
                 let result = (a as i32) as i64;
                 engine.exec_stack.values.push(Value::I64(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -3767,79 +3575,79 @@ impl FrameBehavior for StacklessFrame {
             // Bit counting operations
             Instruction::I32Clz => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Clz operand not i32")
+                    Error::validation_error("I32Clz operand not i32")
                 })?;
                 // Count leading zeros
                 let result = a.leading_zeros() as i32;
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32Ctz => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Ctz operand not i32")
+                    Error::validation_error("I32Ctz operand not i32")
                 })?;
                 // Count trailing zeros
                 let result = a.trailing_zeros() as i32;
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I32Popcnt => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32Popcnt operand not i32")
+                    Error::validation_error("I32Popcnt operand not i32")
                 })?;
                 // Count number of 1 bits
                 let result = a.count_ones() as i32;
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Clz => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Clz operand not i64")
+                    Error::validation_error("I64Clz operand not i64")
                 })?;
                 // Count leading zeros
                 let result = a.leading_zeros() as i64;
                 engine.exec_stack.values.push(Value::I64(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Ctz => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Ctz operand not i64")
+                    Error::validation_error("I64Ctz operand not i64")
                 })?;
                 // Count trailing zeros
                 let result = a.trailing_zeros() as i64;
                 engine.exec_stack.values.push(Value::I64(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::I64Popcnt => {
                 let a = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?.and_then(|v| v.as_i64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64Popcnt operand not i64")
+                    Error::validation_error("I64Popcnt operand not i64")
                 })?;
                 // Count number of 1 bits
                 let result = a.count_ones() as i64;
                 engine.exec_stack.values.push(Value::I64(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -3847,16 +3655,16 @@ impl FrameBehavior for StacklessFrame {
             // Floating-point min/max/copysign operations
             Instruction::F32Min => {
                 let b_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let b = b_val.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Min second operand not f32")
+                    Error::validation_error("F32Min second operand not f32")
                 })?;
                 let a_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let a = a_val.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Min first operand not f32")
+                    Error::validation_error("F32Min first operand not f32")
                 })?;
                 // WebAssembly min: NaN if either operand is NaN, otherwise the smaller value
                 let result = if a.is_nan() || b.is_nan() {
@@ -3872,22 +3680,22 @@ impl FrameBehavior for StacklessFrame {
                     a.min(b)
                 };
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_float(result))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Max => {
                 let b_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let b = b_val.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Max second operand not f32")
+                    Error::validation_error("F32Max second operand not f32")
                 })?;
                 let a_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let a = a_val.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Max first operand not f32")
+                    Error::validation_error("F32Max first operand not f32")
                 })?;
                 // WebAssembly max: NaN if either operand is NaN, otherwise the larger value
                 let result = if a.is_nan() || b.is_nan() {
@@ -3903,42 +3711,42 @@ impl FrameBehavior for StacklessFrame {
                     a.max(b)
                 };
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_float(result))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F32Copysign => {
                 let b_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let b = b_val.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Copysign second operand not f32")
+                    Error::validation_error("F32Copysign second operand not f32")
                 })?;
                 let a_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let a = a_val.and_then(|v| v.as_f32()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F32Copysign first operand not f32")
+                    Error::validation_error("F32Copysign first operand not f32")
                 })?;
                 // Copy sign from b to a
                 let result = a.copysign(b);
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_float(result))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Min => {
                 let b_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let b = b_val.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Min second operand not f64")
+                    Error::validation_error("F64Min second operand not f64")
                 })?;
                 let a_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let a = a_val.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Min first operand not f64")
+                    Error::validation_error("F64Min first operand not f64")
                 })?;
                 // WebAssembly min: NaN if either operand is NaN, otherwise the smaller value
                 let result = if a.is_nan() || b.is_nan() {
@@ -3954,22 +3762,22 @@ impl FrameBehavior for StacklessFrame {
                     a.min(b)
                 };
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_float(result))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Max => {
                 let b_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let b = b_val.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Max second operand not f64")
+                    Error::validation_error("F64Max second operand not f64")
                 })?;
                 let a_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let a = a_val.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Max first operand not f64")
+                    Error::validation_error("F64Max first operand not f64")
                 })?;
                 // WebAssembly max: NaN if either operand is NaN, otherwise the larger value
                 let result = if a.is_nan() || b.is_nan() {
@@ -3985,27 +3793,27 @@ impl FrameBehavior for StacklessFrame {
                     a.max(b)
                 };
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_float(result))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::F64Copysign => {
                 let b_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let b = b_val.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Copysign second operand not f64")
+                    Error::validation_error("F64Copysign second operand not f64")
                 })?;
                 let a_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let a = a_val.and_then(|v| v.as_f64()).ok_or_else(|| {
-                    Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "F64Copysign first operand not f64")
+                    Error::validation_error("F64Copysign first operand not f64")
                 })?;
                 // Copy sign from b to a
                 let result = a.copysign(b);
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_float(result))).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -4015,33 +3823,25 @@ impl FrameBehavior for StacklessFrame {
                 let null_value = match ref_type.to_value_type() {
                     ValueType::FuncRef => Value::FuncRef(None),
                     ValueType::ExternRef => Value::ExternRef(None),
-                    _ => return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::TYPE_MISMATCH_ERROR,
-                        "RefNull with invalid reference type"
-                    )),
+                    _ => return Err(Error::validation_error("RefNull with invalid reference type")),
                 };
                 engine.exec_stack.values.push(null_value).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::RefIsNull => {
                 let ref_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let is_null = match ref_val {
                     Some(Value::FuncRef(opt_ref)) => opt_ref.is_none(),
                     Some(Value::ExternRef(opt_ref)) => opt_ref.is_none(),
-                    _ => return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::TYPE_MISMATCH_ERROR,
-                        "RefIsNull operand is not a reference type"
-                    )),
+                    _ => return Err(Error::validation_error("RefIsNull operand is not a reference type")),
                 };
                 let result = if is_null { 1i32 } else { 0i32 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -4049,15 +3849,11 @@ impl FrameBehavior for StacklessFrame {
                 // Validate that the function index exists
                 let module = self.module_instance.module();
                 if func_idx >= module.functions.len() as u32 {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::INVALID_FUNCTION_INDEX,
-                        "Stack operation error"
-                    ));
+                    return Err(Error::validation_error("Stack operation error"));
                 }
                 let func_ref = Value::FuncRef(Some(FuncRef::from_index(func_idx)));
                 engine.exec_stack.values.push(func_ref).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -4065,72 +3861,48 @@ impl FrameBehavior for StacklessFrame {
             // Stack operations
             Instruction::Drop => {
                 engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::Select => {
                 let condition_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty for select condition",
-                ))?;
+                    Error::runtime_stack_underflow("Stack operation error")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty for select condition"))?;
                 let condition = match condition_val {
                     Value::I32(val) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "Select condition not i32")),
+                    _ => return Err(Error::validation_error("Select condition not i32")),
                 };
                 let val2 = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty for select val2",
-                ))?;
+                    Error::runtime_stack_underflow("Stack operation error")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty for select val2"))?;
                 let val1 = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty for select val1",
-                ))?;
+                    Error::runtime_stack_underflow("Stack operation error")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty for select val1"))?;
                 let result = if condition != 0 { val1 } else { val2 };
                 engine.exec_stack.values.push(result).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             Instruction::SelectWithType(_value_types) => {
                 // SelectWithType behaves the same as Select for execution, the type information is for validation
                 let condition_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty for select condition",
-                ))?;
+                    Error::runtime_stack_underflow("Stack operation error")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty for select condition"))?;
                 let condition = match condition_val {
                     Value::I32(val) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "SelectWithType condition not i32")),
+                    _ => return Err(Error::validation_error("SelectWithType condition not i32")),
                 };
                 let val2 = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty for select val2",
-                ))?;
+                    Error::runtime_stack_underflow("Stack operation error")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty for select val2"))?;
                 let val1 = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty for select val1",
-                ))?;
+                    Error::runtime_stack_underflow("Stack operation error")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty for select val1"))?;
                 let result = if condition != 0 { val1 } else { val2 };
                 engine.exec_stack.values.push(result).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -4138,17 +3910,17 @@ impl FrameBehavior for StacklessFrame {
             // Branch table instruction
             Instruction::BrTable { targets, default_target } => {
                 let index_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let index = match index_val {
                     Some(Value::I32(val)) => val as usize,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "BrTable index not i32")),
+                    _ => return Err(Error::validation_error("BrTable index not i32")),
                 };
                 
                 // Select the target label: if index is in bounds, use targets[index], otherwise use default_target
                 let target_label = if index < targets.len() {
                     targets.get(index).map_err(|e| {
-                        Error::new(ErrorCategory::Runtime, codes::MEMORY_OUT_OF_BOUNDS, "Stack operation error")
+                        Error::memory_out_of_bounds("Stack operation error")
                     })?
                 } else {
                     default_target
@@ -4162,27 +3934,27 @@ impl FrameBehavior for StacklessFrame {
             // Advanced memory operations
             Instruction::MemoryFill(mem_idx) => {
                 let size_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let size = match size_val {
                     Some(Value::I32(val)) => val as usize,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryFill size not i32")),
+                    _ => return Err(Error::validation_error("MemoryFill size not i32")),
                 };
                 
                 let value_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let value = match value_val {
                     Some(Value::I32(val)) => val as u8,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryFill value not i32")),
+                    _ => return Err(Error::validation_error("MemoryFill value not i32")),
                 };
                 
                 let offset_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let offset = match offset_val {
                     Some(Value::I32(val)) => val as usize,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryFill offset not i32")),
+                    _ => return Err(Error::validation_error("MemoryFill offset not i32")),
                 };
                 
                 // Get the memory instance
@@ -4190,43 +3962,40 @@ impl FrameBehavior for StacklessFrame {
                 
                 // Perform bounds check
                 if offset + size > memory.size_in_bytes() {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::MEMORY_OUT_OF_BOUNDS, "MemoryFill operation out of bounds"));
+                    return Err(Error::memory_out_of_bounds("MemoryFill operation out of bounds"));
                 }
                 
                 // TODO: Fill memory with the specified value using the instruction layer implementation
                 // use wrt_instructions::memory_ops::{MemoryFill, MemoryOperations};
                 // let fill_op = MemoryFill::new(mem_idx);
                 // fill_op.execute(&mut memory, &Value::I32(offset as i32), &Value::I32(value as i32), &Value::I32(size as i32))?;
-                return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::UNSUPPORTED_OPERATION,
-                    "Memory fill operation not yet fully implemented"
+                return Err(Error::runtime_execution_error("
                 ))
             }
             
             Instruction::MemoryCopy(dst_mem_idx, src_mem_idx) => {
                 let size_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow(")
                 })?;
                 let size = match size_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryCopy size not i32")),
+                    _ => return Err(Error::validation_error("MemoryCopy size not i32")),
                 };
                 
                 let src_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let src = match src_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryCopy src not i32")),
+                    _ => return Err(Error::validation_error("MemoryCopy src not i32")),
                 };
                 
                 let dest_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let dest = match dest_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryCopy dest not i32")),
+                    _ => return Err(Error::validation_error("MemoryCopy dest not i32")),
                 };
                 
                 // Get the memory instance (assuming same memory for both src and dest in MVP)
@@ -4236,27 +4005,15 @@ impl FrameBehavior for StacklessFrame {
                 // use wrt_instructions::memory_ops::{MemoryCopy, MemoryOperations};
                 // let copy_op = MemoryCopy::new(dst_mem_idx, src_mem_idx);
                 // copy_op.execute(&mut memory, &Value::I32(dest as i32), &Value::I32(src as i32), &Value::I32(size as i32))?;
-                return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::UNSUPPORTED_OPERATION,
-                    "Memory copy operation not yet fully implemented"
+                return Err(Error::runtime_execution_error("
                 ))
             }
             
             Instruction::DataDrop(data_seg_idx) => {
                 // Data segments are typically handled at module instantiation time
-                // DataDrop marks a data segment as "dropped" to prevent further use in memory.init
-                // For now, we'll implement this as a no-op since our current implementation
-                // doesn't track active data segments at runtime
-                
-                // Validate that the data segment index is valid
-                let module = self.module_instance.module();
+                // DataDrop marks a data segment as ");
                 if data_seg_idx >= module.data.len() as u32 {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_INVALID_DATA_SEGMENT_INDEX,
-                        "Stack operation error"
-                    ));
+                    return Err(Error::validation_error("Stack operation error"));
                 }
                 
                 // TODO: In a full implementation, mark the data segment as dropped
@@ -4270,11 +4027,7 @@ impl FrameBehavior for StacklessFrame {
                 // Validate function index
                 let module = self.module_instance.module();
                 if func_idx >= module.functions.len() as u32 {
-                    return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::INVALID_FUNCTION_INDEX,
-                        "Stack operation error"
-                    ));
+                    return Err(Error::validation_error("Stack operation error"));
                 }
                 
                 // Return TailCall control flow to indicate frame replacement
@@ -4284,45 +4037,45 @@ impl FrameBehavior for StacklessFrame {
             Instruction::ReturnCallIndirect(type_idx, table_idx) => {
                 // Pop the function index from stack
                 let func_index_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let func_index = match func_index_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "ReturnCallIndirect function index not i32")),
+                    _ => return Err(Error::validation_error("ReturnCallIndirect function index not i32")),
                 };
                 
                 // Get table and validate index
                 let table = self.module_instance.get_table(table_idx as usize).map_err(|_| {
-                    Error::new(ErrorCategory::Validation, codes::VALIDATION_INVALID_TABLE_INDEX, "Stack operation error")
+                    Error::validation_error("Stack operation error")
                 })?;
                 
                 if func_index >= table.size() {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::MEMORY_OUT_OF_BOUNDS, "ReturnCallIndirect function index out of table bounds"));
+                    return Err(Error::memory_out_of_bounds("ReturnCallIndirect function index out of table bounds"));
                 }
                 
                 // Get function reference from table
                 let func_ref = table.get(func_index).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::MEMORY_ACCESS_ERROR, "Stack operation error")
+                    Error::runtime_memory_access_error("Stack operation error")
                 })?;
                 
                 let actual_func_idx = match func_ref {
                     Some(Value::FuncRef(Some(fref))) => fref.index,
                     Some(Value::FuncRef(None)) | None => {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::TYPE_MISMATCH_ERROR, "ReturnCallIndirect null function reference"));
+                        return Err(Error::runtime_type_mismatch("ReturnCallIndirect null function reference"));
                     }
                     _ => {
-                        return Err(Error::new(ErrorCategory::Runtime, codes::TYPE_MISMATCH_ERROR, "ReturnCallIndirect invalid table element type"));
+                        return Err(Error::runtime_type_mismatch("ReturnCallIndirect invalid table element type"));
                     }
                 };
                 
                 // Validate function type matches expected type
                 let module = self.module_instance.module();
                 let function = module.functions.get(actual_func_idx as usize).map_err(|_| {
-                    Error::new(ErrorCategory::Validation, codes::INVALID_FUNCTION_INDEX, "Stack operation error")
+                    Error::validation_error("Stack operation error")
                 })?;
                 
                 if function.type_idx != type_idx {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::TYPE_MISMATCH_ERROR, "ReturnCallIndirect function type mismatch"));
+                    return Err(Error::runtime_type_mismatch("ReturnCallIndirect function type mismatch"));
                 }
                 
                 // Return TailCall control flow for the resolved function
@@ -4332,23 +4085,15 @@ impl FrameBehavior for StacklessFrame {
             // Branch on null instructions (WebAssembly 2.0 GC)
             Instruction::BrOnNull(label_idx) => {
                 let ref_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty for br_on_null",
-                ))?;
+                    Error::runtime_stack_underflow("Stack operation error")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty for br_on_null"))?;
                 
                 let is_null = match ref_val {
                     Value::FuncRef(ref opt_ref) => opt_ref.is_none(),
                     Value::ExternRef(ref opt_ref) => opt_ref.is_none(),
                     Value::StructRef(ref opt_ref) => opt_ref.is_none(),
                     Value::ArrayRef(ref opt_ref) => opt_ref.is_none(),
-                    _ => return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::TYPE_MISMATCH_ERROR,
-                        "BrOnNull operand is not a reference type"
-                    )),
+                    _ => return Err(Error::validation_error("BrOnNull operand is not a reference type")),
                 };
                 
                 if is_null {
@@ -4358,7 +4103,7 @@ impl FrameBehavior for StacklessFrame {
                 } else {
                     // Push the non-null reference back onto stack and continue
                     engine.exec_stack.values.push(ref_val).map_err(|e| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                        Error::runtime_stack_overflow("Stack operation error")
                     })?;
                     return Ok(ControlFlow::Next);
                 }
@@ -4366,29 +4111,21 @@ impl FrameBehavior for StacklessFrame {
             
             Instruction::BrOnNonNull(label_idx) => {
                 let ref_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty for br_on_non_null",
-                ))?;
+                    Error::runtime_stack_underflow("Stack operation error")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty for br_on_non_null"))?;
                 
                 let is_null = match ref_val {
                     Value::FuncRef(ref opt_ref) => opt_ref.is_none(),
                     Value::ExternRef(ref opt_ref) => opt_ref.is_none(),
                     Value::StructRef(ref opt_ref) => opt_ref.is_none(),
                     Value::ArrayRef(ref opt_ref) => opt_ref.is_none(),
-                    _ => return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::TYPE_MISMATCH_ERROR,
-                        "BrOnNonNull operand is not a reference type"
-                    )),
+                    _ => return Err(Error::validation_error("BrOnNonNull operand is not a reference type")),
                 };
                 
                 if !is_null {
                     // Push the non-null reference back onto stack and branch
                     engine.exec_stack.values.push(ref_val).map_err(|e| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                        Error::runtime_stack_overflow("Stack operation error")
                     })?;
                     self.branch_to_label(label_idx, engine)?;
                     return Ok(ControlFlow::Branch(label_idx as usize));
@@ -4401,27 +4138,27 @@ impl FrameBehavior for StacklessFrame {
             // Memory initialization instruction
             Instruction::MemoryInit(data_seg_idx, mem_idx) => {
                 let size_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let size = match size_val {
                     Some(Value::I32(val)) => val as usize,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryInit size not i32")),
+                    _ => return Err(Error::validation_error("MemoryInit size not i32")),
                 };
                 
                 let src_offset_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let src_offset = match src_offset_val {
                     Some(Value::I32(val)) => val as usize,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryInit src_offset not i32")),
+                    _ => return Err(Error::validation_error("MemoryInit src_offset not i32")),
                 };
                 
                 let dst_offset_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let dst_offset = match dst_offset_val {
                     Some(Value::I32(val)) => val as usize,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryInit dst_offset not i32")),
+                    _ => return Err(Error::validation_error("MemoryInit dst_offset not i32")),
                 };
                 
                 // Validate memory index
@@ -4430,30 +4167,30 @@ impl FrameBehavior for StacklessFrame {
                 // Validate data segment index
                 let module = self.module_instance.module();
                 let data_segment = module.data.get(data_seg_idx as usize).map_err(|_| {
-                    Error::new(ErrorCategory::Validation, codes::VALIDATION_INVALID_DATA_SEGMENT_INDEX, "Stack operation error")
+                    Error::validation_error("Stack operation error")
                 })?;
                 
                 // Bounds checks
                 if dst_offset + size > memory.size_in_bytes() {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::MEMORY_OUT_OF_BOUNDS, "MemoryInit destination out of bounds"));
+                    return Err(Error::memory_out_of_bounds("MemoryInit destination out of bounds"));
                 }
                 
                 let data = data_segment.data().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::MEMORY_ACCESS_ERROR, "Data segment access error")
+                    Error::runtime_memory_access_error("Data segment access error")
                 })?;
                 
                 if src_offset + size > data.len() {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::MEMORY_OUT_OF_BOUNDS, "MemoryInit source out of bounds"));
+                    return Err(Error::memory_out_of_bounds("MemoryInit source out of bounds"));
                 }
                 
                 // Copy data from segment to memory
                 for i in 0..size {
                     let byte = data.get(src_offset + i).ok_or_else(|| {
-                        Error::new(ErrorCategory::Runtime, codes::MEMORY_OUT_OF_BOUNDS, "MemoryInit data segment access out of bounds")
+                        Error::memory_out_of_bounds("MemoryInit data segment access out of bounds")
                     })?;
                     // Write one byte at a time - this will fail due to Arc<Memory> immutability
                     memory.write((dst_offset + i) as u32, &[*byte]).map_err(|e| {
-                        Error::new(ErrorCategory::Runtime, codes::MEMORY_ACCESS_ERROR, "Memory write error")
+                        Error::runtime_memory_access_error("Memory write error")
                     })?;
                 }
                 
@@ -4463,36 +4200,24 @@ impl FrameBehavior for StacklessFrame {
             // Additional reference operations (WebAssembly 2.0 GC)
             Instruction::RefAsNonNull => {
                 let ref_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty for ref_as_non_null",
-                ))?;
+                    Error::runtime_stack_underflow("Stack operation error")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty for ref_as_non_null"))?;
                 
                 let is_null = match ref_val {
                     Value::FuncRef(ref opt_ref) => opt_ref.is_none(),
                     Value::ExternRef(ref opt_ref) => opt_ref.is_none(),
                     Value::StructRef(ref opt_ref) => opt_ref.is_none(),
                     Value::ArrayRef(ref opt_ref) => opt_ref.is_none(),
-                    _ => return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::TYPE_MISMATCH_ERROR,
-                        "RefAsNonNull operand is not a reference type"
-                    )),
+                    _ => return Err(Error::validation_error("RefAsNonNull operand is not a reference type")),
                 };
                 
                 if is_null {
                     // Trap if reference is null
-                    return Err(Error::new(
-                        ErrorCategory::RuntimeTrap,
-                        codes::EXECUTION_ERROR,
-                        "RefAsNonNull: null reference"
-                    ));
+                    return Err(Error::runtime_trap_execution_error("RefAsNonNull: null reference"));
                 } else {
                     // Push the non-null reference back onto stack
                     engine.exec_stack.values.push(ref_val).map_err(|e| {
-                        Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                        Error::runtime_stack_overflow("Stack operation error")
                     })?;
                     Ok(ControlFlow::Next)
                 }
@@ -4500,19 +4225,11 @@ impl FrameBehavior for StacklessFrame {
             
             Instruction::RefEq => {
                 let ref2_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty for ref_eq ref2",
-                ))?;
+                    Error::runtime_stack_underflow("Stack operation error")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty for ref_eq ref2"))?;
                 let ref1_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
-                })?.ok_or_else(|| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::STACK_UNDERFLOW,
-                    "Stack empty for ref_eq ref1",
-                ))?;
+                    Error::runtime_stack_underflow("Stack operation error")
+                })?.ok_or_else(|| Error::runtime_stack_underflow("Stack empty for ref_eq ref1"))?;
                 
                 // Compare references for equality
                 let are_equal = match (&ref1_val, &ref2_val) {
@@ -4543,16 +4260,12 @@ impl FrameBehavior for StacklessFrame {
                         },
                         _ => false,
                     },
-                    _ => return Err(Error::new(
-                        ErrorCategory::Validation,
-                        codes::TYPE_MISMATCH_ERROR,
-                        "RefEq: operands must be compatible reference types"
-                    )),
+                    _ => return Err(Error::validation_error("RefEq: operands must be compatible reference types")),
                 };
                 
                 let result = if are_equal { 1i32 } else { 0i32 };
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -4560,25 +4273,25 @@ impl FrameBehavior for StacklessFrame {
             // Atomic operations (WebAssembly Threads proposal)
             Instruction::MemoryAtomicNotify { memarg } => {
                 let count_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let count = match count_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryAtomicNotify count not i32")),
+                    _ => return Err(Error::validation_error("MemoryAtomicNotify count not i32")),
                 };
                 
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryAtomicNotify addr not i32")),
+                    _ => return Err(Error::validation_error("MemoryAtomicNotify addr not i32")),
                 };
                 
                 // Calculate effective address with alignment check
                 let effective_addr = addr + memarg.offset;
                 if effective_addr % 4 != 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::UNALIGNED_MEMORY_ACCESS, "MemoryAtomicNotify requires 4-byte alignment"));
+                    return Err(Error::runtime_unaligned_memory_access("MemoryAtomicNotify requires 4-byte alignment"));
                 }
                 
                 // For now, implement as a no-op since we don't have a full threading model
@@ -4586,51 +4299,51 @@ impl FrameBehavior for StacklessFrame {
                 let woken_count = 0i32; // No threads to wake in current implementation
                 
                 engine.exec_stack.values.push(Value::I32(woken_count)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             
             Instruction::MemoryAtomicWait32 { memarg } => {
                 let timeout_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let timeout = match timeout_val {
                     Some(Value::I64(val)) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryAtomicWait32 timeout not i64")),
+                    _ => return Err(Error::validation_error("MemoryAtomicWait32 timeout not i64")),
                 };
                 
                 let expected_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let expected = match expected_val {
                     Some(Value::I32(val)) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryAtomicWait32 expected not i32")),
+                    _ => return Err(Error::validation_error("MemoryAtomicWait32 expected not i32")),
                 };
                 
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryAtomicWait32 addr not i32")),
+                    _ => return Err(Error::validation_error("MemoryAtomicWait32 addr not i32")),
                 };
                 
                 // Calculate effective address with alignment check
                 let effective_addr = addr + memarg.offset;
                 if effective_addr % 4 != 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::UNALIGNED_MEMORY_ACCESS, "MemoryAtomicWait32 requires 4-byte alignment"));
+                    return Err(Error::runtime_unaligned_memory_access("MemoryAtomicWait32 requires 4-byte alignment"));
                 }
                 
                 // Get memory and read current value
                 let memory = self.module_instance.memory(0).map_err(|_| {
-                    Error::new(ErrorCategory::Validation, codes::VALIDATION_INVALID_MEMORY_INDEX, "No memory instance for atomic operation")
+                    Error::validation_error("No memory instance for atomic operation")
                 })?;
                 
                 // Read 4 bytes for i32
                 let mut bytes = [0u8; 4];
                 memory.read(effective_addr, &mut bytes).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::MEMORY_ACCESS_ERROR, "Memory read error")
+                    Error::runtime_memory_access_error("Memory read error")
                 })?;
                 let current_val = i32::from_le_bytes(bytes);
                 
@@ -4644,76 +4357,76 @@ impl FrameBehavior for StacklessFrame {
                 };
                 
                 engine.exec_stack.values.push(Value::I32(result)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             
             Instruction::I32AtomicLoad { memarg } => {
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicLoad addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicLoad addr not i32")),
                 };
                 
                 // Calculate effective address with alignment check
                 let effective_addr = addr + memarg.offset;
                 if effective_addr % 4 != 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::UNALIGNED_MEMORY_ACCESS, "I32AtomicLoad requires 4-byte alignment"));
+                    return Err(Error::runtime_unaligned_memory_access("I32AtomicLoad requires 4-byte alignment"));
                 }
                 
                 // Get memory and perform atomic load
                 let memory = self.module_instance.memory(0).map_err(|_| {
-                    Error::new(ErrorCategory::Validation, codes::VALIDATION_INVALID_MEMORY_INDEX, "No memory instance for atomic operation")
+                    Error::validation_error("No memory instance for atomic operation")
                 })?;
                 
                 // Read 4 bytes for i32
                 let mut bytes = [0u8; 4];
                 memory.read(effective_addr, &mut bytes).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::MEMORY_ACCESS_ERROR, "Memory read error")
+                    Error::runtime_memory_access_error("Memory read error")
                 })?;
                 let value = i32::from_le_bytes(bytes);
                 
                 engine.exec_stack.values.push(Value::I32(value)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             
             Instruction::I32AtomicStore { memarg } => {
                 let value_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let value = match value_val {
                     Some(Value::I32(val)) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicStore value not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicStore value not i32")),
                 };
                 
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicStore addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicStore addr not i32")),
                 };
                 
                 // Calculate effective address with alignment check
                 let effective_addr = addr + memarg.offset;
                 if effective_addr % 4 != 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::UNALIGNED_MEMORY_ACCESS, "I32AtomicStore requires 4-byte alignment"));
+                    return Err(Error::runtime_unaligned_memory_access("I32AtomicStore requires 4-byte alignment"));
                 }
                 
                 // Get memory and perform atomic store
                 let memory = self.module_instance.memory(0).map_err(|_| {
-                    Error::new(ErrorCategory::Validation, codes::VALIDATION_INVALID_MEMORY_INDEX, "No memory instance for atomic operation")
+                    Error::validation_error("No memory instance for atomic operation")
                 })?;
                 
                 // Write 4 bytes for i32 - this will fail due to Arc<Memory> immutability
                 let bytes = value.to_le_bytes();
                 memory.write(effective_addr, &bytes).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::MEMORY_ACCESS_ERROR, "Memory write error")
+                    Error::runtime_memory_access_error("Memory write error")
                 })?;
                 
                 Ok(ControlFlow::Next)
@@ -4721,36 +4434,36 @@ impl FrameBehavior for StacklessFrame {
             
             Instruction::I32AtomicRmwAdd { memarg } => {
                 let value_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let value = match value_val {
                     Some(Value::I32(val)) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwAdd value not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmwAdd value not i32")),
                 };
                 
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwAdd addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmwAdd addr not i32")),
                 };
                 
                 // Calculate effective address with alignment check
                 let effective_addr = addr + memarg.offset;
                 if effective_addr % 4 != 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::UNALIGNED_MEMORY_ACCESS, "I32AtomicRmwAdd requires 4-byte alignment"));
+                    return Err(Error::runtime_unaligned_memory_access("I32AtomicRmwAdd requires 4-byte alignment"));
                 }
                 
                 // Get memory and perform atomic read-modify-write add
                 let memory = self.module_instance.memory(0).map_err(|_| {
-                    Error::new(ErrorCategory::Validation, codes::VALIDATION_INVALID_MEMORY_INDEX, "No memory instance for atomic operation")
+                    Error::validation_error("No memory instance for atomic operation")
                 })?;
                 
                 let old_value = {
                     let mut bytes = [0u8; 4];
                     memory.read(effective_addr, &mut bytes).map_err(|e| {
-                        Error::new(ErrorCategory::Runtime, codes::MEMORY_ACCESS_ERROR, "Memory read error")
+                        Error::runtime_memory_access_error("Memory read error")
                     })?;
                     i32::from_le_bytes(bytes)
                 };
@@ -4759,57 +4472,57 @@ impl FrameBehavior for StacklessFrame {
                 {
                     let bytes = new_value.to_le_bytes();
                     memory.write(effective_addr, &bytes).map_err(|e| {
-                        Error::new(ErrorCategory::Runtime, codes::MEMORY_ACCESS_ERROR, "Memory write error")
+                        Error::runtime_memory_access_error("Memory write error")
                     })?
                 };
                 
                 // Return the old value
                 engine.exec_stack.values.push(Value::I32(old_value)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 Ok(ControlFlow::Next)
             }
             
             Instruction::I32AtomicRmwCmpxchg { memarg } => {
                 let replacement_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let replacement = match replacement_val {
                     Some(Value::I32(val)) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwCmpxchg replacement not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmwCmpxchg replacement not i32")),
                 };
                 
                 let expected_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let expected = match expected_val {
                     Some(Value::I32(val)) => val,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwCmpxchg expected not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmwCmpxchg expected not i32")),
                 };
                 
                 let addr_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+                    Error::runtime_stack_underflow("Stack operation error")
                 })?;
                 let addr = match addr_val {
                     Some(Value::I32(val)) => val as u32,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwCmpxchg addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmwCmpxchg addr not i32")),
                 };
                 
                 // Calculate effective address with alignment check
                 let effective_addr = addr + memarg.offset;
                 if effective_addr % 4 != 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::UNALIGNED_MEMORY_ACCESS, "I32AtomicRmwCmpxchg requires 4-byte alignment"));
+                    return Err(Error::runtime_unaligned_memory_access("I32AtomicRmwCmpxchg requires 4-byte alignment"));
                 }
                 
                 // Get memory and perform atomic compare-exchange
                 let memory = self.module_instance.memory(0).map_err(|_| {
-                    Error::new(ErrorCategory::Validation, codes::VALIDATION_INVALID_MEMORY_INDEX, "No memory instance for atomic operation")
+                    Error::validation_error("No memory instance for atomic operation")
                 })?;
                 
                 let current_value = {
                     let mut bytes = [0u8; 4];
                     memory.read(effective_addr, &mut bytes).map_err(|e| {
-                        Error::new(ErrorCategory::Runtime, codes::MEMORY_ACCESS_ERROR, "Memory read error")
+                        Error::runtime_memory_access_error("Memory read error")
                     })?;
                     i32::from_le_bytes(bytes)
                 };
@@ -4819,14 +4532,14 @@ impl FrameBehavior for StacklessFrame {
                     {
                         let bytes = replacement.to_le_bytes();
                         memory.write(effective_addr, &bytes).map_err(|e| {
-                            Error::new(ErrorCategory::Runtime, codes::MEMORY_ACCESS_ERROR, "Memory write error")
+                            Error::runtime_memory_access_error("Memory write error")
                         })?
                     };
                 }
                 
                 // Return the old value regardless of whether exchange occurred
                 engine.exec_stack.values.push(Value::I32(current_value)).map_err(|e| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack operation error")
+                    Error::runtime_stack_overflow("Stack operation error")
                 })?;
                 
                 Ok(ControlFlow::Next)
@@ -4841,28 +4554,28 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic RMW Sub
             Instruction::I32AtomicRmwSub { memarg } => {
                 // Pop value to subtract
-                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwSub value not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmwSub value not i32")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwSub addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmwSub addr not i32")),
                 };
                 
                 // Check alignment
                 if (addr_i32 as usize + memarg.offset as usize) % 4 != 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::UNALIGNED_MEMORY_ACCESS, "I32AtomicRmwSub requires 4-byte alignment"));
+                    return Err(Error::runtime_unaligned_memory_access("I32AtomicRmwSub requires 4-byte alignment"));
                 }
                 
                 // Get memory
                 let mem_idx = 0; // Default to first memory
                 let memory = engine.get_current_module()
-                    .ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"))?
+                    .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
                 let memory_guard = memory.lock();
@@ -4880,7 +4593,7 @@ impl FrameBehavior for StacklessFrame {
                 
                 // Push the old value
                 engine.exec_stack.values.push(Value::I32(current_value)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 
                 Ok(ControlFlow::Next)
@@ -4889,28 +4602,28 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic RMW And
             Instruction::I32AtomicRmwAnd { memarg } => {
                 // Pop value to AND
-                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwAnd value not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmwAnd value not i32")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwAnd addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmwAnd addr not i32")),
                 };
                 
                 // Check alignment
                 if (addr_i32 as usize + memarg.offset as usize) % 4 != 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::UNALIGNED_MEMORY_ACCESS, "I32AtomicRmwAnd requires 4-byte alignment"));
+                    return Err(Error::runtime_unaligned_memory_access("I32AtomicRmwAnd requires 4-byte alignment"));
                 }
                 
                 // Get memory
                 let mem_idx = 0; // Default to first memory
                 let memory = engine.get_current_module()
-                    .ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"))?
+                    .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
                 let memory_guard = memory.lock();
@@ -4928,7 +4641,7 @@ impl FrameBehavior for StacklessFrame {
                 
                 // Push the old value
                 engine.exec_stack.values.push(Value::I32(current_value)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 
                 Ok(ControlFlow::Next)
@@ -4937,28 +4650,28 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic RMW Or
             Instruction::I32AtomicRmwOr { memarg } => {
                 // Pop value to OR
-                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwOr value not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmwOr value not i32")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwOr addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmwOr addr not i32")),
                 };
                 
                 // Check alignment
                 if (addr_i32 as usize + memarg.offset as usize) % 4 != 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::UNALIGNED_MEMORY_ACCESS, "I32AtomicRmwOr requires 4-byte alignment"));
+                    return Err(Error::runtime_unaligned_memory_access("I32AtomicRmwOr requires 4-byte alignment"));
                 }
                 
                 // Get memory
                 let mem_idx = 0; // Default to first memory
                 let memory = engine.get_current_module()
-                    .ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"))?
+                    .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
                 let memory_guard = memory.lock();
@@ -4976,7 +4689,7 @@ impl FrameBehavior for StacklessFrame {
                 
                 // Push the old value
                 engine.exec_stack.values.push(Value::I32(current_value)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 
                 Ok(ControlFlow::Next)
@@ -4985,28 +4698,28 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic RMW Xor
             Instruction::I32AtomicRmwXor { memarg } => {
                 // Pop value to XOR
-                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwXor value not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmwXor value not i32")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwXor addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmwXor addr not i32")),
                 };
                 
                 // Check alignment
                 if (addr_i32 as usize + memarg.offset as usize) % 4 != 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::UNALIGNED_MEMORY_ACCESS, "I32AtomicRmwXor requires 4-byte alignment"));
+                    return Err(Error::runtime_unaligned_memory_access("I32AtomicRmwXor requires 4-byte alignment"));
                 }
                 
                 // Get memory
                 let mem_idx = 0; // Default to first memory
                 let memory = engine.get_current_module()
-                    .ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"))?
+                    .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
                 let memory_guard = memory.lock();
@@ -5024,7 +4737,7 @@ impl FrameBehavior for StacklessFrame {
                 
                 // Push the old value
                 engine.exec_stack.values.push(Value::I32(current_value)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 
                 Ok(ControlFlow::Next)
@@ -5033,10 +4746,10 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic Load 8-bit unsigned
             Instruction::I32AtomicLoad8U { memarg } => {
                 // Pop address
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicLoad8U addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicLoad8U addr not i32")),
                 };
                 
                 // No alignment requirement for 8-bit access
@@ -5044,7 +4757,7 @@ impl FrameBehavior for StacklessFrame {
                 // Get memory
                 let mem_idx = 0; // Default to first memory
                 let memory = engine.get_current_module()
-                    .ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"))?
+                    .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
                 let memory_guard = memory.lock();
@@ -5057,7 +4770,7 @@ impl FrameBehavior for StacklessFrame {
                 
                 // Push the value as i32
                 engine.exec_stack.values.push(Value::I32(value as i32)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 
                 Ok(ControlFlow::Next)
@@ -5066,21 +4779,21 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic Load 16-bit unsigned
             Instruction::I32AtomicLoad16U { memarg } => {
                 // Pop address
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicLoad16U addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicLoad16U addr not i32")),
                 };
                 
                 // Check alignment
                 if (addr_i32 as usize + memarg.offset as usize) % 2 != 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::UNALIGNED_MEMORY_ACCESS, "I32AtomicLoad16U requires 2-byte alignment"));
+                    return Err(Error::runtime_unaligned_memory_access("I32AtomicLoad16U requires 2-byte alignment"));
                 }
                 
                 // Get memory
                 let mem_idx = 0; // Default to first memory
                 let memory = engine.get_current_module()
-                    .ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"))?
+                    .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
                 let memory_guard = memory.lock();
@@ -5093,7 +4806,7 @@ impl FrameBehavior for StacklessFrame {
                 
                 // Push the value as i32
                 engine.exec_stack.values.push(Value::I32(value as i32)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 
                 Ok(ControlFlow::Next)
@@ -5102,28 +4815,28 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic RMW Exchange
             Instruction::I32AtomicRmwXchg { memarg } => {
                 // Pop value to exchange
-                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwXchg value not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmwXchg value not i32")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmwXchg addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmwXchg addr not i32")),
                 };
                 
                 // Check alignment
                 if (addr_i32 as usize + memarg.offset as usize) % 4 != 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::UNALIGNED_MEMORY_ACCESS, "I32AtomicRmwXchg requires 4-byte alignment"));
+                    return Err(Error::runtime_unaligned_memory_access("I32AtomicRmwXchg requires 4-byte alignment"));
                 }
                 
                 // Get memory
                 let mem_idx = 0; // Default to first memory
                 let memory = engine.get_current_module()
-                    .ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"))?
+                    .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
                 let memory_guard = memory.lock();
@@ -5140,7 +4853,7 @@ impl FrameBehavior for StacklessFrame {
                 
                 // Push the old value
                 engine.exec_stack.values.push(Value::I32(current_value)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 
                 Ok(ControlFlow::Next)
@@ -5149,23 +4862,23 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic Store 8-bit
             Instruction::I32AtomicStore8 { memarg } => {
                 // Pop value
-                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicStore8 value not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicStore8 value not i32")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicStore8 addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicStore8 addr not i32")),
                 };
                 
                 // Get memory
                 let mem_idx = 0; // Default to first memory
                 let memory = engine.get_current_module()
-                    .ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"))?
+                    .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
                 let memory_guard = memory.lock();
@@ -5181,28 +4894,28 @@ impl FrameBehavior for StacklessFrame {
             // I32 Atomic Store 16-bit
             Instruction::I32AtomicStore16 { memarg } => {
                 // Pop value
-                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicStore16 value not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicStore16 value not i32")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicStore16 addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicStore16 addr not i32")),
                 };
                 
                 // Check alignment
                 if (addr_i32 as usize + memarg.offset as usize) % 2 != 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::UNALIGNED_MEMORY_ACCESS, "I32AtomicStore16 requires 2-byte alignment"));
+                    return Err(Error::runtime_unaligned_memory_access("I32AtomicStore16 requires 2-byte alignment"));
                 }
                 
                 // Get memory
                 let mem_idx = 0; // Default to first memory
                 let memory = engine.get_current_module()
-                    .ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"))?
+                    .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
                 let memory_guard = memory.lock();
@@ -5218,21 +4931,21 @@ impl FrameBehavior for StacklessFrame {
             // I64 Atomic Load
             Instruction::I64AtomicLoad { memarg } => {
                 // Pop address
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64AtomicLoad addr not i32")),
+                    _ => return Err(Error::validation_error("I64AtomicLoad addr not i32")),
                 };
                 
                 // Check alignment
                 if (addr_i32 as usize + memarg.offset as usize) % 8 != 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::UNALIGNED_MEMORY_ACCESS, "I64AtomicLoad requires 8-byte alignment"));
+                    return Err(Error::runtime_unaligned_memory_access("I64AtomicLoad requires 8-byte alignment"));
                 }
                 
                 // Get memory
                 let mem_idx = 0; // Default to first memory
                 let memory = engine.get_current_module()
-                    .ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"))?
+                    .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
                 let memory_guard = memory.lock();
@@ -5245,7 +4958,7 @@ impl FrameBehavior for StacklessFrame {
                 
                 // Push the value
                 engine.exec_stack.values.push(Value::I64(value)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 
                 Ok(ControlFlow::Next)
@@ -5254,28 +4967,28 @@ impl FrameBehavior for StacklessFrame {
             // I64 Atomic Store
             Instruction::I64AtomicStore { memarg } => {
                 // Pop value
-                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let value_i64 = match value {
                     Value::I64(v) => v,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64AtomicStore value not i64")),
+                    _ => return Err(Error::validation_error("I64AtomicStore value not i64")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I64AtomicStore addr not i32")),
+                    _ => return Err(Error::validation_error("I64AtomicStore addr not i32")),
                 };
                 
                 // Check alignment
                 if (addr_i32 as usize + memarg.offset as usize) % 8 != 0 {
-                    return Err(Error::new(ErrorCategory::Runtime, codes::UNALIGNED_MEMORY_ACCESS, "I64AtomicStore requires 8-byte alignment"));
+                    return Err(Error::runtime_unaligned_memory_access("I64AtomicStore requires 8-byte alignment"));
                 }
                 
                 // Get memory
                 let mem_idx = 0; // Default to first memory
                 let memory = engine.get_current_module()
-                    .ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "No module instance"))?
+                    .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
                 let memory_guard = memory.lock();
@@ -5291,30 +5004,30 @@ impl FrameBehavior for StacklessFrame {
             // Memory Atomic Wait 64
             Instruction::MemoryAtomicWait64 { memarg } => {
                 // Pop timeout
-                let timeout = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let timeout = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let timeout_i64 = match timeout {
                     Value::I64(t) => t,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryAtomicWait64 timeout not i64")),
+                    _ => return Err(Error::validation_error("MemoryAtomicWait64 timeout not i64")),
                 };
                 
                 // Pop expected value
-                let expected = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let expected = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let expected_i64 = match expected {
                     Value::I64(e) => e,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryAtomicWait64 expected not i64")),
+                    _ => return Err(Error::validation_error("MemoryAtomicWait64 expected not i64")),
                 };
                 
                 // Pop address
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "MemoryAtomicWait64 addr not i32")),
+                    _ => return Err(Error::validation_error("MemoryAtomicWait64 addr not i32")),
                 };
                 
                 // In a single-threaded implementation, we simply return "not equal" (1)
                 // since there's no other thread that could change the value
                 engine.exec_stack.values.push(Value::I32(1)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 
                 Ok(ControlFlow::Next)
@@ -5323,25 +5036,25 @@ impl FrameBehavior for StacklessFrame {
             // Default case for remaining unimplemented atomic instructions
             // I32 atomic RMW 8-bit operations
             Instruction::I32AtomicRmw8AddU { memarg } => {
-                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8AddU value not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmw8AddU value not i32")),
                 };
                 
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8AddU addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmw8AddU addr not i32")),
                 };
                 
                 let effective_addr = (addr_i32 as u32).checked_add(memarg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "Address overflow")
+                    Error::memory_error("Address overflow")
                 })?;
                 
                 let mem = self.module_instance.memory(0)?;
                 if effective_addr as usize >= mem.size_in_bytes() {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "Out of bounds"));
+                    return Err(Error::memory_error("Out of bounds"));
                 }
                 
                 // For MVP, just do non-atomic operations
@@ -5352,31 +5065,31 @@ impl FrameBehavior for StacklessFrame {
                 mem.write(effective_addr, &new_value.to_le_bytes())?;
                 
                 engine.exec_stack.values.push(Value::I32(old_value as i32)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 Ok(ControlFlow::Next)
             }
             
             Instruction::I32AtomicRmw8SubU { memarg } => {
-                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8SubU value not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmw8SubU value not i32")),
                 };
                 
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8SubU addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmw8SubU addr not i32")),
                 };
                 
                 let effective_addr = (addr_i32 as u32).checked_add(memarg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "Address overflow")
+                    Error::memory_error("Address overflow")
                 })?;
                 
                 let mem = self.module_instance.memory(0)?;
                 if effective_addr as usize >= mem.size_in_bytes() {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "Out of bounds"));
+                    return Err(Error::memory_error("Out of bounds"));
                 }
                 
                 let mut old_bytes = [0u8; 1];
@@ -5386,31 +5099,31 @@ impl FrameBehavior for StacklessFrame {
                 mem.write(effective_addr, &new_value.to_le_bytes())?;
                 
                 engine.exec_stack.values.push(Value::I32(old_value as i32)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 Ok(ControlFlow::Next)
             }
             
             Instruction::I32AtomicRmw8AndU { memarg } => {
-                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8AndU value not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmw8AndU value not i32")),
                 };
                 
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8AndU addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmw8AndU addr not i32")),
                 };
                 
                 let effective_addr = (addr_i32 as u32).checked_add(memarg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "Address overflow")
+                    Error::memory_error("Address overflow")
                 })?;
                 
                 let mem = self.module_instance.memory(0)?;
                 if effective_addr as usize >= mem.size_in_bytes() {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "Out of bounds"));
+                    return Err(Error::memory_error("Out of bounds"));
                 }
                 
                 let mut old_bytes = [0u8; 1];
@@ -5420,31 +5133,31 @@ impl FrameBehavior for StacklessFrame {
                 mem.write(effective_addr, &new_value.to_le_bytes())?;
                 
                 engine.exec_stack.values.push(Value::I32(old_value as i32)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 Ok(ControlFlow::Next)
             }
             
             Instruction::I32AtomicRmw8OrU { memarg } => {
-                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8OrU value not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmw8OrU value not i32")),
                 };
                 
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8OrU addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmw8OrU addr not i32")),
                 };
                 
                 let effective_addr = (addr_i32 as u32).checked_add(memarg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "Address overflow")
+                    Error::memory_error("Address overflow")
                 })?;
                 
                 let mem = self.module_instance.memory(0)?;
                 if effective_addr as usize >= mem.size_in_bytes() {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "Out of bounds"));
+                    return Err(Error::memory_error("Out of bounds"));
                 }
                 
                 let mut old_bytes = [0u8; 1];
@@ -5454,31 +5167,31 @@ impl FrameBehavior for StacklessFrame {
                 mem.write(effective_addr, &new_value.to_le_bytes())?;
                 
                 engine.exec_stack.values.push(Value::I32(old_value as i32)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 Ok(ControlFlow::Next)
             }
             
             Instruction::I32AtomicRmw8XorU { memarg } => {
-                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8XorU value not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmw8XorU value not i32")),
                 };
                 
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8XorU addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmw8XorU addr not i32")),
                 };
                 
                 let effective_addr = (addr_i32 as u32).checked_add(memarg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "Address overflow")
+                    Error::memory_error("Address overflow")
                 })?;
                 
                 let mem = self.module_instance.memory(0)?;
                 if effective_addr as usize >= mem.size_in_bytes() {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "Out of bounds"));
+                    return Err(Error::memory_error("Out of bounds"));
                 }
                 
                 let mut old_bytes = [0u8; 1];
@@ -5488,31 +5201,31 @@ impl FrameBehavior for StacklessFrame {
                 mem.write(effective_addr, &new_value.to_le_bytes())?;
                 
                 engine.exec_stack.values.push(Value::I32(old_value as i32)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 Ok(ControlFlow::Next)
             }
             
             Instruction::I32AtomicRmw8XchgU { memarg } => {
-                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let value = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let value_i32 = match value {
                     Value::I32(v) => v,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8XchgU value not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmw8XchgU value not i32")),
                 };
                 
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8XchgU addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmw8XchgU addr not i32")),
                 };
                 
                 let effective_addr = (addr_i32 as u32).checked_add(memarg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "Address overflow")
+                    Error::memory_error("Address overflow")
                 })?;
                 
                 let mem = self.module_instance.memory(0)?;
                 if effective_addr as usize >= mem.size_in_bytes() {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "Out of bounds"));
+                    return Err(Error::memory_error("Out of bounds"));
                 }
                 
                 let mut old_bytes = [0u8; 1];
@@ -5521,37 +5234,37 @@ impl FrameBehavior for StacklessFrame {
                 mem.write(effective_addr, &(value_i32 as u8).to_le_bytes())?;
                 
                 engine.exec_stack.values.push(Value::I32(old_value as i32)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 Ok(ControlFlow::Next)
             }
             
             Instruction::I32AtomicRmw8CmpxchgU { memarg } => {
-                let replacement = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let replacement = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let replacement_i32 = match replacement {
                     Value::I32(v) => v,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8CmpxchgU replacement not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmw8CmpxchgU replacement not i32")),
                 };
                 
-                let expected = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let expected = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let expected_i32 = match expected {
                     Value::I32(v) => v,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8CmpxchgU expected not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmw8CmpxchgU expected not i32")),
                 };
                 
-                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow"))?;
+                let addr = engine.exec_stack.values.pop()?.ok_or_else(|| Error::runtime_stack_underflow("Stack underflow"))?;
                 let addr_i32 = match addr {
                     Value::I32(a) => a,
-                    _ => return Err(Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH_ERROR, "I32AtomicRmw8CmpxchgU addr not i32")),
+                    _ => return Err(Error::validation_error("I32AtomicRmw8CmpxchgU addr not i32")),
                 };
                 
                 let effective_addr = (addr_i32 as u32).checked_add(memarg.offset).ok_or_else(|| {
-                    Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "Address overflow")
+                    Error::memory_error("Address overflow")
                 })?;
                 
                 let mem = self.module_instance.memory(0)?;
                 if effective_addr as usize >= mem.size_in_bytes() {
-                    return Err(Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "Out of bounds"));
+                    return Err(Error::memory_error("Out of bounds"));
                 }
                 
                 let mut old_bytes = [0u8; 1];
@@ -5563,7 +5276,7 @@ impl FrameBehavior for StacklessFrame {
                 }
                 
                 engine.exec_stack.values.push(Value::I32(old_value as i32)).map_err(|_| {
-                    Error::new(ErrorCategory::Runtime, codes::STACK_OVERFLOW, "Stack overflow")
+                    Error::runtime_stack_overflow("Stack overflow")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -5613,18 +5326,14 @@ impl FrameBehavior for StacklessFrame {
             Instruction::I64AtomicRmw32CmpxchgU { .. } => {
                 // MVP: Treat as regular memory operations
                 // In a real implementation, these would use atomic primitives
-                return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::UNSUPPORTED_OPERATION,
-                    "Remaining atomic sub-word instructions not fully implemented yet",
+                return Err(Error::runtime_execution_error(",
                 ));
             }
             _ => {
                 return Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::UNSUPPORTED_OPERATION,
-                    "Instruction not yet implemented",
-                ));
+                    "));
             }
         }
     }
@@ -5640,44 +5349,29 @@ impl StacklessFrame {
     ) -> Result<()> {
         let module = self.module_instance.module();
         let segment = module.elements.get(elem_idx as usize).map_err(|_| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_INVALID_ELEMENT_INDEX,
-                "Stack operation error",
+            Error::runtime_execution_error(",
             )
         })?;
 
         let len_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::STACK_UNDERFLOW,
-                "Stack operation error",
-            )
+            Error::runtime_stack_underflow(")
         })?;
         let src_offset_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::STACK_UNDERFLOW,
-                "Stack operation error",
-            )
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
         let dst_offset_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::STACK_UNDERFLOW,
-                "Stack operation error",
-            )
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
 
         let n = len_val
             .and_then(|v| v.as_i32())
-            .ok_or_else(|| Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "table.init len not i32"))?
+            .ok_or_else(|| Error::type_error("table.init len not i32"))?
             as u32;
         let src_offset = src_offset_val.and_then(|v| v.as_i32()).ok_or_else(|| {
-            Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "table.init src_offset not i32")
+            Error::type_error("table.init src_offset not i32")
         })? as u32;
         let dst_offset = dst_offset_val.and_then(|v| v.as_i32()).ok_or_else(|| {
-            Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "table.init dst_offset not i32")
+            Error::type_error("table.init dst_offset not i32")
         })? as u32;
 
         // Bounds checks from Wasm spec:
@@ -5687,11 +5381,7 @@ impl StacklessFrame {
         if dst_offset.checked_add(n).map_or(true, |end| end > table.size())
             || src_offset.checked_add(n).map_or(true, |end| end as usize > segment.items.len())
         {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::OUT_OF_BOUNDS_ERROR,
-                "table.init out of bounds",
-            ));
+            return Err(Error::runtime_out_of_bounds("table.init out of bounds"));
         }
 
         if n == 0 {
@@ -5707,11 +5397,7 @@ impl StacklessFrame {
         for i in 0..n {
             let idx = (src_offset + i) as usize;
             let item = segment.items.get(idx).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Runtime,
-                    codes::OUT_OF_BOUNDS_ERROR,
-                    "table.init source slice OOB on segment items",
-                )
+                Error::runtime_out_of_bounds("table.init source slice OOB on segment items")
             })?;
             items_to_init.push(Some(Value::FuncRef(Some(FuncRef { index: item }))));
         }
@@ -5726,36 +5412,24 @@ impl StacklessFrame {
         engine: &mut StacklessEngine,
     ) -> Result<()> {
         let len_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::STACK_UNDERFLOW,
-                "Stack operation error",
-            )
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
         let src_offset_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::STACK_UNDERFLOW,
-                "Stack operation error",
-            )
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
         let dst_offset_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(
-                ErrorCategory::Runtime,
-                codes::STACK_UNDERFLOW,
-                "Stack operation error",
-            )
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
 
         let n = len_val
             .and_then(|v| v.as_i32())
-            .ok_or_else(|| Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "table.copy len not i32"))?
+            .ok_or_else(|| Error::type_error("table.copy len not i32"))?
             as u32;
         let src_offset = src_offset_val.and_then(|v| v.as_i32()).ok_or_else(|| {
-            Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "table.copy src_offset not i32")
+            Error::type_error("table.copy src_offset not i32")
         })? as u32;
         let dst_offset = dst_offset_val.and_then(|v| v.as_i32()).ok_or_else(|| {
-            Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "table.copy dst_offset not i32")
+            Error::type_error("table.copy dst_offset not i32")
         })? as u32;
 
         let dst_table = self.module_instance.table(dst_table_idx)?;
@@ -5765,11 +5439,7 @@ impl StacklessFrame {
         if dst_offset.checked_add(n).map_or(true, |end| end > dst_table.size())
             || src_offset.checked_add(n).map_or(true, |end| end > src_table.size())
         {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::OUT_OF_BOUNDS_ERROR,
-                "table.copy out of bounds",
-            ));
+            return Err(Error::runtime_out_of_bounds("table.copy out of bounds"));
         }
 
         if n == 0 {
@@ -5785,11 +5455,7 @@ impl StacklessFrame {
             // Copy forwards
             for i in 0..n {
                 let val = src_table.get(src_offset + i)?.ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::OUT_OF_BOUNDS_ERROR,
-                        "table.copy source element uninitialized/null",
-                    )
+                    Error::runtime_out_of_bounds("table.copy source element uninitialized/null")
                 })?;
                 dst_table.set(dst_offset + i, Some(val))?;
             }
@@ -5797,11 +5463,7 @@ impl StacklessFrame {
             // Copy backwards (dst_offset > src_offset)
             for i in (0..n).rev() {
                 let val = src_table.get(src_offset + i)?.ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::OUT_OF_BOUNDS_ERROR,
-                        "table.copy source element uninitialized/null",
-                    )
+                    Error::runtime_out_of_bounds("table.copy source element uninitialized/null")
                 })?;
                 dst_table.set(dst_offset + i, Some(val))?;
             }
@@ -5811,31 +5473,27 @@ impl StacklessFrame {
 
     fn table_fill(&mut self, table_idx: u32, engine: &mut StacklessEngine) -> Result<()> {
         let n_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
         let val_to_fill = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
         let offset_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
 
         let n = n_val
             .and_then(|v| v.as_i32())
-            .ok_or_else(|| Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "table.fill count not i32"))?
+            .ok_or_else(|| Error::type_error("table.fill count not i32"))?
             as u32;
         let offset = offset_val
             .and_then(|v| v.as_i32())
-            .ok_or_else(|| Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "table.fill offset not i32"))?
+            .ok_or_else(|| Error::type_error("table.fill offset not i32"))?
             as u32;
 
         let table = self.module_instance.table(table_idx)?;
         if offset.checked_add(n).map_or(true, |end| end > table.size()) {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::OUT_OF_BOUNDS_ERROR,
-                "table.fill out of bounds",
-            ));
+            return Err(Error::runtime_out_of_bounds("table.fill out of bounds"));
         }
 
         if n == 0 {
@@ -5856,33 +5514,30 @@ impl StacklessFrame {
         engine: &mut StacklessEngine,
     ) -> Result<()> {
         let n_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
         let src_offset_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
         let dst_offset_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
 
         let n: u32 = n_val
             .and_then(|v| v.as_i32())
-            .ok_or_else(|| Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "memory.init len not i32"))?
+            .ok_or_else(|| Error::type_error("memory.init len not i32"))?
             .try_into().unwrap();
         let src_offset: u32 = src_offset_val.and_then(|v| v.as_i32()).ok_or_else(|| {
-            Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "memory.init src_offset not i32")
+            Error::type_error("memory.init src_offset not i32")
         })?.try_into().unwrap();
         let dst_offset: u32 = dst_offset_val.and_then(|v| v.as_i32()).ok_or_else(|| {
-            Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "memory.init dst_offset not i32")
+            Error::type_error("memory.init dst_offset not i32")
         })?.try_into().unwrap();
 
         let memory = self.module_instance.memory(mem_idx)?;
         let data_segment =
             self.module_instance.module().data.get(data_idx as usize).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_INVALID_DATA_SEGMENT_INDEX,
-                        "Stack operation error",
+                    Error::runtime_execution_error(",
                     )
                 },
             )?;
@@ -5896,21 +5551,14 @@ impl StacklessFrame {
                 }
             })
         {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                "memory.init out of bounds",
-            ));
+            return Err(Error::memory_error("));
         }
         if n == 0 {
             return Ok(());
         }
 
         let data_to_write = data_segment.data()?.get((src_offset as usize)..(src_offset as usize + n as usize)).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                "memory.init source data segment OOB",
+            Error::memory_error("memory.init source data segment OOB",
             )
         })?;
 
@@ -5925,24 +5573,24 @@ impl StacklessFrame {
     ) -> Result<()> {
         // In Wasm MVP, src_mem_idx and dst_mem_idx are always 0.
         let n_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
         let src_offset_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
         let dst_offset_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
 
         let n: u32 = n_val
             .and_then(|v| v.as_i32())
-            .ok_or_else(|| Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "memory.copy len not i32"))?
+            .ok_or_else(|| Error::type_error("memory.copy len not i32"))?
             .try_into().unwrap();
         let src_offset: u32 = src_offset_val.and_then(|v| v.as_i32()).ok_or_else(|| {
-            Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "memory.copy src_offset not i32")
+            Error::type_error("memory.copy src_offset not i32")
         })?.try_into().unwrap();
         let dst_offset: u32 = dst_offset_val.and_then(|v| v.as_i32()).ok_or_else(|| {
-            Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "memory.copy dst_offset not i32")
+            Error::type_error("memory.copy dst_offset not i32")
         })?.try_into().unwrap();
 
         let dst_memory = self.module_instance.memory(dst_mem_idx)?;
@@ -5956,10 +5604,7 @@ impl StacklessFrame {
         if dst_offset.checked_add(n).map_or(true, |end| end as usize > dst_memory.size_bytes())
             || src_offset.checked_add(n).map_or(true, |end| end as usize > src_memory.size_bytes())
         {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                "memory.copy out of bounds",
+            return Err(Error::memory_error("memory.copy out of bounds",
             ));
         }
         if n == 0 {
@@ -5982,16 +5627,14 @@ impl StacklessFrame {
         }
         #[cfg(not(feature = "std"))]
         {
-            let mut temp_buffer: wrt_foundation::bounded::BoundedVec<u8, 4096, _> = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+            let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+            let mut temp_buffer: wrt_foundation::bounded::BoundedVec<u8, 4096, _> = wrt_foundation::bounded::BoundedVec::new(provider)?;
             // Ensure we have the right capacity
             for _ in 0..n.min(4096) {
                 temp_buffer.push(0u8).unwrap();
             }
             // Read into a slice view of the bounded vec
-            let slice = temp_buffer.as_mut_slice().map_err(|_| Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
-                "Failed to get mutable slice from bounded vec"
+            let slice = temp_buffer.as_mut_slice().map_err(|_| Error::memory_error("Failed to get mutable slice from bounded vec"
             ))?;
             src_memory.read(src_offset, &mut slice[..n as usize])?;
             dst_memory.write(dst_offset, &slice[..n as usize])
@@ -6000,33 +5643,30 @@ impl StacklessFrame {
 
     fn memory_fill(&mut self, mem_idx: u32, engine: &mut StacklessEngine) -> Result<()> {
         let n_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
         let val_to_fill_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
         let dst_offset_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")
+            Error::runtime_stack_underflow("Stack operation error")
         })?;
 
         let n: u32 = n_val
             .and_then(|v| v.as_i32())
-            .ok_or_else(|| Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "memory.fill len not i32"))?
+            .ok_or_else(|| Error::type_error("memory.fill len not i32"))?
             .try_into().unwrap();
         let val_to_fill_byte = val_to_fill_val
             .and_then(|v| v.as_i32())
-            .ok_or_else(|| Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "memory.fill value not i32"))?
+            .ok_or_else(|| Error::type_error("memory.fill value not i32"))?
             as u8; // Value must be i32, truncated to u8
         let dst_offset: u32 = dst_offset_val.and_then(|v| v.as_i32()).ok_or_else(|| {
-            Error::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "memory.fill dst_offset not i32")
+            Error::type_error("memory.fill dst_offset not i32")
         })?.try_into().unwrap();
 
         let memory = self.module_instance.memory(mem_idx)?;
         if dst_offset.checked_add(n).map_or(true, |end| end as usize > memory.size_bytes()) {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                "memory.fill out of bounds",
+            return Err(Error::memory_error("memory.fill out of bounds",
             ));
         }
         if n == 0 {
@@ -6081,10 +5721,7 @@ impl StacklessFrame {
         
         // Update execution statistics
         // engine.stats.simd_operations_executed += 1;
-        return Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::UNSUPPORTED_OPERATION,
-            "SIMD operations not yet implemented"
+        return Err(Error::runtime_execution_error("
         ))
     }
 
@@ -6141,7 +5778,7 @@ impl Validatable for StacklessFrame {
         // - self.locals should match arity + declared locals of self.func_type
         // - self.block_depths should be consistent (e.g. not deeper than allowed)
         if self.pc > self.function_body()?.body.len() {
-            return Err(Error::new(ErrorCategory::Runtime, codes::OUT_OF_BOUNDS_ERROR, "PC out of bounds"));
+            return Err(Error::runtime_out_of_bounds("));
         }
         // More checks can be added here.
         Ok(())

@@ -58,13 +58,8 @@ pub type DebugProvider = NoStdProvider<DEBUG_PROVIDER_SIZE>;
 /// Create a debug-specific string type
 pub fn create_debug_string(s: &str) -> WrtResult<BoundedString<MAX_FILE_PATH_LEN, DebugProvider>> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
-    BoundedString::from_str(s, guard.clone()).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create debug string",
-        )
-    })
+    BoundedString::from_str(s, guard.clone())
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create debug string"))
 }
 
 /// Create a debug-specific vector
@@ -73,13 +68,8 @@ where
     T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
-    BoundedVec::new(guard.clone()).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create debug vector",
-        )
-    })
+    BoundedVec::new(guard.clone())
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create debug vector"))
 }
 
 /// Macro to simplify debug vector creation
@@ -162,13 +152,8 @@ where
 {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedVec::new(provider).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create stack trace vector",
-        )
-    })
+    BoundedVec::new(provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create stack trace vector"))
 }
 
 /// Create a new bounded source file vector
@@ -184,65 +169,40 @@ where
 {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedVec::new(provider).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create source file vector",
-        )
-    })
+    BoundedVec::new(provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create source file vector"))
 }
 
 /// Create a new bounded file path
 pub fn new_file_path() -> WrtResult<BoundedFilePath> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedString::from_str("", provider).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create file path",
-        )
-    })
+    BoundedString::from_str("", provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create file path"))
 }
 
 /// Create a bounded file path from str
 pub fn bounded_file_path_from_str(s: &str) -> WrtResult<BoundedFilePath> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedString::from_str(s, provider).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create file path from str",
-        )
-    })
+    BoundedString::from_str(s, provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create file path from str"))
 }
 
 /// Create a new bounded function name
 pub fn new_function_name() -> WrtResult<BoundedFunctionName> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedString::from_str("", provider).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create function name",
-        )
-    })
+    BoundedString::from_str("", provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create function name"))
 }
 
 /// Create a bounded function name from str
 pub fn bounded_function_name_from_str(s: &str) -> WrtResult<BoundedFunctionName> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedString::from_str(s, provider).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create function name from str",
-        )
-    })
+    BoundedString::from_str(s, provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create function name from str"))
 }
 
 /// Create a new bounded breakpoint vector
@@ -258,13 +218,8 @@ where
 {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedVec::new(provider).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create breakpoint vector",
-        )
-    })
+    BoundedVec::new(provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create breakpoint vector"))
 }
 
 /// Create a new bounded watch vector
@@ -280,13 +235,8 @@ where
 {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedVec::new(provider).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create watch vector",
-        )
-    })
+    BoundedVec::new(provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create watch vector"))
 }
 
 /// Create a new bounded locals debug vector
@@ -302,13 +252,8 @@ where
 {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedVec::new(provider).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create locals debug vector",
-        )
-    })
+    BoundedVec::new(provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create locals debug vector"))
 }
 
 /// Create a new bounded debug type map
@@ -318,13 +263,8 @@ where
 {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedHashMap::new(provider).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create debug type map",
-        )
-    })
+    BoundedHashMap::new(provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create debug type map"))
 }
 
 /// Create a new bounded source map
@@ -334,13 +274,8 @@ where
 {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedHashMap::new(provider).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create source map",
-        )
-    })
+    BoundedHashMap::new(provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create source map"))
 }
 
 /// Create a new bounded diagnostic vector
@@ -356,26 +291,16 @@ where
 {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedVec::new(provider).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create diagnostic vector",
-        )
-    })
+    BoundedVec::new(provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create diagnostic vector"))
 }
 
 /// Create a new bounded diagnostic message
 pub fn new_diagnostic_message() -> WrtResult<BoundedDiagnosticMessage> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedString::from_str("", provider).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create diagnostic message",
-        )
-    })
+    BoundedString::from_str("", provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create diagnostic message"))
 }
 
 /// Create a bounded diagnostic message from str
@@ -383,11 +308,7 @@ pub fn bounded_diagnostic_from_str(s: &str) -> WrtResult<BoundedDiagnosticMessag
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
     BoundedString::from_str(s, provider).map_err(|_e| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create diagnostic message from str",
-        )
+        wrt_error::Error::memory_error("Failed to create diagnostic message from str")
     })
 }
 
@@ -405,26 +326,16 @@ where
 {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedHashMap::new(provider).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create symbol map",
-        )
-    })
+    BoundedHashMap::new(provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create symbol map"))
 }
 
 /// Create a new bounded debug string
 pub fn new_debug_string() -> WrtResult<BoundedString<MAX_DEBUG_STRING_LEN, DebugProvider>> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedString::from_str("", provider).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create debug string",
-        )
-    })
+    BoundedString::from_str("", provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create debug string"))
 }
 
 /// Create a bounded debug string from str
@@ -433,11 +344,6 @@ pub fn bounded_debug_string_from_str(
 ) -> WrtResult<BoundedString<MAX_DEBUG_STRING_LEN, DebugProvider>> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
-    BoundedString::from_str(s, provider).map_err(|_| {
-        wrt_foundation::Error::new(
-            wrt_foundation::ErrorCategory::Memory,
-            wrt_foundation::codes::MEMORY_ERROR,
-            "Failed to create debug string from str",
-        )
-    })
+    BoundedString::from_str(s, provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create debug string from str"))
 }

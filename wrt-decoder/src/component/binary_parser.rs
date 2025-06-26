@@ -193,7 +193,9 @@ mod component_binary_parser {
 
             // Validate minimum size
             if bytes.len() < 12 {
-                return Err(Error::parse_error("Component binary too small (minimum 12 bytes required)"));
+                return Err(Error::parse_error(
+                    "Component binary too small (minimum 12 bytes required)",
+                ));
             }
 
             // Parse and validate header
@@ -219,7 +221,9 @@ mod component_binary_parser {
         /// Parse the component header (magic, version, layer)
         fn parse_header(&mut self, bytes: &[u8]) -> Result<ComponentHeader> {
             if self.offset + 12 > bytes.len() {
-                return Err(Error::parse_error("Insufficient bytes for component header"));
+                return Err(Error::parse_error(
+                    "Insufficient bytes for component header",
+                ));
             }
 
             // Parse magic (4 bytes)
@@ -343,7 +347,9 @@ mod component_binary_parser {
 
             loop {
                 if self.offset >= self.size {
-                    return Err(Error::parse_error("Unexpected end of binary while reading LEB128"));
+                    return Err(Error::parse_error(
+                        "Unexpected end of binary while reading LEB128",
+                    ));
                 }
 
                 let byte = bytes[self.offset];
@@ -775,7 +781,9 @@ pub mod no_std_stubs {
         }
 
         pub fn parse(&mut self, _bytes: &[u8]) -> Result<Component> {
-            Err(Error::runtime_execution_error("Component parsing not available in no_std"))
+            Err(Error::runtime_execution_error(
+                "Component parsing not available in no_std",
+            ))
         }
     }
 
@@ -784,7 +792,8 @@ pub mod no_std_stubs {
         Err(Error::new(
             ErrorCategory::Validation,
             codes::UNSUPPORTED_OPERATION,
-            "Component parsing not available in no_std"))
+            "Component parsing not available in no_std",
+        ))
     }
 
     /// Parse component binary with validation (no_std stub)
@@ -792,7 +801,9 @@ pub mod no_std_stubs {
         _bytes: &[u8],
         _validation_level: ValidationLevel,
     ) -> Result<Component> {
-        Err(Error::runtime_execution_error("Component parsing not available in no_std"))
+        Err(Error::runtime_execution_error(
+            "Component parsing not available in no_std",
+        ))
     }
 }
 

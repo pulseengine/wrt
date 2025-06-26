@@ -133,10 +133,7 @@ where
 {
     pub fn new_default() -> Result<Self> {
         let memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
-            .map_err(|_e| Error::new(
-                ErrorCategory::Resource,
-                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
-                "Failed to create memory adapter"
+            .map_err(|_e| Error::runtime_execution_error("
             ))?;
         
         Ok(Self {
@@ -172,7 +169,7 @@ where
     fn default() -> Self {
         Self::new_default().unwrap_or_else(|e| {
             // Log the error if logging is available
-            #[cfg(feature = "std")]
+            #[cfg(feature = ")]
             eprintln!("Error creating default component instance: {}. Creating minimal fallback instance.", e);
             
             // Create a minimal instance with reduced memory requirements
@@ -252,11 +249,7 @@ where
         let imports = ImportMap::from_bytes_with_provider(reader, provider)?;
         
         let memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
-            .map_err(|e| wrt_error::Error::new(
-                wrt_error::ErrorCategory::Memory,
-                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
-                "Failed to create memory adapter"
-            ))?;
+            .map_err(|e| Error::memory_error("Failed to create memory adapter"))?;
         
         Ok(Self {
             id,
@@ -334,30 +327,19 @@ where
                 self.state = ComponentExecutionState::Ready;
                 Ok(())
             }
-            _ => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_STATE,
-                "Component must be in instantiating state to transition to ready",
+            _ => Err(Error::runtime_execution_error(",
             ))
         }
     }
     
     /// Add an export to this component
     pub fn add_export(&mut self, name: RuntimeString, extern_type: ExternType<Provider>) -> Result<()> {
-        self.exports.insert(name, extern_type).map(|_| ()).map_err(|e| Error::new(
-            ErrorCategory::Runtime,
-            codes::RUNTIME_ERROR,
-            "Failed to add export",
-        ))
+        self.exports.insert(name, extern_type).map(|_| ()).map_err(|e| Error::runtime_error("))
     }
     
     /// Add an import requirement to this component
     pub fn add_import(&mut self, name: RuntimeString, extern_type: ExternType<Provider>) -> Result<()> {
-        self.imports.insert(name, extern_type).map(|_| ()).map_err(|e| Error::new(
-            ErrorCategory::Runtime,
-            codes::RUNTIME_ERROR,
-            "Failed to add import",
-        ))
+        self.imports.insert(name, extern_type).map(|_| ()).map_err(|e| Error::runtime_error("Failed to add import"))
     }
 }
 
@@ -400,11 +382,7 @@ where
     pub fn new(limits: wrt_platform::ComprehensivePlatformLimits) -> core::result::Result<Self, wrt_error::Error> {
         let memory_budget = ComponentMemoryBudget::calculate_from_limits(&limits)?;
         let global_memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
-            .map_err(|_| wrt_error::Error::new(
-                wrt_error::ErrorCategory::Memory,
-                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
-                "Failed to create memory adapter"
-            ))?;
+            .map_err(|_| Error::memory_error("Failed to create memory adapter"))?;
         
         Ok(Self {
             #[cfg(any(feature = "std", feature = "alloc"))]
@@ -422,11 +400,7 @@ where
     pub fn new_default() -> core::result::Result<Self, wrt_error::Error> {
         let memory_budget = ComponentMemoryBudget::default();
         let global_memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
-            .map_err(|_| wrt_error::Error::new(
-                wrt_error::ErrorCategory::Memory,
-                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
-                "Failed to create memory adapter"
-            ))?; // 64MB default
+            .map_err(|_| Error::memory_error("Failed to create memory adapter"))?; // 64MB default
         
         Ok(Self {
             #[cfg(any(feature = "std", feature = "alloc"))]
@@ -448,22 +422,14 @@ where
             
             // Check memory budget
             if config.total_memory_requirement.total() > self.memory_budget.available_component_memory {
-                return Err(Error::new(
-                    ErrorCategory::Memory,
-                    codes::INSUFFICIENT_MEMORY,
-                    "Component memory requirements exceed available budget",
-                ));
+                return Err(Error::memory_error("Component memory requirements exceed available budget"));
             }
         }
         
         // Create memory adapter for this component
         let component_memory_limit = self.memory_budget.component_overhead / 4; // Conservative allocation
         let memory_adapter = PlatformMemoryAdapter::new(component_memory_limit)
-            .map_err(|_| wrt_error::Error::new(
-                wrt_error::ErrorCategory::Memory,
-                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
-                "Failed to create memory adapter"
-            ))?;
+            .map_err(|_| Error::memory_error("Failed to create memory adapter"))?;
         
         // Parse component type from bytes (simplified)
         let component_type = ComponentType::default(); // TODO: Parse from bytes
@@ -543,11 +509,7 @@ impl ComponentMemoryBudget {
         
         let used_memory = wasm_linear_memory + component_overhead + debug_overhead;
         if used_memory > total_memory {
-            return Err(Error::new(
-                ErrorCategory::Configuration,
-                codes::INVALID_CONFIGURATION,
-                "Component overhead exceeds available memory",
-            ));
+            return Err(Error::runtime_execution_error("Component overhead exceeds available memory"));
         }
         
         Ok(Self {

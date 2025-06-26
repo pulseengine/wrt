@@ -100,11 +100,7 @@ impl ComponentAsyncBridge {
         };
 
         self.component_limits.insert(component_id, limits).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many registered components".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many registered components")
         })?;
 
         Ok(())
@@ -122,20 +118,12 @@ impl ComponentAsyncBridge {
     {
         // Check component limits
         let limits = self.component_limits.get(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not registered for async".to_string(),
-            )
+            Error::validation_invalid_input("Component not registered for async")
         })?;
 
         let active = limits.active_tasks.load(Ordering::Acquire);
         if active >= limits.max_concurrent_tasks as u64 {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component async task limit exceeded".to_string(),
-            ));
+            return Err(Error::resource_limit_exceeded("Component async task limit exceeded"));
         }
 
         // Determine fuel budget
@@ -144,11 +132,7 @@ impl ComponentAsyncBridge {
         // Check fuel availability
         let consumed = limits.fuel_consumed.load(Ordering::Acquire);
         if consumed + task_fuel > limits.fuel_budget {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component fuel budget exceeded".to_string(),
-            ));
+            return Err(Error::resource_limit_exceeded("Component fuel budget exceeded"));
         }
 
         // Create component task
@@ -170,11 +154,7 @@ impl ComponentAsyncBridge {
 
         // Update tracking
         self.task_mapping.insert(component_task_id, executor_task_id).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Task mapping table full".to_string(),
-            )
+            Error::resource_limit_exceeded("Task mapping table full")
         })?;
 
         limits.active_tasks.fetch_add(1, Ordering::AcqRel);
@@ -247,11 +227,7 @@ impl ComponentAsyncBridge {
     /// Get component async statistics
     pub fn get_component_stats(&self, component_id: ComponentInstanceId) -> Result<ComponentAsyncStats, Error> {
         let limits = self.component_limits.get(&component_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Component not registered".to_string(),
-            )
+            Error::validation_invalid_input("Component not registered")
         })?;
 
         Ok(ComponentAsyncStats {

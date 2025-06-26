@@ -86,11 +86,7 @@ fn validate_input_count(op: &AtomicOp, inputs: &[Value]) -> Result<()> {
     let actual = inputs.len();
     
     if actual != expected {
-        return Err(Error::new(
-            ErrorCategory::Validation,
-            codes::VALIDATION_ERROR,
-            format!("Atomic operation {:?} expects {} inputs, got {}", op, expected, actual)
-        ));
+        return Err(Error::runtime_execution_error("Atomic operation {:?} expects {} inputs, got {}"));
     }
     
     Ok(())
@@ -103,19 +99,11 @@ fn validate_atomic_result(op: &AtomicOp, result: &Option<Value>) -> Result<()> {
     let has_result = result.is_some();
     
     if expects_result && !has_result {
-        return Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            format!("Atomic operation {:?} should produce a result but didn't", op)
-        ));
+        return Err(Error::runtime_execution_error("Atomic operation {:?} should produce a result but didn't"));
     }
     
     if !expects_result && has_result {
-        return Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            format!("Atomic operation {:?} should not produce a result but did", op)
-        ));
+        return Err(Error::runtime_execution_error("Atomic operation {:?} should not produce a result but did"));
     }
     
     Ok(())
@@ -177,7 +165,7 @@ impl AtomicProvider for ASILCompliantAtomicProvider {
                         if result.len() == 1 {
                             Ok(Some(Value::I32(result[0] as i32)))
                         } else {
-                            Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Invalid result length for i32 load"))
+                            Err(Error::runtime_execution_error("Invalid result length for i32 load"))
                         }
                     },
                     AtomicLoadOp::I64AtomicLoad { .. } |
@@ -188,7 +176,7 @@ impl AtomicProvider for ASILCompliantAtomicProvider {
                             let value = (result[0] as u64) | ((result[1] as u64) << 32);
                             Ok(Some(Value::I64(value as i64)))
                         } else {
-                            Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Invalid result length for i64 load"))
+                            Err(Error::runtime_execution_error("Invalid result length for i64 load"))
                         }
                     },
                 }
@@ -217,7 +205,7 @@ impl AtomicProvider for ASILCompliantAtomicProvider {
                         if result.len() == 1 {
                             Ok(Some(Value::I32(result[0] as i32)))
                         } else {
-                            Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Invalid result length for i32 RMW"))
+                            Err(Error::runtime_execution_error("Invalid result length for i32 RMW"))
                         }
                     },
                     _ => {
@@ -226,7 +214,7 @@ impl AtomicProvider for ASILCompliantAtomicProvider {
                             let value = (result[0] as u64) | ((result[1] as u64) << 32);
                             Ok(Some(Value::I64(value as i64)))
                         } else {
-                            Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Invalid result length for i64 RMW"))
+                            Err(Error::runtime_execution_error("Invalid result length for i64 RMW"))
                         }
                     }
                 }
@@ -239,7 +227,7 @@ impl AtomicProvider for ASILCompliantAtomicProvider {
                         if result.len() == 1 {
                             Ok(Some(Value::I32(result[0] as i32)))
                         } else {
-                            Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Invalid result length for i32 cmpxchg"))
+                            Err(Error::runtime_execution_error("Invalid result length for i32 cmpxchg"))
                         }
                     },
                     _ => {
@@ -248,7 +236,7 @@ impl AtomicProvider for ASILCompliantAtomicProvider {
                             let value = (result[0] as u64) | ((result[1] as u64) << 32);
                             Ok(Some(Value::I64(value as i64)))
                         } else {
-                            Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Invalid result length for i64 cmpxchg"))
+                            Err(Error::runtime_execution_error("Invalid result length for i64 cmpxchg"))
                         }
                     }
                 }
@@ -257,7 +245,7 @@ impl AtomicProvider for ASILCompliantAtomicProvider {
                 if result.len() == 1 {
                     Ok(Some(Value::I32(result[0] as i32)))
                 } else {
-                    Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Invalid result length for wait/notify"))
+                    Err(Error::runtime_execution_error("Invalid result length for wait/notify"))
                 }
             },
             AtomicOp::Fence(_) => Ok(None),
@@ -284,11 +272,7 @@ pub fn atomic_i32_load(
     
     match result {
         Some(Value::I32(value)) => Ok(value),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            "atomic_i32_load should return i32"
-        ))
+        _ => Err(Error::type_error("atomic_i32_load should return i32"))
     }
 }
 
@@ -332,11 +316,7 @@ pub fn atomic_i32_compare_and_swap(
     
     match result {
         Some(Value::I32(old_value)) => Ok(old_value),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            "atomic_i32_compare_and_swap should return i32"
-        ))
+        _ => Err(Error::type_error("atomic_i32_compare_and_swap should return i32"))
     }
 }
 
@@ -356,11 +336,7 @@ pub fn atomic_i32_fetch_add(
     
     match result {
         Some(Value::I32(old_value)) => Ok(old_value),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            "atomic_i32_fetch_add should return i32"
-        ))
+        _ => Err(Error::type_error("atomic_i32_fetch_add should return i32"))
     }
 }
 

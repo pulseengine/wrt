@@ -10,9 +10,7 @@ use core::str;
 #[cfg(feature = "std")]
 use std::string::String;
 
-#[cfg(not(any(feature = "std")))]
-use wrt_error::codes;
-use wrt_error::{errors::codes as error_codes, Error, ErrorCategory, Result};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::BoundedString;
 
@@ -27,13 +25,8 @@ pub fn parse_utf8_string_inplace(
     let (name_bytes, new_offset) = read_name(bytes, offset)?;
 
     // Validate UTF-8 without creating intermediate Vec
-    let string_str = str::from_utf8(name_bytes).map_err(|_| {
-        Error::new(
-            ErrorCategory::Parse,
-            error_codes::INVALID_UTF8_ENCODING,
-            "Invalid UTF-8 encoding",
-        )
-    })?;
+    let string_str = str::from_utf8(name_bytes)
+        .map_err(|_| Error::runtime_execution_error("Invalid UTF8 in string"))?;
 
     Ok((std::string::String::from(string_str), new_offset))
 }
@@ -52,32 +45,15 @@ pub fn parse_utf8_string_inplace(
     let string_str = str::from_utf8(name_bytes).map_err(|_| {
         Error::new(
             ErrorCategory::Parse,
-            error_codes::INVALID_UTF8_ENCODING,
-            "Invalid UTF-8 encoding",
+            codes::INVALID_UTF8_ENCODING,
+            "Invalid UTF8 encoding",
         )
     })?;
 
-    let (name_bytes, new_offset) = read_name(bytes, offset)?;
-
-    // Validate UTF-8 without creating intermediate Vec
-    let string_str = str::from_utf8(name_bytes).map_err(|_| {
-        Error::new(
-            ErrorCategory::Parse,
-            error_codes::INVALID_UTF8_ENCODING,
-            "Invalid UTF-8 encoding",
-        )
-    })?;
-
-    use wrt_foundation::NoStdProvider;
-    let provider = NoStdProvider::default();
-    let bounded_string =
-        wrt_foundation::BoundedString::from_str(string_str, provider).map_err(|_| {
-            Error::new(
-                ErrorCategory::Parse,
-                error_codes::CAPACITY_EXCEEDED,
-                "String too long for bounded storage",
-            )
-        })?;
+    use wrt_foundation::{safe_managed_alloc, CrateId};
+    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
+    let bounded_string = wrt_foundation::BoundedString::from_str(string_str, provider)
+        .map_err(|_| Error::runtime_execution_error("Failed to create bounded string"))?;
     Ok((bounded_string, new_offset))
 }
 
@@ -88,8 +64,8 @@ pub fn validate_utf8_name(bytes: &[u8], offset: usize) -> Result<(&str, usize)> 
     let string_str = str::from_utf8(name_bytes).map_err(|_| {
         Error::new(
             ErrorCategory::Parse,
-            error_codes::INVALID_UTF8_ENCODING,
-            "Invalid UTF-8 encoding",
+            codes::INVALID_UTF8_ENCODING,
+            "Invalid UTF8 encoding",
         )
     })?;
 
@@ -106,20 +82,15 @@ pub fn copy_utf8_to_bounded(
     let (name_bytes, new_offset) = read_name(bytes, offset)?;
 
     // Validate UTF-8 first
-    str::from_utf8(name_bytes).map_err(|_| {
-        Error::new(
-            ErrorCategory::Parse,
-            error_codes::INVALID_UTF8_ENCODING,
-            "Invalid UTF-8 encoding",
-        )
-    })?;
+    str::from_utf8(name_bytes)
+        .map_err(|_| Error::runtime_execution_error("Invalid UTF8 encoding"))?;
 
     // Check if it fits in the buffer
     if name_bytes.len() > buffer.len() {
         return Err(Error::new(
             ErrorCategory::Parse,
             codes::BUFFER_TOO_SMALL,
-            "String too long for buffer",
+            "Buffer too small for string",
         ));
     }
 

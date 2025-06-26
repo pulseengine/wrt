@@ -110,11 +110,7 @@ impl<F1, F2> FuelSelect<F1, F2> {
         let total_cost = base_cost.saturating_add(adjusted_cost);
         
         if self.fuel_consumed.saturating_add(total_cost) > self.fuel_budget {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Future combinator fuel budget exceeded",
-            ));
+            return Err(Error::resource_limit_exceeded("Future combinator fuel budget exceeded"));
         }
         
         self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost);
@@ -211,11 +207,7 @@ impl<F1, F2, T> FuelChain<F1, F2, T> {
         let total_cost = base_cost.saturating_add(adjusted_cost);
         
         if self.fuel_consumed.saturating_add(total_cost) > self.fuel_budget {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Future combinator fuel budget exceeded",
-            ));
+            return Err(Error::resource_limit_exceeded("Future combinator fuel budget exceeded"));
         }
         
         self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost);
@@ -317,11 +309,7 @@ impl<F1, F2> FuelJoin<F1, F2> {
         let total_cost = base_cost.saturating_add(adjusted_cost);
         
         if self.fuel_consumed.saturating_add(total_cost) > self.fuel_budget {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Future combinator fuel budget exceeded",
-            ));
+            return Err(Error::resource_limit_exceeded("Future combinator fuel budget exceeded"));
         }
         
         self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost);
@@ -411,11 +399,7 @@ impl<T> Future for ComponentFuture<T> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Check fuel budget
         if self.fuel_consumed >= self.fuel_budget {
-            return Poll::Ready(Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component future fuel exhausted",
-            )));
+            return Poll::Ready(Err(Error::resource_limit_exceeded("Component future fuel exhausted")));
         }
         
         // Poll inner future

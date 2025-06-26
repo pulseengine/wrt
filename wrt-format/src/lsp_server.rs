@@ -267,7 +267,11 @@ impl WitLanguageServer {
             let parser = cache.get_parser(file_id);
 
             for change in changes {
-                let provider = NoStdProvider::<1024>::default();
+                let provider = wrt_foundation::safe_managed_alloc!(
+                    1024,
+                    wrt_foundation::budget_aware_provider::CrateId::Format
+                )
+                .map_err(|_| Error::memory_error("Failed to allocate memory provider"))?;
 
                 if let Some(range) = change.range {
                     // Incremental change
@@ -318,7 +322,11 @@ impl WitLanguageServer {
         if let Some(ast) = ast {
             // Find node at position
             if let Some(node_info) = self.find_node_at_offset(&ast, offset) {
-                let provider = NoStdProvider::<1024>::default();
+                let provider = wrt_foundation::safe_managed_alloc!(
+                    1024,
+                    wrt_foundation::budget_aware_provider::CrateId::Format
+                )
+                .map_err(|_| Error::memory_error("Failed to allocate memory provider"))?;
                 let hover_text = match node_info {
                     NodeInfo::Function(name) => {
                         BoundedString::from_str(&format!("Function: {}", name), provider).ok()
@@ -347,7 +355,11 @@ impl WitLanguageServer {
     /// Get completion items
     pub fn completion(&self, _uri: &str, _position: Position) -> Result<Vec<CompletionItem>> {
         let mut items = Vec::new();
-        let provider = NoStdProvider::<1024>::default();
+        let provider = wrt_foundation::safe_managed_alloc!(
+            1024,
+            wrt_foundation::budget_aware_provider::CrateId::Format
+        )
+        .map_err(|_| Error::memory_error("Failed to allocate memory provider"))?;
 
         // Add keyword completions
         let keywords = [
@@ -472,7 +484,11 @@ impl WitLanguageServer {
 
     /// Extract symbols from AST
     fn extract_symbols(&self, ast: &WitDocument, symbols: &mut Vec<DocumentSymbol>) -> Result<()> {
-        let provider = NoStdProvider::<1024>::default();
+        let provider = wrt_foundation::safe_managed_alloc!(
+            1024,
+            wrt_foundation::budget_aware_provider::CrateId::Format
+        )
+        .map_err(|_| Error::memory_error("Failed to allocate memory provider"))?;
 
         // Extract package symbol
         if let Some(ref package) = ast.package {

@@ -149,11 +149,7 @@ impl FuelDynamicManager {
         };
 
         self.component_quotas.insert(component_id, quota).map_err(|_| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Too many registered components".to_string(),
-            )
+            Error::resource_limit_exceeded("Too many registered components")
         })?;
 
         Ok(())
@@ -224,11 +220,7 @@ impl FuelDynamicManager {
             };
 
             self.task_history.insert(task_id, history).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_LIMIT_EXCEEDED,
-                    "Task history table full".to_string(),
-                )
+                Error::resource_limit_exceeded("Task history table full")
             })?;
         }
 
@@ -252,18 +244,10 @@ impl FuelDynamicManager {
                 self.fuel_reserve.fetch_sub(emergency_fuel, Ordering::AcqRel);
                 Ok(emergency_fuel)
             } else {
-                Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_EXHAUSTED,
-                    "Insufficient fuel reserve".to_string(),
-                ))
+                Err(Error::resource_exhausted("Insufficient fuel reserve"))
             }
         } else {
-            Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_INPUT,
-                "Unknown task".to_string(),
-            ))
+            Err(Error::validation_invalid_input("Unknown task"))
         }
     }
 

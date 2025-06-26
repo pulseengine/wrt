@@ -193,11 +193,7 @@ impl fmt::Display for CapacityError {
 
 impl From<CapacityError> for crate::Error {
     fn from(_err: CapacityError) -> Self {
-        crate::Error::new(
-            WrtErrorCategory::Capacity,
-            codes::CAPACITY_EXCEEDED,
-            "Bounded collection capacity exceeded", // Always &'static str
-        )
+        crate::Error::runtime_execution_error("Bounded collection capacity exceeded")
     }
 }
 
@@ -298,6 +294,18 @@ impl BoundedError {
         }
     }
 
+    /// Creates a new `BoundedError` for runtime execution errors.
+    pub fn runtime_execution_error(msg: &'static str) -> Self {
+        #[cfg(feature = "std")]
+        {
+            Self::new(BoundedErrorKind::ConversionError, msg.to_string())
+        }
+        #[cfg(not(any(feature = "std")))]
+        {
+            Self::new(BoundedErrorKind::ConversionError, msg)
+        }
+    }
+
     /// Creates a new `BoundedError` for deserialization errors (placeholder).
     /// TODO: Define properly if this is distinct from general conversion/parse
     /// errors.
@@ -393,35 +401,35 @@ impl From<BoundedError> for crate::Error {
     fn from(err: BoundedError) -> Self {
         let (category, code, static_message_prefix) = match err.kind {
             BoundedErrorKind::CapacityExceeded => {
-                (WrtErrorCategory::Capacity, codes::CAPACITY_EXCEEDED, "Bounded capacity exceeded")
+                (WrtErrorCategory::FoundationRuntime, codes::FOUNDATION_BOUNDED_CAPACITY_EXCEEDED, "Foundation bounded capacity exceeded")
             }
             BoundedErrorKind::InvalidCapacity => (
-                WrtErrorCategory::Validation,
-                codes::INVALID_VALUE, // Consider a more specific code if available
-                "Invalid capacity for bounded type",
+                WrtErrorCategory::FoundationRuntime,
+                codes::FOUNDATION_SAFETY_CONSTRAINT_VIOLATED,
+                "Foundation invalid capacity constraint",
             ),
             BoundedErrorKind::ConversionError => (
-                WrtErrorCategory::Parse, // Or Type
-                codes::CONVERSION_ERROR, // Or PARSE_ERROR
-                "Bounded conversion error",
+                WrtErrorCategory::FoundationRuntime,
+                codes::FOUNDATION_MEMORY_PROVIDER_FAILED,
+                "Foundation bounded conversion error",
             ),
             BoundedErrorKind::SliceError => (
-                WrtErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR, // Or a specific slice error code
-                "Bounded slice error",
+                WrtErrorCategory::FoundationRuntime,
+                codes::FOUNDATION_MEMORY_PROVIDER_FAILED,
+                "Foundation bounded slice error",
             ),
             BoundedErrorKind::Utf8Error => {
-                (WrtErrorCategory::Parse, codes::PARSE_MALFORMED_UTF8_STRING, "Bounded UTF-8 error")
+                (WrtErrorCategory::FoundationRuntime, codes::FOUNDATION_VERIFICATION_FAILED, "Foundation bounded UTF-8 error")
             }
             BoundedErrorKind::ItemTooLarge => (
-                WrtErrorCategory::Validation,
-                codes::VALUE_OUT_OF_RANGE,
-                "Bounded item too large for operation",
+                WrtErrorCategory::FoundationRuntime,
+                codes::FOUNDATION_ALLOCATION_BUDGET_EXCEEDED,
+                "Foundation bounded item too large",
             ),
             BoundedErrorKind::VerificationError => (
-                WrtErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Bounded verification failed",
+                WrtErrorCategory::FoundationRuntime,
+                codes::FOUNDATION_VERIFICATION_FAILED,
+                "Foundation bounded verification failed",
             ),
         };
 
@@ -449,7 +457,7 @@ impl From<BoundedError> for crate::Error {
         // for WrtError's &'static str message. So we must use static_message_prefix.
         let message = static_message_prefix;
 
-        crate::Error::new(category, code, message)
+        crate::Error::runtime_execution_error("Generated error")
     }
 }
 
@@ -558,11 +566,7 @@ where
             // ZSTs. Or, if this is allowed, ensure memory_needed is handled
             // correctly. For now, consider it an invalid configuration for
             // typical BoundedStack usage.
-            return Err(crate::Error::new(
-                WrtErrorCategory::Memory, // Corrected Category - changed from Initialization
-                codes::INITIALIZATION_ERROR,
-                "Cannot create BoundedStack with zero-sized items and non-zero element count",
-            ));
+            return Err(crate::Error::runtime_execution_error("Operation failed"));
         }
 
         let memory_needed = N_ELEMENTS.saturating_mul(item_serialized_size);
@@ -601,8 +605,7 @@ where
         if item_size > MAX_ITEM_SERIALIZED_SIZE {
             return Err(BoundedError::new(
                 BoundedErrorKind::ItemTooLarge,
-                "Item exceeds max buffer size for push",
-            ));
+                "Item too large for collection"));
         }
 
         if item_size == 0 {
@@ -620,22 +623,21 @@ where
         let bytes_written = {
             let buffer_slice =
                 SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
-                    BoundedError::new(BoundedErrorKind::ConversionError, "Failed to create slice")
+                    BoundedError::runtime_execution_error("Operation failed")
                 })?;
             let mut write_stream = WriteStream::new(buffer_slice);
             item.to_bytes_with_provider(&mut write_stream, self.handler.provider()).map_err(
                 |_| {
                     BoundedError::new(
                         BoundedErrorKind::ConversionError,
-                        "Conversion error in BoundedStack",
-                    )
+                        "Operation failed")
                 },
             )?;
             write_stream.position()
         };
 
         self.handler.write_data(offset, &item_bytes_buffer[..bytes_written]).map_err(|e| {
-            BoundedError::new(BoundedErrorKind::SliceError, "Write data failed: error occurred")
+            BoundedError::runtime_execution_error("Operation failed")
         })?;
 
         self.length += 1;
@@ -668,14 +670,13 @@ where
         if self.item_serialized_size == 0 {
             // Handle ZSTs
             // For ZSTs, no bytes are read, just return a default T
-            // Checksum would need to be updated as if the ZST was "removed"
-            let item = T::default();
+            // Checksum would need to be updated as if the ZST was read");
             if self.verification_level >= VerificationLevel::Full {
                 // Was should_recalculate_checksum_on_mutate
                 self.recalculate_checksum(); // Recalculate based on remaining
                                              // items
             }
-            return Ok(Some(item));
+            return Ok(Some(T::default()));
         }
 
         // Clone provider to avoid borrowing conflicts
@@ -685,7 +686,7 @@ where
             .handler
             .get_slice_mut(offset, self.item_serialized_size) // Changed to get_slice_mut
             .map_err(|e| {
-                BoundedError::new(BoundedErrorKind::SliceError, "Get slice failed for pop")
+                BoundedError::runtime_execution_error("Operation failed")
             })?;
 
         // Before deserializing, if verification is high, consider if a checksum of this
@@ -696,14 +697,10 @@ where
         let mut read_stream = ReadStream::new(Slice::new(item_data).map_err(|_| {
             BoundedError::new(
                 BoundedErrorKind::ConversionError,
-                "Failed to create slice for reading",
-            )
+                "Operation failed")
         })?);
         let item = T::from_bytes_with_provider(&mut read_stream, &provider).map_err(|_e| {
-            BoundedError::new(
-                BoundedErrorKind::ConversionError,
-                "Failed to deserialize item for pop",
-            )
+            BoundedError::runtime_execution_error("Failed to deserialize item")
         })?;
 
         if self.verification_level >= VerificationLevel::Full {
@@ -827,11 +824,7 @@ where
                     Err(_) => {
                         // Error during deserialization while recalculating checksum.
                         // This indicates a potential data corruption.
-                        // The checksum will be "wrong" which is what we want to detect.
-                        // Mark checksum as invalid or use a sentinel error value if possible.
-                        // For now, it just won't match.
-                        // Consider logging this error if a logger is available.
-                        // Example: log_error("Checksum recalculation failed on item", i);
+                        // The checksum will be ");
                         // We must continue to process all elements to ensure the checksum
                         // reflects the attempt to checksum all current data, even if parts are
                         // corrupt. A "poisoned" checksum state could also
@@ -979,12 +972,7 @@ where
     pub fn new(provider_arg: P) -> WrtResult<Self> {
         let item_s_size = T::default().serialized_size();
         if item_s_size == 0 && N_ELEMENTS > 0 {
-            return Err(crate::Error::new(
-                // Using WrtError directly
-                WrtErrorCategory::Initialization,
-                codes::INVALID_VALUE,
-                "BoundedVec item serialized size cannot be 0 for non-empty capacity",
-            ));
+            return Err(crate::Error::runtime_execution_error("Operation failed"));
         }
 
         Ok(Self {
@@ -1011,8 +999,7 @@ where
             return Err(crate::Error::new(
                 WrtErrorCategory::Memory, // Corrected Category - changed from Initialization
                 codes::INITIALIZATION_ERROR,
-                "Cannot create BoundedVec with zero-sized items and non-zero element count",
-            ));
+                "Operation failed"));
         }
 
         // No SafeMemoryHandler needed directly here if P itself manages memory regions.
@@ -1039,16 +1026,27 @@ where
         if self.is_full() {
             return Err(BoundedError::capacity_exceeded());
         }
+        
+        // ASIL-A: Fault detection for bounds checking
+        #[cfg(feature = "fault-detection")]
+        {
+            use crate::fault_detection::{fault_detector, FaultContext, OperationType as FaultOp};
+            let context = FaultContext {
+                crate_id: crate::budget_aware_provider::CrateId::Foundation,
+                operation: FaultOp::Write,
+                address: None,
+                size: Some(self.length + 1),
+            };
+            fault_detector().check_bounds(self.length + 1, N_ELEMENTS, &context)
+                .map_err(|_| BoundedError::capacity_exceeded())?;
+        }
 
         let offset = self.length.saturating_mul(self.item_serialized_size);
         let mut item_bytes_buffer = [0u8; MAX_ITEM_SERIALIZED_SIZE];
 
         let item_size = item.serialized_size();
         if item_size > MAX_ITEM_SERIALIZED_SIZE {
-            return Err(BoundedError::new(
-                BoundedErrorKind::ItemTooLarge,
-                "Item exceeds max buffer size for push",
-            ));
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
         if item_size == 0 {
@@ -1070,16 +1068,13 @@ where
                 })?;
             let mut write_stream = WriteStream::new(buffer_slice);
             item.to_bytes_with_provider(&mut write_stream, &self.provider).map_err(|_| {
-                BoundedError::new(
-                    BoundedErrorKind::ConversionError,
-                    "Conversion error in BoundedVec",
-                )
+                BoundedError::runtime_execution_error("Failed to serialize item")
             })?;
             write_stream.position()
         };
 
         self.provider.write_data(offset, &item_bytes_buffer[..bytes_written]).map_err(|e| {
-            BoundedError::new(BoundedErrorKind::SliceError, "Write data failed: error occurred")
+            BoundedError::new(BoundedErrorKind::SliceError, "Slice operation failed")
         })?;
 
         self.length += 1;
@@ -1121,7 +1116,7 @@ where
             .provider
             .borrow_slice(offset, self.item_serialized_size) // BoundedVec uses borrow_slice from MemoryProvider
             .map_err(|e| {
-                BoundedError::new(BoundedErrorKind::SliceError, "Get slice failed for pop")
+                BoundedError::runtime_execution_error("Operation failed")
             })?;
 
         // The slice from MemoryProvider is assumed to be &[u8] if P is e.g.
@@ -1135,8 +1130,7 @@ where
         let item = T::from_bytes_with_provider(&mut read_stream, &self.provider).map_err(|_e| {
             BoundedError::new(
                 BoundedErrorKind::ConversionError,
-                "Failed to deserialize item for pop",
-            )
+                "Operation failed")
         })?;
 
         if self.verification_level >= VerificationLevel::Full {
@@ -1151,6 +1145,20 @@ where
     pub fn get(&self, index: usize) -> WrtResult<T> {
         if index >= self.length {
             return Err(crate::Error::index_out_of_bounds("Index out of bounds"));
+        }
+        
+        // ASIL-A: Fault detection for bounds checking
+        #[cfg(feature = "fault-detection")]
+        {
+            use crate::fault_detection::{fault_detector, FaultContext, OperationType as FaultOp};
+            let context = FaultContext {
+                crate_id: crate::budget_aware_provider::CrateId::Foundation,
+                operation: FaultOp::Read,
+                address: Some(index * self.item_serialized_size),
+                size: Some(self.item_serialized_size),
+            };
+            fault_detector().check_bounds(index, self.length, &context)
+                .map_err(|_| crate::Error::index_out_of_bounds("Index out of bounds"))?;
         }
         let offset = index * self.item_serialized_size;
 
@@ -1385,12 +1393,8 @@ where
 
         for i in 0..self.length {
             let item = self.get(i)?;
-            result.push(item).map_err(|e| {
-                crate::Error::new(
-                    crate::ErrorCategory::Memory,
-                    crate::codes::INVALID_VALUE,
-                    "Failed to push item during to_vec conversion",
-                )
+            result.push(item).map_err(|_e| {
+                crate::Error::runtime_execution_error("Operation failed")
             })?;
         }
         Ok(result)
@@ -1451,8 +1455,21 @@ where
         if index >= self.length {
             return Err(BoundedError::new(
                 BoundedErrorKind::SliceError,
-                "Index out of bounds for BoundedVec::set",
-            ));
+                "Operation failed"));
+        }
+        
+        // ASIL-A: Fault detection for bounds checking
+        #[cfg(feature = "fault-detection")]
+        {
+            use crate::fault_detection::{fault_detector, FaultContext, OperationType as FaultOp};
+            let context = FaultContext {
+                crate_id: crate::budget_aware_provider::CrateId::Foundation,
+                operation: FaultOp::Write,
+                address: Some(index * self.item_serialized_size),
+                size: Some(self.item_serialized_size),
+            };
+            fault_detector().check_bounds(index, self.length, &context)
+                .map_err(|_| BoundedError::new(BoundedErrorKind::SliceError, "Operation failed"))?;
         }
 
         record_global_operation(OperationType::CollectionWrite, self.verification_level);
@@ -1461,10 +1478,7 @@ where
         let current_value = match self.get(index) {
             Ok(value) => value,
             Err(_) => {
-                return Err(BoundedError::new(
-                    BoundedErrorKind::ConversionError,
-                    "Failed to get current value for set operation",
-                ))
+                return Err(BoundedError::runtime_execution_error("Operation failed"));
             }
         };
 
@@ -1496,28 +1510,26 @@ where
         if item_size > MAX_ITEM_SERIALIZED_SIZE {
             return Err(BoundedError::new(
                 BoundedErrorKind::ItemTooLarge,
-                "Item exceeds max buffer size for set",
-            ));
+                "Item too large for collection"));
         }
 
         let bytes_written = {
             let buffer_slice =
                 SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
-                    BoundedError::new(BoundedErrorKind::ConversionError, "Failed to create slice")
+                    BoundedError::runtime_execution_error("Operation failed")
                 })?;
             let mut write_stream = WriteStream::new(buffer_slice);
             value.to_bytes_with_provider(&mut write_stream, &self.provider).map_err(|_| {
                 BoundedError::new(
                     BoundedErrorKind::ConversionError,
-                    "Failed to serialize item for set",
-                )
+                    "Operation failed")
             })?;
             write_stream.position()
         };
 
         // Write new value to memory
         self.provider.write_data(offset, &item_bytes_buffer[..bytes_written]).map_err(|e| {
-            BoundedError::new(BoundedErrorKind::SliceError, "Failed to write data for set")
+            BoundedError::runtime_execution_error("Operation failed")
         })?;
 
         // Update checksum if needed
@@ -1561,8 +1573,7 @@ where
         if index > self.length {
             return Err(BoundedError::new(
                 BoundedErrorKind::SliceError,
-                "Index out of bounds for BoundedVec::insert",
-            ));
+                "Operation failed"));
         }
 
         if self.is_full() {
@@ -1593,10 +1604,7 @@ where
             let current_item = match self.get(i) {
                 Ok(item) => item,
                 Err(_) => {
-                    return Err(BoundedError::new(
-                        BoundedErrorKind::ConversionError,
-                        "Failed to get item for shifting during insert",
-                    ))
+                    return Err(BoundedError::runtime_execution_error("Operation failed"));
                 }
             };
 
@@ -1608,25 +1616,20 @@ where
             if item_size > MAX_ITEM_SERIALIZED_SIZE {
                 return Err(BoundedError::new(
                     BoundedErrorKind::ItemTooLarge,
-                    "Item exceeds max buffer size during insert shift",
-                ));
+                    "Operation failed"));
             }
 
             let bytes_written = {
                 let buffer_slice =
                     SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
-                        BoundedError::new(
-                            BoundedErrorKind::ConversionError,
-                            "Failed to create slice",
-                        )
+                        BoundedError::runtime_execution_error("Operation failed")
                     })?;
                 let mut write_stream = WriteStream::new(buffer_slice);
                 current_item.to_bytes_with_provider(&mut write_stream, &self.provider).map_err(
                     |_| {
                         BoundedError::new(
                             BoundedErrorKind::ConversionError,
-                            "Failed to serialize item during insert shift",
-                        )
+                            "Operation failed")
                     },
                 )?;
                 write_stream.position()
@@ -1634,10 +1637,7 @@ where
 
             self.provider.write_data(dest_offset, &item_bytes_buffer[..bytes_written]).map_err(
                 |e| {
-                    BoundedError::new(
-                        BoundedErrorKind::SliceError,
-                        "Failed to write data during insert shift",
-                    )
+                    BoundedError::runtime_execution_error("Operation failed")
                 },
             )?;
         }
@@ -1650,27 +1650,25 @@ where
         if item_size > MAX_ITEM_SERIALIZED_SIZE {
             return Err(BoundedError::new(
                 BoundedErrorKind::ItemTooLarge,
-                "Item exceeds max buffer size for insert",
-            ));
+                "Item too large for collection"));
         }
 
         let bytes_written = {
             let buffer_slice =
                 SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
-                    BoundedError::new(BoundedErrorKind::ConversionError, "Failed to create slice")
+                    BoundedError::runtime_execution_error("Operation failed")
                 })?;
             let mut write_stream = WriteStream::new(buffer_slice);
             value.to_bytes_with_provider(&mut write_stream, &self.provider).map_err(|_| {
                 BoundedError::new(
                     BoundedErrorKind::ConversionError,
-                    "Failed to serialize item for insert",
-                )
+                    "Operation failed")
             })?;
             write_stream.position()
         };
 
         self.provider.write_data(offset, &item_bytes_buffer[..bytes_written]).map_err(|e| {
-            BoundedError::new(BoundedErrorKind::SliceError, "Failed to write data for insert")
+            BoundedError::runtime_execution_error("Operation failed")
         })?;
 
         // Update length
@@ -1711,8 +1709,7 @@ where
         if index >= self.length {
             return Err(BoundedError::new(
                 BoundedErrorKind::SliceError,
-                "Index out of bounds for BoundedVec::remove",
-            ));
+                "Operation failed"));
         }
 
         record_global_operation(OperationType::CollectionWrite, self.verification_level);
@@ -1721,10 +1718,7 @@ where
         let item_to_remove = match self.get(index) {
             Ok(item) => item,
             Err(_) => {
-                return Err(BoundedError::new(
-                    BoundedErrorKind::ConversionError,
-                    "Failed to get item for remove operation",
-                ))
+                return Err(BoundedError::runtime_execution_error("Operation failed"));
             }
         };
 
@@ -1743,8 +1737,7 @@ where
                 Ok(Some(item)) => Ok(item),
                 Ok(None) => Err(BoundedError::new(
                     BoundedErrorKind::ConversionError,
-                    "Unexpected empty vector during remove",
-                )),
+                    "Operation failed")),
                 Err(e) => Err(e),
             };
         }
@@ -1755,10 +1748,7 @@ where
             let next_item = match self.get(i + 1) {
                 Ok(item) => item,
                 Err(_) => {
-                    return Err(BoundedError::new(
-                        BoundedErrorKind::ConversionError,
-                        "Failed to get next item during remove shift",
-                    ))
+                    return Err(BoundedError::runtime_execution_error("Operation failed"));
                 }
             };
 
@@ -1770,25 +1760,20 @@ where
             if item_size > MAX_ITEM_SERIALIZED_SIZE {
                 return Err(BoundedError::new(
                     BoundedErrorKind::ItemTooLarge,
-                    "Item exceeds max buffer size during remove shift",
-                ));
+                    "Operation failed"));
             }
 
             let bytes_written = {
                 let buffer_slice =
                     SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
-                        BoundedError::new(
-                            BoundedErrorKind::ConversionError,
-                            "Failed to create slice",
-                        )
+                        BoundedError::runtime_execution_error("Operation failed")
                     })?;
                 let mut write_stream = WriteStream::new(buffer_slice);
                 next_item.to_bytes_with_provider(&mut write_stream, &self.provider).map_err(
                     |_| {
                         BoundedError::new(
                             BoundedErrorKind::ConversionError,
-                            "Failed to serialize item during remove shift",
-                        )
+                            "Operation failed")
                     },
                 )?;
                 write_stream.position()
@@ -1796,10 +1781,7 @@ where
 
             self.provider.write_data(dest_offset, &item_bytes_buffer[..bytes_written]).map_err(
                 |e| {
-                    BoundedError::new(
-                        BoundedErrorKind::SliceError,
-                        "Failed to write data during remove shift",
-                    )
+                    BoundedError::runtime_execution_error("Operation failed")
                 },
             )?;
         }
@@ -1847,8 +1829,7 @@ where
                 Err(_) => {
                     return Err(BoundedError::new(
                         BoundedErrorKind::ConversionError,
-                        "Failed to get item during contains check",
-                    ))
+                        "Operation failed"))
                 }
             }
         }
@@ -1937,10 +1918,7 @@ where
     /// ```
     pub fn swap(&mut self, a: usize, b: usize) -> core::result::Result<(), BoundedError> {
         if a >= self.length || b >= self.length {
-            return Err(BoundedError::new(
-                BoundedErrorKind::SliceError,
-                "Index out of bounds for BoundedVec::swap",
-            ));
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
         // If indices are the same, nothing to do
@@ -1961,18 +1939,14 @@ where
             Err(_) => {
                 return Err(BoundedError::new(
                     BoundedErrorKind::ConversionError,
-                    "Failed to get item A for swap operation",
-                ))
+                    "Operation failed"))
             }
         };
 
         let item_b = match self.get(b) {
             Ok(item) => item,
             Err(_) => {
-                return Err(BoundedError::new(
-                    BoundedErrorKind::ConversionError,
-                    "Failed to get item B for swap operation",
-                ))
+                return Err(BoundedError::runtime_execution_error("Operation failed"));
             }
         };
 
@@ -2069,8 +2043,7 @@ where
                 Err(_) => {
                     return Err(BoundedError::new(
                         BoundedErrorKind::ConversionError,
-                        "Failed to get item during retain operation",
-                    ))
+                        "Operation failed"))
                 }
             };
 
@@ -2151,10 +2124,7 @@ where
             let item = match self.get(mid) {
                 Ok(item) => item,
                 Err(_) => {
-                    return Err(BoundedError::new(
-                        BoundedErrorKind::ConversionError,
-                        "Failed to get item during binary search",
-                    ))
+                    return Err(BoundedError::runtime_execution_error("Operation failed"));
                 }
             };
 
@@ -2168,8 +2138,7 @@ where
             Err(_) => {
                 return Err(BoundedError::new(
                     BoundedErrorKind::ConversionError,
-                    "Failed to get item during binary search",
-                ))
+                    "Operation failed"))
             }
         };
 
@@ -2249,10 +2218,7 @@ where
             let item = match self.get(mid) {
                 Ok(item) => item,
                 Err(_) => {
-                    return Err(BoundedError::new(
-                        BoundedErrorKind::ConversionError,
-                        "Failed to get item during binary search",
-                    ))
+                    return Err(BoundedError::runtime_execution_error("Operation failed"));
                 }
             };
 
@@ -2267,8 +2233,7 @@ where
             Err(_) => {
                 return Err(BoundedError::new(
                     BoundedErrorKind::ConversionError,
-                    "Failed to get item during binary search",
-                ))
+                    "Operation failed"))
             }
         };
 
@@ -2393,10 +2358,7 @@ where
             match self.get(i) {
                 Ok(item) => temp_vec.push(item),
                 Err(_) => {
-                    return Err(BoundedError::new(
-                        BoundedErrorKind::ConversionError,
-                        "Failed to get item during sort operation",
-                    ))
+                    return Err(BoundedError::runtime_execution_error("Operation failed"));
                 }
             }
         }
@@ -2542,10 +2504,7 @@ where
             match self.get(i) {
                 Ok(item) => temp_vec.push(item),
                 Err(_) => {
-                    return Err(BoundedError::new(
-                        BoundedErrorKind::ConversionError,
-                        "Failed to get item during dedup operation",
-                    ))
+                    return Err(BoundedError::runtime_execution_error("Operation failed"));
                 }
             }
         }
@@ -2674,10 +2633,7 @@ where
 
         // Validate range
         if start > end || end > self.length {
-            return Err(BoundedError::new(
-                BoundedErrorKind::SliceError,
-                "Invalid range for replace_range operation",
-            ));
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
         let range_len = end - start;
@@ -2687,8 +2643,7 @@ where
         if new_length > N_ELEMENTS {
             return Err(BoundedError::new(
                 BoundedErrorKind::CapacityExceeded,
-                "Capacity exceeded when replacing range in BoundedVec",
-            ));
+                "Operation failed"));
         }
 
         // Handle special cases for zero-sized types
@@ -2709,10 +2664,7 @@ where
             match self.get(i) {
                 Ok(item) => temp_vec.push(item),
                 Err(_) => {
-                    return Err(BoundedError::new(
-                        BoundedErrorKind::ConversionError,
-                        "Failed to get item during replace_range operation",
-                    ))
+                    return Err(BoundedError::runtime_execution_error("Operation failed"));
                 }
             }
         }
@@ -2729,8 +2681,7 @@ where
                 Err(_) => {
                     return Err(BoundedError::new(
                         BoundedErrorKind::ConversionError,
-                        "Failed to get item during replace_range operation",
-                    ))
+                        "Operation failed"))
                 }
             }
         }
@@ -2773,10 +2724,7 @@ where
 
         // Check if there's enough capacity
         if self.length + other.len() > N_ELEMENTS {
-            return Err(BoundedError::new(
-                BoundedErrorKind::CapacityExceeded,
-                "Capacity exceeded when extending BoundedVec from slice",
-            ));
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
         // Add each item from the slice
@@ -2801,8 +2749,7 @@ where
         Err(crate::Error::new(
             crate::ErrorCategory::Runtime,
             crate::codes::UNIMPLEMENTED,
-            "as_slice is not supported for BoundedVec in no_std mode - use individual element access"
-        ))
+            "Operation not supported"))
     }
 
     /// Get a mutable reference to an element at the given index
@@ -3107,21 +3054,12 @@ where
                 item.to_bytes_with_provider(writer, stream_provider)?;
             } else {
                 // This case should ideally not happen if length is correct.
-                return Err(crate::Error::new(
-                    WrtErrorCategory::System,
-                    codes::SYSTEM_ERROR,
-                    "BoundedVec inconsistency during serialization",
-                ));
+                return Err(crate::Error::runtime_execution_error("Operation failed"));
             }
         }
         Ok(())
     }
 
-    #[cfg(feature = "default-provider")]
-    fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let default_provider = DefaultMemoryProvider::default();
-        self.to_bytes_with_provider(writer, &default_provider)
-    }
 }
 
 // FromBytes for BoundedVec
@@ -3145,6 +3083,8 @@ where
             )));
         }
 
+        // Note: This should be instantiated with proper allocation macro in real usage
+        // For deserialization, using default provider
         let mut vec = BoundedVec::<T, N_ELEMENTS, P>::new(P::default())?;
         vec.checksum = checksum;
         vec.length = count;
@@ -3465,10 +3405,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     pub fn as_str(&self) -> Result<&str, BoundedError> {
         // This is temporarily disabled due to lifetime issues in no_std mode
         // TODO: Implement proper lifetime management or alternative API
-        Err(BoundedError::new(
-            BoundedErrorKind::ConversionError,
-            "as_str temporarily disabled in no_std mode",
-        ))
+        Err(BoundedError::runtime_execution_error("Operation failed"))
     }
 
     /// Tries to return the string as a slice.
@@ -3501,7 +3438,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
     /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut s = BoundedString::<10, _>::from_str_truncate("Hello", provider).unwrap();
+    /// # let mut s = BoundedString::<10, _>::from_str_truncate("Hello").unwrap();
     /// s.push_str(", World!").unwrap();
     /// assert_eq!(s.as_str().unwrap(), "Hello, Wor"); // Truncated to fit capacity
     /// ```
@@ -3602,7 +3539,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
         let s = self.as_str()?;
 
         if start > end || end > s.len() {
-            return Err(BoundedError::new(BoundedErrorKind::SliceError, "Invalid substring range"));
+            return Err(BoundedError::runtime_execution_error("Invalid range"));
         }
 
         // Find valid character boundaries
@@ -3638,7 +3575,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
     /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut s = BoundedString::<10, _>::from_str_truncate("Hello", provider).unwrap();
+    /// # let mut s = BoundedString::<10, _>::from_str_truncate("Hello").unwrap();
     /// s.push_char('!').unwrap();
     /// assert_eq!(s.as_str().unwrap(), "Hello!");
     /// ```
@@ -3774,10 +3711,7 @@ impl<
     /// use get_item_slice or iterate and handle items.
     pub(crate) fn as_bytes_slice(&self) -> core::result::Result<&[u8], BoundedError> {
         // This method is temporarily disabled due to lifetime issues in no_std mode
-        Err(BoundedError::new(
-            BoundedErrorKind::ConversionError,
-            "as_bytes_slice temporarily disabled in no_std mode",
-        ))
+        Err(BoundedError::runtime_execution_error("Operation failed"))
     }
 
     /// Returns the raw binary data of this collection as a `Vec<u8>`.
@@ -3798,10 +3732,7 @@ impl<
                     result.extend_from_slice(slice.as_ref());
                 }
                 Err(_) => {
-                    return Err(BoundedError::new(
-                        BoundedErrorKind::SliceError,
-                        "Failed to get slice for to_bytes_vec",
-                    ))
+                    return Err(BoundedError::runtime_execution_error("Operation failed"));
                 }
             }
         }
@@ -3822,16 +3753,12 @@ impl<
         if total_size == 0 {
             return Err(BoundedError::new(
                 BoundedErrorKind::SliceError,
-                "Cannot get raw slice of empty or zero-sized collection",
-            ));
+                "Operation failed"));
         }
 
         match self.provider.borrow_slice(0, total_size) {
             Ok(slice) => Ok(slice),
-            Err(_) => Err(BoundedError::new(
-                BoundedErrorKind::SliceError,
-                "Failed to get raw slice from provider",
-            )),
+            Err(_) => Err(BoundedError::runtime_execution_error("Operation failed")),
         }
     }
 }
@@ -3840,7 +3767,7 @@ impl<
 // for BoundedString::new itself) The main fix is in WasmName::new above.
 // If BoundedString::new was called directly elsewhere:
 // `BoundedString::<CAP, _>::new(provider)` would become `BoundedString::<CAP,
-// _>::from_str_truncate("", provider)`
+// _>::from_str_truncate("")`
 
 // Fix for `try_extend_from_slice` on `BoundedVec`
 impl<
@@ -3952,8 +3879,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
 //         let mut item_reader = ReadStream::new(item_slice.data());
 //         T::from_bytes(&mut item_reader).map_err(|_e| {
 //             Error::deserialization_error(
-//                 "Failed to deserialize item from BoundedVec (read_slice
-// path)",             )
+//                 "Failed to deserialize item from BoundedVec (read_slice path)")
 //         })
 //     }
 //     Err(_e) => Err(Error::memory_error(
@@ -3978,8 +3904,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
 
 // In BoundedVec::verify_item_checksum_at_offset (around 1077):
 // ...
-//     .map_err(|_e| Error::validation_error("Failed to create ReadStream for
-// item verification"))?; ...
+//     .map_err(|_e| Error::validation_error("Failed to create ReadStream for item verification"))?; ...
 // } else {
 //     Err(Error::memory_error(
 //         "Failed to read slice for item checksum verification",

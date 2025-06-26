@@ -69,11 +69,7 @@ impl<const SIZE: usize, const CRATE: usize> EnforcedAllocation<SIZE, CRATE> {
     ) -> Result<CapabilityGuardedProvider<SIZE>> {
         // Verify crate ID matches compile-time constant
         if crate_id.as_index() != CRATE {
-            return Err(Error::new(
-                crate::ErrorCategory::Safety,
-                crate::codes::EXECUTION_ERROR,
-                "Crate ID mismatch in enforced allocation",
-            ));
+            return Err(Error::runtime_execution_error("Crate ID mismatch in enforced allocation"));
         }
 
         #[allow(deprecated)]

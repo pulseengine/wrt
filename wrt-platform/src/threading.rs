@@ -471,11 +471,7 @@ pub fn create_thread_pool(_config: &ThreadPoolConfig) -> Result<Box<dyn Platform
     
     #[cfg(not(any(target_os = "nto", target_os = "linux", feature = "threading")))]   
     {
-        Err(wrt_error::Error::new(
-            wrt_error::ErrorCategory::System,
-            1,
-            "Thread pool creation requires threading feature",
-        ))
+        Err(wrt_error::Error::runtime_execution_error("Threading not supported on this platform"))
     }
 }
 
@@ -587,11 +583,7 @@ where
     
     let _handle = builder.spawn(move || {
         let _ = task();
-    }).map_err(|_e| wrt_error::Error::new(
-        wrt_error::ErrorCategory::Runtime,
-        wrt_error::codes::EXECUTION_ERROR,
-        "Failed to spawn thread"
-    ))?;
+    }).map_err(|_e| wrt_error::Error::runtime_execution_error("Failed to spawn thread"))?;
     
     // Create a simplified thread handle
     // This is a minimal implementation for compilation purposes
@@ -629,10 +621,6 @@ where
     F: FnOnce() -> Result<()> + Send + 'static,
 {
     // For no_std, we can't create actual threads, so return an error immediately
-    Err(wrt_error::Error::new(
-        wrt_error::ErrorCategory::Runtime,
-        wrt_error::codes::NOT_IMPLEMENTED,
-        "Thread spawning not supported in no_std environment"
-    ))
+    Err(wrt_error::Error::runtime_not_implemented("Thread spawning not supported in no_std environment"))
 }
 

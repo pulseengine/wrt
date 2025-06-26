@@ -139,11 +139,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Allocator for PageAllocat
         let size_pages = (layout.size() + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;
         let mut allocator = self.allocator.clone();
         let (ptr, _size) = allocator.allocate(size_pages as u32, None).map_err(|_| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_OUT_OF_BOUNDS,
-                "Failed to allocate memory",
-            )
+            Error::runtime_execution_error("Failed to allocate pages from PageAllocator")
         })?;
         Ok(ptr.as_ptr())
     }
@@ -269,17 +265,12 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
             return Err(Error::new(
                 ErrorCategory::Core,
                 codes::INITIALIZATION_ERROR,
-                "Memory not allocated, cannot grow.",
-            ));
+                "));
         };
 
         let old_pages = self.current_pages;
         let new_total_pages = old_pages.checked_add(additional_pages).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::CAPACITY_EXCEEDED,
-                "Page count overflow during grow attempt.",
-            )
+            Error::runtime_execution_error("Integer overflow when calculating new page count")
         })?;
 
         if let Some(max) = self.maximum_pages {
@@ -287,8 +278,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
                 return Err(Error::new(
                     ErrorCategory::Memory,
                     codes::CAPACITY_EXCEEDED,
-                    "Grow attempt exceeds maximum pages.",
-                ));
+                    "Growth would exceed maximum page limit"));
             }
         }
 
@@ -320,40 +310,24 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
         use safe_memory_ops::*;
         self.verify_access(offset, len)?;
         let Some(base_ptr) = self.base_ptr else {
-            return Err(Error::new(
-                ErrorCategory::Core,
-                codes::INITIALIZATION_ERROR,
-                "Memory not allocated, cannot borrow slice.",
-            ));
+            return Err(Error::runtime_execution_error("Memory not initialized: base pointer is null"));
         };
         self.track_access(offset, len);
         // Use ASIL-D safe memory operation wrapper
         let data_slice = safe_memory_ops::safe_slice_from_verified_bounds(base_ptr, offset, len)
-            .map_err(|_| Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                "Failed to create safe slice from verified bounds",
-            ))?;
+            .map_err(|_| Error::memory_access_out_of_bounds("Invalid memory access bounds"))?;
         Slice::with_verification_level(data_slice, self.verification_level)
     }
 
     fn write_data(&mut self, offset: usize, data: &[u8]) -> Result<()> {
         self.verify_access(offset, data.len())?;
         let Some(base_ptr) = self.base_ptr else {
-            return Err(Error::new(
-                ErrorCategory::Core,
-                codes::INITIALIZATION_ERROR,
-                "Memory not allocated, cannot write data.",
-            ));
+            return Err(Error::runtime_execution_error("Cannot write: memory not initialized"));
         };
         self.track_access(offset, data.len());
         // Use ASIL-D safe memory operation wrapper  
         let dest_slice = safe_memory_ops::safe_slice_mut_from_verified_bounds(base_ptr, offset, data.len())
-            .map_err(|_| Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                "Failed to create safe mutable slice from verified bounds",
-            ))?;
+            .map_err(|_| Error::memory_access_out_of_bounds("Invalid memory write bounds"))?;
         dest_slice.copy_from_slice(data);
         Ok(())
     }
@@ -361,19 +335,11 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
     fn verify_access(&self, offset: usize, len: usize) -> Result<()> {
         let current_byte_size = self.current_pages as usize * WASM_PAGE_SIZE;
         let end_offset = offset.checked_add(len).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS, // Or overflow error code
-                "Access range calculation overflow.",
-            )
+            Error::runtime_execution_error("Integer overflow when calculating end offset")
         })?;
 
         if end_offset > current_byte_size {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                "Access out of bounds.",
-            ));
+            return Err(Error::memory_access_out_of_bounds("Access beyond memory bounds"));
         }
         Ok(())
     }
@@ -394,11 +360,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
         // and our view (pages, ptr) is consistent. Deeper integrity (checksums)
         // is handled by Slice/SliceMut.
         if self.base_ptr.is_none() && self.current_pages > 0 {
-            return Err(Error::new(
-                ErrorCategory::Core,
-                codes::INTEGRITY_VIOLATION,
-                "Memory pointer is None but current_pages > 0",
-            ));
+            return Err(Error::runtime_execution_error("Memory consistency error: pages allocated but base pointer null"));
         }
         // Binary std/no_std choice
         // checks.
@@ -428,17 +390,12 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
             return Err(Error::new(
                 ErrorCategory::Core,
                 codes::INITIALIZATION_ERROR,
-                "Memory not allocated, cannot get mutable slice.",
-            ));
+                "));
         };
         self.track_access(offset, len);
         // Use ASIL-D safe memory operation wrapper
         let data_slice = safe_memory_ops::safe_slice_mut_from_verified_bounds(base_ptr, offset, len)
-            .map_err(|_| Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                "Failed to create safe mutable slice from verified bounds",
-            ))?;
+            .map_err(|_| Error::memory_access_out_of_bounds("Failed to create safe mutable slice from verified bounds"))?;
         SliceMut::with_verification_level(data_slice, self.verification_level)
     }
 
@@ -449,26 +406,14 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
 
         // Verify source and destination ranges independently first.
         self.verify_access(src_offset, len).map_err(|_| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                "Source range out of bounds for copy_within.",
-            )
+            Error::memory_access_out_of_bounds("Source range out of bounds for copy_within.")
         })?;
         self.verify_access(dst_offset, len).map_err(|_| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                "Destination range out of bounds for copy_within.",
-            )
+            Error::memory_access_out_of_bounds("Destination range out of bounds for copy_within.")
         })?;
 
         let Some(base_ptr) = self.base_ptr else {
-            return Err(Error::new(
-                ErrorCategory::Core,
-                codes::INITIALIZATION_ERROR,
-                "Memory not allocated, cannot copy_within.",
-            ));
+            return Err(Error::runtime_execution_error("Cannot copy: memory not initialized"));
         };
 
         // Track access before performing the copy
@@ -479,11 +424,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
 
         // Use ASIL-D safe memory operation wrapper
         safe_memory_ops::safe_copy_within_verified_bounds(base_ptr, src_offset, dst_offset, len)
-            .map_err(|_| Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                "Failed to perform safe copy within verified bounds",
-            ))?;
+            .map_err(|_| Error::memory_access_out_of_bounds("Memory copy operation out of bounds"))?;
         Ok(())
     }
 
@@ -491,11 +432,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
         let current_size_bytes = self.size();
         if byte_offset > current_size_bytes {
             if byte_offset > self.capacity() {
-                return Err(Error::new(
-                    ErrorCategory::Memory,
-                    codes::CAPACITY_EXCEEDED,
-                    "ensure_used_up_to exceeds capacity",
-                ));
+                return Err(Error::runtime_execution_error("Requested byte offset exceeds memory capacity"));
             }
             // Calculate additional pages needed. Ceiling division.
             let additional_bytes_needed = byte_offset - current_size_bytes;
@@ -512,8 +449,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
                 return Err(Error::new(
                     ErrorCategory::Memory,
                     codes::INVALID_STATE,
-                    "Memory growth did not reach requested byte_offset",
-                ));
+                    "Memory growth succeeded but size is still insufficient"));
             }
         }
         Ok(())

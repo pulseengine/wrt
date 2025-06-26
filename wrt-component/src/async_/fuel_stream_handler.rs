@@ -115,11 +115,7 @@ impl<T> FuelStream<T> {
     pub fn yield_item(&mut self, item: T) -> Result<()> {
         // Check if stream is active
         if self.state != StreamState::Active && self.state != StreamState::Waiting {
-            return Err(Error::new(
-                ErrorCategory::Async,
-                codes::ASYNC_ERROR,
-                "Cannot yield to inactive stream",
-            ));
+            return Err(Error::async_error("Cannot yield to inactive stream"));
         }
         
         // Consume fuel for yielding
@@ -176,11 +172,7 @@ impl<T> FuelStream<T> {
         let total_cost = base_cost.saturating_add(adjusted_cost);
         
         if self.fuel_consumed.saturating_add(total_cost) > self.fuel_budget {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Stream fuel budget exceeded",
-            ));
+            return Err(Error::resource_limit_exceeded("Stream fuel budget exceeded"));
         }
         
         self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost);
@@ -263,11 +255,7 @@ impl ComponentStream {
         if self.metadata.is_bounded {
             if let Some(max_items) = self.metadata.max_items {
                 if self.value_stream.buffer.len() >= max_items {
-                    return Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_LIMIT_EXCEEDED,
-                        "Stream buffer limit exceeded",
-                    ));
+                    return Err(Error::resource_limit_exceeded("Stream buffer limit exceeded"));
                 }
             }
         }
@@ -321,11 +309,7 @@ impl FuelStreamManager {
         
         // Check global fuel budget
         if self.total_fuel_consumed.saturating_add(fuel_budget) > self.global_fuel_budget {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Global stream fuel budget exceeded",
-            ));
+            return Err(Error::resource_limit_exceeded("Global stream fuel budget exceeded"));
         }
         
         let stream = ComponentStream::new(
@@ -346,10 +330,7 @@ impl FuelStreamManager {
     /// Get a mutable reference to a stream
     pub fn get_stream_mut(&mut self, stream_id: u64) -> Result<&mut ComponentStream> {
         self.streams.get_mut(&stream_id).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Component,
-                codes::COMPONENT_NOT_FOUND,
-                "Stream not found",
+            Error::runtime_execution_error(",
             )
         })
     }
@@ -416,7 +397,7 @@ mod tests {
         
         match stream.poll_next(&mut cx) {
             Poll::Ready(Some(42)) => {},
-            _ => panic!("Expected Ready(Some(42))"),
+            _ => panic!("))"),
         }
         
         match stream.poll_next(&mut cx) {

@@ -16,6 +16,7 @@ use crate::{
     safe_memory::NoStdProvider,
     Error, ErrorCategory, Result,
 };
+use wrt_error::helpers::memory_limit_exceeded_error;
 
 /// Maximum number of crates in the WRT system
 pub const WRT_MAX_CRATES: usize = 32;
@@ -76,11 +77,7 @@ impl<const N: usize> ProviderFactory for SizedNoStdProviderFactory<N> {
 
     fn create_provider(&self, size: usize) -> Result<Self::Provider> {
         if size > N {
-            return Err(Error::new(
-                ErrorCategory::Capacity,
-                codes::CAPACITY_EXCEEDED,
-                "Requested size exceeds provider capacity",
-            ));
+            return Err(memory_limit_exceeded_error("Requested size exceeds provider capacity"));
         }
 
         #[allow(deprecated)]
@@ -106,8 +103,7 @@ impl CapabilityWrtFactory {
         use crate::memory_init::get_global_capability_context;
         let context = get_global_capability_context()?;
         
-        // Use the deprecated method temporarily until we can refactor the capability API
-        #[allow(deprecated)]
+        // Use the context to create a capability-guarded provider
         context.create_provider::<N>(crate_id)
     }
 

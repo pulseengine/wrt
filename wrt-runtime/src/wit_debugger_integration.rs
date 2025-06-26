@@ -14,7 +14,7 @@ use wrt_foundation::{
     BoundedString, BoundedVec, NoStdProvider,
     prelude::*,
     budget_aware_provider::CrateId,
-    capabilities::{CapabilityAwareProvider, MemoryFactory},
+    capabilities::CapabilityAwareProvider,
     capability_context, safe_capability_alloc
 };
 use wrt_error::{Error, Result};
@@ -605,10 +605,8 @@ pub fn create_component_metadata(
         source_span,
         binary_start,
         binary_end,
-        #[allow(deprecated)]
-        exports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::default())?,
-        #[allow(deprecated)] 
-        imports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::default())?,
+        exports: Vec::new(create_provider::<1024>()?)?,
+        imports: Vec::new(create_provider::<1024>()?)?,
     })
 }
 
@@ -627,10 +625,8 @@ pub fn create_function_metadata(
             .map_err(|_| Error::runtime_error("Function name too long"))?,
         source_span,
         binary_offset,
-        #[allow(deprecated)]
-        param_types: Vec::new(wrt_foundation::safe_memory::NoStdProvider::default())?,
-        #[allow(deprecated)]
-        return_types: Vec::new(wrt_foundation::safe_memory::NoStdProvider::default())?,
+        param_types: Vec::new(create_provider::<1024>()?)?,
+        return_types: Vec::new(create_provider::<1024>()?)?,
         is_async,
     })
 }
@@ -643,8 +639,7 @@ pub fn create_type_metadata(
     kind: WitTypeKind,
     size: Option<u32>,
 ) -> Result<TypeMetadata> {
-    // TODO: Specify appropriate size for this allocation
-
+    // Use 8KB allocation for type metadata - sufficient for typical type names and metadata
     let provider = create_provider::<8192>()?;
     
     Ok(TypeMetadata {

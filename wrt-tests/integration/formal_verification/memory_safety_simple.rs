@@ -23,6 +23,8 @@ use kani;
 #[cfg(feature = "kani")]
 use wrt_foundation::{
     bounded::BoundedVec,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
     safe_memory::NoStdProvider,
 };
 
@@ -37,7 +39,8 @@ pub fn verify_bounded_vec_capacity_limits() {
     kani::assume(requested_elements <= 1024); // Reasonable upper bound for verification
     
     // Create a provider with fixed size
-    let provider = NoStdProvider::<8192>::default();
+    let provider = safe_managed_alloc!(8192, CrateId::Component)
+        .unwrap_or_else(|_| NoStdProvider::<8192>::default());
     
     // Test BoundedVec with the requested capacity (clamped to max)
     const MAX_ELEMENTS: usize = 256;
@@ -85,8 +88,10 @@ pub fn verify_bounded_vec_capacity_limits() {
 #[cfg(kani)]
 pub fn verify_buffer_isolation() {
     // Create two independent providers
-    let provider_a = NoStdProvider::<4096>::default();
-    let provider_b = NoStdProvider::<4096>::default();
+    let provider_a = safe_managed_alloc!(4096, CrateId::Component)
+        .unwrap_or_else(|_| NoStdProvider::<4096>::default());
+    let provider_b = safe_managed_alloc!(4096, CrateId::Component)
+        .unwrap_or_else(|_| NoStdProvider::<4096>::default());
     
     // Create bounded vectors with each provider
     if let (Ok(mut vec_a), Ok(mut vec_b)) = (
@@ -121,7 +126,8 @@ pub fn verify_buffer_isolation() {
 #[cfg(kani)]
 pub fn verify_allocation_error_handling() {
     // Use a very small provider to force allocation failures
-    let small_provider = NoStdProvider::<128>::default();
+    let small_provider = safe_managed_alloc!(128, CrateId::Component)
+        .unwrap_or_else(|_| NoStdProvider::<128>::default());
     
     // Try to create a large bounded vector that might fail
     match BoundedVec::<u64, 32, _>::new(small_provider) {
@@ -157,8 +163,9 @@ pub fn verify_allocation_error_handling() {
 ///
 /// These tests provide fallback verification when KANI is not available.
 pub fn register_tests(registry: &TestRegistry) -> TestResult {
+    use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc, safe_memory::NoStdProvider};
     registry.register_test("bounded_vec_basic", || {
-        let provider = NoStdProvider::<1024>::default();
+        let provider = safe_managed_alloc!(1024, CrateId::Component)?;
         let vec = BoundedVec::<u8, 16, _>::new(provider)?;
         
         assert_eq!(vec.len(), 0);
@@ -167,8 +174,8 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     })?;
     
     registry.register_test("buffer_isolation_basic", || {
-        let provider_a = NoStdProvider::<1024>::default();
-        let provider_b = NoStdProvider::<1024>::default();
+        let provider_a = safe_managed_alloc!(1024, CrateId::Component)?;
+        let provider_b = safe_managed_alloc!(1024, CrateId::Component)?;
         
         let vec_a = BoundedVec::<u32, 8, _>::new(provider_a)?;
         let vec_b = BoundedVec::<u32, 8, _>::new(provider_b)?;
@@ -180,7 +187,8 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("allocation_error_basic", || {
         // Test with very constrained provider
-        let small_provider = NoStdProvider::<64>::default();
+        let small_provider = safe_managed_alloc!(64, CrateId::Component)
+            .unwrap_or_else(|_| NoStdProvider::<64>::default());
         
         // This might succeed or fail - both are acceptable
         let _result = BoundedVec::<u64, 16, _>::new(small_provider);
@@ -238,7 +246,9 @@ mod tests {
     
     #[test]
     fn test_bounded_vec_creation() {
-        let provider = NoStdProvider::<1024>::default();
+        use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc, safe_memory::NoStdProvider};
+        let provider = safe_managed_alloc!(1024, CrateId::Component)
+            .unwrap_or_else(|_| NoStdProvider::<1024>::default());
         let vec = BoundedVec::<u32, 16, _>::new(provider);
         assert!(vec.is_ok());
         

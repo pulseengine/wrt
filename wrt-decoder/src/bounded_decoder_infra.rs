@@ -5,9 +5,12 @@
 
 use wrt_foundation::{
     bounded::{BoundedString, BoundedVec},
+    budget_aware_provider::CrateId,
+    generic_memory_guard::MemoryGuard,
     no_std_hashmap::BoundedHashMap,
-    safe_managed_alloc, budget_aware_provider::CrateId,
-    safe_memory::NoStdProvider, WrtResult, generic_memory_guard::MemoryGuard,
+    safe_managed_alloc,
+    safe_memory::NoStdProvider,
+    WrtResult,
 };
 
 /// Instead of a type alias, we'll use concrete allocation in factory functions
@@ -104,7 +107,8 @@ pub type BoundedModuleVec<T> = BoundedVec<T, MAX_MODULES_PER_COMPONENT, DecoderP
 pub type BoundedNameString = BoundedString<MAX_NAME_LENGTH, DecoderProvider>;
 
 /// Name map with bounded capacity
-pub type BoundedNameMap<V> = BoundedHashMap<BoundedNameString, V, MAX_NAME_MAP_ENTRIES, DecoderProvider>;
+pub type BoundedNameMap<V> =
+    BoundedHashMap<BoundedNameString, V, MAX_NAME_MAP_ENTRIES, DecoderProvider>;
 
 /// Custom data with bounded capacity
 pub type BoundedCustomData = BoundedVec<u8, MAX_CUSTOM_SECTION_SIZE, DecoderProvider>;
@@ -147,7 +151,8 @@ where
 }
 
 /// Create a new bounded import vector using capability-based allocation
-pub fn new_import_vec() -> WrtResult<BoundedImportVec<wrt_foundation::types::Import<DecoderProvider>>> {
+pub fn new_import_vec(
+) -> WrtResult<BoundedImportVec<wrt_foundation::types::Import<DecoderProvider>>> {
     let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
@@ -212,17 +217,15 @@ where
 /// Create a new bounded name string using capability-based allocation
 pub fn new_name_string() -> WrtResult<BoundedNameString> {
     let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
-    BoundedString::from_str("", provider).map_err(|_| {
-        wrt_error::Error::memory_error("Failed to create empty bounded string")
-    })
+    BoundedString::from_str("", provider)
+        .map_err(|_| wrt_error::Error::memory_error("Failed to create empty bounded string"))
 }
 
 /// Create a bounded name string from a str using capability-based allocation
 pub fn bounded_name_from_str(s: &str) -> WrtResult<BoundedNameString> {
     let provider = safe_managed_alloc!(1024, CrateId::Decoder)?;
-    BoundedString::from_str(s, provider).map_err(|_| {
-        wrt_error::Error::validation_error("String too long for bounded name")
-    })
+    BoundedString::from_str(s, provider)
+        .map_err(|_| wrt_error::Error::validation_error("String too long for bounded name"))
 }
 
 /// Create a new bounded name map using capability-based allocation
@@ -243,13 +246,16 @@ where
 // Additional concrete vector factory functions
 
 /// Create a new bounded params vector (for function parameters)
-pub fn new_params_vec() -> WrtResult<BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_PARAMS, NoStdProvider<2048>>> {
+pub fn new_params_vec(
+) -> WrtResult<BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_PARAMS, NoStdProvider<2048>>> {
     let provider = safe_managed_alloc!(2048, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded results vector (for function results)
-pub fn new_results_vec() -> WrtResult<BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_RESULTS, NoStdProvider<1024>>> {
+pub fn new_results_vec(
+) -> WrtResult<BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_RESULTS, NoStdProvider<1024>>>
+{
     let provider = safe_managed_alloc!(1024, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }

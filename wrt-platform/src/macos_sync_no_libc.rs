@@ -204,7 +204,7 @@ impl FutexLike for MacOsFutex {
             Ok(())
         } else {
             // Error
-            Err(Error::new(ErrorCategory::System, 1, "Failed to wake waiters"))
+            Err(Error::runtime_execution_error("Failed to wake waiters"))
         }
     }
 

@@ -409,11 +409,7 @@ mod tests {
         // Second call (error)
         strategy.before_call(source, target, function, &args).unwrap();
         thread::sleep(Duration::from_millis(5)); // Simulate some work
-        let result = Err(wrt_error::Error::new(
-            wrt_error::ErrorCategory::Runtime,
-            wrt_error::codes::RUNTIME_ERROR,
-            "Test error",
-        ));
+        let result = Err(wrt_error::Error::runtime_error("Test error"));
         let _ = strategy.after_call(source, target, function, &args, result);
 
         // Check statistics

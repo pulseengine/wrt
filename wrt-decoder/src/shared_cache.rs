@@ -8,7 +8,7 @@
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-use alloc::collections::BTreeMap as HashMap;
+use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
@@ -348,11 +348,7 @@ fn parse_imports_from_binary(binary: &[u8]) -> Result<Vec<ImportInfo>> {
 
         let section_end = offset + section_size as usize;
         if section_end > binary.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Section extends beyond binary",
-            ));
+            return Err(Error::parse_error("Section extends beyond binary"));
         }
 
         if section_id == 2 {
@@ -397,11 +393,7 @@ fn parse_exports_from_binary(binary: &[u8]) -> Result<Vec<ExportInfo>> {
 
         let section_end = offset + section_size as usize;
         if section_end > binary.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Section extends beyond binary",
-            ));
+            return Err(Error::parse_error("Section extends beyond binary"));
         }
 
         if section_id == 7 {
@@ -434,9 +426,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
     for i in 0..5 {
         // Max 5 bytes for u32
         if offset + i >= data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
+            return Err(Error::parse_error(
                 "Unexpected end of data while reading LEB128",
             ));
         }
@@ -452,11 +442,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
 
         shift += 7;
         if shift >= 32 {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "LEB128 value too large for u32",
-            ));
+            return Err(Error::parse_error("LEB128 value too large for u32"));
         }
     }
 

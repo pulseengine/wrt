@@ -8,6 +8,7 @@ use wrt_foundation::{
     BoundedVec, BoundedString, safe_managed_alloc,
     safe_memory::NoStdProvider,
     traits::BoundedCapacity,
+    budget_aware_provider::CrateId,
 };
 
 #[cfg(feature = "std")]
@@ -35,20 +36,21 @@ type EnvProvider = CapabilityAwareProvider<NoStdProvider<8192>>;
 type EnvProvider = NoStdProvider<8192>;
 
 // Helper function to create provider
-fn create_provider() -> PathProvider {
+fn create_provider() -> Result<PathProvider> {
     #[cfg(feature = "std")]
     {
-        let base_provider = NoStdProvider::<8192>::default();
+        let base_provider = safe_managed_alloc!(8192, CrateId::Wasi)?;
         let capability = Box::new(wrt_foundation::capabilities::DynamicMemoryCapability::new(
             8192,
             WASI_CRATE_ID,
             wrt_foundation::verification::VerificationLevel::Standard,
         ));
-        CapabilityAwareProvider::new(base_provider, capability, WASI_CRATE_ID)
+        Ok(CapabilityAwareProvider::new(base_provider, capability, WASI_CRATE_ID))
     }
     #[cfg(not(feature = "std"))]
     {
-        NoStdProvider::<8192>::default()
+        let provider = safe_managed_alloc!(8192, CrateId::Wasi)?;
+        Ok(provider)
     }
 }
 
@@ -68,6 +70,9 @@ pub struct WasiCapabilities {
     /// Network capabilities (Preview3)
     #[cfg(feature = "preview3-prep")]
     pub network: WasiNetworkCapabilities,
+    /// Neural network capabilities (preview-agnostic)
+    #[cfg(feature = "wasi-nn")]
+    pub nn: WasiNeuralNetworkCapabilities,
 }
 
 impl WasiCapabilities {
@@ -80,7 +85,9 @@ impl WasiCapabilities {
             io: WasiIoCapabilities::minimal(),
             random: WasiRandomCapabilities::minimal(),
             #[cfg(feature = "preview3-prep")]
-            network: WasiNetworkCapabilities::minimal(),
+            network: WasiNetworkCapabilities::none(),
+            #[cfg(feature = "wasi-nn")]
+            nn: WasiNeuralNetworkCapabilities::minimal()?,
         })
     }
     
@@ -94,6 +101,8 @@ impl WasiCapabilities {
             random: WasiRandomCapabilities::secure_only(),
             #[cfg(feature = "preview3-prep")]
             network: WasiNetworkCapabilities::none(),
+            #[cfg(feature = "wasi-nn")]
+            nn: WasiNeuralNetworkCapabilities::sandboxed()?,
         })
     }
     
@@ -107,6 +116,8 @@ impl WasiCapabilities {
             random: WasiRandomCapabilities::full_access(),
             #[cfg(feature = "preview3-prep")]
             network: WasiNetworkCapabilities::local_only(),
+            #[cfg(feature = "wasi-nn")]
+            nn: WasiNeuralNetworkCapabilities::full_access()?,
         })
     }
 }
@@ -129,7 +140,7 @@ pub struct WasiFileSystemCapabilities {
 impl WasiFileSystemCapabilities {
     /// Create minimal filesystem capabilities (no access)
     pub fn minimal() -> Result<Self> {
-        let provider = create_provider();
+        let provider = create_provider()?;
         Ok(Self {
             allowed_paths: BoundedVec::new(provider)?,
             read_access: false,
@@ -141,7 +152,7 @@ impl WasiFileSystemCapabilities {
     
     /// Create read-only filesystem capabilities
     pub fn read_only() -> Result<Self> {
-        let provider = create_provider();
+        let provider = create_provider()?;
         Ok(Self {
             allowed_paths: BoundedVec::new(provider)?,
             read_access: true,
@@ -153,7 +164,7 @@ impl WasiFileSystemCapabilities {
     
     /// Create full filesystem access capabilities
     pub fn full_access() -> Result<Self> {
-        let provider = create_provider();
+        let provider = create_provider()?;
         Ok(Self {
             allowed_paths: BoundedVec::new(provider)?,
             read_access: true,
@@ -165,20 +176,15 @@ impl WasiFileSystemCapabilities {
     
     /// Add an allowed filesystem path
     pub fn add_allowed_path(&mut self, path: &str) -> Result<()> {
-        let provider = create_provider();
-        let bounded_path = BoundedString::from_str(path, provider)
-            .map_err(|_| Error::new(
-                ErrorCategory::Resource,
-                codes::WASI_RESOURCE_LIMIT,
-                "Path too long"
-            ))?;
+        let provider = create_provider()?;
+        let bounded_path = BoundedString::<256, _>::from_str(path, provider)
+            .map_err(|_| Error::runtime_execution_error("Path too long"))?;
             
         self.allowed_paths.push(bounded_path)
             .map_err(|_| Error::new(
                 ErrorCategory::Resource,
                 codes::WASI_RESOURCE_LIMIT,
-                "Too many allowed paths"
-            ))?;
+                "Resource limit exceeded"))?;
             
         Ok(())
     }
@@ -214,7 +220,7 @@ pub struct WasiEnvironmentCapabilities {
 impl WasiEnvironmentCapabilities {
     /// Create minimal environment capabilities (no access)
     pub fn minimal() -> Result<Self> {
-        let provider = create_provider();
+        let provider = create_provider()?;
         Ok(Self {
             args_access: false,
             environ_access: false,
@@ -224,7 +230,7 @@ impl WasiEnvironmentCapabilities {
     
     /// Create args-only environment capabilities
     pub fn args_only() -> Result<Self> {
-        let provider = create_provider();
+        let provider = create_provider()?;
         Ok(Self {
             args_access: true,
             environ_access: false,
@@ -234,7 +240,7 @@ impl WasiEnvironmentCapabilities {
     
     /// Create full environment access capabilities
     pub fn full_access() -> Result<Self> {
-        let provider = create_provider();
+        let provider = create_provider()?;
         Ok(Self {
             args_access: true,
             environ_access: true,
@@ -244,20 +250,15 @@ impl WasiEnvironmentCapabilities {
     
     /// Add an allowed environment variable
     pub fn add_allowed_var(&mut self, var_name: &str) -> Result<()> {
-        let provider = create_provider();
-        let bounded_var = BoundedString::from_str(var_name, provider)
-            .map_err(|_| Error::new(
-                ErrorCategory::Resource,
-                codes::WASI_RESOURCE_LIMIT,
-                "Environment variable name too long"
-            ))?;
+        let provider = create_provider()?;
+        let bounded_var = BoundedString::<128, _>::from_str(var_name, provider)
+            .map_err(|_| Error::runtime_execution_error("Path too long"))?;
             
         self.allowed_env_vars.push(bounded_var)
             .map_err(|_| Error::new(
                 ErrorCategory::Resource,
                 codes::WASI_RESOURCE_LIMIT,
-                "Too many allowed environment variables"
-            ))?;
+                "Resource limit exceeded"))?;
             
         Ok(())
     }
@@ -456,6 +457,74 @@ impl WasiNetworkCapabilities {
             localhost_only: false,
             outbound_access: true,
             inbound_access: true,
+        }
+    }
+}
+
+/// Neural network capabilities (preview-agnostic)
+#[cfg(feature = "wasi-nn")]
+#[derive(Debug, Clone, PartialEq)]
+pub struct WasiNeuralNetworkCapabilities {
+    /// Allow dynamic model loading
+    pub dynamic_loading: bool,
+    /// Maximum model size in bytes (0 = unlimited)
+    pub max_model_size: usize,
+    /// Maximum tensor memory per inference (0 = unlimited)
+    pub max_tensor_memory: usize,
+    /// Allow only pre-approved models
+    pub require_model_approval: bool,
+    /// Verification level for NN operations
+    pub verification_level: wrt_foundation::verification::VerificationLevel,
+}
+
+#[cfg(feature = "wasi-nn")]
+impl WasiNeuralNetworkCapabilities {
+    /// Create minimal NN capabilities (no access)
+    pub fn minimal() -> Result<Self> {
+        Ok(Self {
+            dynamic_loading: false,
+            max_model_size: 0,
+            max_tensor_memory: 0,
+            require_model_approval: true,
+            verification_level: wrt_foundation::verification::VerificationLevel::Standard,
+        })
+    }
+    
+    /// Create sandboxed NN capabilities (limited inference)
+    pub fn sandboxed() -> Result<Self> {
+        Ok(Self {
+            dynamic_loading: true,
+            max_model_size: 10 * 1024 * 1024, // 10MB
+            max_tensor_memory: 5 * 1024 * 1024, // 5MB
+            require_model_approval: false,
+            verification_level: wrt_foundation::verification::VerificationLevel::Sampling,
+        })
+    }
+    
+    /// Create full NN access capabilities
+    pub fn full_access() -> Result<Self> {
+        Ok(Self {
+            dynamic_loading: true,
+            max_model_size: 100 * 1024 * 1024, // 100MB
+            max_tensor_memory: 50 * 1024 * 1024, // 50MB
+            require_model_approval: false,
+            verification_level: wrt_foundation::verification::VerificationLevel::Standard,
+        })
+    }
+    
+    /// Create capability for specific verification level
+    pub fn for_verification_level(level: wrt_foundation::verification::VerificationLevel) -> Result<Self> {
+        match level {
+            wrt_foundation::verification::VerificationLevel::Standard => Self::full_access(),
+            wrt_foundation::verification::VerificationLevel::Sampling => Self::sandboxed(),
+            wrt_foundation::verification::VerificationLevel::Full => Ok(Self {
+                dynamic_loading: false,
+                max_model_size: 20 * 1024 * 1024, // 20MB
+                max_tensor_memory: 10 * 1024 * 1024, // 10MB
+                require_model_approval: true,
+                verification_level: level,
+            }),
+            _ => Err(Error::wasi_unsupported_operation("ASIL-C/D not supported in wrtd")),
         }
     }
 }

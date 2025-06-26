@@ -299,7 +299,7 @@ impl BrTable {
         }
         #[cfg(not(feature = "std"))]
         {
-            let provider = wrt_foundation::NoStdProvider::<8192>::default();
+            let provider = wrt_foundation::safe_managed_alloc!(8192, wrt_foundation::budget_aware_provider::CrateId::Instructions)?;
             let mut table = wrt_foundation::BoundedVec::new(provider).map_err(|_| {
                 Error::memory_error("Could not create BoundedVec")
             })?;
@@ -429,7 +429,7 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
             Self::Loop(block_type) => context.enter_block(Block::Loop(*block_type)),
             Self::If(block_type) => {
                 let condition = context.pop_control_value()?.into_i32().map_err(|_| {
-                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for if condition")
+                    Error::type_error("Expected I32 for if condition")
                 })?;
 
                 if condition != 0 {
@@ -460,7 +460,7 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
             }
             Self::BrIf(label_idx) => {
                 let condition = context.pop_control_value()?.into_i32().map_err(|_| {
-                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for br_if condition")
+                    Error::type_error("Expected I32 for br_if condition")
                 })?;
 
                 if condition != 0 {
@@ -556,7 +556,7 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
     }
 }
 
-#[cfg(all(test, any(feature = "std", )))]
+#[cfg(all(test, feature = "std"))]
 mod tests {
         use std::vec;
         use std::vec::Vec;
@@ -601,7 +601,7 @@ mod tests {
 
         fn pop_control_value(&mut self) -> Result<Value> {
             self.stack.pop().ok_or_else(|| {
-                Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+                Error::runtime_stack_underflow("Stack underflow")
             })
         }
 
@@ -616,11 +616,7 @@ mod tests {
 
         fn exit_block(&mut self) -> Result<Block> {
             self.blocks.pop().ok_or_else(|| {
-                Error::new(
-                    ErrorCategory::Runtime,
-                    codes::EXECUTION_ERROR,
-                    "Invalid branch target",
-                )
+                Error::runtime_execution_error("Invalid branch target")
             })
         }
 
@@ -646,7 +642,7 @@ mod tests {
 
         fn trap(&mut self, _message: &str) -> Result<()> {
             self.trapped = true;
-            Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Execution trapped"))
+            Err(Error::runtime_trap_error("Execution trapped"))
         }
 
         fn get_current_block(&self) -> Option<&Block> {

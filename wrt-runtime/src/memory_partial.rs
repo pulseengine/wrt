@@ -153,10 +153,7 @@ const SIZE_TOO_LARGE: u16 = 4003;
 /// 
 /// Ok(usize) if conversion is safe, error otherwise
 fn wasm_offset_to_usize(offset: u32) -> Result<usize> {
-    usize::try_from(offset).map_err(|_| Error::new(
-        ErrorCategory::Memory, 
-        INVALID_OFFSET, 
-        "Offset exceeds usize limit"
+    usize::try_from(offset).map_err(|_| Error::runtime_execution_error("
     ))
 }
 
@@ -173,8 +170,7 @@ fn usize_to_wasm_u32(size: usize) -> Result<u32> {
     u32::try_from(size).map_err(|_| Error::new(
         ErrorCategory::Memory, 
         SIZE_TOO_LARGE, 
-        "Size exceeds u32 limit"
-    ))
+        "))
 }
 
 /// Memory metrics for tracking usage and safety
@@ -509,11 +505,7 @@ impl Memory {
         memory.debug_name = Some(wrt_foundation::bounded::BoundedString::from_str(
             name, 
             SmallMemoryProvider::default()
-        ).map_err(|_| Error::new(
-            ErrorCategory::Memory,
-            codes::MEMORY_ERROR,
-            "Debug name too long"
-        ))?);
+        ).map_err(|_| Error::memory_error("Debug name too long"))?);
         Ok(memory)
     }
 
@@ -743,30 +735,19 @@ impl Memory {
         // Check that growing wouldn't exceed max pages
         let current_pages_val = self.current_pages.load(Ordering::Relaxed);
         let new_page_count = current_pages_val.checked_add(pages).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_GROW_ERROR,
-                "Memory growth would overflow",
+            Error::runtime_execution_error(",
             )
         })?;
 
         // Check against the maximum allowed by type
         if let Some(max) = self.ty.limits.max {
             if new_page_count > max {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_LIMIT_EXCEEDED,
-                    "Runtime operation error",
-                ));
+                return Err(Error::resource_limit_exceeded("));
             }
 
         // Check against the absolute maximum (4GB)
         if new_page_count > MAX_PAGES {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Runtime operation error",
-            ));
+            return Err(Error::resource_limit_exceeded("Runtime operation error"));
         }
 
         // Calculate the new size in bytes
@@ -845,20 +826,12 @@ impl Memory {
         let offset_usize = wasm_offset_to_usize(offset)?;
         let size = buffer.len();
         let end = offset_usize.checked_add(size).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_OUT_OF_BOUNDS,
-                "Memory write would overflow",
-            )
+            Error::memory_out_of_bounds("Memory write would overflow")
         })?;
 
         // Verify the access is within memory bounds
         if end > self.size_in_bytes() {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_OUT_OF_BOUNDS,
-                "Runtime operation error",
-            ));
+            return Err(Error::memory_out_of_bounds("Runtime operation error"));
         }
 
         // Track this access for profiling
@@ -888,11 +861,7 @@ impl Memory {
     /// Returns an error if the offset is out of bounds
     pub fn get_byte(&self, offset: u32) -> Result<u8> {
         if !self.verify_bounds(offset, 1) {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Memory access out of bounds",
-            ));
+            return Err(Error::validation_error("Memory access out of bounds"));
         }
 
         let offset_usize = wasm_offset_to_usize(offset)?;
@@ -920,11 +889,7 @@ impl Memory {
     /// Returns an error if the offset is out of bounds
     pub fn set_byte(&mut self, offset: u32, value: u8) -> Result<()> {
         if !self.verify_bounds(offset, 1) {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Memory access out of bounds",
-            ));
+            return Err(Error::validation_error("Memory access out of bounds"));
         }
 
         let offset_usize = wasm_offset_to_usize(offset)?;
@@ -969,21 +934,13 @@ impl Memory {
     /// Check alignment for memory accesses
     pub fn check_alignment(&self, addr: u32, access_size: u32, align: u32) -> Result<()> {
         if addr % align != 0 {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Runtime operation error",
-            ));
+            return Err(Error::validation_error("Runtime operation error"));
         }
 
         let addr = wasm_offset_to_usize(addr)?;
         let access_size = wasm_offset_to_usize(access_size)?;
         if addr + access_size > self.data.size() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Memory access out of bounds",
-            ));
+            return Err(Error::validation_error("Memory access out of bounds"));
         }
 
         Ok(())

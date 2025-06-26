@@ -209,11 +209,30 @@ impl CfiControlFlowProtection {
     }
 }
 
+/// Calling convention types for platform compatibility
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CallingConvention {
+    /// WebAssembly standard calling convention
+    WebAssembly,
+    /// System V ABI (Linux, macOS)
+    SystemV,
+    /// Windows Fastcall convention
+    WindowsFastcall,
+}
+
+impl Default for CallingConvention {
+    fn default() -> Self {
+        Self::WebAssembly
+    }
+}
+
 /// Software CFI configuration options
 #[derive(Debug, Clone, Default)]
 pub struct CfiSoftwareConfig {
     /// Maximum depth of the shadow stack
     pub max_shadow_stack_depth: usize,
+    /// Enable temporal validation
+    pub temporal_validation: bool,
 }
 
 // Default trait implemented by derive
@@ -226,27 +245,52 @@ pub struct CfiExecutionContext {
     /// Offset of the current instruction within the function
     pub current_instruction: u32,
     /// Shadow stack for return address protection
-    pub shadow_stack: wrt_foundation::bounded::BoundedVec<ShadowStackEntry, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+    pub shadow_stack: wrt_foundation::bounded::BoundedVec<ShadowStackEntry, 64, wrt_foundation::traits::DefaultMemoryProvider>,
     /// Expected landing pads for indirect calls
-    pub landing_pad_expectations: wrt_foundation::bounded::BoundedVec<LandingPadExpectation, 32, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+    pub landing_pad_expectations: wrt_foundation::bounded::BoundedVec<LandingPadExpectation, 32, wrt_foundation::traits::DefaultMemoryProvider>,
     /// Number of CFI violations detected
     pub violation_count: u32,
     /// CFI performance and security metrics
     pub metrics: CfiMetrics,
+    /// Current calling convention
+    pub calling_convention: CallingConvention,
+    /// Current stack depth for platform-specific validation
+    pub current_stack_depth: u32,
+    /// Software configuration for CFI
+    pub software_config: CfiSoftwareConfig,
+    /// Last checkpoint time for temporal validation
+    pub last_checkpoint_time: u64,
+    /// Maximum number of labels for control flow validation
+    pub max_labels: u32,
+    /// Valid branch targets for CFI validation
+    pub valid_branch_targets: wrt_foundation::bounded::BoundedVec<u32, 256, wrt_foundation::traits::DefaultMemoryProvider>,
 }
 
 // Default implementation will be handled manually
-impl Default for CfiExecutionContext {
-    fn default() -> Self {
-        let provider = wrt_foundation::safe_memory::NoStdProvider::<1024>::default();
-        Self {
+impl CfiExecutionContext {
+    /// Create a new CFI execution context
+    pub fn new() -> Result<Self> {
+        let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+        Ok(Self {
             current_function: 0,
             current_instruction: 0,
-            shadow_stack: wrt_foundation::bounded::BoundedVec::new(provider.clone()).unwrap(),
-            landing_pad_expectations: wrt_foundation::bounded::BoundedVec::new(provider).unwrap(),
+            shadow_stack: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            landing_pad_expectations: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             violation_count: 0,
             metrics: CfiMetrics::default(),
-        }
+            calling_convention: CallingConvention::default(),
+            current_stack_depth: 0,
+            software_config: CfiSoftwareConfig::default(),
+            last_checkpoint_time: 0,
+            max_labels: 128,
+            valid_branch_targets: wrt_foundation::bounded::BoundedVec::new(provider)?,
+        })
+    }
+}
+
+impl Default for CfiExecutionContext {
+    fn default() -> Self {
+        Self::new().expect("Failed to create CfiExecutionContext with default provider")
     }
 }
 
@@ -257,6 +301,22 @@ pub struct CfiMetrics {
     pub landing_pads_validated: u32,
     /// Number of shadow stack operations performed
     pub shadow_stack_operations: u32,
+    /// Number of indirect calls protected
+    pub indirect_calls_protected: u32,
+    /// Number of returns protected
+    pub returns_protected: u32,
+    /// Number of branches protected
+    pub branches_protected: u32,
+    /// Number of violations detected
+    pub violations_detected: u32,
+    /// Total overhead in nanoseconds
+    pub total_overhead_ns: u64,
+    /// Total execution time for temporal validation
+    pub total_execution_time: u64,
+    /// Average instruction time for performance analysis
+    pub average_instruction_time: Option<u64>,
+    /// Last instruction execution time
+    pub last_instruction_time: u64,
 }
 
 /// Expected landing pad for CFI validation
@@ -393,30 +453,30 @@ pub struct CfiEngineStatistics {
 
 impl CfiExecutionEngine {
     /// Create new CFI-enhanced execution engine
-    #[must_use] pub fn new(cfi_protection: CfiControlFlowProtection) -> Self {
-        Self {
+    pub fn new(cfi_protection: CfiControlFlowProtection) -> Result<Self> {
+        Ok(Self {
             cfi_ops: DefaultCfiControlFlowOps,
             cfi_protection,
-            cfi_context: CfiExecutionContext::default(),
+            cfi_context: CfiExecutionContext::new()?,
             violation_policy: CfiViolationPolicy::default(),
             statistics: CfiEngineStatistics::default(),
             // stackless_engine: None,
-        }
+        })
     }
 
     /// Create CFI engine with custom violation policy
-    #[must_use] pub fn new_with_policy(
+    pub fn new_with_policy(
         cfi_protection: CfiControlFlowProtection,
         violation_policy: CfiViolationPolicy,
-    ) -> Self {
-        Self {
+    ) -> Result<Self> {
+        Ok(Self {
             cfi_ops: DefaultCfiControlFlowOps,
             cfi_protection,
-            cfi_context: CfiExecutionContext::default(),
+            cfi_context: CfiExecutionContext::new()?,
             violation_policy,
             statistics: CfiEngineStatistics::default(),
             // stackless_engine: None,
-        }
+        })
     }
 
     /// Create CFI engine with stackless engine integration - TEMPORARILY DISABLED
@@ -710,20 +770,12 @@ impl CfiExecutionEngine {
         if self.cfi_context.shadow_stack.len()
             > self.cfi_protection.software_config.max_shadow_stack_depth
         {
-            return Err(Error::new(
-                ErrorCategory::RuntimeTrap,
-                codes::CFI_VIOLATION,
-                "Shadow stack overflow detected",
-            ));
+            return Err(Error::runtime_trap_error("Shadow stack overflow detected"));
         }
 
         // Check for excessive violation count
         if self.cfi_context.violation_count > 10 {
-            return Err(Error::new(
-                ErrorCategory::RuntimeTrap,
-                codes::CFI_VIOLATION,
-                "Excessive CFI violations detected",
-            ));
+            return Err(Error::runtime_trap_error("Excessive CFI violations detected"));
         }
 
         Ok(())
@@ -967,10 +1019,7 @@ impl CfiExecutionEngine {
 
         // Consume minimal fuel for CFI overhead
         if let Err(e) = execution_context.stats.use_gas(1) {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::CFI_VIOLATION,
-"Gas exhausted during CFI-protected instruction execution",
+            return Err(Error::runtime_execution_error(",
             ));
         }
 
@@ -988,9 +1037,10 @@ impl CfiExecutionEngine {
     }
 
     /// Reset CFI state (for testing or recovery)
-    pub fn reset_cfi_state(&mut self) {
-        self.cfi_context = CfiExecutionContext::default();
+    pub fn reset_cfi_state(&mut self) -> Result<()> {
+        self.cfi_context = CfiExecutionContext::new()?;
         self.statistics = CfiEngineStatistics::default();
+        Ok(())
     }
 }
 
@@ -1027,22 +1077,23 @@ pub enum CfiExecutionResult {
 #[derive(Debug, Clone)]
 pub struct CfiCheck {
     /// Check type
-    pub check_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+    pub check_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::traits::DefaultMemoryProvider>,
     /// Location of check
     pub location: usize,
 }
 
 impl CfiCheck {
     /// Create a new CFI check
-    #[must_use] pub fn new(check_type: &str, location: usize) -> Self {
-        let bounded_check_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<1024>> = wrt_foundation::bounded::BoundedString::from_str_truncate(
+    pub fn new(check_type: &str, location: usize) -> Result<Self> {
+        let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+        let bounded_check_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::traits::DefaultMemoryProvider> = wrt_foundation::bounded::BoundedString::from_str_truncate(
             check_type,
-            wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
-        ).unwrap_or_else(|_| wrt_foundation::bounded::BoundedString::from_str_truncate("", wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap());
-        Self {
+            provider
+        )?;
+        Ok(Self {
             check_type: bounded_check_type,
             location,
-        }
+        })
     }
 }
 
@@ -1091,7 +1142,7 @@ mod tests {
     #[test]
     fn test_cfi_engine_creation() {
         let protection = CfiControlFlowProtection::default();
-        let engine = CfiExecutionEngine::new(protection);
+        let engine = CfiExecutionEngine::new(protection).expect("Failed to create CFI engine");
 
         assert_eq!(engine.violation_policy, CfiViolationPolicy::ReturnError);
         assert_eq!(engine.statistics.instructions_protected, 0);
@@ -1102,7 +1153,7 @@ mod tests {
     fn test_cfi_engine_with_policy() {
         let protection = CfiControlFlowProtection::default();
         let policy = CfiViolationPolicy::LogAndContinue;
-        let engine = CfiExecutionEngine::new_with_policy(protection, policy);
+        let engine = CfiExecutionEngine::new_with_policy(protection, policy).expect("Failed to create CFI engine with policy");
 
         assert_eq!(engine.violation_policy, CfiViolationPolicy::LogAndContinue);
     }
@@ -1119,7 +1170,7 @@ mod tests {
     fn test_cfi_violation_handling() {
         let protection = CfiControlFlowProtection::default();
         let mut engine =
-            CfiExecutionEngine::new_with_policy(protection, CfiViolationPolicy::LogAndContinue);
+            CfiExecutionEngine::new_with_policy(protection, CfiViolationPolicy::LogAndContinue).expect("Failed to create CFI engine with policy");
 
         let initial_violations = engine.statistics.violations_detected;
         engine.handle_cfi_violation(CfiViolationType::ShadowStackMismatch);
@@ -1131,7 +1182,7 @@ mod tests {
     #[test]
     fn test_cfi_context_update() {
         let protection = CfiControlFlowProtection::default();
-        let mut engine = CfiExecutionEngine::new(protection);
+        let mut engine = CfiExecutionEngine::new(protection).expect("Failed to create CFI engine");
         let execution_context = ExecutionContext::new(256);
 
         let result = engine.update_cfi_context(&execution_context);

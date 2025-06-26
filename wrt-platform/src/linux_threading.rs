@@ -162,10 +162,7 @@ impl CgroupController {
         let fd = unsafe { ffi::open(filepath.as_ptr() as *const i8, 1, 0) }; // O_WRONLY
 
         if fd < 0 {
-            return Err(Error::new(
-                ErrorCategory::Platform,
-                1,
-                "Failed to open cgroup file",
+            return Err(Error::runtime_execution_error(",
             ));
         }
 
@@ -179,8 +176,7 @@ impl CgroupController {
             return Err(Error::new(
                 ErrorCategory::Platform,
                 1,
-                "Failed to write to cgroup file",
-            ));
+                "));
         }
 
         Ok(())
@@ -235,10 +231,7 @@ impl PlatformThreadHandle for LinuxThreadHandle {
         let result = unsafe { ffi::pthread_join(self.tid, &mut retval) };
 
         if result != 0 {
-            return Err(Error::new(
-                ErrorCategory::Platform,
-                1,
-                "Failed to join thread",
+            return Err(Error::runtime_execution_error(",
             ));
         }
 
@@ -250,8 +243,7 @@ impl PlatformThreadHandle for LinuxThreadHandle {
             None => Err(Error::new(
                 ErrorCategory::Platform,
                 1,
-                "Thread completed without result",
-            )),
+                ")),
         }
     }
 
@@ -368,10 +360,7 @@ impl LinuxThreadPool {
         };
 
         if result != 0 {
-            return Err(Error::new(
-                ErrorCategory::Platform,
-                1,
-                "Failed to set CPU affinity",
+            return Err(Error::runtime_execution_error(",
             ));
         }
 
@@ -451,11 +440,7 @@ impl PlatformThreadPool for LinuxThreadPool {
     fn spawn_wasm_thread(&self, task: WasmTask) -> Result<ThreadHandle> {
         // Check if shutting down
         if self.shutdown.load(Ordering::Acquire) {
-            return Err(Error::new(
-                ErrorCategory::Platform,
-                1,
-                "Thread pool is shutting down",
-            ));
+            return Err(Error::runtime_execution_error("Thread pool is shutting down"));
         }
 
         // Check thread limit
@@ -464,7 +449,7 @@ impl PlatformThreadPool for LinuxThreadPool {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 1,
-                "Thread pool limit reached",
+                "Thread pool has reached maximum thread limit",
             ));
         }
 
@@ -527,11 +512,7 @@ impl PlatformThreadPool for LinuxThreadPool {
             unsafe {
                 let _ = Box::from_raw(context_ptr);
             }
-            return Err(Error::new(
-                ErrorCategory::Platform,
-                1,
-                "Failed to create thread",
-            ));
+            return Err(Error::runtime_execution_error("Failed to create thread"));
         }
 
         // Create handle

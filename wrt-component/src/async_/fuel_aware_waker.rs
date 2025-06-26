@@ -365,11 +365,7 @@ impl WakeCoalescer {
         // Check if already pending
         if !pending.iter().any(|&id| id == task_id) {
             pending.push(task_id).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_LIMIT_EXCEEDED,
-                    "Wake coalescer queue full".to_string(),
-                )
+                Error::resource_limit_exceeded("Wake coalescer queue full")
             })?;
         }
         

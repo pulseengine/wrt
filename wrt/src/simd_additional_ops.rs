@@ -14,10 +14,7 @@ use alloc::format;
 fn extract_v128(value: &Value) -> Result<[u8; 16]> {
     match value {
         Value::V128(bytes) => Ok(*bytes),
-        _ => Err(Error::new(
-            ErrorCategory::Type,
-            codes::TYPE_MISMATCH,
-            format!("Expected v128 value, got {:?}", value.value_type())
+        _ => Err(Error::runtime_execution_error("Expected v128 value, got {:?}")
         ))
     }
 }

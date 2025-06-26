@@ -45,13 +45,8 @@ use crate::prelude::*;
 ///
 /// Ok(u32) if conversion is safe, error otherwise  
 fn usize_to_wasm_u32(size: usize) -> Result<u32> {
-    u32::try_from(size).map_err(|_| {
-        Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Size exceeds u32 limit for LEB128 encoding",
-        )
-    })
+    u32::try_from(size)
+        .map_err(|_| Error::parse_error("Size exceeds u32 limit for LEB128 encoding"))
 }
 
 /// Branch hint value indicating the likelihood of a branch being taken
@@ -70,11 +65,7 @@ impl BranchHintValue {
         match value {
             0x00 => Ok(BranchHintValue::LikelyFalse),
             0x01 => Ok(BranchHintValue::LikelyTrue),
-            _ => Err(Error::new(
-                ErrorCategory::Parse,
-                codes::INVALID_VALUE_TYPE,
-                "Invalid branch hint value",
-            )),
+            _ => Err(Error::runtime_execution_error("Invalid branch hint value")),
         }
     }
 
@@ -122,7 +113,7 @@ impl FromBytes for BranchHintValue {
             wrt_error::Error::new(
                 wrt_error::ErrorCategory::Parse,
                 wrt_error::codes::INVALID_VALUE_TYPE,
-                "Invalid branch hint value",
+                "Invalid branch hint byte",
             )
             .into()
         })

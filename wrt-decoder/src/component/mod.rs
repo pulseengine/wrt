@@ -54,7 +54,10 @@ pub use types::{
 #[cfg(feature = "std")]
 pub use utils::*;
 pub use val_type::encode_val_type;
+#[cfg(feature = "std")]
 pub use validation::{validate_component, validate_component_with_config, ValidationConfig};
+#[cfg(not(feature = "std"))]
+pub use validation::{validate_component, ValidationConfig};
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
 #[cfg(not(feature = "std"))]
@@ -85,11 +88,7 @@ mod no_std_utils {
     /// - Fails gracefully on invalid input
     pub fn detect_binary_type(binary: &[u8]) -> Result<BinaryType> {
         if binary.len() < 8 {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Binary too short for WASM header",
-            ));
+            return Err(Error::parse_error("Binary too short for WASM header"));
         }
 
         // Check for WASM magic number (fixed 4 bytes)
@@ -102,11 +101,7 @@ mod no_std_utils {
                 Ok(BinaryType::Component)
             }
         } else {
-            Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Invalid WASM magic number",
-            ))
+            Err(Error::parse_error("Invalid WASM magic number"))
         }
     }
 
@@ -124,11 +119,7 @@ mod no_std_utils {
         usize,
     )> {
         if offset >= data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Offset beyond data length",
-            ));
+            return Err(Error::parse_error("Offset beyond data length"));
         }
 
         // Read length (LEB128 - simplified to single byte for safety)
@@ -136,27 +127,18 @@ mod no_std_utils {
         let name_start = offset + 1;
 
         if name_start + length > data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Name length exceeds data",
-            ));
+            return Err(Error::parse_error("Name length exceeds data"));
         }
 
         // Validate UTF-8 and create bounded string
         let name_bytes = &data[name_start..name_start + length];
-        let name_str = core::str::from_utf8(name_bytes).map_err(|_| {
-            Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Invalid UTF-8 in name",
-            )
-        })?;
+        let name_str = core::str::from_utf8(name_bytes)
+            .map_err(|_| Error::parse_error("Invalid UTF-8 in name"))?;
 
         // Create the properly sized bounded string for the return type
-        let provider = crate::prelude::create_decoder_provider::<512>()
-            .unwrap_or_else(|_| wrt_foundation::safe_memory::NoStdProvider::<512>::default());
-        let name_string = BoundedString::<256, _>::from_str(name_str, provider).unwrap_or_default();
+        let provider = wrt_foundation::safe_managed_alloc!(512, wrt_foundation::CrateId::Decoder)?;
+        let name_string = BoundedString::<256, _>::from_str(name_str, provider)
+            .map_err(|_| Error::parse_error("Failed to create bounded string for name"))?;
 
         Ok((name_string, length + 1))
     }
@@ -201,36 +183,22 @@ pub fn decode_component(binary: &[u8]) -> Result<Component> {
     match binary_type {
         BinaryType::CoreModule => {
             // Can't decode a core module as a component
-            Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
+            Err(Error::parse_error(
                 "Cannot decode a WebAssembly core module as a Component",
             ))
         },
         BinaryType::Component => {
             // Verify component header
             if binary.len() < 8 {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Component binary too short",
-                ));
+                return Err(Error::parse_error("Component binary too short"));
             }
 
             if binary[0..4] != [0x00, 0x63, 0x6D, 0x70] {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Invalid Component Model magic number",
-                ));
+                return Err(Error::parse_error("Invalid Component Model magic number"));
             }
 
             if binary[4..8] != [0x01, 0x00, 0x00, 0x00] {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Unsupported Component version",
-                ));
+                return Err(Error::parse_error("Unsupported Component version"));
             }
 
             // Parse component (skip magic number and version)
@@ -264,10 +232,8 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
 
         // Ensure the section size is valid
         if offset + section_size as usize > data.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Section size exceeds remaining data size",
+            return Err(Error::parse_error(
+                "Section size exceeds remaining data size ",
             ));
         }
 

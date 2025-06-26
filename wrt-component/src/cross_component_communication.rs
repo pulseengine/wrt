@@ -265,11 +265,7 @@ impl ComponentCommunicationStrategy {
         #[cfg(feature = "safety-critical")]
         {
             self.instance_registry.insert(instance_id, component_name).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_EXHAUSTED,
-                    "Too many component instances (limit: 256)"
-                )
+                Error::resource_exhausted("Too many component instances (limit: 256)")
             })
         }
         #[cfg(not(feature = "safety-critical"))]
@@ -284,11 +280,7 @@ impl ComponentCommunicationStrategy {
         #[cfg(feature = "safety-critical")]
         {
             self.security_policies.insert(component_name, policy).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_EXHAUSTED,
-                    "Too many security policies (limit: 64)"
-                )
+                Error::resource_exhausted("Too many security policies (limit: 64)")
             })
         }
         #[cfg(not(feature = "safety-critical"))]
@@ -331,11 +323,7 @@ impl ComponentCommunicationStrategy {
             // Check allowed targets
             if !policy.allowed_targets.is_empty() 
                 && !policy.allowed_targets.contains(&routing_info.target_component) {
-                return Err(Error::new(
-                    ErrorCategory::Security,
-                    codes::ACCESS_DENIED,
-                    "Component not found",
-                ));
+                return Err(Error::security_access_denied("Component not found"));
             }
 
             // Check allowed functions
@@ -343,11 +331,7 @@ impl ComponentCommunicationStrategy {
                 && !policy.allowed_functions.iter().any(|pattern| {
                     routing_info.function_name.contains(pattern)
                 }) {
-                return Err(Error::new(
-                    ErrorCategory::Security,
-                    codes::ACCESS_DENIED,
-                    "Component not found",
-                ));
+                return Err(Error::security_access_denied("Component not found"));
             }
         }
 
@@ -365,11 +349,7 @@ impl ComponentCommunicationStrategy {
             for val in args.iter() {
                 let converted = self.convert_value_to_component_value(val)?;
                 vec.push(converted).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::RUNTIME_CAPACITY_ERROR_CODE,
-                        "Too many parameters for safety-critical mode (limit: 256)"
-                    )
+                    Error::runtime_execution_error("Too many parameters for safety-critical mode (limit: 256)")
                 })?;
             }
             Ok(vec)
@@ -413,11 +393,7 @@ impl ComponentCommunicationStrategy {
             {
                 for byte in value_bytes {
                     marshaled_data.push(byte).map_err(|_| {
-                        Error::new(
-                            ErrorCategory::Runtime,
-                            codes::RUNTIME_CAPACITY_ERROR_CODE,
-                            "Marshaled data exceeds safety limit (8192 bytes)"
-                        )
+                        Error::runtime_execution_error("Marshaled data exceeds safety limit (8192 bytes)")
                     })?;
                 }
             }
@@ -449,11 +425,7 @@ impl ComponentCommunicationStrategy {
             wrt_foundation::values::Value::I64(v) => Ok(ComponentValue::S64(*v)),
             wrt_foundation::values::Value::F32(v) => Ok(ComponentValue::F32(*v)),
             wrt_foundation::values::Value::F64(v) => Ok(ComponentValue::F64(*v)),
-            _ => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::TYPE_MISMATCH,
-                "Unsupported value type for component call",
-            )),
+            _ => Err(Error::runtime_type_mismatch("Unsupported value type for component call")),
         }
     }
 
@@ -527,15 +499,12 @@ impl ComponentCommunicationStrategy {
             _ => {
                 let mut vec = WrtVec::new();
                 vec.push(0).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Runtime,
-                        codes::RUNTIME_CAPACITY_ERROR_CODE,
-                        "Serialization buffer overflow"
+                    Error::runtime_execution_error("
                     )
                 })?;
                 Ok(vec)
             }
-            #[cfg(not(feature = "safety-critical"))]
+            #[cfg(not(feature = "))]
             _ => Ok(vec![0]), // Placeholder for other types
         }
     }
@@ -563,10 +532,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
             let marshaling_result = self.marshal_call_parameters(args)?;
             
             if !marshaling_result.success {
-                return Err(Error::new(
-                    ErrorCategory::Runtime,
-                    codes::MARSHALING_ERROR,
-                    marshaling_result.error_message.unwrap_or_else(|| "Parameter marshaling failed".to_string()),
+                return Err(Error::runtime_execution_error(".to_string()),
                 ));
             }
 
@@ -757,7 +723,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
 }
 
 // Simplified no_std implementation
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "))]
 impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     fn before_call(
         &self,

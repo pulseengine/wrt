@@ -15,13 +15,18 @@ pub use wrt_format::component::{
 // No_std bounded alternatives following functional safety guidelines
 #[cfg(not(feature = "std"))]
 mod no_std_types {
-    use wrt_foundation::{safe_memory::NoStdProvider, BoundedMap, BoundedString, BoundedVec};
+    use wrt_foundation::{
+        budget_aware_provider::CrateId, safe_managed_alloc, BoundedMap, BoundedString, BoundedVec,
+        NoStdProvider,
+    };
 
     use super::*;
-    type BoundedProvider = NoStdProvider<8192>; // Use 8KB provider like NoStdProvider<8192>
-    type ComponentVec<T> = BoundedVec<T, 64, BoundedProvider>;
-    type ComponentString = BoundedString<256, BoundedProvider>;
-    type ComponentMap<K, V> = BoundedMap<K, V, 32, BoundedProvider>;
+
+    /// Component string type for no_std environments
+    pub type ComponentString = BoundedString<256, NoStdProvider<4096>>;
+
+    /// Component vector type for no_std environments
+    pub type ComponentVec<T> = BoundedVec<T, 128, NoStdProvider<4096>>;
 
     /// No_std Component with bounded allocation limits
     ///
@@ -33,20 +38,20 @@ mod no_std_types {
     pub struct Component {
         pub magic: [u8; 4],
         pub version: [u8; 4],
-        pub exports: ComponentVec<Export>,
-        pub imports: ComponentVec<Import>,
+        pub exports: BoundedVec<Export, 128, NoStdProvider<4096>>,
+        pub imports: BoundedVec<Import, 128, NoStdProvider<4096>>,
     }
 
     impl Component {
-        pub fn new() -> Self {
-            let provider = crate::prelude::create_decoder_provider::<8192>()
-                .unwrap_or_else(|_| BoundedProvider::default());
-            Self {
+        pub fn new() -> wrt_foundation::WrtResult<Self> {
+            let exports_provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
+            let imports_provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
+            Ok(Self {
                 magic: *b"\0asm",
                 version: [0x0a, 0x00, 0x01, 0x00], // Component format
-                exports: ComponentVec::new(BoundedProvider::default()).unwrap_or_default(),
-                imports: ComponentVec::new(BoundedProvider::default()).unwrap_or_default(),
-            }
+                exports: BoundedVec::new(exports_provider)?,
+                imports: BoundedVec::new(imports_provider)?,
+            })
         }
     }
 
@@ -166,7 +171,7 @@ mod no_std_types {
             reader: &mut wrt_foundation::traits::ReadStream,
             provider: &PStream,
         ) -> wrt_foundation::WrtResult<Self> {
-            let name = ComponentString::from_bytes_with_provider(reader, provider)?;
+            let name = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
             let kind_byte = reader.read_u8()?;
             let kind = match kind_byte {
                 0 => ComponentType::Module,
@@ -214,8 +219,8 @@ mod no_std_types {
             reader: &mut wrt_foundation::traits::ReadStream,
             provider: &PStream,
         ) -> wrt_foundation::WrtResult<Self> {
-            let module = ComponentString::from_bytes_with_provider(reader, provider)?;
-            let name = ComponentString::from_bytes_with_provider(reader, provider)?;
+            let module = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
+            let name = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
             let kind_byte = reader.read_u8()?;
             let kind = match kind_byte {
                 0 => ComponentType::Module,
@@ -247,7 +252,7 @@ use crate::prelude::*;
 /// Trait for component analysis capabilities
 pub trait ComponentAnalyzer {
     /// Create a summary of a component's structure
-    fn analyze(&self) -> crate::component::analysis::ComponentSummary;
+    fn analyze(&self) -> wrt_foundation::WrtResult<crate::component::analysis::ComponentSummary>;
 
     /// Get embedded modules from a component
     #[cfg(feature = "std")]
@@ -315,6 +320,31 @@ pub struct ExportInfo {
     pub type_info: crate::prelude::DecoderString,
 }
 
+impl ExportInfo {
+    /// Create a new ExportInfo with managed memory allocation
+    pub fn new() -> wrt_foundation::WrtResult<Self> {
+        #[cfg(feature = "std")]
+        return Ok(Self {
+            name: std::string::String::new(),
+            kind: std::string::String::new(),
+            type_info: std::string::String::new(),
+        });
+
+        #[cfg(not(feature = "std"))]
+        {
+            let provider = wrt_foundation::safe_managed_alloc!(
+                4096,
+                wrt_foundation::budget_aware_provider::CrateId::Decoder
+            )?;
+            Ok(Self {
+                name: crate::prelude::DecoderString::from_str("", provider.clone())?,
+                kind: crate::prelude::DecoderString::from_str("", provider.clone())?,
+                type_info: crate::prelude::DecoderString::from_str("", provider)?,
+            })
+        }
+    }
+}
+
 impl Default for ExportInfo {
     fn default() -> Self {
         #[cfg(feature = "std")]
@@ -326,14 +356,12 @@ impl Default for ExportInfo {
 
         #[cfg(not(feature = "std"))]
         {
-            let provider = crate::prelude::create_decoder_provider::<4096>().unwrap_or_default();
+            // Use fallback empty strings for Default trait compatibility
+            // For managed allocation, use ExportInfo::new() instead
             Self {
-                name: crate::prelude::DecoderString::from_str("", provider.clone())
-                    .unwrap_or_default(),
-                kind: crate::prelude::DecoderString::from_str("", provider.clone())
-                    .unwrap_or_default(),
-                type_info: crate::prelude::DecoderString::from_str("", provider)
-                    .unwrap_or_default(),
+                name: crate::prelude::DecoderString::default(),
+                kind: crate::prelude::DecoderString::default(),
+                type_info: crate::prelude::DecoderString::default(),
             }
         }
     }
@@ -367,6 +395,33 @@ pub struct ImportInfo {
     pub type_info: crate::prelude::DecoderString,
 }
 
+impl ImportInfo {
+    /// Create a new ImportInfo with managed memory allocation
+    pub fn new() -> wrt_foundation::WrtResult<Self> {
+        #[cfg(feature = "std")]
+        return Ok(Self {
+            module: std::string::String::new(),
+            name: std::string::String::new(),
+            kind: std::string::String::new(),
+            type_info: std::string::String::new(),
+        });
+
+        #[cfg(not(feature = "std"))]
+        {
+            let provider = wrt_foundation::safe_managed_alloc!(
+                4096,
+                wrt_foundation::budget_aware_provider::CrateId::Decoder
+            )?;
+            Ok(Self {
+                module: crate::prelude::DecoderString::from_str("", provider.clone())?,
+                name: crate::prelude::DecoderString::from_str("", provider.clone())?,
+                kind: crate::prelude::DecoderString::from_str("", provider.clone())?,
+                type_info: crate::prelude::DecoderString::from_str("", provider)?,
+            })
+        }
+    }
+}
+
 impl Default for ImportInfo {
     fn default() -> Self {
         #[cfg(feature = "std")]
@@ -379,16 +434,13 @@ impl Default for ImportInfo {
 
         #[cfg(not(feature = "std"))]
         {
-            let provider = crate::prelude::create_decoder_provider::<4096>().unwrap_or_default();
+            // Use fallback empty strings for Default trait compatibility
+            // For managed allocation, use ImportInfo::new() instead
             Self {
-                module: crate::prelude::DecoderString::from_str("", provider.clone())
-                    .unwrap_or_default(),
-                name: crate::prelude::DecoderString::from_str("", provider.clone())
-                    .unwrap_or_default(),
-                kind: crate::prelude::DecoderString::from_str("", provider.clone())
-                    .unwrap_or_default(),
-                type_info: crate::prelude::DecoderString::from_str("", provider)
-                    .unwrap_or_default(),
+                module: crate::prelude::DecoderString::default(),
+                name: crate::prelude::DecoderString::default(),
+                kind: crate::prelude::DecoderString::default(),
+                type_info: crate::prelude::DecoderString::default(),
             }
         }
     }
@@ -436,9 +488,9 @@ pub struct ModuleInfo {
 /// Implementation of ComponentAnalyzer for Component
 #[cfg(feature = "std")]
 impl ComponentAnalyzer for Component {
-    fn analyze(&self) -> crate::component::analysis::ComponentSummary {
+    fn analyze(&self) -> wrt_foundation::WrtResult<crate::component::analysis::ComponentSummary> {
         // Create a basic summary directly from the component
-        crate::component::analysis::ComponentSummary {
+        Ok(crate::component::analysis::ComponentSummary {
             name: String::new(), /* Keep as std String for now as this is used
                                   * in analysis */
             core_modules_count: self.modules.len() as u32,
@@ -449,7 +501,7 @@ impl ComponentAnalyzer for Component {
             module_info: Vec::new(), // Keep as std Vec for analysis compatibility
             export_info: Vec::new(),
             import_info: Vec::new(),
-        }
+        })
     }
 
     #[cfg(feature = "std")]
@@ -477,22 +529,22 @@ impl ComponentAnalyzer for Component {
 
 #[cfg(not(feature = "std"))]
 impl ComponentAnalyzer for Component {
-    fn analyze(&self) -> crate::component::analysis::ComponentSummary {
+    fn analyze(&self) -> wrt_foundation::WrtResult<crate::component::analysis::ComponentSummary> {
         // Create a basic summary directly from the component (simplified for no_std)
-        crate::component::analysis::ComponentSummary {
+        Ok(crate::component::analysis::ComponentSummary {
             name: "",
             core_modules_count: 0,   // No modules field in no_std Component
             core_instances_count: 0, // No core_instances field in no_std Component
             imports_count: wrt_foundation::traits::BoundedCapacity::len(&self.imports) as u32,
             exports_count: wrt_foundation::traits::BoundedCapacity::len(&self.exports) as u32,
             aliases_count: 0, // No aliases field in no_std Component
-            module_info: wrt_foundation::BoundedVec::new(
-                wrt_foundation::safe_memory::NoStdProvider::<8192>::default(),
-            )
-            .unwrap_or_default(),
+            module_info: wrt_foundation::BoundedVec::new(wrt_foundation::safe_managed_alloc!(
+                8192,
+                wrt_foundation::budget_aware_provider::CrateId::Decoder
+            )?)?,
             export_info: (),
             import_info: (),
-        }
+        })
     }
 
     #[cfg(not(feature = "std"))]
@@ -507,11 +559,12 @@ impl ComponentAnalyzer for Component {
     > {
         // This will be implemented in the analysis module
         use wrt_foundation::safe_memory::NoStdProvider;
-        let provider = NoStdProvider::<8192>::default();
+        let provider = wrt_foundation::safe_managed_alloc!(
+            8192,
+            wrt_foundation::budget_aware_provider::CrateId::Decoder
+        )?;
         BoundedVec::new(provider).map_err(|_| {
-            wrt_error::Error::new(
-                wrt_error::ErrorCategory::Memory,
-                wrt_error::codes::MEMORY_ALLOCATION_FAILED,
+            wrt_error::helpers::memory_allocation_failed_error(
                 "Failed to create embedded modules vector",
             )
         })
@@ -530,11 +583,12 @@ impl ComponentAnalyzer for Component {
     > {
         // This will be implemented in the analysis module
         use wrt_foundation::safe_memory::NoStdProvider;
-        let provider = NoStdProvider::<8192>::default();
+        let provider = wrt_foundation::safe_managed_alloc!(
+            8192,
+            wrt_foundation::budget_aware_provider::CrateId::Decoder
+        )?;
         BoundedVec::new(provider).map_err(|_| {
-            wrt_error::Error::new(
-                wrt_error::ErrorCategory::Memory,
-                wrt_error::codes::MEMORY_ALLOCATION_FAILED,
+            wrt_error::helpers::memory_allocation_failed_error(
                 "Failed to create export info vector",
             )
         })
@@ -548,11 +602,12 @@ impl ComponentAnalyzer for Component {
     > {
         // This will be implemented in the analysis module
         use wrt_foundation::safe_memory::NoStdProvider;
-        let provider = NoStdProvider::<8192>::default();
+        let provider = wrt_foundation::safe_managed_alloc!(
+            8192,
+            wrt_foundation::budget_aware_provider::CrateId::Decoder
+        )?;
         BoundedVec::new(provider).map_err(|_| {
-            wrt_error::Error::new(
-                wrt_error::ErrorCategory::Memory,
-                wrt_error::codes::MEMORY_ALLOCATION_FAILED,
+            wrt_error::helpers::memory_allocation_failed_error(
                 "Failed to create import info vector",
             )
         })

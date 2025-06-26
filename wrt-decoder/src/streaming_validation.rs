@@ -4,11 +4,27 @@
 //! the parsing process, enabling early error detection and recovery.
 
 #[cfg(not(feature = "std"))]
-use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{
+    collections::BTreeMap as HashMap,
+    string::{String, ToString},
+    vec::Vec,
+};
+
+// Format macro is available through the prelude
 #[cfg(feature = "std")]
-use std::{collections::HashMap, string::String, vec::Vec};
+use std::{
+    collections::HashMap,
+    string::{String, ToString},
+    vec::Vec,
+};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
+
+// Import format! macro for no_std environments
+#[cfg(not(feature = "std"))]
+use alloc::format;
 
 /// Validation severity levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -175,11 +191,7 @@ impl StreamingValidator {
     /// Exit the current validation context
     pub fn exit_context(&mut self) -> Result<()> {
         if self.context_stack.pop().is_none() {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Context stack underflow",
-            ));
+            return Err(Error::validation_error("Context stack underflow"));
         }
         Ok(())
     }
@@ -187,11 +199,7 @@ impl StreamingValidator {
     /// Add a validation issue
     pub fn add_issue(&mut self, issue: ValidationIssue) -> Result<()> {
         if self.issues.len() >= self.config.max_issues {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Too many validation issues",
-            ));
+            return Err(Error::validation_error("Too many validation issues"));
         }
 
         let should_abort =
@@ -200,11 +208,7 @@ impl StreamingValidator {
         self.issues.push(issue);
 
         if should_abort {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Critical validation error",
-            ));
+            return Err(Error::validation_error("Critical validation error"));
         }
 
         Ok(())
@@ -377,11 +381,7 @@ impl StreamingValidator {
                     .with_context("max_bytes", "10")
                     .with_context("bytes_read", bytes_read.to_string()),
                 )?;
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Invalid LEB128 encoding",
-                ));
+                return Err(Error::parse_error("Invalid LEB128 encoding"));
             }
 
             result |= ((byte & 0x7F) as u64) << shift;

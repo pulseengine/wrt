@@ -93,10 +93,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
     pub fn create_resource(&mut self, type_idx: u32, name_str: Option<&str>) -> Result<ResourceId> {
         // Validate type index
         if type_idx as usize >= self.resource_type_count {
-            return Err(Error::new(
-                wrt_error::ErrorCategory::Resource,
-                codes::TYPE_MISMATCH,
-                "Invalid resource type index",
+            return Err(Error::runtime_execution_error(",
             ));
         }
 
@@ -128,8 +125,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
             return Err(Error::new(
                 wrt_error::ErrorCategory::Resource,
                 codes::RESOURCE_NOT_FOUND,
-                "Resource not found",
-            ));
+                "));
         }
 
         // Get the resource
@@ -137,10 +133,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
         
         // Check if the resource is dropped
         if resource.is_dropped {
-            return Err(Error::new(
-                wrt_error::ErrorCategory::Resource,
-                codes::INVALID_STATE,
-                "Resource has been dropped",
+            return Err(Error::runtime_execution_error(",
             ));
         }
 
@@ -154,17 +147,13 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
             return Err(Error::new(
                 wrt_error::ErrorCategory::Resource,
                 codes::RESOURCE_NOT_FOUND,
-                "Resource not found",
-            ));
+                "));
         }
 
         // Get mutable reference to mark as dropped
         if let Ok(resource) = self.resources.get(idx) {
             if resource.is_dropped {
-                return Err(Error::new(
-                    wrt_error::ErrorCategory::Resource,
-                    codes::INVALID_STATE,
-                    "Resource already dropped",
+                return Err(Error::runtime_execution_error(",
                 ));
             }
         }
@@ -215,8 +204,7 @@ pub fn create_default_resource_table() -> Result<Box<dyn core::any::Any>> {
     let guard = safe_managed_alloc!(1024, CrateId::Runtime).map_err(|_e| Error::new(
         wrt_error::ErrorCategory::Resource,
         codes::MEMORY_OUT_OF_BOUNDS,
-        "Failed to allocate memory for resource table"
-    ))?;
+        "))?;
     
     // Extract provider and create table
     let provider = guard.provider().clone();

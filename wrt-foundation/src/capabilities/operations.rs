@@ -24,11 +24,7 @@ impl CapabilityMemoryOps {
         _crate_id: CrateId,
     ) -> Result<CapabilityGuardedProvider<N>> {
         // TODO: Update to use new factory pattern
-        Err(Error::new(
-            ErrorCategory::Initialization,
-            codes::NOT_IMPLEMENTED,
-            "Capability operations are being refactored"
-        ))
+        Err(Error::initialization_not_implemented("Capability operations are being refactored"))
     }
 
     /// Read memory with capability verification
@@ -138,64 +134,36 @@ impl MemoryOperationBuilder {
         match self.operation_type {
             Some(MemoryOperationType::Read) => {
                 let offset = self.offset.ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Parameter,
-                        codes::INVALID_PARAMETER,
-                        "Read operation requires offset",
-                    )
+                    Error::parameter_invalid_parameter("Read operation requires offset")
                 })?;
                 let len = self.length.ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Parameter,
-                        codes::INVALID_PARAMETER,
-                        "Read operation requires length",
-                    )
+                    Error::parameter_invalid_parameter("Read operation requires length")
                 })?;
                 Ok(MemoryOperation::Read { offset, len })
             }
             Some(MemoryOperationType::Write) => {
                 let offset = self.offset.ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Parameter,
-                        codes::INVALID_PARAMETER,
-                        "Write operation requires offset",
-                    )
+                    Error::parameter_invalid_parameter("Write operation requires offset")
                 })?;
                 let len = self.length.ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Parameter,
-                        codes::INVALID_PARAMETER,
-                        "Write operation requires length",
-                    )
+                    Error::parameter_invalid_parameter("Write operation requires length")
                 })?;
                 Ok(MemoryOperation::Write { offset, len })
             }
             Some(MemoryOperationType::Allocate) => {
                 let size = self.size.ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Parameter,
-                        codes::INVALID_PARAMETER,
-                        "Allocate operation requires size",
-                    )
+                    Error::parameter_invalid_parameter("Allocate operation requires size")
                 })?;
                 Ok(MemoryOperation::Allocate { size })
             }
             Some(MemoryOperationType::Deallocate) => Ok(MemoryOperation::Deallocate),
             Some(MemoryOperationType::Delegate) => {
                 let subset = self.mask.ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Parameter,
-                        codes::INVALID_PARAMETER,
-                        "Delegate operation requires capability mask",
-                    )
+                    Error::parameter_invalid_parameter("Delegate operation requires capability mask")
                 })?;
                 Ok(MemoryOperation::Delegate { subset })
             }
-            None => Err(Error::new(
-                ErrorCategory::Parameter,
-                codes::INVALID_PARAMETER,
-                "Operation type not specified",
-            )),
+            None => Err(Error::parameter_invalid_parameter("Operation type not specified")),
         }
     }
 }

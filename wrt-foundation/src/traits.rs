@@ -311,11 +311,7 @@ impl FromBytes for bool {
         match byte {
             0 => Ok(false),
             1 => Ok(true),
-            _ => Err(WrtError::new(
-                ErrorCategory::Parse,
-                codes::INVALID_VALUE, // Changed from INVALID_DATA
-                "Invalid boolean value during deserialization", // More specific message
-            )),
+            _ => Err(WrtError::runtime_execution_error("Invalid boolean value - expected 0 or 1")),
         }
     }
     // from_bytes method is provided by the trait with DefaultMemoryProvider
@@ -419,11 +415,9 @@ macro_rules! impl_little_endian_for_primitive {
         $(impl LittleEndian for $T {
             fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
                 if bytes.len() < $size {
-                    return Err(wrt_error::Error::new(
-                        wrt_error::ErrorCategory::Memory,
+                    return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
                         wrt_error::codes::BUFFER_TOO_SMALL,
-                        "Buffer too small for primitive type conversion"
-                    ));
+                        "Insufficient bytes for little-endian conversion"));
                 }
                 let mut arr = [0u8; $size];
                 arr.copy_from_slice(&bytes[..$size]);
@@ -453,10 +447,7 @@ impl_little_endian_for_primitive! {
 // impl LittleEndian for V128 {
 // fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
 // if bytes.len() < 16 {
-// return Err(wrt_error::Error::new(
-// wrt_error::ErrorCategory::Memory,
-// wrt_error::codes::BUFFER_TOO_SMALL,
-// "Buffer too small for V128. Expected 16, got ".to_string() +
+// return Err(wrt_error::Error::runtime_execution_error("Insufficient bytes: ".to_string() +
 // &bytes.len().to_string() ));
 // }
 // let mut arr = [0u8; 16];
@@ -476,47 +467,19 @@ impl_little_endian_for_primitive! {
 impl From<SerializationError> for WrtError {
     fn from(e: SerializationError) -> Self {
         match e {
-            SerializationError::IncorrectSize => WrtError::new(
-                ErrorCategory::Validation,
-                codes::INVALID_BYTE_LENGTH,
-                "Incorrect buffer or slice size for serialization/deserialization",
-            ),
-            SerializationError::InvalidFormat => WrtError::new(
-                ErrorCategory::Parse,
-                codes::SERIALIZATION_ERROR, // Or DECODING_ERROR if more appropriate contextually
-                "Invalid data format for deserialization",
+            SerializationError::IncorrectSize => WrtError::foundation_memory_provider_failed("Incorrect buffer size for serialization/deserialization"),
+            SerializationError::InvalidFormat => WrtError::foundation_verification_failed("Foundation invalid data format for deserialization",
             ),
             SerializationError::Custom(s) => {
                 // Create a new static string if necessary, or ensure 's' is always suitable.
                 // For now, assuming 's' is appropriate as per original definition.
-                WrtError::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, s)
+                WrtError::foundation_verification_failed(s)
             }
-            SerializationError::InvalidSliceLength => WrtError::new(
-                ErrorCategory::Validation,
-                codes::INVALID_BYTE_LENGTH,
-                "Invalid slice length for serialization/deserialization",
-            ),
-            SerializationError::NotEnoughData => WrtError::new(
-                ErrorCategory::Parse,
-                codes::PARSE_UNEXPECTED_EOF,
-                "Not enough data to deserialize the object",
-            ),
-            SerializationError::IoError => WrtError::new(
-                ErrorCategory::System,
-                codes::SYSTEM_IO_ERROR_CODE, /* Assuming this exists; otherwise, use
-                                              * codes::SYSTEM_ERROR */
-                "An I/O operation failed during serialization/deserialization",
-            ),
-            SerializationError::UnexpectedEof => WrtError::new(
-                ErrorCategory::Parse,
-                codes::PARSE_UNEXPECTED_EOF,
-                "Unexpected end of input during deserialization",
-            ),
-            SerializationError::InvalidEnumValue => WrtError::new(
-                ErrorCategory::Parse,       // Or Validation
-                codes::SERIALIZATION_ERROR, // Or specific like INVALID_VALUE if applicable
-                "Invalid enum value during deserialization",
-            ),
+            SerializationError::InvalidSliceLength => WrtError::foundation_memory_provider_failed("Foundation invalid slice length for serialization"),
+            SerializationError::NotEnoughData => WrtError::foundation_memory_provider_failed("Foundation not enough data to deserialize object"),
+            SerializationError::IoError => WrtError::foundation_memory_provider_failed("Foundation I/O operation failed during serialization"),
+            SerializationError::UnexpectedEof => WrtError::foundation_memory_provider_failed("Foundation unexpected end of input during deserialization"),
+            SerializationError::InvalidEnumValue => WrtError::foundation_verification_failed("Foundation invalid enum value during deserialization"),
         }
     }
 }
@@ -529,9 +492,7 @@ impl From<SerializationError> for WrtError {
 
 // Assuming `codes::SERIALIZATION_ERROR` and `codes::DESERIALIZATION_ERROR`
 // exist or will be added. The user's summary said: "Added new error codes to
-// wrt-error/src/codes.rs" So these codes might already be there.
-
-// wrt-error/src/codes.rs" So these codes might already be there.
+// wrt-error/src/codes.rs". So these codes might already be there.
 
 // Implementations for fixed-size arrays of primitives have been added
 // by the impl_bytes_for_primitive macro for each primitive type T,
@@ -632,11 +593,7 @@ impl<T: FromBytes> FromBytes for Option<T> {
                 let value = T::from_bytes_with_provider(reader, provider)?;
                 Ok(Some(value))
             }
-            _ => Err(WrtError::new(
-                ErrorCategory::Parse,
-                codes::DECODING_ERROR, // Changed from INVALID_DATA
-                "Invalid tag for Option<T>",
-            )),
+            _ => Err(WrtError::runtime_execution_error("Invalid Option tag value - expected 0 or 1")),
         }
     }
     // from_bytes is provided by the trait
@@ -669,8 +626,7 @@ impl FromBytes for char {
             WrtError::new(
                 ErrorCategory::Parse,
                 codes::VALUE_OUT_OF_RANGE, // Changed from INVALID_DATA
-                "Invalid u32 value for char",
-            )
+                "Invalid unicode scalar value for char conversion")
         })
     }
     // from_bytes is provided by the trait
@@ -688,6 +644,8 @@ pub struct DefaultMemoryProvider(NoStdProvider<0>); // Use 0 for default capacit
 
 impl Default for DefaultMemoryProvider {
     fn default() -> Self {
+        // Note: Using NoStdProvider::<0>::default() here is legitimate as this is 
+        // the default memory provider implementation for trait-level fallbacks
         Self(NoStdProvider::<0>::default())
     }
 }
@@ -697,11 +655,7 @@ impl RootMemoryProvider for DefaultMemoryProvider {
 
     fn acquire_memory(&self, _layout: core::alloc::Layout) -> WrtResult<*mut u8> {
         // Binary std/no_std choice
-        Err(WrtError::new(
-            ErrorCategory::Memory,
-            codes::UNSUPPORTED_OPERATION,
-            "DefaultMemoryProvider (NoStdProvider<0>) cannot dynamically allocate memory.",
-        ))
+        Err(WrtError::memory_error("DefaultMemoryProvider (NoStdProvider<0>) cannot dynamically allocate memory."))
     }
 
     fn release_memory(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> WrtResult<()> {
@@ -864,11 +818,7 @@ impl<'a> ReadStream<'a> {
             self.read_u64_le().map(|v| v as usize)
         } else {
             // Fallback or error for unsupported usize size
-            Err(WrtError::new(
-                ErrorCategory::System,
-                codes::SYSTEM_ERROR,
-                "Unsupported usize size for LE read",
-            ))
+            Err(WrtError::system_error("Unsupported usize size for LE read"))
         }
     }
 
@@ -878,11 +828,7 @@ impl<'a> ReadStream<'a> {
         } else if core::mem::size_of::<isize>() == 8 {
             self.read_i64_le().map(|v| v as isize)
         } else {
-            Err(WrtError::new(
-                ErrorCategory::System,
-                codes::SYSTEM_ERROR,
-                "Unsupported isize size for LE read",
-            ))
+            Err(WrtError::system_error("Unsupported isize size for LE read"))
         }
     }
 
@@ -944,9 +890,7 @@ impl<'a> WriteStream<'a> {
 
     fn ensure_capacity(&self, len: usize) -> WrtResult<()> {
         if self.position + len > self.buffer.len() {
-            Err(WrtError::new(
-                ErrorCategory::Memory,
-                codes::BUFFER_TOO_SMALL, // Or a more specific serialization capacity error
+            Err(WrtError::memory_error(// Or a more specific serialization capacity error
                 "Write operation exceeds buffer capacity",
             ))
         } else {
@@ -1010,11 +954,7 @@ impl<'a> WriteStream<'a> {
         } else if core::mem::size_of::<usize>() == 8 {
             self.write_u64_le(value as u64)
         } else {
-            Err(WrtError::new(
-                ErrorCategory::System,
-                codes::SYSTEM_ERROR,
-                "Unsupported usize size for LE write",
-            ))
+            Err(WrtError::system_error("Unsupported usize size for LE write"))
         }
     }
 
@@ -1024,11 +964,7 @@ impl<'a> WriteStream<'a> {
         } else if core::mem::size_of::<isize>() == 8 {
             self.write_i64_le(value as i64)
         } else {
-            Err(WrtError::new(
-                ErrorCategory::System,
-                codes::SYSTEM_ERROR,
-                "Unsupported isize size for LE write",
-            ))
+            Err(WrtError::system_error("Unsupported isize size for LE write"))
         }
     }
 
@@ -1074,7 +1010,7 @@ impl<'a> WriteStream<'a> {
 // that returns an owned stream with an internal buffer.         //     // A
 // different WriteStream design might be needed for that (e.g.
 // WriteStream<Vec<u8>>).         // }
-//         // panic!("Default for WriteStream<P> is not generally constructible
+//         // panic!("Default for WriteStream<P> is not generally constructible")
 // Binary std/no_std choice
 // implies an empty, unusable stream.         Self {
 //             buffer: SliceMut::empty(), // Creates an empty, unusable slice.
@@ -1114,11 +1050,7 @@ impl ToBytes for alloc::string::String {
         let bytes = self.as_bytes();
         (bytes.len() as u32).to_bytes_with_provider(writer, provider)?;
         writer.write_all(bytes).map_err(|_e| {
-            WrtError::new(
-                ErrorCategory::Parse,
-                codes::SERIALIZATION_ERROR, // Changed from INVALID_DATA
-                "Failed to write String data to stream",
-            )
+            WrtError::runtime_execution_error("Failed to write String data to stream")
         })
     }
 }

@@ -32,11 +32,7 @@ pub fn wasi_wall_clock_now(
 ) -> Result<Vec<Value>> {
     // Get wall clock time using platform abstraction
     let total_ns = PlatformTime::wall_clock_ns()
-        .map_err(|_| Error::new(
-            ErrorCategory::Runtime,
-            codes::WASI_CAPABILITY_UNAVAILABLE,
-            "Wall clock not available"
-        ))?;
+        .map_err(|_| Error::wasi_capability_unavailable("Wall clock not available"))?;
     
     // Convert to seconds and nanoseconds
     let seconds = total_ns / 1_000_000_000;
@@ -145,11 +141,7 @@ pub fn datetime_to_nanoseconds(datetime: &Value) -> Result<u64> {
             
             Ok(seconds * 1_000_000_000 + nanoseconds as u64)
         }
-        _ => Err(Error::new(
-            ErrorCategory::Parse,
-            codes::WASI_INVALID_FD,
-            "Invalid datetime format"
-        )),
+        _ => Err(Error::wasi_invalid_fd("Invalid datetime format")),
     }
 }
 
@@ -165,40 +157,24 @@ pub fn get_time_with_capabilities(
     match clock_type {
         WasiClockType::Realtime => {
             if !capabilities.realtime_access {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::WASI_PERMISSION_DENIED,
-                    "Realtime clock access denied"
-                ));
+                return Err(Error::wasi_permission_denied("Realtime clock access denied"));
             }
             
             let total_ns = PlatformTime::wall_clock_ns()
-                .map_err(|_| Error::new(
-                    ErrorCategory::Runtime,
-                    codes::WASI_CAPABILITY_UNAVAILABLE,
-                    "Wall clock not available"
-                ))?;
+                .map_err(|_| Error::wasi_capability_unavailable("Wall clock not available"))?;
             
             Ok(total_ns)
         }
         WasiClockType::Monotonic => {
             if !capabilities.monotonic_access {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::WASI_PERMISSION_DENIED,
-                    "Monotonic clock access denied"
-                ));
+                return Err(Error::wasi_permission_denied("Monotonic clock access denied"));
             }
             
             Ok(PlatformTime::monotonic_ns())
         }
         WasiClockType::ProcessCpuTime => {
             if !capabilities.process_cputime_access {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::WASI_PERMISSION_DENIED,
-                    "Process CPU time access denied"
-                ));
+                return Err(Error::wasi_permission_denied("Process CPU time access denied"));
             }
             
             // TODO: Implement when platform support is available
@@ -206,11 +182,7 @@ pub fn get_time_with_capabilities(
         }
         WasiClockType::ThreadCpuTime => {
             if !capabilities.thread_cputime_access {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::WASI_PERMISSION_DENIED,
-                    "Thread CPU time access denied"
-                ));
+                return Err(Error::wasi_permission_denied("Thread CPU time access denied"));
             }
             
             // TODO: Implement when platform support is available

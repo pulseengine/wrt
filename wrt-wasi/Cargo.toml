@@ -18,6 +18,12 @@ wrt-host = { workspace = true, default-features = false }
 wrt-platform = { workspace = true, default-features = false }
 wrt-format = { workspace = true, default-features = false }
 
+# Neural network inference backend
+tract-onnx = { version = "0.21", optional = true, default-features = false }
+
+# For capability storage in std environments
+once_cell = { version = "1.19", optional = true }
+
 [features]
 default = ["std", "preview2", "wasi-filesystem", "wasi-cli", "wasi-clocks", "wasi-io", "wasi-random"]
 
@@ -28,7 +34,8 @@ std = [
     "wrt-host/std",
     # "wrt-component/std",
     "wrt-platform/std",
-    "wrt-format/std"
+    "wrt-format/std",
+    "dep:once_cell"
 ]
 
 # WASI version support
@@ -42,6 +49,13 @@ wasi-clocks = ["preview2"]
 wasi-io = ["preview2"]
 wasi-random = ["preview2"]
 wasi-sockets = ["preview3-prep"]  # Future Preview3 feature
+
+# Neural network support (preview-agnostic)
+wasi-nn = ["nn-core", "dep:tract-onnx"]
+nn-core = []  # Core NN infrastructure without backend
+nn-preview2 = ["wasi-nn", "preview2"]  # Sync support
+nn-preview3 = ["wasi-nn", "preview3-prep"]  # Async support
+tract = ["dep:tract-onnx"]  # Tract backend feature
 
 # Component model integration
 component-model = []

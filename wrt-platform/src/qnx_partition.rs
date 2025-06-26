@@ -290,11 +290,7 @@ impl QnxMemoryPartition {
         };
 
         if partition_id == 0 {
-            return Err(Error::new(
-                ErrorCategory::Platform,
-                1,
-                "Failed to create QNX memory partition",
-            ));
+            return Err(Error::runtime_execution_error("Failed to create QNX memory partition"));
         }
 
         // Configure memory size if specified
@@ -317,8 +313,7 @@ impl QnxMemoryPartition {
                 return Err(Error::new(
                     ErrorCategory::Platform,
                     1,
-                    "Failed to configure QNX memory partition size",
-                ));
+                    "Failed to configure QNX partition memory size"));
             }
         }
 
@@ -333,11 +328,7 @@ impl QnxMemoryPartition {
     /// Activate this partition for the current thread
     pub fn activate(&self) -> Result<()> {
         if !self.created {
-            return Err(Error::new(
-                ErrorCategory::Platform,
-                1,
-                "Cannot activate destroyed partition",
-            ));
+            return Err(Error::runtime_execution_error("Cannot activate destroyed QNX partition"));
         }
 
         let result =
@@ -347,8 +338,7 @@ impl QnxMemoryPartition {
             return Err(Error::new(
                 ErrorCategory::Platform,
                 1,
-                "Failed to activate QNX memory partition",
-            ));
+                "Failed to activate QNX memory partition"));
         }
 
         Ok(())
@@ -359,11 +349,7 @@ impl QnxMemoryPartition {
         let result = unsafe { ffi::mem_partition_setcurrent(self.parent_id) };
 
         if result != 0 {
-            return Err(Error::new(
-                ErrorCategory::Platform,
-                1,
-                "Failed to restore parent partition",
-            ));
+            return Err(Error::runtime_execution_error("Failed to restore parent QNX partition"));
         }
 
         Ok(())
@@ -375,8 +361,7 @@ impl QnxMemoryPartition {
             return Err(Error::new(
                 ErrorCategory::Platform,
                 1,
-                "Cannot attach to destroyed partition",
-            ));
+                "Cannot attach process to destroyed QNX partition"));
         }
 
         let result = unsafe {
@@ -384,11 +369,7 @@ impl QnxMemoryPartition {
         };
 
         if result != 0 {
-            return Err(Error::new(
-                ErrorCategory::Platform,
-                1,
-                "Failed to attach process to QNX memory partition",
-            ));
+            return Err(Error::runtime_execution_error("Failed to attach process to QNX partition"));
         }
 
         Ok(())
@@ -400,8 +381,7 @@ impl QnxMemoryPartition {
             return Err(Error::new(
                 ErrorCategory::Platform,
                 1,
-                "Cannot detach from destroyed partition",
-            ));
+                "Cannot detach process from destroyed QNX partition"));
         }
 
         let result = unsafe {
@@ -409,11 +389,7 @@ impl QnxMemoryPartition {
         };
 
         if result != 0 {
-            return Err(Error::new(
-                ErrorCategory::Platform,
-                1,
-                "Failed to detach process from QNX memory partition",
-            ));
+            return Err(Error::runtime_execution_error("Failed to detach process from QNX partition"));
         }
 
         Ok(())
@@ -446,8 +422,7 @@ impl QnxMemoryPartition {
                 return Err(Error::new(
                     ErrorCategory::Platform,
                     1,
-                    "Failed to destroy QNX memory partition",
-                ));
+                    "Failed to destroy QNX memory partition"));
             }
             self.partition_id.store(0, Ordering::Release);
         }
@@ -584,11 +559,7 @@ mod tests {
             // Binary std/no_std choice
             let ptr = unsafe { ffi::malloc(1024 * 1024) };
             if ptr.is_null() {
-                return Err(Error::new(
-                    ErrorCategory::Memory,
-                    1,
-                    "Allocation failed within partition",
-                ));
+                return Err(Error::memory_error("Allocation failed within partition"));
             }
             unsafe { ffi::free(ptr) };
             Ok(())

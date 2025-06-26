@@ -1,6 +1,9 @@
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_DWARF_ABBREV_CACHE},
-    BoundedCapacity, NoStdProvider,
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
+    safe_memory::NoStdProvider,
+    BoundedCapacity,
 };
 
 /// Parameter and type information support
@@ -211,9 +214,13 @@ impl<'a> ParameterList<'a> {
     /// Create a new empty parameter list
     pub fn new() -> Self {
         Self {
-            parameters:
-                BoundedVec::new(NoStdProvider::<{ MAX_DWARF_ABBREV_CACHE * 64 }>::default())
-                    .expect("Failed to create parameters BoundedVec"),
+            parameters: {
+                let provider = safe_managed_alloc!({ MAX_DWARF_ABBREV_CACHE * 64 }, CrateId::Debug)
+                    .unwrap_or_else(|_| {
+                        NoStdProvider::<{ MAX_DWARF_ABBREV_CACHE * 64 }>::default()
+                    });
+                BoundedVec::new(provider).expect("Failed to create parameters BoundedVec")
+            },
         }
     }
 
@@ -412,8 +419,14 @@ impl<'a> InlinedFunctions<'a> {
     /// Create new inlined functions collection
     pub fn new() -> Self {
         Self {
-            entries: BoundedVec::new(NoStdProvider::<{ MAX_DWARF_ABBREV_CACHE * 128 }>::default())
-                .expect("Failed to create entries BoundedVec"),
+            entries: {
+                let provider =
+                    safe_managed_alloc!({ MAX_DWARF_ABBREV_CACHE * 128 }, CrateId::Debug)
+                        .unwrap_or_else(|_| {
+                            NoStdProvider::<{ MAX_DWARF_ABBREV_CACHE * 128 }>::default()
+                        });
+                BoundedVec::new(provider).expect("Failed to create entries BoundedVec")
+            },
         }
     }
 

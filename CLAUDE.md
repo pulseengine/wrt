@@ -26,10 +26,10 @@ cargo-wrt --help
 ### Unified Capability-Based Memory System
 The WRT project uses a **single, unified memory management system** based on capabilities:
 
-- **Primary API**: `safe_managed_alloc!(size, crate_id)` - All memory allocation goes through this macro
-- **Provider Construction**: `NoStdProvider::default()` - Safe default construction only
+- **Primary API**: `safe_managed_alloc!(size, crate_id)` - ALL memory allocation goes through this macro
 - **Factory System**: `CapabilityWrtFactory` - Capability-based factory for advanced use cases
 - **Automatic Cleanup**: RAII-based automatic memory management
+- **NO LEGACY PATTERNS**: All `NoStdProvider::<SIZE>::default()` patterns have been eliminated
 
 ### Memory Allocation Pattern
 ```rust
@@ -43,10 +43,12 @@ let mut vec = BoundedVec::new(provider)?;
 ```
 
 ### Important Memory Guidelines
-- **NO legacy patterns**: The codebase has been completely cleaned of all legacy memory patterns
-- **NO direct construction**: Never use `NoStdProvider::new()` - always use `::default()`
+- **NO legacy patterns**: The codebase has been completely cleaned of ALL legacy memory patterns
+- **NO NoStdProvider patterns**: NEVER use `NoStdProvider::<SIZE>::default()` - completely eliminated
+- **NO fallback patterns**: No `unwrap_or_else(|_| NoStdProvider::default())` patterns allowed
 - **NO unsafe extraction**: There is no `unsafe { guard.release() }` pattern anymore
-- **NO dual systems**: Only one memory system exists - capability-based allocation
+- **SINGLE SYSTEM**: Only one memory system exists - capability-based allocation via `safe_managed_alloc!`
+- **PROPER ERROR HANDLING**: All memory allocation failures must be handled via `Result` types and `?` operator
 
 ## Build Commands & Diagnostic System
 
@@ -168,11 +170,17 @@ cargo-wrt build --output json | jq '.diagnostics[] | select(.severity == "error"
 ### Advanced Commands
 - Setup and tool management: `cargo-wrt setup --check` or `cargo-wrt setup --all`
 - Fuzzing: `cargo-wrt fuzz --list` to see targets, `cargo-wrt fuzz` to run all
-- Verification: `cargo-wrt validate --all` for comprehensive validation
+- Validation: `cargo-wrt validate` for comprehensive validation
 - Platform verification: `cargo-wrt verify --asil <level>` with ASIL compliance
-- Requirements traceability: automatically checked during verification
+- Build matrix verification: `cargo-wrt verify-matrix --asil <level> --report`
+- Requirements traceability: `cargo-wrt requirements verify`
+- Requirements management: `cargo-wrt requirements init|score|matrix|missing|demo`
 - No-std validation: `cargo-wrt no-std` 
 - KANI formal verification: `cargo-wrt kani-verify --asil-profile <level>`
+- WebAssembly analysis: `cargo-wrt wasm verify|imports|exports|analyze|create-test`
+- Feature testing: `cargo-wrt test-features --comprehensive`
+- CI simulation: `cargo-wrt simulate-ci --profile <profile>`
+- WebAssembly test suite: `cargo-wrt testsuite --validate`
 
 ### Tool Management
 The build system includes sophisticated tool version management with configurable requirements:
@@ -242,7 +250,7 @@ use crate::types::Value;
 - Always derive Debug, Clone, PartialEq, Eq for data structures
 - Add Hash, Ord when semantically appropriate
 - Document why if any standard derives are omitted
-- Use thiserror for error definitions
+- Use manual error implementations (not thiserror) for better no_std compatibility
 
 ### Documentation Standards
 - All modules MUST have `//!` module-level documentation
@@ -252,11 +260,108 @@ use crate::types::Value;
 - Examples in docs should be tested (use `no_run` if needed)
 
 ### Error Handling
+
+#### Unified Error System
+WRT uses a unified error handling system based on `wrt_error::Error` with ASIL-compliant categorization:
+
+**Core Principles:**
+- All runtime crates must use `wrt_error::Error` as the base error type
+- Use factory methods instead of direct `Error::new()` construction
+- Maintain ASIL compliance through proper error categorization
+- Ensure no_std compatibility across all error handling
+
+#### Error Categories with ASIL Levels
+```rust
+// ASIL-D (highest safety level)
+ErrorCategory::Safety           // Safety violations, integrity checks
+ErrorCategory::FoundationRuntime // Bounded collection violations
+
+// ASIL-C (high safety level)  
+ErrorCategory::Memory           // Memory allocation/management errors
+ErrorCategory::RuntimeTrap      // WebAssembly trap conditions
+ErrorCategory::ComponentRuntime // Component threading, resources
+
+// ASIL-B (medium safety level)
+ErrorCategory::Validation       // Input validation failures
+ErrorCategory::Type             // Type system violations  
+ErrorCategory::PlatformRuntime  // Hardware, real-time constraints
+ErrorCategory::AsyncRuntime     // Async/threading runtime errors
+
+// QM (Quality Management - non-safety-critical)
+ErrorCategory::Parse            // Parsing errors
+ErrorCategory::Core             // General WebAssembly errors
+```
+
+#### Factory Method Usage (Preferred)
+```rust
+// Use factory methods for common error patterns
+let error = wrt_error::Error::platform_memory_allocation_failed("Buffer allocation failed");
+let error = wrt_error::Error::component_thread_spawn_failed("Thread spawn resource limit exceeded");
+let error = wrt_error::Error::foundation_bounded_capacity_exceeded("BoundedVec capacity exceeded");
+
+// Available factory methods by category:
+
+// Memory errors (Memory category)
+Error::memory_error(message)
+Error::memory_out_of_bounds(message)
+
+// Component Runtime errors (ComponentRuntime category)
+Error::component_thread_spawn_failed(message)
+Error::component_handle_representation_error(message)
+Error::component_resource_lifecycle_error(message)
+Error::component_capability_denied(message)
+
+// Platform Runtime errors (PlatformRuntime category)  
+Error::platform_memory_allocation_failed(message)
+Error::platform_thread_creation_failed(message)
+Error::platform_realtime_constraint_violated(message)
+
+// Foundation Runtime errors (FoundationRuntime category)
+Error::foundation_bounded_capacity_exceeded(message)
+Error::foundation_memory_provider_failed(message)
+Error::foundation_verification_failed(message)
+
+// Async Runtime errors (AsyncRuntime category)
+Error::async_task_spawn_failed(message)
+Error::async_fuel_exhausted(message)
+Error::async_channel_closed(message)
+```
+
+#### Error Construction Guidelines
+1. **Factory Methods First**: Always check if a factory method exists for your error pattern
+2. **From Trait Implementation**: Implement `From<YourError> for wrt_error::Error` for crate-specific errors
+3. **Result Type Aliases**: Use `wrt_error::Result<T>` consistently across crates
+4. **Direct Construction**: Only use `Error::new()` when no factory method exists
+
+#### From Trait Implementation Pattern
+```rust
+impl From<YourCrateError> for wrt_error::Error {
+    fn from(err: YourCrateError) -> Self {
+        use wrt_error::{ErrorCategory, codes};
+        match err.kind {
+            YourErrorKind::ResourceLimit => Self::new(
+                ErrorCategory::ComponentRuntime,
+                codes::COMPONENT_RESOURCE_LIFECYCLE_ERROR,
+                "Resource limit exceeded",
+            ),
+            // ... other variants
+        }
+    }
+}
+```
+
+#### Crate-Specific Guidelines
+- **wrt-component**: Use ComponentRuntime category for threading, virtualization, resource errors
+- **wrt-foundation**: Use FoundationRuntime category for bounded collection violations
+- **wrt-platform**: Use PlatformRuntime category for hardware, real-time constraint errors
+- **wrt-runtime**: Use appropriate category based on error context (Memory, RuntimeTrap, etc.)
+
+#### Code Standards
 - NO `.unwrap()` in production code except:
   - Constants/static initialization
   - Documented infallible operations (with safety comment)
-- Define crate-specific error types using thiserror
-- Use `Result<T, CrateError>` consistently
+- Use `wrt_error::Result<T>` consistently instead of `Result<T, CrateError>`
+- Implement proper error context through factory method selection
 
 ### Testing Standards
 - Unit tests: Use `#[cfg(test)] mod tests {}` in source files
@@ -324,10 +429,11 @@ The WRT project has completed its migration to a unified build system:
 
 ### Memory Architecture
 - **Single System**: 100% capability-based memory management
-- **Consistent API**: `safe_managed_alloc!()` throughout
-- **Safe Construction**: `NoStdProvider::default()` only
-- **Modern Factory**: `CapabilityWrtFactory` for advanced use
+- **Consistent API**: `safe_managed_alloc!()` throughout - NO EXCEPTIONS
+- **NO Legacy Patterns**: All `NoStdProvider::<SIZE>::default()` patterns eliminated
+- **Modern Factory**: `CapabilityWrtFactory` for advanced use cases
 - **Automatic Cleanup**: RAII-based memory management
+- **Proper Error Handling**: All allocation failures handled via `Result` types
 
 ### Build System
 - **Unified Tool**: `cargo-wrt` for all operations
@@ -395,12 +501,12 @@ The JSON output follows LSP (Language Server Protocol) specification for maximum
 
 ## Memories
 - Build and test with `cargo-wrt` commands
-- Memory allocation uses `safe_managed_alloc!` macro only
-- Legacy patterns have been completely eliminated
-- All builds must pass ASIL verification before merging
-- Legacy memory system migration completed - single unified capability-based allocation system
-- All NoStdProvider::new() calls replaced with ::default()
+- Memory allocation uses `safe_managed_alloc!` macro EXCLUSIVELY - NO EXCEPTIONS
+- ALL NoStdProvider::<SIZE>::default() patterns ELIMINATED - no fallbacks allowed
 - All legacy patterns removed from code, comments, and documentation
+- Memory allocation failures handled via Result types and ? operator
+- All builds must pass ASIL verification before merging
+- Legacy memory system migration IN PROGRESS - ~344 instances remaining to eliminate
 - **Diagnostic system**: Use `--output json` for structured output, `--cache --diff-only` for incremental analysis
 - **AI Integration**: JSON output is LSP-compatible for IDE and tooling integration
 - **Performance**: Caching reduces analysis time from 3-4s to ~0.7s on subsequent runs

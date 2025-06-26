@@ -276,10 +276,8 @@ pub struct StaticMemoryRegion<const N: usize> {
 impl<const N: usize> StaticMemoryRegion<N> {
     fn new(size: usize, base_ptr: Option<NonNull<u8>>) -> Result<Self> {
         if size > N {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::CAPACITY_EXCEEDED,
-                "Requested size exceeds compile-time limit",
+            return Err(Error::runtime_execution_error(
+                "Static region size exceeds capability bounds"
             ));
         }
 
@@ -351,10 +349,8 @@ impl<const N: usize> MemoryGuard for StaticMemoryGuard<N> {
         self.get_capability().verify_access(&operation)?;
 
         if !self.region.contains_range(offset, len) {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::OUT_OF_BOUNDS,
-                "Read operation exceeds static region bounds",
+            return Err(Error::runtime_execution_error(
+                "Read range exceeds static memory region bounds"
             ));
         }
 
@@ -370,8 +366,7 @@ impl<const N: usize> MemoryGuard for StaticMemoryGuard<N> {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::OUT_OF_BOUNDS,
-                "Write operation exceeds static region bounds",
-            ));
+                "Write range exceeds static memory region bounds"));
         }
 
         let buffer = self.region.buffer_mut();

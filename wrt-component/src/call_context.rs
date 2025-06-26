@@ -993,10 +993,7 @@ impl CallContextManager {
         #[cfg(feature = "std")]
         self.contexts.insert(call_id, managed_context);
         #[cfg(not(feature = "std"))]
-        self.contexts.push((call_id, managed_context)).map_err(|_| Error::new(
-            ErrorCategory::Runtime,
-            codes::RESOURCE_EXHAUSTED,
-            "Too many call contexts",
+        self.contexts.push((call_id, managed_context)).map_err(|_| Error::runtime_execution_error(",
         ))?;
 
         Ok(call_id)
@@ -1004,7 +1001,7 @@ impl CallContextManager {
 
     /// Get a call context by ID
     pub fn get_call_context(&self, call_id: u64) -> Option<&ManagedCallContext> {
-        #[cfg(feature = "std")]
+        #[cfg(feature = ")]
         return self.contexts.get(&call_id);
         #[cfg(not(feature = "std"))]
         return self.contexts.iter().find(|(id, _)| *id == call_id).map(|(_, ctx)| ctx);
@@ -1030,10 +1027,7 @@ impl CallContextManager {
 
             Ok(())
         } else {
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_STATE,
-                "Call context not found",
+            Err(Error::runtime_invalid_state("Call context not found"),
             ))
         }
     }
@@ -1069,20 +1063,12 @@ impl ParameterMarshaler {
 
         // Validate parameter count and size
         if parameters.len() > MAX_CALL_PARAMETERS {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Too many parameters",
-            ));
+            return Err(Error::validation_error("Too many parameters"));
         }
 
         let total_size = self.calculate_parameter_size(parameters)?;
         if total_size > self.config.max_parameter_size {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Parameter data too large",
-            ));
+            return Err(Error::validation_error("Parameter data too large"));
         }
 
         // For now, just clone the parameters (no actual marshaling)
@@ -1092,11 +1078,7 @@ impl ParameterMarshaler {
         let marshaled_parameters = {
             let mut vec = BoundedVec::new(crate::MemoryProvider::default()).unwrap();
             for param in parameters {
-                vec.push(param.clone()).map_err(|_| Error::new(
-                    ErrorCategory::Validation,
-                    codes::VALIDATION_ERROR,
-                    "Too many parameters for bounded vec",
-                ))?;
+                vec.push(param.clone()).map_err(|_| Error::validation_error("Too many parameters for bounded vec"))?;
             }
             vec
         };
@@ -1116,11 +1098,7 @@ impl ParameterMarshaler {
             original_parameters: {
                 let mut vec = BoundedVec::new(crate::MemoryProvider::default()).unwrap();
                 for param in parameters {
-                    vec.push(param.clone()).map_err(|_| Error::new(
-                        ErrorCategory::Validation,
-                        codes::VALIDATION_ERROR,
-                        "Too many parameters for bounded vec",
-                    ))?;
+                    vec.push(param.clone()).map_err(|_| Error::validation_error("Too many parameters for bounded vec"))?;
                 }
                 vec
             },
@@ -1147,11 +1125,7 @@ impl ParameterMarshaler {
                 #[cfg(feature = "std")]
                 ComponentValue::String(s) => {
                     if s.len() > MAX_STRING_LENGTH {
-                        return Err(Error::new(
-                            ErrorCategory::Validation,
-                            codes::VALIDATION_ERROR,
-                            "String parameter too long",
-                        ));
+                        return Err(Error::validation_error("String parameter too long"));
                     }
                     s.len() as u32 + 4 // String length + size prefix
                 }
@@ -1159,21 +1133,13 @@ impl ParameterMarshaler {
                 ComponentValue::String(s) => {
                     let len = s.as_bytes().len();
                     if len > MAX_STRING_LENGTH {
-                        return Err(Error::new(
-                            ErrorCategory::Validation,
-                            codes::VALIDATION_ERROR,
-                            "String parameter too long",
-                        ));
+                        return Err(Error::validation_error("String parameter too long"));
                     }
                     len as u32 + 4 // String length + size prefix
                 }
                 ComponentValue::List(items) => {
                     if items.len() > MAX_ARRAY_LENGTH {
-                        return Err(Error::new(
-                            ErrorCategory::Validation,
-                            codes::VALIDATION_ERROR,
-                            "Array parameter too long",
-                        ));
+                        return Err(Error::validation_error("Array parameter too long"));
                     }
                     self.calculate_parameter_size(items)? + 4 // Array contents + size prefix
                 }
@@ -1253,39 +1219,30 @@ impl ResourceCoordinator {
             #[cfg(feature = "std")]
             self.resource_locks.insert(handle, lock);
             #[cfg(not(feature = "std"))]
-            self.resource_locks.push((handle, lock)).map_err(|_| Error::new(
-                ErrorCategory::Runtime,
-                codes::RESOURCE_EXHAUSTED,
-                "Too many resource locks",
+            self.resource_locks.push((handle, lock)).map_err(|_| Error::runtime_execution_error(",
             ))?;
             
-            #[cfg(feature = "std")]
+            #[cfg(feature = ")]
             acquired_locks.push(handle);
             #[cfg(not(feature = "std"))]
-            acquired_locks.push(handle).map_err(|_| Error::new(
-                ErrorCategory::Runtime,
-                codes::RESOURCE_EXHAUSTED,
-                "Too many acquired locks",
+            acquired_locks.push(handle).map_err(|_| Error::runtime_execution_error(",
             ))?;
         }
 
         Ok(ResourceState {
-            #[cfg(feature = "std")]
+            #[cfg(feature = ")]
             transferring_resources: resource_handles.to_vec(),
             #[cfg(not(feature = "std"))]
             transferring_resources: {
                 let mut vec = BoundedVec::new(crate::MemoryProvider::default()).unwrap();
                 for handle in resource_handles {
-                    vec.push(*handle).map_err(|_| Error::new(
-                        ErrorCategory::Runtime,
-                        codes::RESOURCE_EXHAUSTED,
-                        "Too many transferring resources",
+                    vec.push(*handle).map_err(|_| Error::runtime_execution_error(",
                     ))?;
                 }
                 vec
             },
             acquired_locks,
-            #[cfg(feature = "std")]
+            #[cfg(feature = ")]
             transfer_results: std::vec::Vec::new(),
             #[cfg(not(feature = "std"))]
             transfer_results: BoundedVec::new(crate::MemoryProvider::default()).unwrap(),

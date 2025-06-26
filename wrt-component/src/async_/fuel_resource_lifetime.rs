@@ -127,10 +127,7 @@ impl<T> TrackedResource<T> {
         // Check state
         match self.state {
             ResourceState::Available | ResourceState::InUse => {},
-            _ => return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_ACCESS_ERROR,
-                "Resource not available for acquisition",
+            _ => return Err(Error::runtime_execution_error(",
             )),
         }
         
@@ -138,11 +135,7 @@ impl<T> TrackedResource<T> {
         let old_count = self.ref_count.fetch_add(1, Ordering::AcqRel);
         if old_count >= MAX_RESOURCE_REFS {
             self.ref_count.fetch_sub(1, Ordering::AcqRel);
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Resource reference count exceeded",
-            ));
+            return Err(Error::resource_limit_exceeded("));
         }
         
         // Update last accessed time and consume fuel
@@ -159,11 +152,7 @@ impl<T> TrackedResource<T> {
     pub fn release(&self) -> Result<bool> {
         let old_count = self.ref_count.fetch_sub(1, Ordering::AcqRel);
         if old_count == 0 {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_ERROR,
-                "Resource reference count underflow",
-            ));
+            return Err(Error::resource_error("Resource reference count underflow"));
         }
         
         // Consume fuel
@@ -203,11 +192,7 @@ impl<T> ResourceGuard<T> {
     /// Get reference to the resource data
     pub fn get(&self) -> Result<&T> {
         self.resource.data.as_ref().ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "Resource data not available",
-            )
+            Error::resource_not_found("Resource data not available")
         })
     }
     
@@ -273,11 +258,7 @@ impl ResourceLifetimeManager {
         // Check fuel budget
         let current_fuel = self.total_fuel_consumed.load(Ordering::Acquire);
         if current_fuel.saturating_add(RESOURCE_CREATE_FUEL) > self.global_fuel_budget {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Resource fuel budget exceeded",
-            ));
+            return Err(Error::resource_limit_exceeded("Resource fuel budget exceeded"));
         }
         
         // Generate handle
@@ -310,21 +291,13 @@ impl ResourceLifetimeManager {
         handle: ResourceHandle,
     ) -> Result<Arc<TrackedResource<T>>> {
         let resource = self.resources.get(&handle).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "Resource not found",
-            )
+            Error::resource_not_found("Resource not found")
         })?;
         
         // Downcast to specific type
         resource.clone()
             .downcast::<TrackedResource<T>>()
-            .map_err(|_| Error::new(
-                ErrorCategory::Type,
-                codes::TYPE_MISMATCH,
-                "Resource type mismatch",
-            ))
+            .map_err(|_| Error::type_error("Resource type mismatch"))
     }
     
     /// Transfer resource ownership
@@ -336,20 +309,12 @@ impl ResourceLifetimeManager {
         // Check fuel
         let current_fuel = self.total_fuel_consumed.load(Ordering::Acquire);
         if current_fuel.saturating_add(RESOURCE_TRANSFER_FUEL) > self.global_fuel_budget {
-            return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_LIMIT_EXCEEDED,
-                "Resource fuel budget exceeded",
-            ));
+            return Err(Error::resource_limit_exceeded("Resource fuel budget exceeded"));
         }
         
         // Remove from our resources
         let resource = self.resources.remove(&handle).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "Resource not found for transfer",
-            )
+            Error::resource_not_found("Resource not found for transfer")
         })?;
         
         // Update fuel
@@ -365,11 +330,7 @@ impl ResourceLifetimeManager {
     pub fn drop_resource(&mut self, handle: ResourceHandle) -> Result<()> {
         // Remove resource
         let _resource = self.resources.remove(&handle).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_NOT_FOUND,
-                "Resource not found",
-            )
+            Error::resource_not_found("Resource not found")
         })?;
         
         // Update fuel
