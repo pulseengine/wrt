@@ -16,6 +16,7 @@ use wrt_foundation::{
     prelude::*,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
+    sync::Mutex,
 };
 
 use crate::{
@@ -694,7 +695,12 @@ impl Default for CancellationToken {
                     #[cfg(feature = "std")]
                     handlers: Arc::new(std::sync::RwLock::new(Vec::new())),
                     #[cfg(not(any(feature = "std", )))]
-                    handlers: unsafe { core::mem::zeroed() }, // Emergency fallback
+                    handlers: {
+                        // ASIL-compliant: Use bounded collection instead of zeroed memory
+                        let provider = safe_managed_alloc!(1024, CrateId::Component)
+                            .expect("Memory allocation for cancellation handlers");
+                        Arc::new(Mutex::new(BoundedVec::new(provider).expect("Bounded collection creation")))
+                    }
                 }),
             }
         })
@@ -710,11 +716,21 @@ impl Default for SubtaskManager {
                 #[cfg(feature = "std")]
                 subtasks: Vec::new(),
                 #[cfg(not(any(feature = "std", )))]
-                subtasks: unsafe { core::mem::zeroed() }, // Emergency fallback
+                subtasks: {
+                    // ASIL-compliant: Use bounded collection for subtask management
+                    let provider = safe_managed_alloc!(2048, CrateId::Component)
+                        .expect("Memory allocation for subtasks");
+                    BoundedVec::new(provider).expect("Bounded collection creation")
+                },
                 #[cfg(feature = "std")]
                 completion_handlers: Vec::new(),
                 #[cfg(not(any(feature = "std", )))]
-                completion_handlers: unsafe { core::mem::zeroed() }, // Emergency fallback
+                completion_handlers: {
+                    // ASIL-compliant: Use bounded collection for completion handlers
+                    let provider = safe_managed_alloc!(1024, CrateId::Component)
+                        .expect("Memory allocation for completion handlers");
+                    BoundedVec::new(provider).expect("Bounded collection creation")
+                }
                 next_handler_id: 1,
                 stats: SubtaskStats::new(),
             }

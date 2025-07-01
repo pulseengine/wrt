@@ -481,8 +481,8 @@ impl Clone for BuiltinHost {
             Self {
                 component_name: self.component_name.clone(),
                 host_id: self.host_id.clone(),
-                handlers: HashMap::new(provider.clone()).unwrap(),
-                critical_builtins: HashMap::new(provider).unwrap(),
+                handlers: HashMap::new(provider.clone()).expect("HashMap creation should never fail with valid provider"),
+                critical_builtins: HashMap::new(provider).expect("HashMap creation should never fail with valid provider"),
             }
         }
     }

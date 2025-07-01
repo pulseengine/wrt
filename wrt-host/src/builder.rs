@@ -183,7 +183,7 @@ impl HostBuilder {
             let args: ValueVec = {
                 use crate::bounded_host_infra::create_host_provider;
                 let provider = create_host_provider().expect("Failed to create host provider");
-                ValueVec::new(provider).unwrap()
+                ValueVec::new(provider).expect("ValueVec creation should never fail with valid provider")
             };
             handler(target, args)
         });
@@ -315,7 +315,7 @@ impl HostBuilder {
             let args: ValueVec = {
                 use crate::bounded_host_infra::create_host_provider;
                 let provider = create_host_provider().expect("Failed to create host provider");
-                ValueVec::new(provider).unwrap()
+                ValueVec::new(provider).expect("ValueVec creation should never fail with valid provider")
             };
             handler(target, args)
         });

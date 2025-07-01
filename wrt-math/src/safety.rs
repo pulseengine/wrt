@@ -611,9 +611,9 @@ pub fn safe_simd_load<T: Copy>(memory: &[u8], offset: usize, len: usize) -> Resu
         return Err(WrtError::runtime_execution_error("Misaligned SIMD memory access"));
     }
     
-    // Since we can't safely cast without unsafe code, we'll provide a different API
+    // Since we can't safely cast without platform-specific code, we'll provide a different API
     // This is a placeholder - real SIMD operations would need platform-specific handling
-    Err(WrtError::runtime_not_implemented("SIMD operations require unsafe code"))
+    Err(WrtError::runtime_not_implemented("SIMD operations require platform-specific implementation"))
 }
 
 /// Safe memory store for SIMD operations
@@ -627,9 +627,9 @@ pub fn safe_simd_store<T: Copy>(memory: &mut [u8], offset: usize, data: &[T]) ->
         return Err(WrtError::runtime_execution_error("Misaligned SIMD memory access"));
     }
     
-    // Since we can't safely store without unsafe code, we'll provide a different API
+    // Since we can't safely store without platform-specific code, we'll provide a different API
     // This is a placeholder - real SIMD operations would need platform-specific handling
-    Err(WrtError::runtime_not_implemented("SIMD operations require unsafe code"))
+    Err(WrtError::runtime_not_implemented("SIMD operations require platform-specific implementation"))
 }
 
 // Formal verification hooks (no-op in normal compilation)

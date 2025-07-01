@@ -210,7 +210,8 @@ impl WakerData {
 }
 
 /// ASIL-D safe waker implementations using conditional compilation
-#[cfg(not(feature = "asil-d"))]
+/// Only available for QM builds - excluded from all ASIL levels for safety
+#[cfg(all(not(feature = "asil-a"), not(feature = "asil-b"), not(feature = "asil-c"), not(feature = "asil-d")))]
 mod unsafe_waker {
     use super::*;
     
