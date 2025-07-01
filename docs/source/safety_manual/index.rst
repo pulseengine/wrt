@@ -130,6 +130,7 @@ For immediate ASIL-A deployment:
 1. **Implementation Guide**: :doc:`asil_a_implementation_guide` - Complete implementation instructions
 2. **Safety Case**: :doc:`asil_a_safety_case` - Formal safety argument and evidence
 3. **Certification**: :doc:`asil_a_certification_checklist` - Step-by-step certification guide
+4. **Verification Report**: :doc:`asil_a_verification_report` - Comprehensive verification evidence
 
 Key ASIL-A Features:
 
@@ -224,3 +225,4 @@ Internal Documents
    asil_a_implementation_guide
    asil_a_safety_case
    asil_a_certification_checklist
+   asil_a_verification_report

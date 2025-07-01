@@ -210,6 +210,22 @@ When build failures occur, the script will:
 3. Generate reports with specific remediation steps
 4. Classify failures by their impact on safety compliance
 
+## Debugging Rust String Literal Errors
+
+### The "Nasty Rust Problem"
+When encountering "prefix is unknown" or "unterminated double quote string" errors:
+
+1. **DO NOT trust the line number** - Rust reports where it detected the issue, not where it started
+2. **Search for the actual unterminated quotes** using:
+   ```bash
+   grep -n '"' filename.rs | awk '{line = $0; count = gsub(/"/, "", line); if (count % 2 == 1) print $0}'
+   ```
+3. **Common patterns to look for**:
+   - `Error::runtime_execution_error(",` (missing closing quote and message)
+   - `.ok_or_else(|| Error::runtime_error("))?;` (missing opening quote and message)
+   - `#[cfg(feature = ")]` (incomplete feature flag)
+4. **Fix at the source** - Add the missing error message, don't just add spaces at the reported line
+
 ## Code Style Guidelines
 
 ### General Formatting

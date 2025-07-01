@@ -1493,17 +1493,6 @@ dependencies = [
 
 [[package]]
 name = "kani-verifier"
-version = "0.54.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f73c2e368ff80d8036986070843216b93c4e2973d1347d65ef45162fd364bc6"
-dependencies = [
- "anyhow",
- "home",
- "os_info",
-]
-
-[[package]]
-name = "kani-verifier"
 version = "0.62.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f16df5f75a0f9f3b22f3dd270847c3df14a53a7d50ddbee9fa7a1b102785b6a0"
@@ -3983,7 +3972,7 @@ version = "0.2.0"
 name = "wrt-format"
 version = "0.2.0"
 dependencies = [
- "kani-verifier 0.62.0",
+ "kani-verifier",
  "proptest",
  "wrt-error",
  "wrt-foundation",
@@ -3995,7 +3984,7 @@ version = "0.2.0"
 dependencies = [
  "criterion 0.6.0",
  "hashbrown 0.15.3",
- "kani-verifier 0.62.0",
+ "kani-verifier",
  "log",
  "proptest",
  "proptest-derive",
@@ -4038,11 +4027,12 @@ dependencies = [
 name = "wrt-integration-tests"
 version = "0.1.0"
 dependencies = [
- "kani-verifier 0.54.0",
+ "kani-verifier",
  "tempfile",
  "wrt",
  "wrt-component",
  "wrt-decoder",
+ "wrt-error",
  "wrt-format",
  "wrt-foundation",
  "wrt-host",
@@ -4058,7 +4048,7 @@ name = "wrt-intercept"
 version = "0.2.0"
 dependencies = [
  "chrono",
- "kani-verifier 0.62.0",
+ "kani-verifier",
  "log",
  "pretty_assertions",
  "wrt-error",
@@ -4119,7 +4109,7 @@ dependencies = [
 name = "wrt-sync"
 version = "0.2.0"
 dependencies = [
- "kani-verifier 0.62.0",
+ "kani-verifier",
  "parking_lot",
  "wrt-error",
 ]
