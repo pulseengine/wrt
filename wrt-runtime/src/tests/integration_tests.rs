@@ -76,8 +76,7 @@ mod tests {
                 let a = match args[0] {
                     Value::I32(val) => val,
                     _ => {
-                        return Err(wrt_error::Error::runtime_execution_error(",
-                        ))
+                        return Err(wrt_error::Error::runtime_execution_error("Runtime execution error"
                     }
                 };
 
@@ -86,7 +85,7 @@ mod tests {
                     _ => {
                         return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Type,
                             0,
-                            "))
+                            "Invalid argument type for add function"))
                     }
                 };
 

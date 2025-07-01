@@ -13,6 +13,7 @@ path = "lib.rs"
 wrt = { workspace = true }
 wrt-component = { workspace = true }
 wrt-decoder = { workspace = true }
+wrt-error = { workspace = true }
 wrt-format = { workspace = true }
 wrt-foundation = { workspace = true }
 wrt-host = { workspace = true }
@@ -26,7 +27,7 @@ wrt-test-registry = { workspace = true }
 tempfile = "3.0"
 
 # KANI formal verification (optional)
-kani-verifier = { version = "0.54.0", optional = true }
+kani-verifier = { version = "0.62.0", optional = true }
 
 [features]
 default = []
@@ -36,7 +37,8 @@ kani = [
     "wrt-foundation/kani",
     "wrt-component/kani",
     "wrt-sync/kani",
-    "wrt-runtime/kani"
+    "wrt-runtime/kani",
+    "wrt-error/kani"
 ]
 # Alias for formal verification
 formal-verification = ["kani"]

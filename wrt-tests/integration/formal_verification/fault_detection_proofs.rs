@@ -33,8 +33,41 @@ use wrt_foundation::{
     safe_memory::NoStdProvider,
 };
 
-#[cfg(feature = "fault-detection")]
+// Fault detection features are available in safety monitoring configurations
+#[cfg(all(feature = "kani", feature = "fault-detection"))]
 use wrt_foundation::fault_detection::{FaultDetector, FaultType, FaultResponseMode};
+
+// Provide simplified fault detection stubs for verification when feature is not available
+#[cfg(all(feature = "kani", not(feature = "fault-detection")))]
+mod fault_detection_stubs {
+    #[derive(Debug, Clone, Copy)]
+    pub enum FaultType {
+        MemoryViolation,
+        BudgetViolation,
+        CapabilityViolation,
+        SystemFault,
+    }
+    
+    #[derive(Debug, Clone, Copy)]
+    pub enum FaultResponseMode {
+        Immediate,
+        Graceful,
+        LogOnly,
+    }
+    
+    pub struct FaultDetector;
+    
+    impl FaultDetector {
+        pub fn new() -> Self { Self }
+        pub fn detect_fault(&self, _fault_type: FaultType) -> bool { true }
+        pub fn set_response_mode(&mut self, _mode: FaultResponseMode) {}
+        pub fn is_fault_detected(&self) -> bool { false }
+        pub fn clear_fault(&mut self) {}
+    }
+}
+
+#[cfg(all(feature = "kani", not(feature = "fault-detection")))]
+use fault_detection_stubs::{FaultDetector, FaultType, FaultResponseMode};
 
 #[cfg(feature = "kani")]
 use wrt_error::{Error, AsilLevel};

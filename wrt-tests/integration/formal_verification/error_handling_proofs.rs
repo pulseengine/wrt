@@ -116,10 +116,30 @@ pub fn verify_error_propagation() {
     kani::assume(allocation_size > 0);
     kani::assume(allocation_size <= 1024 * 1024); // 1MB max
     
-    // Generate arbitrary crate ID
-    let crate_id: u8 = kani::any();
-    kani::assume(crate_id < 19);
-    let crate_id = unsafe { core::mem::transmute::<u8, CrateId>(crate_id) };
+    // Generate arbitrary crate ID (use safe match instead of transmute)
+    let crate_id_val: u8 = kani::any();
+    kani::assume(crate_id_val < 19);
+    let crate_id = match crate_id_val % 19 {
+        0 => CrateId::Foundation,
+        1 => CrateId::Component,
+        2 => CrateId::Runtime,
+        3 => CrateId::Decoder,
+        4 => CrateId::Format,
+        5 => CrateId::Host,
+        6 => CrateId::Instructions,
+        7 => CrateId::Intercept,
+        8 => CrateId::Logging,
+        9 => CrateId::Math,
+        10 => CrateId::Platform,
+        11 => CrateId::Sync,
+        12 => CrateId::TestRegistry,
+        13 => CrateId::Error,
+        14 => CrateId::Debug,
+        15 => CrateId::Helper,
+        16 => CrateId::Panic,
+        17 => CrateId::Wasi,
+        _ => CrateId::Foundation, // Default fallback
+    };
     
     // Test error propagation through allocation failure
     match safe_managed_alloc!(allocation_size, crate_id) {
