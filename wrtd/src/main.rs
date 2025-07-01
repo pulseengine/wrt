@@ -585,8 +585,7 @@ impl WrtdEngine {
             
             let file_size = metadata.len() as usize;
             if file_size > MAX_MODULE_SIZE {
-                return Err(Error::runtime_execution_error("
-                ));
+                return Err(Error::runtime_execution_error("Module file too large"));
             }
             
             // For safety-critical mode, use bounded allocation
@@ -607,8 +606,7 @@ impl WrtdEngine {
                     }
                     
                     for &byte in &buffer[..bytes_read] {
-                        module_data.push(byte).map_err(|_| Error::runtime_execution_error("
-                        ))?;
+                        module_data.push(byte).map_err(|_| Error::runtime_execution_error("Module data capacity exceeded"))?;
                     }
                 }
                 
@@ -616,18 +614,17 @@ impl WrtdEngine {
             }
             
             // For non-safety-critical mode, use standard loading but with size check
-            #[cfg(not(feature = "))]
+            #[cfg(not(feature = "safety-critical"))]
             {
                 fs::read(path).map_err(|_| Error::system_io_error("Failed to read module"))
             }
         } else if let Some(data) = &self.config.module_data {
             if data.len() > MAX_MODULE_SIZE {
-                return Err(Error::runtime_execution_error("
-                ));
+                return Err(Error::runtime_execution_error("Module data too large"));
             }
             Ok(data.to_vec())
         } else {
-            Err(Error::parse_error("))
+            Err(Error::parse_error("No module path or data provided"))
         }
     }
 

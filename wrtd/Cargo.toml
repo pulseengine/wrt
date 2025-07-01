@@ -39,7 +39,7 @@ linked_list_allocator = { version = "0.10", optional = true }
 # No external dependencies - use internal capabilities only
 
 [features]
-default = ["std", "wrt-execution"]
+default = ["std", "wrt-execution", "component-model"]
 
 # Binary choice: std OR no_std (no alloc middle ground)
 std = [

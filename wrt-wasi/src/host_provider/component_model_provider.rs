@@ -12,6 +12,10 @@ use crate::HostFunction;
 #[cfg(feature = "std")]
 use wrt_format::component::ExternType;
 use wrt_foundation::{safe_managed_alloc, BoundedVec, BoundedString, budget_aware_provider::CrateId};
+#[cfg(feature = "std")]
+use std::vec;
+#[cfg(not(feature = "std"))]
+use alloc::vec;
 use core::any::Any;
 // Use foundation Value type for compatibility with host functions
 use wrt_foundation::values::Value;

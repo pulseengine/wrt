@@ -50,6 +50,9 @@
 #![warn(missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
 // Re-export core WRT types for convenience
 pub use wrt_error::{Error, ErrorCategory, Result};
 pub use wrt_foundation::{resource::Resource, MemoryProvider};
