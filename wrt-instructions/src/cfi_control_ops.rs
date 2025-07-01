@@ -340,7 +340,7 @@ impl CfiLandingPad {
                 { 
                     let provider = safe_managed_alloc!(8192, CrateId::Instructions)?;
                     crate::types::CfiTargetTypeVec::new(provider)
-                        .map_err(|_| Error::memory_allocation_error("Failed to create CfiTargetTypeVec"))?
+                        .map_err(|_| Error::memory_error("Failed to create CfiTargetTypeVec"))?
                 }
             },
         })
@@ -763,9 +763,9 @@ impl CfiExecutionContext {
                 { Vec::new() }
                 #[cfg(not(feature = "std"))]
                 { 
-                    let provider = safe_managed_alloc!(8192, CrateId::Instructions)?;
+                    let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
                     crate::types::ShadowStackVec::new(provider)
-                        .map_err(|_| Error::memory_allocation_error("Failed to create ShadowStackVec"))?
+                        .map_err(|_| Error::memory_error("Failed to create ShadowStackVec"))?
                 }
             },
             landing_pad_expectations: {
@@ -773,9 +773,9 @@ impl CfiExecutionContext {
                 { Vec::new() }
                 #[cfg(not(feature = "std"))]
                 { 
-                    let provider = safe_managed_alloc!(8192, CrateId::Instructions)?;
-                    crate::types::LandingPadExpectationVec::new(provider)
-                        .map_err(|_| Error::memory_allocation_error("Failed to create LandingPadExpectationVec"))?
+                    let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
+                    crate::types::LandingPadExpectationVec::new(safe_managed_alloc!(8192, CrateId::Instructions)?)
+                        .map_err(|_| Error::memory_error("Failed to create LandingPadExpectationVec"))?
                 }
             },
             violation_count: 0,
@@ -791,7 +791,7 @@ impl CfiExecutionContext {
                 #[cfg(not(feature = "std"))]
                 { 
                     wrt_foundation::bounded::BoundedVec::new(provider1.clone())
-                        .map_err(|_| Error::memory_allocation_error("Failed to create valid_branch_targets BoundedVec"))?
+                        .map_err(|_| Error::memory_error("Failed to create valid_branch_targets BoundedVec"))?
                 }
             },
             max_types: 256,
@@ -801,7 +801,7 @@ impl CfiExecutionContext {
                 #[cfg(not(feature = "std"))]
                 { 
                     wrt_foundation::bounded::BoundedVec::new(provider2.clone())
-                        .map_err(|_| Error::memory_allocation_error("Failed to create type_signatures BoundedVec"))?
+                        .map_err(|_| Error::memory_error("Failed to create type_signatures BoundedVec"))?
                 }
             },
             max_shadow_stack_depth: 1024,
@@ -811,7 +811,7 @@ impl CfiExecutionContext {
                 #[cfg(not(feature = "std"))]
                 { 
                     wrt_foundation::bounded::BoundedVec::new(provider3.clone())
-                        .map_err(|_| Error::memory_allocation_error("Failed to create indirect_branch_targets BoundedVec"))?
+                        .map_err(|_| Error::memory_error("Failed to create indirect_branch_targets BoundedVec"))?
                 }
             },
         })
@@ -1092,9 +1092,9 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
                     { Vec::new() }
                     #[cfg(not(feature = "std"))]
                     { 
-                        let provider = safe_managed_alloc!(8192, CrateId::Instructions)?;
-                        crate::types::CfiRequirementVec::new(provider)
-                            .map_err(|_| Error::memory_allocation_error("Failed to create CfiRequirementVec"))?
+                        let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
+                        crate::types::CfiRequirementVec::new(safe_managed_alloc!(8192, CrateId::Instructions)?)
+                            .map_err(|_| Error::memory_error("Failed to create CfiRequirementVec"))?
                     }
                 },
             });
@@ -1143,11 +1143,11 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
                     { vec![table_idx] }
                     #[cfg(not(feature = "std"))]
                     {
-                        let provider = safe_managed_alloc!(8192, CrateId::Instructions)?;
+                        let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
                         let mut targets = CfiTargetVec::new(provider)
-                            .map_err(|_| Error::memory_allocation_error("Failed to create CfiTargetVec"))?;
+                            .map_err(|_| Error::memory_error("Failed to create CfiTargetVec"))?;
                         targets.push(table_idx)
-                            .map_err(|_| Error::memory_allocation_error("Failed to push to CfiTargetVec"))?;
+                            .map_err(|_| Error::memory_error("Failed to push to CfiTargetVec"))?;
                         targets
                     }
                 }, // Table entry validation
@@ -1158,8 +1158,8 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
         let validation_requirements = {
             // For no_std environments, create minimal validation
             use crate::types::CfiRequirementVec;
-            let provider = safe_managed_alloc!(8192, CrateId::Instructions)?;
-            let mut reqs = CfiRequirementVec::new(provider)
+            let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
+            let mut reqs = CfiRequirementVec::new(safe_managed_alloc!(8192, CrateId::Instructions)?)
                 .map_err(|_| Error::validation_error("Failed to create validation requirements"))?;
             reqs.push(CfiValidationRequirement::TypeSignatureCheck {
                 expected_type_index: type_idx,
@@ -1230,9 +1230,9 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
                     { Vec::new() }
                     #[cfg(not(feature = "std"))]
                     { 
-                        let provider = safe_managed_alloc!(8192, CrateId::Instructions)?;
-                        crate::types::CfiRequirementVec::new(provider)
-                            .map_err(|_| Error::memory_allocation_error("Failed to create CfiRequirementVec"))?
+                        let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
+                        crate::types::CfiRequirementVec::new(safe_managed_alloc!(8192, CrateId::Instructions)?)
+                            .map_err(|_| Error::memory_error("Failed to create CfiRequirementVec"))?
                     }
                 },
             });
@@ -1250,18 +1250,18 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
             }
             #[cfg(not(feature = "std"))]
             {
-                let provider1 = safe_managed_alloc!(8192, CrateId::Instructions)?;
-                let mut reqs = crate::types::CfiRequirementVec::new(provider1)
-                    .map_err(|_| Error::memory_allocation_error("Failed to create CfiRequirementVec"))?;
-                let provider2 = safe_managed_alloc!(8192, CrateId::Instructions)?;
-                let mut targets = crate::types::CfiTargetVec::new(provider2)
-                    .map_err(|_| Error::memory_allocation_error("Failed to create CfiTargetVec"))?;
+                let provider1 = safe_managed_alloc!(65536, CrateId::Instructions)?;
+                let mut reqs = crate::types::CfiRequirementVec::new(safe_managed_alloc!(8192, CrateId::Instructions)?)
+                    .map_err(|_| Error::memory_error("Failed to create CfiRequirementVec"))?;
+                let provider2 = safe_managed_alloc!(65536, CrateId::Instructions)?;
+                let mut targets = crate::types::CfiTargetVec::new(safe_managed_alloc!(8192, CrateId::Instructions)?)
+                    .map_err(|_| Error::memory_error("Failed to create CfiTargetVec"))?;
                 targets.push(target_offset)
-                    .map_err(|_| Error::memory_allocation_error("Failed to push to CfiTargetVec"))?;
+                    .map_err(|_| Error::memory_error("Failed to push to CfiTargetVec"))?;
                 reqs.push(CfiValidationRequirement::ControlFlowTargetCheck {
                     valid_targets: targets,
                 })
-                .map_err(|_| Error::memory_allocation_error("Failed to push to CfiRequirementVec"))?;
+                .map_err(|_| Error::memory_error("Failed to push to CfiRequirementVec"))?;
                 reqs
             }
         };
@@ -1405,7 +1405,7 @@ impl DefaultCfiControlFlowOps {
         
         // ASIL-B: Check if label is in valid targets
         if !context.valid_branch_targets.is_empty() {
-            if !context.valid_branch_targets.iter().any(|target| *target == label_idx) {
+            if !context.valid_branch_targets.iter().any(|target| target == label_idx) {
                 return Err(Error::validation_control_flow_error("Invalid branch target"));
             }
         }
@@ -1466,9 +1466,9 @@ impl DefaultCfiControlFlowOps {
                 { Vec::new() }
                 #[cfg(not(feature = "std"))]
                 { 
-                    let provider = safe_managed_alloc!(8192, CrateId::Instructions)?;
-                    crate::types::CfiExpectedValueVec::new(provider)
-                        .map_err(|_| Error::memory_allocation_error("Failed to create CfiExpectedValueVec"))?
+                    let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
+                    crate::types::CfiExpectedValueVec::new(safe_managed_alloc!(8192, CrateId::Instructions)?)
+                        .map_err(|_| Error::memory_error("Failed to create CfiExpectedValueVec"))?
                 }
             }, // Would be populated based on context
             validation_function,
@@ -1498,11 +1498,12 @@ impl DefaultCfiControlFlowOps {
                 { vec![CfiTargetType::IndirectCall] }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = safe_managed_alloc!(8192, CrateId::Instructions)?;
-                    let mut types = crate::types::CfiTargetTypeVec::new(provider)
-                        .map_err(|_| Error::memory_allocation_error("Failed to create CfiTargetTypeVec"))?;
+                    let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
+                    let provider_8k = safe_managed_alloc!(8192, CrateId::Instructions)?;
+                    let mut types = crate::types::CfiTargetTypeVec::new(provider_8k)
+                        .map_err(|_| Error::memory_error("Failed to create CfiTargetTypeVec"))?;
                     types.push(CfiTargetType::IndirectCall)
-                        .map_err(|_| Error::memory_allocation_error("Failed to push to CfiTargetTypeVec"))?;
+                        .map_err(|_| Error::memory_error("Failed to push to CfiTargetTypeVec"))?;
                     types
                 }
             },
@@ -1511,13 +1512,14 @@ impl DefaultCfiControlFlowOps {
                 { vec![CfiTargetType::DirectCall, CfiTargetType::IndirectCall] }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = safe_managed_alloc!(8192, CrateId::Instructions)?;
-                    let mut types = crate::types::CfiTargetTypeVec::new(provider)
-                        .map_err(|_| Error::memory_allocation_error("Failed to create CfiTargetTypeVec"))?;
+                    let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
+                    let provider_8k = safe_managed_alloc!(8192, CrateId::Instructions)?;
+                    let mut types = crate::types::CfiTargetTypeVec::new(provider_8k)
+                        .map_err(|_| Error::memory_error("Failed to create CfiTargetTypeVec"))?;
                     types.push(CfiTargetType::DirectCall)
-                        .map_err(|_| Error::memory_allocation_error("Failed to push to CfiTargetTypeVec"))?;
+                        .map_err(|_| Error::memory_error("Failed to push to CfiTargetTypeVec"))?;
                     types.push(CfiTargetType::IndirectCall)
-                        .map_err(|_| Error::memory_allocation_error("Failed to push to CfiTargetTypeVec"))?;
+                        .map_err(|_| Error::memory_error("Failed to push to CfiTargetTypeVec"))?;
                     types
                 }
             },
@@ -1526,11 +1528,12 @@ impl DefaultCfiControlFlowOps {
                 { vec![CfiTargetType::Branch] }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = safe_managed_alloc!(8192, CrateId::Instructions)?;
-                    let mut types = crate::types::CfiTargetTypeVec::new(provider)
-                        .map_err(|_| Error::memory_allocation_error("Failed to create CfiTargetTypeVec"))?;
+                    let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
+                    let provider_8k = safe_managed_alloc!(8192, CrateId::Instructions)?;
+                    let mut types = crate::types::CfiTargetTypeVec::new(provider_8k)
+                        .map_err(|_| Error::memory_error("Failed to create CfiTargetTypeVec"))?;
                     types.push(CfiTargetType::Branch)
-                        .map_err(|_| Error::memory_allocation_error("Failed to push to CfiTargetTypeVec"))?;
+                        .map_err(|_| Error::memory_error("Failed to push to CfiTargetTypeVec"))?;
                     types
                 }
             },
@@ -1539,11 +1542,12 @@ impl DefaultCfiControlFlowOps {
                 { vec![CfiTargetType::Branch] }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = safe_managed_alloc!(8192, CrateId::Instructions)?;
-                    let mut types = crate::types::CfiTargetTypeVec::new(provider)
-                        .map_err(|_| Error::memory_allocation_error("Failed to create CfiTargetTypeVec"))?;
+                    let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
+                    let provider_8k = safe_managed_alloc!(8192, CrateId::Instructions)?;
+                    let mut types = crate::types::CfiTargetTypeVec::new(provider_8k)
+                        .map_err(|_| Error::memory_error("Failed to create CfiTargetTypeVec"))?;
                     types.push(CfiTargetType::Branch)
-                        .map_err(|_| Error::memory_allocation_error("Failed to push to CfiTargetTypeVec"))?;
+                        .map_err(|_| Error::memory_error("Failed to push to CfiTargetTypeVec"))?;
                     types
                 }
             },
@@ -1552,13 +1556,14 @@ impl DefaultCfiControlFlowOps {
                 { vec![CfiTargetType::DirectCall, CfiTargetType::IndirectCall] }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = safe_managed_alloc!(8192, CrateId::Instructions)?;
-                    let mut types = crate::types::CfiTargetTypeVec::new(provider)
-                        .map_err(|_| Error::memory_allocation_error("Failed to create CfiTargetTypeVec"))?;
+                    let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
+                    let provider_8k = safe_managed_alloc!(8192, CrateId::Instructions)?;
+                    let mut types = crate::types::CfiTargetTypeVec::new(provider_8k)
+                        .map_err(|_| Error::memory_error("Failed to create CfiTargetTypeVec"))?;
                     types.push(CfiTargetType::DirectCall)
-                        .map_err(|_| Error::memory_allocation_error("Failed to push to CfiTargetTypeVec"))?;
+                        .map_err(|_| Error::memory_error("Failed to push to CfiTargetTypeVec"))?;
                     types.push(CfiTargetType::IndirectCall)
-                        .map_err(|_| Error::memory_allocation_error("Failed to push to CfiTargetTypeVec"))?;
+                        .map_err(|_| Error::memory_error("Failed to push to CfiTargetTypeVec"))?;
                     types
                 }
             }
@@ -1569,7 +1574,7 @@ impl DefaultCfiControlFlowOps {
                 { 
                     let provider = safe_managed_alloc!(8192, CrateId::Instructions)?;
                     crate::types::CfiTargetTypeVec::new(provider)
-                        .map_err(|_| Error::memory_allocation_error("Failed to create CfiTargetTypeVec"))?
+                        .map_err(|_| Error::memory_error("Failed to create CfiTargetTypeVec"))?
                 }
             },
         })
@@ -1590,10 +1595,13 @@ impl DefaultCfiControlFlowOps {
         
         // ASIL-B: Verify signature hash matches expected
         // In a real implementation, would compute hash from actual type
+        #[cfg(feature = "std")]
         let expected_hash = context.type_signatures.get(expected_type_index as usize)
-            .ok_or_else(|| Error::validation_value_type_error("Type signature not found"))?;
+            .ok_or(Error::validation_value_type_error("Type signature not found"))?;
+        #[cfg(not(feature = "std"))]
+        let expected_hash = context.type_signatures.get(expected_type_index as usize)?;
             
-        if *expected_hash != signature_hash {
+        if expected_hash != signature_hash {
             return Err(Error::security_runtime_error("Type signature mismatch - potential CFI violation"));
         }
         
@@ -1612,9 +1620,20 @@ impl DefaultCfiControlFlowOps {
         }
         
         // ASIL-B: Verify return address matches shadow stack
-        if let Some(expected_return) = context.shadow_stack.last() {
-            if expected_return.return_address != (context.current_function, context.current_instruction) {
-                return Err(Error::runtime_error("Return address mismatch - potential ROP attack"));
+        #[cfg(feature = "std")]
+        {
+            if let Some(expected_return) = context.shadow_stack.last() {
+                if expected_return.return_address != (context.current_function, context.current_instruction) {
+                    return Err(Error::runtime_error("Return address mismatch - potential ROP attack"));
+                }
+            }
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            if let Ok(Some(expected_return)) = context.shadow_stack.last() {
+                if expected_return.return_address != (context.current_function, context.current_instruction) {
+                    return Err(Error::runtime_error("Return address mismatch - potential ROP attack"));
+                }
             }
         }
         
@@ -1642,7 +1661,7 @@ impl DefaultCfiControlFlowOps {
         // ASIL-B: Additional check for indirect branches
         if context.metrics.indirect_branches_taken > 0 {
             // Verify target is marked as valid indirect branch target
-            if !context.indirect_branch_targets.iter().any(|target| target == &current_target) {
+            if !context.indirect_branch_targets.iter().any(|target| target == current_target) {
                 return Err(Error::security_runtime_error("Invalid indirect branch target"));
             }
         }

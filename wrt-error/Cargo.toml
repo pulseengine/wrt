@@ -58,6 +58,9 @@ safety-asil-c = ["asil-c"]
 safety-asil-d = ["asil-d"]
 optimize = []
 
+# KANI formal verification support
+kani = []
+
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }

@@ -104,6 +104,9 @@ use wrt_error::{codes, kinds, Error, ErrorCategory};
 pub mod prelude;
 pub mod safety_features;
 
+// Execution-related shared types
+pub mod execution;
+
 // Re-export common types from prelude
 pub use prelude::*;
 

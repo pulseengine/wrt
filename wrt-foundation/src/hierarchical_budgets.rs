@@ -266,12 +266,22 @@ impl HierarchicalStats {
 }
 
 /// Hierarchical memory guard that tracks sub-budget
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub struct HierarchicalGuard<const N: usize> {
     guard: crate::capabilities::CapabilityGuardedProvider<N>,
     sub_budget_idx: usize,
     budget: *const HierarchicalBudget<16>, // Max 16 sub-budgets
 }
 
+/// Hierarchical memory guard that tracks sub-budget (no_std version)
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub struct HierarchicalGuard<const N: usize> {
+    guard: crate::safe_memory::NoStdProvider<N>,
+    sub_budget_idx: usize,
+    budget: *const HierarchicalBudget<16>, // Max 16 sub-budgets
+}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl<const N: usize> HierarchicalGuard<N> {
     /// Create a new hierarchical guard
     pub fn new(
@@ -284,6 +294,23 @@ impl<const N: usize> HierarchicalGuard<N> {
 
     /// Get the underlying memory guard
     pub fn guard(&self) -> &crate::capabilities::CapabilityGuardedProvider<N> {
+        &self.guard
+    }
+}
+
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+impl<const N: usize> HierarchicalGuard<N> {
+    /// Create a new hierarchical guard
+    pub fn new(
+        guard: crate::safe_memory::NoStdProvider<N>,
+        sub_budget_idx: usize,
+        budget: *const HierarchicalBudget<16>,
+    ) -> Self {
+        Self { guard, sub_budget_idx, budget }
+    }
+
+    /// Get the underlying memory guard
+    pub fn guard(&self) -> &crate::safe_memory::NoStdProvider<N> {
         &self.guard
     }
 }

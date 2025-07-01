@@ -54,7 +54,8 @@ pub mod verified;
 // Re-export key types for convenience
 pub use context::{AnyMemoryCapability, MemoryCapabilityContext};
 pub use dynamic::DynamicMemoryCapability;
-// CapabilityGuardedProvider is still needed internally
+// CapabilityGuardedProvider is only available with std/alloc features
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub use factory::CapabilityGuardedProvider;
 pub use memory_factory::MemoryFactory;
 #[cfg(any(feature = "std", feature = "alloc"))]

@@ -13,8 +13,10 @@ use crate::{
 };
 
 use crate::{
-    capabilities::{MemoryCapabilityContext, CapabilityGuardedProvider},
+    capabilities::MemoryCapabilityContext,
 };
+#[cfg(any(feature = "std", feature = "alloc"))]
+use crate::capabilities::CapabilityGuardedProvider;
 
 /// Sealed trait to prevent external implementation
 mod sealed {

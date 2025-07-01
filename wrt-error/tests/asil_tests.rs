@@ -11,7 +11,12 @@ fn test_basic_error_creation() {
     assert_eq!(error.category, ErrorCategory::Memory);
 }
 
-#[cfg(any(feature = "asil-a", feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
+#[cfg(any(
+    feature = "asil-a",
+    feature = "asil-b",
+    feature = "asil-c",
+    feature = "asil-d"
+))]
 #[test]
 fn test_asil_level_detection() {
     let error = Error::safety_violation("Safety violation");
@@ -37,33 +42,31 @@ fn test_safe_state_requirements() {
     assert!(safety_error.requires_safe_state());
 
     // Memory errors require safe state
-    let memory_error = Error::runtime_execution_error(",
-    );
+    let memory_error = Error::runtime_execution_error("Memory allocation failed");
     assert!(memory_error.requires_safe_state());
 
     // Runtime trap errors require safe state
     let trap_error = Error::new(
         ErrorCategory::RuntimeTrap,
         codes::RUNTIME_TRAP_ERROR,
-        ");
+        "Runtime trap detected",
+    );
     assert!(trap_error.requires_safe_state());
 
     // Component errors do not require immediate safe state
-    let comp_error = Error::runtime_execution_error(",
-    );
+    let comp_error = Error::runtime_execution_error("Component runtime error");
     assert!(!comp_error.requires_safe_state());
 }
 
-#[cfg(feature = ")]
+#[cfg(feature = "std")]
 #[test]
 fn test_error_integrity_validation() {
     // Valid error
-    let valid_error = Error::runtime_execution_error(",
-    );
+    let valid_error = Error::runtime_execution_error("Valid runtime error");
     assert!(valid_error.validate_integrity());
 
     // Error with valid code for category
-    let type_error = Error::type_mismatch_error(");
+    let type_error = Error::type_mismatch_error("Type validation failed");
     assert!(type_error.validate_integrity());
 
     // Note: We can't easily test invalid errors in const fn context
@@ -92,9 +95,11 @@ fn test_safety_monitor() {
     assert_eq!(monitor.error_count(), 0);
 
     // Record some errors
-    let error1 = Error::runtime_execution_error(",
+    let error1 = Error::runtime_execution_error(
+        ",
     );
-    let error2 = Error::safety_violation(");
+    let error2 = Error::safety_violation(",
+    );
 
     monitor.record_error(&error1);
     monitor.record_error(&error2);
@@ -108,9 +113,11 @@ fn test_safety_monitor() {
 
 #[test]
 fn test_error_display_format() {
-    let error = Error::runtime_execution_error(",
+    let error = Error::runtime_execution_error(
+        ",
     );
-    let display = format!(");
+    let display = format!(",
+    );
 
     #[cfg(any(feature = "asil-c", feature = "asil-d"))]
     {
