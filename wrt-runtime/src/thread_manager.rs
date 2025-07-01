@@ -352,7 +352,7 @@ impl ThreadManager {
         // Store thread context using bounded map
         // Store thread context in array
         if thread_id as usize >= MAX_MANAGED_THREADS {
-            return Err(Error::runtime_execution_error("
+            return Err(Error::runtime_execution_error("Runtime execution error"
             ));
         }
         self.threads[thread_id as usize] = Some(context);
@@ -367,7 +367,7 @@ impl ThreadManager {
         let context = self.get_thread_context_mut(thread_id)?;
         
         if context.info.state != ThreadState::Ready {
-            return Err(Error::runtime_execution_error("));
+            return Err(Error::runtime_execution_error("Thread not in ready state"));
         }
         
         // Create thread spawn options
@@ -540,8 +540,7 @@ impl ThreadManager {
     fn get_thread_context(&self, thread_id: ThreadId) -> Result<&ThreadExecutionContext> {
         self.threads.get(thread_id as usize)
             .and_then(|opt| opt.as_ref())
-            .ok_or_else(|| Error::runtime_execution_error("
-            ))
+            .ok_or_else(|| Error::runtime_execution_error("Thread context not found"))
     }
     
     /// Get mutable reference to thread execution context
@@ -551,7 +550,7 @@ impl ThreadManager {
             .ok_or_else(|| Error::new(
                 ErrorCategory::Runtime, 
                 codes::INVALID_ARGUMENT, 
-                "))
+                "Invalid thread ID"))
     }
 }
 

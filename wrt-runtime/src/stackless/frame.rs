@@ -357,7 +357,7 @@ impl FrameBehavior for StacklessFrame {
         // For now, a placeholder.
         use wrt_foundation::types::Instruction;
         match instruction {
-            Instruction::Unreachable => Ok(ControlFlow::Trap(Error::runtime_execution_error(",
+            Instruction::Unreachable => Ok(ControlFlow::Trap(Error::runtime_execution_error("Unreachable instruction executed"
             ))),
             Instruction::Nop => Ok(ControlFlow::Next),
             Instruction::Block { block_type_idx } => {
@@ -371,7 +371,7 @@ impl FrameBehavior for StacklessFrame {
                     arity: 0, // Should be determined from block type
                 };
                 
-                #[cfg(feature = ")]
+                #[cfg(feature = "std")]
                 self.block_depths.push(block_context);
                 #[cfg(not(feature = "std"))]
                 {
@@ -686,11 +686,10 @@ impl FrameBehavior for StacklessFrame {
             // Local variable instructions
             Instruction::LocalGet(local_idx) => {
                 let value = self.locals.get(local_idx as usize).ok_or_else(|| {
-                    Error::runtime_execution_error(",
-                    )
+                    Error::runtime_execution_error("Invalid local variable index")
                 })?;
                 engine.exec_stack.values.push(value.clone()).map_err(|e| {
-                    Error::runtime_stack_overflow(")
+                    Error::runtime_stack_overflow("Stack overflow during local.get")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -702,16 +701,14 @@ impl FrameBehavior for StacklessFrame {
                 #[cfg(feature = "std")]
                 {
                     if local_idx as usize >= self.locals.len() {
-                        return Err(Error::runtime_execution_error(",
-                        ));
+                        return Err(Error::runtime_execution_error("Local variable index out of bounds"));
                     }
                     self.locals[local_idx as usize] = value;
                 }
-                #[cfg(not(feature = "))]
+                #[cfg(not(feature = "std"))]
                 {
                     self.locals.set(local_idx as usize, value).map_err(|e| {
-                        Error::runtime_execution_error(",
-                        )
+                        Error::runtime_execution_error("Failed to set local variable")
                     })?;
                 }
                 Ok(ControlFlow::Next)
@@ -724,19 +721,17 @@ impl FrameBehavior for StacklessFrame {
                     .get(engine.exec_stack.values.len() - 1).unwrap()
                     .clone();
                 // Handle both Vec and BoundedVec cases
-                #[cfg(feature = ")]
+                #[cfg(feature = "std")]
                 {
                     if local_idx as usize >= self.locals.len() {
-                        return Err(Error::runtime_execution_error(",
-                        ));
+                        return Err(Error::runtime_execution_error("Local variable index out of bounds"));
                     }
                     self.locals[local_idx as usize] = value;
                 }
-                #[cfg(not(feature = "))]
+                #[cfg(not(feature = "std"))]
                 {
                     self.locals.set(local_idx as usize, value).map_err(|e| {
-                        Error::runtime_execution_error(",
-                        )
+                        Error::runtime_execution_error("Failed to set local variable")
                     })?;
                 }
                 Ok(ControlFlow::Next)
@@ -746,7 +741,7 @@ impl FrameBehavior for StacklessFrame {
             Instruction::GlobalGet(global_idx) => {
                 let global = self.module_instance.global(global_idx)?;
                 engine.exec_stack.values.push(global.get_value().clone()).map_err(|e| {
-                    Error::runtime_stack_overflow(")
+                    Error::runtime_stack_overflow("Stack overflow on global.get")
                 })?;
                 Ok(ControlFlow::Next)
             }
@@ -3969,13 +3964,12 @@ impl FrameBehavior for StacklessFrame {
                 // use wrt_instructions::memory_ops::{MemoryFill, MemoryOperations};
                 // let fill_op = MemoryFill::new(mem_idx);
                 // fill_op.execute(&mut memory, &Value::I32(offset as i32), &Value::I32(value as i32), &Value::I32(size as i32))?;
-                return Err(Error::runtime_execution_error("
-                ))
+                return Err(Error::runtime_execution_error("Memory fill not implemented"))
             }
             
             Instruction::MemoryCopy(dst_mem_idx, src_mem_idx) => {
                 let size_val = engine.exec_stack.values.pop().map_err(|e| {
-                    Error::runtime_stack_underflow(")
+                    Error::runtime_stack_underflow("Stack underflow on memory.copy")
                 })?;
                 let size = match size_val {
                     Some(Value::I32(val)) => val as u32,
@@ -4005,13 +3999,12 @@ impl FrameBehavior for StacklessFrame {
                 // use wrt_instructions::memory_ops::{MemoryCopy, MemoryOperations};
                 // let copy_op = MemoryCopy::new(dst_mem_idx, src_mem_idx);
                 // copy_op.execute(&mut memory, &Value::I32(dest as i32), &Value::I32(src as i32), &Value::I32(size as i32))?;
-                return Err(Error::runtime_execution_error("
-                ))
+                return Err(Error::runtime_execution_error("Memory copy not implemented"))
             }
             
             Instruction::DataDrop(data_seg_idx) => {
                 // Data segments are typically handled at module instantiation time
-                // DataDrop marks a data segment as ");
+                // DataDrop marks a data segment as dropped
                 if data_seg_idx >= module.data.len() as u32 {
                     return Err(Error::validation_error("Stack operation error"));
                 }
@@ -5326,14 +5319,14 @@ impl FrameBehavior for StacklessFrame {
             Instruction::I64AtomicRmw32CmpxchgU { .. } => {
                 // MVP: Treat as regular memory operations
                 // In a real implementation, these would use atomic primitives
-                return Err(Error::runtime_execution_error(",
+                return Err(Error::runtime_execution_error("Atomic operations not supported in MVP",
                 ));
             }
             _ => {
                 return Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::UNSUPPORTED_OPERATION,
-                    "));
+                    "Unsupported instruction"))
             }
         }
     }
@@ -5349,12 +5342,12 @@ impl StacklessFrame {
     ) -> Result<()> {
         let module = self.module_instance.module();
         let segment = module.elements.get(elem_idx as usize).map_err(|_| {
-            Error::runtime_execution_error(",
+            Error::runtime_execution_error("Invalid element segment index",
             )
         })?;
 
         let len_val = engine.exec_stack.values.pop().map_err(|e| {
-            Error::runtime_stack_underflow(")
+            Error::runtime_stack_underflow("Failed to pop length value from stack")
         })?;
         let src_offset_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::runtime_stack_underflow("Stack operation error")
@@ -5537,7 +5530,7 @@ impl StacklessFrame {
         let memory = self.module_instance.memory(mem_idx)?;
         let data_segment =
             self.module_instance.module().data.get(data_idx as usize).map_err(|_| {
-                    Error::runtime_execution_error(",
+                    Error::runtime_execution_error("Invalid data segment index",
                     )
                 },
             )?;
@@ -5551,7 +5544,7 @@ impl StacklessFrame {
                 }
             })
         {
-            return Err(Error::memory_error("));
+            return Err(Error::memory_error("Memory bounds check failed for memory.init"));
         }
         if n == 0 {
             return Ok(());
@@ -5721,8 +5714,7 @@ impl StacklessFrame {
         
         // Update execution statistics
         // engine.stats.simd_operations_executed += 1;
-        return Err(Error::runtime_execution_error("
-        ))
+        return Err(Error::runtime_execution_error("SIMD operations not implemented"))
     }
 
     /// Check if an instruction is a SIMD operation (when SIMD instructions are added to main enum)
@@ -5778,7 +5770,7 @@ impl Validatable for StacklessFrame {
         // - self.locals should match arity + declared locals of self.func_type
         // - self.block_depths should be consistent (e.g. not deeper than allowed)
         if self.pc > self.function_body()?.body.len() {
-            return Err(Error::runtime_out_of_bounds("));
+            return Err(Error::runtime_out_of_bounds("Program counter exceeds function body length"));
         }
         // More checks can be added here.
         Ok(())

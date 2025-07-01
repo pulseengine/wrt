@@ -133,8 +133,7 @@ where
 {
     pub fn new_default() -> Result<Self> {
         let memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
-            .map_err(|_e| Error::runtime_execution_error("
-            ))?;
+            .map_err(|_e| Error::runtime_execution_error("Failed to create memory adapter"))?;
         
         Ok(Self {
             id: ComponentId::default(),
@@ -169,7 +168,7 @@ where
     fn default() -> Self {
         Self::new_default().unwrap_or_else(|e| {
             // Log the error if logging is available
-            #[cfg(feature = ")]
+            #[cfg(feature = "std")]
             eprintln!("Error creating default component instance: {}. Creating minimal fallback instance.", e);
             
             // Create a minimal instance with reduced memory requirements
@@ -327,14 +326,13 @@ where
                 self.state = ComponentExecutionState::Ready;
                 Ok(())
             }
-            _ => Err(Error::runtime_execution_error(",
-            ))
+            _ => Err(Error::runtime_execution_error("Cannot transition to ready state from current state"))
         }
     }
     
     /// Add an export to this component
     pub fn add_export(&mut self, name: RuntimeString, extern_type: ExternType<Provider>) -> Result<()> {
-        self.exports.insert(name, extern_type).map(|_| ()).map_err(|e| Error::runtime_error("))
+        self.exports.insert(name, extern_type).map(|_| ()).map_err(|e| Error::runtime_error("Failed to add export"))
     }
     
     /// Add an import requirement to this component

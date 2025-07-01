@@ -95,13 +95,13 @@ impl ModuleInstance {
 
         let memory = memories
             .get(idx as usize)
-            .map_err(|_| Error::runtime_execution_error("))?;
+            .map_err(|_| Error::runtime_execution_error("Memory index out of bounds"))?;
         Ok(memory.clone())
     }
 
     /// Get a table from this instance
     pub fn table(&self, idx: u32) -> Result<TableWrapper> {
-        #[cfg(feature = ")]
+        #[cfg(feature = "std")]
         let tables = self
             .tables
             .lock()

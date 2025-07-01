@@ -341,8 +341,7 @@ impl StacklessEngine {
             )?;
             
             if *fuel < cost {
-                return Err(Error::runtime_execution_error(",
-                ));
+                return Err(Error::runtime_execution_error("Fuel exhausted"));
             }
             
             *fuel -= cost;
@@ -424,7 +423,7 @@ impl StacklessEngine {
     fn get_memory_safe(&self, memory_idx: u32) -> Result<MemoryWrapper> {
         // ASIL-B: Validate module instance exists
         let module_instance = self.current_module.as_ref()
-            .ok_or_else(|| Error::runtime_error("))?;
+            .ok_or_else(|| Error::runtime_error("No module instance"))?;
         
         // ASIL-B: Bounds check memory index
         if memory_idx > 0 {
@@ -2938,7 +2937,7 @@ impl StacklessEngine {
                         let value = i32::from_le_bytes(bytes);
                         self.exec_stack.values.push(Value::I32(value))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance"));
+                        return Err(Error::runtime_error("No module instance "));
                     }
                     Ok(())
                 }
@@ -2972,7 +2971,7 @@ impl StacklessEngine {
                         let bytes = value_i32.to_le_bytes();
                         memory.write(effective_addr, &bytes)?;
                     } else {
-                        return Err(Error::runtime_error("No module instance"));
+                        return Err(Error::runtime_error("No module instance "));
                     }
                     Ok(())
                 }
@@ -2994,7 +2993,7 @@ impl StacklessEngine {
                         let value = i64::from_le_bytes(bytes);
                         self.exec_stack.values.push(Value::I64(value))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance"));
+                        return Err(Error::runtime_error("No module instance "));
                     }
                     Ok(())
                 }
@@ -3021,7 +3020,7 @@ impl StacklessEngine {
                         let bytes = value_i64.to_le_bytes();
                         memory.write(effective_addr, &bytes)?;
                     } else {
-                        return Err(Error::runtime_error("No module instance"));
+                        return Err(Error::runtime_error("No module instance "));
                     }
                     Ok(())
                 }
@@ -3031,7 +3030,7 @@ impl StacklessEngine {
                         let size = memory.size(); // Returns size in pages
                         self.exec_stack.values.push(Value::I32(size as i32))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance"));
+                        return Err(Error::runtime_error("No module instance "));
                     }
                     Ok(())
                 }
@@ -3049,7 +3048,7 @@ impl StacklessEngine {
                         let prev_size = memory.grow(delta_u32)?;
                         self.exec_stack.values.push(Value::I32(prev_size as i32))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance"));
+                        return Err(Error::runtime_error("No module instance "));
                     }
                     Ok(())
                 }
@@ -3124,7 +3123,7 @@ impl StacklessEngine {
                             return Err(Error::runtime_function_not_found("Function not found"));
                         }
                     } else {
-                        return Err(Error::runtime_error("No module instance"));
+                        return Err(Error::runtime_error("No module instance "));
                     }
                     Ok(())
                 }
@@ -3148,20 +3147,20 @@ impl StacklessEngine {
                         let actual_func_idx = match func_ref {
                             Some(Value::FuncRef(Some(func_ref))) => func_ref.index,
                             Some(Value::FuncRef(None)) => return Err(Error::runtime_null_reference("Null function reference")),
-                            None => return Err(Error::runtime_null_reference("Table entry is empty")),
+                            None => return Err(Error::runtime_null_reference("Table entry is empty ")),
                             _ => return Err(Error::type_error("Expected function reference")),
                         };
                         
                         // Validate function type matches expected type
                         let module = module_instance.module();
                         let expected_type = module.get_function_type(type_idx).ok_or_else(|| {
-                            Error::type_error("Expected function type not found")
+                            Error::type_error("Expected function type not found ")
                         })?;
                         let actual_func = module.get_function(actual_func_idx).ok_or_else(|| {
                             Error::runtime_function_not_found("Function not found")
                         })?;
                         let actual_type = module.get_function_type(actual_func.type_idx).ok_or_else(|| {
-                            Error::type_error("Actual function type not found")
+                            Error::type_error("Actual function type not found ")
                         })?;
                         
                         if expected_type != actual_type {
@@ -3236,7 +3235,7 @@ impl StacklessEngine {
                             return Err(Error::runtime_function_not_found("Function not found in indirect call"));
                         }
                     } else {
-                        return Err(Error::runtime_error("No module instance"));
+                        return Err(Error::runtime_error("No module instance "));
                     }
                     Ok(())
                 }
@@ -3506,7 +3505,7 @@ impl StacklessEngine {
                             return Err(Error::runtime_null_reference("Table entry is null"));
                         }
                     } else {
-                        return Err(Error::runtime_error("No module instance"));
+                        return Err(Error::runtime_error("No module instance "));
                     }
                     Ok(())
                 }
@@ -3528,7 +3527,7 @@ impl StacklessEngine {
                         let table = module_instance.table(table_idx)?;
                         table.set(index_u32, Some(value))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance"));
+                        return Err(Error::runtime_error("No module instance "));
                     }
                     Ok(())
                 }
@@ -3538,7 +3537,7 @@ impl StacklessEngine {
                         let size = table.size();
                         self.exec_stack.values.push(Value::I32(size as i32))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance"));
+                        return Err(Error::runtime_error("No module instance "));
                     }
                     Ok(())
                 }
@@ -3560,7 +3559,7 @@ impl StacklessEngine {
                         let prev_size = table.grow(delta_u32, init_value)?;
                         self.exec_stack.values.push(Value::I32(prev_size as i32))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance"));
+                        return Err(Error::runtime_error("No module instance "));
                     }
                     Ok(())
                 }
@@ -3583,7 +3582,7 @@ impl StacklessEngine {
                         let value = bytes[0] as i8 as i32; // Sign extend
                         self.exec_stack.values.push(Value::I32(value))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance"));
+                        return Err(Error::runtime_error("No module instance "));
                     }
                     Ok(())
                 }
@@ -3604,7 +3603,7 @@ impl StacklessEngine {
                         let value = bytes[0] as i32; // Zero extend
                         self.exec_stack.values.push(Value::I32(value))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance"));
+                        return Err(Error::runtime_error("No module instance "));
                     }
                     Ok(())
                 }
@@ -3625,7 +3624,7 @@ impl StacklessEngine {
                         let value = i16::from_le_bytes(bytes) as i32; // Sign extend
                         self.exec_stack.values.push(Value::I32(value))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance"));
+                        return Err(Error::runtime_error("No module instance "));
                     }
                     Ok(())
                 }
@@ -3646,7 +3645,7 @@ impl StacklessEngine {
                         let value = u16::from_le_bytes(bytes) as i32; // Zero extend
                         self.exec_stack.values.push(Value::I32(value))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance"));
+                        return Err(Error::runtime_error("No module instance "));
                     }
                     Ok(())
                 }
@@ -3806,7 +3805,7 @@ impl VariableContext for StacklessEngine {
             let global = module_instance.global(index)?;
             global.get()
         } else {
-            Err(Error::runtime_error("No module instance"))
+            Err(Error::runtime_error("No module instance "))
         }
     }
 
@@ -3815,7 +3814,7 @@ impl VariableContext for StacklessEngine {
             let global = module_instance.global(index)?;
             global.set(value)
         } else {
-            Err(Error::runtime_error("No module instance"))
+            Err(Error::runtime_error("No module instance "))
         }
     }
 
@@ -4084,7 +4083,7 @@ impl ControlContext for StacklessEngine {
                 return Err(Error::runtime_function_not_found("Function index out of bounds for tail call"));
             }
         } else {
-            return Err(Error::runtime_error("No module instance"));
+            return Err(Error::runtime_error("No module instance "));
         }
         
         self.call_function(func_idx)
@@ -4138,13 +4137,13 @@ impl ControlContext for StacklessEngine {
         if let Some(module_instance) = &self.current_module {
             // Check table exists
             if (table_idx as usize) >= module_instance.module().tables.len() {
-                return Err(Error::runtime_execution_error("
+                return Err(Error::runtime_execution_error("Runtime execution error"
                 ));
             }
             
             // Check type exists
             if (type_idx as usize) >= module_instance.module().types.len() {
-                return Err(Error::runtime_type_mismatch("));
+                return Err(Error::runtime_type_mismatch("Type index out of bounds"));
             }
             
             // Get table and validate function reference
@@ -4154,30 +4153,30 @@ impl ControlContext for StacklessEngine {
             // Extract function index from reference
             let actual_func_idx = match func_ref {
                 Some(Value::FuncRef(Some(func_ref))) => func_ref.index,
-                Some(Value::FuncRef(None)) => return Err(Error::runtime_null_reference("Null function reference in table")),
-                None => return Err(Error::runtime_null_reference("Table entry is empty")),
-                _ => return Err(Error::type_error("Expected function reference in table")),
+                Some(Value::FuncRef(None)) => return Err(Error::runtime_null_reference("Null function reference in table ")),
+                None => return Err(Error::runtime_null_reference("Table entry is empty ")),
+                _ => return Err(Error::type_error("Expected function reference in table ")),
             };
             
             // Validate function type matches expected
             let module = module_instance.module();
             let expected_type = module.get_function_type(type_idx as u32).ok_or_else(|| {
-                Error::type_error("Expected function type not found")
+                Error::type_error("Expected function type not found ")
             })?;
             let actual_func = module.get_function(actual_func_idx).ok_or_else(|| {
-                Error::runtime_function_not_found("Function not found in indirect tail call")
+                Error::runtime_function_not_found("Function not found in indirect tail call ")
             })?;
             let actual_type = module.get_function_type(actual_func.type_idx).ok_or_else(|| {
-                Error::type_error("Actual function type not found")
+                Error::type_error("Actual function type not found ")
             })?;
             
             if expected_type != actual_type {
-                return Err(Error::type_error("Function type mismatch in indirect tail call"));
+                return Err(Error::type_error("Function type mismatch in indirect tail call "));
             }
             
             self.call_function(actual_func_idx)
         } else {
-            Err(Error::runtime_error("No module instance"))
+            Err(Error::runtime_error("No module instance "))
         }
     }
 
@@ -4227,7 +4226,7 @@ impl FunctionOperations for StacklessEngine {
                 Err(_) => Ok(0), // Default type for invalid functions
             }
         } else {
-            Err(Error::runtime_error("No current module available for function lookup"))
+            Err(Error::runtime_error("No current module available for function lookup "))
         }
     }
 
@@ -4239,7 +4238,7 @@ impl FunctionOperations for StacklessEngine {
             // This would need to be implemented properly with table support
             Ok(table_idx * 1000 + elem_idx)
         } else {
-            Err(Error::runtime_error("No current module available for table lookup"))
+            Err(Error::runtime_error("No current module available for table lookup "))
         }
     }
 
@@ -4249,7 +4248,7 @@ impl FunctionOperations for StacklessEngine {
         if actual_type == expected_type {
             Ok(())
         } else {
-            Err(Error::type_error("Function signature mismatch"))
+            Err(Error::type_error("Function signature mismatch "))
         }
     }
 
@@ -4323,7 +4322,7 @@ impl wrt_foundation::traits::FromBytes for Label {
             2 => LabelKind::If,
             3 => LabelKind::Function,
             _ => {
-                return Err(wrt_error::Error::validation_error("Invalid label kind"));
+                return Err(wrt_error::Error::validation_error("Invalid label "));
             }
         };
         Ok(Label { kind, arity, pc })

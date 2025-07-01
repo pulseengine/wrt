@@ -37,7 +37,7 @@ extern crate alloc;
 pub use prelude::*;
 
 // Test module for clean architecture migration
-pub mod clean_runtime_test;
+pub mod clean_runtime_tests;
 
 // Core modules
 #[cfg(any(feature = "std", feature = "alloc"))]

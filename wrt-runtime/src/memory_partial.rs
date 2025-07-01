@@ -153,8 +153,7 @@ const SIZE_TOO_LARGE: u16 = 4003;
 /// 
 /// Ok(usize) if conversion is safe, error otherwise
 fn wasm_offset_to_usize(offset: u32) -> Result<usize> {
-    usize::try_from(offset).map_err(|_| Error::runtime_execution_error("
-    ))
+    usize::try_from(offset).map_err(|_| Error::runtime_execution_error("Runtime execution error"
 }
 
 /// Safe conversion from Rust usize to WebAssembly u32

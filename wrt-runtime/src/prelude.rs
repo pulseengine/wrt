@@ -485,8 +485,7 @@ impl wrt_foundation::traits::FromBytes for Instruction {
                 let func_idx = u32::from_le_bytes(func_bytes);
                 Ok(Instruction::Call(func_idx))
             }
-            _ => Err(wrt_error::Error::runtime_execution_error("
-            ))
+            _ => Err(wrt_error::Error::runtime_execution_error("Unsupported instruction discriminant"))
         }
     }
 }
@@ -494,7 +493,7 @@ impl wrt_foundation::traits::FromBytes for Instruction {
 pub use wrt_intercept::prelude::LinkInterceptor as InterceptorRegistry;
 pub use wrt_intercept::prelude::LinkInterceptorStrategy as InterceptStrategy;
 // Binary std/no_std choice
-#[cfg(not(feature = "))]
+#[cfg(not(feature = "std"))]
 pub use wrt_sync::{
     WrtMutex as Mutex, WrtMutexGuard as MutexGuard, WrtRwLock as RwLock,
     WrtRwLockReadGuard as RwLockReadGuard, WrtRwLockWriteGuard as RwLockWriteGuard,

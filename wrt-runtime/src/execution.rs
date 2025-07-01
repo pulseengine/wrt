@@ -108,8 +108,7 @@ impl ExecutionStats {
         self.gas_used = self.gas_used.saturating_add(amount);
 
         if self.is_gas_exceeded() {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Gas limit exceeded"));
         }
 
         Ok(())
@@ -165,7 +164,7 @@ impl ExecutionContext {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::CALL_STACK_EXHAUSTED,
-"));
+                "Function call depth exceeded maximum limit"));
         }
 
         self.stats.increment_function_calls(1);

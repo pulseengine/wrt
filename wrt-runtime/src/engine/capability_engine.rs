@@ -21,10 +21,8 @@ use wrt_foundation::{
 use wrt_host::{
     CallbackRegistry, HostBuilder, BoundedHostIntegrationManager, HostIntegrationLimits,
 };
-use wrt_component::{
-    async_::fuel_async_executor::{ASILExecutionConfig, ASILExecutionMode},
-    resource_limits_loader::extract_resource_limits_from_binary,
-};
+// Import execution configuration from wrt-foundation where it belongs
+use wrt_foundation::execution::{ASILExecutionConfig, ASILExecutionMode, extract_resource_limits_from_binary};
 
 #[cfg(feature = "std")]
 use std::sync::Arc;

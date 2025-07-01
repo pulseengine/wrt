@@ -716,8 +716,7 @@ impl Module {
             let mut runtime_locals = PlatformBoundedVec::<WrtLocalEntry, 64>::new(PlatformProvider::default())?;
             for local in &code_entry.locals {
                 if runtime_locals.push(local).is_err() {
-                    return Err(Error::runtime_execution_error(",
-                    ));
+                    return Err(Error::runtime_execution_error("Runtime execution error: locals capacity exceeded"));
                 }
             }
             
@@ -755,7 +754,7 @@ impl Module {
                 ValueType::FuncRef => Value::FuncRef(None),
                 ValueType::ExternRef => Value::ExternRef(None),
                 ValueType::V128 => {
-                    return Err(Error::not_supported_unsupported_operation("))
+                    return Err(Error::not_supported_unsupported_operation("V128 globals not supported"))
                 }
                 ValueType::I16x8 => {
                     return Err(Error::not_supported_unsupported_operation("I16x8 globals not supported"))
@@ -849,8 +848,7 @@ impl Module {
     /// Gets a global by index
     pub fn get_global(&self, idx: usize) -> Result<GlobalWrapper> {
         self.globals.get(idx).map_err(|_| {
-            Error::runtime_execution_error(",
-            )
+            Error::runtime_execution_error("Global index out of bounds")
         })
     }
 
@@ -860,22 +858,21 @@ impl Module {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::MEMORY_NOT_FOUND,
-                ")
+                "Memory index out of bounds")
         })
     }
 
     /// Gets a table by index
     pub fn get_table(&self, idx: usize) -> Result<TableWrapper> {
         self.tables.get(idx).map_err(|_| {
-            Error::runtime_execution_error(",
-            )
+            Error::runtime_execution_error("Table index out of bounds")
         })
     }
 
     /// Adds a function export
     pub fn add_function_export(&mut self, name: String, index: u32) -> Result<()> {
         let export = Export::new(name.clone(), ExportKind::Function, index)?;
-        #[cfg(feature = ")]
+        #[cfg(feature = "std")]
         {
             let bounded_name = PlatformBoundedString::from_str_truncate(
                 name.as_str(),
@@ -1889,8 +1886,7 @@ impl TableWrapper {
     pub fn set(&self, idx: u32, value: Option<WrtValue>) -> Result<()> {
         // Note: This requires unsafe because we can't get mutable access to Arc<Table>
         // For now, we'll return an error
-        Err(Error::runtime_execution_error(",
-        ))
+        Err(Error::runtime_execution_error("Runtime execution error: Cannot set table value through Arc<Table>"))
     }
     
     /// Grow table (requires mutable access)
@@ -1900,15 +1896,14 @@ impl TableWrapper {
         Err(Error::new(
             ErrorCategory::Runtime,
             crate::codes::TABLE_ACCESS_DENIED,
-            "))
+            "Cannot grow table through Arc<Table>"))
     }
     
     /// Initialize table (requires mutable access)
     pub fn init(&self, offset: u32, init_data: &[Option<WrtValue>]) -> Result<()> {
         // Note: This requires unsafe because we can't get mutable access to Arc<Table>
         // For now, we'll return an error
-        Err(Error::runtime_execution_error(",
-        ))
+        Err(Error::runtime_execution_error("Runtime execution error: Cannot initialize table through Arc<Table>"))
     }
 }
 
@@ -1998,15 +1993,14 @@ impl MemoryWrapper {
         Err(Error::new(
             ErrorCategory::Runtime,
             crate::codes::MEMORY_ACCESS_DENIED,
-            "))
+            "Cannot write to memory through Arc<Memory>"))
     }
     
     /// Grow memory (requires mutable access)
     pub fn grow(&self, pages: u32) -> Result<u32> {
         // Note: This requires unsafe because we can't get mutable access to Arc<Memory>
         // For now, we'll return an error
-        Err(Error::runtime_execution_error(",
-        ))
+        Err(Error::runtime_execution_error("Runtime execution error: Cannot grow memory through Arc<Memory>"))
     }
     
     /// Fill memory (requires mutable access)
@@ -2016,7 +2010,7 @@ impl MemoryWrapper {
         Err(Error::new(
             ErrorCategory::Runtime,
             crate::codes::MEMORY_ACCESS_DENIED,
-            "))
+            "Cannot fill memory through Arc<Memory>"))
     }
     
     /// Get a memory guard for atomic operations
@@ -2059,8 +2053,7 @@ impl GlobalWrapper {
     pub fn set(&self, value: WrtValue) -> Result<()> {
         // Since Global is behind Arc, we can't mutate it directly
         // This is a design limitation - for now return an error
-        Err(crate::Error::runtime_execution_error("
-        ))
+        Err(crate::Error::runtime_execution_error("Runtime execution error: Cannot set global value through Arc<Global>"))
     }
     
     /// Unwrap to get the Arc<Global>
@@ -2080,7 +2073,7 @@ impl GlobalWrapper {
         Err(Error::new(
             ErrorCategory::Runtime,
             crate::codes::GLOBAL_ACCESS_DENIED,
-            "))
+            "Cannot set global value through Arc<Global>"))
     }
     
     /// Get global value type
@@ -2140,8 +2133,7 @@ impl FromBytes for TableWrapper {
         };
         
         let table = Table::new(table_type).map_err(|_| {
-            wrt_error::Error::runtime_execution_error("
-            )
+            wrt_error::Error::runtime_execution_error("Runtime execution error: Failed to create table from bytes")
         })?;
         
         Ok(TableWrapper::new(table))
@@ -2193,7 +2185,7 @@ impl FromBytes for MemoryWrapper {
         let memory = Memory::new(to_core_memory_type(memory_type)).map_err(|_| {
             wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
                 wrt_foundation::codes::INVALID_VALUE,
-                ")
+                "Failed to create memory from bytes")
         })?;
         
         Ok(MemoryWrapper::new(memory))

@@ -8,7 +8,7 @@ use wrt_foundation::{
     capabilities::MemoryCapabilityContext,
     Result,
 };
-use wrt_component::async_::fuel_async_executor::{ASILExecutionConfig, ASILExecutionMode};
+use wrt_foundation::execution::{ASILExecutionConfig, ASILExecutionMode, extract_resource_limits_from_binary};
 
 /// Builder for creating capability-aware WebAssembly engines
 #[derive(Debug)]
@@ -85,7 +85,7 @@ impl EngineBuilder {
 
     /// Create an engine from a WebAssembly binary with embedded resource limits
     pub fn from_binary(binary: &[u8]) -> Result<Self> {
-        use wrt_component::resource_limits_loader::extract_resource_limits_from_binary;
+        // Function is now imported at the top
 
         // Try to extract resource limits from the binary
         // Start with ASIL-D for maximum compatibility, then work down

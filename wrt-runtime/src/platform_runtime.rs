@@ -118,14 +118,13 @@ impl PlatformAwareRuntime {
     pub fn new() -> Result<Self> {
         let mut discoverer = PlatformLimitDiscoverer::new();
         let limits = discoverer.discover().map_err(|e| {
-            Error::runtime_execution_error(",
-            )
+            Error::runtime_execution_error("Platform limit discovery failed")
         })?;
         Self::new_with_limits(limits)
     }
     
     /// Create new platform-aware runtime for no_std environments
-    #[cfg(not(feature = "))]
+    #[cfg(not(feature = "std"))]
     pub fn new() -> Result<Self> {
         let cfi_protection = Self::create_basic_cfi_protection();
         let execution_engine = CfiExecutionEngine::new(cfi_protection);
@@ -228,15 +227,14 @@ impl PlatformAwareRuntime {
             let requirements = self.analyze_component_requirements(component_bytes)?;
             
             if requirements.memory_usage > self.available_memory() {
-                return Err(Error::runtime_execution_error(",
-                ));
+                return Err(Error::runtime_execution_error("Insufficient memory for component"));
             }
             
             if self.metrics.components_instantiated >= self.platform_limits.max_components as u32 {
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     wrt_error::codes::RESOURCE_LIMIT_EXCEEDED,
-                    "));
+                    "Maximum component limit exceeded"));
             }
         }
         
@@ -244,15 +242,14 @@ impl PlatformAwareRuntime {
         {
             // For no_std, use basic validation
             if component_bytes.len() > 1024 * 1024 { // 1MB limit
-                return Err(Error::runtime_execution_error(",
-                ));
+                return Err(Error::runtime_execution_error("Component size exceeds limit"));
             }
             
             if self.metrics.components_instantiated >= 16 { // Fixed limit for no_std
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     wrt_error::codes::RESOURCE_LIMIT_EXCEEDED,
-                    "));
+                    "Component instantiation limit exceeded"));
             }
         }
         
@@ -350,7 +347,7 @@ impl PlatformAwareRuntime {
                 impl PageAllocator for BasicAllocator {
                     fn allocate(&mut self, initial_pages: u32, maximum_pages: Option<u32>) -> Result<(NonNull<u8>, usize)> {
                         if initial_pages > self.max_pages {
-                            return Err(Error::runtime_execution_error("
+                            return Err(Error::runtime_execution_error("Runtime execution error"
                             ));
                         }
                         // Return a dummy pointer for basic functionality
@@ -363,7 +360,7 @@ impl PlatformAwareRuntime {
                             return Err(Error::new(
                                 ErrorCategory::Memory,
                                 wrt_error::codes::MEMORY_ALLOCATION_ERROR,
-                                "));
+                                "Memory growth would exceed limit"));
                         }
                         Ok(())
                     }
@@ -407,16 +404,15 @@ impl PlatformAwareRuntime {
         // Check stack depth estimate
         let estimated_stack = (args.len() + 32) * 8; // Rough estimate
         if estimated_stack > self.platform_limits.max_stack_bytes {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Stack size exceeds platform limit"));
         }
         
         // Check memory availability
         if self.available_memory() < 4096 {
             return Err(Error::new(
                 ErrorCategory::Resource,
-                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
-                "));
+                codes::MEMORY_ALLOCATION_ERROR,
+                "Insufficient memory available"));
         }
         
         Ok(())
@@ -479,22 +475,20 @@ impl PlatformAwareRuntime {
             use wrt_foundation::bounded::BoundedVec;
             use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
             let provider = safe_managed_alloc!(1024, CrateId::Runtime)?;
-            let mut result: BoundedVec<Value, 16, _> = BoundedVec::new(provider).map_err(|_| Error::runtime_execution_error(",
-            ))?;
+            let mut result: BoundedVec<Value, 16, _> = BoundedVec::new(provider).map_err(|_| Error::runtime_execution_error("Failed to create bounded vector"))?;
             result.push(Value::I32(0)).map_err(|_| Error::new(
                 ErrorCategory::Memory,
                 wrt_error::codes::MEMORY_ALLOCATION_ERROR,
-                "))?;
+                "Failed to push value to result"))?;
             // Convert to Vec for compatibility - this is a temporary workaround
-            Err(Error::runtime_execution_error(",
-            ))
+            Err(Error::runtime_execution_error("Not implemented for no_std"))
         }
     }
     
     /// Get current timestamp for performance tracking
     fn get_timestamp(&self) -> u64 {
         // Platform-specific timestamp implementation
-        #[cfg(feature = ")]
+        #[cfg(feature = "std")]
         {
             use std::time::{SystemTime, UNIX_EPOCH};
             SystemTime::now()

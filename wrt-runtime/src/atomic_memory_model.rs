@@ -94,8 +94,7 @@ impl AtomicMemoryModel {
                 self.model_stats.store_operations += 1;
                 // Store operations need the value from operands
                 if operands.is_empty() {
-                    return Err(Error::runtime_execution_error("
-                    ));
+                    return Err(Error::runtime_execution_error("Store operation requires value operand"));
                 }
                 self.execute_store_with_value(thread_id, operation.clone(), operands[0])
             },
@@ -105,15 +104,14 @@ impl AtomicMemoryModel {
                     return Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::RUNTIME_INVALID_ARGUMENT_ERROR,
-                        "));
+                        "RMW operation requires value operand"));
                 }
                 self.execute_rmw_with_value(thread_id, operation.clone(), operands[0])
             },
             AtomicOp::Cmpxchg(_) => {
                 self.model_stats.cmpxchg_operations += 1;
                 if operands.len() < 2 {
-                    return Err(Error::runtime_execution_error("
-                    ));
+                    return Err(Error::runtime_execution_error("Compare-exchange operation requires two operands"));
                 }
                 self.execute_cmpxchg_with_values(thread_id, operation.clone(), operands[0], operands[1])
             },
@@ -128,7 +126,7 @@ impl AtomicMemoryModel {
         };
         
         // Record operation timing
-        #[cfg(feature = ")]
+        #[cfg(feature = "std")]
         {
             let duration = start_time.elapsed();
             self.model_stats.total_execution_time += duration.as_nanos() as u64;

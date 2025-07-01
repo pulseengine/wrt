@@ -43,8 +43,7 @@ const INDEX_TOO_LARGE: u16 = 4005;
 /// 
 /// Ok(usize) if conversion is safe, error otherwise
 fn wasm_index_to_usize(index: u32) -> Result<usize> {
-    usize::try_from(index).map_err(|_| Error::runtime_execution_error("
-    ))
+    usize::try_from(index).map_err(|_| Error::runtime_execution_error("Index conversion failed"))
 }
 
 /// Safe conversion from Rust usize to WebAssembly u32
@@ -60,7 +59,7 @@ fn usize_to_wasm_u32(size: usize) -> Result<u32> {
     u32::try_from(size).map_err(|_| Error::new(
         ErrorCategory::Runtime, 
         INDEX_TOO_LARGE, 
-        "))
+        "Size too large for WebAssembly u32"))
 }
 
 /// A WebAssembly table is a vector of opaque values of a single type.
@@ -342,7 +341,7 @@ impl Table {
 
         let old_size = self.size();
         let new_size = old_size.checked_add(delta).ok_or_else(|| {
-            Error::runtime_execution_error(")
+            Error::runtime_execution_error("Table size overflow")
         })?;
 
         if let Some(max) = self.ty.limits.max {
@@ -352,7 +351,7 @@ impl Table {
                 return Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::CAPACITY_EXCEEDED,
-                    "));
+                    "Table size exceeds maximum limit"));
             }
         }
 
@@ -384,8 +383,7 @@ impl Table {
     /// isn't a funcref
     pub fn set_func(&mut self, idx: u32, func_idx: u32) -> Result<()> {
         if !matches!(self.ty.element_type, WrtRefType::Funcref) {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Table element type must be funcref"));
         }
         self.set(idx, Some(WrtValue::FuncRef(Some(WrtFuncRef { index: func_idx }))))
     }
@@ -406,7 +404,7 @@ impl Table {
     /// Returns an error if the operation fails
     pub fn init(&mut self, offset: u32, init_data: &[Option<WrtValue>]) -> Result<()> {
         if offset as usize + init_data.len() > self.elements.len() {
-            return Err(Error::runtime_out_of_bounds("));
+            return Err(Error::runtime_out_of_bounds("Table initialization out of bounds"));
         }
         for (i, val_opt) in init_data.iter().enumerate() {
             if let Some(val) = val_opt {

@@ -240,7 +240,7 @@ impl HostFunctionFactory for DefaultHostFunctionFactory {
     }
 }
 
-#[cfg(feature = ")]
+#[cfg(feature = "std")]
 type HostFunctionMap = HashMap<String, Box<dyn ComponentHostFunction>>;
 #[cfg(feature = "std")]
 type HostFactoryVec = Vec<Box<dyn HostFunctionFactory>>;
@@ -386,7 +386,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
             + Send
             + Sync,
     {
-        #[cfg(feature = ")]
+        #[cfg(feature = "std")]
         {
             // Create a legacy host function implementation
             let func_impl = LegacyHostFunctionImpl {
@@ -493,7 +493,7 @@ impl ComponentInstance for ComponentInstanceImpl {
         }
 
         // Check if this is a function that's known to the runtime
-        #[cfg(feature = ")]
+        #[cfg(feature = "std")]
         let name_check = self.host_function_names.contains(&name.to_string());
         #[cfg(not(feature = "std"))]
         let name_check = self.host_function_names.contains(&alloc::string::String::from(name));
@@ -565,7 +565,6 @@ impl ComponentInstance for ComponentInstanceImpl {
                 } else {
                     return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,
                         1002,
-                        "));
                 }
             }
             _ => {
@@ -591,7 +590,6 @@ impl ComponentInstance for ComponentInstanceImpl {
             if name.is_empty() {
                 return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
                     1003,
-                    "));
             }
 
             // Check that offset and size are valid
@@ -613,7 +611,6 @@ impl ComponentInstance for ComponentInstanceImpl {
             if name.is_empty() {
                 return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
                     1003,
-                    "));
             }
 
             // Check that offset and size are valid

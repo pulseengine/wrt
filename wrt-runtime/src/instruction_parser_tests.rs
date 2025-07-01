@@ -17,8 +17,7 @@ mod tests {
     impl InstructionContext for MockContext {
         fn read_u8(&mut self) -> Result<u8, crate::prelude::Error> {
             if self.position >= self.bytecode.len() {
-                return Err(crate::prelude::Error::runtime_execution_error("
-                ));
+                return Err(crate::prelude::Error::runtime_execution_error("Unexpected end of bytecode"));
             }
             let byte = self.bytecode[self.position];
             self.position += 1;
@@ -41,7 +40,7 @@ mod tests {
                     return Err(crate::prelude::Error::new(
                         crate::prelude::ErrorCategory::Parse,
                         crate::prelude::codes::PARSE_ERROR,
-                        "));
+                        "LEB128 integer too large"));
                 }
             }
             

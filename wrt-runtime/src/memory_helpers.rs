@@ -378,8 +378,7 @@ impl ArcMemoryExt for Arc<Memory> {
             wrt_foundation::types::ValueType::F32 => self.read_f32(addr).map(|f| Value::F32(wrt_foundation::values::FloatBits32::from_float(f))),
             wrt_foundation::types::ValueType::F64 => self.read_f64(addr).map(|f| Value::F64(wrt_foundation::values::FloatBits64::from_float(f))),
             // V128 doesn't exist in ValueType enum, so we'll handle it separately
-            _ => Err(wrt_error::Error::runtime_execution_error(",
-            )),
+            _ => Err(wrt_error::Error::runtime_execution_error("Unsupported value type")),
         }
     }
 
@@ -393,7 +392,7 @@ impl ArcMemoryExt for Arc<Memory> {
             Value::V128(v) => self.write_v128(addr, v.bytes),
             _ => Err(wrt_error::Error::new(wrt_error::ErrorCategory::Type,
                 wrt_error::errors::codes::TYPE_MISMATCH_ERROR,
-                ")),
+                "Unsupported value type for memory write")),
         }
     }
 
@@ -401,8 +400,7 @@ impl ArcMemoryExt for Arc<Memory> {
         // Create a safe slice of the source data for verification
         let src_data = if src < data.len() {
             let end = src.checked_add(size).ok_or_else(|| {
-                wrt_error::Error::runtime_execution_error(",
-                )
+                wrt_error::Error::runtime_execution_error("Source bounds overflow")
             })?;
 
             if end <= data.len() {
@@ -410,21 +408,20 @@ impl ArcMemoryExt for Arc<Memory> {
             } else {
                 return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
                     wrt_error::errors::codes::MEMORY_OUT_OF_BOUNDS,
-                    "));
+                    "End bounds overflow"));
             }
         } else if size == 0 {
             // Zero-sized init is always valid
             &[]
         } else {
-            return Err(wrt_error::Error::runtime_execution_error(",
-            ));
+            return Err(wrt_error::Error::runtime_execution_error("Invalid source offset"));
         };
 
         // Convert dst to u32 and write the data directly
         let dst_u32 = u32::try_from(dst).map_err(|_| {
             wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
                 wrt_error::errors::codes::MEMORY_OUT_OF_BOUNDS,
-                ")
+                "Destination offset conversion failed")
         })?;
         
         self.write_all(dst_u32, src_data)
@@ -469,8 +466,7 @@ impl ArcMemoryExt for Arc<Memory> {
             wrt_foundation::types::ValueType::F32 => 4,
             wrt_foundation::types::ValueType::F64 => 8,
             _ => {
-                return Err(wrt_error::Error::runtime_execution_error(",
-                ))
+                return Err(wrt_error::Error::runtime_execution_error("Unsupported value type"))
             }
         };
 
@@ -479,7 +475,7 @@ impl ArcMemoryExt for Arc<Memory> {
             let offset = addr.checked_add((i * value_size) as u32).ok_or_else(|| {
                 wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
                     wrt_error::errors::codes::MEMORY_OUT_OF_BOUNDS,
-                    ")
+                    "Address overflow in read_values")
             })?;
 
             let value = self.read_value(offset, value_type)?;
@@ -521,8 +517,7 @@ impl ArcMemoryExt for Arc<Memory> {
         #[cfg(not(feature = "std"))]
         {
             // For no_std, Arc<Memory> cannot provide mutable access without interior mutability
-            Err(Error::runtime_execution_error(",
-            ))
+            Err(Error::runtime_execution_error("Arc<Memory> mutable access not available in no_std"))
         }
     }
 
@@ -533,7 +528,7 @@ impl ArcMemoryExt for Arc<Memory> {
         Err(Error::new(
             ErrorCategory::Runtime,
             codes::UNSUPPORTED_OPERATION,
-            "))
+            "Memory growth not supported for Arc<Memory>"))
     }
 }
 

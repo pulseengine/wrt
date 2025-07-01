@@ -176,8 +176,7 @@ const SIZE_TOO_LARGE: u16 = 4003;
 /// 
 /// Ok(usize) if conversion is safe, error otherwise
 fn wasm_offset_to_usize(offset: u32) -> Result<usize> {
-    usize::try_from(offset).map_err(|_| Error::runtime_execution_error("
-    ))
+    usize::try_from(offset).map_err(|_| Error::runtime_execution_error("Offset conversion failed"))
 }
 
 /// Safe conversion from Rust usize to WebAssembly u32
@@ -193,7 +192,7 @@ fn usize_to_wasm_u32(size: usize) -> Result<u32> {
     u32::try_from(size).map_err(|_| Error::new(
         ErrorCategory::Memory, 
         SIZE_TOO_LARGE, 
-        "))
+        "Size too large for u32"))
 }
 
 /// Memory metrics for tracking usage and safety
@@ -803,14 +802,13 @@ impl Memory {
         // Check that growing wouldn't exceed max pages
         let current_pages_val = self.current_pages.load(Ordering::Relaxed);
         let new_page_count = current_pages_val.checked_add(pages).ok_or_else(|| {
-            Error::runtime_execution_error(",
-            )
+            Error::runtime_execution_error("Memory operation failed")
         })?;
 
         // Check against the maximum allowed by type
         if let Some(max) = self.ty.limits.max {
             if new_page_count > max {
-                return Err(Error::resource_limit_exceeded("));
+                return Err(Error::resource_limit_exceeded("Memory limit exceeded"));
             }
         }
 
@@ -880,14 +878,13 @@ impl Memory {
         // Check that growing wouldn't exceed max pages
         let current_pages_val = self.current_pages.load(Ordering::Relaxed);
         let new_page_count = current_pages_val.checked_add(pages).ok_or_else(|| {
-            Error::runtime_execution_error(",
-            )
+            Error::runtime_execution_error("Memory operation failed")
         })?;
 
         // Check against the maximum allowed by type
         if let Some(max) = self.ty.limits.max {
             if new_page_count > max {
-                return Err(Error::resource_limit_exceeded("));
+                return Err(Error::resource_limit_exceeded("Memory limit exceeded"));
             }
         }
 
@@ -2162,8 +2159,7 @@ impl Memory {
         // ownership and checksumming of the byte buffer.
         // A redesign of this function or SafeMemoryHandler would be needed
         // for direct mutable slice access.
-        Err(Error::runtime_execution_error(",
-        ))
+        Err(Error::runtime_execution_error("Memory bounds check failed"))
     }
 
     /// Grow memory by a number of pages.
@@ -2175,7 +2171,7 @@ impl Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_GROW_ERROR,
-                "));
+                "Memory grow exceeds maximum pages"));
         }
 
         let new_byte_size = wasm_offset_to_usize(new_size_pages)? * PAGE_SIZE;
@@ -2379,8 +2375,7 @@ impl MemoryOperations for Memory {
         for i in 0..len_usize {
             let byte = self.get_byte(offset + i as u32)?;
             result.push(byte).map_err(|_| {
-                Error::runtime_execution_error(",
-                )
+                Error::runtime_execution_error("Memory access failed")
             })?;
         }
         
@@ -2425,7 +2420,7 @@ impl MemoryOperations for Memory {
         
         // Bounds checks
         let src_end = src_usize.checked_add(size_usize).ok_or_else(|| {
-            Error::memory_out_of_bounds(")
+            Error::memory_out_of_bounds("Source bounds overflow")
         })?;
         
         let dest_end = dest_usize.checked_add(size_usize).ok_or_else(|| {
@@ -2455,8 +2450,7 @@ impl MemoryOperations for Memory {
             // For no_std, copy byte by byte
             // This is less efficient but works in constrained environments
             if size_usize > 4096 {
-                return Err(Error::runtime_execution_error(",
-                ));
+                return Err(Error::runtime_execution_error("Memory operation error"));
             }
             
             for i in 0..size_usize {
@@ -2467,7 +2461,7 @@ impl MemoryOperations for Memory {
         }
         
         // Write to destination
-        #[cfg(feature = ")]
+        // Copy to destination
         self.write(dest, &temp_data)?;
         
         Ok(())

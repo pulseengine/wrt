@@ -143,14 +143,13 @@ impl ComponentInstantiation {
             is_validated: false,
         };
         
-        self.args.push(arg).map_err(|_| Error::runtime_execution_error("
-        ))
+        self.args.push(arg).map_err(|_| Error::runtime_execution_error("Argument capacity exceeded"))
     }
     
     /// Start instantiation process
     pub fn start_instantiation(&mut self) -> Result<()> {
         if self.runtime_state.is_started {
-            return Err(Error::invalid_state_error("));
+            return Err(Error::invalid_state_error("Instantiation already started"));
         }
         
         self.runtime_state.is_started = true;
@@ -160,7 +159,7 @@ impl ComponentInstantiation {
     /// Complete instantiation process
     pub fn complete_instantiation(&mut self) -> Result<()> {
         if !self.runtime_state.is_started {
-            return Err(Error::runtime_execution_error("));
+            return Err(Error::runtime_execution_error("Instantiation not started"));
         }
         
         self.runtime_state.is_complete = true;
@@ -189,14 +188,13 @@ impl CoreModuleInstantiation {
         self.args.push(arg).map_err(|_| Error::new(
             ErrorCategory::Memory,
             codes::CAPACITY_EXCEEDED,
-            "))
+            "Argument capacity exceeded"))
     }
     
     /// Start core instantiation process
     pub fn start_core_instantiation(&mut self) -> Result<()> {
         if self.runtime_state.is_started {
-            return Err(Error::runtime_execution_error("
-            ));
+            return Err(Error::runtime_execution_error("Core instantiation already started"));
         }
         
         self.runtime_state.is_started = true;
@@ -209,7 +207,7 @@ impl CoreModuleInstantiation {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_STATE,
-                "));
+                "Core instantiation not started"));
         }
         
         self.runtime_state.is_complete = true;

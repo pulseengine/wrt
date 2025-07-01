@@ -109,7 +109,7 @@ impl wrt_foundation::traits::FromBytes for ExportedItem {
             4 => Ok(ExportedItem::Function(value)),
             5 => Ok(ExportedItem::Value(value)),
             6 => Ok(ExportedItem::Instance(value)),
-            _ => Err(wrt_error::Error::runtime_execution_error("
+            _ => Err(wrt_error::Error::runtime_execution_error("Runtime execution error"
             )),
         }
     }
@@ -179,14 +179,13 @@ impl From<LinkingError> for Error {
             LinkingError::ImportNotFound { module, name } => Error::new(
                 ErrorCategory::Component,
                 codes::COMPONENT_LINKING_ERROR,
-                "),
+                "Import not found"),
             LinkingError::TypeMismatch { expected, actual } => Error::type_error("Type mismatch during linking"),
-            LinkingError::CircularDependency => Error::runtime_execution_error(",
-            ),
+            LinkingError::CircularDependency => Error::runtime_execution_error("Circular dependency detected"),
             LinkingError::InstanceNotFound(idx) => Error::new(
                 ErrorCategory::Component,
                 codes::COMPONENT_LINKING_ERROR,
-                "),
+                "Instance not found"),
         }
     }
 }
@@ -287,8 +286,7 @@ impl CoreModuleInstantiator {
             CoreInstanceExpr::ModuleReference { module_idx, arg_refs } => {
                 // Validate module index
                 if *module_idx as usize >= available_modules.len() {
-                    return Err(Error::runtime_execution_error(",
-                    ));
+                    return Err(Error::runtime_execution_error("Module index out of bounds"));
                 }
                 
                 // Create instance
@@ -320,7 +318,7 @@ impl CoreModuleInstantiator {
                             return Err(Error::new(
                                 ErrorCategory::Component,
                                 codes::COMPONENT_LINKING_ERROR,
-                                "));
+                                "Unsupported export sort"));
                         }
                     };
                     export_map.insert(export.name.clone(), item);
