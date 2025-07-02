@@ -656,34 +656,36 @@ pub struct InterceptionResult {
     /// Whether the data has been modified
     pub modified: bool,
     /// Modifications to apply to the serialized data
+    #[cfg(feature = "std")]
     pub modifications: Vec<Modification>,
-}
-
-/// Result of an interception operation (`no_std` version)
-#[cfg(not(feature = "std"))]
-#[derive(Debug, Clone)]
-pub struct InterceptionResult {
-    /// Whether the data has been modified
-    pub modified: bool,
+    #[cfg(not(feature = "std"))]
+    pub modifications: wrt_foundation::bounded::BoundedVec<Modification, 32, wrt_foundation::CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<8192>>>,
 }
 
 /// Modification to apply to serialized data
-#[cfg(feature = "std")]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Modification {
+    /// No modification (default)
+    None,
     /// Replace data at an offset
     Replace {
         /// Byte offset where the replacement starts
         offset: usize,
         /// New data to insert at the offset
+        #[cfg(feature = "std")]
         data: Vec<u8>,
+        #[cfg(not(feature = "std"))]
+        data: wrt_foundation::bounded::BoundedVec<u8, 256, wrt_foundation::CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<4096>>>,
     },
     /// Insert data at an offset
     Insert {
         /// Byte offset where to insert data
         offset: usize,
         /// Data to insert at the offset
+        #[cfg(feature = "std")]
         data: Vec<u8>,
+        #[cfg(not(feature = "std"))]
+        data: wrt_foundation::bounded::BoundedVec<u8, 256, wrt_foundation::CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<4096>>>,
     },
     /// Remove data at an offset with a given length
     Remove {
@@ -694,12 +696,176 @@ pub enum Modification {
     },
 }
 
-/// Modification to apply to serialized data (`no_std` version)
-#[cfg(not(feature = "std"))]
-#[derive(Debug, Clone)]
-pub enum Modification {
-    /// No modifications in `no_std`
-    None,
+impl Default for Modification {
+    fn default() -> Self {
+        Modification::None
+    }
+}
+
+// Implement required traits for BoundedVec compatibility
+impl wrt_foundation::traits::Checksummable for Modification {
+    fn calculate_checksum(&self) -> wrt_foundation::traits::Checksum {
+        use wrt_foundation::traits::Checksum;
+        
+        match self {
+            Modification::None => Checksum(0),
+            Modification::Replace { offset, data } => {
+                let mut checksum = *offset as u64;
+                #[cfg(feature = "std")]
+                for byte in data.iter() {
+                    checksum = checksum.wrapping_add(*byte as u64);
+                }
+                #[cfg(not(feature = "std"))]
+                for i in 0..data.len() {
+                    checksum = checksum.wrapping_add(data.get(i).unwrap_or(&0) as &u64);
+                }
+                Checksum(checksum)
+            },
+            Modification::Insert { offset, data } => {
+                let mut checksum = (*offset as u64).wrapping_mul(2);
+                #[cfg(feature = "std")]
+                for byte in data.iter() {
+                    checksum = checksum.wrapping_add(*byte as u64);
+                }
+                #[cfg(not(feature = "std"))]
+                for i in 0..data.len() {
+                    checksum = checksum.wrapping_add(*data.get(i).unwrap_or(&0) as u64);
+                }
+                Checksum(checksum)
+            },
+            Modification::Remove { offset, length } => {
+                Checksum((*offset as u64).wrapping_mul(*length as u64))
+            },
+        }
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for Modification {
+    fn to_bytes(&self) -> wrt_foundation::Result<wrt_foundation::Vec<u8>> {
+        use wrt_foundation::Vec;
+        
+        let mut bytes = Vec::new();
+        
+        match self {
+            Modification::None => {
+                bytes.push(0u8); // Tag for None
+            },
+            Modification::Replace { offset, data } => {
+                bytes.push(1u8); // Tag for Replace
+                bytes.extend_from_slice(&offset.to_le_bytes());
+                bytes.extend_from_slice(&(data.len() as u32).to_le_bytes());
+                #[cfg(feature = "std")]
+                bytes.extend_from_slice(data);
+                #[cfg(not(feature = "std"))]
+                for i in 0..data.len() {
+                    bytes.push(*data.get(i).unwrap_or(&0));
+                }
+            },
+            Modification::Insert { offset, data } => {
+                bytes.push(2u8); // Tag for Insert
+                bytes.extend_from_slice(&offset.to_le_bytes());
+                bytes.extend_from_slice(&(data.len() as u32).to_le_bytes());
+                #[cfg(feature = "std")]
+                bytes.extend_from_slice(data);
+                #[cfg(not(feature = "std"))]
+                for i in 0..data.len() {
+                    bytes.push(*data.get(i).unwrap_or(&0));
+                }
+            },
+            Modification::Remove { offset, length } => {
+                bytes.push(3u8); // Tag for Remove
+                bytes.extend_from_slice(&offset.to_le_bytes());
+                bytes.extend_from_slice(&length.to_le_bytes());
+            },
+        }
+        
+        Ok(bytes)
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for Modification {
+    fn from_bytes(bytes: &[u8]) -> wrt_foundation::Result<Self> {
+        use wrt_error::Error;
+        
+        if bytes.is_empty() {
+            return Err(Error::parse_error("Empty bytes for Modification"));
+        }
+        
+        match bytes[0] {
+            0 => Ok(Modification::None),
+            1 => {
+                // Replace variant
+                if bytes.len() < 13 { // 1 (tag) + 8 (offset) + 4 (length)
+                    return Err(Error::parse_error("Invalid Replace modification"));
+                }
+                let offset = usize::from_le_bytes(bytes[1..9].try_into().unwrap());
+                let data_len = u32::from_le_bytes(bytes[9..13].try_into().unwrap()) as usize;
+                
+                if bytes.len() < 13 + data_len {
+                    return Err(Error::parse_error("Invalid Replace data length"));
+                }
+                
+                #[cfg(feature = "std")]
+                let data = bytes[13..13 + data_len].to_vec();
+                #[cfg(not(feature = "std"))]
+                let data = {
+                    use wrt_foundation::{bounded::BoundedVec, safe_managed_alloc, budget_aware_provider::CrateId};
+                    let provider = safe_managed_alloc!(4096, CrateId::Intercept)
+                        .map_err(|_| Error::memory_error("Failed to allocate for modification data"))?;
+                    let mut bounded_data = BoundedVec::new(provider)
+                        .map_err(|_| Error::memory_error("Failed to create bounded vec"))?;
+                    for &byte in &bytes[13..13 + data_len] {
+                        bounded_data.push(byte)
+                            .map_err(|_| Error::memory_error("Failed to push to bounded vec"))?;
+                    }
+                    bounded_data
+                };
+                
+                Ok(Modification::Replace { offset, data })
+            },
+            2 => {
+                // Insert variant
+                if bytes.len() < 13 {
+                    return Err(Error::parse_error("Invalid Insert modification"));
+                }
+                let offset = usize::from_le_bytes(bytes[1..9].try_into().unwrap());
+                let data_len = u32::from_le_bytes(bytes[9..13].try_into().unwrap()) as usize;
+                
+                if bytes.len() < 13 + data_len {
+                    return Err(Error::parse_error("Invalid Insert data length"));
+                }
+                
+                #[cfg(feature = "std")]
+                let data = bytes[13..13 + data_len].to_vec();
+                #[cfg(not(feature = "std"))]
+                let data = {
+                    use wrt_foundation::{bounded::BoundedVec, safe_managed_alloc, budget_aware_provider::CrateId};
+                    let provider = safe_managed_alloc!(4096, CrateId::Intercept)
+                        .map_err(|_| Error::memory_error("Failed to allocate for modification data"))?;
+                    let mut bounded_data = BoundedVec::new(provider)
+                        .map_err(|_| Error::memory_error("Failed to create bounded vec"))?;
+                    for &byte in &bytes[13..13 + data_len] {
+                        bounded_data.push(byte)
+                            .map_err(|_| Error::memory_error("Failed to push to bounded vec"))?;
+                    }
+                    bounded_data
+                };
+                
+                Ok(Modification::Insert { offset, data })
+            },
+            3 => {
+                // Remove variant
+                if bytes.len() < 17 { // 1 (tag) + 8 (offset) + 8 (length)
+                    return Err(Error::parse_error("Invalid Remove modification"));
+                }
+                let offset = usize::from_le_bytes(bytes[1..9].try_into().unwrap());
+                let length = usize::from_le_bytes(bytes[9..17].try_into().unwrap());
+                
+                Ok(Modification::Remove { offset, length })
+            },
+            _ => Err(Error::parse_error("Unknown Modification variant")),
+        }
+    }
 }
 
 #[cfg(feature = "std")]
