@@ -21,7 +21,8 @@ use std::vec::Vec;
 
 use wrt_error::Error;
 
-use crate::memory::{MemoryProvider, NoStdProvider, NoStdProviderBuilder, VerificationLevel};
+use crate::memory::{MemoryProvider, NoStdProvider, VerificationLevel};
+use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
 type WrtResult<T> = Result<T, Error>;
 
 /// A checksum implementation for data verification.
@@ -122,8 +123,20 @@ impl MacOSOptimizedProvider {
     /// Create a new macOS-optimized provider with the specified size and
     /// verification level.
     pub fn new(size: usize, verification_level: VerificationLevel) -> Self {
+        // Note: Platform-specific optimizations require dynamic sizing,
+        // which is not supported by the compile-time sized safe_managed_alloc! macro.
+        // This is acceptable for platform-level code that provides the foundation
+        // for higher-level safety abstractions.
+        #[allow(deprecated)]
+        let inner = {
+            let mut provider = NoStdProvider::new();
+            provider.resize(size).expect("Failed to resize provider");
+            provider.set_verification_level(verification_level);
+            provider
+        };
+        
         Self {
-            inner: NoStdProviderBuilder::new().with_size(size).with_verification_level(verification_level).build(),
+            inner,
             features: MacOSFeatures::default(),
         }
     }
@@ -134,7 +147,16 @@ impl MacOSOptimizedProvider {
         verification_level: VerificationLevel,
         features: MacOSFeatures,
     ) -> Self {
-        Self { inner: NoStdProviderBuilder::new().with_size(size).with_verification_level(verification_level).build(), features }
+        // Note: Platform-specific optimizations require dynamic sizing
+        #[allow(deprecated)]
+        let inner = {
+            let mut provider = NoStdProvider::new();
+            provider.resize(size).expect("Failed to resize provider");
+            provider.set_verification_level(verification_level);
+            provider
+        };
+        
+        Self { inner, features }
     }
 }
 
