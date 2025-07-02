@@ -658,8 +658,9 @@ pub struct InterceptionResult {
     /// Modifications to apply to the serialized data
     #[cfg(feature = "std")]
     pub modifications: Vec<Modification>,
+    /// Modifications to apply to the serialized data
     #[cfg(not(feature = "std"))]
-    pub modifications: wrt_foundation::bounded::BoundedVec<Modification, 32, wrt_foundation::CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<8192>>>,
+    pub modifications: wrt_foundation::bounded::BoundedVec<Modification, 32, wrt_foundation::safe_memory::NoStdProvider<8192>>,
 }
 
 /// Modification to apply to serialized data
@@ -674,8 +675,9 @@ pub enum Modification {
         /// New data to insert at the offset
         #[cfg(feature = "std")]
         data: Vec<u8>,
+        /// New data to insert at the offset
         #[cfg(not(feature = "std"))]
-        data: wrt_foundation::bounded::BoundedVec<u8, 256, wrt_foundation::CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<4096>>>,
+        data: wrt_foundation::bounded::BoundedVec<u8, 256, wrt_foundation::safe_memory::NoStdProvider<4096>>,
     },
     /// Insert data at an offset
     Insert {
@@ -684,8 +686,9 @@ pub enum Modification {
         /// Data to insert at the offset
         #[cfg(feature = "std")]
         data: Vec<u8>,
+        /// New data to insert at the offset
         #[cfg(not(feature = "std"))]
-        data: wrt_foundation::bounded::BoundedVec<u8, 256, wrt_foundation::CapabilityAwareProvider<wrt_foundation::safe_memory::NoStdProvider<4096>>>,
+        data: wrt_foundation::bounded::BoundedVec<u8, 256, wrt_foundation::safe_memory::NoStdProvider<4096>>,
     },
     /// Remove data at an offset with a given length
     Remove {
@@ -704,109 +707,129 @@ impl Default for Modification {
 
 // Implement required traits for BoundedVec compatibility
 impl wrt_foundation::traits::Checksummable for Modification {
-    fn calculate_checksum(&self) -> wrt_foundation::traits::Checksum {
-        use wrt_foundation::traits::Checksum;
-        
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         match self {
-            Modification::None => Checksum(0),
+            Modification::None => {
+                checksum.update_slice(&[0u8]);
+            },
             Modification::Replace { offset, data } => {
-                let mut checksum = *offset as u64;
+                checksum.update_slice(&offset.to_le_bytes());
+                checksum.update_slice(&[1u8]); // tag for Replace variant
                 #[cfg(feature = "std")]
-                for byte in data.iter() {
-                    checksum = checksum.wrapping_add(*byte as u64);
-                }
+                checksum.update_slice(data);
                 #[cfg(not(feature = "std"))]
                 for i in 0..data.len() {
-                    checksum = checksum.wrapping_add(data.get(i).unwrap_or(&0) as &u64);
+                    if let Ok(byte) = data.get(i) {
+                        checksum.update_slice(&[byte]);
+                    }
                 }
-                Checksum(checksum)
             },
             Modification::Insert { offset, data } => {
-                let mut checksum = (*offset as u64).wrapping_mul(2);
+                checksum.update_slice(&offset.to_le_bytes());
+                checksum.update_slice(&[2u8]); // tag for Insert variant
                 #[cfg(feature = "std")]
-                for byte in data.iter() {
-                    checksum = checksum.wrapping_add(*byte as u64);
-                }
+                checksum.update_slice(data);
                 #[cfg(not(feature = "std"))]
                 for i in 0..data.len() {
-                    checksum = checksum.wrapping_add(*data.get(i).unwrap_or(&0) as u64);
+                    if let Ok(byte) = data.get(i) {
+                        checksum.update_slice(&[byte]);
+                    }
                 }
-                Checksum(checksum)
             },
             Modification::Remove { offset, length } => {
-                Checksum((*offset as u64).wrapping_mul(*length as u64))
+                checksum.update_slice(&offset.to_le_bytes());
+                checksum.update_slice(&length.to_le_bytes());
+                checksum.update_slice(&[3u8]); // tag for Remove variant
             },
         }
     }
 }
 
 impl wrt_foundation::traits::ToBytes for Modification {
-    fn to_bytes(&self) -> wrt_foundation::Result<wrt_foundation::Vec<u8>> {
-        use wrt_foundation::Vec;
-        
-        let mut bytes = Vec::new();
-        
+    fn serialized_size(&self) -> usize {
+        match self {
+            Modification::None => 1, // Just the tag
+            Modification::Replace { data, .. } => {
+                1 + 8 + 4 + data.len() // tag + offset + length + data
+            },
+            Modification::Insert { data, .. } => {
+                1 + 8 + 4 + data.len() // tag + offset + length + data
+            },
+            Modification::Remove { .. } => {
+                1 + 8 + 8 // tag + offset + length
+            },
+        }
+    }
+
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
         match self {
             Modification::None => {
-                bytes.push(0u8); // Tag for None
+                writer.write_u8(0)?; // Tag for None
             },
             Modification::Replace { offset, data } => {
-                bytes.push(1u8); // Tag for Replace
-                bytes.extend_from_slice(&offset.to_le_bytes());
-                bytes.extend_from_slice(&(data.len() as u32).to_le_bytes());
+                writer.write_u8(1)?; // Tag for Replace
+                writer.write_usize_le(*offset)?;
+                writer.write_u32_le(data.len() as u32)?;
                 #[cfg(feature = "std")]
-                bytes.extend_from_slice(data);
+                writer.write_bytes(data)?;
                 #[cfg(not(feature = "std"))]
                 for i in 0..data.len() {
-                    bytes.push(*data.get(i).unwrap_or(&0));
+                    if let Ok(byte) = data.get(i) {
+                        writer.write_u8(byte)?;
+                    }
                 }
             },
             Modification::Insert { offset, data } => {
-                bytes.push(2u8); // Tag for Insert
-                bytes.extend_from_slice(&offset.to_le_bytes());
-                bytes.extend_from_slice(&(data.len() as u32).to_le_bytes());
+                writer.write_u8(2)?; // Tag for Insert
+                writer.write_usize_le(*offset)?;
+                writer.write_u32_le(data.len() as u32)?;
                 #[cfg(feature = "std")]
-                bytes.extend_from_slice(data);
+                writer.write_bytes(data)?;
                 #[cfg(not(feature = "std"))]
                 for i in 0..data.len() {
-                    bytes.push(*data.get(i).unwrap_or(&0));
+                    if let Ok(byte) = data.get(i) {
+                        writer.write_u8(byte)?;
+                    }
                 }
             },
             Modification::Remove { offset, length } => {
-                bytes.push(3u8); // Tag for Remove
-                bytes.extend_from_slice(&offset.to_le_bytes());
-                bytes.extend_from_slice(&length.to_le_bytes());
+                writer.write_u8(3)?; // Tag for Remove
+                writer.write_usize_le(*offset)?;
+                writer.write_usize_le(*length)?;
             },
         }
-        
-        Ok(bytes)
+        Ok(())
     }
 }
 
 impl wrt_foundation::traits::FromBytes for Modification {
-    fn from_bytes(bytes: &[u8]) -> wrt_foundation::Result<Self> {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
         use wrt_error::Error;
         
-        if bytes.is_empty() {
-            return Err(Error::parse_error("Empty bytes for Modification"));
-        }
+        let tag = reader.read_u8()?;
         
-        match bytes[0] {
+        match tag {
             0 => Ok(Modification::None),
             1 => {
                 // Replace variant
-                if bytes.len() < 13 { // 1 (tag) + 8 (offset) + 4 (length)
-                    return Err(Error::parse_error("Invalid Replace modification"));
-                }
-                let offset = usize::from_le_bytes(bytes[1..9].try_into().unwrap());
-                let data_len = u32::from_le_bytes(bytes[9..13].try_into().unwrap()) as usize;
-                
-                if bytes.len() < 13 + data_len {
-                    return Err(Error::parse_error("Invalid Replace data length"));
-                }
+                let offset = reader.read_usize_le()?;
+                let data_len = reader.read_u32_le()? as usize;
                 
                 #[cfg(feature = "std")]
-                let data = bytes[13..13 + data_len].to_vec();
+                let data = {
+                    let mut vec = Vec::with_capacity(data_len);
+                    for _ in 0..data_len {
+                        vec.push(reader.read_u8()?);
+                    }
+                    vec
+                };
                 #[cfg(not(feature = "std"))]
                 let data = {
                     use wrt_foundation::{bounded::BoundedVec, safe_managed_alloc, budget_aware_provider::CrateId};
@@ -814,8 +837,8 @@ impl wrt_foundation::traits::FromBytes for Modification {
                         .map_err(|_| Error::memory_error("Failed to allocate for modification data"))?;
                     let mut bounded_data = BoundedVec::new(provider)
                         .map_err(|_| Error::memory_error("Failed to create bounded vec"))?;
-                    for &byte in &bytes[13..13 + data_len] {
-                        bounded_data.push(byte)
+                    for _ in 0..data_len {
+                        bounded_data.push(reader.read_u8()?)
                             .map_err(|_| Error::memory_error("Failed to push to bounded vec"))?;
                     }
                     bounded_data
@@ -825,18 +848,17 @@ impl wrt_foundation::traits::FromBytes for Modification {
             },
             2 => {
                 // Insert variant
-                if bytes.len() < 13 {
-                    return Err(Error::parse_error("Invalid Insert modification"));
-                }
-                let offset = usize::from_le_bytes(bytes[1..9].try_into().unwrap());
-                let data_len = u32::from_le_bytes(bytes[9..13].try_into().unwrap()) as usize;
-                
-                if bytes.len() < 13 + data_len {
-                    return Err(Error::parse_error("Invalid Insert data length"));
-                }
+                let offset = reader.read_usize_le()?;
+                let data_len = reader.read_u32_le()? as usize;
                 
                 #[cfg(feature = "std")]
-                let data = bytes[13..13 + data_len].to_vec();
+                let data = {
+                    let mut vec = Vec::with_capacity(data_len);
+                    for _ in 0..data_len {
+                        vec.push(reader.read_u8()?);
+                    }
+                    vec
+                };
                 #[cfg(not(feature = "std"))]
                 let data = {
                     use wrt_foundation::{bounded::BoundedVec, safe_managed_alloc, budget_aware_provider::CrateId};
@@ -844,8 +866,8 @@ impl wrt_foundation::traits::FromBytes for Modification {
                         .map_err(|_| Error::memory_error("Failed to allocate for modification data"))?;
                     let mut bounded_data = BoundedVec::new(provider)
                         .map_err(|_| Error::memory_error("Failed to create bounded vec"))?;
-                    for &byte in &bytes[13..13 + data_len] {
-                        bounded_data.push(byte)
+                    for _ in 0..data_len {
+                        bounded_data.push(reader.read_u8()?)
                             .map_err(|_| Error::memory_error("Failed to push to bounded vec"))?;
                     }
                     bounded_data
@@ -855,11 +877,8 @@ impl wrt_foundation::traits::FromBytes for Modification {
             },
             3 => {
                 // Remove variant
-                if bytes.len() < 17 { // 1 (tag) + 8 (offset) + 8 (length)
-                    return Err(Error::parse_error("Invalid Remove modification"));
-                }
-                let offset = usize::from_le_bytes(bytes[1..9].try_into().unwrap());
-                let length = usize::from_le_bytes(bytes[9..17].try_into().unwrap());
+                let offset = reader.read_usize_le()?;
+                let length = reader.read_usize_le()?;
                 
                 Ok(Modification::Remove { offset, length })
             },

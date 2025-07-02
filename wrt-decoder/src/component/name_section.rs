@@ -945,8 +945,14 @@ fn generate_name_map(
 #[cfg(not(feature = "std"))]
 fn write_leb128_u32(
     value: u32,
-) -> Result<wrt_foundation::BoundedVec<u8, 5, wrt_foundation::CapabilityAwareProvider<wrt_foundation::NoStdProvider<5>>>> {
-    use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
+) -> Result<
+    wrt_foundation::BoundedVec<
+        u8,
+        5,
+        wrt_foundation::CapabilityAwareProvider<wrt_foundation::NoStdProvider<5>>,
+    >,
+> {
+    use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
     let provider = safe_managed_alloc!(5, CrateId::Decoder)?;
     let mut vec = wrt_foundation::BoundedVec::new(provider)?;
     write_leb128_u32_bounded(value, &mut vec)
@@ -957,8 +963,14 @@ fn write_leb128_u32(
 #[cfg(not(feature = "std"))]
 fn write_string(
     value: &str,
-) -> Result<wrt_foundation::BoundedVec<u8, 512, wrt_foundation::CapabilityAwareProvider<wrt_foundation::NoStdProvider<512>>>> {
-    use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
+) -> Result<
+    wrt_foundation::BoundedVec<
+        u8,
+        512,
+        wrt_foundation::CapabilityAwareProvider<wrt_foundation::NoStdProvider<512>>,
+    >,
+> {
+    use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
     let provider = safe_managed_alloc!(512, CrateId::Decoder)?;
     let mut vec = wrt_foundation::BoundedVec::new(provider)?;
     write_string_bounded(value, &mut vec)

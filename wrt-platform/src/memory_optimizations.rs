@@ -22,7 +22,6 @@ use std::vec::Vec;
 use wrt_error::Error;
 
 use crate::memory::{MemoryProvider, NoStdProvider, VerificationLevel};
-use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
 type WrtResult<T> = Result<T, Error>;
 
 /// A checksum implementation for data verification.
@@ -127,13 +126,7 @@ impl MacOSOptimizedProvider {
         // which is not supported by the compile-time sized safe_managed_alloc! macro.
         // This is acceptable for platform-level code that provides the foundation
         // for higher-level safety abstractions.
-        #[allow(deprecated)]
-        let inner = {
-            let mut provider = NoStdProvider::new();
-            provider.resize(size).expect("Failed to resize provider");
-            provider.set_verification_level(verification_level);
-            provider
-        };
+        let inner = NoStdProvider::new(size, verification_level);
         
         Self {
             inner,
@@ -148,13 +141,7 @@ impl MacOSOptimizedProvider {
         features: MacOSFeatures,
     ) -> Self {
         // Note: Platform-specific optimizations require dynamic sizing
-        #[allow(deprecated)]
-        let inner = {
-            let mut provider = NoStdProvider::new();
-            provider.resize(size).expect("Failed to resize provider");
-            provider.set_verification_level(verification_level);
-            provider
-        };
+        let inner = NoStdProvider::new(size, verification_level);
         
         Self { inner, features }
     }
@@ -311,7 +298,7 @@ impl LinuxOptimizedProvider {
     /// verification level.
     pub fn new(size: usize, verification_level: VerificationLevel) -> Self {
         Self {
-            inner: NoStdProviderBuilder::new().with_size(size).with_verification_level(verification_level).build(),
+            inner: NoStdProvider::new(size, verification_level),
             features: LinuxFeatures::default(),
         }
     }
@@ -322,7 +309,7 @@ impl LinuxOptimizedProvider {
         verification_level: VerificationLevel,
         features: LinuxFeatures,
     ) -> Self {
-        Self { inner: NoStdProviderBuilder::new().with_size(size).with_verification_level(verification_level).build(), features }
+        Self { inner: NoStdProvider::new(size, verification_level), features }
     }
 }
 

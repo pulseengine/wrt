@@ -60,7 +60,7 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
             // Create the underlying provider using safe_managed_alloc
             use crate::{safe_managed_alloc, budget_aware_provider::CrateId};
             let provider = safe_managed_alloc!(N, CrateId::Foundation)
-                .map_err(|e| Error::memory_error(&format!("Failed to allocate provider: {}", e)))?;
+                .map_err(|_| Error::memory_error("Failed to allocate provider"))?;
             self.provider = Some(provider);
         }
 

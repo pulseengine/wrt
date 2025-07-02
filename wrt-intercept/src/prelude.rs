@@ -33,7 +33,7 @@ pub use std::{
 
 // no_std alternatives using bounded collections
 #[cfg(not(feature = "std"))]
-pub use wrt_foundation::{BoundedVec, BoundedString};
+pub use wrt_foundation::{BoundedVec, BoundedString, BoundedCapacity};
 
 // Re-export from wrt-error
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};

@@ -3,7 +3,7 @@ use wrt_foundation::{
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
-    BoundedCapacity,
+    BoundedCapacity, Result,
 };
 
 /// File table support for resolving file indices to paths
@@ -106,7 +106,7 @@ impl<'a> FileTable<'a> {
         // Create with proper error propagation
         Self::try_new().expect("Failed to create FileTable")
     }
-    
+
     /// Try to create a new FileTable with proper error handling
     pub fn try_new() -> Result<Self> {
         let directories = {
