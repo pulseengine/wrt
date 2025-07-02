@@ -683,60 +683,9 @@ impl SubtaskStats {
     }
 }
 
-impl Default for CancellationToken {
-    fn default() -> Self {
-        Self::new().unwrap_or_else(|_| {
-            // Fallback for Default trait - this should not happen in normal operation
-            CancellationToken {
-                inner: Arc::new(CancellationTokenInner {
-                    is_cancelled: AtomicBool::new(false),
-                    generation: AtomicU32::new(0),
-                    parent: None,
-                    #[cfg(feature = "std")]
-                    handlers: Arc::new(std::sync::RwLock::new(Vec::new())),
-                    #[cfg(not(any(feature = "std", )))]
-                    handlers: {
-                        // ASIL-compliant: Use bounded collection instead of zeroed memory
-                        let provider = safe_managed_alloc!(1024, CrateId::Component)
-                            .expect("Memory allocation for cancellation handlers");
-                        Arc::new(Mutex::new(BoundedVec::new(provider).expect("Bounded collection creation")))
-                    }
-                }),
-            }
-        })
-    }
-}
+// Note: Default trait removed for ASIL compliance - use CancellationToken::new() which returns Result
 
-impl Default for SubtaskManager {
-    fn default() -> Self {
-        Self::new(TaskId(0)).unwrap_or_else(|_| {
-            // Fallback for Default trait - this should not happen in normal operation
-            SubtaskManager {
-                parent_task: TaskId(0),
-                #[cfg(feature = "std")]
-                subtasks: Vec::new(),
-                #[cfg(not(any(feature = "std", )))]
-                subtasks: {
-                    // ASIL-compliant: Use bounded collection for subtask management
-                    let provider = safe_managed_alloc!(2048, CrateId::Component)
-                        .expect("Memory allocation for subtasks");
-                    BoundedVec::new(provider).expect("Bounded collection creation")
-                },
-                #[cfg(feature = "std")]
-                completion_handlers: Vec::new(),
-                #[cfg(not(any(feature = "std", )))]
-                completion_handlers: {
-                    // ASIL-compliant: Use bounded collection for completion handlers
-                    let provider = safe_managed_alloc!(1024, CrateId::Component)
-                        .expect("Memory allocation for completion handlers");
-                    BoundedVec::new(provider).expect("Bounded collection creation")
-                }
-                next_handler_id: 1,
-                stats: SubtaskStats::new(),
-            }
-        })
-    }
-}
+// Note: Default trait removed for ASIL compliance - use SubtaskManager::new() which returns Result
 
 impl Default for SubtaskStats {
     fn default() -> Self {

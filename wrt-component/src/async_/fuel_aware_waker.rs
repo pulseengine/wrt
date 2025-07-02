@@ -20,6 +20,41 @@ use wrt_foundation::{
     CrateId, safe_managed_alloc,
 };
 
+/// Safe abstraction trait for waker operations
+pub trait SafeWaker: Send + Sync {
+    /// Wake the associated task
+    fn wake(&self);
+    
+    /// Clone this waker
+    fn clone_waker(&self) -> Box<dyn SafeWaker>;
+}
+
+/// ASIL-compliant waker implementation
+pub struct AsilCompliantWaker {
+    task_id: TaskId,
+    ready_queue: Arc<Mutex<BoundedVec<TaskId, 128>>>,
+    executor_ref: Weak<Mutex<FuelAsyncExecutor>>,
+    asil_mode: ASILExecutionMode,
+}
+
+impl SafeWaker for AsilCompliantWaker {
+    fn wake(&self) {
+        // Safe wake implementation without unsafe code
+        if let Ok(mut queue) = self.ready_queue.lock() {
+            let _ = queue.push(self.task_id);
+        }
+    }
+    
+    fn clone_waker(&self) -> Box<dyn SafeWaker> {
+        Box::new(AsilCompliantWaker {
+            task_id: self.task_id,
+            ready_queue: self.ready_queue.clone(),
+            executor_ref: self.executor_ref.clone(),
+            asil_mode: self.asil_mode,
+        })
+    }
+}
+
 /// Maximum number of pending wakes to coalesce
 const MAX_PENDING_WAKES: usize = 64;
 
