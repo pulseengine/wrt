@@ -103,18 +103,21 @@ pub struct FileTable<'a> {
 impl<'a> FileTable<'a> {
     /// Create a new empty file table
     pub fn new() -> Self {
-        // BoundedVec::new returns a Result, so we need to handle it
+        // Create with proper error propagation
+        Self::try_new().expect("Failed to create FileTable")
+    }
+    
+    /// Try to create a new FileTable with proper error handling
+    pub fn try_new() -> Result<Self> {
         let directories = {
-            let provider = safe_managed_alloc!({ MAX_DWARF_FILE_TABLE * 32 }, CrateId::Debug)
-                .unwrap_or_else(|_| NoStdProvider::<{ MAX_DWARF_FILE_TABLE * 32 }>::default());
-            BoundedVec::new(provider).expect("Failed to create directories BoundedVec")
+            let provider = safe_managed_alloc!({ MAX_DWARF_FILE_TABLE * 32 }, CrateId::Debug)?;
+            BoundedVec::new(provider)?
         };
         let files = {
-            let provider = safe_managed_alloc!({ MAX_DWARF_FILE_TABLE * 64 }, CrateId::Debug)
-                .unwrap_or_else(|_| NoStdProvider::<{ MAX_DWARF_FILE_TABLE * 64 }>::default());
-            BoundedVec::new(provider).expect("Failed to create files BoundedVec")
+            let provider = safe_managed_alloc!({ MAX_DWARF_FILE_TABLE * 64 }, CrateId::Debug)?;
+            BoundedVec::new(provider)?
         };
-        Self { directories, files }
+        Ok(Self { directories, files })
     }
 
     /// Add a directory entry

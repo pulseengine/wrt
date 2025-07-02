@@ -57,10 +57,10 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
     /// Initialize the underlying provider (lazy initialization)
     fn ensure_provider(&mut self) -> Result<&mut NoStdProvider<N>> {
         if self.provider.is_none() {
-            // Create the underlying provider
-            #[allow(deprecated)]
-            let mut provider = NoStdProvider::default();
-            let _ = provider.resize(N);
+            // Create the underlying provider using safe_managed_alloc
+            use crate::{safe_managed_alloc, budget_aware_provider::CrateId};
+            let provider = safe_managed_alloc!(N, CrateId::Foundation)
+                .map_err(|e| Error::memory_error(&format!("Failed to allocate provider: {}", e)))?;
             self.provider = Some(provider);
         }
 
