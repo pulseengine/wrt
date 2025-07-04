@@ -18,7 +18,7 @@
 
 extern crate alloc;
 
-use crate::prelude::{Debug, Error, ErrorCategory, Ord, Result, codes, str};
+use crate::prelude::{Debug, Error, ErrorCategory, Ord, Result, str};
 
 // Import format! macro for string formatting
 #[cfg(feature = "std")]
@@ -163,7 +163,7 @@ impl ExecutionContext {
             self.trapped = true;
             return Err(Error::new(
                 ErrorCategory::Runtime,
-                codes::CALL_STACK_EXHAUSTED,
+                wrt_error::codes::CALL_STACK_EXHAUSTED,
                 "Function call depth exceeded maximum limit"));
         }
 

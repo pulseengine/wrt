@@ -113,7 +113,7 @@ use wrt_sync::WrtRwLock as RwLock;
 // Internal modules
 // Temporarily disabled - memory_adapter module is disabled
 // use crate::memory_adapter::StdMemoryProvider;
-use crate::prelude::{Arc, BoundedCapacity, CoreMemoryType, Debug, Eq, Error, ErrorCategory, Ord, PartialEq, Result, TryFrom, VerificationLevel, codes, str};
+use crate::prelude::{Arc, BoundedCapacity, CoreMemoryType, Debug, Eq, Error, ErrorCategory, Ord, PartialEq, Result, TryFrom, VerificationLevel, str};
 #[cfg(not(feature = "std"))]
 use crate::prelude::vec_with_capacity;
 

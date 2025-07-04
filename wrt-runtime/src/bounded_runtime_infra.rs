@@ -14,7 +14,7 @@ use wrt_foundation::{
     traits::{Checksummable, ToBytes, FromBytes},
     WrtResult,
 };
-use wrt_error::{Error, ErrorCategory, codes};
+use wrt_error::{Error, ErrorCategory};
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 use wrt_foundation::capabilities::factory::CapabilityGuardedProvider;
@@ -82,11 +82,6 @@ pub const MAX_CALL_STACK_DEPTH: usize = 2048;
 /// Maximum number of execution contexts
 pub const MAX_EXECUTION_CONTEXTS: usize = 256;
 
-/// Maximum number of branch predictions
-pub const MAX_BRANCH_PREDICTIONS: usize = 4096;
-
-/// Maximum number of function predictors
-pub const MAX_FUNCTION_PREDICTORS: usize = 1024;
 
 /// Maximum number of memory allocations to track
 pub const MAX_MEMORY_ALLOCATIONS: usize = 2048;
@@ -97,8 +92,6 @@ pub const MAX_WAIT_QUEUE_ENTRIES: usize = 512;
 /// Maximum number of atomic operations
 pub const MAX_ATOMIC_OPERATIONS: usize = 1024;
 
-/// Maximum number of interpreter optimizations
-pub const MAX_INTERPRETER_OPTIMIZATIONS: usize = 2048;
 
 /// Maximum module name length
 pub const MAX_MODULE_NAME_LEN: usize = 256;
@@ -169,29 +162,7 @@ pub type BoundedFunctionName = BoundedString<MAX_FUNCTION_NAME_LEN, RuntimeProvi
 /// Bounded string for import/export names
 pub type BoundedImportExportName = BoundedString<MAX_IMPORT_EXPORT_NAME_LEN, RuntimeProvider>;
 
-/// Bounded map for branch predictions
-pub type BoundedBranchPredictionMap<V> = BoundedMap<
-    u32, // PC address
-    V,
-    MAX_BRANCH_PREDICTIONS,
-    RuntimeProvider
->;
 
-/// Bounded map for function predictors
-pub type BoundedFunctionPredictorMap<V> = BoundedMap<
-    u32, // Function index
-    V,
-    MAX_FUNCTION_PREDICTORS,
-    RuntimeProvider
->;
-
-/// Bounded map for interpreter optimizations
-pub type BoundedInterpreterOptMap<V> = BoundedMap<
-    u32, // Instruction index
-    V,
-    MAX_INTERPRETER_OPTIMIZATIONS,
-    RuntimeProvider
->;
 
 /// Bounded map for atomic operations
 pub type BoundedAtomicOpMap<V> = BoundedMap<
@@ -338,32 +309,7 @@ pub fn bounded_function_name_from_str(s: &str) -> WrtResult<BoundedFunctionName>
     BoundedString::from_str(s, provider).map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
 }
 
-/// Create a new bounded branch prediction map
-pub fn new_branch_prediction_map<V>() -> WrtResult<BoundedBranchPredictionMap<V>> 
-where
-    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-{
-    let provider = create_runtime_provider()?;
-    BoundedMap::new(provider)
-}
 
-/// Create a new bounded function predictor map
-pub fn new_function_predictor_map<V>() -> WrtResult<BoundedFunctionPredictorMap<V>> 
-where
-    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-{
-    let provider = create_runtime_provider()?;
-    BoundedMap::new(provider)
-}
-
-/// Create a new bounded interpreter optimization map
-pub fn new_interpreter_opt_map<V>() -> WrtResult<BoundedInterpreterOptMap<V>> 
-where
-    V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-{
-    let provider = create_runtime_provider()?;
-    BoundedMap::new(provider)
-}
 
 /// Create a new bounded atomic operation map
 pub fn new_atomic_op_map<V>() -> WrtResult<BoundedAtomicOpMap<V>> 

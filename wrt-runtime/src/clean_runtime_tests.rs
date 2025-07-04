@@ -8,8 +8,8 @@
 use wrt_foundation::{
     CleanValType, CleanValue, CleanFuncType, CleanMemoryType, CleanTableType,
     RuntimeTypeFactory, TypeFactory,
-    Result, Error, ErrorCategory, codes,
 };
+use wrt_error::{Result, Error, ErrorCategory, codes};
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 use alloc::{vec::Vec, string::String};

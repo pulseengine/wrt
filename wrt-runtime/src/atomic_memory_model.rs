@@ -12,7 +12,7 @@ use crate::thread_manager::{ThreadManager, ThreadId, ThreadState};
 use crate::bounded_runtime_infra::{
     BoundedThreadMap, RuntimeProvider, new_thread_map
 };
-use wrt_error::{Error, ErrorCategory, Result, codes};
+use wrt_error::{Error, ErrorCategory, Result};
 use wrt_instructions::atomic_ops::{MemoryOrdering, AtomicOp};
 use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
 
@@ -103,7 +103,7 @@ impl AtomicMemoryModel {
                 if operands.is_empty() {
                     return Err(Error::new(
                         ErrorCategory::Runtime,
-                        codes::RUNTIME_INVALID_ARGUMENT_ERROR,
+                        wrt_error::codes::RUNTIME_INVALID_ARGUMENT_ERROR,
                         "RMW operation requires value operand"));
                 }
                 self.execute_rmw_with_value(thread_id, operation.clone(), operands[0])

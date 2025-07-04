@@ -10,7 +10,7 @@ use wrt_foundation::{
     values::Value as WrtValue,
 };
 
-use crate::prelude::{Debug, Eq, Error, ErrorCategory, PartialEq, Result, codes};
+use crate::prelude::{Debug, Eq, Error, ErrorCategory, PartialEq, Result};
 
 // Import format! macro for string formatting
 #[cfg(feature = "std")]

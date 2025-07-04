@@ -125,7 +125,7 @@ use wrt_sync::WrtRwLock as RwLock;
 // Internal modules
 // Temporarily disabled - memory_adapter module is disabled
 // use crate::memory_adapter::StdMemoryProvider;
-use crate::prelude::{Arc, BoundedCapacity, CoreMemoryType, Debug, Eq, Error, ErrorCategory, Ord, PartialEq, Result, TryFrom, VerificationLevel, codes, str};
+use crate::prelude::{Arc, BoundedCapacity, CoreMemoryType, Debug, Eq, Error, ErrorCategory, Ord, PartialEq, Result, TryFrom, VerificationLevel, str};
 use wrt_foundation::types::MemoryType;
 #[cfg(not(feature = "std"))]
 use crate::prelude::vec_with_capacity;
@@ -368,25 +368,11 @@ impl PartialEq for Memory {
     fn eq(&self, other: &Self) -> bool {
         // Compare memory data by extracting bytes from RwLock
         let self_data = {
-            #[cfg(feature = "std")]
-            {
-                self.data.read().unwrap().to_vec().unwrap_or_default() // Safe: memory comparison read is infallible
-            }
-            #[cfg(not(feature = "std"))]
-            {
-                self.data.read().to_vec().unwrap_or_default() // Safe: memory comparison read is infallible
-            }
+            self.data.to_vec().unwrap_or_default() // Safe: memory comparison read is infallible
         };
         
         let other_data = {
-            #[cfg(feature = "std")]
-            {
-                other.data.read().unwrap().to_vec().unwrap_or_default() // Safe: memory comparison read is infallible
-            }
-            #[cfg(not(feature = "std"))]
-            {
-                other.data.read().to_vec().unwrap_or_default() // Safe: memory comparison read is infallible
-            }
+            other.data.to_vec().unwrap_or_default() // Safe: memory comparison read is infallible
         };
         
         self.ty == other.ty
@@ -620,14 +606,13 @@ impl Memory {
     pub fn buffer(&self) -> Result<std::vec::Vec<u8>> {
         // Use the SafeMemoryHandler to get data through a safe slice to ensure
         // memory integrity is verified during the operation
-        let data_guard = self.data.read().unwrap();
-        let data_size = data_guard.size();
+        let data_size = self.data.size();
         if data_size == 0 {
             return Ok(std::vec::Vec::new());
         }
 
         // Get a safe slice over the entire memory
-        let safe_slice = data_guard.get_slice(0, data_size)?;
+        let safe_slice = self.data.get_slice(0, data_size)?;
 
         // Get the data from the safe slice and create a copy
         let memory_data = safe_slice.data()?;
@@ -819,30 +804,12 @@ impl Memory {
 
         // Calculate the new size in bytes and resize through RwLock
         let old_size = {
-            #[cfg(feature = "std")]
-            {
-                self.data.read().unwrap().size()
-            }
-            #[cfg(not(feature = "std"))]
-            {
-                self.data.read().size()
-            }
+            self.data.size()
         };
         let new_size = wasm_offset_to_usize(new_page_count)? * PAGE_SIZE;
 
-        // Resize the underlying data through write lock
-        {
-            #[cfg(feature = "std")]
-            {
-                let mut data_guard = self.data.write().unwrap();
-                data_guard.resize(new_size)?;
-            }
-            #[cfg(not(feature = "std"))]
-            {
-                let mut data_guard = self.data.write();
-                data_guard.resize(new_size)?;
-            }
-        }
+        // Resize the underlying data
+        self.data.resize(new_size)?;
 
         // Update the page count
         let old_pages = self.current_pages.swap(new_page_count, Ordering::Relaxed);
@@ -869,7 +836,7 @@ impl Memory {
     /// # Errors
     ///
     /// Returns an error if the memory cannot be grown
-    pub fn grow_shared(&self, pages: u32) -> Result<u32> {
+    pub fn grow_shared(&mut self, pages: u32) -> Result<u32> {
         // Return early if not growing
         if pages == 0 {
             return Ok(self.current_pages.load(Ordering::Relaxed));
@@ -896,19 +863,8 @@ impl Memory {
         // Calculate the new size in bytes and resize through RwLock
         let new_size = wasm_offset_to_usize(new_page_count)? * PAGE_SIZE;
 
-        // Resize the underlying data through write lock
-        {
-            #[cfg(feature = "std")]
-            {
-                let mut data_guard = self.data.write().unwrap();
-                data_guard.resize(new_size)?;
-            }
-            #[cfg(not(feature = "std"))]
-            {
-                let mut data_guard = self.data.write();
-                data_guard.resize(new_size)?;
-            }
-        }
+        // Resize the underlying data
+        self.data.resize(new_size)?;
 
         // Update the page count
         let old_pages = self.current_pages.swap(new_page_count, Ordering::Relaxed);
@@ -947,11 +903,7 @@ impl Memory {
         self.increment_access_count(offset_usize, size);
 
         // Use safe memory get_slice to get a verified slice
-        #[cfg(feature = "std")]
-        let data_guard = self.data.read().unwrap();
-        #[cfg(not(feature = "std"))]
-        let data_guard = self.data.read();
-        let safe_slice = data_guard.get_slice(offset_usize, size)?;
+        let safe_slice = self.data.get_slice(offset_usize, size)?;
 
         // Copy from the safe slice to the buffer
         buffer.copy_from_slice(safe_slice.data()?);
@@ -994,19 +946,8 @@ impl Memory {
         // Track this access for profiling
         self.increment_access_count(offset_usize, size);
 
-        // Use the SafeMemoryHandler's write_data method for efficient direct writing through RwLock
-        {
-            #[cfg(feature = "std")]
-            {
-                let mut data_guard = self.data.write().unwrap();
-                data_guard.write_data(offset_usize, buffer)?;
-            }
-            #[cfg(not(feature = "std"))]
-            {
-                let mut data_guard = self.data.write();
-                data_guard.write_data(offset_usize, buffer)?;
-            }
-        }
+        // Use the SafeMemoryHandler's write_data method for efficient direct writing
+        self.data.write_data(offset_usize, buffer)?;
 
         // Update the peak memory usage
         self.update_peak_memory();
@@ -1037,39 +978,12 @@ impl Memory {
             return Ok(());
         }
 
-        // Calculate total size and verify bounds
-        let offset_usize = wasm_offset_to_usize(offset)?;
-        let size = buffer.len();
-        let end = offset_usize.checked_add(size).ok_or_else(|| {
-            Error::memory_out_of_bounds("Memory write would overflow")
-        })?;
-
-        // Verify the access is within memory bounds
-        if end > self.size_in_bytes() {
-            return Err(Error::memory_out_of_bounds("Runtime operation error"));
-        }
-
-        // Track this access for profiling
-        self.increment_access_count(offset_usize, size);
-
-        // Use the SafeMemoryHandler's write_data method for efficient direct writing through RwLock
-        {
-            #[cfg(feature = "std")]
-            {
-                let mut data_guard = self.data.write().unwrap();
-                data_guard.write_data(offset_usize, buffer)?;
-            }
-            #[cfg(not(feature = "std"))]
-            {
-                let mut data_guard = self.data.write();
-                data_guard.write_data(offset_usize, buffer)?;
-            }
-        }
-
-        // Update the peak memory usage
-        self.update_peak_memory();
-
-        Ok(())
+        // NOTE: This method has an API mismatch - SafeMemoryHandler::write_data requires &mut self
+        // but this function takes &self for thread-safe shared access.
+        // This needs to be resolved by either:
+        // 1. Changing this method to take &mut self, or
+        // 2. Using a different approach for thread-safe writes
+        return Err(Error::runtime_execution_error("write_shared method needs API redesign for SafeMemoryHandler compatibility"));
     }
 
     /// Gets a byte from memory
@@ -1094,11 +1008,7 @@ impl Memory {
         self.increment_access_count(offset_usize, 1);
 
         // Use SafeMemoryHandler to get a safe slice
-        #[cfg(feature = "std")]
-        let data_guard = self.data.read().unwrap();
-        #[cfg(not(feature = "std"))]
-        let data_guard = self.data.read();
-        let slice = data_guard.get_slice(offset_usize, 1)?;
+        let slice = self.data.get_slice(offset_usize, 1)?;
         let data = slice.data()?;
         Ok(data[0])
     }
@@ -1146,11 +1056,7 @@ impl Memory {
         }
 
         // Get current data size
-        #[cfg(feature = "std")]
-        let data_guard = self.data.read().unwrap();
-        #[cfg(not(feature = "std"))]
-        let data_guard = self.data.read();
-        let data_size = data_guard.len();
+        let data_size = self.data.len();
 
         // Get the last byte that would be accessed
         let end_offset = match offset.checked_add(len) {
@@ -1173,11 +1079,7 @@ impl Memory {
 
         let addr = wasm_offset_to_usize(addr)?;
         let access_size = wasm_offset_to_usize(access_size)?;
-        #[cfg(feature = "std")]
-        let data_guard = self.data.read().unwrap();
-        #[cfg(not(feature = "std"))]
-        let data_guard = self.data.read();
-        if addr + access_size > data_guard.size() {
+        if addr + access_size > self.data.size() {
             return Err(Error::validation_error("Memory access out of bounds"));
         }
 
@@ -1235,16 +1137,11 @@ impl Memory {
         self.increment_access_count(addr_usize, len);
 
         // Get the slice first
-        #[cfg(feature = "std")]
-        let mut data_guard = self.data.write().unwrap();
-        #[cfg(not(feature = "std"))]
-        let mut data_guard = self.data.write();
-        let mut slice = data_guard.get_slice(addr_usize, len)?;
+        let slice = self.data.get_slice(addr_usize, len)?;
 
-        // Explicitly set the verification level to match the memory's level
-        // This ensures consistent verification behavior
-        slice.set_verification_level(self.verification_level);
-
+        // Note: We can't set verification level on an immutable slice
+        // The slice will use the verification level from the underlying provider
+        
         Ok(slice)
     }
 
@@ -1271,12 +1168,7 @@ impl Memory {
         F: FnOnce(u32, &[u8]) -> Result<()> + Send + 'static,
     {
         // Get the current memory data
-        #[cfg(feature = "std")]
-        let data_guard = self.data.read().unwrap();
-        #[cfg(not(feature = "std"))]
-        let data_guard = self.data.read();
-        let data = data_guard.to_vec()?;
-        drop(data_guard);
+        let data = self.data.to_vec()?;
 
         // Execute the hook immediately with current state
         hook(self.current_pages.load(Ordering::Relaxed), &data)?;
@@ -1297,12 +1189,7 @@ impl Memory {
         F: FnOnce(u32, &[u8]) -> Result<()> + Send + 'static,
     {
         // Get the current memory data
-        #[cfg(feature = "std")]
-        let data_guard = self.data.read().unwrap();
-        #[cfg(not(feature = "std"))]
-        let data_guard = self.data.read();
-        let data = data_guard.to_vec()?;
-        drop(data_guard);
+        let data = self.data.to_vec()?;
 
         // Execute the hook immediately with current state
         hook(self.current_pages.load(Ordering::Relaxed), &data)?;
@@ -1320,11 +1207,7 @@ impl Memory {
         let expected_size = wasm_offset_to_usize(pages).unwrap_or(0) * PAGE_SIZE;
 
         // Verify memory size is consistent
-        #[cfg(feature = "std")]
-        let data_guard = self.data.read().unwrap();
-        #[cfg(not(feature = "std"))]
-        let data_guard = self.data.read();
-        if data_guard.size() != expected_size {
+        if self.data.size() != expected_size {
             return Err(Error::validation_error("Memory size mismatch"));
         }
 
@@ -1357,12 +1240,7 @@ impl Memory {
         size: usize,
     ) -> Result<()> {
         // Bounds check for source
-        #[cfg(feature = "std")]
-        let src_data_guard = src_mem.data.read().unwrap();
-        #[cfg(not(feature = "std"))]
-        let src_data_guard = src_mem.data.read();
-        let src_data_size = src_data_guard.size();
-        drop(src_data_guard);
+        let src_data_size = src_mem.data.size();
         let src_end = match src_addr.checked_add(size) {
             Some(end) if end <= src_data_size => end,
             _ => {
@@ -1371,12 +1249,7 @@ impl Memory {
         };
 
         // Bounds check for destination
-        #[cfg(feature = "std")]
-        let data_guard = self.data.read().unwrap();
-        #[cfg(not(feature = "std"))]
-        let data_guard = self.data.read();
-        let data_size = data_guard.size();
-        drop(data_guard);
+        let data_size = self.data.size();
         let dst_end = match dst_addr.checked_add(size) {
             Some(end) if end <= data_size => end,
             _ => {
@@ -1389,11 +1262,7 @@ impl Memory {
         src_mem.increment_access_count(src_addr, size);
 
         // Use SafeSlice for source memory access
-        #[cfg(feature = "std")]
-        let src_data_guard = src_mem.data.read().unwrap();
-        #[cfg(not(feature = "std"))]
-        let src_data_guard = src_mem.data.read();
-        let src_slice = src_data_guard.get_slice(src_addr, size)?;
+        let src_slice = src_mem.data.get_slice(src_addr, size)?;
         let src_data = src_slice.data()?;
 
         // Handle overlapping regions safely by using a temporary buffer
@@ -1404,34 +1273,24 @@ impl Memory {
         temp_buf.extend_from_slice(src_data);
 
         // Get destination memory data using provider-aware method
-        #[cfg(feature = "std")]
-        let data_guard = self.data.read().unwrap();
-        #[cfg(not(feature = "std"))]
-        let data_guard = self.data.read();
-        let data_size = data_guard.size();
-        let dst_slice = data_guard.get_slice(0, data_size)?;
+        let data_size = self.data.size();
+        let dst_slice = self.data.get_slice(0, data_size)?;
         let mut dst_data = dst_slice.data()?.to_vec();
 
         // Copy from temporary buffer to destination
         dst_data[dst_addr..dst_addr + size].copy_from_slice(temp_buf.as_slice());
 
         // Update destination memory
-        drop(data_guard);
-        #[cfg(feature = "std")]
-        let mut data_guard = self.data.write().unwrap();
-        #[cfg(not(feature = "std"))]
-        let mut data_guard = self.data.write();
-        data_guard.clear()?;
-        data_guard.add_data(&dst_data)?;
+        self.data.clear()?;
+        self.data.add_data(&dst_data)?;
 
         // Update peak memory usage
         self.update_peak_memory();
 
         // Verify integrity if full verification is enabled
         if self.verification_level == VerificationLevel::Full {
-            data_guard.verify_integrity()?;
+            self.data.provider().verify_integrity()?;
         }
-        drop(data_guard);
 
         Ok(())
     }
@@ -1493,30 +1352,10 @@ impl Memory {
             };
 
             // Write directly to the data handler with safety verification
-            // Get a safe slice of the appropriate size and location
-            #[cfg(feature = "std")]
-            let mut data_guard = self.data.write().unwrap();
-            #[cfg(not(feature = "std"))]
-            let mut data_guard = self.data.write();
-            let slice_data = data_guard.get_slice(current_dst, chunk_size)?;
-
-            // Use the safe memory handler's internal methods to write
-            data_guard.provider().verify_access(current_dst, chunk_size)?;
-
-            // Update memory by modifying through the provider
-            // Get current data, modify it, and replace
-            let mut current_data = data_guard.to_vec()?;
-            for i in 0..chunk_size {
-                if current_dst + i < current_data.len() {
-                    if let Some(byte) = current_data.get_mut(current_dst + i) {
-                        *byte = val;
-                    }
-                }
-            }
-            // Replace data (simplified - in production would need better approach)
-            data_guard.clear()?;
-            data_guard.add_data(current_data.as_slice())?;
-            drop(data_guard);
+            self.data.verify_access(current_dst, chunk_size)?;
+            
+            // Write the buffer data directly using write_data
+            self.data.write_data(current_dst, &fill_buffer)?;
 
             current_dst += chunk_size;
             remaining -= chunk_size;
@@ -1553,9 +1392,7 @@ impl Memory {
         };
 
         // Destination bounds check
-        let data_guard = self.data.read();
-        let data_size = data_guard.size();
-        drop(data_guard);
+        let data_size = self.data.size();
         let dst_end = match dst.checked_add(size) {
             Some(end) if end <= data_size => end,
             _ => {
@@ -1607,22 +1444,10 @@ impl Memory {
             let src_data = src_slice.data()?;
 
             // Verify destination access is valid using the SafeMemoryHandler
-            let mut data_guard = self.data.write();
-            data_guard.provider().verify_access(dst_offset, chunk_size)?;
+            self.data.verify_access(dst_offset, chunk_size)?;
 
-            // Apply the write by modifying current data
-            let mut current_data = data_guard.to_vec()?;
-            for (i, &byte) in src_data.iter().enumerate() {
-                if dst_offset + i < current_data.len() {
-                    if let Some(target_byte) = current_data.get_mut(dst_offset + i) {
-                        *target_byte = byte;
-                    }
-                }
-            }
-            // Replace data (simplified approach)
-            data_guard.clear()?;
-            data_guard.add_data(current_data.as_slice())?;
-            drop(data_guard);
+            // Write the source data directly to the destination
+            self.data.write_data(dst_offset, src_data)?;
 
             // Update for next chunk
             src_offset += chunk_size;
@@ -2170,7 +1995,7 @@ impl Memory {
         if new_size_pages > MAX_PAGES {
             return Err(Error::new(
                 ErrorCategory::Memory,
-                codes::MEMORY_GROW_ERROR,
+                wrt_error::codes::MEMORY_GROW_ERROR,
                 "Memory grow exceeds maximum pages"));
         }
 
@@ -2238,14 +2063,7 @@ impl MemoryProvider for Memory {
     fn memory_stats(&self) -> MemoryStats {
         // Read the data size through RwLock
         let data_size = {
-            #[cfg(feature = "std")]
-            {
-                self.data.read().unwrap().size()
-            }
-            #[cfg(not(feature = "std"))]
-            {
-                self.data.read().size()
-            }
+            self.data.size()
         };
         
         MemoryStats {

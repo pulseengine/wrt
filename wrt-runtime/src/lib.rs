@@ -43,12 +43,7 @@ pub mod clean_runtime_tests;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub mod atomic_execution;
 #[cfg(any(feature = "std", feature = "alloc"))]
-// Disabled due to missing atomic ops methods
-// pub mod atomic_execution_safe;
-#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod atomic_memory_model;
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub mod branch_prediction;
 pub mod cfi_engine;
 pub mod core_types;
 pub mod execution;
@@ -58,8 +53,6 @@ mod execution_tests;
 pub mod format_bridge;
 pub mod func;
 pub mod global;
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub mod interpreter_optimization;
 pub mod memory;
 
 // Simplified type system - CRITICAL COMPILATION FIX
@@ -79,17 +72,11 @@ pub mod module;
 pub mod module_builder;
 pub mod module_instance;
 pub mod prelude;
-/// SIMD execution integration adapter
-// Disabled due to compilation issues
-// pub mod simd_execution_adapter;
 pub mod stackless;
 pub mod table;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub mod thread_manager;
 pub mod types;
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub mod wait_queue;
-pub mod wit_debugger_integration;
 
 // Platform-aware runtime and unified memory management
 pub mod platform_runtime;
@@ -127,37 +114,15 @@ pub use atomic_memory_model::{
     AtomicMemoryModel, MemoryOrderingPolicy, ConsistencyValidationResult,
     MemoryModelPerformanceMetrics, DataRaceReport, OrderingViolationReport,
 };
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub use branch_prediction::{
-    BranchLikelihood, BranchPrediction, FunctionBranchPredictor, ModuleBranchPredictor,
-    PredictiveExecutionContext, PredictionStats,
-};
 pub use cfi_engine::{
     CfiEngineStatistics, CfiExecutionEngine, CfiExecutionResult, CfiViolationPolicy,
     CfiViolationType, ExecutionResult,
 };
 pub use execution::ExecutionStats;
 // Note: ExecutionContext is defined in core_types, not execution
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub use interpreter_optimization::{
-    OptimizedInterpreter, OptimizationStrategy, OptimizationMetrics, 
-    BranchOptimizationResult, ExecutionPath,
-};
 // pub use thread_manager::{
 //     ThreadManager, ThreadConfig, ThreadInfo, ThreadState, ThreadExecutionContext,
 //     ThreadExecutionStats, ThreadManagerStats, ThreadId,
-// };
-// pub use wait_queue::{
-//     WaitQueueManager, WaitQueue, WaitQueueId, WaitResult, WaitQueueStats,
-//     WaitQueueGlobalStats, pause,
-// };
-// #[cfg(feature = "wit-debug-integration")]
-// pub use wit_debugger_integration::{
-//     WrtRuntimeState, WrtDebugMemory, DebuggableWrtRuntime,
-//     create_wit_enabled_runtime, create_component_metadata, 
-//     create_function_metadata, create_type_metadata,
-//     ComponentMetadata, FunctionMetadata, TypeMetadata, WitTypeKind,
-//     Breakpoint, BreakpointCondition,
 // };
 pub use func::Function as RuntimeFunction;
 pub use prelude::FuncType;

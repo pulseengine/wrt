@@ -150,7 +150,7 @@ pub use self::cfi_types::{ShadowStackEntry, CfiHardwareInstruction, CfiSoftwareV
 //     ShadowStackRequirement, ShadowStackEntry
 // };
 
-use crate::{execution::ExecutionContext, prelude::{BoundedCapacity, Debug, Eq, Error, ErrorCategory, PartialEq, Result, codes, str}}; // stackless::StacklessEngine temporarily disabled
+use crate::{execution::ExecutionContext, prelude::{BoundedCapacity, Debug, Eq, Error, ErrorCategory, PartialEq, Result, str}}; // stackless::StacklessEngine temporarily disabled
 use wrt_foundation::traits::DefaultMemoryProvider;
 
 // Stub types for disabled CFI functionality
@@ -245,9 +245,9 @@ pub struct CfiExecutionContext {
     /// Offset of the current instruction within the function
     pub current_instruction: u32,
     /// Shadow stack for return address protection
-    pub shadow_stack: wrt_foundation::bounded::BoundedVec<ShadowStackEntry, 64, wrt_foundation::traits::DefaultMemoryProvider>,
+    pub shadow_stack: wrt_foundation::bounded::BoundedVec<ShadowStackEntry, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Expected landing pads for indirect calls
-    pub landing_pad_expectations: wrt_foundation::bounded::BoundedVec<LandingPadExpectation, 32, wrt_foundation::traits::DefaultMemoryProvider>,
+    pub landing_pad_expectations: wrt_foundation::bounded::BoundedVec<LandingPadExpectation, 32, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Number of CFI violations detected
     pub violation_count: u32,
     /// CFI performance and security metrics
@@ -263,19 +263,21 @@ pub struct CfiExecutionContext {
     /// Maximum number of labels for control flow validation
     pub max_labels: u32,
     /// Valid branch targets for CFI validation
-    pub valid_branch_targets: wrt_foundation::bounded::BoundedVec<u32, 256, wrt_foundation::traits::DefaultMemoryProvider>,
+    pub valid_branch_targets: wrt_foundation::bounded::BoundedVec<u32, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>,
 }
 
 // Default implementation will be handled manually
 impl CfiExecutionContext {
     /// Create a new CFI execution context
     pub fn new() -> Result<Self> {
-        let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+        let provider1 = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+        let provider2 = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+        let provider3 = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
         Ok(Self {
             current_function: 0,
             current_instruction: 0,
-            shadow_stack: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            landing_pad_expectations: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            shadow_stack: wrt_foundation::bounded::BoundedVec::new(provider1)?,
+            landing_pad_expectations: wrt_foundation::bounded::BoundedVec::new(provider2)?,
             violation_count: 0,
             metrics: CfiMetrics::default(),
             calling_convention: CallingConvention::default(),
@@ -283,7 +285,7 @@ impl CfiExecutionContext {
             software_config: CfiSoftwareConfig::default(),
             last_checkpoint_time: 0,
             max_labels: 128,
-            valid_branch_targets: wrt_foundation::bounded::BoundedVec::new(provider)?,
+            valid_branch_targets: wrt_foundation::bounded::BoundedVec::new(provider3)?,
         })
     }
 }
@@ -1076,7 +1078,7 @@ pub enum CfiExecutionResult {
 #[derive(Debug, Clone)]
 pub struct CfiCheck {
     /// Check type
-    pub check_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::traits::DefaultMemoryProvider>,
+    pub check_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Location of check
     pub location: usize,
 }
@@ -1085,7 +1087,7 @@ impl CfiCheck {
     /// Create a new CFI check
     pub fn new(check_type: &str, location: usize) -> Result<Self> {
         let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
-        let bounded_check_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::traits::DefaultMemoryProvider> = wrt_foundation::bounded::BoundedString::from_str_truncate(
+        let bounded_check_type = wrt_foundation::bounded::BoundedString::from_str_truncate(
             check_type,
             provider
         )?;

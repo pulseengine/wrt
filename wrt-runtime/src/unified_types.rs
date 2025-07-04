@@ -13,7 +13,7 @@ use wrt_foundation::{
     traits::{Checksummable, ToBytes, FromBytes},
     prelude::{BoundedCapacity, Clone, Copy, Debug, Default, Eq, PartialEq, Value},
 };
-use wrt_error::{Error, ErrorCategory, codes};
+use wrt_error::{Error, ErrorCategory};
 
 // =============================================================================
 // PLATFORM-AWARE CAPACITY CONSTANTS
@@ -258,7 +258,7 @@ where
         // Placeholder - real implementation would use provider
         Err(Error::new(
             ErrorCategory::Memory,
-            codes::NOT_IMPLEMENTED,
+            wrt_error::codes::NOT_IMPLEMENTED,
             "Allocation not implemented"))
     }
     

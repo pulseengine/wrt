@@ -238,7 +238,6 @@ impl ToString for &str {
 // pub use wrt_decoder::prelude::Module as DecoderModule;
 // Re-export from wrt-error for error handling
 pub use wrt_error::prelude::{
-    codes,
     kinds::{
         self, ComponentError, InvalidType, OutOfBoundsError, ParseError, ResourceError,
         RuntimeError, ValidationError,
@@ -379,7 +378,6 @@ pub type RuntimeString = wrt_foundation::bounded::BoundedString<256, wrt_foundat
 pub use crate::module::{TableWrapper as RuntimeTable, MemoryWrapper as RuntimeMemory, GlobalWrapper as RuntimeGlobal};
 
 // SIMD execution integration
-// pub use crate::simd_execution_adapter::SimdExecutionAdapter; // Disabled due to compilation issues
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]

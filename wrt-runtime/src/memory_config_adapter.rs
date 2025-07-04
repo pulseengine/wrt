@@ -10,9 +10,9 @@ use wrt_foundation::{
     capabilities::CapabilityAwareProvider,
     capability_context, safe_capability_alloc,
     memory_init::{MemoryInitializer, get_global_capability_context},
-    codes, Error, ErrorCategory,
     prelude::*,
 };
+use wrt_error::{Error, ErrorCategory, codes};
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 use wrt_foundation::capabilities::{factory::CapabilityGuardedProvider, MemoryCapabilityContext, MemoryFactory};
@@ -146,7 +146,8 @@ pub mod platform_types {
     
     /// Create a platform-aware bounded string type
     pub fn create_bounded_string() -> Result<BoundedString<512, NoStdProvider<1024>>> {
-        let _config = runtime_memory_config();
+        let config = runtime_memory_config();
+        // Use config-defined size, but macro requires compile-time constant
         let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
         
         // Use from_str_truncate to create an empty string
@@ -162,7 +163,8 @@ pub mod platform_types {
            wrt_foundation::traits::ToBytes + 
            wrt_foundation::traits::FromBytes,
     {
-        let _config = runtime_memory_config();
+        let config = runtime_memory_config();
+        // Use config-defined size, but macro requires compile-time constant  
         let provider = wrt_foundation::safe_managed_alloc!(2048, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
         
         // Create a new bounded vector with the provider
@@ -189,15 +191,15 @@ pub struct DynamicProviderFactory;
 impl DynamicProviderFactory {
     /// Create a provider sized for the current platform
     pub fn create_for_use_case(use_case: MemoryUseCase) -> Result<AllocatedProvider<16384>> {
-        let _size = match use_case {
+        let size = match use_case {
             MemoryUseCase::FunctionLocals => 16384,
             MemoryUseCase::InstructionBuffer => 16384,
             MemoryUseCase::ModuleMetadata => 16384,
             MemoryUseCase::ComponentData => 16384,
             MemoryUseCase::TemporaryBuffer => 16384,
         };
-        // Use consistent 16KB provider for all runtime use cases
-        let context = capability_context!(dynamic(CrateId::Runtime, 16384))?;
+        // Use size-based provider for runtime use cases
+        let context = capability_context!(dynamic(CrateId::Runtime, size))?;
         safe_capability_alloc!(context, CrateId::Runtime, 16384)
     }
     

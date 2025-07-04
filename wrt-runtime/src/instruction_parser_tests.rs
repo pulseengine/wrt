@@ -39,7 +39,7 @@ mod tests {
                 if shift >= 32 {
                     return Err(crate::prelude::Error::new(
                         crate::prelude::ErrorCategory::Parse,
-                        crate::prelude::codes::PARSE_ERROR,
+                        wrt_error::codes::PARSE_ERROR,
                         "LEB128 integer too large"));
                 }
             }

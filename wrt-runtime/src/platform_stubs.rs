@@ -21,7 +21,7 @@
 #![forbid(unsafe_code)] // Platform abstractions must be safe
 
 use core::marker::PhantomData;
-use wrt_error::{Error, ErrorCategory, Result, codes};
+use wrt_error::{Error, ErrorCategory, Result};
 
 // Box for trait objects
 #[cfg(feature = "std")]

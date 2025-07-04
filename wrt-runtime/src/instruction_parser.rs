@@ -10,7 +10,7 @@ use wrt_foundation::{
     budget_aware_provider::CrateId,
     safe_managed_alloc,
 };
-use wrt_error::{Error, ErrorCategory, Result, codes};
+use wrt_error::{Error, ErrorCategory, Result};
 
 // Type aliases for capability-based memory allocation
 type InstructionProvider = wrt_foundation::safe_memory::NoStdProvider<8192>;
@@ -29,7 +29,7 @@ pub fn parse_instructions(bytecode: &[u8]) -> Result<InstructionVec> {
         let (instruction, consumed) = parse_instruction(bytecode, offset)?;
         let is_end = matches!(instruction, Instruction::End);
         instructions.push(instruction).map_err(|_| {
-            Error::capacity_exceeded("Too many instructions in function")
+            Error::capacity_limit_exceeded("Too many instructions in function")
         })?;
         offset += consumed;
         

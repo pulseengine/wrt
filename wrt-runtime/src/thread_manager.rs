@@ -12,7 +12,7 @@ use crate::bounded_runtime_infra::{
     BoundedThreadVec, BoundedThreadMap, RuntimeProvider, 
     new_thread_vec, new_thread_map, MAX_MANAGED_THREADS
 };
-use wrt_error::{Error, ErrorCategory, Result, codes};
+use wrt_error::{Error, ErrorCategory, Result};
 
 #[cfg(feature = "std")]
 use wrt_platform::threading::{Thread, ThreadHandle, ThreadSpawnOptions};
@@ -549,7 +549,7 @@ impl ThreadManager {
             .and_then(|opt| opt.as_mut())
             .ok_or_else(|| Error::new(
                 ErrorCategory::Runtime, 
-                codes::INVALID_ARGUMENT, 
+                wrt_error::codes::INVALID_ARGUMENT, 
                 "Invalid thread ID"))
     }
 }

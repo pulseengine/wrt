@@ -13,7 +13,7 @@ use alloc::{collections::BTreeMap, sync::Arc};
 
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 pub mod no_alloc {
-    use wrt_error::{codes, Error, ErrorCategory, Result};
+    use wrt_error::{Error, ErrorCategory, Result};
     use wrt_foundation::{
         bounded::{BoundedVec, MAX_COMPONENT_TYPES},
         safe_memory::{NoStdProvider, SafeSlice},

@@ -17,7 +17,7 @@ use wrt_foundation::{
 // Platform-aware memory provider for table operations  
 type TableProvider = wrt_foundation::safe_memory::NoStdProvider<8192>;  // 8KB for table operations
 
-use crate::prelude::{BoundedCapacity, Debug, Eq, Error, ErrorCategory, Ord, PartialEq, Result, RuntimeString, TryFrom, codes, Arc};
+use crate::prelude::{BoundedCapacity, Debug, Eq, Error, ErrorCategory, Ord, PartialEq, Result, RuntimeString, TryFrom, Arc};
 
 // Import format macro based on feature flags
 #[cfg(feature = "std")]
@@ -263,7 +263,7 @@ impl Table {
     pub fn get(&self, idx: u32) -> Result<Option<WrtValue>> {
         let idx = wasm_index_to_usize(idx)?;
         if idx >= self.elements.len() {
-            return Err(Error::runtime_invalid_function_index("Table access out of bounds"));
+            return Err(Error::invalid_function_index("Table access out of bounds"));
         }
 
         // Implement verification if needed based on verification level
@@ -277,7 +277,7 @@ impl Table {
 
         // Use BoundedVec's get method for direct access
         self.elements.get(idx as usize)
-            .map_err(|_| Error::runtime_invalid_function_index("Table index out of bounds"))
+            .map_err(|_| Error::invalid_function_index("Table index out of bounds"))
     }
 
     /// Sets an element at the specified index
@@ -298,7 +298,7 @@ impl Table {
     pub fn set(&mut self, idx: u32, value: Option<WrtValue>) -> Result<()> {
         let idx = wasm_index_to_usize(idx)?;
         if idx >= self.elements.len() {
-            return Err(Error::runtime_invalid_function_index("Table access out of bounds"));
+            return Err(Error::invalid_function_index("Table access out of bounds"));
         }
 
         if let Some(ref val) = value {
@@ -350,7 +350,7 @@ impl Table {
                 // For now, let's return an error. The runtime execution might interpret this.
                 return Err(Error::new(
                     ErrorCategory::Runtime,
-                    codes::CAPACITY_EXCEEDED,
+                    wrt_error::codes::CAPACITY_EXCEEDED,
                     "Table size exceeds maximum limit"));
             }
         }
@@ -526,7 +526,7 @@ impl Table {
     pub fn init_element(&mut self, idx: usize, value: Option<WrtValue>) -> Result<()> {
         // Check bounds
         if idx >= self.elements.len() {
-            return Err(Error::runtime_invalid_function_index("Runtime operation error"));
+            return Err(Error::invalid_function_index("Runtime operation error"));
         }
 
         // Set the element directly without converting to/from Vec
@@ -675,14 +675,14 @@ impl TableManager {
     /// Get a table by index
     pub fn get_table(&self, index: u32) -> Result<Table> {
         let table = self.tables.get(index as usize)
-            .map_err(|_| Error::runtime_invalid_function_index("Table index out of bounds"))?;
+            .map_err(|_| Error::invalid_function_index("Table index out of bounds"))?;
         Ok(table)
     }
     
     /// Get a mutable table by index
     pub fn get_table_mut(&mut self, index: u32) -> Result<&mut Table> {
         if index as usize >= self.tables.len() {
-            return Err(Error::runtime_invalid_function_index("Table index out of bounds"));
+            return Err(Error::invalid_function_index("Table index out of bounds"));
         }
         // Since BoundedVec doesn't have get_mut, we need to work around this
         // For now, return an error indicating this operation is not supported
