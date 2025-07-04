@@ -264,8 +264,9 @@ impl ArcMemoryExt for Arc<Memory> {
     }
 
     fn grow(&self, pages: u32) -> Result<u32> {
-        // Use the new thread-safe grow method
-        self.as_ref().grow_shared(pages)
+        // TODO: This is a design issue - the trait expects &self but grow_shared needs &mut self
+        // For now, return an error indicating this operation is not supported with Arc
+        Err(Error::not_supported_unsupported_operation("Memory growth not supported for Arc<Memory>, use direct Memory instance"))
     }
 
     fn read_i32(&self, addr: u32) -> Result<i32> {
@@ -391,7 +392,7 @@ impl ArcMemoryExt for Arc<Memory> {
             Value::F64(v) => self.write_f64(addr, f64::from_bits(v.to_bits())),
             Value::V128(v) => self.write_v128(addr, v.bytes),
             _ => Err(wrt_error::Error::new(wrt_error::ErrorCategory::Type,
-                wrt_error::errors::codes::TYPE_MISMATCH_ERROR,
+                wrt_error::codes::TYPE_MISMATCH_ERROR,
                 "Unsupported value type for memory write")),
         }
     }
@@ -407,7 +408,7 @@ impl ArcMemoryExt for Arc<Memory> {
                 &data[src..end]
             } else {
                 return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
-                    wrt_error::errors::codes::MEMORY_OUT_OF_BOUNDS,
+                    wrt_error::codes::MEMORY_OUT_OF_BOUNDS,
                     "End bounds overflow"));
             }
         } else if size == 0 {
@@ -420,7 +421,7 @@ impl ArcMemoryExt for Arc<Memory> {
         // Convert dst to u32 and write the data directly
         let dst_u32 = u32::try_from(dst).map_err(|_| {
             wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
-                wrt_error::errors::codes::MEMORY_OUT_OF_BOUNDS,
+                wrt_error::codes::MEMORY_OUT_OF_BOUNDS,
                 "Destination offset conversion failed")
         })?;
         
@@ -474,7 +475,7 @@ impl ArcMemoryExt for Arc<Memory> {
         for i in 0..count {
             let offset = addr.checked_add((i * value_size) as u32).ok_or_else(|| {
                 wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
-                    wrt_error::errors::codes::MEMORY_OUT_OF_BOUNDS,
+                    wrt_error::codes::MEMORY_OUT_OF_BOUNDS,
                     "Address overflow in read_values")
             })?;
 
@@ -527,7 +528,7 @@ impl ArcMemoryExt for Arc<Memory> {
         // or Arc::get_mut, which this trait signature doesn't allow.
         Err(Error::new(
             ErrorCategory::Runtime,
-            codes::UNSUPPORTED_OPERATION,
+            wrt_error::codes::UNSUPPORTED_OPERATION,
             "Memory growth not supported for Arc<Memory>"))
     }
 }
