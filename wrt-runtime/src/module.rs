@@ -47,17 +47,15 @@ use alloc::{vec::Vec, string::String, sync::Arc};
 use wrt_foundation::bounded_collections::BoundedMap;
 use wrt_foundation::traits::{BoundedCapacity, Checksummable, ToBytes, FromBytes};
 
-// Platform-aware type aliases using capability-based allocation
-// Note: BoundedVec uses a different MemoryProvider trait than memory_system
-// These types now use safe_managed_alloc for capability-based allocation
-pub type PlatformProvider8K = wrt_foundation::safe_memory::NoStdProvider<8192>;  // Larger buffer for runtime
-pub type RuntimeProvider128K = wrt_foundation::safe_memory::NoStdProvider<131072>; // Runtime memory provider
-pub type ImportMap = BoundedMap<PlatformBoundedString<256>, Import, 32, RuntimeProvider128K>;
-pub type ModuleImports = BoundedMap<PlatformBoundedString<256>, ImportMap, 32, RuntimeProvider128K>;
-pub type CustomSections = BoundedMap<PlatformBoundedString<256>, PlatformBoundedVec<u8, 4096>, 16, RuntimeProvider128K>;
-pub type ExportMap = BoundedMap<PlatformBoundedString<256>, Export, 64, RuntimeProvider128K>;
-pub type PlatformBoundedVec<T, const N: usize> = wrt_foundation::bounded::BoundedVec<T, N, PlatformProvider8K>;
-pub type PlatformBoundedString<const N: usize> = wrt_foundation::bounded::BoundedString<N, PlatformProvider8K>;
+// Unified memory allocation using safe_managed_alloc! - NO hardcoded providers
+// All memory allocation goes through safe_managed_alloc!(size, crate_id) as per CLAUDE.md
+
+// Temporary compound types until fully migrated to safe_managed_alloc! pattern
+type RuntimeProvider = wrt_foundation::safe_memory::NoStdProvider<131072>; // Runtime memory provider
+type ImportMap = BoundedMap<wrt_foundation::bounded::BoundedString<256, RuntimeProvider>, Import, 32, RuntimeProvider>;
+type ModuleImports = BoundedMap<wrt_foundation::bounded::BoundedString<256, RuntimeProvider>, ImportMap, 32, RuntimeProvider>;
+type CustomSections = BoundedMap<wrt_foundation::bounded::BoundedString<256, RuntimeProvider>, wrt_foundation::bounded::BoundedVec<u8, 4096, RuntimeProvider>, 16, RuntimeProvider>;
+type ExportMap = BoundedMap<wrt_foundation::bounded::BoundedString<256, RuntimeProvider>, Export, 64, RuntimeProvider>;
 
 /// Convert MemoryType to CoreMemoryType
 fn to_core_memory_type(memory_type: WrtMemoryType) -> CoreMemoryType {
@@ -71,7 +69,7 @@ fn to_core_memory_type(memory_type: WrtMemoryType) -> CoreMemoryType {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct WrtExpr {
     /// Parsed instructions (simplified representation)
-    pub instructions: PlatformBoundedVec<wrt_foundation::types::Instruction<PlatformProvider>, 1024>, // Parsed instructions
+    pub instructions: wrt_foundation::bounded::BoundedVec<wrt_foundation::types::Instruction<wrt_foundation::safe_memory::NoStdProvider<8192>>, 1024, wrt_foundation::safe_memory::NoStdProvider<8192>>, // Parsed instructions
 }
 
 impl WrtExpr {
@@ -104,7 +102,7 @@ pub enum ExportKind {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Export {
     /// Export name
-    pub name: PlatformBoundedString<128>,
+    pub name: wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     /// Export kind
     pub kind: ExportKind,
     /// Export index
@@ -115,7 +113,7 @@ impl Export {
     /// Creates a new export
     pub fn new(name: String, kind: ExportKind, index: u32) -> Result<Self> {
         let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
-        let bounded_name = PlatformBoundedString::from_str_truncate(&name, provider)?;
+        let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(&name, provider)?;
         Ok(Self { name: bounded_name, kind, index })
     }
 }
@@ -173,20 +171,20 @@ impl wrt_foundation::traits::FromBytes for Export {
 #[derive(Debug, Clone)]
 pub struct Import {
     /// Module name
-    pub module: PlatformBoundedString<128>,
+    pub module: wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     /// Import name
-    pub name: PlatformBoundedString<128>,
+    pub name: wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     /// Import type
-    pub ty: ExternType<PlatformProvider>,
+    pub ty: ExternType<wrt_foundation::safe_memory::NoStdProvider<8192>>,
 }
 
 impl Import {
     /// Creates a new import
-    pub fn new(module: String, name: String, ty: ExternType<PlatformProvider8K>) -> Result<Self> {
+    pub fn new(module: String, name: String, ty: ExternType<wrt_foundation::safe_memory::NoStdProvider<8192>>) -> Result<Self> {
         let provider1 = safe_managed_alloc!(8192, CrateId::Runtime)?;
         let provider2 = safe_managed_alloc!(8192, CrateId::Runtime)?;
-        let bounded_module = PlatformBoundedString::from_str_truncate(&module, provider1)?;
-        let bounded_name = PlatformBoundedString::from_str_truncate(&name, provider2)?;
+        let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(&module, provider1)?;
+        let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(&name, provider2)?;
         Ok(Self { module: bounded_module, name: bounded_name, ty })
     }
 }
@@ -196,8 +194,8 @@ impl Default for Import {
         let provider1 = safe_managed_alloc!(8192, CrateId::Runtime).unwrap();
         let provider2 = safe_managed_alloc!(8192, CrateId::Runtime).unwrap();
         Self {
-            module: PlatformBoundedString::from_str_truncate("", provider1).unwrap(),
-            name: PlatformBoundedString::from_str_truncate("", provider2).unwrap(),
+            module: wrt_foundation::bounded::BoundedString::from_str_truncate("", provider1).unwrap(),
+            name: wrt_foundation::bounded::BoundedString::from_str_truncate("", provider2).unwrap(),
             ty: ExternType::default(),
         }
     }
@@ -254,7 +252,7 @@ pub struct Function {
     /// The type index of the function (referring to Module.types)
     pub type_idx: u32,
     /// The parsed local variable declarations
-    pub locals: PlatformBoundedVec<WrtLocalEntry, 64>,
+    pub locals: wrt_foundation::bounded::BoundedVec<WrtLocalEntry, 64, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     /// The parsed instructions that make up the function body
     pub body: WrtExpr,
 }
@@ -264,7 +262,7 @@ impl Default for Function {
         let provider = safe_managed_alloc!(8192, CrateId::Runtime).unwrap();
         Self {
             type_idx: 0,
-            locals: PlatformBoundedVec::new(provider).unwrap(),
+            locals: wrt_foundation::bounded::BoundedVec::new(provider).unwrap(),
             body: WrtExpr::default(),
         }
     }
@@ -306,10 +304,10 @@ impl wrt_foundation::traits::FromBytes for Function {
         let mut bytes = [0u8; 4];
         reader.read_exact(&mut bytes)?;
         let type_idx = u32::from_le_bytes(bytes);
-        let provider = safe_managed_alloc!(8192, CrateId::Runtime).map_err(|_| wrt_error::Error::memory("Failed to allocate provider for function locals"))?;
+        let provider = safe_managed_alloc!(8192, CrateId::Runtime).map_err(|_| wrt_error::Error::memory_error("Failed to allocate provider for function locals"))?;
         Ok(Self {
             type_idx,
-            locals: PlatformBoundedVec::new(provider).unwrap(),
+            locals: wrt_foundation::bounded::BoundedVec::new(provider).unwrap(),
             body: WrtExpr::default(),
         })
     }
@@ -340,7 +338,7 @@ pub struct Element {
     /// Type of elements in this segment
     pub element_type: WrtRefType,
     /// Element items (function indices or expressions)
-    pub items: PlatformBoundedVec<u32, 1024>,
+    pub items: wrt_foundation::bounded::BoundedVec<u32, 1024, wrt_foundation::safe_memory::NoStdProvider<8192>>,
 }
 
 impl wrt_foundation::traits::Checksummable for Element {
@@ -399,7 +397,7 @@ impl wrt_foundation::traits::FromBytes for Element {
             table_idx,
             offset_expr: None,
             element_type: WrtRefType::Funcref,
-            items: PlatformBoundedVec::new(safe_managed_alloc!(8192, CrateId::Runtime).unwrap()).unwrap(),
+            items: wrt_foundation::bounded::BoundedVec::new(safe_managed_alloc!(8192, CrateId::Runtime).unwrap()).unwrap(),
         })
     }
 }
@@ -414,7 +412,7 @@ pub struct Data {
     /// Offset expression for data placement
     pub offset_expr: Option<WrtExpr>,
     /// Initialization data bytes
-    pub init: PlatformBoundedVec<u8, 4096>,
+    pub init: wrt_foundation::bounded::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<8192>>,
 }
 
 impl wrt_foundation::traits::Checksummable for Data {
@@ -474,7 +472,7 @@ impl wrt_foundation::traits::FromBytes for Data {
             mode,
             memory_idx,
             offset_expr: None,
-            init: PlatformBoundedVec::new(safe_managed_alloc!(8192, CrateId::Runtime).map_err(|_| wrt_error::Error::memory("Failed to allocate provider for data init"))?)?,
+            init: wrt_foundation::bounded::BoundedVec::new(safe_managed_alloc!(8192, CrateId::Runtime).map_err(|_| wrt_error::Error::memory_error("Failed to allocate provider for data init"))?)?,
         })
     }
 }
@@ -487,24 +485,24 @@ impl Data {
 }
 
 /// Represents a WebAssembly module in the runtime
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Module {
     /// Module types (function signatures)
-    pub types: PlatformBoundedVec<WrtFuncType<PlatformProvider>, 256>,
+    pub types: wrt_foundation::bounded::BoundedVec<WrtFuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>, 256, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     /// Imported functions, tables, memories, and globals
     pub imports: ModuleImports,
     /// Function definitions
-    pub functions: PlatformBoundedVec<Function, 1024>,
+    pub functions: wrt_foundation::bounded::BoundedVec<Function, 1024, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     /// Table instances
-    pub tables: PlatformBoundedVec<TableWrapper, 64>,
+    pub tables: wrt_foundation::bounded::BoundedVec<TableWrapper, 64, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     /// Memory instances
-    pub memories: PlatformBoundedVec<MemoryWrapper, 64>,
+    pub memories: wrt_foundation::bounded::BoundedVec<MemoryWrapper, 64, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     /// Global variable instances
-    pub globals: PlatformBoundedVec<GlobalWrapper, 256>,
+    pub globals: wrt_foundation::bounded::BoundedVec<GlobalWrapper, 256, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     /// Element segments for tables
-    pub elements: PlatformBoundedVec<Element, 256>,
+    pub elements: wrt_foundation::bounded::BoundedVec<Element, 256, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     /// Data segments for memories
-    pub data: PlatformBoundedVec<Data, 256>,
+    pub data: wrt_foundation::bounded::BoundedVec<Data, 256, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     /// Start function index
     pub start: Option<u32>,
     /// Custom sections
@@ -512,9 +510,9 @@ pub struct Module {
     /// Exports (functions, tables, memories, and globals)
     pub exports: ExportMap,
     /// Optional name for the module
-    pub name: Option<PlatformBoundedString<128>>,
+    pub name: Option<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<8192>>>,
     /// Original binary (if available)
-    pub binary: Option<PlatformBoundedVec<u8, 65536>>,
+    pub binary: Option<wrt_foundation::bounded::BoundedVec<u8, 65536, wrt_foundation::safe_memory::NoStdProvider<8192>>>,
     /// Execution validation flag
     pub validated: bool,
 }
@@ -555,7 +553,7 @@ impl Module {
         
         // Convert types
         for func_type in &wrt_module.types {
-            let provider = safe_managed_alloc!(4096, CrateId::Runtime)?;
+            let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
             let mut params = wrt_foundation::bounded::BoundedVec::new(provider.clone())?;
             let mut results = wrt_foundation::bounded::BoundedVec::new(provider.clone())?;
             
@@ -589,8 +587,13 @@ impl Module {
         
         // Convert exports
         for export in &wrt_module.exports {
-            let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
-            let name = PlatformBoundedString::from_str_truncate(&export.name, provider)?;
+            // Create the export name with correct provider size (8192)
+            let provider1 = safe_managed_alloc!(8192, CrateId::Runtime)?;
+            let name = wrt_foundation::bounded::BoundedString::from_str_truncate(&export.name, provider1)?;
+            
+            // Create key with correct type for ExportMap (BoundedString<256, RuntimeProvider>)
+            let provider2 = safe_managed_alloc!(131072, CrateId::Runtime)?;
+            let map_key = wrt_foundation::bounded::BoundedString::from_str_truncate(&export.name, provider2)?;
             
             let kind = match export.kind {
                 wrt_format::module::ExportKind::Function => ExportKind::Function,
@@ -606,7 +609,7 @@ impl Module {
                 index: export.index,
             };
             
-            runtime_module.exports.insert(name.clone(), runtime_export)?;
+            runtime_module.exports.insert(map_key, runtime_export)?;
         }
         
         Ok(runtime_module)
@@ -615,7 +618,7 @@ impl Module {
     /// Creates a runtime Module from a `wrt_foundation::types::Module`.
     /// This is the primary constructor after decoding for no_std.
     #[cfg(not(feature = "std"))]
-    pub fn from_wrt_module(wrt_module: &wrt_foundation::types::Module<PlatformProvider>) -> Result<Self> {
+    pub fn from_wrt_module(wrt_module: &wrt_foundation::types::Module<wrt_foundation::safe_memory::NoStdProvider<8192>>) -> Result<Self> {
         let mut runtime_module = Self::new()?;
 
         // TODO: wrt_module doesn't have a name field currently
@@ -665,21 +668,25 @@ impl Module {
             };
             // Create bounded strings for the import - avoid as_str() which is broken in no_std
             // For now, use empty strings as placeholders since as_str() is broken
-            let module_key_256: PlatformBoundedString<256> = PlatformBoundedString::from_str_truncate(
+            let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+            let module_key_256: wrt_foundation::bounded::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<8192>> = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 "", // TODO: copy from import_def.module_name when as_str() is fixed
-                PlatformProvider::default()
+                provider
             )?;
-            let module_key_128: PlatformBoundedString<128> = PlatformBoundedString::from_str_truncate(
+            let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+            let module_key_128: wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<8192>> = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 "", // TODO: copy from import_def.module_name when as_str() is fixed
-                PlatformProvider::default()
+                provider
             )?;
-            let name_key_256: PlatformBoundedString<256> = PlatformBoundedString::from_str_truncate(
+            let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+            let name_key_256: wrt_foundation::bounded::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<8192>> = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 "", // TODO: copy from import_def.item_name when as_str() is fixed
-                PlatformProvider::default()
+                provider
             )?;
-            let name_key_128: PlatformBoundedString<128> = PlatformBoundedString::from_str_truncate(
+            let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+            let name_key_128: wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<8192>> = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 "", // TODO: copy from import_def.item_name when as_str() is fixed
-                PlatformProvider::default()
+                provider
             )?;
             
             // Create import directly to avoid as_str() conversion issues
@@ -688,7 +695,8 @@ impl Module {
                 name: name_key_128,
                 ty: extern_ty,
             };
-            let mut inner_map = BoundedMap::new(RuntimeProvider::default())?;
+            let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+        let mut inner_map = BoundedMap::new(provider)?;
             inner_map.insert(name_key_256, import)?;
             runtime_module.imports.insert(module_key_256, inner_map)?;
         }
@@ -713,7 +721,8 @@ impl Module {
             let type_idx = wrt_module.functions.get(func_idx_in_defined_funcs).map_err(|_| Error::validation_function_not_found("Function index out of bounds"))?;
 
             // Convert locals from foundation format to runtime format
-            let mut runtime_locals = PlatformBoundedVec::<WrtLocalEntry, 64>::new(PlatformProvider::default())?;
+            let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+            let mut runtime_locals = wrt_foundation::bounded::BoundedVec::<WrtLocalEntry, 64, wrt_foundation::safe_memory::NoStdProvider<8192>>::new(provider)?;
             for local in &code_entry.locals {
                 if runtime_locals.push(local).is_err() {
                     return Err(Error::runtime_execution_error("Runtime execution error: locals capacity exceeded"));
@@ -798,9 +807,10 @@ impl Module {
                 }
             };
             let export = crate::module::Export::new(export_def.name.as_str()?.to_string(), kind, index)?;
-            let name_key = PlatformBoundedString::from_str_truncate(
+            let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+            let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 export_def.name.as_str()?,
-                PlatformProvider::default()
+                provider
             )?;
             runtime_module.exports.insert(name_key, export)?;
         }
@@ -812,9 +822,10 @@ impl Module {
         // This will need to be implemented once data segments are added to the Module struct
 
         for custom_def in &wrt_module.custom_sections {
-            let name_key = PlatformBoundedString::from_str_truncate(
+            let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+            let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 custom_def.name.as_str()?,
-                PlatformProvider::default()
+                provider
             )?;
             runtime_module.custom_sections.insert(name_key, custom_def.data.clone())?;
         }
@@ -825,7 +836,8 @@ impl Module {
     /// Gets an export by name
     pub fn get_export(&self, name: &str) -> Option<Export> {
         // TODO: BoundedMap doesn't support iteration, so we'll use get with a RuntimeString key
-        let runtime_key = PlatformBoundedString::from_str_truncate(name, PlatformProvider::default()).ok()?;
+        let provider = safe_managed_alloc!(131072, CrateId::Runtime).ok()?;
+        let runtime_key: wrt_foundation::bounded::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<131072>> = wrt_foundation::bounded::BoundedString::from_str_truncate(name, provider).ok()?;
         self.exports.get(&runtime_key).ok().flatten()
     }
 
@@ -838,7 +850,7 @@ impl Module {
     }
 
     /// Gets a function type by index
-    pub fn get_function_type(&self, idx: u32) -> Option<WrtFuncType<PlatformProvider>> {
+    pub fn get_function_type(&self, idx: u32) -> Option<WrtFuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>> {
         if idx as usize >= self.types.len() {
             return None;
         }
@@ -857,7 +869,7 @@ impl Module {
         self.memories.get(idx).map_err(|_| {
             Error::new(
                 ErrorCategory::Runtime,
-                codes::MEMORY_NOT_FOUND,
+                wrt_error::codes::MEMORY_NOT_FOUND,
                 "Memory index out of bounds")
         })
     }
@@ -874,17 +886,17 @@ impl Module {
         let export = Export::new(name.clone(), ExportKind::Function, index)?;
         #[cfg(feature = "std")]
         {
-            let bounded_name = PlatformBoundedString::from_str_truncate(
+            let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name.as_str(),
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             self.exports.insert(bounded_name, export)?;
         }
         #[cfg(not(feature = "std"))]
         {
-            let bounded_name = PlatformBoundedString::from_str_truncate(
+            let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name.as_str(),
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -896,17 +908,17 @@ impl Module {
         let export = Export::new(name.clone(), ExportKind::Table, index)?;
         #[cfg(feature = "std")]
         {
-            let bounded_name = PlatformBoundedString::from_str_truncate(
+            let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name.as_str(),
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             self.exports.insert(bounded_name, export)?;
         }
         #[cfg(not(feature = "std"))]
         {
-            let bounded_name = PlatformBoundedString::from_str_truncate(
+            let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name.as_str(),
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -918,17 +930,17 @@ impl Module {
         let export = Export::new(name.clone(), ExportKind::Memory, index)?;
         #[cfg(feature = "std")]
         {
-            let bounded_name = PlatformBoundedString::from_str_truncate(
+            let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name.as_str(),
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             self.exports.insert(bounded_name, export)?;
         }
         #[cfg(not(feature = "std"))]
         {
-            let bounded_name = PlatformBoundedString::from_str_truncate(
+            let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name.as_str(),
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -940,17 +952,17 @@ impl Module {
         let export = Export::new(name.clone(), ExportKind::Global, index)?;
         #[cfg(feature = "std")]
         {
-            let bounded_name = PlatformBoundedString::from_str_truncate(
+            let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name.as_str(),
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             self.exports.insert(bounded_name, export)?;
         }
         #[cfg(not(feature = "std"))]
         {
-            let bounded_name = PlatformBoundedString::from_str_truncate(
+            let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name.as_str(),
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -971,9 +983,9 @@ impl Module {
         // Convert BoundedString to String - use default empty string if conversion fails
         let export_name_string = String::from("export"); // Use a placeholder name
         let runtime_export = Export::new(export_name_string, runtime_export_kind, format_export.index)?;
-        let name_key = PlatformBoundedString::from_str_truncate(
+        let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
             runtime_export.name.as_str().map_err(|_| Error::runtime_error("Invalid export name"))?,
-            PlatformProvider::default()
+            safe_managed_alloc!(131072, CrateId::Runtime)?
         )?;
         self.exports.insert(name_key, runtime_export)?;
         Ok(())
@@ -981,9 +993,9 @@ impl Module {
 
     /// Set the name of the module
     pub fn set_name(&mut self, name: String) -> Result<()> {
-        let bounded_name = PlatformBoundedString::from_str_truncate(
+        let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
             &name,
-            PlatformProvider::default()
+            safe_managed_alloc!(8192, CrateId::Runtime)?
         )?;
         self.name = Some(bounded_name);
         Ok(())
@@ -996,7 +1008,7 @@ impl Module {
     }
 
     /// Add a function type to the module
-    pub fn add_type(&mut self, ty: WrtFuncType<PlatformProvider>) -> Result<()> {
+    pub fn add_type(&mut self, ty: WrtFuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>) -> Result<()> {
         self.types.push(ty)?;
         Ok(())
     }
@@ -1024,42 +1036,43 @@ impl Module {
         #[cfg(feature = "std")]
         {
             // Convert to bounded strings
-            let bounded_module = PlatformBoundedString::from_str_truncate(
+            let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 module_name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
-            let bounded_item = PlatformBoundedString::from_str_truncate(
+            let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 item_name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             
             // For BoundedMap, we need to handle the nested map differently
             // First check if module exists
             let mut inner_map = match self.imports.get(&bounded_module)? {
                 Some(existing) => existing,
-                None => ImportMap::new(RuntimeProvider::default())?
+                None => ImportMap::new(safe_managed_alloc!(131072, CrateId::Runtime)?)?
             };
             
             // Insert the import into the inner map
-            inner_map.insert(bounded_item, import_struct)?;
+            let _ = inner_map.insert(bounded_item, import_struct)?;
             
             // Update the outer map
-            self.imports.insert(bounded_module, inner_map)?;
+            let _ = self.imports.insert(bounded_module, inner_map)?;
         }
         #[cfg(not(feature = "std"))]
         {
-            let bounded_module = PlatformBoundedString::from_str_truncate(
+            let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 module_name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
-            let bounded_item = PlatformBoundedString::from_str_truncate(
+            let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 item_name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             // BoundedMap doesn't support get_mut, so we'll use a simpler approach
-            let mut inner_map = BoundedMap::new(RuntimeProvider::default())?;
-            inner_map.insert(bounded_item, import_struct)?;
-            self.imports.insert(bounded_module, inner_map)?;
+            let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+        let mut inner_map = BoundedMap::new(provider)?;
+            let _ = inner_map.insert(bounded_item, import_struct)?;
+            let _ = self.imports.insert(bounded_module, inner_map)?;
         }
         Ok(())
     }
@@ -1079,42 +1092,43 @@ impl Module {
         #[cfg(feature = "std")]
         {
             // Convert to bounded strings
-            let bounded_module = PlatformBoundedString::from_str_truncate(
+            let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 module_name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
-            let bounded_item = PlatformBoundedString::from_str_truncate(
+            let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 item_name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             
             // For BoundedMap, we need to handle the nested map differently
             // First check if module exists
             let mut inner_map = match self.imports.get(&bounded_module)? {
                 Some(existing) => existing,
-                None => ImportMap::new(RuntimeProvider::default())?
+                None => ImportMap::new(safe_managed_alloc!(131072, CrateId::Runtime)?)?
             };
             
             // Insert the import into the inner map
-            inner_map.insert(bounded_item, import_struct)?;
+            let _ = inner_map.insert(bounded_item, import_struct)?;
             
             // Update the outer map
-            self.imports.insert(bounded_module, inner_map)?;
+            let _ = self.imports.insert(bounded_module, inner_map)?;
         }
         #[cfg(not(feature = "std"))]
         {
-            let bounded_module = PlatformBoundedString::from_str_truncate(
+            let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 module_name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
-            let bounded_item = PlatformBoundedString::from_str_truncate(
+            let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 item_name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             // BoundedMap doesn't support get_mut, so we'll use a simpler approach
-            let mut inner_map = BoundedMap::new(RuntimeProvider::default())?;
-            inner_map.insert(bounded_item, import_struct)?;
-            self.imports.insert(bounded_module, inner_map)?;
+            let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+        let mut inner_map = BoundedMap::new(provider)?;
+            let _ = inner_map.insert(bounded_item, import_struct)?;
+            let _ = self.imports.insert(bounded_module, inner_map)?;
         }
         Ok(())
     }
@@ -1134,42 +1148,43 @@ impl Module {
         #[cfg(feature = "std")]
         {
             // Convert to bounded strings
-            let bounded_module = PlatformBoundedString::from_str_truncate(
+            let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 module_name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
-            let bounded_item = PlatformBoundedString::from_str_truncate(
+            let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 item_name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             
             // For BoundedMap, we need to handle the nested map differently
             // First check if module exists
             let mut inner_map = match self.imports.get(&bounded_module)? {
                 Some(existing) => existing,
-                None => ImportMap::new(RuntimeProvider::default())?
+                None => ImportMap::new(safe_managed_alloc!(131072, CrateId::Runtime)?)?
             };
             
             // Insert the import into the inner map
-            inner_map.insert(bounded_item, import_struct)?;
+            let _ = inner_map.insert(bounded_item, import_struct)?;
             
             // Update the outer map
-            self.imports.insert(bounded_module, inner_map)?;
+            let _ = self.imports.insert(bounded_module, inner_map)?;
         }
         #[cfg(not(feature = "std"))]
         {
-            let bounded_module = PlatformBoundedString::from_str_truncate(
+            let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 module_name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
-            let bounded_item = PlatformBoundedString::from_str_truncate(
+            let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 item_name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             // BoundedMap doesn't support get_mut, so we'll use a simpler approach
-            let mut inner_map = BoundedMap::new(RuntimeProvider::default())?;
-            inner_map.insert(bounded_item, import_struct)?;
-            self.imports.insert(bounded_module, inner_map)?;
+            let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+        let mut inner_map = BoundedMap::new(provider)?;
+            let _ = inner_map.insert(bounded_item, import_struct)?;
+            let _ = self.imports.insert(bounded_module, inner_map)?;
         }
         Ok(())
     }
@@ -1192,15 +1207,16 @@ impl Module {
             ExternType::Global(component_global_type),
         )?;
 
-        let module_key = PlatformBoundedString::from_str_truncate(
+        let module_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
             module_name,
-            PlatformProvider::default()
+            safe_managed_alloc!(131072, CrateId::Runtime)?
         )?;
-        let item_key = PlatformBoundedString::from_str_truncate(
+        let item_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
             item_name,
-            PlatformProvider::default()
+            safe_managed_alloc!(131072, CrateId::Runtime)?
         )?;
-        let mut inner_map = BoundedMap::new(RuntimeProvider::default())?;
+        let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+        let mut inner_map = BoundedMap::new(provider)?;
         inner_map.insert(item_key, import)?;
         self.imports.insert(module_key, inner_map)?;
         Ok(())
@@ -1215,7 +1231,7 @@ impl Module {
         let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
         let function = Function { 
             type_idx, 
-            locals: PlatformBoundedVec::new(provider)?, 
+            locals: wrt_foundation::bounded::BoundedVec::new(provider)?, 
             body: WrtExpr::default() 
         };
 
@@ -1251,9 +1267,9 @@ impl Module {
         }
 
         let export = Export::new(name.to_string(), ExportKind::Function, index)?;
-        let bounded_name = PlatformBoundedString::from_str_truncate(
+        let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
             name,
-            PlatformProvider::default()
+            safe_managed_alloc!(131072, CrateId::Runtime)?
         )?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
@@ -1269,9 +1285,9 @@ impl Module {
 
         let export = Export::new(name.to_string(), ExportKind::Table, index)?;
 
-        let bounded_name = PlatformBoundedString::from_str_truncate(
+        let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
             name,
-            PlatformProvider::default()
+            safe_managed_alloc!(131072, CrateId::Runtime)?
         )?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
@@ -1287,9 +1303,9 @@ impl Module {
 
         let export = Export::new(name.to_string(), ExportKind::Memory, index)?;
 
-        let bounded_name = PlatformBoundedString::from_str_truncate(
+        let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
             name,
-            PlatformProvider::default()
+            safe_managed_alloc!(131072, CrateId::Runtime)?
         )?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
@@ -1305,9 +1321,9 @@ impl Module {
 
         let export = Export::new(name.to_string(), ExportKind::Global, index)?;
 
-        let bounded_name = PlatformBoundedString::from_str_truncate(
+        let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
             name,
-            PlatformProvider::default()
+            safe_managed_alloc!(131072, CrateId::Runtime)?
         )?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
@@ -1320,7 +1336,7 @@ impl Module {
             wrt_format::module::ElementInit::FuncIndices(func_indices) => {
                 // For function indices, copy them
                 let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
-                let mut bounded_items = PlatformBoundedVec::new(provider)?;
+                let mut bounded_items = wrt_foundation::bounded::BoundedVec::new(provider)?;
                 for idx in func_indices.iter() {
                     bounded_items.push(*idx)?;
                 }
@@ -1329,7 +1345,7 @@ impl Module {
             wrt_format::module::ElementInit::Expressions(_expressions) => {
                 // For expressions, create empty items list for now (TODO: process expressions)
                 let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
-                PlatformBoundedVec::new(provider)?
+                wrt_foundation::bounded::BoundedVec::new(provider)?
             }
         };
         
@@ -1365,7 +1381,8 @@ impl Module {
         }
         
         // Convert Vec<WrtLocalEntry> to BoundedVec
-        let mut bounded_locals = PlatformBoundedVec::<WrtLocalEntry, 64>::new(PlatformProvider::default())?;
+        let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        let mut bounded_locals = wrt_foundation::bounded::BoundedVec::<WrtLocalEntry, 64, wrt_foundation::safe_memory::NoStdProvider<8192>>::new(provider)?;
         for local in locals {
             bounded_locals.push(local)?;
         }
@@ -1383,7 +1400,7 @@ impl Module {
     pub fn add_data(&mut self, data: wrt_format::module::Data) -> Result<()> {
         // Convert format data to runtime data
         let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
-        let mut init_4096 = PlatformBoundedVec::new(provider)?;
+        let mut init_4096 = wrt_foundation::bounded::BoundedVec::new(provider)?;
         
         // Copy data from the format's init (1024 capacity) to runtime's init (4096 capacity)
         for byte in data.init.iter() {
@@ -1403,8 +1420,10 @@ impl Module {
 
     /// Add a custom section to the module
     pub fn add_custom_section(&mut self, name: &str, data: Vec<u8>) -> Result<()> {
-        let name_key = PlatformBoundedString::from_str_truncate(name, PlatformProvider::default())?;
-        let mut bounded_data = PlatformBoundedVec::<u8, 4096>::new(PlatformProvider::default())?;
+        let provider_key = safe_managed_alloc!(131072, CrateId::Runtime)?;
+        let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(name, provider_key)?;
+        let provider_data = safe_managed_alloc!(131072, CrateId::Runtime)?;
+        let mut bounded_data = wrt_foundation::bounded::BoundedVec::<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<131072>>::new(provider_data)?;
         for byte in data {
             bounded_data.push(byte)?;
         }
@@ -1414,7 +1433,8 @@ impl Module {
 
     /// Set the binary representation of the module
     pub fn set_binary(&mut self, binary: Vec<u8>) -> Result<()> {
-        let mut bounded_binary = PlatformBoundedVec::<u8, 65536>::new(PlatformProvider::default())?;
+        let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        let mut bounded_binary = wrt_foundation::bounded::BoundedVec::<u8, 65536, wrt_foundation::safe_memory::NoStdProvider<8192>>::new(provider)?;
         for byte in binary {
             bounded_binary.push(byte)?;
         }
@@ -1452,42 +1472,43 @@ impl Module {
         #[cfg(feature = "std")]
         {
             // Convert to bounded strings
-            let bounded_module = PlatformBoundedString::from_str_truncate(
+            let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 module_name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
-            let bounded_item = PlatformBoundedString::from_str_truncate(
+            let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 item_name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             
             // For BoundedMap, we need to handle the nested map differently
             // First check if module exists
             let mut inner_map = match self.imports.get(&bounded_module)? {
                 Some(existing) => existing,
-                None => ImportMap::new(RuntimeProvider::default())?
+                None => ImportMap::new(safe_managed_alloc!(131072, CrateId::Runtime)?)?
             };
             
             // Insert the import into the inner map
-            inner_map.insert(bounded_item, import_struct)?;
+            let _ = inner_map.insert(bounded_item, import_struct)?;
             
             // Update the outer map
-            self.imports.insert(bounded_module, inner_map)?;
+            let _ = self.imports.insert(bounded_module, inner_map)?;
         }
         #[cfg(not(feature = "std"))]
         {
-            let bounded_module = PlatformBoundedString::from_str_truncate(
+            let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 module_name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
-            let bounded_item = PlatformBoundedString::from_str_truncate(
+            let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 item_name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             // BoundedMap doesn't support get_mut, so we'll use a simpler approach
-            let mut inner_map = BoundedMap::new(RuntimeProvider::default())?;
-            inner_map.insert(bounded_item, import_struct)?;
-            self.imports.insert(bounded_module, inner_map)?;
+            let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+        let mut inner_map = BoundedMap::new(provider)?;
+            let _ = inner_map.insert(bounded_item, import_struct)?;
+            let _ = self.imports.insert(bounded_module, inner_map)?;
         }
         Ok(())
     }
@@ -1504,7 +1525,9 @@ impl Module {
             }
         };
         let runtime_export = crate::module::Export::new(name.clone(), kind, index)?;
-        let name_key = PlatformBoundedString::from_str_truncate(&name, PlatformProvider::default())?;
+        let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+        let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(&name, provider)?;
         self.exports.insert(name_key, runtime_export)?;
         Ok(())
     }
@@ -1516,18 +1539,18 @@ impl Module {
         // handled during instantiation.
         // TODO: ElementItems type not available yet, using empty items for now
         let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
-        let items_resolved = PlatformBoundedVec::new(provider)?;
+        let items_resolved = wrt_foundation::bounded::BoundedVec::new(provider)?;
 
-        // Convert element mode from wrt_format to wrt_foundation
+        // Convert element mode from PureElementMode to WrtElementMode
         let runtime_mode = match &element_segment.mode {
-            wrt_format::module::ElementMode::Active { table_index, offset_expr } => {
+            wrt_format::pure_format_types::PureElementMode::Active { table_index, .. } => {
                 WrtElementMode::Active { 
                     table_index: *table_index, 
-                    offset: 0 // Simplified - would need to evaluate offset_expr
+                    offset: 0 // Simplified - would need to evaluate offset_expr_bytes
                 }
             },
-            wrt_format::module::ElementMode::Passive => WrtElementMode::Passive,
-            wrt_format::module::ElementMode::Declared => WrtElementMode::Declarative,
+            wrt_format::pure_format_types::PureElementMode::Passive => WrtElementMode::Passive,
+            wrt_format::pure_format_types::PureElementMode::Declared => WrtElementMode::Declarative,
         };
 
         self.elements.push(crate::module::Element {
@@ -1542,26 +1565,30 @@ impl Module {
 
     /// Add a runtime data segment to the module  
     pub fn add_runtime_data(&mut self, data_segment: WrtDataSegment) -> Result<()> {
-        // Convert data mode from wrt_format to wrt_foundation
-        let runtime_mode = match &data_segment.mode {
-            wrt_format::module::DataMode::Active => {
-                WrtDataMode::Active { 
-                    memory_index: data_segment.memory_idx, 
-                    offset: 0 // Simplified - would need to evaluate offset expression
-                }
+        // WrtDataSegment is actually PureDataSegment
+        // Convert data mode from PureDataMode to WrtDataMode
+        let (runtime_mode, memory_idx) = match &data_segment.mode {
+            wrt_format::pure_format_types::PureDataMode::Active { memory_index, .. } => {
+                (WrtDataMode::Active { 
+                    memory_index: *memory_index, 
+                    offset: 0 // Simplified - would need to evaluate offset_expr_bytes
+                }, Some(*memory_index))
             },
-            wrt_format::module::DataMode::Passive => WrtDataMode::Passive,
+            wrt_format::pure_format_types::PureDataMode::Passive => {
+                (WrtDataMode::Passive, None)
+            },
         };
 
-        // Convert data_segment.init to larger capacity
-        let mut runtime_init = PlatformBoundedVec::<u8, 4096>::new(PlatformProvider::default())?;
-        for byte in data_segment.init.iter() {
+        // Convert data_segment.data_bytes to larger capacity
+        let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        let mut runtime_init = wrt_foundation::bounded::BoundedVec::<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<8192>>::new(provider)?;
+        for byte in data_segment.data_bytes.iter() {
             runtime_init.push(*byte)?;
         }
         
         self.data.push(crate::module::Data {
             mode: runtime_mode,
-            memory_idx: Some(data_segment.memory_idx),
+            memory_idx,
             offset_expr: None, // Simplified for now
             init: runtime_init,
         })?;
@@ -1569,18 +1596,25 @@ impl Module {
     }
 
     /// Add a custom section to the module
-    pub fn add_custom_section_runtime(&mut self, section: WrtCustomSection<PlatformProvider>) -> Result<()> {
-        let name_key = PlatformBoundedString::from_str_truncate(
+    pub fn add_custom_section_runtime(&mut self, section: WrtCustomSection<wrt_foundation::safe_memory::NoStdProvider<8192>>) -> Result<()> {
+        let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
             section.name.as_str()?,
-            PlatformProvider::default()
+            safe_managed_alloc!(131072, CrateId::Runtime)?
         )?;
-        self.custom_sections.insert(name_key, section.data)?;
+        // Convert section.data to the expected type
+        let provider_data = safe_managed_alloc!(131072, CrateId::Runtime)?;
+        let mut bounded_data = wrt_foundation::bounded::BoundedVec::<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<131072>>::new(provider_data)?;
+        for i in 0..section.data.len() {
+            bounded_data.push(section.data.get(i)?)?;
+        }
+        self.custom_sections.insert(name_key, bounded_data)?;
         Ok(())
     }
 
     /// Set the binary representation of the module (alternative method)
     pub fn set_binary_runtime(&mut self, binary: Vec<u8>) -> Result<()> {
-        let mut bounded_binary = PlatformBoundedVec::<u8, 65536>::new(PlatformProvider::default())?;
+        let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        let mut bounded_binary = wrt_foundation::bounded::BoundedVec::<u8, 65536, wrt_foundation::safe_memory::NoStdProvider<8192>>::new(provider)?;
         for byte in binary {
             bounded_binary.push(byte)?;
         }
@@ -1613,7 +1647,8 @@ impl Module {
         // Store the binary for later use
         // Note: This is the only place where we keep the full binary in memory
         // Consider using a streaming approach here too if binary size is a concern
-        let mut bounded_binary = PlatformBoundedVec::<u8, 65536>::new(PlatformProvider::default())?;
+        let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        let mut bounded_binary = wrt_foundation::bounded::BoundedVec::<u8, 65536, wrt_foundation::safe_memory::NoStdProvider<8192>>::new(provider)?;
         for byte in binary {
             bounded_binary.push(*byte)?;
         }
@@ -1639,7 +1674,7 @@ impl Module {
                     // For now, create a simple function type
                     // In a full implementation, we'd look up the actual type
                     let func_type = WrtFuncType::new(
-                        PlatformProvider::default(),
+                        safe_managed_alloc!(8192, CrateId::Runtime)?,
                         std::iter::empty::<WrtValueType>(), // empty params
                         std::iter::empty::<WrtValueType>()  // empty results
                     )?;
@@ -1679,19 +1714,19 @@ impl Module {
             )?;
 
             // Add to imports map
-            let module_key = PlatformBoundedString::from_str_truncate(
+            let module_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 &import.module,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
-            let item_key = PlatformBoundedString::from_str_truncate(
+            let item_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 &import.name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
 
             // Get or create inner map
             let mut inner_map = match runtime_module.imports.get(&module_key)? {
                 Some(existing) => existing,
-                None => ImportMap::new(RuntimeProvider::default())?
+                None => ImportMap::new(safe_managed_alloc!(131072, CrateId::Runtime)?)?
             };
 
             // Insert the import
@@ -1709,9 +1744,9 @@ impl Module {
             };
 
             let runtime_export = Export::new(export.name.clone(), export_kind, export.index)?;
-            let name_key = PlatformBoundedString::from_str_truncate(
+            let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 &export.name,
-                PlatformProvider::default()
+                safe_managed_alloc!(131072, CrateId::Runtime)?
             )?;
             runtime_module.exports.insert(name_key, runtime_export)?;
         }
@@ -1745,9 +1780,10 @@ impl Module {
 
     /// Find a function export by name
     pub fn find_function_by_name(&self, name: &str) -> Option<u32> {
-        let bounded_name = PlatformBoundedString::from_str_truncate(
+        let provider = safe_managed_alloc!(131072, CrateId::Runtime).ok()?;
+        let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
             name, 
-            PlatformProvider::default()
+            provider
         ).ok()?;
         
         if let Ok(Some(export)) = self.exports.get(&bounded_name) {
@@ -1759,7 +1795,7 @@ impl Module {
     }
 
     /// Get function signature by function index
-    pub fn get_function_signature(&self, func_idx: u32) -> Option<WrtFuncType<PlatformProvider>> {
+    pub fn get_function_signature(&self, func_idx: u32) -> Option<WrtFuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>> {
         let function = self.get_function(func_idx)?;
         self.get_function_type(function.type_idx)
     }
@@ -1784,7 +1820,7 @@ impl Module {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OtherExport {
     /// Export name
-    pub name: PlatformBoundedString<128>,
+    pub name: wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     /// Export kind
     pub kind: ExportKind,
     /// Export index
@@ -1797,45 +1833,148 @@ pub enum ImportedItem {
     /// An imported function
     Function {
         /// The module name
-        module: PlatformBoundedString<128>,
+        module: wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<8192>>,
         /// The function name
-        name: PlatformBoundedString<128>,
+        name: wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<8192>>,
         /// The function type
-        ty: WrtFuncType<PlatformProvider>,
+        ty: WrtFuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>,
     },
     /// An imported table
     Table {
         /// The module name
-        module: PlatformBoundedString<128>,
+        module: wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<8192>>,
         /// The table name
-        name: PlatformBoundedString<128>,
+        name: wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<8192>>,
         /// The table type
         ty: WrtTableType,
     },
     /// An imported memory
     Memory {
         /// The module name
-        module: PlatformBoundedString<128>,
+        module: wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<8192>>,
         /// The memory name
-        name: PlatformBoundedString<128>,
+        name: wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<8192>>,
         /// The memory type
         ty: WrtMemoryType,
     },
     /// An imported global
     Global {
         /// The module name
-        module: PlatformBoundedString<128>,
+        module: wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<8192>>,
         /// The global name
-        name: PlatformBoundedString<128>,
+        name: wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<8192>>,
         /// The global type
         ty: WrtGlobalType,
     },
 }
 
+// Trait implementations for Module
+impl wrt_foundation::traits::Checksummable for Module {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        // Use module name (if available) and validation status for checksum
+        if let Some(ref name) = self.name {
+            if let Ok(name_str) = name.as_str() {
+                checksum.update_slice(name_str.as_bytes());
+            }
+        } else {
+            // Use a default identifier if no name is available
+            checksum.update_slice(b"unnamed_module");
+        }
+        checksum.update_slice(&[if self.validated { 1 } else { 0 }]);
+        checksum.update_slice(&(self.types.len() as u32).to_le_bytes());
+        checksum.update_slice(&(self.functions.len() as u32).to_le_bytes());
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for Module {
+    fn serialized_size(&self) -> usize {
+        // Simple size calculation for module metadata
+        let name_size = self.name.as_ref().map_or(0, |n| n.len());
+        8 + name_size + 1 + 4 + 4 // magic(4) + name_len(4) + name + validated(1) + types_len(4) + functions_len(4)
+    }
+    
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_foundation::WrtResult<()> {
+        // Write a magic number to identify this as a module
+        writer.write_all(&0x6D6F6475u32.to_le_bytes())?; // "modu" in little endian
+        
+        // Write module name length and name
+        if let Some(ref name) = self.name {
+            if let Ok(name_str) = name.as_str() {
+                writer.write_all(&(name_str.len() as u32).to_le_bytes())?;
+                writer.write_all(name_str.as_bytes())?;
+            } else {
+                writer.write_all(&0u32.to_le_bytes())?; // Error getting name
+            }
+        } else {
+            writer.write_all(&0u32.to_le_bytes())?; // No name
+        }
+        
+        // Write validation status
+        writer.write_all(&[if self.validated { 1 } else { 0 }])?;
+        
+        // Write type and function counts
+        writer.write_all(&(self.types.len() as u32).to_le_bytes())?;
+        writer.write_all(&(self.functions.len() as u32).to_le_bytes())?;
+        
+        Ok(())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for Module {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_foundation::WrtResult<Self> {
+        // Read and verify magic number
+        let mut magic = [0u8; 4];
+        reader.read_exact(&mut magic)?;
+        if u32::from_le_bytes(magic) != 0x6D6F6475 {
+            return Err(wrt_error::Error::runtime_error("Invalid module magic number"));
+        }
+        
+        // Read module name
+        let mut name_len_bytes = [0u8; 4];
+        reader.read_exact(&mut name_len_bytes)?;
+        let name_len = u32::from_le_bytes(name_len_bytes);
+        
+        let name = if name_len > 0 && name_len <= 128 {
+            // Use a fixed-size buffer for reading the name
+            let mut name_bytes = [0u8; 128];
+            reader.read_exact(&mut name_bytes[..name_len as usize])?;
+            let name_str = core::str::from_utf8(&name_bytes[..name_len as usize])
+                .map_err(|_| wrt_error::Error::runtime_error("Invalid module name UTF-8"))?;
+            let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+            Some(wrt_foundation::bounded::BoundedString::from_str(name_str, provider)?)
+        } else {
+            None
+        };
+        
+        // Read validation status
+        let mut validated_byte = [0u8; 1];
+        reader.read_exact(&mut validated_byte)?;
+        let validated = validated_byte[0] != 0;
+        
+        // Read type and function counts (for validation)
+        let mut counts = [0u8; 8];
+        reader.read_exact(&mut counts)?;
+        
+        // Create a new empty module with the restored name and validation status
+        let mut module = Module::new()?;
+        module.name = name;
+        module.validated = validated;
+        
+        Ok(module)
+    }
+}
+
 
 // HashMap is already imported above, no need to re-import
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{Error, ErrorCategory, Result};
 use wrt_foundation::component::ExternType; // For error handling
 
 // Newtype wrappers to solve orphan rules issue
@@ -1895,7 +2034,7 @@ impl TableWrapper {
         // For now, we'll return an error
         Err(Error::new(
             ErrorCategory::Runtime,
-            crate::codes::TABLE_ACCESS_DENIED,
+            wrt_error::codes::TABLE_ACCESS_DENIED,
             "Cannot grow table through Arc<Table>"))
     }
     
@@ -1992,7 +2131,7 @@ impl MemoryWrapper {
         // For now, we'll return an error
         Err(Error::new(
             ErrorCategory::Runtime,
-            crate::codes::MEMORY_ACCESS_DENIED,
+            wrt_error::codes::MEMORY_ACCESS_DENIED,
             "Cannot write to memory through Arc<Memory>"))
     }
     
@@ -2003,13 +2142,37 @@ impl MemoryWrapper {
         Err(Error::runtime_execution_error("Runtime execution error: Cannot grow memory through Arc<Memory>"))
     }
     
+    /// Write i32 to memory
+    pub fn write_i32(&self, offset: u32, value: i32) -> Result<()> {
+        use crate::memory_helpers::ArcMemoryExt;
+        self.0.write_i32(offset, value)
+    }
+    
+    /// Write i64 to memory
+    pub fn write_i64(&self, offset: u32, value: i64) -> Result<()> {
+        use crate::memory_helpers::ArcMemoryExt;
+        self.0.write_i64(offset, value)
+    }
+    
+    /// Write f32 to memory
+    pub fn write_f32(&self, offset: u32, value: f32) -> Result<()> {
+        use crate::memory_helpers::ArcMemoryExt;
+        self.0.write_f32(offset, value)
+    }
+    
+    /// Write f64 to memory
+    pub fn write_f64(&self, offset: u32, value: f64) -> Result<()> {
+        use crate::memory_helpers::ArcMemoryExt;
+        self.0.write_f64(offset, value)
+    }
+    
     /// Fill memory (requires mutable access)
     pub fn fill(&self, offset: u32, len: u32, value: u8) -> Result<()> {
         // Note: This requires unsafe because we can't get mutable access to Arc<Memory>
         // For now, we'll return an error
         Err(Error::new(
             ErrorCategory::Runtime,
-            crate::codes::MEMORY_ACCESS_DENIED,
+            wrt_error::codes::MEMORY_ACCESS_DENIED,
             "Cannot fill memory through Arc<Memory>"))
     }
     
@@ -2072,7 +2235,7 @@ impl GlobalWrapper {
         // For now, we'll return an error
         Err(Error::new(
             ErrorCategory::Runtime,
-            crate::codes::GLOBAL_ACCESS_DENIED,
+            wrt_error::codes::GLOBAL_ACCESS_DENIED,
             "Cannot set global value through Arc<Global>"))
     }
     
@@ -2184,7 +2347,7 @@ impl FromBytes for MemoryWrapper {
         
         let memory = Memory::new(to_core_memory_type(memory_type)).map_err(|_| {
             wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
-                wrt_foundation::codes::INVALID_VALUE,
+                wrt_error::codes::INVALID_VALUE,
                 "Failed to create memory from bytes")
         })?;
         

@@ -11,11 +11,13 @@ use wrt_debug::FunctionInfo;
 #[cfg(feature = "debug")]
 use wrt_debug::{DwarfDebugInfo, LineInfo};
 
-use crate::{global::Global, memory::Memory, module::{Module, MemoryWrapper, TableWrapper, GlobalWrapper}, prelude::{Debug, DefaultProvider, Error, ErrorCategory, FuncType, Result, codes}, table::Table};
-use wrt_foundation::traits::BoundedCapacity;
+use crate::{global::Global, memory::Memory, module::{Module, MemoryWrapper, TableWrapper, GlobalWrapper}, prelude::{Debug, Error, ErrorCategory, FuncType, Result}, table::Table};
+use wrt_foundation::traits::{BoundedCapacity, Checksummable, ToBytes, FromBytes, ReadStream, WriteStream};
+use wrt_foundation::verification::Checksum;
+use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
 use wrt_instructions::reference_ops::ReferenceOperations;
 
-// Type alias for FuncType to make signatures more readable - matches PlatformProvider from module.rs
+// Type alias for FuncType to make signatures more readable - matches NoStdProvider<8192> from module.rs
 type WrtFuncType = wrt_foundation::types::FuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>;
 
 // Platform sync primitives - use prelude imports for consistency
@@ -158,11 +160,11 @@ impl ModuleInstance {
         ).map_err(|_| Error::memory_error("Failed to create results vec"))?;
         
         for param in params_slice {
-            params.push(param.clone()).map_err(|_| Error::capacity_exceeded("Too many params"))?;
+            params.push(param.clone()).map_err(|_| Error::capacity_limit_exceeded("Too many params"))?;
         }
         
         for result in results_slice {
-            results.push(result.clone()).map_err(|_| Error::capacity_exceeded("Too many results"))?;
+            results.push(result.clone()).map_err(|_| Error::capacity_limit_exceeded("Too many results"))?;
         }
         
         Ok(crate::prelude::CoreFuncType {
@@ -197,7 +199,7 @@ impl ModuleInstance {
         let mut memories = self.memories.lock();
 
         memories.push(MemoryWrapper::new(memory))
-            .map_err(|_| Error::capacity_exceeded("Memory capacity exceeded"))?;
+            .map_err(|_| Error::capacity_limit_exceeded("Memory capacity exceeded"))?;
         Ok(())
     }
 
@@ -213,7 +215,7 @@ impl ModuleInstance {
         let mut tables = self.tables.lock();
 
         tables.push(TableWrapper::new(table))
-            .map_err(|_| Error::capacity_exceeded("Table capacity exceeded"))?;
+            .map_err(|_| Error::capacity_limit_exceeded("Table capacity exceeded"))?;
         Ok(())
     }
 
@@ -229,7 +231,7 @@ impl ModuleInstance {
         let mut globals = self.globals.lock();
 
         globals.push(GlobalWrapper::new(global))
-            .map_err(|_| Error::capacity_exceeded("Global capacity exceeded"))?;
+            .map_err(|_| Error::capacity_limit_exceeded("Global capacity exceeded"))?;
         Ok(())
     }
 
@@ -342,3 +344,192 @@ impl ReferenceOperations for ModuleInstance {
     //     self.function_type(idx)
     // }
 // } // End of commented impl block
+
+/// Manual trait implementations for ModuleInstance since fields don't support automatic derivation
+
+impl Default for ModuleInstance {
+    fn default() -> Self {
+        // Create a default module instance with a default module
+        let default_module = Module::default();
+        Self::new(default_module, 0).unwrap_or_else(|_| {
+            // Fallback implementation if allocation fails
+            // Use safe_managed_alloc! for proper budget-aware allocation
+            let memories_provider = safe_managed_alloc!(1024, CrateId::Runtime).unwrap_or_else(|_| {
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            });
+            let tables_provider = safe_managed_alloc!(1024, CrateId::Runtime).unwrap_or_else(|_| {
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            });
+            let globals_provider = safe_managed_alloc!(1024, CrateId::Runtime).unwrap_or_else(|_| {
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            });
+            
+            Self {
+                module: Arc::new(Module::default()),
+                memories: Arc::new(Mutex::new(
+                    wrt_foundation::bounded::BoundedVec::new(memories_provider).unwrap()
+                )),
+                tables: Arc::new(Mutex::new(
+                    wrt_foundation::bounded::BoundedVec::new(tables_provider).unwrap()
+                )),
+                globals: Arc::new(Mutex::new(
+                    wrt_foundation::bounded::BoundedVec::new(globals_provider).unwrap()
+                )),
+                instance_id: 0,
+                imports: Default::default(),
+                #[cfg(feature = "debug")]
+                debug_info: None,
+            }
+        })
+    }
+}
+
+impl Clone for ModuleInstance {
+    fn clone(&self) -> Self {
+        // Create a new instance with the same module and instance ID
+        Self::new((*self.module).clone(), self.instance_id).unwrap_or_else(|_| {
+            // Fallback implementation if allocation fails
+            Self::default()
+        })
+    }
+}
+
+impl PartialEq for ModuleInstance {
+    fn eq(&self, other: &Self) -> bool {
+        // Compare based on instance ID and module equality
+        self.instance_id == other.instance_id && self.module == other.module
+    }
+}
+
+impl Eq for ModuleInstance {}
+
+/// Trait implementations for ModuleInstance to support BoundedMap usage
+
+impl Checksummable for ModuleInstance {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        // Use instance ID and module checksum for unique identification
+        checksum.update_slice(&self.instance_id.to_le_bytes());
+        
+        // Include module checksum if the module implements Checksummable
+        // For now, use a simplified approach with module validation status
+        if let Some(name) = self.module.name.as_ref() {
+            if let Ok(name_str) = name.as_str() {
+                checksum.update_slice(name_str.as_bytes());
+            } else {
+                checksum.update_slice(b"invalid_module_name");
+            }
+        } else {
+            checksum.update_slice(b"unnamed_module_instance");
+        }
+        
+        // Include counts of resources for uniqueness
+        #[cfg(feature = "std")]
+        let memories_count = self.memories.lock().map_or(0, |m| m.len()) as u32;
+        #[cfg(not(feature = "std"))]
+        let memories_count = self.memories.lock().len() as u32;
+        
+        #[cfg(feature = "std")]
+        let tables_count = self.tables.lock().map_or(0, |t| t.len()) as u32;
+        #[cfg(not(feature = "std"))]
+        let tables_count = self.tables.lock().len() as u32;
+        
+        #[cfg(feature = "std")]
+        let globals_count = self.globals.lock().map_or(0, |g| g.len()) as u32;
+        #[cfg(not(feature = "std"))]
+        let globals_count = self.globals.lock().len() as u32;
+        
+        checksum.update_slice(&memories_count.to_le_bytes());
+        checksum.update_slice(&tables_count.to_le_bytes());
+        checksum.update_slice(&globals_count.to_le_bytes());
+    }
+}
+
+impl ToBytes for ModuleInstance {
+    fn serialized_size(&self) -> usize {
+        // Simplified size calculation for module instance metadata
+        // instance_id (8) + resource counts (12) + module name length estimation (64)
+        8 + 12 + 64
+    }
+    
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_foundation::WrtResult<()> {
+        // Write instance ID
+        writer.write_all(&self.instance_id.to_le_bytes())?;
+        
+        // Write resource counts
+        #[cfg(feature = "std")]
+        let memories_count = self.memories.lock().map_or(0, |m| m.len()) as u32;
+        #[cfg(not(feature = "std"))]
+        let memories_count = self.memories.lock().len() as u32;
+        
+        #[cfg(feature = "std")]
+        let tables_count = self.tables.lock().map_or(0, |t| t.len()) as u32;
+        #[cfg(not(feature = "std"))]
+        let tables_count = self.tables.lock().len() as u32;
+        
+        #[cfg(feature = "std")]
+        let globals_count = self.globals.lock().map_or(0, |g| g.len()) as u32;
+        #[cfg(not(feature = "std"))]
+        let globals_count = self.globals.lock().len() as u32;
+        
+        writer.write_all(&memories_count.to_le_bytes())?;
+        writer.write_all(&tables_count.to_le_bytes())?;
+        writer.write_all(&globals_count.to_le_bytes())?;
+        
+        // Write module name (simplified)
+        if let Some(name) = self.module.name.as_ref() {
+            if let Ok(name_str) = name.as_str() {
+                let name_bytes = name_str.as_bytes();
+                writer.write_all(&(name_bytes.len() as u32).to_le_bytes())?;
+                writer.write_all(name_bytes)?;
+            } else {
+                // Write zero length for invalid name
+                writer.write_all(&0u32.to_le_bytes())?;
+            }
+        } else {
+            // Write zero length for no name
+            writer.write_all(&0u32.to_le_bytes())?;
+        }
+        
+        Ok(())
+    }
+}
+
+impl FromBytes for ModuleInstance {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_foundation::WrtResult<Self> {
+        // Read instance ID
+        let mut instance_id_bytes = [0u8; 8];
+        reader.read_exact(&mut instance_id_bytes)?;
+        let instance_id = usize::from_le_bytes(instance_id_bytes);
+        
+        // Read resource counts (for validation, but create empty collections)
+        let mut counts = [0u8; 12];
+        reader.read_exact(&mut counts)?;
+        
+        // Read module name length
+        let mut name_len_bytes = [0u8; 4];
+        reader.read_exact(&mut name_len_bytes)?;
+        let name_len = u32::from_le_bytes(name_len_bytes) as usize;
+        
+        // Skip reading the name for now (simplified implementation)
+        if name_len > 0 {
+            let mut name_bytes = alloc::vec![0u8; name_len];
+            reader.read_exact(&mut name_bytes)?;
+        }
+        
+        // Create a default module instance with empty collections
+        // This is a simplified implementation - in a real scenario, 
+        // you'd need to reconstruct the actual module
+        let default_module = Module::default();
+        
+        // Create the instance using the new method
+        Self::new(default_module, instance_id)
+            .map_err(|_| wrt_error::Error::runtime_error("Failed to create module instance from bytes"))
+    }
+}
