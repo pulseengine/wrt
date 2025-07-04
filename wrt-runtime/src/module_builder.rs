@@ -13,14 +13,18 @@ use std::vec::Vec;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
-use wrt_foundation::types::{
-    FuncType,
-    GlobalType as WrtGlobalType,
-    Limits as WrtLimits, MemoryType as WrtMemoryType, TableType as WrtTableType,
-    ValueType as WrtValueType,
+use wrt_foundation::{
+    types::{
+        FuncType,
+        GlobalType as WrtGlobalType,
+        Limits as WrtLimits, MemoryType as WrtMemoryType, TableType as WrtTableType,
+        ValueType as WrtValueType,
+    },
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
 };
 // Add placeholder aliases for missing types
-use crate::module::{Export as WrtExport, Import as WrtImport, Function, WrtExpr, PlatformBoundedVec, LocalEntry};
+use crate::module::{Export as WrtExport, Import as WrtImport, Function, WrtExpr, LocalEntry};
 use wrt_foundation::types::CustomSection as WrtCustomSection;
 use wrt_foundation::values::Value as WrtValue;
 use wrt_format::{
@@ -144,10 +148,10 @@ impl RuntimeModuleBuilder for ModuleBuilder {
         
         // For now, create empty function with proper types
         // TODO: Implement proper bytecode parsing with compatible types
-        use crate::module::PlatformProvider;
-        let provider = PlatformProvider::default();
-        let instructions = PlatformBoundedVec::new(provider.clone())?;
-        let locals = PlatformBoundedVec::new(provider)?;
+        let provider1 = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        let provider2 = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        let instructions = wrt_foundation::bounded::BoundedVec::new(provider1)?;
+        let locals = wrt_foundation::bounded::BoundedVec::new(provider2)?;
         
         // Create the function with proper types
         let function = Function {

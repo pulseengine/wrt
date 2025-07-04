@@ -144,7 +144,7 @@ impl PlatformAwareRuntime {
         let memory_allocator = Self::create_memory_allocator(&limits)?;
         
         let cfi_protection = Self::create_cfi_protection(&limits);
-        let execution_engine = CfiExecutionEngine::new(cfi_protection);
+        let execution_engine = CfiExecutionEngine::new(cfi_protection)?;
         let safety_context = SafetyContext::new(convert_asil_level(limits.asil_level));
         
         Ok(Self {
@@ -167,7 +167,7 @@ impl PlatformAwareRuntime {
         let memory_allocator = Self::create_memory_allocator(&limits)?;
         
         let cfi_protection = Self::create_cfi_protection(&limits);
-        let execution_engine = CfiExecutionEngine::new_with_policy(cfi_protection, cfi_policy);
+        let execution_engine = CfiExecutionEngine::new_with_policy(cfi_protection, cfi_policy)?;
         let safety_context = SafetyContext::new(convert_asil_level(limits.asil_level));
         
         Ok(Self {
@@ -411,7 +411,7 @@ impl PlatformAwareRuntime {
         if self.available_memory() < 4096 {
             return Err(Error::new(
                 ErrorCategory::Resource,
-                codes::MEMORY_ALLOCATION_ERROR,
+                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
                 "Insufficient memory available"));
         }
         
