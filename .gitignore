@@ -37,4 +37,12 @@ docs/source/implementation/source_requirements.rst
 docs_artifact_final/
 docs_output/
 
+# Development artifacts
 *.bak*
+*.orig
+*.backup
+*~
+*.tmp
+.DS_Store
+.cursor/
+.cursorignore
