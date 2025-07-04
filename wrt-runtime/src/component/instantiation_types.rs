@@ -187,7 +187,7 @@ impl CoreModuleInstantiation {
         
         self.args.push(arg).map_err(|_| Error::new(
             ErrorCategory::Memory,
-            codes::CAPACITY_EXCEEDED,
+            wrt_error::codes::CAPACITY_EXCEEDED,
             "Argument capacity exceeded"))
     }
     
@@ -206,7 +206,7 @@ impl CoreModuleInstantiation {
         if !self.runtime_state.is_started {
             return Err(Error::new(
                 ErrorCategory::Runtime,
-                codes::INVALID_STATE,
+                wrt_error::codes::INVALID_STATE,
                 "Core instantiation not started"));
         }
         

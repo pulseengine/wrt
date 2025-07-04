@@ -3,7 +3,7 @@
 //! This module implements the runtime behavior for instantiating WebAssembly
 //! components and core modules within components.
 
-use wrt_error::{Error, ErrorCategory, codes, Result};
+use wrt_error::{Error, ErrorCategory, Result};
 use wrt_format::component::{
     Component, CoreInstance, CoreInstanceExpr, Instance, InstanceExpr,
     Sort, CoreSort,
@@ -178,13 +178,13 @@ impl From<LinkingError> for Error {
         match err {
             LinkingError::ImportNotFound { module, name } => Error::new(
                 ErrorCategory::Component,
-                codes::COMPONENT_LINKING_ERROR,
+                wrt_error::codes::COMPONENT_LINKING_ERROR,
                 "Import not found"),
             LinkingError::TypeMismatch { expected, actual } => Error::type_error("Type mismatch during linking"),
             LinkingError::CircularDependency => Error::runtime_execution_error("Circular dependency detected"),
             LinkingError::InstanceNotFound(idx) => Error::new(
                 ErrorCategory::Component,
-                codes::COMPONENT_LINKING_ERROR,
+                wrt_error::codes::COMPONENT_LINKING_ERROR,
                 "Instance not found"),
         }
     }
@@ -317,7 +317,7 @@ impl CoreModuleInstantiator {
                         _ => {
                             return Err(Error::new(
                                 ErrorCategory::Component,
-                                codes::COMPONENT_LINKING_ERROR,
+                                wrt_error::codes::COMPONENT_LINKING_ERROR,
                                 "Unsupported export sort"));
                         }
                     };
