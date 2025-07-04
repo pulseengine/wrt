@@ -16,6 +16,7 @@ pub mod output;
 pub mod performance;
 pub mod progress;
 pub mod smart_defaults;
+pub mod test_runner;
 pub mod validation;
 
 #[cfg(test)]
@@ -49,4 +50,5 @@ pub use smart_defaults::{
     ContextDetector, ProjectContext, ProjectType, Recommendation, RecommendationPriority,
     SmartDefaults,
 };
+pub use test_runner::{run_asil_tests, run_no_std_tests, run_tests, TestConfig, TestRunner};
 pub use validation::{validate_asil_level, validate_file_path, StandardError};

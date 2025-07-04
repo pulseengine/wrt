@@ -235,4 +235,12 @@ impl OutputManager {
     pub fn is_colored(&self) -> bool {
         self.colored
     }
+
+    /// Output a debug message with consistent formatting
+    pub fn debug(&self, message: &str) {
+        if !self.is_json_mode() {
+            let prefix = if self.colored { "🐛".bright_magenta() } else { "🐛".normal() };
+            println!("{} {}", prefix, message);
+        }
+    }
 }

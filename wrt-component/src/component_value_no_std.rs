@@ -446,15 +446,15 @@ mod tests {
 
     #[test]
     fn test_valtype_conversion() {
-        use wrt_foundation::safe_memory::NoStdProvider<65536>;
+        use wrt_foundation::memory_sizing::XLargeProvider;
 
         // Test bool conversion
-        let bool_type = TypesValType::<NoStdProvider::<65536>>::Bool;
+        let bool_type = TypesValType::<XLargeProvider>::Bool;
         let format_type = convert_valtype_to_format(&bool_type).unwrap();
         assert!(matches!(format_type, FormatValType::Bool));
 
         let converted_back =
-            convert_format_to_valtype::<NoStdProvider::<65536>>(&format_type).unwrap();
+            convert_format_to_valtype::<XLargeProvider>(&format_type).unwrap();
         assert!(matches!(converted_back, TypesValType::Bool));
     }
 }

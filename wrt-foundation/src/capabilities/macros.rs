@@ -125,8 +125,17 @@ macro_rules! safe_verified_alloc {
 #[macro_export]
 macro_rules! capability_wrap_provider {
     ($provider:expr, $capability:expr, $crate_id:expr) => {{
-        use $crate::capabilities::ProviderCapabilityExt;
-        $provider.with_capability($capability, $crate_id)
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            use $crate::capabilities::ProviderCapabilityExt;
+            $provider.with_capability($capability, $crate_id)
+        }
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            // In no_std without alloc, we just return the provider as-is
+            // since capability wrapping requires allocation
+            Ok($provider)
+        }
     }};
 }
 
@@ -244,6 +253,11 @@ mod tests {
         verification::VerificationLevel,
     };
     
+    #[cfg(feature = "std")]
+    use std::boxed::Box;
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::boxed::Box;
+    
     #[cfg(any(feature = "std", feature = "alloc"))]
     use crate::capabilities::CapabilityFactoryBuilder;
 
@@ -257,6 +271,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "std", feature = "alloc"))]
     fn test_capability_wrap_provider_macro() -> crate::WrtResult<()> {
         let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
         let capability = Box::new(DynamicMemoryCapability::new(

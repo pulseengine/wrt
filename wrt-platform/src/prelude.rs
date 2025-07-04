@@ -25,8 +25,5 @@ pub use crate::{
     memory::{
         NoStdProvider, PageAllocator, VerificationLevel, WASM_PAGE_SIZE,
     },
-    memory_optimizations::{
-        MemoryOptimization, PlatformMemoryOptimizer, PlatformOptimizedProviderBuilder,
-    },
     sync::FutexLike,
 };

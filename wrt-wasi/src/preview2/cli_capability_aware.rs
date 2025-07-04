@@ -139,6 +139,71 @@ pub fn wasi_get_initial_cwd_capability_aware(
     }
 }
 
+/// Convert CapabilityAwareValue back to legacy Value for bridge functions
+/// 
+/// This implements basic conversion for the value types used by CLI functions.
+/// Complex nested types may lose some capability information.
+fn convert_capability_value_to_legacy(value: CapabilityAwareValue) -> Result<Value> {
+    match value {
+        CapabilityAwareValue::Bool(b) => Ok(Value::Bool(b)),
+        CapabilityAwareValue::U8(v) => Ok(Value::U8(v)),
+        CapabilityAwareValue::U16(v) => Ok(Value::U16(v)),
+        CapabilityAwareValue::U32(v) => Ok(Value::U32(v)),
+        CapabilityAwareValue::U64(v) => Ok(Value::U64(v)),
+        CapabilityAwareValue::S8(v) => Ok(Value::S8(v)),
+        CapabilityAwareValue::S16(v) => Ok(Value::S16(v)),
+        CapabilityAwareValue::S32(v) => Ok(Value::S32(v)),
+        CapabilityAwareValue::S64(v) => Ok(Value::S64(v)),
+        CapabilityAwareValue::F32(v) => Ok(Value::F32(v)),
+        CapabilityAwareValue::F64(v) => Ok(Value::F64(v)),
+        CapabilityAwareValue::Char(c) => Ok(Value::String(c.to_string())),
+        CapabilityAwareValue::String(bounded_str) => {
+            let str_result = bounded_str.as_str();
+            match str_result {
+                Ok(s) => Ok(Value::String(s.to_string())),
+                Err(_) => Ok(Value::String("".to_string())), // Fallback for invalid string
+            }
+        },
+        CapabilityAwareValue::List(bounded_vec) => {
+            let mut legacy_list = Vec::new();
+            for item in bounded_vec.iter() {
+                legacy_list.push(convert_capability_value_to_legacy(item.clone())?);
+            }
+            Ok(Value::List(legacy_list))
+        },
+        CapabilityAwareValue::Tuple(bounded_vec) => {
+            let mut legacy_tuple = Vec::new();
+            for item in bounded_vec.iter() {
+                legacy_tuple.push(convert_capability_value_to_legacy(item.clone())?);
+            }
+            Ok(Value::Tuple(legacy_tuple))
+        },
+        CapabilityAwareValue::Option(opt) => {
+            match opt {
+                Some(boxed_value) => {
+                    let converted = convert_capability_value_to_legacy(boxed_value.into_inner())?;
+                    Ok(Value::Option(Some(Box::new(converted))))
+                },
+                None => Ok(Value::Option(None)),
+            }
+        },
+        CapabilityAwareValue::Record(bounded_vec) => {
+            let mut legacy_record = Vec::new();
+            for (key, item) in bounded_vec.iter() {
+                let converted_value = convert_capability_value_to_legacy(item.clone())?;
+                let key_str = match key.as_str() {
+                    Ok(s) => s.to_string(),
+                    Err(_) => "".to_string(), // Fallback for invalid key
+                };
+                legacy_record.push((key_str, converted_value));
+            }
+            Ok(Value::Record(legacy_record))
+        },
+        // For complex types that can't be easily converted, return a placeholder
+        _ => Ok(Value::U32(0)), // Fallback for unsupported types
+    }
+}
+
 /// Bridge function to convert legacy CLI functions to capability-aware versions
 pub fn wasi_cli_get_arguments_bridge(
     target: &mut dyn Any,
@@ -157,8 +222,8 @@ pub fn wasi_cli_get_arguments_bridge(
     // Note: This is a temporary bridge - eventually all code should use CapabilityAwareValue
     let mut legacy_result = alloc::vec::Vec::new();
     for value in result {
-        // For now, return simple values - full conversion would be more complex
-        legacy_result.push(Value::List(vec![])); // Simplified conversion
+        let converted = convert_capability_value_to_legacy(value)?;
+        legacy_result.push(converted);
     }
     
     Ok(legacy_result)
@@ -177,10 +242,11 @@ pub fn wasi_cli_get_environment_bridge(
     
     let result = wasi_cli_get_environment_capability_aware(target, capability_args)?;
     
-    // Simplified conversion back
+    // Convert back to legacy values
     let mut legacy_result = alloc::vec::Vec::new();
-    for _value in result {
-        legacy_result.push(Value::List(vec![])); // Simplified
+    for value in result {
+        let converted = convert_capability_value_to_legacy(value)?;
+        legacy_result.push(converted);
     }
     
     Ok(legacy_result)
@@ -199,10 +265,11 @@ pub fn wasi_get_initial_cwd_bridge(
     
     let result = wasi_get_initial_cwd_capability_aware(target, capability_args)?;
     
-    // Simplified conversion back  
+    // Convert back to legacy values
     let mut legacy_result = alloc::vec::Vec::new();
-    for _value in result {
-        legacy_result.push(Value::Option(None)); // Simplified
+    for value in result {
+        let converted = convert_capability_value_to_legacy(value)?;
+        legacy_result.push(converted);
     }
     
     Ok(legacy_result)

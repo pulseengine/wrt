@@ -96,7 +96,6 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 // pub mod bounded_platform; // Disabled due to circular dependency with wrt-foundation
 pub mod comprehensive_limits;
 pub mod memory;
-pub mod memory_optimizations;
 pub mod performance_validation;
 pub mod platform_abstraction;
 pub mod prelude;
@@ -275,9 +274,6 @@ pub use macos_sync::{MacOsFutex, MacOsFutexBuilder};
 pub use memory::{
     NoStdProvider, PageAllocator, VerificationLevel, WASM_PAGE_SIZE,
 }; // WASM_PAGE_SIZE is always available
-pub use memory_optimizations::{
-    MemoryOptimization, PlatformMemoryOptimizer, PlatformOptimizedProviderBuilder,
-};
 // Export performance validation (for testing and benchmarking)
 pub use performance_validation::{BenchmarkResult, CompileTimeValidator, PerformanceValidator}; /* This is fine as wrt_error::Error is always available */
 // Export hybrid platform abstraction

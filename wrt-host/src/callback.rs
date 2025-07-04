@@ -519,7 +519,10 @@ impl CallbackRegistry {
         // In no_std mode, we can't dynamically track built-ins
         use crate::bounded_host_infra::create_host_provider;
         let provider = create_host_provider().expect("Failed to create host provider");
-        wrt_foundation::BoundedSet::new(provider).unwrap_or_default()
+        wrt_foundation::BoundedSet::new(provider).unwrap_or_else(|_| {
+            let fallback_provider = create_host_provider().expect("Failed to create fallback host provider");
+            wrt_foundation::BoundedSet::new(fallback_provider).expect("Failed to create bounded set")
+        })
     }
 
     /// Call a built-in function

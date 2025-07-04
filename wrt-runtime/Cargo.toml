@@ -52,8 +52,6 @@ alloc = [
     "wrt-intercept/alloc"]
 # Debug support features
 debug = ["dep:wrt-debug", "wrt-debug/line-info"]
-debug-full = ["dep:wrt-debug", "wrt-debug/full-debug"]
-wit-debug-integration = ["dep:wrt-debug", "wrt-debug/wit-integration", "std"]
 # For compatibility with verification script
 # This is a no-op since the crate is no_std by default
 no_std = []

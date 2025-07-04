@@ -461,7 +461,7 @@ mod tests {
         let mut monitor = SafetyMonitor::new();
         
         // Record various violations
-        monitor.record_capability_violation(42);
+        monitor.record_capability_violation(CrateId::Foundation);
         monitor.record_double_free();
         monitor.record_budget_violation(CrateId::Foundation, 8192, 4096);
         

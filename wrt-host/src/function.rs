@@ -242,7 +242,7 @@ impl wrt_foundation::traits::FromBytes for CloneableFn {
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         // Function pointers can't be deserialized, return a dummy function
-        Ok(CloneableFn::new(|_| Err(wrt_foundation::Error::new(
+        Ok(CloneableFn::new(|_| Err(wrt_error::Error::new(
             wrt_error::ErrorCategory::Runtime,
             wrt_error::codes::RUNTIME_ERROR,
             "Deserialized function not implemented",
@@ -253,7 +253,7 @@ impl wrt_foundation::traits::FromBytes for CloneableFn {
 #[cfg(not(feature = "std"))]
 impl Default for CloneableFn {
     fn default() -> Self {
-        CloneableFn::new(|_| Err(wrt_foundation::Error::new(
+        CloneableFn::new(|_| Err(wrt_error::Error::new(
             wrt_error::ErrorCategory::Runtime,
             wrt_error::codes::RUNTIME_ERROR,
             "Default function not implemented",

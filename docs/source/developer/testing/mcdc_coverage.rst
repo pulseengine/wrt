@@ -242,7 +242,6 @@ Workspace-Wide Coverage
    # Exclude non-safety-critical crates
    cargo +nightly llvm-cov --mcdc --workspace \
      --exclude wrt-debug \
-     --exclude wrt-helper \
      --html --output-dir safety-mcdc test
 
 Safety-Critical Subset

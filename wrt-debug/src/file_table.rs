@@ -121,16 +121,20 @@ impl<'a> FileTable<'a> {
     }
 
     /// Add a directory entry
-    pub fn add_directory(&mut self, dir: DebugString<'a>) -> Result<u32, ()> {
+    pub fn add_directory(&mut self, dir: DebugString<'a>) -> Result<u32> {
         let index = self.directories.len() as u32;
-        self.directories.push(dir).map_err(|_| ())?;
+        self.directories
+            .push(dir)
+            .map_err(|_| wrt_error::Error::memory_error("Failed to add directory"))?;
         Ok(index)
     }
 
     /// Add a file entry
-    pub fn add_file(&mut self, file: FileEntry<'a>) -> Result<u32, ()> {
+    pub fn add_file(&mut self, file: FileEntry<'a>) -> Result<u32> {
         let index = self.files.len() as u32;
-        self.files.push(file).map_err(|_| ())?;
+        self.files
+            .push(file)
+            .map_err(|_| wrt_error::Error::memory_error("Failed to add file"))?;
         Ok(index)
     }
 

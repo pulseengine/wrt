@@ -23,6 +23,7 @@ use crate::{
     bounded::{BoundedString, BoundedVec, WasmName, MAX_WASM_NAME_LENGTH},
     prelude::{str, Eq, PartialEq},
     safe_memory::NoStdProvider,
+    memory_sizing::{MediumProvider, size_classes},
     traits::{Checksummable, FromBytes, ReadStream, SerializationError, ToBytes, WriteStream},
     types::ValueType,
     verification::{Checksum, VerificationLevel},
@@ -159,14 +160,14 @@ pub enum ResourceRepresentation {
     #[cfg(feature = "std")]
     Record(
         BoundedVec<
-            BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, crate::safe_memory::NoStdProvider<4096>>,
+            BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, MediumProvider>,
             MAX_RESOURCE_FIELDS,
-            crate::safe_memory::NoStdProvider<4096>,
+            MediumProvider,
         >,
     ),
     /// Aggregate representation with type indices
     #[cfg(feature = "std")]
-    Aggregate(BoundedVec<u32, MAX_RESOURCE_AGGREGATE_IDS, crate::safe_memory::NoStdProvider<4096>>),
+    Aggregate(BoundedVec<u32, MAX_RESOURCE_AGGREGATE_IDS, MediumProvider>),
     /// Binary std/no_std choice
     #[cfg(not(feature = "std"))]
     Record,
@@ -210,9 +211,9 @@ impl core::str::FromStr for ResourceRepresentation {
                     use crate::verification::VerificationLevel;
 
                     let (vec, _capability) = capability_factories::safe_static_bounded_vec::<
-                        BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, crate::safe_memory::NoStdProvider<4096>>, 
+                        BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, MediumProvider>, 
                         MAX_RESOURCE_FIELDS, 
-                        4096
+                        { size_classes::MEDIUM }
                     >(CrateId::Foundation, VerificationLevel::Standard)?;
                     Ok(ResourceRepresentation::Record(vec))
                 }
@@ -231,7 +232,7 @@ impl core::str::FromStr for ResourceRepresentation {
                     let (vec, _capability) = capability_factories::safe_static_bounded_vec::<
                         u32, 
                         MAX_RESOURCE_AGGREGATE_IDS, 
-                        4096
+                        { size_classes::MEDIUM }
                     >(CrateId::Foundation, VerificationLevel::Standard)?;
                     Ok(ResourceRepresentation::Aggregate(vec))
                 }
@@ -622,10 +623,10 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_resource_type_serialization() {
         // Note: Using default here is safe in Kani proofs for verification purposes
-        let provider = NoStdProvider::<1024>::default();
+        let provider = crate::memory_sizing::SmallProvider::default();
         
         // Test primitive resource type
-        let primitive = ResourceType::<NoStdProvider<1024>>::Primitive(ValueType::I32);
+        let primitive = ResourceType::<crate::memory_sizing::SmallProvider>::Primitive(ValueType::I32);
         
         // Serialize
         let mut buffer = [0u8; 256];
@@ -660,7 +661,7 @@ mod kani_proofs {
     fn verify_resource_bounds_checking() {
         const MAX_RESOURCES: usize = 16;
         // Note: Using default here is safe in Kani proofs for verification purposes
-        let provider = NoStdProvider::<2048>::default();
+        let provider = crate::memory_sizing::MediumProvider::default();
         
         // Create a resource collection with bounded capacity
         let mut resources: BoundedVec<ResourceId, MAX_RESOURCES, _> = 
@@ -688,7 +689,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_resource_access_safety() {
         // Note: Using default here is safe in Kani proofs for verification purposes
-        let provider = NoStdProvider::<1024>::default();
+        let provider = crate::memory_sizing::SmallProvider::default();
         let mut resources: BoundedVec<ResourceHandle, 8, _> = 
             BoundedVec::new(provider).unwrap();
         

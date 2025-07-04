@@ -21,7 +21,6 @@ wrt-instructions = { workspace = true }
 wrt-platform = { workspace = true }
 wrt-runtime = { workspace = true }
 wrt-sync = { workspace = true }
-wrt-test-registry = { workspace = true }
 
 # Testing utilities
 tempfile = "3.0"

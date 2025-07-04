@@ -52,7 +52,6 @@
 "wrt-error" = "256KB"
 
 # Helper utilities
-"wrt-helper" = "256KB"
 
 # Environment Variables:
 # You can also override budgets using environment variables:

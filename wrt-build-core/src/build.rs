@@ -150,7 +150,6 @@ pub mod xtask_port {
             "wrt-sync",
             "wrt-logging",
             "wrt-math",
-            "wrt-helper",
             "wrt-decoder",
             "wrt-intercept",
             "wrt-panic",

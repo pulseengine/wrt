@@ -19,7 +19,6 @@ This section contains the API documentation for all PulseEngine libraries and co
    wrt-foundation <../_generated_rust_docs/wrt-foundation/lib>
    wrt-sync <../_generated_rust_docs/wrt-sync/lib>
    wrt-math <../_generated_rust_docs/wrt-math/lib>
-   wrt-helper <../_generated_rust_docs/wrt-helper/lib>
 
 .. toctree::
    :maxdepth: 2

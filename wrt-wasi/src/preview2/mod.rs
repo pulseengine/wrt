@@ -19,8 +19,9 @@ pub mod io;
 pub mod random;
 
 // Re-export main functions for convenience
-#[cfg(feature = "wasi-filesystem")]
-pub use filesystem::{wasi_filesystem_read, wasi_filesystem_write, wasi_filesystem_open_at};
+// Note: Filesystem operations are implemented directly in component_model_provider.rs
+// #[cfg(feature = "wasi-filesystem")]
+// pub use filesystem::{...};
 
 #[cfg(feature = "wasi-cli")]
 pub use cli::{wasi_cli_get_arguments, wasi_cli_get_environment};

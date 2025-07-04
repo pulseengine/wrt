@@ -11,13 +11,11 @@ members = [
     "wrt-component",
     "wrt-math",
     "wrt-host",
-    "wrt-helper",
     "wrt-logging",
     "wrt-runtime",
     "wrt-instructions",
     "wrt-intercept",
     # "test-control-instructions",  # TODO: Remove after migration
-    "wrt-test-registry",
     "wrt-platform",
     "wrt-panic",
     "wrt-tests/integration", "wrt-build-core", "cargo-wrt", "wrt-dagger"]
@@ -52,9 +50,7 @@ wrt-logging = { path = "wrt-logging", version = "0.2.0", default-features = fals
 wrt-instructions = { path = "wrt-instructions", version = "0.2.0", default-features = false }
 wrt-component = { path = "wrt-component", version = "0.2.0", default-features = false }
 wrt-host = { path = "wrt-host", version = "0.2.0", default-features = false }
-wrt-helper = { path = "wrt-helper", version = "0.2.0", default-features = false }
 wrt-intercept = { path = "wrt-intercept", version = "0.2.0", default-features = false }
-wrt-test-registry = { path = "wrt-test-registry", version = "0.2.0", default-features = false }
 wrt-math = { path = "wrt-math", version = "0.2.0", default-features = false }
 wrt-platform = { path = "wrt-platform", version = "0.2.0", default-features = false }
 wrt-panic = { path = "wrt-panic", version = "0.2.0", default-features = false }

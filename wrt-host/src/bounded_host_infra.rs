@@ -57,7 +57,7 @@ pub const MAX_ENV_VARS: usize = 256;
 pub fn create_host_provider() -> WrtResult<HostProvider> {
     // Use the standardized provider for consistency
     safe_managed_alloc!(HOST_MEMORY_SIZE, CrateId::Host).map_err(|_| {
-        wrt_error::Error::memory_allocation_failed("Failed to allocate host provider")
+        wrt_error::Error::platform_memory_allocation_failed("Failed to allocate host provider")
     })
 }
 
@@ -161,7 +161,7 @@ where
 pub fn new_host_function_name() -> WrtResult<BoundedHostFunctionName> {
     let provider = create_host_provider()?;
     BoundedString::<MAX_HOST_FUNCTION_NAME_LEN, HostProvider>::from_str("", provider).map_err(|_| {
-        wrt_error::Error::memory_allocation_failed("Failed to create empty bounded string")
+        wrt_error::Error::platform_memory_allocation_failed("Failed to create empty bounded string")
     })
 }
 
@@ -177,7 +177,7 @@ pub fn bounded_host_function_name_from_str(s: &str) -> WrtResult<BoundedHostFunc
 pub fn new_host_module_name() -> WrtResult<BoundedHostModuleName> {
     let provider = create_host_provider()?;
     BoundedString::<MAX_HOST_MODULE_NAME_LEN, HostProvider>::from_str("", provider).map_err(|_| {
-        wrt_error::Error::memory_allocation_failed("Failed to create empty bounded string")
+        wrt_error::Error::platform_memory_allocation_failed("Failed to create empty bounded string")
     })
 }
 
@@ -193,7 +193,7 @@ pub fn bounded_host_module_name_from_str(s: &str) -> WrtResult<BoundedHostModule
 pub fn new_host_id() -> WrtResult<BoundedHostId> {
     let provider = create_host_provider()?;
     BoundedString::<MAX_HOST_ID_LEN, HostProvider>::from_str("", provider).map_err(|_| {
-        wrt_error::Error::memory_allocation_failed("Failed to create empty bounded string")
+        wrt_error::Error::platform_memory_allocation_failed("Failed to create empty bounded string")
     })
 }
 

@@ -10,7 +10,7 @@ use alloc::{string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::{string::String, vec::Vec};
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{Error, ErrorCategory, Result};
 
 #[cfg(not(any(feature = "std")))]
 use wrt_foundation::{MemoryProvider, NoStdProvider};

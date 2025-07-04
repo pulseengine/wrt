@@ -751,9 +751,7 @@ pub struct CfiExecutionContext {
 
 impl CfiExecutionContext {
     pub fn try_default() -> Result<Self> {
-        let provider1 = safe_managed_alloc!(1024, CrateId::Instructions)?;
-        let provider2 = safe_managed_alloc!(2048, CrateId::Instructions)?;
-        let provider3 = safe_managed_alloc!(512, CrateId::Instructions)?;
+        // Remove unused providers - they were placeholders
         
         Ok(Self {
             current_function: 0,
@@ -790,7 +788,8 @@ impl CfiExecutionContext {
                 { Vec::new() }
                 #[cfg(not(feature = "std"))]
                 { 
-                    wrt_foundation::bounded::BoundedVec::new(provider1.clone())
+                    let provider = safe_managed_alloc!(1024, CrateId::Instructions)?;
+                    wrt_foundation::bounded::BoundedVec::new(provider)
                         .map_err(|_| Error::memory_error("Failed to create valid_branch_targets BoundedVec"))?
                 }
             },
@@ -800,7 +799,8 @@ impl CfiExecutionContext {
                 { Vec::new() }
                 #[cfg(not(feature = "std"))]
                 { 
-                    wrt_foundation::bounded::BoundedVec::new(provider2.clone())
+                    let provider = safe_managed_alloc!(2048, CrateId::Instructions)?;
+                    wrt_foundation::bounded::BoundedVec::new(provider)
                         .map_err(|_| Error::memory_error("Failed to create type_signatures BoundedVec"))?
                 }
             },
@@ -810,7 +810,8 @@ impl CfiExecutionContext {
                 { Vec::new() }
                 #[cfg(not(feature = "std"))]
                 { 
-                    wrt_foundation::bounded::BoundedVec::new(provider3.clone())
+                    let provider = safe_managed_alloc!(512, CrateId::Instructions)?;
+                    wrt_foundation::bounded::BoundedVec::new(provider)
                         .map_err(|_| Error::memory_error("Failed to create indirect_branch_targets BoundedVec"))?
                 }
             },
@@ -1250,10 +1251,8 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
             }
             #[cfg(not(feature = "std"))]
             {
-                let provider1 = safe_managed_alloc!(65536, CrateId::Instructions)?;
                 let mut reqs = crate::types::CfiRequirementVec::new(safe_managed_alloc!(8192, CrateId::Instructions)?)
                     .map_err(|_| Error::memory_error("Failed to create CfiRequirementVec"))?;
-                let provider2 = safe_managed_alloc!(65536, CrateId::Instructions)?;
                 let mut targets = crate::types::CfiTargetVec::new(safe_managed_alloc!(8192, CrateId::Instructions)?)
                     .map_err(|_| Error::memory_error("Failed to create CfiTargetVec"))?;
                 targets.push(target_offset)
@@ -1405,7 +1404,12 @@ impl DefaultCfiControlFlowOps {
         
         // ASIL-B: Check if label is in valid targets
         if !context.valid_branch_targets.is_empty() {
-            if !context.valid_branch_targets.iter().any(|target| target == label_idx) {
+            #[cfg(feature = "std")]
+            let contains_target = context.valid_branch_targets.contains(&label_idx);
+            #[cfg(not(feature = "std"))]
+            let contains_target = context.valid_branch_targets.contains(&label_idx).unwrap_or(false);
+            
+            if !contains_target {
                 return Err(Error::validation_control_flow_error("Invalid branch target"));
             }
         }
@@ -1596,12 +1600,12 @@ impl DefaultCfiControlFlowOps {
         // ASIL-B: Verify signature hash matches expected
         // In a real implementation, would compute hash from actual type
         #[cfg(feature = "std")]
-        let expected_hash = context.type_signatures.get(expected_type_index as usize)
+        let expected_hash_val = *context.type_signatures.get(expected_type_index as usize)
             .ok_or(Error::validation_value_type_error("Type signature not found"))?;
         #[cfg(not(feature = "std"))]
-        let expected_hash = context.type_signatures.get(expected_type_index as usize)?;
+        let expected_hash_val = context.type_signatures.get(expected_type_index as usize)?;
             
-        if expected_hash != signature_hash {
+        if expected_hash_val != signature_hash {
             return Err(Error::security_runtime_error("Type signature mismatch - potential CFI violation"));
         }
         
@@ -1661,7 +1665,12 @@ impl DefaultCfiControlFlowOps {
         // ASIL-B: Additional check for indirect branches
         if context.metrics.indirect_branches_taken > 0 {
             // Verify target is marked as valid indirect branch target
-            if !context.indirect_branch_targets.iter().any(|target| target == current_target) {
+            #[cfg(feature = "std")]
+            let contains_target = context.indirect_branch_targets.contains(&current_target);
+            #[cfg(not(feature = "std"))]
+            let contains_target = context.indirect_branch_targets.contains(&current_target).unwrap_or(false);
+            
+            if !contains_target {
                 return Err(Error::security_runtime_error("Invalid indirect branch target"));
             }
         }

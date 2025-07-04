@@ -651,11 +651,14 @@ mod tests {
         assert!(result.is_err(), "Deprecated builder should return an error");
 
         // Verify the error message contains migration guidance
-        let error_msg = format!("{}", result.unwrap_err());
-        assert!(
-            error_msg.contains("WrtProviderFactory"),
-            "Error should mention WrtProviderFactory"
-        );
+        #[cfg(feature = "std")]
+        {
+            let error_msg = format!("{}", result.unwrap_err());
+            assert!(
+                error_msg.contains("WrtProviderFactory"),
+                "Error should mention WrtProviderFactory"
+            );
+        }
     }
 
     #[test]
@@ -669,10 +672,13 @@ mod tests {
         assert!(result.is_err(), "Deprecated legacy builder should return an error");
 
         // Verify the error message contains migration guidance
-        let error_msg = format!("{}", result.unwrap_err());
-        assert!(
-            error_msg.contains("WrtProviderFactory"),
-            "Error should mention WrtProviderFactory"
-        );
+        #[cfg(feature = "std")]
+        {
+            let error_msg = format!("{}", result.unwrap_err());
+            assert!(
+                error_msg.contains("WrtProviderFactory"),
+                "Error should mention WrtProviderFactory"
+            );
+        }
     }
 }

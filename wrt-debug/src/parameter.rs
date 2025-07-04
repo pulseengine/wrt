@@ -1,6 +1,7 @@
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_DWARF_ABBREV_CACHE},
     budget_aware_provider::CrateId,
+    memory_sizing::LargeProvider,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
     BoundedCapacity,
@@ -422,9 +423,7 @@ impl<'a> InlinedFunctions<'a> {
             entries: {
                 let provider =
                     safe_managed_alloc!({ MAX_DWARF_ABBREV_CACHE * 128 }, CrateId::Debug)
-                        .unwrap_or_else(|_| {
-                            NoStdProvider::<{ MAX_DWARF_ABBREV_CACHE * 128 }>::default()
-                        });
+                        .unwrap_or_else(|_| LargeProvider::default());
                 BoundedVec::new(provider).expect("Failed to create entries BoundedVec")
             },
         }

@@ -13,7 +13,7 @@ use wrt_foundation::{
     traits::BoundedCapacity,
     MemoryProvider,
 };
-use wrt_error::{Error, ErrorCategory, codes};
+use wrt_error::{Error, ErrorCategory};
 
 /// Maximum number of resources per type
 /// Component Model suggests this as a reasonable limit
@@ -179,7 +179,7 @@ where
         if handle.0 as usize >= self.entries.len() {
             // Extend the vector with None values if needed
             while self.entries.len() <= handle.0 as usize {
-                self.entries.push(None).map_err(|_| Error::capacity_exceeded("Resource table capacity exceeded"))?;
+                self.entries.push(None).map_err(|_| Error::capacity_limit_exceeded("Resource table capacity exceeded"))?;
             }
         }
         let _old_entry = self.entries.set(handle.0 as usize, Some(entry))

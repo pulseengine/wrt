@@ -28,26 +28,6 @@
 #![allow(clippy::needless_pass_by_value)]
 #![allow(clippy::manual_let_else)]
 #![allow(clippy::elidable_lifetime_names)]
-#![allow(clippy::unused_self)]
-#![allow(clippy::ptr_as_ptr)]
-#![allow(clippy::cast_possible_truncation)]
-#![allow(clippy::too_many_lines)]
-#![allow(clippy::similar_names)]
-#![allow(clippy::module_name_repetitions)]
-#![allow(clippy::inline_always)]
-#![allow(clippy::multiple_crate_versions)]
-#![allow(clippy::semicolon_if_nothing_returned)]
-#![allow(clippy::comparison_chain)]
-#![allow(clippy::ignored_unit_patterns)]
-#![allow(clippy::panic)]
-#![allow(clippy::single_match_else)]
-#![allow(clippy::needless_range_loop)]
-#![allow(clippy::explicit_iter_loop)]
-#![allow(clippy::bool_to_int_with_if)]
-#![allow(clippy::match_same_arms)]
-// Allow all pedantic clippy warnings for now to focus on core functionality
-#![allow(clippy::pedantic)]
-#![allow(clippy::identity_op)]
 #![allow(clippy::derivable_impls)]
 #![allow(clippy::map_identity)]
 #![allow(clippy::expect_used)]
@@ -69,6 +49,37 @@
 #![allow(unused_variables)]
 #![allow(unused_mut)]
 #![allow(dead_code)]
+#![allow(clippy::unused_self)]
+#![allow(clippy::ptr_as_ptr)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::inline_always)]
+#![allow(clippy::multiple_crate_versions)]
+#![allow(clippy::semicolon_if_nothing_returned)]
+#![allow(clippy::comparison_chain)]
+#![allow(clippy::ignored_unit_patterns)]
+#![allow(clippy::panic)]
+#![allow(clippy::single_match_else)]
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::explicit_iter_loop)]
+#![allow(clippy::bool_to_int_with_if)]
+#![allow(clippy::match_same_arms)]
+// Allow all pedantic clippy warnings for now to focus on core functionality
+#![allow(clippy::pedantic)]
+#![allow(clippy::identity_op)]
+
+/// Version of the wrt-foundation crate (from wrt-helper)
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Helper macro to check if a feature is enabled (from wrt-helper)
+#[macro_export]
+macro_rules! has_feature {
+    ($feature:expr) => {
+        cfg!(feature = $feature)
+    };
+}
 
 // Core library is always available
 extern crate core;
@@ -182,6 +193,8 @@ pub mod macros;
 pub mod memory_init;
 /// Memory system monitoring and telemetry
 pub mod monitoring;
+/// Compile-time memory sizing strategy
+pub mod memory_sizing;
 
 // Clean Architecture - Provider-Free Types
 pub mod clean_core_types;
@@ -504,14 +517,20 @@ mod tests {
     fn test_boundedvec_is_empty() -> WrtResult<()> {
         init_test_memory_system();
         // Use capability-driven approach instead of unsafe release
+        #[cfg(any(feature = "std", feature = "alloc"))]
         use crate::capabilities::{CapabilityFactoryBuilder, ProviderCapabilityExt};
         use crate::safe_memory::NoStdProvider;
 
         let base_provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
-        let factory = CapabilityFactoryBuilder::new()
-            .with_dynamic_capability(CrateId::Foundation, 1024)?
-            .build();
-        let provider = factory.create_provider::<1024>(CrateId::Foundation)?;
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let provider = {
+            let factory = CapabilityFactoryBuilder::new()
+                .with_dynamic_capability(CrateId::Foundation, 1024)?
+                .build();
+            factory.create_provider::<1024>(CrateId::Foundation)?
+        };
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let provider = base_provider;
         let mut vec = BoundedVec::<u32, 10, _>::new(provider)?;
 
         // Test is_empty
@@ -531,12 +550,18 @@ mod tests {
     fn test_boundedvec_to_vec_std() -> WrtResult<()> {
         init_test_memory_system();
         // Use capability-driven approach instead of unsafe release
+        #[cfg(any(feature = "std", feature = "alloc"))]
         use crate::capabilities::CapabilityFactoryBuilder;
 
-        let factory = CapabilityFactoryBuilder::new()
-            .with_dynamic_capability(CrateId::Foundation, 1024)?
-            .build();
-        let provider = factory.create_provider::<1024>(CrateId::Foundation)?;
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let provider = {
+            let factory = CapabilityFactoryBuilder::new()
+                .with_dynamic_capability(CrateId::Foundation, 1024)?
+                .build();
+            factory.create_provider::<1024>(CrateId::Foundation)?
+        };
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
         let mut vec = BoundedVec::<u32, 10, _>::new(provider)?;
 
         vec.push(1)?;
@@ -553,12 +578,18 @@ mod tests {
     fn test_boundedvec_to_vec_no_std() -> WrtResult<()> {
         init_test_memory_system();
         // Use capability-driven approach instead of unsafe release
+        #[cfg(any(feature = "std", feature = "alloc"))]
         use crate::capabilities::CapabilityFactoryBuilder;
 
-        let factory = CapabilityFactoryBuilder::new()
-            .with_dynamic_capability(CrateId::Foundation, 1024)?
-            .build();
-        let provider = factory.create_provider::<1024>(CrateId::Foundation)?;
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let provider = {
+            let factory = CapabilityFactoryBuilder::new()
+                .with_dynamic_capability(CrateId::Foundation, 1024)?
+                .build();
+            factory.create_provider::<1024>(CrateId::Foundation)?
+        };
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
         let mut vec = BoundedVec::<u32, 10, _>::new(provider)?;
 
         vec.push(1)?;
@@ -577,12 +608,18 @@ mod tests {
     fn test_safe_memory_handler_to_vec() -> WrtResult<()> {
         init_test_memory_system();
         // Use capability-driven approach instead of unsafe release
+        #[cfg(any(feature = "std", feature = "alloc"))]
         use crate::capabilities::CapabilityFactoryBuilder;
 
-        let factory = CapabilityFactoryBuilder::new()
-            .with_dynamic_capability(CrateId::Foundation, 1024)?
-            .build();
-        let provider = factory.create_provider::<1024>(CrateId::Foundation)?;
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let provider = {
+            let factory = CapabilityFactoryBuilder::new()
+                .with_dynamic_capability(CrateId::Foundation, 1024)?
+                .build();
+            factory.create_provider::<1024>(CrateId::Foundation)?
+        };
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
         let handler = SafeMemoryHandler::new(provider);
 
         // Test to_vec on empty handler

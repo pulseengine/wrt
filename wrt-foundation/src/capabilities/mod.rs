@@ -81,6 +81,14 @@ pub struct NoStdCapabilityContext {
     pub size: usize,
 }
 
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+impl NoStdCapabilityContext {
+    /// Check if the context has capability for the given crate
+    pub fn has_capability(&self, crate_id: CrateId) -> bool {
+        self.crate_id == crate_id
+    }
+}
+
 pub use static_alloc::StaticMemoryCapability;
 pub use verified::VerifiedMemoryCapability;
 

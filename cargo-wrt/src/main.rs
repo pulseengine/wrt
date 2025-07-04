@@ -28,11 +28,15 @@ mod formatters;
 mod helpers;
 
 mod commands;
+mod test_config;
 #[cfg(test)]
 mod testing;
 
 use commands::{cmd_embed_limits, execute_test_validate, TestValidateArgs};
-use helpers::{output_diagnostics, AutoFixManager, GlobalArgs, OutputManager};
+use helpers::{
+    output_diagnostics, run_asil_tests, run_no_std_tests, AutoFixManager, GlobalArgs,
+    OutputManager, TestConfig,
+};
 
 /// WRT Build System - Unified tool for building, testing, and verifying WRT
 #[derive(Parser)]
@@ -262,6 +266,47 @@ enum Commands {
         /// Skip doc tests
         #[arg(long)]
         no_doc_tests: bool,
+    },
+
+    /// Run ASIL-specific test suites
+    TestAsil {
+        /// Target ASIL level for testing
+        #[arg(long, value_enum, default_value = "qm")]
+        asil: AsilArg,
+
+        /// Test filter pattern
+        #[arg(long)]
+        filter: Option<String>,
+
+        /// Number of test threads
+        #[arg(long)]
+        test_threads: Option<usize>,
+
+        /// Run only no_std compatible tests
+        #[arg(long)]
+        no_std_only: bool,
+    },
+
+    /// Run no_std compatibility tests
+    TestNoStd {
+        /// Test filter pattern
+        #[arg(long)]
+        filter: Option<String>,
+
+        /// Number of test threads
+        #[arg(long)]
+        test_threads: Option<usize>,
+    },
+
+    /// Generate test configuration file
+    TestConfig {
+        /// Output path for configuration file
+        #[arg(long, default_value = "wrt-test.toml")]
+        output: String,
+
+        /// Generate example configuration
+        #[arg(long)]
+        example: bool,
     },
 
     /// Run safety verification and compliance checks
@@ -1235,6 +1280,28 @@ async fn main() -> Result<()> {
             )
             .await
         },
+        Commands::TestAsil {
+            asil,
+            filter,
+            test_threads,
+            no_std_only,
+        } => {
+            cmd_test_asil(
+                *asil,
+                filter.clone(),
+                *test_threads,
+                *no_std_only,
+                &mut global,
+            )
+            .await
+        },
+        Commands::TestNoStd {
+            filter,
+            test_threads,
+        } => cmd_test_no_std(filter.clone(), *test_threads, &mut global).await,
+        Commands::TestConfig { output, example } => {
+            cmd_test_config(output.clone(), *example, &mut global).await
+        },
         Commands::Verify {
             asil,
             no_kani,
@@ -1764,6 +1831,76 @@ async fn cmd_test(
                 anyhow::bail!("Test suite failed");
             }
         },
+    }
+
+    Ok(())
+}
+
+/// ASIL-specific test command implementation
+async fn cmd_test_asil(
+    asil: AsilArg,
+    filter: Option<String>,
+    test_threads: Option<usize>,
+    no_std_only: bool,
+    global: &mut GlobalArgs,
+) -> Result<()> {
+    let config = TestConfig {
+        asil_level: asil.into(),
+        filter,
+        no_std_only,
+        output_format: global.output_format.clone(),
+        verbose: global.verbose,
+        test_threads,
+    };
+
+    global.output.info(&format!(
+        "Running ASIL-{} test suite{}",
+        config.asil_level,
+        if no_std_only { " (no_std only)" } else { "" }
+    ));
+
+    run_asil_tests(global, config.asil_level).context("ASIL tests failed")
+}
+
+/// No_std compatibility test command implementation
+async fn cmd_test_no_std(
+    filter: Option<String>,
+    test_threads: Option<usize>,
+    global: &mut GlobalArgs,
+) -> Result<()> {
+    let config = TestConfig {
+        asil_level: AsilLevel::QM,
+        filter,
+        no_std_only: true,
+        output_format: global.output_format.clone(),
+        verbose: global.verbose,
+        test_threads,
+    };
+
+    global.output.info("Running no_std compatibility tests");
+
+    run_no_std_tests(global).context("No_std tests failed")
+}
+
+/// Test configuration generation command implementation
+async fn cmd_test_config(output: String, example: bool, global: &mut GlobalArgs) -> Result<()> {
+    use test_config::WrtTestConfig;
+
+    let config = if example {
+        global.output.info("Generating example test configuration");
+        WrtTestConfig::example_config()
+    } else {
+        global.output.info("Generating default test configuration");
+        WrtTestConfig::default()
+    };
+
+    config.save_to_file(&output).context("Failed to save test configuration file")?;
+
+    global.output.success(&format!("Test configuration saved to: {}", output));
+
+    if example {
+        global.output.info("Edit the configuration file to customize test behavior");
+        global.output.info("Use 'cargo-wrt test-asil' to run ASIL-specific tests");
     }
 
     Ok(())

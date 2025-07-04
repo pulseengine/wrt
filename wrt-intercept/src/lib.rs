@@ -612,6 +612,9 @@ impl LinkInterceptor {
 
         for modification in modifications {
             match modification {
+                Modification::None => {
+                    // No modification needed
+                }
                 Modification::Replace { offset, data } => {
                     let end_offset = offset + data.len();
                     if end_offset > modified_data.len() {
@@ -775,7 +778,7 @@ impl wrt_foundation::traits::ToBytes for Modification {
                 writer.write_usize_le(*offset)?;
                 writer.write_u32_le(data.len() as u32)?;
                 #[cfg(feature = "std")]
-                writer.write_bytes(data)?;
+                writer.write_all(data)?;
                 #[cfg(not(feature = "std"))]
                 for i in 0..data.len() {
                     if let Ok(byte) = data.get(i) {
@@ -788,7 +791,7 @@ impl wrt_foundation::traits::ToBytes for Modification {
                 writer.write_usize_le(*offset)?;
                 writer.write_u32_le(data.len() as u32)?;
                 #[cfg(feature = "std")]
-                writer.write_bytes(data)?;
+                writer.write_all(data)?;
                 #[cfg(not(feature = "std"))]
                 for i in 0..data.len() {
                     if let Ok(byte) = data.get(i) {

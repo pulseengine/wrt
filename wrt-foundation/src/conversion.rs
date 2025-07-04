@@ -120,8 +120,9 @@ mod tests {
 
     use super::*;
     use crate::{
-        safe_memory::{NoStdProvider, DEFAULT_MEMORY_PROVIDER_CAPACITY},
-        types::{RefType, ValueType as CoreValueType, DEFAULT_FUNC_TYPE_PROVIDER_CAPACITY},
+        memory_sizing::TinyProvider,
+        safe_memory::DEFAULT_MEMORY_PROVIDER_CAPACITY,
+        types::{RefType, ValueType as CoreValueType},
         values::Value,
     };
 
@@ -167,7 +168,7 @@ mod tests {
         // Test valid function type creation using slices from arrays
         let params: [CoreValueType; 2] = [CoreValueType::I32, CoreValueType::I64];
         let results: [CoreValueType; 1] = [CoreValueType::F32];
-        let provider = NoStdProvider::<DEFAULT_FUNC_TYPE_PROVIDER_CAPACITY>::default();
+        let provider = TinyProvider::default();
         let func_type = func_type::create(provider.clone(), &params, &results).unwrap();
 
         assert_eq!(func_type.params(), &[CoreValueType::I32, CoreValueType::I64]);

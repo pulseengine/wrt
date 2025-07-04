@@ -119,7 +119,7 @@ pub fn asil_a() -> Result<MemoryCapabilityContext> {
 /// - Verification proofs required
 pub fn asil_b() -> Result<MemoryCapabilityContext> {
     let mut context = MemoryCapabilityContext::new(
-        VerificationLevel::Continuous,
+        VerificationLevel::Full,
         true, // Strict runtime verification
     );
 

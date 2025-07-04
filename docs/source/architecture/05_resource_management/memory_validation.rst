@@ -84,7 +84,6 @@ The system includes sensible defaults for all WRT crates:
    * - wrt-error
      - 256KB
      - Error handling
-   * - wrt-helper
      - 256KB
      - Helper utilities
 
