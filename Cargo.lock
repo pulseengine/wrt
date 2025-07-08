@@ -2676,6 +2676,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "simple-wasm-test"
+version = "0.2.0"
+dependencies = [
+ "wrt-decoder",
+ "wrt-error",
+]
+
+[[package]]
 name = "slab"
 version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
