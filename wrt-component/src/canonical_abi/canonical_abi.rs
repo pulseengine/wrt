@@ -32,7 +32,7 @@
 //! let value = abi.lift_i32(&memory, 0)?;
 //!
 //! // Lower a string to memory  
-//! abi.lower_string(&mut memory, 100, "hello")?;
+//! abi.lower_string(&mut memory, 100, "helloMissing message")?;
 //! ```
 
 
@@ -183,23 +183,23 @@ pub trait CanonicalMemory {
     /// Read little-endian u16
     fn read_u16_le(&self, offset: u32) -> Result<u16> {
         let bytes = self.read_bytes(offset, 2)?;
-        Ok(u16::from_le_bytes([bytes[0], bytes[1]]))
+        Ok(u16::from_le_bytes([bytes[0], bytes[1]])
     }
 
     /// Write little-endian u16
     fn write_u16_le(&mut self, offset: u32, value: u16) -> Result<()> {
-        self.write_bytes(offset, &value.to_le_bytes())
+        self.write_bytes(offset, &value.to_le_bytes()
     }
 
     /// Read little-endian u32
     fn read_u32_le(&self, offset: u32) -> Result<u32> {
         let bytes = self.read_bytes(offset, 4)?;
-        Ok(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
+        Ok(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
     }
 
     /// Write little-endian u32
     fn write_u32_le(&mut self, offset: u32, value: u32) -> Result<()> {
-        self.write_bytes(offset, &value.to_le_bytes())
+        self.write_bytes(offset, &value.to_le_bytes()
     }
 
     /// Read little-endian u64
@@ -207,12 +207,12 @@ pub trait CanonicalMemory {
         let bytes = self.read_bytes(offset, 8)?;
         Ok(u64::from_le_bytes([
             bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-        ]))
+        ])
     }
 
     /// Write little-endian u64
     fn write_u64_le(&mut self, offset: u32, value: u64) -> Result<()> {
-        self.write_bytes(offset, &value.to_le_bytes())
+        self.write_bytes(offset, &value.to_le_bytes()
     }
 }
 
@@ -387,7 +387,7 @@ impl CanonicalABI {
             ComponentType::Result(ok, err) => {
                 let ok_align = if let Some(ok_ty) = ok { self.align_of(ok_ty)? } else { 1 };
                 let err_align = if let Some(err_ty) = err { self.align_of(err_ty)? } else { 1 };
-                Ok(4.max(ok_align).max(err_align))
+                Ok(4.max(ok_align).max(err_align)
             }
             ComponentType::Record(fields) => {
                 let mut max_align = 1;
@@ -445,78 +445,78 @@ impl CanonicalABI {
     /// Lift a boolean value
     pub fn lift_bool<M: CanonicalMemory>(&self, memory: &M, offset: u32) -> Result<ComponentValue> {
         let value = memory.read_u8(offset)?;
-        Ok(ComponentValue::Bool(value != 0))
+        Ok(ComponentValue::Bool(value != 0)
     }
 
     /// Lift an i8 value
     pub fn lift_s8<M: CanonicalMemory>(&self, memory: &M, offset: u32) -> Result<ComponentValue> {
         let value = memory.read_u8(offset)? as i8;
-        Ok(ComponentValue::S8(value))
+        Ok(ComponentValue::S8(value)
     }
 
     /// Lift a u8 value
     pub fn lift_u8<M: CanonicalMemory>(&self, memory: &M, offset: u32) -> Result<ComponentValue> {
         let value = memory.read_u8(offset)?;
-        Ok(ComponentValue::U8(value))
+        Ok(ComponentValue::U8(value)
     }
 
     /// Lift an i16 value
     pub fn lift_s16<M: CanonicalMemory>(&self, memory: &M, offset: u32) -> Result<ComponentValue> {
         let value = memory.read_u16_le(offset)? as i16;
-        Ok(ComponentValue::S16(value))
+        Ok(ComponentValue::S16(value)
     }
 
     /// Lift a u16 value
     pub fn lift_u16<M: CanonicalMemory>(&self, memory: &M, offset: u32) -> Result<ComponentValue> {
         let value = memory.read_u16_le(offset)?;
-        Ok(ComponentValue::U16(value))
+        Ok(ComponentValue::U16(value)
     }
 
     /// Lift an i32 value
     pub fn lift_s32<M: CanonicalMemory>(&self, memory: &M, offset: u32) -> Result<ComponentValue> {
         let value = memory.read_u32_le(offset)? as i32;
-        Ok(ComponentValue::S32(value))
+        Ok(ComponentValue::S32(value)
     }
 
     /// Lift a u32 value
     pub fn lift_u32<M: CanonicalMemory>(&self, memory: &M, offset: u32) -> Result<ComponentValue> {
         let value = memory.read_u32_le(offset)?;
-        Ok(ComponentValue::U32(value))
+        Ok(ComponentValue::U32(value)
     }
 
     /// Lift an i64 value
     pub fn lift_s64<M: CanonicalMemory>(&self, memory: &M, offset: u32) -> Result<ComponentValue> {
         let value = memory.read_u64_le(offset)? as i64;
-        Ok(ComponentValue::S64(value))
+        Ok(ComponentValue::S64(value)
     }
 
     /// Lift a u64 value
     pub fn lift_u64<M: CanonicalMemory>(&self, memory: &M, offset: u32) -> Result<ComponentValue> {
         let value = memory.read_u64_le(offset)?;
-        Ok(ComponentValue::U64(value))
+        Ok(ComponentValue::U64(value)
     }
 
     /// Lift an f32 value
     pub fn lift_f32<M: CanonicalMemory>(&self, memory: &M, offset: u32) -> Result<ComponentValue> {
         let bits = memory.read_u32_le(offset)?;
         let value = f32::from_bits(bits);
-        Ok(ComponentValue::F32(value))
+        Ok(ComponentValue::F32(value)
     }
 
     /// Lift an f64 value
     pub fn lift_f64<M: CanonicalMemory>(&self, memory: &M, offset: u32) -> Result<ComponentValue> {
         let bits = memory.read_u64_le(offset)?;
         let value = f64::from_bits(bits);
-        Ok(ComponentValue::F64(value))
+        Ok(ComponentValue::F64(value)
     }
 
     /// Lift a char value
     pub fn lift_char<M: CanonicalMemory>(&self, memory: &M, offset: u32) -> Result<ComponentValue> {
         let code_point = memory.read_u32_le(offset)?;
         let ch = char::from_u32(code_point).ok_or_else(|| {
-            Error::validation_error("Invalid Unicode code point")
+            Error::validation_error("Error occurred"Invalid Unicode code pointMissing message")
         })?;
-        Ok(ComponentValue::Char(ch))
+        Ok(ComponentValue::Char(ch)
     }
 
     /// Lift a string value
@@ -531,7 +531,7 @@ impl CanonicalABI {
 
         // Safety check
         if len > MAX_STRING_LENGTH as u32 {
-            return Err(Error::validation_error("String too long"));
+            return Err(Error::validation_error("Error occurred"String too longMissing messageMissing messageMissing message");
         }
 
         // Read string data
@@ -540,11 +540,11 @@ impl CanonicalABI {
         // Decode based on encoding
         let string = match self.string_options.encoding {
             StringEncoding::Utf8 => String::from_utf8(bytes).map_err(|_| {
-                Error::validation_error("Invalid UTF-8 string")
+                Error::validation_error("Error occurred"Invalid UTF-8 stringMissing message")
             })?,
             StringEncoding::Utf16Le => {
                 if bytes.len() % 2 != 0 {
-                    return Err(Error::validation_error("UTF-16 byte sequence must have even length"));
+                    return Err(Error::validation_error("Error occurred"UTF-16 byte sequence must have even lengthMissing messageMissing messageMissing message");
                 }
                 
                 let mut code_units = Vec::new();
@@ -554,12 +554,12 @@ impl CanonicalABI {
                 }
                 
                 String::from_utf16(&code_units).map_err(|_| {
-                    Error::validation_error("Invalid UTF-16 sequence")
+                    Error::validation_error("Error occurred"Invalid UTF-16 sequenceMissing message")
                 })?
             }
             StringEncoding::Utf16Be => {
                 if bytes.len() % 2 != 0 {
-                    return Err(Error::validation_error("UTF-16 byte sequence must have even length"));
+                    return Err(Error::validation_error("Error occurred"UTF-16 byte sequence must have even lengthMissing messageMissing messageMissing message");
                 }
                 
                 let mut code_units = Vec::new();
@@ -569,7 +569,7 @@ impl CanonicalABI {
                 }
                 
                 String::from_utf16(&code_units).map_err(|_| {
-                    Error::validation_error("Invalid UTF-16 sequence")
+                    Error::validation_error("Error occurred"Invalid UTF-16 sequenceMissing message")
                 })?
             }
             StringEncoding::Latin1 => {
@@ -578,7 +578,7 @@ impl CanonicalABI {
             }
         };
 
-        Ok(ComponentValue::String(string))
+        Ok(ComponentValue::String(string)
     }
 
     /// Lift a list value
@@ -594,7 +594,7 @@ impl CanonicalABI {
 
         // Safety check
         if len > MAX_LIST_LENGTH as u32 {
-            return Err(Error::validation_error("List too long"));
+            return Err(Error::validation_error("Error occurred"List too longMissing messageMissing messageMissing message");
         }
 
         let element_size = self.size_of(element_ty)?;
@@ -606,7 +606,7 @@ impl CanonicalABI {
             values.push(value);
         }
 
-        Ok(ComponentValue::List(values))
+        Ok(ComponentValue::List(values)
     }
 
     /// Lift a record value
@@ -621,11 +621,11 @@ impl CanonicalABI {
 
         for (field_name, field_ty) in fields {
             let value = self.lift(memory, field_ty, current_offset)?;
-            field_values.push((field_name.clone(), value));
+            field_values.push((field_name.clone(), value);
             current_offset += self.size_of(field_ty)?;
         }
 
-        Ok(ComponentValue::Record(field_values))
+        Ok(ComponentValue::Record(field_values)
     }
 
     /// Lift a tuple value
@@ -644,7 +644,7 @@ impl CanonicalABI {
             current_offset += self.size_of(ty)?;
         }
 
-        Ok(ComponentValue::Tuple(values))
+        Ok(ComponentValue::Tuple(values)
     }
 
     /// Lift a variant value
@@ -657,16 +657,16 @@ impl CanonicalABI {
         let discriminant = memory.read_u32_le(offset)?;
 
         if discriminant as usize >= cases.len() {
-            return Err(Error::validation_error("Invalid variant discriminant"));
+            return Err(Error::validation_error("Error occurred"Invalid variant discriminantMissing messageMissing messageMissing message");
         }
 
         let (case_name, payload_ty) = &cases[discriminant as usize];
 
         if let Some(ty) = payload_ty {
             let payload_value = self.lift(memory, ty, offset + 4)?;
-            Ok(ComponentValue::Variant(case_name.clone(), Some(Box::new(payload_value))))
+            Ok(ComponentValue::Variant(case_name.clone(), Some(Box::new(payload_value)))
         } else {
-            Ok(ComponentValue::Variant(case_name.clone(), None))
+            Ok(ComponentValue::Variant(case_name.clone(), None)
         }
     }
 
@@ -680,10 +680,10 @@ impl CanonicalABI {
         let discriminant = memory.read_u32_le(offset)?;
 
         if discriminant as usize >= cases.len() {
-            return Err(Error::validation_error("Invalid enum discriminant"));
+            return Err(Error::validation_error("Error occurred"Invalid enum discriminantMissing messageMissing messageMissing message");
         }
 
-        Ok(ComponentValue::Enum(cases[discriminant as usize].clone()))
+        Ok(ComponentValue::Enum(cases[discriminant as usize].clone())
     }
 
     /// Lift an option value
@@ -696,10 +696,10 @@ impl CanonicalABI {
         let discriminant = memory.read_u8(offset)?;
 
         if discriminant == 0 {
-            Ok(ComponentValue::Option(None))
+            Ok(ComponentValue::Option(None)
         } else {
             let value = self.lift(memory, inner_ty, offset + 1)?;
-            Ok(ComponentValue::Option(Some(Box::new(value))))
+            Ok(ComponentValue::Option(Some(Box::new(value)))
         }
     }
 
@@ -718,21 +718,21 @@ impl CanonicalABI {
                 // Ok case
                 if let Some(ty) = ok_ty {
                     let value = self.lift(memory, ty, offset + 4)?;
-                    Ok(ComponentValue::Result(Ok(Some(Box::new(value)))))
+                    Ok(ComponentValue::Result(Ok(Some(Box::new(value))))
                 } else {
-                    Ok(ComponentValue::Result(Ok(None)))
+                    Ok(ComponentValue::Result(Ok(None))
                 }
             }
             1 => {
                 // Err case
                 if let Some(ty) = err_ty {
                     let value = self.lift(memory, ty, offset + 4)?;
-                    Ok(ComponentValue::Result(Err(Some(Box::new(value)))))
+                    Ok(ComponentValue::Result(Err(Some(Box::new(value))))
                 } else {
-                    Ok(ComponentValue::Result(Err(None)))
+                    Ok(ComponentValue::Result(Err(None))
                 }
             }
-            _ => Err(Error::validation_error("Invalid result discriminant")),
+            _ => Err(Error::validation_error("Error occurred"Invalid result discriminantMissing messageMissing messageMissing message")),
         }
     }
 
@@ -753,11 +753,11 @@ impl CanonicalABI {
             let bit_index = i % 8;
 
             if byte_index < bytes.len() && (bytes[byte_index] & (1 << bit_index)) != 0 {
-                active_flags.push(flag_name.clone());
+                active_flags.push(flag_name.clone();
             }
         }
 
-        Ok(ComponentValue::Flags(active_flags))
+        Ok(ComponentValue::Flags(active_flags)
     }
 
     // ==== LOWERING OPERATIONS ====
@@ -893,7 +893,7 @@ impl CanonicalABI {
         value: f32,
         offset: u32,
     ) -> Result<()> {
-        memory.write_u32_le(offset, value.to_bits())
+        memory.write_u32_le(offset, value.to_bits()
     }
 
     /// Lower an f64 value
@@ -903,7 +903,7 @@ impl CanonicalABI {
         value: f64,
         offset: u32,
     ) -> Result<()> {
-        memory.write_u64_le(offset, value.to_bits())
+        memory.write_u64_le(offset, value.to_bits()
     }
 
     /// Lower a char value
@@ -932,7 +932,7 @@ impl CanonicalABI {
 
         // Safety check
         if len > MAX_STRING_LENGTH as u32 {
-            return Err(Error::validation_error("String too long"));
+            return Err(Error::validation_error("Error occurred"String too longMissing messageMissing messageMissing message");
         }
 
         // For this simplified implementation, we'll assume the string data
@@ -961,7 +961,7 @@ impl CanonicalABI {
 
         // Safety check
         if len > MAX_LIST_LENGTH as u32 {
-            return Err(Error::validation_error("List too long"));
+            return Err(Error::validation_error("Error occurred"List too longMissing messageMissing messageMissing message");
         }
 
         // For this simplified implementation, we'll write a basic representation
@@ -1039,7 +1039,7 @@ impl CanonicalABI {
         // Find the discriminant for this case
         let discriminant = cases.iter()
             .position(|(name, _)| name == case_name)
-            .ok_or_else(|| Error::validation_invalid_type("Variant case not found"))?;
+            .ok_or_else(|| Error::validation_invalid_type("Error occurred"Variant case not foundMissing messageMissing messageMissing message"))?;
         
         // Calculate discriminant size based on number of cases
         let discriminant_size = if cases.len() <= 256 { 1 } else if cases.len() <= 65536 { 2 } else { 4 };
@@ -1049,7 +1049,7 @@ impl CanonicalABI {
             1 => memory.write_u8(offset, discriminant as u8)?,
             2 => memory.write_u16_le(offset, discriminant as u16)?,
             4 => memory.write_u32_le(offset, discriminant as u32)?,
-            _ => return Err(Error::type_error("Invalid discriminant size calculated")),
+            _ => return Err(Error::type_error("Error occurred"Invalid discriminant size calculatedMissing messageMissing messageMissing message")),
         }
         
         // If there's a payload, lower it after the discriminant with proper alignment
@@ -1077,7 +1077,7 @@ impl CanonicalABI {
         // Find the discriminant for this case
         let discriminant = cases.iter()
             .position(|name| name == case_name)
-            .ok_or_else(|| Error::validation_invalid_type("Enum case not found"))?;
+            .ok_or_else(|| Error::validation_invalid_type("Error occurred"Enum case not foundMissing messageMissing messageMissing message"))?;
         
         // Calculate discriminant size based on number of cases
         let discriminant_size = if cases.len() <= 256 { 1 } else if cases.len() <= 65536 { 2 } else { 4 };
@@ -1087,7 +1087,7 @@ impl CanonicalABI {
             1 => memory.write_u8(offset, discriminant as u8),
             2 => memory.write_u16_le(offset, discriminant as u16),
             4 => memory.write_u32_le(offset, discriminant as u32),
-            _ => return Err(Error::type_error("Invalid discriminant size calculated")),
+            _ => return Err(Error::type_error("Error occurred"Invalid discriminant size calculatedMissing messageMissing messageMissing message")),
         }
     }
 
@@ -1316,22 +1316,22 @@ mod tests {
         // Test bool
         abi.lower_bool(&mut memory, true, 0).unwrap();
         let value = abi.lift_bool(&memory, 0).unwrap();
-        assert_eq!(value, ComponentValue::Bool(true));
+        assert_eq!(value, ComponentValue::Bool(true);
 
         // Test i32
         abi.lower_s32(&mut memory, -42, 10).unwrap();
         let value = abi.lift_s32(&memory, 10).unwrap();
-        assert_eq!(value, ComponentValue::S32(-42));
+        assert_eq!(value, ComponentValue::S32(-42);
 
         // Test f32
         abi.lower_f32(&mut memory, 3.14, 20).unwrap();
         let value = abi.lift_f32(&memory, 20).unwrap();
-        assert_eq!(value, ComponentValue::F32(3.14));
+        assert_eq!(value, ComponentValue::F32(3.14);
 
         // Test char
         abi.lower_char(&mut memory, 'A', 30).unwrap();
         let value = abi.lift_char(&memory, 30).unwrap();
-        assert_eq!(value, ComponentValue::Char('A'));
+        assert_eq!(value, ComponentValue::Char('A');
     }
 
     #[test]
@@ -1344,7 +1344,7 @@ mod tests {
 
         // Lift it back
         let value = abi.lift_string(&memory, 0).unwrap();
-        assert_eq!(value, ComponentValue::String("hello".to_string()));
+        assert_eq!(value, ComponentValue::String("hello".to_string());
     }
 
     #[test]
@@ -1374,10 +1374,10 @@ mod tests {
         // Test None option
         abi.lower_option(&mut memory, &None, 0).unwrap();
         let value = abi.lift_option(&memory, &ComponentType::S32, 0).unwrap();
-        assert_eq!(value, ComponentValue::Option(None));
+        assert_eq!(value, ComponentValue::Option(None);
 
         // Test Some option
-        let some_value = Some(Box::new(ComponentValue::S32(42)));
+        let some_value = Some(Box::new(ComponentValue::S32(42));
         abi.lower_option(&mut memory, &some_value, 10).unwrap();
         // Note: This test is simplified and doesn't actually verify the full lifting
         // because the lowering implementation is also simplified
@@ -1538,7 +1538,7 @@ impl FromBytes for ComponentValue {
         _provider: &PStream,
     ) -> wrt_foundation::WrtResult<Self> {
         // Return a default value
-        Ok(ComponentValue::Bool(false))
+        Ok(ComponentValue::Bool(false)
     }
 }
 

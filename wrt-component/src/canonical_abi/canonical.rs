@@ -197,7 +197,18 @@ impl CanonicalABI {
             // For now, return a "not implemented" error
             // This simplified implementation focuses on basic types
             Err(Error::unimplemented("Expected i32 for bool"))
-            }
+        }
+    }
+
+    fn lift_value(
+        &self,
+        ty: &ValType,
+        addr: u32,
+        resource_table: &ResourceTable,
+        memory_bytes: &[u8],
+    ) -> Result<wrt_foundation::values::Value> {
+        match ty {
+            ValType::Bool => self.lift_bool(addr, memory_bytes),
             ValType::S8 => self.lift_s8(addr, memory_bytes),
             ValType::U8 => self.lift_u8(addr, memory_bytes),
             ValType::S16 => self.lift_s16(addr, memory_bytes),
@@ -228,8 +239,7 @@ impl CanonicalABI {
             ValType::Flags(names) => self.lift_flags(names, addr, memory_bytes),
             ValType::Own(_) => self.lift_resource(addr, resource_table, memory_bytes),
             ValType::Borrow(_) => self.lift_borrow(addr, resource_table, memory_bytes),
-            _ => Err(Error::unimplemented("Component not found"),
-            )),
+            _ => Err(Error::unimplemented("Component not found"))
         }
     }
 
@@ -1002,8 +1012,7 @@ impl CanonicalABI {
                     Err(Error::runtime_type_mismatch("Expected list value"))
                 }
             }
-            _ => Err(Error::unimplemented("Component not found"),
-            )),
+            _ => Err(Error::unimplemented("Component not found"))
         }
     }
 
@@ -1091,8 +1100,7 @@ pub fn convert_value_for_canonical_abi(
             if let Some(b) = value.as_bool() {
                 Ok(wrt_foundation::values::Value::Bool(b))
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         FoundationValType::<ComponentProvider>::S8 => {
@@ -1102,12 +1110,10 @@ pub fn convert_value_for_canonical_abi(
                 if i >= i8::MIN as i32 && i <= i8::MAX as i32 {
                     Ok(wrt_foundation::values::Value::S8(i as i8))
                 } else {
-                    Err(Error::component_not_found("),
-                    ))
+                    Err(Error::component_not_found("Value out of range"))
                 }
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         FoundationValType::<ComponentProvider>::U8 => {
@@ -1117,12 +1123,10 @@ pub fn convert_value_for_canonical_abi(
                 if i >= 0 && i <= u8::MAX as i32 {
                     Ok(wrt_foundation::values::Value::U8(i as u8))
                 } else {
-                    Err(Error::component_not_found("),
-                    ))
+                    Err(Error::component_not_found("Value out of range"))
                 }
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         FoundationValType::<ComponentProvider>::S16 => {
@@ -1132,12 +1136,10 @@ pub fn convert_value_for_canonical_abi(
                 if i >= i16::MIN as i32 && i <= i16::MAX as i32 {
                     Ok(wrt_foundation::values::Value::S16(i as i16))
                 } else {
-                    Err(Error::component_not_found("),
-                    ))
+                    Err(Error::component_not_found("Value out of range"))
                 }
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         FoundationValType::<ComponentProvider>::U16 => {
@@ -1147,12 +1149,10 @@ pub fn convert_value_for_canonical_abi(
                 if i >= 0 && i <= u16::MAX as i32 {
                     Ok(wrt_foundation::values::Value::U16(i as u16))
                 } else {
-                    Err(Error::component_not_found("),
-                    ))
+                    Err(Error::component_not_found("Value out of range"))
                 }
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         FoundationValType::<ComponentProvider>::S32 => {
@@ -1162,12 +1162,10 @@ pub fn convert_value_for_canonical_abi(
                 if v >= i32::MIN as i64 && v <= i32::MAX as i64 {
                     Ok(wrt_foundation::values::Value::S32(v as i32))
                 } else {
-                    Err(Error::component_not_found("),
-                    ))
+                    Err(Error::component_not_found("Value out of range"))
                 }
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         FoundationValType::<ComponentProvider>::U32 => {
@@ -1177,12 +1175,10 @@ pub fn convert_value_for_canonical_abi(
                 if i >= 0 && i <= u32::MAX as i64 {
                     Ok(wrt_foundation::values::Value::U32(i as u32))
                 } else {
-                    Err(Error::component_not_found("),
-                    ))
+                    Err(Error::component_not_found("Value out of range"))
                 }
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         FoundationValType::<ComponentProvider>::S64 => {
@@ -1194,7 +1190,7 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError(")),
+                    NotImplementedError("Not implemented").to_string(),
                 ))
             }
         }
@@ -1205,12 +1201,10 @@ pub fn convert_value_for_canonical_abi(
                 if i >= 0 {
                     Ok(wrt_foundation::values::Value::U64(i as u64))
                 } else {
-                    Err(Error::component_not_found("Component not found"),
-                    ))
+                    Err(Error::component_not_found("Component not found"))
                 }
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         FoundationValType::<ComponentProvider>::F32 => {
@@ -1226,7 +1220,7 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError(")),
+                    NotImplementedError("Not implemented").to_string(),
                 ))
             }
         }
@@ -1240,8 +1234,7 @@ pub fn convert_value_for_canonical_abi(
             } else if let Some(v) = value.as_i64() {
                 Ok(wrt_foundation::values::Value::F64(v as f64))
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         FoundationValType::<ComponentProvider>::Char => {
@@ -1254,13 +1247,11 @@ pub fn convert_value_for_canonical_abi(
                     Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::VALUE_OUT_OF_RANGE,
-                        ValueOutOfRangeError(format!(
-                            ")),
+                        ValueOutOfRangeError(format!("Invalid value: {:?}", i)).to_string(),
                     ))
                 }
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         FoundationValType::<ComponentProvider>::String => {
@@ -1270,7 +1261,7 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError(")),
+                    NotImplementedError("Not implemented").to_string(),
                 ))
             }
         }
@@ -1291,13 +1282,12 @@ pub fn convert_value_for_canonical_abi(
                 }
                 Ok(wrt_foundation::values::Value::List(converted_list))
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         FoundationValType::<ComponentProvider>::Record(fields) => {
             if let Some(record) = value.as_record() {
-                #[cfg(feature = ")]
+                #[cfg(feature = "safety-critical")]
                 let mut converted_record: WrtHashMap<String, Value, {CrateId::Component as u8}, 64> = WrtHashMap::new();
                 #[cfg(not(feature = "safety-critical"))]
                 let mut converted_record = HashMap::new();
@@ -1312,14 +1302,12 @@ pub fn convert_value_for_canonical_abi(
                         #[cfg(not(feature = "safety-critical"))]
                         converted_record.insert(field_name.clone(), converted_field);
                     } else {
-                        return Err(Error::component_not_found("Component not found"),
-                        ));
+                        return Err(Error::component_not_found("Component not found"));
                     }
                 }
                 Ok(wrt_foundation::values::Value::Record(converted_record))
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         FoundationValType::<ComponentProvider>::Tuple(types) => {
@@ -1329,9 +1317,10 @@ pub fn convert_value_for_canonical_abi(
                         ErrorCategory::Runtime,
                         codes::TYPE_MISMATCH,
                         NotImplementedError(format!(
-                            "),
+                            "Tuple length mismatch: expected {}, got {}",
+                            types.len(),
                             tuple.len()
-                        )),
+                        )).to_string(),
                     ));
                 }
                 #[cfg(feature = "safety-critical")]
@@ -1349,8 +1338,7 @@ pub fn convert_value_for_canonical_abi(
                 }
                 Ok(wrt_foundation::values::Value::Tuple(converted_tuple))
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         FoundationValType::<ComponentProvider>::Flags(names) => {
@@ -1358,15 +1346,13 @@ pub fn convert_value_for_canonical_abi(
                 // Verify all required flags are present
                 for name in names {
                     if !flags.contains_key(name) {
-                        return Err(Error::component_not_found("),
-                        ));
+                        return Err(Error::component_not_found("Value out of range"));
                     }
                 }
                 // Verify no extra flags are present
                 for name in flags.keys() {
                     if !names.contains(name) {
-                        return Err(Error::component_not_found("Component not found"),
-                        ));
+                        return Err(Error::component_not_found("Component not found"));
                     }
                 }
                 // Convert all flag values to booleans
@@ -1383,8 +1369,7 @@ pub fn convert_value_for_canonical_abi(
                         #[cfg(not(feature = "safety-critical"))]
                         converted_flags.insert(name.clone(), b);
                     } else {
-                        return Err(Error::runtime_execution_error(".to_string()),
-                        ));
+                        return Err(Error::runtime_execution_error("Type conversion failed"));
                     }
                 }
                 Ok(wrt_foundation::values::Value::Flags(converted_flags))
@@ -1392,7 +1377,7 @@ pub fn convert_value_for_canonical_abi(
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError(")),
+                    NotImplementedError("Not implemented").to_string(),
                 ))
             }
         }
@@ -1401,16 +1386,13 @@ pub fn convert_value_for_canonical_abi(
                 if discriminant < cases.len() as u32 {
                     Ok(wrt_foundation::values::Value::Variant(discriminant, payload.map(Box::new)))
                 } else {
-                    Err(Error::runtime_execution_error(",
-                            discriminant
-                        )),
-                    ))
+                    Err(Error::runtime_execution_error("Invalid discriminant"))
                 }
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError(")),
+                    NotImplementedError("Not implemented").to_string(),
                 ))
             }
         }
@@ -1430,8 +1412,7 @@ fn get_number_value(value: &wrt_foundation::values::Value) -> Result<i64> {
     } else if let Some(v) = value.as_u32() {
         Ok(v as i64)
     } else {
-        Err(Error::runtime_execution_error(".to_string()),
-        ))
+        Err(Error::runtime_execution_error("Type conversion failed"))
     }
 }
 
@@ -1449,7 +1430,7 @@ fn get_float_value(value: &wrt_foundation::values::Value) -> Result<f64> {
         Err(Error::new(
             ErrorCategory::Runtime,
             codes::TYPE_MISMATCH,
-            NotImplementedError(")),
+            NotImplementedError("Not implemented").to_string(),
         ))
     }
 }
@@ -1466,8 +1447,7 @@ pub fn convert_value_for_type(
             } else if let Ok(num) = get_number_value(value) {
                 Ok(wrt_foundation::values::Value::I32(if num != 0 { 1 } else { 0 }))
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         ValType::S8 | ValType::U8 | ValType::S16 | ValType::U16 | ValType::S32 | ValType::U32 => {
@@ -1477,26 +1457,22 @@ pub fn convert_value_for_type(
                 if v >= i32::MIN as i64 && v <= i32::MAX as i64 {
                     Ok(wrt_foundation::values::Value::I32(v as i32))
                 } else {
-                    Err(Error::component_not_found("),
-                    ))
+                    Err(Error::component_not_found("Value out of range"))
                 }
             } else if let Some(v) = value.as_f32() {
                 if v >= i32::MIN as f32 && v <= i32::MAX as f32 {
                     Ok(wrt_foundation::values::Value::I32(v as i32))
                 } else {
-                    Err(Error::component_not_found("Component not found"),
-                    ))
+                    Err(Error::component_not_found("Component not found"))
                 }
             } else if let Some(v) = value.as_f64() {
                 if v >= i32::MIN as f64 && v <= i32::MAX as f64 {
                     Ok(wrt_foundation::values::Value::I32(v as i32))
                 } else {
-                    Err(Error::component_not_found("Component not found"),
-                    ))
+                    Err(Error::component_not_found("Component not found"))
                 }
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         ValType::S64 | ValType::U64 => {
@@ -1508,19 +1484,16 @@ pub fn convert_value_for_type(
                 if v >= i64::MIN as f32 && v <= i64::MAX as f32 {
                     Ok(wrt_foundation::values::Value::I64(v as i64))
                 } else {
-                    Err(Error::component_not_found("),
-                    ))
+                    Err(Error::component_not_found("Value out of range"))
                 }
             } else if let Some(v) = value.as_f64() {
                 if v >= i64::MIN as f64 && v <= i64::MAX as f64 {
                     Ok(wrt_foundation::values::Value::I64(v as i64))
                 } else {
-                    Err(Error::component_not_found("Component not found"),
-                    ))
+                    Err(Error::component_not_found("Component not found"))
                 }
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         ValType::F32 => {
@@ -1537,7 +1510,7 @@ pub fn convert_value_for_type(
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::TYPE_MISMATCH,
-                    NotImplementedError(")),
+                    NotImplementedError("Not implemented").to_string(),
                 ))
             }
         }
@@ -1551,8 +1524,7 @@ pub fn convert_value_for_type(
             } else if let Some(v) = value.as_i64() {
                 Ok(wrt_foundation::values::Value::F64(v as f64))
             } else {
-                Err(Error::runtime_execution_error(".to_string()),
-                ))
+                Err(Error::runtime_execution_error("Type conversion failed"))
             }
         }
         // For all other types, just return the original value for now
@@ -1563,7 +1535,7 @@ pub fn convert_value_for_type(
     // SIMD-Optimized Bulk Operations for Performance Enhancement
     
     /// Bulk lower operation for arrays of i32 values using SIMD when available
-    #[cfg(feature = ")]
+    #[cfg(feature = "std")]
     pub fn bulk_lower_i32_array(&self, values: &[i32], addr: u32, memory_bytes: &mut [u8]) -> Result<()> {
         let start_addr = addr as usize;
         let required_size = values.len() * 4;
