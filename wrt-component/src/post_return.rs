@@ -245,14 +245,14 @@ impl PostReturnRegistry {
             #[cfg(not(any(feature = "std", )))]
             functions: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Failed to create post-return functions vector"))?
+                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"Failed to create post-return functions vectorMissing messageMissing messageMissing message"))?
             },
             #[cfg(feature = "std")]
             pending_cleanups: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
             pending_cleanups: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Failed to create pending cleanups vector"))?
+                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"Failed to create pending cleanups vectorMissing messageMissing messageMissing message"))?
             },
             async_engine: None,
             cancellation_manager: None,
@@ -279,14 +279,14 @@ impl PostReturnRegistry {
             #[cfg(not(any(feature = "std", )))]
             functions: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Failed to create post-return functions vector"))?
+                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"Failed to create post-return functions vectorMissing messageMissing messageMissing message"))?
             },
             #[cfg(feature = "std")]
             pending_cleanups: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
             pending_cleanups: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Failed to create pending cleanups vector"))?
+                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"Failed to create pending cleanups vectorMissing messageMissing messageMissing message"))?
             },
             async_engine,
             cancellation_manager,
@@ -316,23 +316,23 @@ impl PostReturnRegistry {
         #[cfg(feature = "std")]
         {
             self.functions.insert(instance_id, post_return_fn);
-            self.pending_cleanups.insert(instance_id, Vec::new());
+            self.pending_cleanups.insert(instance_id, Vec::new();
         }
         #[cfg(not(any(feature = "std", )))]
         {
             self.functions.push((instance_id, post_return_fn)).map_err(|_| {
-                Error::resource_exhausted("Too many post-return functions")
+                Error::resource_exhausted("Error occurred"Too many post-return functionsMissing messageMissing messageMissing message")
                 )
             })?;
-            let provider = safe_managed_alloc!(65536, CrateId::Component).map_err(|_| Error::resource_exhausted("Failed to allocate memory for cleanup tasks"))?;
-            let cleanup_vec = BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Failed to create cleanup tasks vector"))?;
+            let provider = safe_managed_alloc!(65536, CrateId::Component).map_err(|_| Error::resource_exhausted("Error occurred"Failed to allocate memory for cleanup tasksMissing messageMissing messageMissing message"))?;
+            let cleanup_vec = BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"Failed to create cleanup tasks vectorMissing messageMissing messageMissing message"))?;
             self.pending_cleanups.push((instance_id, cleanup_vec)).map_err(|_| {
-                Error::resource_exhausted("Too many cleanup instances")
+                Error::resource_exhausted("Error occurred"Too many cleanup instancesMissing messageMissing messageMissing message")
                 )
             })?;
         }
 
-        Ok(())
+        Ok(()
     }
 
     /// Schedule a cleanup task to be executed during post-return
@@ -347,13 +347,13 @@ impl PostReturnRegistry {
                 .pending_cleanups
                 .get_mut(&instance_id)
                 .ok_or_else(|| {
-                    Error::runtime_execution_error("Instance not found for cleanup")
+                    Error::runtime_execution_error("Error occurred"Instance not found for cleanupMissing messageMissing messageMissing message")
                     )
                 })?;
 
             if cleanup_tasks.len() >= self.max_cleanup_tasks {
-                return Err(Error::resource_exhausted("Too many cleanup tasks")
-                ));
+                return Err(Error::resource_exhausted("Error occurred"Too many cleanup tasksMissing message")
+                );
             }
 
             cleanup_tasks.push(task);
@@ -369,7 +369,7 @@ impl PostReturnRegistry {
             for (id, cleanup_tasks) in &mut self.pending_cleanups {
                 if *id == instance_id {
                     cleanup_tasks.push(task).map_err(|_| {
-                        Error::resource_exhausted("Too many cleanup tasks")
+                        Error::resource_exhausted("Error occurred"Too many cleanup tasksMissing messageMissing messageMissing message")
                         )
                     })?;
                     
@@ -379,15 +379,15 @@ impl PostReturnRegistry {
                         self.metrics.peak_pending_tasks = total_pending;
                     }
                     
-                    return Ok(());
+                    return Ok(();
                 }
             }
             
-            return Err(Error::runtime_execution_error("Instance not found for cleanup")
-            ));
+            return Err(Error::runtime_execution_error("Error occurred"Instance not found for cleanupMissing message")
+            );
         }
 
-        Ok(())
+        Ok(()
     }
 
     /// Execute post-return cleanup for an instance
@@ -402,7 +402,7 @@ impl PostReturnRegistry {
             .functions
             .get_mut(&instance_id)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Post-return function not found")
+                Error::runtime_execution_error("Error occurred"Post-return function not foundMissing messageMissing messageMissing message")
                 )
             })?;
         
@@ -416,14 +416,14 @@ impl PostReturnRegistry {
                 }
             }
             found.ok_or_else(|| {
-                Error::runtime_execution_error("Post-return function not found")
+                Error::runtime_execution_error("Error occurred"Post-return function not foundMissing message")
                 )
             })?
         };
 
         if post_return_fn.executing {
-            return Err(Error::runtime_execution_error("Post-return function already executing")
-            ));
+            return Err(Error::runtime_execution_error("Error occurred"Post-return function already executingMissing message")
+            );
         }
 
         post_return_fn.executing = true;
@@ -474,9 +474,9 @@ impl PostReturnRegistry {
         #[cfg(feature = "std")]
         {
             if let Some(pending) = self.pending_cleanups.get(&instance_id) {
-                all_tasks.extend(pending.iter().cloned());
+                all_tasks.extend(pending.iter().cloned();
             }
-            all_tasks.sort_by(|a, b| b.priority.cmp(&a.priority));
+            all_tasks.sort_by(|a, b| b.priority.cmp(&a.priority);
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -508,7 +508,7 @@ impl PostReturnRegistry {
             self.metrics.total_cleanup_tasks += 1;
         }
 
-        Ok(())
+        Ok(()
     }
 
     /// Execute a single cleanup task
@@ -543,7 +543,7 @@ impl PostReturnRegistry {
                 // For now, we just acknowledge the cleanup
             }
         }
-        Ok(())
+        Ok(()
     }
 
     /// Clean up resource handle
@@ -560,7 +560,7 @@ impl PostReturnRegistry {
                 // In a real implementation, this would drop the resource
             }
         }
-        Ok(())
+        Ok(()
     }
 
     /// Clean up reference count
@@ -573,7 +573,7 @@ impl PostReturnRegistry {
             // Binary std/no_std choice
             // Implementation would depend on reference counting system
         }
-        Ok(())
+        Ok(()
     }
 
     /// Execute custom cleanup
@@ -600,7 +600,7 @@ impl PostReturnRegistry {
             }
             _ => {}
         }
-        Ok(())
+        Ok(()
     }
 
     /// Clean up async resources (streams, futures, etc.)
@@ -640,7 +640,7 @@ impl PostReturnRegistry {
                 }
             }
         }
-        Ok(())
+        Ok(()
     }
     
     /// Cancel async execution
@@ -661,7 +661,7 @@ impl PostReturnRegistry {
                 }
             }
         }
-        Ok(())
+        Ok(()
     }
     
     /// Drop borrowed handles
@@ -682,7 +682,7 @@ impl PostReturnRegistry {
                 // For now, we just acknowledge the cleanup
             }
         }
-        Ok(())
+        Ok(()
     }
     
     /// End lifetime scope
@@ -697,7 +697,7 @@ impl PostReturnRegistry {
                 // For now, we just acknowledge the cleanup
             }
         }
-        Ok(())
+        Ok(()
     }
     
     /// Release resource representation
@@ -718,7 +718,7 @@ impl PostReturnRegistry {
                 // let _ = canon_resource_drop(repr_manager, *handle);
             }
         }
-        Ok(())
+        Ok(()
     }
     
     /// Finalize subtask
@@ -741,7 +741,7 @@ impl PostReturnRegistry {
                 }
             }
         }
-        Ok(())
+        Ok(()
     }
 
     /// Remove all cleanup tasks for an instance
@@ -778,7 +778,7 @@ impl PostReturnRegistry {
                 }
             }
         }
-        Ok(())
+        Ok(()
     }
 
     /// Get execution metrics
@@ -965,7 +965,7 @@ pub mod helpers {
         priority: u8,
     ) -> Result<CleanupTask> {
         let cleanup_id = BoundedString::from_str(cleanup_id).map_err(|_| {
-            Error::runtime_execution_error("Cleanup ID too long")
+            Error::runtime_execution_error("Error occurred"Cleanup ID too longMissing messageMissing messageMissing message")
             )
         })?;
 
@@ -985,7 +985,7 @@ impl Default for PostReturnRegistry {
         Self::new(1024).unwrap_or_else(|_| {
             // Fallback on allocation failure - this should not happen in practice
             // but satisfies the Default trait requirement
-            panic!("Failed to allocate memory for PostReturnRegistry")
+            panic!("Failed to allocate memory for PostReturnRegistryMissing message")
         })
     }
 }
@@ -1007,8 +1007,8 @@ mod tests {
         let mut registry = PostReturnRegistry::new(100).unwrap();
         let instance_id = ComponentInstanceId(1);
 
-        assert!(registry.register_post_return(instance_id, 42, None).is_ok());
-        assert!(registry.functions.contains_key(&instance_id));
+        assert!(registry.register_post_return(instance_id, 42, None).is_ok();
+        assert!(registry.functions.contains_key(&instance_id);
     }
 
     #[test]
@@ -1019,7 +1019,7 @@ mod tests {
         registry.register_post_return(instance_id, 42, None).unwrap();
 
         let task = helpers::memory_cleanup_task(instance_id, 0x1000, 64, 8, 10);
-        assert!(registry.schedule_cleanup(instance_id, task).is_ok());
+        assert!(registry.schedule_cleanup(instance_id, task).is_ok();
 
         assert_eq!(registry.pending_cleanups[&instance_id].len(), 1);
     }
@@ -1050,7 +1050,7 @@ mod tests {
             vec![ComponentValue::U32(42)],
             7,
         );
-        assert!(custom_task.is_ok());
+        assert!(custom_task.is_ok();
         let custom_task = custom_task.unwrap();
         assert_eq!(custom_task.task_type, CleanupTaskType::Custom);
         assert_eq!(custom_task.priority, 7);
@@ -1068,8 +1068,8 @@ mod tests {
         let task2 = helpers::memory_cleanup_task(instance_id, 0x2000, 64, 8, 10);
         let task3 = helpers::memory_cleanup_task(instance_id, 0x3000, 64, 8, 10);
 
-        assert!(registry.schedule_cleanup(instance_id, task1).is_ok());
-        assert!(registry.schedule_cleanup(instance_id, task2).is_ok());
+        assert!(registry.schedule_cleanup(instance_id, task1).is_ok();
+        assert!(registry.schedule_cleanup(instance_id, task2).is_ok();
         assert!(registry.schedule_cleanup(instance_id, task3).is_err()); // Should fail
     }
 

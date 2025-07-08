@@ -4,7 +4,7 @@
 
 use crate::prelude::*;
 
-#[cfg(all(feature = "std", feature = "safety-critical"))]
+#[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
 use wrt_foundation::allocator::{WrtVec, CrateId};
 
 use wrt_foundation::{bounded::{BoundedVec, BoundedString}, prelude::*, traits::{Checksummable, ToBytes, FromBytes}};
@@ -40,30 +40,30 @@ pub struct ComponentInstance {
     /// Reference to the component definition
     pub component: Component,
     /// Resolved imports for this instance
-    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
     pub imports: WrtVec<ResolvedImport, {CrateId::Component as u8}, 256>,
-    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+    #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
     pub imports: Vec<ResolvedImport>,
     #[cfg(not(any(feature = "std", )))]
     pub imports: BoundedVec<ResolvedImport, 256, crate::bounded_component_infra::ComponentProvider>,
     /// Resolved exports from this instance
-    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
     pub exports: WrtVec<ResolvedExport, {CrateId::Component as u8}, 256>,
-    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+    #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
     pub exports: Vec<ResolvedExport>,
     #[cfg(not(any(feature = "std", )))]
     pub exports: BoundedVec<ResolvedExport, 256, crate::bounded_component_infra::ComponentProvider>,
     /// Resource tables for this instance
-    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
     pub resource_tables: WrtVec<ResourceTable, {CrateId::Component as u8}, 16>,
-    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+    #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
     pub resource_tables: Vec<ResourceTable>,
     #[cfg(not(any(feature = "std", )))]
     pub resource_tables: BoundedVec<ResourceTable, 16, crate::bounded_component_infra::ComponentProvider>,
     /// Module instances embedded in this component
-    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
     pub module_instances: WrtVec<ModuleInstance, {CrateId::Component as u8}, 64>,
-    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+    #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
     pub module_instances: Vec<ModuleInstance>,
     #[cfg(not(any(feature = "std", )))]
     pub module_instances: BoundedVec<ModuleInstance, 64, crate::bounded_component_infra::ComponentProvider>,
@@ -362,7 +362,7 @@ impl wrt_foundation::traits::ToBytes for Value {
                 writer.write_u8(255)?; // generic complex type discriminant
             }
         }
-        Ok(())
+        Ok(()
     }
 }
 
@@ -378,54 +378,54 @@ impl wrt_foundation::traits::FromBytes for Value {
         match discriminant {
             0 => {
                 let val = reader.read_u8()?;
-                Ok(Value::Bool(val != 0))
+                Ok(Value::Bool(val != 0)
             }
             1 => {
                 let val = reader.read_i8()?;
-                Ok(Value::S8(val))
+                Ok(Value::S8(val)
             }
             2 => {
                 let val = reader.read_u8()?;
-                Ok(Value::U8(val))
+                Ok(Value::U8(val)
             }
             3 => {
                 let val = reader.read_i16_le()?;
-                Ok(Value::S16(val))
+                Ok(Value::S16(val)
             }
             4 => {
                 let val = reader.read_u16_le()?;
-                Ok(Value::U16(val))
+                Ok(Value::U16(val)
             }
             5 => {
                 let val = reader.read_i32_le()?;
-                Ok(Value::S32(val))
+                Ok(Value::S32(val)
             }
             6 => {
                 let val = reader.read_u32_le()?;
-                Ok(Value::U32(val))
+                Ok(Value::U32(val)
             }
             7 => {
                 let val = reader.read_i64_le()?;
-                Ok(Value::S64(val))
+                Ok(Value::S64(val)
             }
             8 => {
                 let val = reader.read_u64_le()?;
-                Ok(Value::U64(val))
+                Ok(Value::U64(val)
             }
             9 => {
                 let val = reader.read_f32_le()?;
-                Ok(Value::F32(val))
+                Ok(Value::F32(val)
             }
             10 => {
                 let val = reader.read_f64_le()?;
-                Ok(Value::F64(val))
+                Ok(Value::F64(val)
             }
             11 => {
                 let char_code = reader.read_u32_le()?;
                 if let Some(c) = char::from_u32(char_code) {
-                    Ok(Value::Char(c))
+                    Ok(Value::Char(c)
                 } else {
-                    Ok(Value::Char('\0'))
+                    Ok(Value::Char('\0')
                 }
             }
             _ => Ok(Value::Bool(false)), // default for complex/unknown types
@@ -615,7 +615,7 @@ macro_rules! impl_basic_traits {
                 _writer: &mut WriteStream<'a>,
                 _provider: &PStream,
             ) -> wrt_foundation::WrtResult<()> {
-                Ok(())
+                Ok(()
             }
         }
 
@@ -696,10 +696,10 @@ impl Default for Case {
 }
 
 // Apply macro to all complex types
-impl_basic_traits!(ValType, ValType::default());
-impl_basic_traits!(Record, Record::default());
-impl_basic_traits!(Field, Field::default());
-impl_basic_traits!(Tuple, Tuple::default());
-impl_basic_traits!(Variant, Variant::default());
-impl_basic_traits!(Case, Case::default());
+impl_basic_traits!(ValType, ValType::default();
+impl_basic_traits!(Record, Record::default();
+impl_basic_traits!(Field, Field::default();
+impl_basic_traits!(Tuple, Tuple::default();
+impl_basic_traits!(Variant, Variant::default();
+impl_basic_traits!(Case, Case::default();
 

@@ -62,11 +62,11 @@ impl UnifiedMemoryAdapter for GenericMemoryAdapter {
         }
         self.allocated += size;
         // This is a stub - real implementation would return actual memory
-        Err(wrt_error::Error::Unsupported("Memory allocation stub".into()))
+        Err(wrt_error::Error::Unsupported("Memory allocation stub".into())
     }
     
     fn deallocate(&mut self, _ptr: &mut [u8]) -> core::result::Result<(), wrt_error::Error> {
-        Ok(())
+        Ok(()
     }
     
     fn available_memory(&self) -> usize {
@@ -125,9 +125,9 @@ impl CfiEngine {
     pub fn validate_call(&self, _function: &Function) -> core::result::Result<(), wrt_error::Error> {
         if self.validation_enabled {
             // Stub validation always passes
-            Ok(())
+            Ok(()
         } else {
-            Ok(())
+            Ok(()
         }
     }
 }
@@ -191,7 +191,7 @@ impl ExecutionEngine {
         self.cfi_engine.validate_call(function)?;
         
         // Stub execution - just return empty result
-        Ok(alloc::vec::Vec::new())
+        Ok(alloc::vec::Vec::new()
     }
 }
 

@@ -98,7 +98,6 @@ impl CallFrame {
         {
             self.locals.push(value).map_err(|_| {
                 wrt_error::Error::resource_exhausted("Too many local variables")
-                )
             })
         }
     }
@@ -107,7 +106,6 @@ impl CallFrame {
     pub fn get_local(&self, index: usize) -> WrtResult<&Value> {
         self.locals.get(index).ok_or_else(|| {
             wrt_error::Error::validation_invalid_input("Invalid input")
-            )
         })
     }
 
@@ -117,8 +115,7 @@ impl CallFrame {
             self.locals[index] = value;
             Ok(())
         } else {
-            Err(wrt_error::Error::validation_invalid_input("Invalid input")
-            ))
+            Err(wrt_error::Error::validation_invalid_input("Invalid input"))
         }
     }
 }
@@ -348,7 +345,7 @@ impl ComponentExecutionEngine {
             #[cfg(not(any(feature = "std", )))]
             {
                 let mut name = wrt_foundation::bounded::BoundedString::new();
-                let _ = name.push_str("func_");
+                let _ = name.push_str("func_Missing message");
                 name
             }
         };
@@ -367,8 +364,7 @@ impl ComponentExecutionEngine {
             if let Some(func) = self.host_functions.get_mut(index as usize) {
                 func.call(args)
             } else {
-                Err(wrt_error::Error::validation_invalid_input("Invalid input")
-                ))
+                Err(wrt_error::Error::validation_invalid_input("Invalid input"))
             }
         }
         #[cfg(not(any(feature = "std", )))]
@@ -376,8 +372,7 @@ impl ComponentExecutionEngine {
             if let Some(func) = self.host_functions.get(index as usize) {
                 func(args)
             } else {
-                Err(wrt_error::Error::validation_invalid_input("Invalid input")
-                ))
+                Err(wrt_error::Error::validation_invalid_input("Invalid input"))
             }
         }
     }
@@ -562,7 +557,7 @@ impl ComponentExecutionEngine {
         self.runtime_bridge
             .register_component_instance(component_id, module_name_string, function_count, memory_size)
             .map_err(|_| wrt_error::Error::runtime_error("Conversion error")
-            ))
+            )
     }
 
     /// Register a host function with the runtime bridge
@@ -587,7 +582,7 @@ impl ComponentExecutionEngine {
         self.runtime_bridge
             .register_host_function(name_string, signature, func)
             .map_err(|_| wrt_error::Error::runtime_error("Conversion error")
-            ))
+            )
     }
 
     /// Register a host function with the runtime bridge (no_std version)
@@ -619,13 +614,13 @@ impl ComponentExecutionEngine {
         self.runtime_bridge
             .register_host_function(name_string, signature, func)
             .map_err(|_| wrt_error::Error::runtime_error("Conversion error")
-            ))
+            )
     }
 }
 
 impl Default for ComponentExecutionEngine {
     fn default() -> Self {
-        Self::new().expect("Failed to create default ComponentExecutionEngine")
+        Self::new().expect("Failed to create default ComponentExecutionEngineMissing message")
     }
 }
 
@@ -719,18 +714,18 @@ mod tests {
         let mut frame = CallFrame::new(1, 2).unwrap();
 
         // Test pushing locals
-        assert!(frame.push_local(Value::U32(42)).is_ok());
-        assert!(frame.push_local(Value::Bool(true)).is_ok());
+        assert!(frame.push_local(Value::U32(42)).is_ok();
+        assert!(frame.push_local(Value::Bool(true)).is_ok();
 
         // Test getting locals
         assert_eq!(frame.get_local(0).unwrap(), &Value::U32(42));
-        assert_eq!(frame.get_local(1).unwrap(), &Value::Bool(true));
-        assert!(frame.get_local(2).is_err());
+        assert_eq!(frame.get_local(1).unwrap(), &Value::Bool(true);
+        assert!(frame.get_local(2).is_err();
 
         // Test setting locals
-        assert!(frame.set_local(0, Value::U32(100)).is_ok());
-        assert_eq!(frame.get_local(0).unwrap(), &Value::U32(100));
-        assert!(frame.set_local(10, Value::U32(200)).is_err());
+        assert!(frame.set_local(0, Value::U32(100)).is_ok();
+        assert_eq!(frame.get_local(0).unwrap(), &Value::U32(100);
+        assert!(frame.set_local(10, Value::U32(200)).is_err();
     }
 
     #[test]
@@ -747,11 +742,11 @@ mod tests {
 
     #[test]
     fn test_execution_state_display() {
-        assert_eq!(ExecutionState::Ready.to_string(), "Ready");
-        assert_eq!(ExecutionState::Running.to_string(), "Running");
-        assert_eq!(ExecutionState::Completed.to_string(), "Completed");
-        assert_eq!(ExecutionState::Failed.to_string(), "Failed");
-        assert_eq!(ExecutionState::Suspended.to_string(), "Suspended");
+        assert_eq!(ExecutionState::Ready.to_string(), "ReadyMissing message");
+        assert_eq!(ExecutionState::Running.to_string(), "RunningMissing message");
+        assert_eq!(ExecutionState::Completed.to_string(), "CompletedMissing message");
+        assert_eq!(ExecutionState::Failed.to_string(), "FailedMissing message");
+        assert_eq!(ExecutionState::Suspended.to_string(), "SuspendedMissing message");
     }
 
     #[cfg(not(any(feature = "std", )))]
@@ -760,7 +755,7 @@ mod tests {
         let mut engine = ComponentExecutionEngine::new().unwrap();
 
         fn test_func(_args: &[Value]) -> WrtResult<Value> {
-            Ok(Value::U32(42))
+            Ok(Value::U32(42)
         }
 
         let index = engine.register_host_function(test_func).unwrap();

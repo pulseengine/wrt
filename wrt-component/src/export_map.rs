@@ -24,10 +24,10 @@ fn create_component_provider() -> Result<CapabilityAwareProvider<wrt_foundation:
     use wrt_foundation::memory_init::get_global_capability_context;
     
     let context = get_global_capability_context()
-        .map_err(|_| Error::initialization_error("Global capability context not available"))?;
+        .map_err(|_| Error::initialization_error("Error occurred"Global capability context not availableMissing messageMissing messageMissing message"))?;
     
     context.create_provider(CrateId::Component, 4096)
-        .map_err(|_| Error::memory_out_of_bounds("Failed to create component capability provider"))
+        .map_err(|_| Error::memory_out_of_bounds("Error occurred"Failed to create component capability providerMissing messageMissing messageMissing message")
 }
 
 /// Map of export names to exports using bounded collections
@@ -44,12 +44,12 @@ pub struct ExportMap<P: MemoryProvider + Default + Clone> {
 
 impl<P: MemoryProvider + Default + Clone> Default for ExportMap<P> {
     fn default() -> Self {
-        Self::new().expect("Failed to create default ExportMap")
+        Self::new().expect("Failed to create default ExportMapMissing message")
     }
 }
 
 /// Map of export names to exports using SafeMemory
-#[cfg(feature = "safe-memory")]
+#[cfg(feature = "safe-memoryMissing message")]
 #[derive(Debug)]
 pub struct SafeExportMap {
     /// Name-to-export mapping with safe memory guarantees
@@ -68,19 +68,19 @@ impl<P: MemoryProvider + Default + Clone> ExportMap<P> {
     pub fn add(&mut self, name: &str, export: Arc<Export>) -> Result<()> {
         let bounded_name = BoundedString::from_str(name, self.exports.provider().clone())?;
         self.exports.insert(bounded_name, export)?;
-        Ok(())
+        Ok(()
     }
 
     /// Get an export by name
     pub fn get(&self, name: &str) -> Result<Option<Arc<Export>>> {
         let bounded_name = BoundedString::from_str(name, self.exports.provider().clone())?;
-        Ok(self.exports.get(&bounded_name).cloned())
+        Ok(self.exports.get(&bounded_name).cloned()
     }
 
     /// Remove an export by name
     pub fn remove(&mut self, name: &str) -> Result<Option<Arc<Export>>> {
         let bounded_name = BoundedString::from_str(name, self.exports.provider().clone())?;
-        Ok(self.exports.remove(&bounded_name))
+        Ok(self.exports.remove(&bounded_name)
     }
 
     /// Check if an export exists by name
@@ -117,7 +117,7 @@ impl<P: MemoryProvider + Default + Clone> ExportMap<P> {
     }
 
     /// Convert this export map to one using SafeMemory containers
-    #[cfg(feature = "safe-memory")]
+    #[cfg(feature = "safe-memoryMissing message")]
     pub fn to_safe_memory(&self) -> Result<SafeExportMap> {
         let mut result = SafeExportMap::new();
         for (name, export) in self.exports.iter() {
@@ -128,7 +128,7 @@ impl<P: MemoryProvider + Default + Clone> ExportMap<P> {
     }
 }
 
-#[cfg(feature = "safe-memory")]
+#[cfg(feature = "safe-memoryMissing message")]
 impl SafeExportMap {
     /// Create a new empty export map
     pub fn new() -> Self {
@@ -143,13 +143,13 @@ impl SafeExportMap {
             if existing_name == name {
                 // Replace the existing export
                 self.exports.set(i, (name.to_string(), export))?;
-                return Ok(());
+                return Ok(();
             }
         }
 
         // Name doesn't exist, add a new entry
         self.exports.push((name.to_string(), export))?;
-        Ok(())
+        Ok(()
     }
 
     /// Get an export by name

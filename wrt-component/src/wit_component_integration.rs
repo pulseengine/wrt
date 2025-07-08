@@ -269,7 +269,7 @@ impl WitComponentContext {
             }
         }
         
-        Ok(())
+        Ok(()
     }
     
     /// Process an interface declaration
@@ -296,7 +296,7 @@ impl WitComponentContext {
         
         // Create interface mapping
         let interface_name = interface.name.name.as_str()
-            .map_err(|_| Error::parse_error("Invalid interface name"))?
+            .map_err(|_| Error::parse_error("Error occurred"Invalid interface nameMissing messageMissing messageMissing message"))?
             .to_string();
         
         let mapping = InterfaceMapping {
@@ -309,14 +309,14 @@ impl WitComponentContext {
         
         self.interface_mappings.insert(interface_name, mapping);
         
-        Ok(())
+        Ok(()
     }
     
     /// Process a world declaration
     fn process_world(&mut self, _world: &WorldDecl) -> Result<()> {
         // Process world imports and exports
         // This would involve mapping world items to component imports/exports
-        Ok(())
+        Ok(()
     }
     
     /// Process a function declaration
@@ -367,10 +367,10 @@ impl WitComponentContext {
         };
         
         let type_name = type_decl.name.name.as_str()
-            .map_err(|_| Error::parse_error("Invalid type name"))?
+            .map_err(|_| Error::parse_error("Error occurred"Invalid type nameMissing messageMissing messageMissing message"))?
             .to_string();
         
-        self.type_mappings.insert(type_name, mapping.clone());
+        self.type_mappings.insert(type_name, mapping.clone();
         
         Ok(mapping)
     }
@@ -398,21 +398,21 @@ impl WitComponentContext {
             TypeExpr::Named(named) => {
                 // Look up named type
                 let type_name = named.name.name.as_str()
-                    .map_err(|_| Error::parse_error("Invalid type name"))?;
+                    .map_err(|_| Error::parse_error("Error occurred"Invalid type nameMissing messageMissing messageMissing message"))?;
                 
                 if let Some(mapping) = self.type_mappings.get(type_name) {
-                    Ok(mapping.component_type.clone())
+                    Ok(mapping.component_type.clone()
                 } else {
-                    Err(Error::parse_error(&"Component not found"))
+                    Err(Error::parse_error(&"Component not foundMissing messageMissing messageMissing message")
                 }
             }
             TypeExpr::List(inner) => {
                 let inner_type = self.convert_wit_type(inner)?;
-                Ok(ComponentType::List(Box::new(inner_type)))
+                Ok(ComponentType::List(Box::new(inner_type))
             }
             TypeExpr::Option(inner) => {
                 let inner_type = self.convert_wit_type(inner)?;
-                Ok(ComponentType::Option(Box::new(inner_type)))
+                Ok(ComponentType::Option(Box::new(inner_type))
             }
         }
     }
@@ -534,7 +534,7 @@ impl ComponentLowering {
             Self::validate_function_mapping(name, mapping)?;
         }
         
-        Ok(())
+        Ok(()
     }
     
     /// Validate a single type mapping
@@ -548,11 +548,11 @@ impl ComponentLowering {
                 return Err(Error::validation_error(&format!(
                     "Type {} has inconsistent size {} and alignment {}", 
                     name, size, alignment
-                )));
+                ));
             }
         }
         
-        Ok(())
+        Ok(()
     }
     
     /// Validate a component type
@@ -588,7 +588,7 @@ impl ComponentLowering {
             _ => {} // Primitive types are always valid
         }
         
-        Ok(())
+        Ok(()
     }
     
     /// Validate a function mapping
@@ -596,7 +596,7 @@ impl ComponentLowering {
         // Validate function signature
         // Check parameter and return type consistency
         // This would involve more detailed validation in a real implementation
-        Ok(())
+        Ok(()
     }
 }
 
@@ -631,9 +631,9 @@ mod tests {
             span: SourceSpan::empty(),
         });
         
-        assert_eq!(context.calculate_type_size(&ComponentType::U32), Some(4));
-        assert_eq!(context.calculate_type_size(&ComponentType::U64), Some(8));
-        assert_eq!(context.calculate_type_size(&ComponentType::Bool), Some(1));
+        assert_eq!(context.calculate_type_size(&ComponentType::U32), Some(4);
+        assert_eq!(context.calculate_type_size(&ComponentType::U64), Some(8);
+        assert_eq!(context.calculate_type_size(&ComponentType::Bool), Some(1);
         assert_eq!(context.calculate_type_size(&ComponentType::String), None); // Variable size
     }
     
@@ -646,9 +646,9 @@ mod tests {
             span: SourceSpan::empty(),
         });
         
-        assert_eq!(context.calculate_type_alignment(&ComponentType::U32), Some(4));
-        assert_eq!(context.calculate_type_alignment(&ComponentType::U64), Some(8));
-        assert_eq!(context.calculate_type_alignment(&ComponentType::Bool), Some(1));
+        assert_eq!(context.calculate_type_alignment(&ComponentType::U32), Some(4);
+        assert_eq!(context.calculate_type_alignment(&ComponentType::U64), Some(8);
+        assert_eq!(context.calculate_type_alignment(&ComponentType::Bool), Some(1);
     }
     
     #[test]
@@ -656,8 +656,8 @@ mod tests {
         let config = ComponentConfig::default();
         assert!(config.debug_info);
         assert!(!config.optimize);
-        assert_eq!(config.memory_limit, Some(1024 * 1024));
-        assert_eq!(config.stack_limit, Some(64 * 1024));
+        assert_eq!(config.memory_limit, Some(1024 * 1024);
+        assert_eq!(config.stack_limit, Some(64 * 1024);
         assert!(!config.async_support);
     }
 }

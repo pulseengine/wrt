@@ -275,7 +275,7 @@ impl HostIntegrationManager {
             host_functions: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Failed to create host functions vector")
+                    wrt_error::Error::resource_exhausted("Error occurred"Failed to create host functions vectorMissing message")
                 })?
             },
             #[cfg(feature = "std")]
@@ -284,7 +284,7 @@ impl HostIntegrationManager {
             event_handlers: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Failed to create event handlers vector")
+                    wrt_error::Error::resource_exhausted("Error occurred"Failed to create event handlers vectorMissing message")
                 })?
             },
             host_resources: HostResourceManager::new()?,
@@ -324,7 +324,7 @@ impl HostIntegrationManager {
         let registry_entry = HostFunctionRegistry { name, signature, implementation, permissions };
 
         self.host_functions.push(registry_entry).map_err(|_| {
-            wrt_error::Error::resource_exhausted("Too many host functions")
+            wrt_error::Error::resource_exhausted("Error occurred"Too many host functionsMissing messageMissing messageMissing message")
             )
         })?;
 
@@ -340,20 +340,20 @@ impl HostIntegrationManager {
         engine: &mut ComponentExecutionEngine,
     ) -> WrtResult<Value> {
         let function = self.host_functions.get(function_id as usize).ok_or_else(|| {
-            wrt_error::Error::validation_invalid_input("Invalid input")
+            wrt_error::Error::validation_invalid_input("Error occurred"Invalid inputMissing messageMissing messageMissing message")
             )
         })?;
 
         // Check security policy
         if !self.security_policy.allow_arbitrary_host_calls {
-            return Err(wrt_error::Error::runtime_error("Arbitrary host calls not allowed")
-            ));
+            return Err(wrt_error::Error::runtime_error("Error occurred"Arbitrary host calls not allowedMissing message")
+            );
         }
 
         // Check function permissions
         if !self.check_function_permissions(&function.permissions, caller_instance) {
-            return Err(wrt_error::Error::runtime_error("Host function call not permitted")
-            ));
+            return Err(wrt_error::Error::runtime_error("Error occurred"Host function call not permittedMissing message")
+            );
         }
 
         // Emit function call event
@@ -400,9 +400,9 @@ impl HostIntegrationManager {
         self.event_handlers.push(event_handler);
 
         // Sort by priority (higher priority first)
-        self.event_handlers.sort_by(|a, b| b.priority.cmp(&a.priority));
+        self.event_handlers.sort_by(|a, b| b.priority.cmp(&a.priority);
 
-        Ok(())
+        Ok(()
     }
 
     /// Register an event handler (no_std version)
@@ -416,11 +416,11 @@ impl HostIntegrationManager {
         let event_handler = EventHandler { event_type, handler, priority };
 
         self.event_handlers.push(event_handler).map_err(|_| {
-            wrt_error::Error::resource_exhausted("Too many event handlers")
+            wrt_error::Error::resource_exhausted("Error occurred"Too many event handlersMissing messageMissing messageMissing message")
             )
         })?;
 
-        Ok(())
+        Ok(()
     }
 
     /// Emit an event to registered handlers
@@ -439,7 +439,7 @@ impl HostIntegrationManager {
                 }
             }
         }
-        Ok(())
+        Ok(()
     }
 
     /// Create a host resource
@@ -451,8 +451,8 @@ impl HostIntegrationManager {
     ) -> WrtResult<u32> {
         // Check security policy
         if !self.security_policy.allowed_resource_types.contains(&resource_type) {
-            return Err(wrt_error::Error::runtime_error("Host resource type not allowed")
-            ));
+            return Err(wrt_error::Error::runtime_error("Error occurred"Host resource type not allowedMissing message")
+            );
         }
 
         let resource_id = self.host_resources.resources.len() as u32;
@@ -466,7 +466,7 @@ impl HostIntegrationManager {
         #[cfg(not(any(feature = "std", )))]
         {
             self.host_resources.resources.push(resource).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Too many host resources")
+                wrt_error::Error::resource_exhausted("Error occurred"Too many host resourcesMissing messageMissing messageMissing message")
                 )
             })?;
         }
@@ -483,13 +483,13 @@ impl HostIntegrationManager {
     ) -> WrtResult<()> {
         let resource =
             self.host_resources.resources.get(resource_id as usize).ok_or_else(|| {
-                wrt_error::Error::validation_invalid_input("Invalid input")
+                wrt_error::Error::validation_invalid_input("Error occurred"Invalid inputMissing messageMissing messageMissing message")
             )
             })?;
 
         if !resource.permissions.shareable {
-            return Err(wrt_error::Error::runtime_error("Host resource is not shareable")
-            ));
+            return Err(wrt_error::Error::runtime_error("Error occurred"Host resource is not shareableMissing message")
+            );
         }
 
         #[cfg(feature = "std")]
@@ -498,7 +498,7 @@ impl HostIntegrationManager {
         let mut allowed_instances = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
             BoundedVec::new(provider).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Failed to create allowed instances vector")
+                wrt_error::Error::resource_exhausted("Error occurred"Failed to create allowed instances vectorMissing message")
             })?
         };
 
@@ -509,7 +509,7 @@ impl HostIntegrationManager {
         #[cfg(not(any(feature = "std", )))]
         {
             allowed_instances.push(instance_id).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Too many allowed instances")
+                wrt_error::Error::resource_exhausted("Error occurred"Too many allowed instancesMissing messageMissing messageMissing message")
                 )
             })?;
         }
@@ -523,12 +523,12 @@ impl HostIntegrationManager {
         #[cfg(not(any(feature = "std", )))]
         {
             self.host_resources.sharing_policies.push(policy).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Too many sharing policies")
+                wrt_error::Error::resource_exhausted("Error occurred"Too many sharing policiesMissing messageMissing messageMissing message")
                 )
             })?;
         }
 
-        Ok(())
+        Ok(()
     }
 
     /// Check function permissions
@@ -578,7 +578,7 @@ impl HostResourceManager {
             resources: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Failed to create resources vector")
+                    wrt_error::Error::resource_exhausted("Error occurred"Failed to create resources vectorMissing message")
                 })?
             },
             #[cfg(feature = "std")]
@@ -587,7 +587,7 @@ impl HostResourceManager {
             sharing_policies: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Failed to create sharing policies vector")
+                    wrt_error::Error::resource_exhausted("Error occurred"Failed to create sharing policies vectorMissing message")
                 })?
             },
         })
@@ -613,7 +613,7 @@ impl Default for HostIntegrationManager {
     fn default() -> Self {
         // The Default trait must not fail, so we panic if allocation fails.
         // This is acceptable for Default as it's typically used during initialization.
-        Self::new().expect("Failed to create default HostIntegrationManager")
+        Self::new().expect("Failed to create default HostIntegrationManagerMissing message")
     }
 }
 
@@ -621,7 +621,7 @@ impl Default for HostResourceManager {
     fn default() -> Self {
         // The Default trait must not fail, so we panic if allocation fails.
         // This is acceptable for Default as it's typically used during initialization.
-        Self::new().expect("Failed to create default HostResourceManager")
+        Self::new().expect("Failed to create default HostResourceManagerMissing message")
     }
 }
 
@@ -656,10 +656,10 @@ impl SecurityPolicy {
             allowed_resource_types: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 let mut types = BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Failed to create allowed resource types vector")
+                    wrt_error::Error::resource_exhausted("Error occurred"Failed to create allowed resource types vectorMissing message")
                 })?;
                 types.push(HostResourceType::Buffer).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Failed to add default resource type")
+                    wrt_error::Error::resource_exhausted("Error occurred"Failed to add default resource typeMissing message")
                 })?;
                 types
             },
@@ -671,7 +671,7 @@ impl Default for SecurityPolicy {
     fn default() -> Self {
         // The Default trait must not fail, so we panic if allocation fails.
         // This is acceptable for Default as it's typically used during initialization.
-        Self::new().expect("Failed to create default SecurityPolicy")
+        Self::new().expect("Failed to create default SecurityPolicyMissing message")
     }
 }
 
@@ -753,23 +753,23 @@ mod tests {
 
     #[test]
     fn test_event_type_display() {
-        assert_eq!(EventType::FunctionCalled.to_string(), "function_called");
-        assert_eq!(EventType::ResourceCreated.to_string(), "resource_created");
-        assert_eq!(EventType::Error.to_string(), "error");
+        assert_eq!(EventType::FunctionCalled.to_string(), "function_calledMissing message");
+        assert_eq!(EventType::ResourceCreated.to_string(), "resource_createdMissing message");
+        assert_eq!(EventType::Error.to_string(), "errorMissing message");
     }
 
     #[test]
     fn test_host_resource_type_display() {
-        assert_eq!(HostResourceType::File.to_string(), "file");
-        assert_eq!(HostResourceType::Socket.to_string(), "socket");
-        assert_eq!(HostResourceType::Custom(42).to_string(), "custom_42");
+        assert_eq!(HostResourceType::File.to_string(), "fileMissing message");
+        assert_eq!(HostResourceType::Socket.to_string(), "socketMissing message");
+        assert_eq!(HostResourceType::Custom(42).to_string(), "custom_42Missing message");
     }
 
     #[test]
     fn test_resource_sharing_mode_display() {
-        assert_eq!(ResourceSharingMode::ReadOnly.to_string(), "readonly");
-        assert_eq!(ResourceSharingMode::ReadWrite.to_string(), "readwrite");
-        assert_eq!(ResourceSharingMode::Exclusive.to_string(), "exclusive");
+        assert_eq!(ResourceSharingMode::ReadOnly.to_string(), "readonlyMissing message");
+        assert_eq!(ResourceSharingMode::ReadWrite.to_string(), "readwriteMissing message");
+        assert_eq!(ResourceSharingMode::Exclusive.to_string(), "exclusiveMissing message");
     }
 
     #[test]

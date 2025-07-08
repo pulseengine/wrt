@@ -90,7 +90,7 @@ impl<const SIZE: usize> UnifiedMemoryProvider for NoStdProvider<SIZE> {
     
     fn deallocate(&mut self, _ptr: &mut [u8]) -> core::result::Result<(), wrt_error::Error> {
         // Simple implementation - could reset if ptr is at end
-        Ok(())
+        Ok(()
     }
     
     fn available_memory(&self) -> usize {
@@ -152,7 +152,7 @@ impl ThreadManager {
     }
 
     pub fn get_thread_stats(&self, _thread_id: ThreadId) -> core::result::Result<ThreadExecutionStats, Error> {
-        Ok(ThreadExecutionStats::default())
+        Ok(ThreadExecutionStats::default()
     }
 
     pub fn get_thread_state(&self, _thread_id: ThreadId) -> core::result::Result<ThreadState, Error> {
@@ -163,7 +163,7 @@ impl ThreadManager {
         if self.thread_count > 0 {
             self.thread_count -= 1;
         }
-        Ok(())
+        Ok(()
     }
 }
 

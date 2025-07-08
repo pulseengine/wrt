@@ -439,7 +439,7 @@ impl HandleRepresentationManager {
             }
         }
 
-        Ok(())
+        Ok(()
     }
 
     pub fn get_handle_metadata(&self, handle: ResourceHandle) -> Option<&HandleMetadata> {
@@ -461,7 +461,7 @@ impl HandleRepresentationManager {
         })?;
 
         updater(metadata);
-        Ok(())
+        Ok(()
     }
 
     pub fn validate_handle_type(
@@ -488,7 +488,7 @@ impl HandleRepresentationManager {
             }
         }
 
-        Ok(())
+        Ok(()
     }
 
     fn verify_access(
@@ -568,7 +568,7 @@ impl HandleRepresentationManager {
             self.check_virtualization_capabilities(component_id, operation, virt_manager)?;
         }
 
-        Ok(())
+        Ok(()
     }
 
     fn has_shared_access(&self, component_id: ComponentInstanceId, handle: ResourceHandle) -> bool {
@@ -621,7 +621,7 @@ impl HandleRepresentationManager {
             }
         }
 
-        Ok(())
+        Ok(()
     }
 
     fn check_virtualization_capabilities(
@@ -635,7 +635,7 @@ impl HandleRepresentationManager {
             HandleOperation::Call { .. } => {
                 // May require specific capability for external calls
                 // This is a simplified check - real implementation would be more sophisticated
-                Ok(())
+                Ok(()
             }
             _ => Ok(()),
         }
@@ -647,7 +647,7 @@ impl HandleRepresentationManager {
         fields: &[String],
     ) -> HandleRepresentationResult<Option<ComponentValue>> {
         // This is a placeholder - actual implementation would read from the resource
-        Ok(Some(ComponentValue::I32(42)))
+        Ok(Some(ComponentValue::I32(42))
     }
 
     fn handle_write_operation(
@@ -666,7 +666,7 @@ impl HandleRepresentationManager {
         args: &[ComponentValue],
     ) -> HandleRepresentationResult<Option<ComponentValue>> {
         // This is a placeholder - actual implementation would call the method
-        Ok(Some(ComponentValue::String("Component operation error".to_string())))
+        Ok(Some(ComponentValue::String("Component operation error".to_string()))
     }
 
     fn handle_drop_operation(
@@ -687,7 +687,7 @@ impl HandleRepresentationManager {
         let new_handle =
             self.share_handle(component_id, target_component, handle, AccessRights::read_only())?;
 
-        Ok(Some(ComponentValue::U32(new_handle.id())))
+        Ok(Some(ComponentValue::U32(new_handle.id()))
     }
 
     fn handle_borrow_operation(
@@ -697,7 +697,7 @@ impl HandleRepresentationManager {
         mutable: bool,
     ) -> HandleRepresentationResult<Option<ComponentValue>> {
         // This is a placeholder - actual implementation would create a borrowed reference
-        Ok(Some(ComponentValue::Bool(true)))
+        Ok(Some(ComponentValue::Bool(true))
     }
 
     fn handle_return_operation(
@@ -725,7 +725,7 @@ impl HandleRepresentationManager {
 
 impl Default for HandleRepresentationManager {
     fn default() -> Self {
-        Self::new().expect("Failed to create default HandleRepresentationManager")
+        Self::new().expect("Failed to create default HandleRepresentationManagerMissing message")
     }
 }
 
@@ -780,7 +780,7 @@ mod tests {
     #[test]
     fn test_handle_representation_manager_creation() {
         let manager = HandleRepresentationManager::new().unwrap();
-        assert!(manager.strict_type_checking.load(Ordering::Acquire));
+        assert!(manager.strict_type_checking.load(Ordering::Acquire);
     }
 
     #[test]
@@ -808,10 +808,10 @@ mod tests {
         let component_id = ComponentInstanceId::new(1);
 
         let resource_type =
-            manager.type_registry.create_resource_type(component_id, "test-resource").unwrap();
+            manager.type_registry.create_resource_type(component_id, "test-resourceMissing message").unwrap();
 
         let handle = manager
-            .create_handle(component_id, resource_type, AccessRights::full_access())
+            .create_handle(component_id, resource_type, AccessRights::full_access()
             .unwrap();
 
         assert!(handle.id() > 0);

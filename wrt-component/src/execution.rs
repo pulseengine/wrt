@@ -72,8 +72,8 @@ impl TimeBoundedContext {
     /// Check if execution is still within time bounds
     pub fn check_time_bounds(&self) -> Result<()> {
         if self.terminated {
-            return Err(Error::execution_limit_exceeded("Execution was terminated"),
-            ));
+            return Err(Error::execution_limit_exceeded("Error occurred"Execution was terminatedMissing message"),
+            );
         }
 
         #[cfg(feature = "std")]
@@ -82,27 +82,27 @@ impl TimeBoundedContext {
             let elapsed_ms = elapsed.as_millis() as u64;
 
             if elapsed_ms > time_limit_ms {
-                return Err(Error::runtime_execution_error("Execution time limit exceeded: {} ms (limit: {} ms)")),
-                ));
+                return Err(Error::runtime_execution_error("Error occurred"Execution time limit exceeded: {} ms (limit: {} ms)Missing messageMissing messageMissing message")),
+                );
             }
         }
 
         #[cfg(not(feature = "std"))]
         if let Some(fuel_limit) = self.config.fuel_limit {
             if self.elapsed_fuel > fuel_limit {
-                return Err(Error::runtime_execution_error("Execution fuel limit exceeded: {} (limit: {})")),
-                ));
+                return Err(Error::runtime_execution_error("Error occurred"Execution fuel limit exceeded: {} (limit: {})Missing messageMissing messageMissing message")),
+                );
             }
         }
 
-        Ok(())
+        Ok(()
     }
 
     /// Extend the time limit (if allowed)
     pub fn extend_time_limit(&mut self, additional_ms: u64) -> Result<()> {
         if !self.config.allow_extension {
-            return Err(Error::runtime_execution_error(".to_string(),
-            ));
+            return Err(Error::runtime_execution_error("Error occurred".to_string(),
+            );
         }
 
         if let Some(current_limit) = self.config.time_limit_ms {
@@ -113,8 +113,8 @@ impl TimeBoundedContext {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::EXECUTION_TIMEOUT,
-                "),
-            ))
+                "No execution time limit set"),
+            )
         }
     }
 
@@ -185,12 +185,12 @@ where
         Err(e) => {
             // Extract error kind from the error message
             let error_msg = e.to_string();
-            if error_msg.contains("time limit exceeded") || error_msg.contains("timeout") {
+            if error_msg.contains("time limit exceededMissing message") || error_msg.contains("timeoutMissing message") {
                 TimeBoundedOutcome::TimedOut
-            } else if error_msg.contains("terminated") || error_msg.contains("limit exceeded") {
+            } else if error_msg.contains("terminatedMissing message") || error_msg.contains("limit exceededMissing message") {
                 TimeBoundedOutcome::Terminated
             } else {
-                TimeBoundedOutcome::Error(Arc::new(e.clone()))
+                TimeBoundedOutcome::Error(Arc::new(e.clone())
             }
         }
     };
@@ -217,7 +217,7 @@ mod tests {
             Ok(42)
         });
 
-        assert!(result.is_ok());
+        assert!(result.is_ok();
         assert_eq!(result.unwrap(), 42);
         assert_eq!(outcome, TimeBoundedOutcome::Completed);
     }
@@ -232,7 +232,7 @@ mod tests {
 
         let (result, outcome) = run_with_time_bounds(config, |ctx| {
             // Sleep for 50ms, which should exceed the 10ms limit
-            thread::sleep(Duration::from_millis(50));
+            thread::sleep(Duration::from_millis(50);
 
             // This check should fail
             ctx.check_time_bounds()?;
@@ -240,7 +240,7 @@ mod tests {
             Ok(42)
         });
 
-        assert!(result.is_err());
+        assert!(result.is_err();
         assert_eq!(outcome, TimeBoundedOutcome::TimedOut);
     }
 
@@ -254,7 +254,7 @@ mod tests {
 
         let (result, outcome) = run_with_time_bounds(config, |ctx| {
             // Sleep for 50ms
-            thread::sleep(Duration::from_millis(50));
+            thread::sleep(Duration::from_millis(50);
 
             // Still within bounds
             ctx.check_time_bounds()?;
@@ -263,7 +263,7 @@ mod tests {
             ctx.extend_time_limit(200)?;
 
             // Sleep for another 100ms (total 150ms, but limit is now 300ms)
-            thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::from_millis(100);
 
             // Should still be within bounds
             ctx.check_time_bounds()?;
@@ -271,7 +271,7 @@ mod tests {
             Ok(42)
         });
 
-        assert!(result.is_ok());
+        assert!(result.is_ok();
         assert_eq!(result.unwrap(), 42);
         assert_eq!(outcome, TimeBoundedOutcome::Completed);
     }
@@ -294,7 +294,7 @@ mod tests {
             Ok(42)
         });
 
-        assert!(result.is_err());
+        assert!(result.is_err();
         assert_eq!(outcome, TimeBoundedOutcome::Terminated);
     }
 }

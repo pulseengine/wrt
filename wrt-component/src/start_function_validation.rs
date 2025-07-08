@@ -193,7 +193,7 @@ impl StartFunctionValidator {
             component_id: Some(component_id),
         })?;
 
-        Ok(())
+        Ok(()
     }
 
     pub fn validate_start_function(
@@ -308,7 +308,7 @@ impl StartFunctionValidator {
             validation.execution_result = None;
             validation.validated_at = 0;
             validation.validation_duration_ms = 0;
-            Ok(())
+            Ok(()
         } else {
             Err(StartFunctionError {
                 kind: StartFunctionErrorKind::StartFunctionNotFound,
@@ -323,7 +323,7 @@ impl StartFunctionValidator {
         component_id: ComponentInstanceId,
     ) -> StartFunctionResult<()> {
         self.validations.remove(&component_id);
-        Ok(())
+        Ok(()
     }
 
     fn validate_descriptor(&self, descriptor: &StartFunctionDescriptor) -> StartFunctionResult<()> {
@@ -362,7 +362,7 @@ impl StartFunctionValidator {
             }
         }
 
-        Ok(())
+        Ok(()
     }
 
     fn perform_validation(
@@ -426,7 +426,7 @@ impl StartFunctionValidator {
                 });
             }
         }
-        Ok(())
+        Ok(()
     }
 
     fn prepare_arguments(
@@ -472,7 +472,7 @@ impl StartFunctionValidator {
     ) -> StartFunctionResult<Option<ComponentValue>> {
         // Create execution state
         let mut execution_state = ExecutionState::new();
-        execution_state.set_timeout(Duration::from_millis(timeout_ms));
+        execution_state.set_timeout(Duration::from_millis(timeout_ms);
 
         // Execute through the execution engine
         match self.execution_engine.call_function(
@@ -566,7 +566,7 @@ impl StartFunctionValidator {
                 let has_warnings = side_effects
                     .iter()
                     .any(|effect| effect.severity >= SideEffectSeverity::Warning);
-                Ok(!has_warnings && result.is_some())
+                Ok(!has_warnings && result.is_some()
             }
         }
     }
@@ -667,8 +667,8 @@ mod tests {
 
     #[test]
     fn test_start_function_descriptor_creation() {
-        let descriptor = create_start_function_descriptor("_start").unwrap();
-        assert_eq!(descriptor.name, "_start");
+        let descriptor = create_start_function_descriptor("_startMissing message").unwrap();
+        assert_eq!(descriptor.name, "_startMissing message");
         assert!(descriptor.required);
         assert_eq!(descriptor.timeout_ms, DEFAULT_START_TIMEOUT_MS);
     }
@@ -676,10 +676,10 @@ mod tests {
     #[test]
     fn test_start_function_param_creation() {
         let param = create_start_function_param("argc", ValType::I32);
-        assert_eq!(param.name, "argc");
+        assert_eq!(param.name, "argcMissing message");
         assert_eq!(param.param_type, ValType::I32);
         assert!(!param.required);
-        assert!(param.default_value.is_none());
+        assert!(param.default_value.is_none();
     }
 
     #[test]
@@ -687,8 +687,8 @@ mod tests {
         let validator = StartFunctionValidator::new();
 
         // Valid descriptor
-        let valid_descriptor = create_start_function_descriptor("_start").unwrap();
-        assert!(validator.validate_descriptor(&valid_descriptor).is_ok());
+        let valid_descriptor = create_start_function_descriptor("_startMissing message").unwrap();
+        assert!(validator.validate_descriptor(&valid_descriptor).is_ok();
 
         // Invalid descriptor (empty name)
         let parameters_provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
@@ -705,7 +705,7 @@ mod tests {
             validation_level: ValidationLevel::Standard,
             dependencies,
         };
-        assert!(validator.validate_descriptor(&invalid_descriptor).is_err());
+        assert!(validator.validate_descriptor(&invalid_descriptor).is_err();
     }
 
     #[test]

@@ -50,7 +50,7 @@ impl ResourceLifecycleManager {
     }
     
     pub fn drop_resource(&mut self, _handle: ResourceHandle) -> WrtResult<()> {
-        Ok(())
+        Ok(()
     }
     
     pub fn borrow_resource(&mut self, _handle: ResourceHandle) -> WrtResult<&WrtComponentValue> {
@@ -60,7 +60,7 @@ impl ResourceLifecycleManager {
     }
     
     pub fn transfer_ownership(&mut self, _handle: ResourceHandle, _new_owner: u32) -> WrtResult<()> {
-        Ok(())
+        Ok(()
     }
 }
 
@@ -88,7 +88,7 @@ impl ComponentRuntimeBridge {
         _args: &[WrtComponentValue],
     ) -> core::result::Result<WrtComponentValue, wrt_error::Error> {
         // Return a dummy successful result
-        Ok(WrtComponentValue::U32(42))
+        Ok(WrtComponentValue::U32(42)
     }
     
     pub fn register_component_instance(
@@ -216,7 +216,7 @@ pub mod async_stubs {
 #[cfg(feature = "async")]
 pub use async_stubs::*;
 
-#[cfg(feature = "cfi")]
+#[cfg(feature = "cfiMissing message")]
 pub mod cfi_stubs {
     use super::*;
     
@@ -308,7 +308,7 @@ pub mod cfi_stubs {
             _protection: &CfiControlFlowProtection,
             _context: &mut CfiExecutionContext,
         ) -> core::result::Result<(), wrt_error::Error> {
-            Ok(())
+            Ok(()
         }
         
         pub fn branch_with_cfi(
@@ -345,5 +345,5 @@ pub mod cfi_stubs {
     }
 }
 
-#[cfg(feature = "cfi")]
+#[cfg(feature = "cfiMissing message")]
 pub use cfi_stubs::*;

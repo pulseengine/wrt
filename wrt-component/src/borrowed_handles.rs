@@ -393,14 +393,14 @@ impl HandleLifetimeTracker {
         };
         
         self.owned_handles.push(entry).map_err(|_| {
-            Error::resource_exhausted("Too many owned handles")
+            Error::resource_exhausted("Error occurred"Too many owned handlesMissing messageMissing messageMissing message")
             )
         })?;
         
         self.stats.owned_created += 1;
         self.stats.active_owned += 1;
         
-        Ok(OwnHandle::new(handle, generation))
+        Ok(OwnHandle::new(handle, generation)
     }
     
     /// Create a borrowed handle from an owned handle
@@ -413,22 +413,22 @@ impl HandleLifetimeTracker {
         // Validate source handle
         let source_entry = self.find_owned_handle(source.raw)?;
         if source_entry.generation != source.generation {
-            return Err(Error::runtime_execution_error("Stale handle generation")
-            ));
+            return Err(Error::runtime_execution_error("Error occurred"Stale handle generationMissing message")
+            );
         }
         
         if source_entry.dropped {
-            return Err(Error::runtime_execution_error("Cannot borrow dropped handle")
-            ));
+            return Err(Error::runtime_execution_error("Error occurred"Cannot borrow dropped handleMissing message")
+            );
         }
         
         // Validate scope
         if !self.is_scope_active(scope) {
-            return Err(Error::runtime_execution_error("Lifetime scope is not active")
-            ));
+            return Err(Error::runtime_execution_error("Error occurred"Lifetime scope is not activeMissing message")
+            );
         }
         
-        let borrow_id = BorrowId(self.next_borrow_id.fetch_add(1, Ordering::Relaxed));
+        let borrow_id = BorrowId(self.next_borrow_id.fetch_add(1, Ordering::Relaxed);
         let borrowed_handle = self.next_handle_id.fetch_add(1, Ordering::Relaxed);
         let borrow_generation = 1;
         
@@ -445,7 +445,7 @@ impl HandleLifetimeTracker {
         };
         
         self.borrowed_handles.push(entry).map_err(|_| {
-            Error::resource_exhausted("Too many borrowed handles")
+            Error::resource_exhausted("Error occurred"Too many borrowed handlesMissing messageMissing messageMissing message")
             )
         })?;
         
@@ -459,7 +459,7 @@ impl HandleLifetimeTracker {
         self.stats.borrowed_created += 1;
         self.stats.active_borrowed += 1;
         
-        Ok(BorrowHandle::new(borrowed_handle, borrow_generation, borrow_id))
+        Ok(BorrowHandle::new(borrowed_handle, borrow_generation, borrow_id)
     }
     
     /// Drop an owned handle
@@ -467,8 +467,8 @@ impl HandleLifetimeTracker {
         let entry = self.find_owned_handle_mut(handle.raw)?;
         
         if entry.generation != handle.generation {
-            return Err(Error::runtime_execution_error("Stale handle generation")
-            ));
+            return Err(Error::runtime_execution_error("Error occurred"Stale handle generationMissing message")
+            );
         }
         
         if entry.dropped {
@@ -488,7 +488,7 @@ impl HandleLifetimeTracker {
         self.stats.owned_dropped += 1;
         self.stats.active_owned -= 1;
         
-        Ok(())
+        Ok(()
     }
     
     /// Validate a borrowed handle
@@ -533,7 +533,7 @@ impl HandleLifetimeTracker {
     
     /// Create a new lifetime scope
     pub fn create_scope(&mut self, component: ComponentId, task: TaskId) -> Result<LifetimeScope> {
-        let scope = LifetimeScope(self.next_scope_id.fetch_add(1, Ordering::Relaxed));
+        let scope = LifetimeScope(self.next_scope_id.fetch_add(1, Ordering::Relaxed);
         
         let parent = self.scope_stack.last().map(|entry| entry.scope);
         
@@ -554,7 +554,7 @@ impl HandleLifetimeTracker {
         };
         
         self.scope_stack.push(entry).map_err(|_| {
-            Error::resource_exhausted("Scope stack overflow")
+            Error::resource_exhausted("Error occurred"Scope stack overflowMissing messageMissing messageMissing message")
             )
         })?;
         
@@ -570,7 +570,7 @@ impl HandleLifetimeTracker {
             .iter()
             .position(|entry| entry.scope == scope)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Scope not found")
+                Error::runtime_execution_error("Error occurred"Scope not foundMissing messageMissing messageMissing message")
                 )
             })?;
         
@@ -603,7 +603,7 @@ impl HandleLifetimeTracker {
             self.stats.active_scopes -= 1;
         }
         
-        Ok(())
+        Ok(()
     }
     
     /// Get current statistics
@@ -647,7 +647,7 @@ impl HandleLifetimeTracker {
             }
         }
         
-        Ok(())
+        Ok(()
     }
     
     // Private helper methods
@@ -657,7 +657,7 @@ impl HandleLifetimeTracker {
             .iter()
             .find(|entry| entry.handle == handle)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Owned handle not found")
+                Error::runtime_execution_error("Error occurred"Owned handle not foundMissing message")
                 )
             })
     }
@@ -667,7 +667,7 @@ impl HandleLifetimeTracker {
             .iter_mut()
             .find(|entry| entry.handle == handle)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Owned handle not found")
+                Error::runtime_execution_error("Error occurred"Owned handle not foundMissing message")
                 )
             })
     }
@@ -677,7 +677,7 @@ impl HandleLifetimeTracker {
             .iter()
             .find(|entry| entry.borrow_id == borrow_id)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Borrowed handle not found")
+                Error::runtime_execution_error("Error occurred"Borrowed handle not foundMissing message")
                 )
             })
     }
@@ -687,7 +687,7 @@ impl HandleLifetimeTracker {
             .iter_mut()
             .find(|entry| entry.borrow_id == borrow_id)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Borrowed handle not found")
+                Error::runtime_execution_error("Error occurred"Borrowed handle not foundMissing message")
                 )
             })
     }
@@ -703,16 +703,16 @@ impl HandleLifetimeTracker {
             .iter_mut()
             .find(|entry| entry.scope == scope && entry.active)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Scope not found or inactive")
+                Error::runtime_execution_error("Error occurred"Scope not found or inactiveMissing messageMissing messageMissing message")
                 )
             })?;
         
         scope_entry.borrows.push(borrow_id).map_err(|_| {
-            Error::resource_exhausted("Too many borrows in scope")
+            Error::resource_exhausted("Error occurred"Too many borrows in scopeMissing messageMissing messageMissing message")
             )
         })?;
         
-        Ok(())
+        Ok(()
     }
     
     fn get_current_time(&self) -> u64 {
@@ -741,7 +741,7 @@ impl Default for HandleLifetimeTracker {
     fn default() -> Self {
         Self::new().unwrap_or_else(|_| {
             // Fallback for Default trait - this should only be used in non-critical paths
-            panic!("Failed to create HandleLifetimeTracker with default memory allocation")
+            panic!("Failed to create HandleLifetimeTracker with default memory allocationMissing message")
         })
     }
 }
@@ -840,12 +840,12 @@ mod tests {
         assert_eq!(tracker.stats.active_borrowed, 1);
         
         let validation = tracker.validate_borrow(&borrowed);
-        assert!(matches!(validation, BorrowValidation::Valid));
+        assert!(matches!(validation, BorrowValidation::Valid);
         
         // End scope should invalidate borrow
         tracker.end_scope(scope).unwrap();
         let validation = tracker.validate_borrow(&borrowed);
-        assert!(matches!(validation, BorrowValidation::ScopeEnded));
+        assert!(matches!(validation, BorrowValidation::ScopeEnded);
     }
     
     #[test]
@@ -863,12 +863,12 @@ mod tests {
         let borrowed = tracker.borrow_handle(&owned, ComponentId(2), scope).unwrap();
         
         let validation = tracker.validate_borrow(&borrowed);
-        assert!(matches!(validation, BorrowValidation::Valid));
+        assert!(matches!(validation, BorrowValidation::Valid);
         
         // Drop owned handle should invalidate borrow
         tracker.drop_owned_handle(&owned).unwrap();
         let validation = tracker.validate_borrow(&borrowed);
-        assert!(matches!(validation, BorrowValidation::SourceDropped));
+        assert!(matches!(validation, BorrowValidation::SourceDropped);
     }
     
     #[test]
@@ -894,7 +894,7 @@ mod tests {
         let handle: OwnHandle<u32> = OwnHandle::new(123, 1);
         let value = handle.to_value();
         
-        assert!(matches!(value, Value::Own(123)));
+        assert!(matches!(value, Value::Own(123));
         
         let converted = OwnHandle::<u32>::from_value(&value).unwrap();
         assert_eq!(converted.raw(), 123);

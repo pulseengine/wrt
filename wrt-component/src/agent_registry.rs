@@ -209,7 +209,6 @@ impl AgentRegistry {
         {
             self.unified_agents.push((agent_id, agent)).map_err(|_| {
                 wrt_error::Error::resource_exhausted("Too many agents")
-                )
             })?;
         }
 
@@ -229,8 +228,7 @@ impl AgentRegistry {
                 if options.allow_legacy_fallback {
                     self.create_legacy_component_agent()
                 } else {
-                    Err(wrt_error::Error::validation_invalid_input("Invalid input")
-                    ))
+                    Err(wrt_error::Error::validation_invalid_input("Invalid agent type"))
                 }
             }
             #[cfg(feature = "async")]
@@ -238,8 +236,7 @@ impl AgentRegistry {
                 if options.allow_legacy_fallback {
                     self.create_legacy_async_agent()
                 } else {
-                    Err(wrt_error::Error::validation_invalid_input("Invalid input")
-                    ))
+                    Err(wrt_error::Error::validation_invalid_input("Async agent type not allowed"))
                 }
             }
             PreferredAgentType::Auto => {
@@ -264,7 +261,6 @@ impl AgentRegistry {
         {
             self.legacy_agents.push((agent_id, LegacyAgentType::Component(agent))).map_err(|_| {
                 wrt_error::Error::resource_exhausted("Too many legacy agents")
-                )
             })?;
         }
 
@@ -293,7 +289,6 @@ impl AgentRegistry {
         {
             self.legacy_agents.push((agent_id, LegacyAgentType::Async(agent))).map_err(|_| {
                 wrt_error::Error::resource_exhausted("Too many legacy agents")
-                )
             })?;
         }
 
@@ -348,16 +343,14 @@ impl AgentRegistry {
                         #[cfg(feature = "async")]
                         LegacyAgentType::Async(_engine) => {
                             // Async execution would require different API
-                            Err(wrt_error::Error::runtime_error("Async agent requires different API")
-                            ))
+                            Err(wrt_error::Error::runtime_error("Async agent requires different API"))
                         }
                     };
                 }
             }
         }
 
-        Err(wrt_error::Error::validation_invalid_input("Invalid input")
-        ))
+        Err(wrt_error::Error::validation_invalid_input("Agent not found"))
     }
 
     /// Migrate a legacy agent to unified agent
@@ -367,13 +360,11 @@ impl AgentRegistry {
         let migration_config = {
             if let Some(agent) = self.legacy_agents.get(&agent_id) {
                 if !agent.can_migrate() {
-                    return Err(wrt_error::Error::runtime_error("Agent cannot be migrated")
-                    ));
+                    return Err(wrt_error::Error::runtime_error("Agent cannot be migrated"));
                 }
                 agent.migration_config()
             } else {
-                return Err(wrt_error::Error::validation_invalid_input("Invalid input")
-                ));
+                return Err(wrt_error::Error::validation_invalid_input("Agent not found for migration"));
             }
         };
 
@@ -401,8 +392,7 @@ impl AgentRegistry {
             }
             
             if !found {
-                return Err(wrt_error::Error::validation_invalid_input("Invalid input")
-                ));
+                return Err(wrt_error::Error::validation_invalid_input("Agent not found in legacy agents"));
             }
             config
         };
@@ -423,7 +413,6 @@ impl AgentRegistry {
             // Add to unified agents
             self.unified_agents.push((agent_id, unified_agent)).map_err(|_| {
                 wrt_error::Error::resource_exhausted("Too many unified agents")
-                )
             })?;
         }
 
@@ -537,8 +526,7 @@ impl AgentRegistry {
             self.stats.active_agents = self.stats.active_agents.saturating_sub(1);
             Ok(())
         } else {
-            Err(wrt_error::Error::validation_invalid_input("Invalid input")
-            ))
+            Err(wrt_error::Error::validation_invalid_input("Agent not found"))
         }
     }
 
@@ -625,7 +613,7 @@ pub enum AgentMigrationStatus {
 
 impl Default for AgentRegistry {
     fn default() -> Self {
-        Self::new().expect("Failed to create default AgentRegistry")
+        Self::new().expect("Failed to create default AgentRegistryMissing message")
     }
 }
 
@@ -667,8 +655,7 @@ impl LegacyExecutionAgent for ComponentExecutionEngine {
 impl LegacyExecutionAgent for AsyncExecutionEngine {
     fn call_function(&mut self, _instance_id: u32, _function_index: u32, _args: &[Value]) -> WrtResult<Value> {
         // Async engines need different API - this is just a placeholder
-        Err(wrt_error::Error::runtime_error("Async agent requires different API")
-        ))
+        Err(wrt_error::Error::runtime_error("Async agent requires different API"))
     }
 
     fn agent_type(&self) -> &'static str {

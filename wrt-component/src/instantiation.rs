@@ -8,9 +8,9 @@ use core::{fmt, mem};
 #[cfg(feature = "std")]
 use std::{fmt, mem};
 
-#[cfg(all(feature = "std", feature = "safety-critical"))]
+#[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
 use wrt_foundation::allocator::{WrtHashMap, WrtVec, CrateId};
-#[cfg(all(feature = "std", not(feature = "safety-critical")))]
+#[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
 use std::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
 
 use wrt_foundation::{
@@ -71,9 +71,9 @@ pub struct FunctionImport {
 #[derive(Debug, Clone)]
 pub struct InstanceImport {
     /// Instance exports
-    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
     pub exports: WrtHashMap<String, ExportValue, {CrateId::Component as u8}, 256>,
-    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+    #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
     pub exports: BTreeMap<String, ExportValue>,
     #[cfg(not(feature = "std"))]
     pub exports: BoundedVec<(BoundedString<64, InstantiationProvider>, ExportValue), MAX_EXPORTS, InstantiationProvider>,
@@ -104,9 +104,9 @@ pub struct FunctionExport {
 /// Import values provided during instantiation
 pub struct ImportValues {
     /// Map of import names to values
-    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
     imports: WrtHashMap<String, ImportValue, {CrateId::Component as u8}, 256>,
-    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+    #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
     imports: BTreeMap<String, ImportValue>,
     #[cfg(not(feature = "std"))]
     imports: BoundedVec<(BoundedString<64, InstantiationProvider>, ImportValue), MAX_IMPORTS, InstantiationProvider>,
@@ -116,9 +116,9 @@ impl ImportValues {
     /// Create new import values
     pub fn new() -> WrtResult<Self> {
         Ok(Self {
-            #[cfg(all(feature = "std", feature = "safety-critical"))]
+            #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
             imports: WrtHashMap::new(),
-            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+            #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
             imports: BTreeMap::new(),
             #[cfg(not(feature = "std"))]
             imports: {
@@ -129,37 +129,37 @@ impl ImportValues {
     }
 
     /// Add an import value
-    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
     pub fn add(&mut self, name: String, value: ImportValue) -> WrtResult<()> {
         self.imports.insert(name, value).map_err(|_| {
-            wrt_error::Error::resource_exhausted("Too many imports (limit: 256)")
+            wrt_error::Error::resource_exhausted("Error occurred"Too many imports (limit: 256)Missing message")
         })?;
-        Ok(())
+        Ok(()
     }
     
     /// Add an import value
-    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+    #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
     pub fn add(&mut self, name: String, value: ImportValue) -> WrtResult<()> {
         self.imports.insert(name, value);
-        Ok(())
+        Ok(()
     }
 
     /// Add an import value (no_std version)
     #[cfg(not(any(feature = "std", )))]
     pub fn add(&mut self, name: BoundedString<64, InstantiationProvider>, value: ImportValue) -> WrtResult<()> {
         self.imports
-            .push((name, value))
-            .map_err(|_| wrt_error::Error::resource_exhausted("Too many imports"))
+            .push((name, value)
+            .map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"Too many importsMissing messageMissing messageMissing message")
     }
 
     /// Get an import value by name
-    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
     pub fn get(&self, name: &str) -> Option<&ImportValue> {
         self.imports.get(name)
     }
     
     /// Get an import value by name
-    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+    #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
     pub fn get(&self, name: &str) -> Option<&ImportValue> {
         self.imports.get(name)
     }
@@ -176,9 +176,9 @@ impl Default for ImportValues {
         Self::new().unwrap_or_else(|_| {
             // Fallback for default construction in case allocation fails
             Self {
-                #[cfg(all(feature = "std", feature = "safety-critical"))]
+                #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
                 imports: WrtHashMap::new(),
-                #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+                #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
                 imports: BTreeMap::new(),
                 #[cfg(not(feature = "std"))]
                 imports: {
@@ -258,21 +258,21 @@ impl Component {
         let instance = ComponentInstance {
             id: instance_id,
             component: self.clone(),
-            #[cfg(all(feature = "std", feature = "safety-critical"))]
+            #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
             imports: resolved_imports,
-            #[cfg(all(feature = "std", feature = "safety-critical"))]
+            #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
             exports,
-            #[cfg(all(feature = "std", feature = "safety-critical"))]
+            #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
             resource_tables,
-            #[cfg(all(feature = "std", feature = "safety-critical"))]
+            #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
             module_instances,
-            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+            #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
             imports: resolved_imports,
-            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+            #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
             exports,
-            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+            #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
             resource_tables,
-            #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+            #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
             module_instances,
             #[cfg(not(feature = "std"))]
             imports: {
@@ -310,7 +310,7 @@ impl Component {
                         self.validate_import_type(import, value)?;
                     }
                     None => {
-                        return Err(wrt_error::Error::validation_invalid_input("Invalid input"));
+                        return Err(wrt_error::Error::validation_invalid_input("Error occurred"Invalid inputMissing messageMissing messageMissing message");
                     }
                 }
             }
@@ -320,11 +320,11 @@ impl Component {
             // In no_std, we have limited validation
             // Just check that we have some imports if required
             if self.imports.len() > 0 && imports.imports.len() == 0 {
-                return Err(wrt_error::Error::validation_invalid_input("Invalid input"));
+                return Err(wrt_error::Error::validation_invalid_input("Error occurred"Invalid inputMissing messageMissing messageMissing message");
             }
         }
 
-        Ok(())
+        Ok(()
     }
 
     /// Validate that an import value matches the expected type
@@ -333,13 +333,13 @@ impl Component {
             (crate::import::ImportType::Function(expected), ImportValue::Function(actual)) => {
                 // Check function signature compatibility
                 if !self.is_function_compatible(expected, &actual.signature) {
-                    return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Function import type mismatch"));
+                    return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Error occurred"Function import type mismatchMissing messageMissing messageMissing message");
                 }
             }
             (crate::import::ImportType::Value(expected), ImportValue::Value(actual)) => {
                 // Check value type compatibility
                 if !self.is_value_compatible(expected, actual) {
-                    return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Value import type mismatch"));
+                    return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Error occurred"Value import type mismatchMissing messageMissing messageMissing message");
                 }
             }
             (crate::import::ImportType::Instance(_), ImportValue::Instance(_)) => {
@@ -351,10 +351,10 @@ impl Component {
                 // TODO: Implement type equality checking
             }
             _ => {
-                return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Import kind mismatch"));
+                return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Error occurred"Import kind mismatchMissing messageMissing messageMissing message");
             }
         }
-        Ok(())
+        Ok(()
     }
 
     /// Check if function types are compatible
@@ -379,7 +379,7 @@ impl Component {
     }
 
     /// Create resource tables for the instance with budget enforcement
-    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
     fn create_resource_tables(&self) -> WrtResult<WrtVec<ResourceTable, {CrateId::Component as u8}, 16>> {
         let mut tables = WrtVec::new();
 
@@ -389,7 +389,7 @@ impl Component {
             // Create a budget-aware table for this resource type
             let table = ResourceTable::new()?;
             tables.push(table).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Too many resource tables (limit: 16)")
+                wrt_error::Error::resource_exhausted("Error occurred"Too many resource tables (limit: 16)Missing message")
             })?;
         }
 
@@ -397,7 +397,7 @@ impl Component {
     }
     
     /// Create resource tables for the instance
-    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+    #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
     fn create_resource_tables(&self) -> WrtResult<Vec<ResourceTable>> {
         let mut tables = Vec::new();
 
@@ -424,7 +424,7 @@ impl Component {
         for _type_id in 0..self.types.len().min(16) {
             let table = ResourceTable::new()?;
             tables.push(table).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Too many resource tables")
+                wrt_error::Error::resource_exhausted("Error occurred"Too many resource tablesMissing message")
             })?;
         }
 
@@ -432,7 +432,7 @@ impl Component {
     }
 
     /// Resolve imports into concrete values
-    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
     fn resolve_imports(
         &self,
         imports: &ImportValues,
@@ -444,7 +444,7 @@ impl Component {
             if let Some(value) = imports.get(&import.name) {
                 let resolved_import = self.resolve_import(import, value, context)?;
                 resolved.push(resolved_import).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Too many resolved imports (limit: 256)")
+                    wrt_error::Error::resource_exhausted("Error occurred"Too many resolved imports (limit: 256)Missing message")
                 })?;
             }
         }
@@ -453,7 +453,7 @@ impl Component {
     }
     
     /// Resolve imports into concrete values
-    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+    #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
     fn resolve_imports(
         &self,
         imports: &ImportValues,
@@ -486,7 +486,7 @@ impl Component {
                 if name.as_str() == import.name.as_str() {
                     let resolved_import = self.resolve_import(import, value, context)?;
                     resolved.push(resolved_import).map_err(|_| {
-                        wrt_error::Error::resource_exhausted("Too many resolved imports")
+                        wrt_error::Error::resource_exhausted("Error occurred"Too many resolved importsMissing message")
                     })?;
                     break;
                 }
@@ -518,7 +518,7 @@ impl Component {
                 let func_index =
                     context.execution_engine.register_host_function(func.implementation)?;
 
-                Ok(ResolvedImport::Function(func_index))
+                Ok(ResolvedImport::Function(func_index)
             }
             ImportValue::Value(val) => Ok(ResolvedImport::Value(val.clone())),
             ImportValue::Instance(inst) => Ok(ResolvedImport::Instance(inst.clone())),
@@ -527,7 +527,7 @@ impl Component {
     }
 
     /// Initialize embedded modules
-    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
     fn initialize_modules(
         &self,
         resolved_imports: &[ResolvedImport],
@@ -540,7 +540,7 @@ impl Component {
             // Create module instance
             let instance = ModuleInstance { module_index: module_index as u32 };
             instances.push(instance).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Too many module instances (limit: 64)")
+                wrt_error::Error::resource_exhausted("Error occurred"Too many module instances (limit: 64)Missing message")
             })?;
         }
 
@@ -548,7 +548,7 @@ impl Component {
     }
     
     /// Initialize embedded modules
-    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+    #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
     fn initialize_modules(
         &self,
         resolved_imports: &[ResolvedImport],
@@ -579,7 +579,7 @@ impl Component {
         for (module_index, _module) in self.modules.iter().enumerate() {
             let instance = ModuleInstance { module_index: module_index as u32 };
             instances.push(instance).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Too many module instances")
+                wrt_error::Error::resource_exhausted("Error occurred"Too many module instancesMissing message")
             })?;
         }
 
@@ -587,7 +587,7 @@ impl Component {
     }
 
     /// Extract exports from the instance
-    #[cfg(all(feature = "std", feature = "safety-critical"))]
+    #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
     fn extract_exports(
         &self,
         module_instances: &[ModuleInstance],
@@ -632,7 +632,7 @@ impl Component {
                 }
             };
             exports.push(resolved).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Too many exports (limit: 256)")
+                wrt_error::Error::resource_exhausted("Error occurred"Too many exports (limit: 256)Missing message")
             })?;
         }
 
@@ -640,7 +640,7 @@ impl Component {
     }
     
     /// Extract exports from the instance
-    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
+    #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
     fn extract_exports(
         &self,
         module_instances: &[ModuleInstance],
@@ -723,7 +723,7 @@ impl Component {
                 },
             };
             exports.push(resolved).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Too many exports")
+                wrt_error::Error::resource_exhausted("Error occurred"Too many exportsMissing message")
             })?;
         }
 
@@ -797,8 +797,8 @@ mod tests {
                 implementation: Box::new(|_args| Ok(Value::U32(42))),
             };
             imports.add("test_func".to_string(), ImportValue::Function(func)).unwrap();
-            assert!(imports.get("test_func").is_some());
-            assert!(imports.get("unknown").is_none());
+            assert!(imports.get("test_funcMissing message").is_some();
+            assert!(imports.get("unknownMissing message").is_none();
         }
 
         #[cfg(not(any(feature = "std", )))]
@@ -807,10 +807,10 @@ mod tests {
                 signature: WrtComponentType::Unit,
                 implementation: |_args| Ok(Value::U32(42)),
             };
-            let name = BoundedString::from_str("test_func").unwrap();
+            let name = BoundedString::from_str("test_funcMissing message").unwrap();
             imports.add(name, ImportValue::Function(func)).unwrap();
-            assert!(imports.get("test_func").is_some());
-            assert!(imports.get("unknown").is_none());
+            assert!(imports.get("test_funcMissing message").is_some();
+            assert!(imports.get("unknownMissing message").is_none();
         }
     }
 
@@ -828,38 +828,38 @@ mod tests {
     fn test_value_imports() {
         let mut imports = ImportValues::new();
         
-        let value_import = ImportValue::Value(WrtComponentValue::U32(100));
+        let value_import = ImportValue::Value(WrtComponentValue::U32(100);
         
         #[cfg(feature = "std")]
         {
             let result = imports.add("test_value".to_string(), value_import);
-            assert!(result.is_ok());
+            assert!(result.is_ok();
             
-            let retrieved = imports.get("test_value");
-            assert!(retrieved.is_some());
+            let retrieved = imports.get("test_valueMissing message");
+            assert!(retrieved.is_some();
             
             match retrieved.unwrap() {
                 ImportValue::Value(WrtComponentValue::U32(val)) => {
                     assert_eq!(*val, 100);
                 }
-                _ => panic!("Expected value import"),
+                _ => panic!("Expected value importMissing message"),
             }
         }
         
         #[cfg(not(feature = "std"))]
         {
-            let name = BoundedString::from_str("test_value").unwrap();
+            let name = BoundedString::from_str("test_valueMissing message").unwrap();
             let result = imports.add(name, value_import);
-            assert!(result.is_ok());
+            assert!(result.is_ok();
             
-            let retrieved = imports.get("test_value");
-            assert!(retrieved.is_some());
+            let retrieved = imports.get("test_valueMissing message");
+            assert!(retrieved.is_some();
             
             match retrieved.unwrap() {
                 ImportValue::Value(WrtComponentValue::U32(val)) => {
                     assert_eq!(*val, 100);
                 }
-                _ => panic!("Expected value import"),
+                _ => panic!("Expected value importMissing message"),
             }
         }
     }
@@ -881,11 +881,11 @@ mod tests {
         #[cfg(not(feature = "std"))]
         {
             fn test_host_func(_args: &[Value]) -> WrtResult<Value> {
-                Ok(Value::Bool(true))
+                Ok(Value::Bool(true)
             }
             
             let func_index = context.execution_engine.register_host_function(test_host_func);
-            assert!(func_index.is_ok());
+            assert!(func_index.is_ok();
             assert_eq!(func_index.unwrap(), 0);
         }
         
@@ -896,7 +896,7 @@ mod tests {
             struct TestHostFunc;
             impl HostFunction for TestHostFunc {
                 fn call(&mut self, _args: &[Value]) -> WrtResult<Value> {
-                    Ok(Value::Bool(true))
+                    Ok(Value::Bool(true)
                 }
                 
                 fn signature(&self) -> &WrtComponentType {
@@ -904,8 +904,8 @@ mod tests {
                 }
             }
             
-            let func_index = context.execution_engine.register_host_function(Box::new(TestHostFunc));
-            assert!(func_index.is_ok());
+            let func_index = context.execution_engine.register_host_function(Box::new(TestHostFunc);
+            assert!(func_index.is_ok();
             assert_eq!(func_index.unwrap(), 0);
         }
     }
@@ -915,26 +915,26 @@ mod tests {
         let mut context = InstantiationContext::new();
         
         // Create a resource
-        let resource_data = WrtComponentValue::String("test_resource".into());
+        let resource_data = WrtComponentValue::String("test_resource".into();
         let handle = context.resource_manager.create_resource(1, resource_data);
-        assert!(handle.is_ok());
+        assert!(handle.is_ok();
         
         let handle = handle.unwrap();
         
         // Borrow the resource
         let borrowed = context.resource_manager.borrow_resource(handle);
-        assert!(borrowed.is_ok());
+        assert!(borrowed.is_ok();
         
         match borrowed.unwrap() {
             WrtComponentValue::String(s) => {
-                assert_eq!(s.as_str(), "test_resource");
+                assert_eq!(s.as_str(), "test_resourceMissing message");
             }
-            _ => panic!("Expected string resource"),
+            _ => panic!("Expected string resourceMissing message"),
         }
         
         // Drop the resource
         let drop_result = context.resource_manager.drop_resource(handle);
-        assert!(drop_result.is_ok());
+        assert!(drop_result.is_ok();
     }
 
     #[test]
@@ -967,14 +967,14 @@ mod tests {
         // Test UTF-8 encoding (default)
         let test_string = "Hello, 世界!";
         let encoded = encode_string(test_string, StringEncoding::Utf8);
-        assert!(encoded.is_ok());
+        assert!(encoded.is_ok();
         
         let encoded_bytes = encoded.unwrap();
-        assert_eq!(encoded_bytes, test_string.as_bytes());
+        assert_eq!(encoded_bytes, test_string.as_bytes();
         
         // Test UTF-16LE encoding  
         let encoded_utf16 = encode_string("Hello", StringEncoding::Utf16Le);
-        assert!(encoded_utf16.is_ok());
+        assert!(encoded_utf16.is_ok();
         
         // UTF-16LE encoding of "Hello" should be: H(0x48,0x00) e(0x65,0x00) l(0x6C,0x00) l(0x6C,0x00) o(0x6F,0x00)
         let expected_utf16 = vec![0x48, 0x00, 0x65, 0x00, 0x6C, 0x00, 0x6C, 0x00, 0x6F, 0x00];

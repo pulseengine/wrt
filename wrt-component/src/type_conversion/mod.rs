@@ -74,11 +74,11 @@ mod tests {
 
         // Convert to types representation
         let result = registry.convert::<FormatValType, TypesValType>(&format_type);
-        assert!(result.is_ok());
+        assert!(result.is_ok();
 
         if let Ok(types_val) = result {
             // Verify the conversion worked
-            assert!(matches!(types_val, TypesValType::Record(_)));
+            assert!(matches!(types_val, TypesValType::Record(_));
         }
     }
 

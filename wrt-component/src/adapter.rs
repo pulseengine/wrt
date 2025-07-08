@@ -221,11 +221,10 @@ impl CoreModuleAdapter {
             self.functions.push(adapter);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         {
             self.functions.push(adapter).map_err(|_| {
                 wrt_error::Error::resource_exhausted("Too many function adapters")
-                )
             })
         }
     }
@@ -237,10 +236,10 @@ impl CoreModuleAdapter {
             self.memories.push(adapter);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         {
             self.memories.push(adapter).map_err(|_| {
-                wrt_foundation::Error::ResourceExhausted("Too many memory adapters".into())
+                wrt_error::Error::resource_exhausted("Too many memory adapters")
             })
         }
     }
@@ -252,10 +251,10 @@ impl CoreModuleAdapter {
             self.tables.push(adapter);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         {
             self.tables.push(adapter).map_err(|_| {
-                wrt_foundation::Error::ResourceExhausted("Too many table adapters".into())
+                wrt_error::Error::resource_exhausted("Too many table adapters")
             })
         }
     }
@@ -267,10 +266,10 @@ impl CoreModuleAdapter {
             self.globals.push(adapter);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         {
             self.globals.push(adapter).map_err(|_| {
-                wrt_foundation::Error::ResourceExhausted("Too many global adapters".into())
+                wrt_error::Error::resource_exhausted("Too many global adapters")
             })
         }
     }
@@ -353,7 +352,7 @@ impl CoreModuleAdapter {
     ) -> Result<Value> {
         let adapter = self
             .get_function(func_index)
-            .ok_or_else(|| wrt_foundation::Error::invalid_input("Invalid input"))?;
+            .ok_or_else(|| wrt_error::Error::runtime_function_not_found("Function adapter not found"))?;
 
         match adapter.mode {
             AdaptationMode::Direct => {
@@ -409,7 +408,7 @@ impl CoreModuleAdapter {
         {
             Ok(args.to_vec())
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         {
             let mut result = Vec::new();
             for arg in args {
@@ -456,14 +455,14 @@ impl CoreFunctionSignature {
         Ok(Self {
             #[cfg(feature = "std")]
             params: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(feature = "std"))]
             params: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider)?
             },
             #[cfg(feature = "std")]
             results: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(feature = "std"))]
             results: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider)?
@@ -478,10 +477,10 @@ impl CoreFunctionSignature {
             self.params.push(param_type);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         {
             self.params.push(param_type).map_err(|_| {
-                wrt_foundation::Error::ResourceExhausted("Too many parameters".into())
+                wrt_error::Error::resource_exhausted("Too many parameters")
             })
         }
     }
@@ -493,11 +492,11 @@ impl CoreFunctionSignature {
             self.results.push(result_type);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         {
             self.results
                 .push(result_type)
-                .map_err(|_| wrt_foundation::Error::ResourceExhausted("Too many results".into()))
+                .map_err(|_| wrt_error::Error::resource_exhausted("Too many results"))
         }
     }
 }
@@ -508,11 +507,11 @@ impl Default for CoreFunctionSignature {
             Self {
                 #[cfg(feature = "std")]
                 params: Vec::new(),
-                #[cfg(not(any(feature = "std", )))]
+                #[cfg(not(feature = "std"))]
                 params: BoundedVec::new_with_default_provider().unwrap(),
                 #[cfg(feature = "std")]
                 results: Vec::new(),
-                #[cfg(not(any(feature = "std", )))]
+                #[cfg(not(feature = "std"))]
                 results: BoundedVec::new_with_default_provider().unwrap(),
             }
         })
@@ -622,7 +621,7 @@ mod tests {
             assert_eq!(adapter.name, "test_module");
             assert_eq!(adapter.functions.len(), 0);
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         {
             let name = BoundedString::from_str("test_module").unwrap();
             let adapter = CoreModuleAdapter::new(name).unwrap();

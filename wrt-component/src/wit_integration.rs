@@ -431,7 +431,7 @@ mod tests {
         let type1 = TypeId(1);
         let type2 = TypeId(2);
 
-        assert!(builder.add_type_constraint(type1, type2, BoundKind::Sub).is_ok());
+        assert!(builder.add_type_constraint(type1, type2, BoundKind::Sub).is_ok();
 
         let result = builder.type_registry.check_type_bound_simple(type1, type2, BoundKind::Sub);
         assert!(result);

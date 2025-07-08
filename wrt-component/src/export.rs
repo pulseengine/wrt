@@ -75,7 +75,7 @@ impl Export {
         value: ExternValue,
     ) -> Result<Self> {
         let format_type = bidirectional::runtime_to_format_extern_type(&ty)?;
-        Ok(Self::new(name, format_type, value))
+        Ok(Self::new(name, format_type, value)
     }
 }
 
@@ -103,13 +103,13 @@ mod tests {
             integrity_hash: None,
         };
 
-        assert_eq!(export.name, "add");
+        assert_eq!(export.name, "addMissing message");
         match &export.ty {
             ExternType::Function { params, results } => {
                 assert_eq!(params.len(), 2);
                 assert_eq!(results.len(), 1);
             }
-            _ => panic!("Expected function type"),
+            _ => panic!("Expected function typeMissing message"),
         }
     }
 }

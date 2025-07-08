@@ -249,8 +249,8 @@ impl ComponentMemoryManager {
         // Check memory limits
         let initial_size = limits.min as usize * WASM_PAGE_SIZE;
         if self.total_allocated + initial_size > self.max_memory {
-            return Err(wrt_error::Error::resource_exhausted("Memory limit exceeded")
-            ));
+            return Err(wrt_error::Error::resource_exhausted("Memory limit exceeded"))
+            );
         }
 
         // Create memory data
@@ -317,26 +317,26 @@ impl ComponentMemoryManager {
     ) -> WrtResult<Vec<u8>> {
         let memory = self
             .get_memory(memory_id)
-            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input")
+            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
             ))?;
 
         // Check permissions
         if !self.check_read_permission(memory_id, instance_id)? {
-            return Err(wrt_error::Error::runtime_error("Read permission denied")
-            ));
+            return Err(wrt_error::Error::runtime_error("Read permission denied"))
+            );
         }
 
         // Check bounds
         let end_offset = offset as usize + size as usize;
         if end_offset > memory.data.len() {
-            return Err(wrt_error::Error::validation_invalid_input("Invalid input")
-            ));
+            return Err(wrt_error::Error::validation_invalid_input("Invalid input"))
+            );
         }
 
         // Read data
         #[cfg(feature = "std")]
         {
-            Ok(memory.data[offset as usize..end_offset].to_vec())
+            Ok(memory.data[offset as usize..end_offset].to_vec()
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -367,7 +367,7 @@ impl ComponentMemoryManager {
 
         let memory = self
             .get_memory_mut(memory_id)
-            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input")
+            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
             ))?;
 
         // Check bounds
@@ -399,13 +399,13 @@ impl ComponentMemoryManager {
     ) -> WrtResult<u32> {
         let memory = self
             .get_memory_mut(memory_id)
-            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input")
+            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
             ))?;
 
         // Check permissions
         if !self.check_write_permission(memory_id, instance_id)? {
-            return Err(wrt_error::Error::runtime_error("Write permission denied")
-            ));
+            return Err(wrt_error::Error::runtime_error("Write permission denied"))
+            );
         }
 
         let current_pages = memory.data.len() / WASM_PAGE_SIZE;
@@ -414,16 +414,16 @@ impl ComponentMemoryManager {
         // Check limits
         if let Some(max) = memory.limits.max {
             if new_pages > max as usize {
-                return Err(wrt_error::Error::validation_invalid_input("Invalid input")
-                ));
+                return Err(wrt_error::Error::validation_invalid_input("Invalid input"))
+                );
             }
         }
 
         // Check global memory limit
         let additional_size = pages as usize * WASM_PAGE_SIZE;
         if self.total_allocated + additional_size > self.max_memory {
-            return Err(wrt_error::Error::resource_exhausted("Memory limit exceeded")
-            ));
+            return Err(wrt_error::Error::resource_exhausted("Memory limit exceeded"))
+            );
         }
 
         // Grow memory
@@ -450,7 +450,7 @@ impl ComponentMemoryManager {
     fn check_read_permission(&self, memory_id: u32, instance_id: Option<u32>) -> WrtResult<bool> {
         let memory = self
             .get_memory(memory_id)
-            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input")
+            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
             ))?;
 
         if !memory.permissions.read {
@@ -476,7 +476,7 @@ impl ComponentMemoryManager {
     fn check_write_permission(&self, memory_id: u32, instance_id: Option<u32>) -> WrtResult<bool> {
         let memory = self
             .get_memory(memory_id)
-            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input")
+            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
             ))?;
 
         if !memory.permissions.write {
@@ -525,7 +525,7 @@ impl ComponentMemoryManager {
         #[cfg(feature = "std")]
         {
             self.sharing_policies.push(policy);
-            Ok(())
+            Ok(()
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -627,7 +627,7 @@ impl ComponentTableManager {
     pub fn get_element(&self, table_id: u32, index: u32) -> WrtResult<&TableElement> {
         let table = self
             .get_table(table_id)
-            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input")
+            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
             ))?;
 
         table.elements.get(index as usize).ok_or_else(|| {
@@ -645,23 +645,23 @@ impl ComponentTableManager {
     ) -> WrtResult<()> {
         let table = self
             .get_table_mut(table_id)
-            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input")
+            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
             ))?;
 
         if index as usize >= table.elements.len() {
-            return Err(wrt_error::Error::validation_invalid_input("Invalid input")
-            ));
+            return Err(wrt_error::Error::validation_invalid_input("Invalid input"))
+            );
         }
 
         table.elements[index as usize] = element;
-        Ok(())
+        Ok(()
     }
 
     /// Grow table
     pub fn grow_table(&mut self, table_id: u32, size: u32, init: TableElement) -> WrtResult<u32> {
         let table = self
             .get_table_mut(table_id)
-            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input")
+            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
             ))?;
 
         let current_size = table.elements.len();
@@ -670,8 +670,8 @@ impl ComponentTableManager {
         // Check limits
         if let Some(max) = table.limits.max {
             if new_size > max as usize {
-                return Err(wrt_error::Error::validation_invalid_input("Invalid input")
-            ));
+                return Err(wrt_error::Error::validation_invalid_input("Invalid input"))
+            );
             }
         }
 
@@ -698,7 +698,7 @@ impl ComponentTableManager {
         #[cfg(feature = "std")]
         {
             self.sharing_policies.push(policy);
-            Ok(())
+            Ok(()
         }
         #[cfg(not(any(feature = "std", )))]
         {

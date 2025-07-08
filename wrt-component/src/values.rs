@@ -50,7 +50,7 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> WrtFo
         CanonicalValType::Record(fields) => {
             let converted_fields = fields
                 .iter()
-                .map(|(name, val_type)| (name.clone(), convert_common_to_format_valtype(val_type)))
+                .map(|(name, val_type)| (name.clone(), convert_common_to_format_valtype(val_type))
                 .collect();
             WrtFormatValType::Record(converted_fields)
         }
@@ -69,7 +69,7 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> WrtFo
             WrtFormatValType::Variant(converted_cases)
         }
         CanonicalValType::List(elem_type) => {
-            WrtFormatValType::List(Box::new(convert_common_to_format_valtype(elem_type)))
+            WrtFormatValType::List(Box::new(convert_common_to_format_valtype(elem_type))
         }
         CanonicalValType::Tuple(types) => {
             let converted_types =
@@ -79,10 +79,10 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> WrtFo
         CanonicalValType::Flags(names) => WrtFormatValType::Flags(names.clone()),
         CanonicalValType::Enum(variants) => WrtFormatValType::Enum(variants.clone()),
         CanonicalValType::Option(inner_type) => {
-            WrtFormatValType::Option(Box::new(convert_common_to_format_valtype(inner_type)))
+            WrtFormatValType::Option(Box::new(convert_common_to_format_valtype(inner_type))
         }
         CanonicalValType::Result(result_type) => {
-            WrtFormatValType::Result(Box::new(convert_common_to_format_valtype(result_type)))
+            WrtFormatValType::Result(Box::new(convert_common_to_format_valtype(result_type))
         }
         CanonicalValType::Own(idx) => WrtFormatValType::Own(*idx),
         CanonicalValType::Borrow(idx) => WrtFormatValType::Borrow(*idx),
@@ -91,13 +91,13 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> WrtFo
         }
         CanonicalValType::Void => {
             // Void doesn't have a direct mapping, convert to a unit tuple
-            WrtFormatValType::Tuple(Vec::new())
+            WrtFormatValType::Tuple(Vec::new()
         }
         CanonicalValType::ErrorContext => WrtFormatValType::ErrorContext,
         CanonicalValType::Result { ok: _, err: _ } => {
             // For WrtFormatValType, we create a Result with a generic type placeholder
             // Since WrtFormatValType::Result requires a concrete type, we'll use a default
-            WrtFormatValType::Result(Box::new(WrtFormatValType::Unit))
+            WrtFormatValType::Result(Box::new(WrtFormatValType::Unit)
         }
     }
 }
@@ -122,7 +122,7 @@ pub fn convert_format_to_common_valtype(format_type: &WrtFormatValType) -> Canon
         WrtFormatValType::Record(fields) => {
             let converted_fields = fields
                 .iter()
-                .map(|(name, val_type)| (name.clone(), convert_format_to_common_valtype(val_type)))
+                .map(|(name, val_type)| (name.clone(), convert_format_to_common_valtype(val_type))
                 .collect();
             CanonicalValType::Record(converted_fields)
         }
@@ -141,7 +141,7 @@ pub fn convert_format_to_common_valtype(format_type: &WrtFormatValType) -> Canon
             CanonicalValType::Variant(converted_cases)
         }
         WrtFormatValType::List(elem_type) => {
-            CanonicalValType::List(Box::new(convert_format_to_common_valtype(elem_type)))
+            CanonicalValType::List(Box::new(convert_format_to_common_valtype(elem_type))
         }
         WrtFormatValType::Tuple(types) => {
             let converted_types =
@@ -151,7 +151,7 @@ pub fn convert_format_to_common_valtype(format_type: &WrtFormatValType) -> Canon
         WrtFormatValType::Flags(names) => CanonicalValType::Flags(names.clone()),
         WrtFormatValType::Enum(variants) => CanonicalValType::Enum(variants.clone()),
         WrtFormatValType::Option(inner_type) => {
-            CanonicalValType::Option(Box::new(convert_format_to_common_valtype(inner_type)))
+            CanonicalValType::Option(Box::new(convert_format_to_common_valtype(inner_type))
         }
         WrtFormatValType::Result(result_type) => {
             // Convert to CanonicalValType::Result with both ok and err as None for now
@@ -192,28 +192,28 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
             buffer.push(*v);
         }
         ComponentComponentValue::S16(v) => {
-            buffer.extend_from_slice(&v.to_le_bytes());
+            buffer.extend_from_slice(&v.to_le_bytes();
         }
         ComponentComponentValue::U16(v) => {
-            buffer.extend_from_slice(&v.to_le_bytes());
+            buffer.extend_from_slice(&v.to_le_bytes();
         }
         ComponentComponentValue::S32(v) => {
-            buffer.extend_from_slice(&v.to_le_bytes());
+            buffer.extend_from_slice(&v.to_le_bytes();
         }
         ComponentComponentValue::U32(v) => {
-            buffer.extend_from_slice(&v.to_le_bytes());
+            buffer.extend_from_slice(&v.to_le_bytes();
         }
         ComponentComponentValue::S64(v) => {
-            buffer.extend_from_slice(&v.to_le_bytes());
+            buffer.extend_from_slice(&v.to_le_bytes();
         }
         ComponentComponentValue::U64(v) => {
-            buffer.extend_from_slice(&v.to_le_bytes());
+            buffer.extend_from_slice(&v.to_le_bytes();
         }
         ComponentComponentValue::F32(v) => {
-            buffer.extend_from_slice(&v.to_bits().to_le_bytes());
+            buffer.extend_from_slice(&v.to_bits().to_le_bytes();
         }
         ComponentComponentValue::F64(v) => {
-            buffer.extend_from_slice(&v.to_bits().to_le_bytes());
+            buffer.extend_from_slice(&v.to_bits().to_le_bytes();
         }
         ComponentComponentValue::Char(c) => {
             let bytes = [
@@ -228,13 +228,13 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
             // String is encoded as length followed by UTF-8 bytes
             let bytes = s.as_bytes();
             let len = bytes.len() as u32;
-            buffer.extend_from_slice(&len.to_le_bytes());
+            buffer.extend_from_slice(&len.to_le_bytes();
             buffer.extend_from_slice(bytes);
         }
         ComponentComponentValue::List(items) => {
             // Serialize list items
             let count = items.len() as u32;
-            buffer.extend_from_slice(&count.to_le_bytes());
+            buffer.extend_from_slice(&count.to_le_bytes();
 
             // If there are items, use the first item to determine the type
             if let Some(first_item) = items.first() {
@@ -251,14 +251,14 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
         ComponentComponentValue::Record(fields) => {
             // Serialize the record fields
             let field_count = fields.len() as u32;
-            buffer.extend_from_slice(&field_count.to_le_bytes());
+            buffer.extend_from_slice(&field_count.to_le_bytes();
 
             // Serialize each field
             for (name, value) in fields {
                 // Serialize the field name
                 let name_bytes = name.as_bytes();
                 let name_len = name_bytes.len() as u32;
-                buffer.extend_from_slice(&name_len.to_le_bytes());
+                buffer.extend_from_slice(&name_len.to_le_bytes();
                 buffer.extend_from_slice(name_bytes);
 
                 // Serialize the field value
@@ -269,7 +269,7 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
         ComponentComponentValue::Tuple(items) => {
             // Serialize tuple items
             let count = items.len() as u32;
-            buffer.extend_from_slice(&count.to_le_bytes());
+            buffer.extend_from_slice(&count.to_le_bytes();
 
             // Serialize each item
             for item in items {
@@ -281,7 +281,7 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
             // Serialize the case name
             let name_bytes = case_name.as_bytes();
             let name_len = name_bytes.len() as u32;
-            buffer.extend_from_slice(&name_len.to_le_bytes());
+            buffer.extend_from_slice(&name_len.to_le_bytes();
             buffer.extend_from_slice(name_bytes);
 
             // Serialize presence flag for the value
@@ -297,7 +297,7 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
             // Serialize the enum variant
             let variant_bytes = variant.as_bytes();
             let variant_len = variant_bytes.len() as u32;
-            buffer.extend_from_slice(&variant_len.to_le_bytes());
+            buffer.extend_from_slice(&variant_len.to_le_bytes();
             buffer.extend_from_slice(variant_bytes);
         }
         ComponentComponentValue::Option(value_opt) => {
@@ -331,16 +331,16 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
         }
         ComponentComponentValue::Handle(idx) => {
             // Serialize the handle index (from Own)
-            buffer.extend_from_slice(&idx.to_le_bytes());
+            buffer.extend_from_slice(&idx.to_le_bytes();
         }
         ComponentComponentValue::Borrow(idx) => {
             // Serialize the borrow index
-            buffer.extend_from_slice(&idx.to_le_bytes());
+            buffer.extend_from_slice(&idx.to_le_bytes();
         }
         ComponentComponentValue::Flags(flags) => {
             // Get the number of flags
             let count = flags.len() as u32;
-            buffer.extend_from_slice(&count.to_le_bytes());
+            buffer.extend_from_slice(&count.to_le_bytes();
 
             // Calculate the flag byte (up to 8 flags in a byte)
             let mut flag_byte: u8 = 0;
@@ -355,14 +355,14 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
             for (name, _) in flags {
                 let name_bytes = name.as_bytes();
                 let name_len = name_bytes.len() as u32;
-                buffer.extend_from_slice(&name_len.to_le_bytes());
+                buffer.extend_from_slice(&name_len.to_le_bytes();
                 buffer.extend_from_slice(name_bytes);
             }
         }
         ComponentComponentValue::FixedList(items, size) => {
             // Serialize fixed list items
             let count = items.len() as u32;
-            buffer.extend_from_slice(&count.to_le_bytes());
+            buffer.extend_from_slice(&count.to_le_bytes();
             buffer.extend_from_slice(&size.to_le_bytes()); // Store the size
 
             // If there are items, use the first item to determine the type
@@ -380,7 +380,7 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
         ComponentComponentValue::ErrorContext(ctx) => {
             // Serialize error context items
             let count = ctx.len() as u32;
-            buffer.extend_from_slice(&count.to_le_bytes());
+            buffer.extend_from_slice(&count.to_le_bytes();
 
             // Serialize each context value
             for item in ctx {
@@ -510,7 +510,7 @@ pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvid
         }
         ComponentComponentValue::Result(result) => {
             // Serialize success flag
-            let is_ok = matches!(result, Ok(_));
+            let is_ok = matches!(result, Ok(_);
             writer.write_bool(is_ok)?;
 
             // Serialize the value (either Ok or Err)
@@ -576,7 +576,7 @@ pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvid
         }
     }
 
-    Ok(())
+    Ok(()
 }
 
 // Simplified deserialization function
@@ -591,35 +591,35 @@ pub fn deserialize_component_value(
                 return Err(Error::parse_error("Not enough data to deserialize bool"));
             }
             let value = data[offset] != 0;
-            Ok(ComponentComponentValue::Bool(value))
+            Ok(ComponentComponentValue::Bool(value)
         }
         WrtFormatValType::S8 => {
             if offset >= data.len() {
                 return Err(Error::parse_error("Not enough data to deserialize S8"));
             }
             let value = data[offset] as i8;
-            Ok(ComponentComponentValue::S8(value))
+            Ok(ComponentComponentValue::S8(value)
         }
         WrtFormatValType::U8 => {
             if offset >= data.len() {
                 return Err(Error::parse_error("Not enough data to deserialize U8"));
             }
             let value = data[offset];
-            Ok(ComponentComponentValue::U8(value))
+            Ok(ComponentComponentValue::U8(value)
         }
         WrtFormatValType::S16 => {
             if offset + 2 > data.len() {
                 return Err(Error::parse_error("Not enough data to deserialize S16"));
             }
             let value = i16::from_le_bytes([data[offset], data[offset + 1]]);
-            Ok(ComponentComponentValue::S16(value))
+            Ok(ComponentComponentValue::S16(value)
         }
         WrtFormatValType::U16 => {
             if offset + 2 > data.len() {
                 return Err(Error::parse_error("Not enough data to deserialize U16"));
             }
             let value = u16::from_le_bytes([data[offset], data[offset + 1]]);
-            Ok(ComponentComponentValue::U16(value))
+            Ok(ComponentComponentValue::U16(value)
         }
         WrtFormatValType::S32 => {
             if offset + 4 > data.len() {
@@ -631,7 +631,7 @@ pub fn deserialize_component_value(
                 data[offset + 2],
                 data[offset + 3],
             ]);
-            Ok(ComponentComponentValue::S32(value))
+            Ok(ComponentComponentValue::S32(value)
         }
         WrtFormatValType::U32 => {
             if offset + 4 > data.len() {
@@ -643,7 +643,7 @@ pub fn deserialize_component_value(
                 data[offset + 2],
                 data[offset + 3],
             ]);
-            Ok(ComponentComponentValue::U32(value))
+            Ok(ComponentComponentValue::U32(value)
         }
         WrtFormatValType::S64 => {
             if offset + 8 > data.len() {
@@ -659,7 +659,7 @@ pub fn deserialize_component_value(
                 data[offset + 6],
                 data[offset + 7],
             ]);
-            Ok(ComponentComponentValue::S64(value))
+            Ok(ComponentComponentValue::S64(value)
         }
         WrtFormatValType::U64 => {
             if offset + 8 > data.len() {
@@ -675,7 +675,7 @@ pub fn deserialize_component_value(
                 data[offset + 6],
                 data[offset + 7],
             ]);
-            Ok(ComponentComponentValue::U64(value))
+            Ok(ComponentComponentValue::U64(value)
         }
         WrtFormatValType::F32 => {
             if offset + 4 > data.len() {
@@ -686,8 +686,8 @@ pub fn deserialize_component_value(
                 data[offset + 1],
                 data[offset + 2],
                 data[offset + 3],
-            ]));
-            Ok(ComponentComponentValue::F32(value))
+            ]);
+            Ok(ComponentComponentValue::F32(value)
         }
         WrtFormatValType::F64 => {
             if offset + 8 > data.len() {
@@ -702,15 +702,15 @@ pub fn deserialize_component_value(
                 data[offset + 5],
                 data[offset + 6],
                 data[offset + 7],
-            ]));
-            Ok(ComponentComponentValue::F64(value))
+            ]);
+            Ok(ComponentComponentValue::F64(value)
         }
         WrtFormatValType::Char => {
             if offset >= data.len() {
                 return Err(Error::parse_error("Not enough data to deserialize Char"));
             }
             let value = data[offset] as char;
-            Ok(ComponentComponentValue::Char(value))
+            Ok(ComponentComponentValue::Char(value)
         }
         WrtFormatValType::String => {
             if offset + 4 > data.len() {
@@ -730,7 +730,7 @@ pub fn deserialize_component_value(
                 String::from_utf8(data[offset..offset + len as usize].to_vec()).map_err(|e| {
                     Error::parse_error("Component not found")
                 })?;
-            Ok(ComponentComponentValue::String(value))
+            Ok(ComponentComponentValue::String(value)
         }
         WrtFormatValType::List(elem_type) => {
             if offset >= data.len() {
@@ -752,7 +752,7 @@ pub fn deserialize_component_value(
                 values.push(value);
                 offset += size_in_bytes(elem_type);
             }
-            Ok(ComponentComponentValue::List(values))
+            Ok(ComponentComponentValue::List(values)
         }
         WrtFormatValType::Record(fields) => {
             if offset >= data.len() {
@@ -761,22 +761,22 @@ pub fn deserialize_component_value(
             let mut values = Vec::new();
             for (name, val_type) in fields {
                 let value = deserialize_component_value(&data[offset..], val_type)?;
-                values.push((name.clone(), value));
+                values.push((name.clone(), value);
                 offset += size_in_bytes(val_type);
             }
-            Ok(ComponentComponentValue::Record(values))
+            Ok(ComponentComponentValue::Record(values)
         }
         WrtFormatValType::Tuple(types) => {
             if offset >= data.len() {
                 return Err(Error::parse_error("Not enough data to deserialize Tuple"));
             }
-            let mut values = Vec::with_capacity(types.len());
+            let mut values = Vec::with_capacity(types.len();
             for val_type in types {
                 let value = deserialize_component_value(&data[offset..], val_type)?;
                 values.push(value);
                 offset += size_in_bytes(val_type);
             }
-            Ok(ComponentComponentValue::Tuple(values))
+            Ok(ComponentComponentValue::Tuple(values)
         }
         WrtFormatValType::Variant(cases) => {
             if offset >= data.len() {
@@ -815,11 +815,11 @@ pub fn deserialize_component_value(
                     }
                     let inner_value = deserialize_component_value(&data[offset..], case_type)?;
                     // We've already read the needed value, no need to update offset
-                    Ok(ComponentComponentValue::Variant(case_name.clone(), Some(Box::new(inner_value))))
+                    Ok(ComponentComponentValue::Variant(case_name.clone(), Some(Box::new(inner_value)))
                 }
                 None => {
                     // Case without a value
-                    Ok(ComponentComponentValue::Variant(case_name.clone(), None))
+                    Ok(ComponentComponentValue::Variant(case_name.clone(), None)
                 }
             }
         }
@@ -839,7 +839,7 @@ pub fn deserialize_component_value(
             }
             let value = data[offset] as char;
             // No need to update offset anymore as we return immediately
-            Ok(ComponentComponentValue::Enum(variants[value as usize].clone()))
+            Ok(ComponentComponentValue::Enum(variants[value as usize].clone())
         }
         WrtFormatValType::Option(inner_type) => {
             if offset >= data.len() {
@@ -849,9 +849,9 @@ pub fn deserialize_component_value(
             // No need to update offset anymore as we return immediately
             if value {
                 let inner_value = deserialize_component_value(&data[offset..], inner_type)?;
-                Ok(ComponentComponentValue::Option(Some(Box::new(inner_value))))
+                Ok(ComponentComponentValue::Option(Some(Box::new(inner_value)))
             } else {
-                Ok(ComponentComponentValue::Option(None))
+                Ok(ComponentComponentValue::Option(None)
             }
         }
         WrtFormatValType::Result(result_type) => {
@@ -862,10 +862,10 @@ pub fn deserialize_component_value(
             // No need to update offset anymore as we return immediately
             if value {
                 let inner_value = deserialize_component_value(&data[offset..], result_type)?;
-                Ok(ComponentComponentValue::Result(Ok(Box::new(inner_value))))
+                Ok(ComponentComponentValue::Result(Ok(Box::new(inner_value)))
             } else {
                 // Create a default error value when the result is not successful
-                Ok(ComponentComponentValue::Result(Err(Box::new(ComponentComponentValue::Void))))
+                Ok(ComponentComponentValue::Result(Err(Box::new(ComponentComponentValue::Void)))
             }
         }
         WrtFormatValType::Own(idx) => {
@@ -874,7 +874,7 @@ pub fn deserialize_component_value(
             }
             let value = data[offset] as u32;
             // No need to update offset anymore as we return immediately
-            Ok(ComponentComponentValue::Handle(value))
+            Ok(ComponentComponentValue::Handle(value)
         }
         WrtFormatValType::Borrow(idx) => {
             if offset >= data.len() {
@@ -882,7 +882,7 @@ pub fn deserialize_component_value(
             }
             let value = data[offset] as u32;
             // No need to update offset anymore as we return immediately
-            Ok(ComponentComponentValue::Borrow(value))
+            Ok(ComponentComponentValue::Borrow(value)
         }
         WrtFormatValType::Flags(names) => {
             if offset >= data.len() {
@@ -897,11 +897,11 @@ pub fn deserialize_component_value(
                 if i < 8 {
                     // Only process up to 8 flags (one byte)
                     let is_set = (flag_byte & (1 << i)) != 0;
-                    flags.push((name.clone(), is_set));
+                    flags.push((name.clone(), is_set);
                 }
             }
 
-            Ok(ComponentComponentValue::Flags(flags))
+            Ok(ComponentComponentValue::Flags(flags)
         }
         WrtFormatValType::FixedList(elem_type, size) => {
             if offset >= data.len() {
@@ -923,7 +923,7 @@ pub fn deserialize_component_value(
                 values.push(value);
                 offset += size_in_bytes(elem_type);
             }
-            Ok(ComponentComponentValue::FixedList(values, *size))
+            Ok(ComponentComponentValue::FixedList(values, *size)
         }
         WrtFormatValType::ErrorContext => {
             if offset >= data.len() {
@@ -932,7 +932,7 @@ pub fn deserialize_component_value(
             let value = data[offset] != 0;
             // No need to update offset anymore as we return immediately
             // Create a proper ErrorContext value with an empty Vec
-            Ok(ComponentComponentValue::ErrorContext(Vec::new()))
+            Ok(ComponentComponentValue::ErrorContext(Vec::new())
         }
         // Handle any other unimplemented cases
         _ => Err(Error::system_unsupported_operation("Type not supported for deserialization")),
@@ -948,54 +948,54 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
     match format_type {
         WrtFormatValType::Bool => {
             let value = reader.read_bool()?;
-            Ok(ComponentComponentValue::Bool(value))
+            Ok(ComponentComponentValue::Bool(value)
         }
         WrtFormatValType::S8 => {
             let value = reader.read_i8()?;
-            Ok(ComponentComponentValue::S8(value))
+            Ok(ComponentComponentValue::S8(value)
         }
         WrtFormatValType::U8 => {
             let value = reader.read_u8()?;
-            Ok(ComponentComponentValue::U8(value))
+            Ok(ComponentComponentValue::U8(value)
         }
         WrtFormatValType::S16 => {
             let value = reader.read_i16_le()?;
-            Ok(ComponentComponentValue::S16(value))
+            Ok(ComponentComponentValue::S16(value)
         }
         WrtFormatValType::U16 => {
             let value = reader.read_u16_le()?;
-            Ok(ComponentComponentValue::U16(value))
+            Ok(ComponentComponentValue::U16(value)
         }
         WrtFormatValType::S32 => {
             let value = reader.read_i32_le()?;
-            Ok(ComponentComponentValue::S32(value))
+            Ok(ComponentComponentValue::S32(value)
         }
         WrtFormatValType::U32 => {
             let value = reader.read_u32_le()?;
-            Ok(ComponentComponentValue::U32(value))
+            Ok(ComponentComponentValue::U32(value)
         }
         WrtFormatValType::S64 => {
             let value = reader.read_i64_le()?;
-            Ok(ComponentComponentValue::S64(value))
+            Ok(ComponentComponentValue::S64(value)
         }
         WrtFormatValType::U64 => {
             let value = reader.read_u64_le()?;
-            Ok(ComponentComponentValue::U64(value))
+            Ok(ComponentComponentValue::U64(value)
         }
         WrtFormatValType::F32 => {
             let value = reader.read_f32_le()?;
-            Ok(ComponentComponentValue::F32(value))
+            Ok(ComponentComponentValue::F32(value)
         }
         WrtFormatValType::F64 => {
             let value = reader.read_f64_le()?;
-            Ok(ComponentComponentValue::F64(value))
+            Ok(ComponentComponentValue::F64(value)
         }
         WrtFormatValType::Char => {
             let value_u32 = reader.read_u32_le()?;
             let value = char::from_u32(value_u32).ok_or_else(|| {
                 Error::parse_error("Component not found")
             })?;
-            Ok(ComponentComponentValue::Char(value))
+            Ok(ComponentComponentValue::Char(value)
         }
         WrtFormatValType::String => {
             // Read the string length
@@ -1010,7 +1010,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 Error::parse_error("Component not found")
             })?;
 
-            Ok(ComponentComponentValue::String(value))
+            Ok(ComponentComponentValue::String(value)
         }
         WrtFormatValType::List(elem_type) => {
             // Read the number of items
@@ -1023,15 +1023,15 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 items.push(item);
             }
 
-            Ok(ComponentComponentValue::List(items))
+            Ok(ComponentComponentValue::List(items)
         }
         WrtFormatValType::Record(fields) => {
             // Read the number of fields
             let count = reader.read_u32_le()? as usize;
 
             if count != fields.len() {
-                return Err(Error::runtime_execution_error(", fields.len(), count)
-                ));
+                return Err(Error::runtime_execution_error("Field count mismatch"))
+                );
             }
 
             // Read each field
@@ -1044,23 +1044,23 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 let mut name_bytes = vec![0u8; name_len];
                 reader.read_exact(&mut name_bytes)?;
                 let field_name = String::from_utf8(name_bytes).map_err(|e| {
-                    Error::parse_error(")
+                    Error::parse_error("Missing error messageMissing message")
                 })?;
 
                 // Read field value
                 let value = deserialize_component_value_with_stream(reader, val_type, provider)?;
-                values.push((field_name, value));
+                values.push((field_name, value);
             }
 
-            Ok(ComponentComponentValue::Record(values))
+            Ok(ComponentComponentValue::Record(values)
         }
         WrtFormatValType::Tuple(types) => {
             // Read the number of items
             let count = reader.read_u32_le()? as usize;
 
             if count != types.len() {
-                return Err(Error::runtime_execution_error(", types.len(), count)
-                ));
+                return Err(Error::runtime_execution_error("Type count mismatch"))
+                );
             }
 
             // Read each item
@@ -1070,7 +1070,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 items.push(item);
             }
 
-            Ok(ComponentComponentValue::Tuple(items))
+            Ok(ComponentComponentValue::Tuple(items)
         }
         WrtFormatValType::Variant(cases) => {
             // Read the case name length
@@ -1080,7 +1080,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
             let mut name_bytes = vec![0u8; name_len];
             reader.read_exact(&mut name_bytes)?;
             let case_name = String::from_utf8(name_bytes).map_err(|e| {
-                Error::parse_error(")
+                Error::parse_error("Missing error messageMissing message")
             })?;
 
             // Find the case in the list
@@ -1098,12 +1098,12 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 if let Some(case_type) = case_type_opt {
                     let value =
                         deserialize_component_value_with_stream(reader, case_type, provider)?;
-                    Ok(ComponentComponentValue::Variant(case_name, Some(Box::new(value))))
+                    Ok(ComponentComponentValue::Variant(case_name, Some(Box::new(value)))
                 } else {
                     Err(Error::parse_error("Component not found"))
                 }
             } else {
-                Ok(ComponentComponentValue::Variant(case_name, None))
+                Ok(ComponentComponentValue::Variant(case_name, None)
             }
         }
         WrtFormatValType::Enum(variants) => {
@@ -1122,7 +1122,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 return Err(Error::parse_error("Component not found"));
             }
 
-            Ok(ComponentComponentValue::Enum(variant_name))
+            Ok(ComponentComponentValue::Enum(variant_name)
         }
         WrtFormatValType::Option(inner_type) => {
             // Read presence flag
@@ -1130,9 +1130,9 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             if has_value {
                 let value = deserialize_component_value_with_stream(reader, inner_type, provider)?;
-                Ok(ComponentComponentValue::Option(Some(Box::new(value))))
+                Ok(ComponentComponentValue::Option(Some(Box::new(value)))
             } else {
-                Ok(ComponentComponentValue::Option(None))
+                Ok(ComponentComponentValue::Option(None)
             }
         }
         WrtFormatValType::Result(result_type) => {
@@ -1141,27 +1141,27 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
             if is_ok {
                 let value = deserialize_component_value_with_stream(reader, result_type, provider)?;
-                Ok(ComponentComponentValue::Result(Ok(Box::new(value))))
+                Ok(ComponentComponentValue::Result(Ok(Box::new(value)))
             } else {
                 // Create a default error value
-                Ok(ComponentComponentValue::Result(Err(Box::new(ComponentComponentValue::Void))))
+                Ok(ComponentComponentValue::Result(Err(Box::new(ComponentComponentValue::Void)))
             }
         }
         WrtFormatValType::Own(idx) => {
             let value = reader.read_u32_le()?;
-            Ok(ComponentComponentValue::Handle(value))
+            Ok(ComponentComponentValue::Handle(value)
         }
         WrtFormatValType::Borrow(idx) => {
             let value = reader.read_u32_le()?;
-            Ok(ComponentComponentValue::Borrow(value))
+            Ok(ComponentComponentValue::Borrow(value)
         }
         WrtFormatValType::Flags(names) => {
             // Read the number of flags
             let count = reader.read_u32_le()? as usize;
 
             if count != names.len() {
-                return Err(Error::runtime_execution_error(", names.len(), count)
-                ));
+                return Err(Error::runtime_execution_error("Name count mismatch"))
+                );
             }
 
             // Read the flag byte
@@ -1173,10 +1173,10 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 if i < 8 {
                     // Only process up to 8 flags (one byte)
                     let is_set = (flag_byte & (1 << i)) != 0;
-                    flags.push((name.clone(), is_set));
+                    flags.push((name.clone(), is_set);
                 } else {
                     // Default to false for flags beyond the first byte
-                    flags.push((name.clone(), false));
+                    flags.push((name.clone(), false);
                 }
             }
 
@@ -1189,7 +1189,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 // them from the type
             }
 
-            Ok(ComponentComponentValue::Flags(flags))
+            Ok(ComponentComponentValue::Flags(flags)
         }
         WrtFormatValType::FixedList(elem_type, size) => {
             // Read the number of items
@@ -1199,7 +1199,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
             let fixed_size = reader.read_u32_le()?;
 
             if fixed_size != *size {
-                return Err(Error::parse_error("));
+                return Err(Error::parse_error("Missing error messageMissing messageMissing messageMissing message");
             }
 
             // Read each item
@@ -1209,7 +1209,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 items.push(item);
             }
 
-            Ok(ComponentComponentValue::FixedList(items, *size))
+            Ok(ComponentComponentValue::FixedList(items, *size)
         }
         WrtFormatValType::ErrorContext => {
             // Read the number of context items
@@ -1225,10 +1225,10 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 let item_str = String::from_utf8(item_bytes).map_err(|e| {
                     Error::parse_error("Component not found")
                 })?;
-                items.push(ComponentComponentValue::String(item_str));
+                items.push(ComponentComponentValue::String(item_str);
             }
 
-            Ok(ComponentComponentValue::ErrorContext(items))
+            Ok(ComponentComponentValue::ErrorContext(items)
         }
         WrtFormatValType::Void => {
             // Just read a marker byte
@@ -1246,7 +1246,7 @@ pub fn serialize_component_values(values: &[ComponentComponentValue]) -> Result<
 
     // Write the number of values
     let count = values.len() as u32;
-    buffer.extend_from_slice(&count.to_le_bytes());
+    buffer.extend_from_slice(&count.to_le_bytes();
 
     // Serialize each value
     for value in values {
@@ -1254,7 +1254,7 @@ pub fn serialize_component_values(values: &[ComponentComponentValue]) -> Result<
 
         // Write the size of this value's bytes
         let size = value_bytes.len() as u32;
-        buffer.extend_from_slice(&size.to_le_bytes());
+        buffer.extend_from_slice(&size.to_le_bytes();
 
         // Write the value bytes
         buffer.extend_from_slice(&value_bytes);
@@ -1277,7 +1277,7 @@ pub fn serialize_component_values_with_stream<'a, P: wrt_foundation::MemoryProvi
         serialize_component_value_with_stream(value, writer, provider)?;
     }
 
-    Ok(())
+    Ok(()
 }
 
 /// Deserialize multiple component values
@@ -1390,7 +1390,7 @@ pub fn core_to_component_value(value: &Value, ty: &WrtFormatValType) -> crate::W
         (ComponentComponentValue::S64(v), ComponentValType::U64) => Ok(ComponentComponentValue::U64(*v as u64)),
 
         // Error for type mismatch
-        _ => Err(Error::runtime_execution_error(",
+        _ => Err(Error::runtime_execution_error("Unknown value type"))
                 value, types_val_type
             ),
         )),
@@ -1452,7 +1452,7 @@ mod tests {
 
         for value in values {
             let encoded = serialize_component_value(&value).unwrap();
-            let format_type = convert_common_to_format_valtype(&value.get_type());
+            let format_type = convert_common_to_format_valtype(&value.get_type();
             let decoded = deserialize_component_value(&encoded, &format_type).unwrap();
 
             // Only check bools since we only implemented deserialization for a subset of
@@ -1509,7 +1509,7 @@ mod tests {
         let values = vec![
             ComponentComponentValue::Bool(true),
             ComponentComponentValue::S32(42),
-            ComponentComponentValue::String(")),
+            ComponentComponentValue::String(Missing messageMissing messageMissing message")),
         ];
 
         // Serialize using stream
@@ -1530,7 +1530,7 @@ mod tests {
             deserialize_component_values_with_stream(&mut reader, &format_types, &handler).unwrap();
 
         // Verify count
-        assert_eq!(values.len(), decoded.len());
+        assert_eq!(values.len(), decoded.len();
 
         // Verify individual values
         assert_eq!(values[0], decoded[0]);
@@ -1541,7 +1541,7 @@ mod tests {
         {
             assert_eq!(original, decoded_val);
         } else {
-            panic!("Expected S32 values");
+            panic!("Expected S32 valuesMissing message");
         }
 
         // For String, compare the string values
@@ -1550,7 +1550,7 @@ mod tests {
         {
             assert_eq!(original, decoded_val);
         } else {
-            panic!("Expected String values");
+            panic!("Expected String valuesMissing message");
         }
     }
 }

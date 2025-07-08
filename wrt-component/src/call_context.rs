@@ -993,7 +993,7 @@ impl CallContextManager {
         #[cfg(feature = "std")]
         self.contexts.insert(call_id, managed_context);
         #[cfg(not(feature = "std"))]
-        self.contexts.push((call_id, managed_context)).map_err(|_| Error::runtime_execution_error(",
+        self.contexts.push((call_id, managed_context)).map_err(|_| Error::runtime_execution_error("Error occurred",
         ))?;
 
         Ok(call_id)
@@ -1001,7 +1001,7 @@ impl CallContextManager {
 
     /// Get a call context by ID
     pub fn get_call_context(&self, call_id: u64) -> Option<&ManagedCallContext> {
-        #[cfg(feature = ")]
+        #[cfg(feature = "std")]
         return self.contexts.get(&call_id);
         #[cfg(not(feature = "std"))]
         return self.contexts.iter().find(|(id, _)| *id == call_id).map(|(_, ctx)| ctx);
@@ -1027,8 +1027,7 @@ impl CallContextManager {
 
             Ok(())
         } else {
-            Err(Error::runtime_invalid_state("Call context not found"),
-            ))
+            Err(Error::runtime_invalid_state("Call context not found"))
         }
     }
 
@@ -1219,30 +1218,27 @@ impl ResourceCoordinator {
             #[cfg(feature = "std")]
             self.resource_locks.insert(handle, lock);
             #[cfg(not(feature = "std"))]
-            self.resource_locks.push((handle, lock)).map_err(|_| Error::runtime_execution_error(",
-            ))?;
+            self.resource_locks.push((handle, lock)).map_err(|_| Error::runtime_execution_error("Too many resource locks"))?;
             
-            #[cfg(feature = ")]
+            #[cfg(feature = "std")]
             acquired_locks.push(handle);
             #[cfg(not(feature = "std"))]
-            acquired_locks.push(handle).map_err(|_| Error::runtime_execution_error(",
-            ))?;
+            acquired_locks.push(handle).map_err(|_| Error::runtime_execution_error("Too many acquired locks"))?;
         }
 
         Ok(ResourceState {
-            #[cfg(feature = ")]
+            #[cfg(feature = "std")]
             transferring_resources: resource_handles.to_vec(),
             #[cfg(not(feature = "std"))]
             transferring_resources: {
                 let mut vec = BoundedVec::new(crate::MemoryProvider::default()).unwrap();
                 for handle in resource_handles {
-                    vec.push(*handle).map_err(|_| Error::runtime_execution_error(",
-                    ))?;
+                    vec.push(*handle).map_err(|_| Error::runtime_execution_error("Too many transferring resources"))?;
                 }
                 vec
             },
             acquired_locks,
-            #[cfg(feature = ")]
+            #[cfg(feature = "std")]
             transfer_results: std::vec::Vec::new(),
             #[cfg(not(feature = "std"))]
             transfer_results: BoundedVec::new(crate::MemoryProvider::default()).unwrap(),

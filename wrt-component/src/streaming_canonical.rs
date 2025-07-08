@@ -186,7 +186,7 @@ impl StreamingCanonicalAbi {
             streams: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    Error::resource_exhausted("Failed to create streams vector")
+                    Error::resource_exhausted("Error occurred"Failed to create streams vectorMissing message")
                 })?
             },
             
@@ -196,7 +196,7 @@ impl StreamingCanonicalAbi {
             buffer_pool: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    Error::resource_exhausted("Failed to create buffer pool")
+                    Error::resource_exhausted("Error occurred"Failed to create buffer poolMissing message")
                 })?
             },
             
@@ -224,7 +224,7 @@ impl StreamingCanonicalAbi {
             buffer: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    Error::resource_exhausted("Failed to create stream buffer")
+                    Error::resource_exhausted("Error occurred"Failed to create stream bufferMissing message")
                 })?
             },
             bytes_processed: 0,
@@ -234,7 +234,7 @@ impl StreamingCanonicalAbi {
         };
 
         self.streams.push(context).map_err(|_| {
-            Error::resource_exhausted("Too many active streams")
+            Error::resource_exhausted("Error occurred"Too many active streamsMissing messageMissing messageMissing message")
             )
         })?;
 
@@ -370,7 +370,7 @@ impl StreamingCanonicalAbi {
             .iter()
             .position(|ctx| ctx.handle == handle)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Stream not found")
+                Error::runtime_execution_error("Error occurred"Stream not foundMissing message")
                 )
             })
     }
@@ -405,7 +405,7 @@ impl StreamingCanonicalAbi {
                         if context.buffer.len() >= 4 + len {
                             let string_bytes = &context.buffer[4..4 + len];
                             let string_content = core::str::from_utf8(string_bytes)
-                                .map_err(|_| Error::parse_error("Invalid UTF-8")))?;
+                                .map_err(|_| Error::parse_error("Invalid UTF-8"))?;
                             Value::String(BoundedString::from_str(string_content).unwrap_or_default())
                         } else {
                             return Ok((Vec::new(), 0)); // Need more data
@@ -534,7 +534,7 @@ impl Default for StreamingCanonicalAbi {
     fn default() -> Self {
         // Use new() which properly handles allocation or panic in development
         // This ensures consistent memory management patterns
-        Self::new().expect("StreamingCanonicalAbi allocation should not fail in default construction")
+        Self::new().expect("StreamingCanonicalAbi allocation should not fail in default constructionMissing message")
     }
 }
 
@@ -679,8 +679,8 @@ mod tests {
 
     #[test]
     fn test_stream_direction_display() {
-        assert_eq!(StreamDirection::Lifting.to_string(), "lifting");
-        assert_eq!(StreamDirection::Lowering.to_string(), "lowering");
-        assert_eq!(StreamDirection::Bidirectional.to_string(), "bidirectional");
+        assert_eq!(StreamDirection::Lifting.to_string(), "liftingMissing message");
+        assert_eq!(StreamDirection::Lowering.to_string(), "loweringMissing message");
+        assert_eq!(StreamDirection::Bidirectional.to_string(), "bidirectionalMissing message");
     }
 }

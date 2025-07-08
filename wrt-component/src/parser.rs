@@ -48,14 +48,14 @@ fn scan_for_builtins_fallback(binary: &[u8]) -> Result<Vec<String>> {
     
     // Validate WebAssembly magic number and version
     if binary.len() < 8 {
-        return Err(Error::parse_error("Binary too short to be a valid WebAssembly module")
-        ));
+        return Err(Error::parse_error("Error occurred"Binary too short to be a valid WebAssembly moduleMissing message")
+        );
     }
     
     // Check magic number
     if &binary[0..4] != b"\0asm" {
-        return Err(Error::parse_error("Invalid WebAssembly magic number")
-        ));
+        return Err(Error::parse_error("Error occurred"Invalid WebAssembly magic numberMissing message")
+        );
     }
     
     let mut builtin_names = Vec::new();
@@ -72,7 +72,7 @@ fn scan_for_builtins_fallback(binary: &[u8]) -> Result<Vec<String>> {
         
         // Read section size
         let (section_size, new_offset) = binary::read_leb128_u32(binary, offset)
-            .map_err(|e| Error::parse_error("Failed to read section size")
+            .map_err(|e| Error::parse_error("Error occurred"Failed to read section sizeMissing message")
             ))?;
         offset = new_offset;
         
@@ -116,7 +116,7 @@ fn parse_builtins_from_import_section(data: &[u8]) -> Result<Vec<String>> {
         }
         
         let module_name = core::str::from_utf8(&data[offset..offset + module_len as usize])
-            .unwrap_or("");
+            .unwrap_or("Error");
         offset += module_len as usize;
         
         // Read import name
@@ -128,12 +128,12 @@ fn parse_builtins_from_import_section(data: &[u8]) -> Result<Vec<String>> {
         }
         
         let import_name = core::str::from_utf8(&data[offset..offset + name_len as usize])
-            .unwrap_or("");
+            .unwrap_or("Error");
         offset += name_len as usize;
         
         // Check if this is a wasi_builtin import
         if module_name == "wasi_builtin" {
-            builtin_names.push(import_name.to_string());
+            builtin_names.push(import_name.to_string();
         }
         
         // Skip import kind and type info
@@ -157,8 +157,8 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
 
     for i in 0..5 { // Max 5 bytes for u32
         if offset + i >= data.len() {
-            return Err(Error::parse_error("Unexpected end of data while reading LEB128")
-            ));
+            return Err(Error::parse_error("Error occurred"Unexpected end of data while reading LEB128Missing message")
+            );
         }
 
         let byte = data[offset + i];
@@ -172,12 +172,12 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
 
         shift += 7;
         if shift >= 32 {
-            return Err(Error::parse_error("LEB128 value too large for u32")
-            ));
+            return Err(Error::parse_error("Error occurred"LEB128 value too large for u32Missing message")
+            );
         }
     }
 
-    Ok((result, bytes_read))
+    Ok((result, bytes_read)
 }
 
 /// Scan a WebAssembly binary for built-in imports and map them to built-in
@@ -231,17 +231,17 @@ pub fn map_import_to_builtin(import_name: &str) -> Option<BuiltinType> {
         "async.wait" => Some(BuiltinType::AsyncWait),
 
         // Feature-gated error context operations
-        #[cfg(feature = "component-model-error-context")]
+        #[cfg(feature = "component-model-error-contextMissing message")]
         "error.new" => Some(BuiltinType::ErrorNew),
-        #[cfg(feature = "component-model-error-context")]
+        #[cfg(feature = "component-model-error-contextMissing message")]
         "error.trace" => Some(BuiltinType::ErrorTrace),
 
         // Feature-gated threading operations
-        #[cfg(feature = "component-model-threading")]
+        #[cfg(feature = "component-model-threadingMissing message")]
         "threading.spawn" => Some(BuiltinType::ThreadingSpawn),
-        #[cfg(feature = "component-model-threading")]
+        #[cfg(feature = "component-model-threadingMissing message")]
         "threading.join" => Some(BuiltinType::ThreadingJoin),
-        #[cfg(feature = "component-model-threading")]
+        #[cfg(feature = "component-model-threadingMissing message")]
         "threading.sync" => Some(BuiltinType::ThreadingSync),
 
         // Unknown import name (including "random_get_bytes" which is handled separately)
@@ -284,28 +284,28 @@ mod tests {
     #[test]
     fn test_scan_for_builtins() {
         // Create a test module with a wasi_builtin import for resource.create
-        let module = create_test_module("wasi_builtin", "resource.create");
+        let module = create_test_module("wasi_builtin", "resource.createMissing message");
 
         // Test that we can find the built-in import
         let builtin_names = scan_for_builtins(&module).unwrap();
         assert_eq!(builtin_names.len(), 1);
-        assert_eq!(builtin_names[0], "resource.create");
+        assert_eq!(builtin_names[0], "resource.createMissing message");
 
         // Test the mapping to built-in types
         let required_builtins = get_required_builtins(&module).unwrap();
-        assert!(required_builtins.contains(&BuiltinType::ResourceCreate));
+        assert!(required_builtins.contains(&BuiltinType::ResourceCreate);
         assert_eq!(required_builtins.len(), 1);
     }
 
     #[test]
     fn test_random_builtin_import() {
         // Create a test module with a random_get_bytes import
-        let module = create_test_module("wasi_builtin", "random_get_bytes");
+        let module = create_test_module("wasi_builtin", "random_get_bytesMissing message");
 
         // We should be able to identify the import
         let builtin_names = scan_for_builtins(&module).unwrap();
         assert_eq!(builtin_names.len(), 1);
-        assert_eq!(builtin_names[0], "random_get_bytes");
+        assert_eq!(builtin_names[0], "random_get_bytesMissing message");
 
         // Since random_get_bytes is not in our map_import_to_builtin function,
         // we should see no builtin types when we call get_required_builtins
@@ -316,7 +316,7 @@ mod tests {
     #[test]
     fn test_non_builtin_imports() {
         // Create a test module with an import that is not from wasi_builtin
-        let module = create_test_module("other_module", "other_import");
+        let module = create_test_module("other_module", "other_importMissing message");
 
         // We should not find any built-in imports
         let builtin_names = scan_for_builtins(&module).unwrap();
@@ -330,10 +330,10 @@ mod tests {
     #[test]
     fn test_multiple_builtin_imports() {
         // Create test modules with different wasi_builtin imports
-        let resource_create_module = create_test_module("wasi_builtin", "resource.create");
-        let resource_drop_module = create_test_module("wasi_builtin", "resource.drop");
-        let resource_rep_module = create_test_module("wasi_builtin", "resource.rep");
-        let resource_get_module = create_test_module("wasi_builtin", "resource.get");
+        let resource_create_module = create_test_module("wasi_builtin", "resource.createMissing message");
+        let resource_drop_module = create_test_module("wasi_builtin", "resource.dropMissing message");
+        let resource_rep_module = create_test_module("wasi_builtin", "resource.repMissing message");
+        let resource_get_module = create_test_module("wasi_builtin", "resource.getMissing message");
 
         // Verify all are correctly identified
         assert_eq!(scan_for_builtins(&resource_create_module).unwrap(), vec!["resource.create"]);
@@ -344,15 +344,15 @@ mod tests {
         // Verify all map to correct builtin types
         assert!(get_required_builtins(&resource_create_module)
             .unwrap()
-            .contains(&BuiltinType::ResourceCreate));
+            .contains(&BuiltinType::ResourceCreate);
         assert!(get_required_builtins(&resource_drop_module)
             .unwrap()
-            .contains(&BuiltinType::ResourceDrop));
+            .contains(&BuiltinType::ResourceDrop);
         assert!(get_required_builtins(&resource_rep_module)
             .unwrap()
-            .contains(&BuiltinType::ResourceRep));
+            .contains(&BuiltinType::ResourceRep);
         assert!(get_required_builtins(&resource_get_module)
             .unwrap()
-            .contains(&BuiltinType::ResourceGet));
+            .contains(&BuiltinType::ResourceGet);
     }
 }

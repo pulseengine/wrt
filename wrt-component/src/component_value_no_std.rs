@@ -305,8 +305,7 @@ pub fn serialize_component_value_no_std(
                     if let Some(v) = val {
                         // Push presence flag as u8
                         buffer.push(1).map_err(|_| {
-                            Error::capacity_exceeded("Buffer capacity exceeded when serializing Result err presence \
-                                 flag")
+                            Error::capacity_exceeded("Buffer capacity exceeded when serializing Result err presence flag")
                         })?;
 
                         // Serialize the contained value
@@ -319,8 +318,7 @@ pub fn serialize_component_value_no_std(
                     } else {
                         // Push absence flag as u8
                         buffer.push(0).map_err(|_| {
-                            Error::capacity_exceeded("Buffer capacity exceeded when serializing Result err presence \
-                                 flag")
+                            Error::capacity_exceeded("Buffer capacity exceeded when serializing Result err presence flag")
                         })?;
                     }
                 }
@@ -439,7 +437,7 @@ mod tests {
         assert_eq!(serialized.as_slice(), &[0x78, 0x56, 0x34, 0x12]); // Little endian
 
         // Test string serialization
-        let string_value = ComponentValue::String("test".to_string());
+        let string_value = ComponentValue::String("test".to_string();
         let serialized = serialize_component_value_no_std(&string_value).unwrap();
         assert_eq!(serialized.as_slice(), &[4, 0, 0, 0, b't', b'e', b's', b't']);
     }
@@ -451,10 +449,10 @@ mod tests {
         // Test bool conversion
         let bool_type = TypesValType::<XLargeProvider>::Bool;
         let format_type = convert_valtype_to_format(&bool_type).unwrap();
-        assert!(matches!(format_type, FormatValType::Bool));
+        assert!(matches!(format_type, FormatValType::Bool);
 
         let converted_back =
             convert_format_to_valtype::<XLargeProvider>(&format_type).unwrap();
-        assert!(matches!(converted_back, TypesValType::Bool));
+        assert!(matches!(converted_back, TypesValType::Bool);
     }
 }

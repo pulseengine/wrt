@@ -120,7 +120,7 @@ impl From<ComponentTypeDefinition> for FormatComponentType {
     fn from(type_def: ComponentTypeDefinition) -> Self {
         match type_def {
             ComponentTypeDefinition::Component { imports, exports } => Self::new(imports, exports),
-            _ => panic!("Expected Component type definition"),
+            _ => panic!("Expected Component type definitionMissing message"),
         }
     }
 }
@@ -170,7 +170,7 @@ impl From<ComponentTypeDefinition> for FormatInstanceType {
     fn from(type_def: ComponentTypeDefinition) -> Self {
         match type_def {
             ComponentTypeDefinition::Instance { exports } => Self::new(exports),
-            _ => panic!("Expected Instance type definition"),
+            _ => panic!("Expected Instance type definitionMissing message"),
         }
     }
 }
@@ -189,7 +189,7 @@ impl TryFrom<RuntimeComponentType> for FormatComponentType {
             .into_iter()
             .map(|(namespace, name, extern_type)| {
                 runtime_to_format_extern_type(&extern_type)
-                    .map(|format_type| (namespace, name, format_type))
+                    .map(|format_type| (namespace, name, format_type)
             })
             .collect();
 
@@ -198,7 +198,7 @@ impl TryFrom<RuntimeComponentType> for FormatComponentType {
             .exports
             .into_iter()
             .map(|(name, extern_type)| {
-                runtime_to_format_extern_type(&extern_type).map(|format_type| (name, format_type))
+                runtime_to_format_extern_type(&extern_type).map(|format_type| (name, format_type)
             })
             .collect();
 
@@ -216,7 +216,7 @@ impl TryFrom<FormatComponentType> for RuntimeComponentType {
             .into_iter()
             .map(|(namespace, name, extern_type)| {
                 format_to_runtime_extern_type(&extern_type)
-                    .map(|runtime_type| (namespace, name, runtime_type))
+                    .map(|runtime_type| (namespace, name, runtime_type)
             })
             .collect();
 
@@ -225,7 +225,7 @@ impl TryFrom<FormatComponentType> for RuntimeComponentType {
             .exports
             .into_iter()
             .map(|(name, extern_type)| {
-                format_to_runtime_extern_type(&extern_type).map(|runtime_type| (name, runtime_type))
+                format_to_runtime_extern_type(&extern_type).map(|runtime_type| (name, runtime_type)
             })
             .collect();
 
@@ -236,7 +236,7 @@ impl TryFrom<FormatComponentType> for RuntimeComponentType {
             imports: imports_result?,
             exports: exports_result?,
             instances,
-        }))
+        })
     }
 }
 
@@ -251,7 +251,7 @@ impl TryFrom<RuntimeInstanceType> for FormatInstanceType {
             .exports
             .into_iter()
             .map(|(name, extern_type)| {
-                runtime_to_format_extern_type(&extern_type).map(|format_type| (name, format_type))
+                runtime_to_format_extern_type(&extern_type).map(|format_type| (name, format_type)
             })
             .collect();
 
@@ -268,11 +268,11 @@ impl TryFrom<FormatInstanceType> for RuntimeInstanceType {
             .exports
             .into_iter()
             .map(|(name, extern_type)| {
-                format_to_runtime_extern_type(&extern_type).map(|runtime_type| (name, runtime_type))
+                format_to_runtime_extern_type(&extern_type).map(|runtime_type| (name, runtime_type)
             })
             .collect();
 
-        Ok(Self::new(InstanceType { exports: exports_result? }))
+        Ok(Self::new(InstanceType { exports: exports_result? })
     }
 }
 
@@ -336,7 +336,7 @@ impl TryFrom<ComponentTypeDefinition> for RuntimeComponentType {
                 let format_type = FormatComponentType::new(imports, exports);
                 format_type.try_into()
             }
-            _ => Err(Error::validation_error("Expected Component type definition")),
+            _ => Err(Error::validation_error("Error occurred"Expected Component type definitionMissing messageMissing messageMissing message")),
         }
     }
 }
@@ -350,7 +350,7 @@ impl TryFrom<ComponentTypeDefinition> for RuntimeInstanceType {
                 let format_type = FormatInstanceType::new(exports);
                 format_type.try_into()
             }
-            _ => Err(Error::validation_error("Expected Instance type definition")),
+            _ => Err(Error::validation_error("Error occurred"Expected Instance type definitionMissing messageMissing messageMissing message")),
         }
     }
 }
@@ -424,8 +424,8 @@ mod tests {
             To: TestConvertible,
             F: TestConversion<From, To> + 'static,
         {
-            let key = (TypeId::of::<From>(), TypeId::of::<To>());
-            self.conversions.insert(key, Arc::new(converter));
+            let key = (TypeId::of::<From>(), TypeId::of::<To>();
+            self.conversions.insert(key, Arc::new(converter);
         }
 
         fn can_convert<From, To>(&self) -> bool
@@ -433,7 +433,7 @@ mod tests {
             From: TestConvertible,
             To: TestConvertible,
         {
-            let key = (TypeId::of::<From>(), TypeId::of::<To>());
+            let key = (TypeId::of::<From>(), TypeId::of::<To>();
             self.conversions.contains_key(&key)
         }
 
@@ -442,7 +442,7 @@ mod tests {
             From: TestConvertible,
             To: TestConvertible,
         {
-            let key = (TypeId::of::<From>(), TypeId::of::<To>());
+            let key = (TypeId::of::<From>(), TypeId::of::<To>();
             if let Some(conversion) = self.conversions.get(&key) {
                 if let Some(typed_conversion) = conversion.downcast_ref::<dyn TestConversion<From, To>>() {
                     typed_conversion.convert(from)
@@ -471,21 +471,21 @@ mod tests {
         let mut registry = TestConversionRegistry::new();
 
         // Initially, no conversions should be available
-        assert!(!registry.can_convert::<TestSource, TestTarget>());
-        assert!(!registry.can_convert::<TestTarget, TestSource>());
+        assert!(!registry.can_convert::<TestSource, TestTarget>();
+        assert!(!registry.can_convert::<TestTarget, TestSource>();
 
         // Register one conversion
         registry.register(|src: &TestSource| -> core::result::Result<TestTarget, TestConversionError> {
-            Ok(TestTarget(src.0))
+            Ok(TestTarget(src.0)
         });
 
         // Now one direction should work but not the other
-        assert!(registry.can_convert::<TestSource, TestTarget>());
-        assert!(!registry.can_convert::<TestTarget, TestSource>());
+        assert!(registry.can_convert::<TestSource, TestTarget>();
+        assert!(!registry.can_convert::<TestTarget, TestSource>();
 
         // Test the actual conversion
         let source = TestSource(42);
         let result = registry.convert::<TestSource, TestTarget>(&source).unwrap();
-        assert_eq!(result, TestTarget(42));
+        assert_eq!(result, TestTarget(42);
     }
 }

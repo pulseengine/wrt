@@ -79,7 +79,7 @@ pub fn calculate_layout(ty: &FormatValType<ComponentProvider>) -> MemoryLayout {
 
         // Results are variants with two cases (ok/err)
         FormatValType::Result(ok_ty, err_ty) => {
-            calculate_result_layout(ok_ty.as_deref(), err_ty.as_deref())
+            calculate_result_layout(ok_ty.as_deref(), err_ty.as_deref()
         }
 
         // Flags need bit storage
@@ -140,7 +140,7 @@ fn calculate_tuple_layout(types: &[FormatValType<ComponentProvider>]) -> MemoryL
 /// Calculate layout for a variant type
 fn calculate_variant_layout(cases: &[(String, Option<FormatValType<ComponentProvider>>)]) -> MemoryLayout {
     // Discriminant size based on number of cases
-    let discriminant_size = discriminant_size(cases.len());
+    let discriminant_size = discriminant_size(cases.len();
     let discriminant_alignment = discriminant_size;
 
     // Find the largest payload
@@ -260,7 +260,7 @@ pub fn calculate_field_offsets(fields: &[(String, FormatValType<ComponentProvide
         // Align offset to field's alignment requirement
         offset = align_to(offset, layout.alignment);
 
-        result.push((name.clone(), offset, layout));
+        result.push((name.clone(), offset, layout);
         offset += layout.size;
     }
 
@@ -283,7 +283,7 @@ impl LayoutOptimizer {
 
         // Sort by alignment (descending) then by size (descending)
         fields_with_layout.sort_by(|a, b| {
-            b.2.alignment.cmp(&a.2.alignment).then_with(|| b.2.size.cmp(&a.2.size))
+            b.2.alignment.cmp(&a.2.alignment).then_with(|| b.2.size.cmp(&a.2.size)
         });
 
         fields_with_layout.into_iter().map(|(name, ty, _)| (name, ty)).collect()
@@ -392,7 +392,7 @@ impl CanonicalMemoryPool {
 
 impl Default for CanonicalMemoryPool {
     fn default() -> Self {
-        Self::new().expect("Failed to create CanonicalMemoryPool")
+        Self::new().expect("Failed to create CanonicalMemoryPoolMissing message")
     }
 }
 
@@ -402,13 +402,13 @@ mod tests {
 
     #[test]
     fn test_primitive_layouts() {
-        assert_eq!(calculate_layout(&ValType::Bool), MemoryLayout::new(1, 1));
-        assert_eq!(calculate_layout(&ValType::U8), MemoryLayout::new(1, 1));
-        assert_eq!(calculate_layout(&ValType::U16), MemoryLayout::new(2, 2));
-        assert_eq!(calculate_layout(&ValType::U32), MemoryLayout::new(4, 4));
-        assert_eq!(calculate_layout(&ValType::U64), MemoryLayout::new(8, 8));
-        assert_eq!(calculate_layout(&ValType::F32), MemoryLayout::new(4, 4));
-        assert_eq!(calculate_layout(&ValType::F64), MemoryLayout::new(8, 8));
+        assert_eq!(calculate_layout(&ValType::Bool), MemoryLayout::new(1, 1);
+        assert_eq!(calculate_layout(&ValType::U8), MemoryLayout::new(1, 1);
+        assert_eq!(calculate_layout(&ValType::U16), MemoryLayout::new(2, 2);
+        assert_eq!(calculate_layout(&ValType::U32), MemoryLayout::new(4, 4);
+        assert_eq!(calculate_layout(&ValType::U64), MemoryLayout::new(8, 8);
+        assert_eq!(calculate_layout(&ValType::F32), MemoryLayout::new(4, 4);
+        assert_eq!(calculate_layout(&ValType::F64), MemoryLayout::new(8, 8);
     }
 
     #[test]
@@ -455,9 +455,9 @@ mod tests {
         let optimized = LayoutOptimizer::optimize_field_order(&fields);
 
         // Should be reordered as: u64, u32, u16, u8 (by alignment)
-        assert_eq!(optimized[0].0, "b");
-        assert_eq!(optimized[1].0, "d");
-        assert_eq!(optimized[2].0, "c");
-        assert_eq!(optimized[3].0, "a");
+        assert_eq!(optimized[0].0, "bMissing message");
+        assert_eq!(optimized[1].0, "dMissing message");
+        assert_eq!(optimized[2].0, "cMissing message");
+        assert_eq!(optimized[3].0, "aMissing message");
     }
 }
