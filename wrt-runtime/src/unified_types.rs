@@ -13,6 +13,7 @@ use wrt_foundation::{
     traits::{Checksummable, ToBytes, FromBytes},
     prelude::{BoundedCapacity, Clone, Copy, Debug, Default, Eq, PartialEq, Value},
 };
+use crate::bounded_runtime_infra::{RuntimeProvider, DefaultRuntimeProvider};
 use wrt_error::{Error, ErrorCategory};
 
 // =============================================================================
@@ -79,18 +80,14 @@ pub const LARGE_CAPACITY: usize = PlatformCapacities::default().large_capacity;
 // RUNTIME-CONFIGURABLE TYPE DEFINITIONS
 // =============================================================================
 
-/// Primary runtime memory provider - configurable size
-pub type RuntimeProvider<const SIZE: usize = { PlatformCapacities::default().memory_provider_size }> = 
-    NoStdProvider<SIZE>;
-
-/// Default runtime provider using standard capacity
-pub type DefaultRuntimeProvider = RuntimeProvider<{ PlatformCapacities::default().memory_provider_size }>;
+// RuntimeProvider definitions moved to bounded_runtime_infra.rs to avoid conflicts
+// Use crate::bounded_runtime_infra::RuntimeProvider instead
 
 /// Embedded runtime provider with reduced capacity
-pub type EmbeddedRuntimeProvider = RuntimeProvider<{ PlatformCapacities::embedded().memory_provider_size }>;
+pub type EmbeddedRuntimeProvider = NoStdProvider<{ PlatformCapacities::embedded().memory_provider_size }>;
 
 /// Safety-critical runtime provider with conservative capacity
-pub type SafetyCriticalRuntimeProvider = RuntimeProvider<{ PlatformCapacities::safety_critical().memory_provider_size }>;
+pub type SafetyCriticalRuntimeProvider = NoStdProvider<{ PlatformCapacities::safety_critical().memory_provider_size }>;
 
 /// Universal bounded collection types with runtime configuration support
 /// 

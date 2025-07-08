@@ -115,7 +115,7 @@ use crate::{
 struct HostFunctionImpl<
     F: Fn(
             &[wrt_foundation::Value],
-        ) -> Result<wrt_foundation::bounded::BoundedStack<wrt_foundation::Value, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>>
+        ) -> Result<wrt_foundation::bounded::BoundedStack<wrt_foundation::Value, 64, crate::bounded_runtime_infra::RuntimeProvider>>
         + 'static
         + Send
         + Sync,
@@ -132,7 +132,7 @@ struct HostFunctionImpl<
 impl<
         F: Fn(
                 &[wrt_foundation::Value],
-            ) -> Result<wrt_foundation::bounded::BoundedStack<wrt_foundation::Value, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>>
+            ) -> Result<wrt_foundation::bounded::BoundedStack<wrt_foundation::Value, 64, wrt_foundation::safe_memory::NoStdProvider<131072>>>
             + 'static
             + Send
             + Sync,
@@ -142,7 +142,7 @@ impl<
     fn call(
         &self,
         args: &[wrt_foundation::Value],
-    ) -> Result<wrt_foundation::bounded::BoundedStack<wrt_foundation::Value, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
+    ) -> Result<wrt_foundation::bounded::BoundedStack<wrt_foundation::Value, 64, wrt_foundation::safe_memory::NoStdProvider<131072>>> {
         (self.implementation)(args)
     }
 
@@ -155,7 +155,7 @@ impl<
 
 /// Legacy host function implementation for backward compatibility
 struct LegacyHostFunctionImpl<
-    F: Fn(&[wrt_foundation::Value]) -> Result<wrt_foundation::bounded::BoundedVec<wrt_foundation::Value, 16, wrt_foundation::safe_memory::NoStdProvider<1024>>> + 'static + Send + Sync,
+    F: Fn(&[wrt_foundation::Value]) -> Result<wrt_foundation::bounded::BoundedVec<wrt_foundation::Value, 16, wrt_foundation::safe_memory::NoStdProvider<131072>>> + 'static + Send + Sync,
 > {
     /// Function type
     func_type: FuncType,
@@ -167,14 +167,14 @@ struct LegacyHostFunctionImpl<
 
 #[cfg(feature = "std")]
 impl<
-        F: Fn(&[wrt_foundation::Value]) -> Result<wrt_foundation::bounded::BoundedVec<wrt_foundation::Value, 16, wrt_foundation::safe_memory::NoStdProvider<1024>>> + 'static + Send + Sync,
+        F: Fn(&[wrt_foundation::Value]) -> Result<wrt_foundation::bounded::BoundedVec<wrt_foundation::Value, 16, wrt_foundation::safe_memory::NoStdProvider<131072>>> + 'static + Send + Sync,
     > ComponentHostFunction for LegacyHostFunctionImpl<F>
 {
     /// Call the function with the given arguments
     fn call(
         &self,
         args: &[wrt_foundation::Value],
-    ) -> Result<wrt_foundation::bounded::BoundedStack<wrt_foundation::Value, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
+    ) -> Result<wrt_foundation::bounded::BoundedStack<wrt_foundation::Value, 64, wrt_foundation::safe_memory::NoStdProvider<131072>>> {
         // Call the legacy function
         let vec_result = (self.implementation)(args)?;
 
@@ -264,12 +264,12 @@ impl ComponentRuntime for ComponentRuntimeImpl {
             #[cfg(feature = "std")]
             host_factories: Vec::with_capacity(8),
             #[cfg(all(not(feature = "std"), not(feature = "std")))]
-            host_factories: HostFactoryVec::new(wrt_provider!(1024, CrateId::Runtime).unwrap_or_default()).expect("Failed to create host_factories"),
+            host_factories: HostFactoryVec::new(wrt_provider!(131072, CrateId::Runtime).unwrap_or_default()).expect("Failed to create host_factories"),
             verification_level: VerificationLevel::default(),
             #[cfg(feature = "std")]
             host_functions: HostFunctionMap::new(),
             #[cfg(all(not(feature = "std"), not(feature = "std")))]
-            host_functions: HostFunctionMap::new(wrt_provider!(1024, CrateId::Runtime).unwrap_or_default()).expect("Failed to create host_functions"),
+            host_functions: HostFunctionMap::new(wrt_provider!(131072, CrateId::Runtime).unwrap_or_default()).expect("Failed to create host_functions"),
         }
     }
 
@@ -365,7 +365,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
             Ok(Box::new(ComponentInstanceImpl {
                 component_type: component_type.clone(),
                 verification_level: self.verification_level,
-                memory_store: wrt_foundation::safe_memory::SafeMemoryHandler::<wrt_foundation::safe_memory::NoStdProvider<1024>>::new(wrt_provider!(1024, CrateId::Runtime).unwrap_or_default()),
+                memory_store: wrt_foundation::safe_memory::SafeMemoryHandler::<wrt_foundation::safe_memory::NoStdProvider<131072>>::new(wrt_provider!(131072, CrateId::Runtime).unwrap_or_default()),
                 host_function_names,
                 host_functions,
             }))
@@ -381,7 +381,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
     /// Register a host function
     fn register_host_function<F>(&mut self, name: &str, ty: FuncType, function: F) -> Result<()>
     where
-        F: Fn(&[wrt_foundation::Value]) -> Result<wrt_foundation::bounded::BoundedVec<wrt_foundation::Value, 16, wrt_foundation::safe_memory::NoStdProvider<1024>>>
+        F: Fn(&[wrt_foundation::Value]) -> Result<wrt_foundation::bounded::BoundedVec<wrt_foundation::Value, 16, wrt_foundation::safe_memory::NoStdProvider<131072>>>
             + 'static
             + Send
             + Sync,
@@ -468,7 +468,7 @@ struct ComponentInstanceImpl {
     /// Verification level
     verification_level: VerificationLevel,
     /// Memory store for the instance
-    memory_store: wrt_foundation::safe_memory::SafeMemoryHandler<wrt_foundation::safe_memory::NoStdProvider<1024>>,
+    memory_store: wrt_foundation::safe_memory::SafeMemoryHandler<wrt_foundation::safe_memory::NoStdProvider<131072>>,
     /// Named host functions that are available to this instance
     host_function_names: Vec<String>,
     /// Host functions in this runtime
@@ -482,7 +482,7 @@ impl ComponentInstance for ComponentInstanceImpl {
         &self,
         name: &str,
         args: &[wrt_foundation::Value],
-    ) -> Result<wrt_foundation::bounded::BoundedStack<wrt_foundation::Value, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
+    ) -> Result<wrt_foundation::bounded::BoundedStack<wrt_foundation::Value, 64, wrt_foundation::safe_memory::NoStdProvider<131072>>> {
         // Verify args (safety check)
         if self.verification_level.should_verify(128) {
             // Check that argument types match the expected types
@@ -703,11 +703,11 @@ mod tests {
             _ty: &crate::func::FuncType,
         ) -> Result<Box<dyn HostFunction>> {
             // Create a simple legacy echo function
-            let func_type = FuncType::new(wrt_provider!(1024, CrateId::Runtime).unwrap_or_default(), {
-                let provider = wrt_provider!(1024, CrateId::Runtime).unwrap_or_default();
+            let func_type = FuncType::new(wrt_provider!(131072, CrateId::Runtime).unwrap_or_default(), {
+                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default();
                 Vec::new(provider)?
             }, {
-                let provider = wrt_provider!(1024, CrateId::Runtime).unwrap_or_default();
+                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default();
                 Vec::new(provider)?
             })?;
 
@@ -763,15 +763,15 @@ mod tests {
         let component_type =
             ComponentType { 
                 imports: {
-                let provider = wrt_provider!(1024, CrateId::Runtime).unwrap_or_default();
+                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default();
                 Vec::new(provider)?
             }, 
                 exports: {
-                let provider = wrt_provider!(1024, CrateId::Runtime).unwrap_or_default();
+                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default();
                 Vec::new(provider)?
             }, 
                 instances: {
-                let provider = wrt_provider!(1024, CrateId::Runtime).unwrap_or_default();
+                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default();
                 Vec::new(provider)?
             } 
             };
@@ -781,9 +781,9 @@ mod tests {
         let mut instance = ComponentInstanceImpl {
             component_type,
             verification_level: VerificationLevel::Standard,
-            memory_store: wrt_foundation::safe_memory::SafeMemoryHandler::<wrt_foundation::safe_memory::NoStdProvider<1024>>::new(data),
+            memory_store: wrt_foundation::safe_memory::SafeMemoryHandler::<wrt_foundation::safe_memory::NoStdProvider<131072>>::new(data),
             host_function_names: {
-                let provider = wrt_provider!(1024, CrateId::Runtime).unwrap_or_default();
+                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default();
                 Vec::new(provider)?
             },
             #[cfg(feature = "std")]

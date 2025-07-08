@@ -39,6 +39,12 @@ use wrt_foundation::bounded::BoundedVec;
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 type PlatformVec<T> = BoundedVec<T, 16, wrt_foundation::NoStdProvider<1024>>;
 
+// Type alias for Vec that works in all feature configurations
+#[cfg(any(feature = "std", feature = "alloc"))]
+type ValueVec = Vec<Value>;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+type ValueVec = PlatformVec<Value>;
+
 // Import Value type
 use wrt_foundation::Value;
 // CFI imports temporarily disabled since CFI module is disabled
@@ -131,7 +137,7 @@ impl PlatformAwareRuntime {
         let safety_context = SafetyContext::new(AsilLevel::D); // Default to highest safety level for no_std
         
         Ok(Self {
-            execution_engine,
+            execution_engine: execution_engine?,
             safety_context,
             metrics: RuntimeMetrics::default(),
         })
@@ -185,7 +191,7 @@ impl PlatformAwareRuntime {
         &mut self,
         function: &RuntimeFunction,
         args: &[Value],
-    ) -> Result<Vec<Value>> {
+    ) -> Result<ValueVec> {
         let start_time = self.get_timestamp();
         
         // Validate execution against platform limits
@@ -451,7 +457,7 @@ impl PlatformAwareRuntime {
         &self,
         _cfi_result: crate::cfi_engine::CfiExecutionResult,
         _arg_count: usize,
-    ) -> Result<Vec<Value>> {
+    ) -> Result<ValueVec> {
         // Simplified implementation - in real scenario this would extract actual values
         #[cfg(any(feature = "std", feature = "alloc"))]
         {

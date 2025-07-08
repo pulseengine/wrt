@@ -481,6 +481,7 @@ impl WrtdEngine {
         // Execute with actual WRT engine if available
         #[cfg(all(feature = "std", feature = "wrt-execution"))]
         {
+            let _ = self.logger.handle_minimal_log(LogLevel::Info, "Using real WRT execution engine");
             use wrt::engine::{CapabilityAwareEngine, EnginePreset};
             
             // Determine engine preset from features  
@@ -888,8 +889,12 @@ impl SimpleArgs {
 /// Main entry point
 #[cfg(feature = "std")]
 fn main() -> Result<()> {
+    eprintln!("DEBUG: wrtd starting");
+    
     // Parse arguments first to check for --help
     let args = SimpleArgs::parse()?;
+    
+    eprintln!("DEBUG: args parsed");
     
     println!("WebAssembly Runtime Daemon (wrtd)");
     println!("===================================");

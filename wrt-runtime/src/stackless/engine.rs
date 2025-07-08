@@ -408,7 +408,7 @@ impl StacklessEngine {
     
     /// Get the current module instance for function/table lookups
     pub fn get_current_module(&self) -> Option<&ModuleInstance> {
-        self.current_module.as_ref().map(|arc| arc.as_ref())
+        self.current_module.as_ref().map(|arc| &**arc)
     }
     
     /// Store module instance for execution

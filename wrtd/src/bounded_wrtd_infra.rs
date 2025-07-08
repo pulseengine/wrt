@@ -8,8 +8,8 @@ use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
     bounded_collections::BoundedMap as BoundedHashMap,
     safe_memory::NoStdProvider,
-    budget_aware_provider::CrateId,
-    capabilities::{CapabilityAwareProvider, capability_context, safe_capability_alloc},
+    capabilities::CapabilityAwareProvider,
+    capability_context, safe_capability_alloc, CrateId,
     traits::{Checksummable, ToBytes, FromBytes},
     WrtResult,
 };

@@ -16,6 +16,7 @@ use wrt_foundation::{
     prelude::*,
 };
 use wrt_error::{Result, Error, ErrorCategory};
+use crate::bounded_runtime_infra::{DefaultRuntimeProvider, create_runtime_provider};
 
 // Import Box for no_std compatibility
 #[cfg(feature = "std")]
@@ -23,8 +24,7 @@ use std::boxed::Box;
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
 
-/// Default memory provider for runtime components
-pub type DefaultRuntimeProvider = NoStdProvider<1048576>;
+// DefaultRuntimeProvider definition moved to bounded_runtime_infra.rs to avoid conflicts
 
 /// Unique identifier for component instances
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -139,8 +139,8 @@ where
             id: ComponentId::default(),
             component_type: ComponentType::default(),
             memory_adapter,
-            exports: ExportMap::new(DefaultRuntimeProvider::default())?,
-            imports: ImportMap::new(DefaultRuntimeProvider::default())?,
+            exports: ExportMap::new(create_runtime_provider()?)?,
+            imports: ImportMap::new(create_runtime_provider()?)?,
             linear_memory: None,
             state: ComponentExecutionState::Instantiating,
         })
@@ -184,13 +184,13 @@ where
                 id: ComponentId::default(),
                 component_type: ComponentType::default(),
                 memory_adapter,
-                exports: ExportMap::new(DefaultRuntimeProvider::default())
+                exports: ExportMap::new(create_runtime_provider().unwrap_or_else(|_| DefaultRuntimeProvider::default()))
                     .unwrap_or_else(|_| ExportMap::default()),
-                imports: ImportMap::new(DefaultRuntimeProvider::default())
+                imports: ImportMap::new(create_runtime_provider().unwrap_or_else(|_| DefaultRuntimeProvider::default()))
                     .unwrap_or_else(|_| ImportMap::default()),
                 linear_memory: None,
                 state: ComponentExecutionState::Failed(
-                    RuntimeString::from_str_truncate("Failed to create component", DefaultRuntimeProvider::default())
+                    RuntimeString::from_str_truncate("Failed to create component", create_runtime_provider().unwrap_or_else(|_| DefaultRuntimeProvider::default()))
                         .unwrap_or_else(|_| RuntimeString::default())
                 ), // Mark as failed state
             }
@@ -291,8 +291,8 @@ where
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         memory_adapter: PlatformMemoryAdapter<DefaultRuntimeProvider>,
     ) -> Result<Self> {
-        let exports = ExportMap::new(DefaultRuntimeProvider::default())?;
-        let imports = ImportMap::new(DefaultRuntimeProvider::default())?;
+        let exports = ExportMap::new(create_runtime_provider()?)?;
+        let imports = ImportMap::new(create_runtime_provider()?)?;
         
         Ok(Self {
             id: ComponentId::new(),
@@ -386,7 +386,7 @@ where
             #[cfg(any(feature = "std", feature = "alloc"))]
             instances: Vec::new(),
             #[cfg(not(any(feature = "std", feature = "alloc")))]
-            instances: BoundedVec::new(DefaultRuntimeProvider::default())?,
+            instances: BoundedVec::new(create_runtime_provider()?)?,
             platform_limits: limits,
             memory_budget,
             global_memory_adapter,
@@ -404,7 +404,7 @@ where
             #[cfg(any(feature = "std", feature = "alloc"))]
             instances: Vec::new(),
             #[cfg(not(any(feature = "std", feature = "alloc")))]
-            instances: BoundedVec::new(DefaultRuntimeProvider::default())?,
+            instances: BoundedVec::new(create_runtime_provider()?)?,
             memory_budget,
             global_memory_adapter,
         })
@@ -448,12 +448,28 @@ where
     
     /// Get a reference to a component instance
     pub fn get_instance(&self, id: ComponentId) -> Option<&UnifiedComponentInstance<Provider>> {
-        self.instances.iter().find(|instance| instance.id == id)
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        return self.instances.iter().find(|instance| instance.id == id);
+        
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            // BoundedVec stores serialized data, so we can't return references
+            // This is a limitation of the no_std implementation
+            None
+        }
     }
     
     /// Get a mutable reference to a component instance
     pub fn get_instance_mut(&mut self, id: ComponentId) -> Option<&mut UnifiedComponentInstance<Provider>> {
-        self.instances.iter_mut().find(|instance| instance.id == id)
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        return self.instances.iter_mut().find(|instance| instance.id == id);
+        
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            // BoundedVec stores serialized data, so we can't return mutable references
+            // This is a limitation of the no_std implementation
+            None
+        }
     }
     
     /// Get the number of active component instances

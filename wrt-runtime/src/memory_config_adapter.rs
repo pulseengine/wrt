@@ -22,9 +22,9 @@ use wrt_foundation::capabilities::{factory::CapabilityGuardedProvider, MemoryCap
 #[cfg(any(feature = "std", feature = "alloc"))]
 type AllocatedProvider<const N: usize> = CapabilityAwareProvider<NoStdProvider<N>>;
 
-// In no_std environments, use NoStdProvider directly
+// In no_std environments, also use CapabilityAwareProvider for consistency
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-type AllocatedProvider<const N: usize> = NoStdProvider<N>;
+type AllocatedProvider<const N: usize> = CapabilityAwareProvider<NoStdProvider<N>>;
 
 // Import provider creation functions from prelude which handles conditionals
 
@@ -175,8 +175,10 @@ pub mod platform_types {
     pub fn create_platform_provider() -> Result<AllocatedProvider<8192>> {
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         {
+            // For no_std, use safe allocation
             let context = capability_context!(dynamic(CrateId::Runtime, 8192))?;
-            safe_capability_alloc!(context, CrateId::Runtime, 8192)
+            let provider = safe_capability_alloc!(context, CrateId::Runtime, 8192)?;
+            Ok(provider)
         }
         #[cfg(any(feature = "std", feature = "alloc"))]
         {
@@ -191,28 +193,50 @@ pub struct DynamicProviderFactory;
 impl DynamicProviderFactory {
     /// Create a provider sized for the current platform
     pub fn create_for_use_case(use_case: MemoryUseCase) -> Result<AllocatedProvider<16384>> {
-        let size = match use_case {
-            MemoryUseCase::FunctionLocals => 16384,
-            MemoryUseCase::InstructionBuffer => 16384,
-            MemoryUseCase::ModuleMetadata => 16384,
-            MemoryUseCase::ComponentData => 16384,
-            MemoryUseCase::TemporaryBuffer => 16384,
-        };
-        // Use size-based provider for runtime use cases
-        let context = capability_context!(dynamic(CrateId::Runtime, size))?;
-        safe_capability_alloc!(context, CrateId::Runtime, 16384)
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            // For no_std, use safe allocation
+            let context = capability_context!(dynamic(CrateId::Runtime, 16384))?;
+            let provider = safe_capability_alloc!(context, CrateId::Runtime, 16384)?;
+            Ok(provider)
+        }
+        
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            MemoryFactory::create_wrapped::<16384>(CrateId::Runtime)
+        }
     }
     
     /// Create a string provider with platform-appropriate size
     pub fn create_string_provider() -> Result<AllocatedProvider<8192>> {
-        let context = capability_context!(dynamic(CrateId::Runtime, 8192))?;
-        safe_capability_alloc!(context, CrateId::Runtime, 8192)
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            // For no_std, use safe allocation
+            let context = capability_context!(dynamic(CrateId::Runtime, 8192))?;
+            let provider = safe_capability_alloc!(context, CrateId::Runtime, 8192)?;
+            Ok(provider)
+        }
+        
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            MemoryFactory::create_wrapped::<8192>(CrateId::Runtime)
+        }
     }
     
     /// Create a collection provider with platform-appropriate size
     pub fn create_collection_provider() -> Result<AllocatedProvider<16384>> {
-        let context = capability_context!(dynamic(CrateId::Runtime, 16384))?;
-        safe_capability_alloc!(context, CrateId::Runtime, 16384)
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            // For no_std, use safe allocation
+            let context = capability_context!(dynamic(CrateId::Runtime, 16384))?;
+            let provider = safe_capability_alloc!(context, CrateId::Runtime, 16384)?;
+            Ok(provider)
+        }
+        
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            MemoryFactory::create_wrapped::<16384>(CrateId::Runtime)
+        }
     }
 }
 

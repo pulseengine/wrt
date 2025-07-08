@@ -5,7 +5,7 @@
 //! and runtime state management.
 
 use crate::prelude::*;
-use wrt_foundation::bounded::BoundedVec;
+use wrt_foundation::bounded::{BoundedVec, BoundedString};
 use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, ReadStream, WriteStream};
 use wrt_foundation::verification::Checksum;
 use wrt_foundation::{WrtResult, MemoryProvider};
@@ -42,7 +42,7 @@ pub struct CoreModuleInstantiation {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RuntimeInstantiateArg {
     /// Name of the argument
-    pub name: String,
+    pub name: BoundedString<256, InstantiationProvider>,
     /// Runtime reference to the provided value
     pub runtime_ref: RuntimeReference,
     /// Validation state
@@ -53,7 +53,7 @@ pub struct RuntimeInstantiateArg {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RuntimeCoreInstantiateArg {
     /// Name of the argument
-    pub name: String,
+    pub name: BoundedString<256, InstantiationProvider>,
     /// Runtime instance index that provides the value
     pub runtime_instance_idx: u32,
     /// Validation state
@@ -136,7 +136,7 @@ impl ComponentInstantiation {
     }
     
     /// Add instantiation argument
-    pub fn add_arg(&mut self, name: String, runtime_ref: RuntimeReference) -> Result<()> {
+    pub fn add_arg(&mut self, name: BoundedString<256, InstantiationProvider>, runtime_ref: RuntimeReference) -> Result<()> {
         let arg = RuntimeInstantiateArg {
             name,
             runtime_ref,
@@ -178,7 +178,7 @@ impl CoreModuleInstantiation {
     }
     
     /// Add core instantiation argument
-    pub fn add_core_arg(&mut self, name: String, runtime_instance_idx: u32) -> Result<()> {
+    pub fn add_core_arg(&mut self, name: BoundedString<256, InstantiationProvider>, runtime_instance_idx: u32) -> Result<()> {
         let arg = RuntimeCoreInstantiateArg {
             name,
             runtime_instance_idx,
@@ -241,7 +241,7 @@ impl Default for InstantiationState {
 // Trait implementations for RuntimeInstantiateArg
 impl Checksummable for RuntimeInstantiateArg {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update_slice(self.name.as_bytes());
+        checksum.update_slice(self.name.as_str().unwrap_or("").as_bytes());
         checksum.update_slice(&self.runtime_ref.runtime_idx.to_le_bytes());
         checksum.update_slice(&[if self.is_validated { 1 } else { 0 }]);
     }
@@ -257,7 +257,7 @@ impl ToBytes for RuntimeInstantiateArg {
         writer: &mut WriteStream<'_>,
         _provider: &P,
     ) -> WrtResult<()> {
-        writer.write_all(self.name.as_bytes())?;
+        writer.write_all(self.name.as_str()?.as_bytes())?;
         writer.write_all(&self.runtime_ref.runtime_idx.to_le_bytes())?;
         writer.write_all(&[if self.is_validated { 1 } else { 0 }])?;
         Ok(())
@@ -278,7 +278,7 @@ impl FromBytes for RuntimeInstantiateArg {
 // Trait implementations for RuntimeCoreInstantiateArg
 impl Checksummable for RuntimeCoreInstantiateArg {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update_slice(self.name.as_bytes());
+        checksum.update_slice(self.name.as_str().unwrap_or("").as_bytes());
         checksum.update_slice(&self.runtime_instance_idx.to_le_bytes());
         checksum.update_slice(&[if self.is_validated { 1 } else { 0 }]);
     }
@@ -294,7 +294,7 @@ impl ToBytes for RuntimeCoreInstantiateArg {
         writer: &mut WriteStream<'_>,
         _provider: &P,
     ) -> WrtResult<()> {
-        writer.write_all(self.name.as_bytes())?;
+        writer.write_all(self.name.as_str()?.as_bytes())?;
         writer.write_all(&self.runtime_instance_idx.to_le_bytes())?;
         writer.write_all(&[if self.is_validated { 1 } else { 0 }])?;
         Ok(())

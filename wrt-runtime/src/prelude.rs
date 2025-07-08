@@ -309,7 +309,7 @@ pub use wrt_foundation::clean_core_types::{
 };
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub type CoreFuncType = wrt_foundation::types::FuncType<crate::memory_adapter::StdMemoryProvider>;
+pub type CoreFuncType = wrt_foundation::types::FuncType<crate::bounded_runtime_infra::RuntimeProvider>;
 
 // Fallback for no_std environments - provide core types
 #[cfg(not(any(feature = "std", feature = "alloc")))]
@@ -320,7 +320,7 @@ pub use wrt_foundation::types::{
 };
 
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-pub type CoreFuncType = wrt_foundation::types::FuncType<crate::bounded_runtime_infra::BaseRuntimeProvider>;
+pub type CoreFuncType = wrt_foundation::types::FuncType<crate::bounded_runtime_infra::RuntimeProvider>;
 
 // Public type aliases using clean CORE types (not component types)
 /// Type alias for WebAssembly function types

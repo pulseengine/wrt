@@ -115,8 +115,7 @@ impl ExecutionMonitor for SimpleExecutionMonitor {
     fn check_thread_health(&self, id: u64) -> Result<ThreadHealth> {
         let threads = self.threads.read();
         let info = threads.get(&id).ok_or_else(|| {
-            Error::runtime_execution_error(",
-            )
+            Error::runtime_execution_error("Thread not found")
         })?;
 
         let now = std::time::Instant::now();
@@ -227,8 +226,7 @@ impl WasmThreadManager {
     pub fn spawn_thread(&self, request: ThreadSpawnRequest) -> Result<u64> {
         // Check if shutting down
         if *self.shutdown.lock() {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Thread manager is shutting down"));
         }
 
         // Get module info
@@ -238,14 +236,13 @@ impl WasmThreadManager {
                 Error::new(
                     ErrorCategory::Validation,
                     1,
-                    ")
+                    "Module not found")
             })?
         };
 
         // Binary std/no_std choice
         if !self.resource_tracker.can_allocate_thread(&request)? {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Thread allocation limit exceeded"));
         }
 
         // Get thread ID

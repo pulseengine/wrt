@@ -219,7 +219,44 @@ impl<'a> StreamingDecoder<'a> {
 
     /// Process export section
     fn process_export_section(&mut self, data: &[u8]) -> Result<()> {
-        // Parse exports one at a time
+        use wrt_format::binary::read_leb128_u32;
+        use crate::optimized_string::parse_utf8_string_inplace;
+        
+        let (count, mut offset) = read_leb128_u32(data, 0)?;
+        
+        for _ in 0..count {
+            // Parse export name
+            let (export_name, new_offset) = parse_utf8_string_inplace(data, offset)?;
+            offset = new_offset;
+            
+            if offset >= data.len() {
+                return Err(Error::parse_error("Unexpected end of export kind"));
+            }
+            
+            // Parse export kind
+            let kind_byte = data[offset];
+            offset += 1;
+            
+            let kind = match kind_byte {
+                0x00 => wrt_format::module::ExportKind::Function,
+                0x01 => wrt_format::module::ExportKind::Table,
+                0x02 => wrt_format::module::ExportKind::Memory,
+                0x03 => wrt_format::module::ExportKind::Global,
+                _ => return Err(Error::parse_error("Invalid export kind")),
+            };
+            
+            // Parse export index
+            let (index, new_offset) = read_leb128_u32(data, offset)?;
+            offset = new_offset;
+            
+            // Add export to module
+            self.module.exports.push(wrt_format::module::Export {
+                name: export_name,
+                kind,
+                index,
+            });
+        }
+        
         Ok(())
     }
 

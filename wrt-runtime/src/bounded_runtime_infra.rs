@@ -36,8 +36,11 @@ pub type RuntimeProvider = CapabilityAwareProvider<BaseRuntimeProvider>;
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 pub type RuntimeProvider = CapabilityAwareProvider<BaseRuntimeProvider>;
 
+/// Default runtime provider alias for backward compatibility
+pub type DefaultRuntimeProvider = RuntimeProvider;
+
 /// Helper function to create a runtime provider
-fn create_runtime_provider() -> WrtResult<RuntimeProvider> {
+pub fn create_runtime_provider() -> WrtResult<RuntimeProvider> {
     #[cfg(any(feature = "std", feature = "alloc"))]
     {
         // In std/alloc environments, safe_capability_alloc! returns CapabilityAwareProvider

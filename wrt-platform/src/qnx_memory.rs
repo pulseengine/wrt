@@ -227,8 +227,7 @@ impl QnxAllocator {
         if let Some(id) = self.partition_id {
             let result = unsafe { ffi::mem_partition_setcurrent(id) };
             if result != 0 {
-                return Err(Error::runtime_execution_error(",
-                ));
+                return Err(Error::runtime_execution_error("QNX memory allocation failed"));
             }
         }
         Ok(())

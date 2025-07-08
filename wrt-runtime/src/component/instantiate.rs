@@ -10,27 +10,68 @@ use wrt_format::component::{
 };
 use wrt_format::module::Module;
 
-#[cfg(feature = "std")]
-use std::collections::HashMap;
-#[cfg(feature = "std")]
-use std::string::String;
-
-#[cfg(not(feature = "std"))]
+// Always use BoundedMap for HashMap to ensure trait compatibility
 extern crate alloc;
-#[cfg(not(feature = "std"))]
-use alloc::string::String;
-#[cfg(not(feature = "std"))]
-use wrt_foundation::{BoundedMap, DefaultMemoryProvider};
+use wrt_foundation::{BoundedMap, safe_memory::NoStdProvider};
+use crate::bounded_runtime_infra::{RuntimeProvider, create_runtime_provider};
 
-#[cfg(not(feature = "std"))]
-type HashMap<K, V> = BoundedMap<K, V, 256, DefaultMemoryProvider>;
+// Always use BoundedMap regardless of std/no_std to ensure serialization traits
+type HashMap<K, V> = BoundedMap<K, V, 256, RuntimeProvider>;
+
+// Use BoundedString for component names to ensure trait compatibility
+use wrt_foundation::{BoundedString, safe_managed_alloc, budget_aware_provider::CrateId};
+type ComponentString = BoundedString<256, RuntimeProvider>;
 
 /// Result of component instantiation
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstantiationResult {
     /// Instance handle
     pub handle: u32,
     /// Exported items from the instance
-    pub exports: HashMap<String, ExportedItem>,
+    pub exports: HashMap<ComponentString, ExportedItem>,
+}
+
+impl Default for InstantiationResult {
+    fn default() -> Self {
+        Self {
+            handle: 0,
+            exports: HashMap::default(),
+        }
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for InstantiationResult {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.handle.update_checksum(checksum);
+        self.exports.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for InstantiationResult {
+    fn serialized_size(&self) -> usize {
+        4 + self.exports.serialized_size()
+    }
+    
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_u32_le(self.handle)?;
+        self.exports.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for InstantiationResult {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let handle = reader.read_u32_le()?;
+        let exports = HashMap::from_bytes_with_provider(reader, provider)?;
+        Ok(Self { handle, exports })
+    }
 }
 
 /// An exported item from an instance
@@ -151,22 +192,70 @@ pub struct InstantiationContext {
 }
 
 /// Represents an instantiated core module
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoreModuleInstance {
     /// Module reference
     pub module_idx: u32,
     /// Imported items resolved during instantiation
-    pub imports: HashMap<String, u32>,
+    pub imports: HashMap<ComponentString, u32>,
     /// Exported items from the module
-    pub exports: HashMap<String, ExportedItem>,
+    pub exports: HashMap<ComponentString, ExportedItem>,
+}
+
+impl Default for CoreModuleInstance {
+    fn default() -> Self {
+        Self {
+            module_idx: 0,
+            imports: HashMap::default(),
+            exports: HashMap::default(),
+        }
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for CoreModuleInstance {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.module_idx.update_checksum(checksum);
+        self.imports.update_checksum(checksum);
+        self.exports.update_checksum(checksum);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for CoreModuleInstance {
+    fn serialized_size(&self) -> usize {
+        4 + self.imports.serialized_size() + self.exports.serialized_size()
+    }
+    
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_u32_le(self.module_idx)?;
+        self.imports.to_bytes_with_provider(writer, provider)?;
+        self.exports.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for CoreModuleInstance {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let module_idx = reader.read_u32_le()?;
+        let imports = HashMap::from_bytes_with_provider(reader, provider)?;
+        let exports = HashMap::from_bytes_with_provider(reader, provider)?;
+        Ok(Self { module_idx, imports, exports })
+    }
 }
 
 /// Error during linking/instantiation
 #[derive(Debug)]
 pub enum LinkingError {
     /// Import not found
-    ImportNotFound { module: String, name: String },
+    ImportNotFound { module: ComponentString, name: ComponentString },
     /// Type mismatch during linking
-    TypeMismatch { expected: String, actual: String },
+    TypeMismatch { expected: ComponentString, actual: ComponentString },
     /// Circular dependency detected
     CircularDependency,
     /// Instance not found
@@ -198,11 +287,14 @@ pub struct ComponentInstantiator {
 impl ComponentInstantiator {
     /// Create a new component instantiator
     pub fn new() -> Self {
+        let instances_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
+        let core_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
+        
         Self {
             context: InstantiationContext {
                 next_instance_handle: 1,
-                instances: HashMap::new(),
-                core_instances: HashMap::new(),
+                instances: HashMap::new(instances_provider).unwrap_or_default(),
+                core_instances: HashMap::new(core_provider).unwrap_or_default(),
             },
         }
     }
@@ -211,7 +303,7 @@ impl ComponentInstantiator {
     pub fn instantiate_component(
         &mut self,
         component: &Component,
-        imports: HashMap<String, ExportedItem>,
+        imports: HashMap<ComponentString, ExportedItem>,
     ) -> Result<InstantiationResult> {
         // This is a placeholder implementation
         // Real implementation would:
@@ -223,16 +315,18 @@ impl ComponentInstantiator {
         let handle = self.context.next_instance_handle;
         self.context.next_instance_handle += 1;
         
+        let exports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
         let result = InstantiationResult {
             handle,
-            exports: HashMap::new(),
+            exports: HashMap::new(exports_provider).unwrap_or_default(),
         };
         
         self.context.instances.insert(handle, result);
         
+        let exports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
         Ok(InstantiationResult {
             handle,
-            exports: HashMap::new(),
+            exports: HashMap::new(exports_provider).unwrap_or_default(),
         })
     }
     
@@ -240,20 +334,18 @@ impl ComponentInstantiator {
     pub fn instantiate_core_module(
         &mut self,
         module: &Module,
-        imports: HashMap<String, ExportedItem>,
+        imports: HashMap<ComponentString, ExportedItem>,
     ) -> Result<CoreModuleInstance> {
         // Placeholder for core module instantiation
         // Real implementation would resolve imports and create runtime instance
         
-        // Fix type mismatch: imports expects HashMap<String, ExportedItem> but got HashMap<String, u32>
-        let mut core_exports = HashMap::new();
-        for (name, item) in imports {
-            core_exports.insert(name, item);
-        }
+        // Direct assignment since types already match
+        let core_exports = imports;
         
+        let imports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
         Ok(CoreModuleInstance {
             module_idx: 0,
-            imports: HashMap::new(), // Core module imports are empty for now
+            imports: HashMap::new(imports_provider).unwrap_or_default(), // Core module imports are empty for now
             exports: core_exports,
         })
     }
@@ -270,8 +362,12 @@ pub struct CoreModuleInstantiator {
 impl CoreModuleInstantiator {
     /// Create a new core module instantiator
     pub fn new() -> Self {
+        let provider = create_runtime_provider().unwrap_or_else(|_| {
+            // Fallback for initialization errors
+            RuntimeProvider::default()
+        });
         Self {
-            instances: HashMap::new(),
+            instances: HashMap::new(provider).unwrap_or_default(),
             next_instance_id: 1,
         }
     }
@@ -293,10 +389,13 @@ impl CoreModuleInstantiator {
                 let instance_id = self.next_instance_id;
                 self.next_instance_id += 1;
                 
+                let imports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
+                let exports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
+                
                 let core_instance = CoreModuleInstance {
                     module_idx: *module_idx,
-                    imports: HashMap::new(),
-                    exports: HashMap::new(),
+                    imports: HashMap::new(imports_provider).unwrap_or_default(),
+                    exports: HashMap::new(exports_provider).unwrap_or_default(),
                 };
                 
                 self.instances.insert(instance_id, core_instance);
@@ -307,7 +406,8 @@ impl CoreModuleInstantiator {
                 let instance_id = self.next_instance_id;
                 self.next_instance_id += 1;
                 
-                let mut export_map = HashMap::new();
+                let provider = create_runtime_provider()?;
+                let mut export_map = HashMap::new(provider)?;
                 for export in exports {
                     let item = match export.sort {
                         CoreSort::Function => ExportedItem::CoreFunction(export.idx),
@@ -321,12 +421,18 @@ impl CoreModuleInstantiator {
                                 "Unsupported export sort"));
                         }
                     };
-                    export_map.insert(export.name.clone(), item);
+                    // Convert String to ComponentString
+                    let name_provider = create_runtime_provider()?;
+                    let component_name = ComponentString::from_str_truncate(&export.name, name_provider)?;
+                    export_map.insert(component_name, item)?;
                 }
+                
+                let import_provider = create_runtime_provider()?;
+                let imports = HashMap::new(import_provider)?;
                 
                 let core_instance = CoreModuleInstance {
                     module_idx: 0, // Inline exports don't have a module
-                    imports: HashMap::new(),
+                    imports,
                     exports: export_map,
                 };
                 

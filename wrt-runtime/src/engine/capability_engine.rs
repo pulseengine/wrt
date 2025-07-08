@@ -164,7 +164,7 @@ const MAX_MODULES: usize = 32;
 const MAX_INSTANCES: usize = 32;
 
 /// Runtime memory provider for engine internals
-type RuntimeProvider = NoStdProvider<131072>; // 128KB for runtime data
+use crate::bounded_runtime_infra::{RuntimeProvider, create_runtime_provider}; // Use unified RuntimeProvider
 
 /// Capability-aware WebAssembly execution engine
 pub struct CapabilityAwareEngine {
@@ -208,8 +208,8 @@ impl CapabilityAwareEngine {
     /// Create an engine with a specific capability context and preset
     pub fn with_context_and_preset(context: MemoryCapabilityContext, preset: EnginePreset) -> Result<Self> {
         // Allocate providers for internal data structures
-        let modules_provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
-        let instances_provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
+        let modules_provider = create_runtime_provider()?;
+        let instances_provider = create_runtime_provider()?;
 
         // Initialize host integration based on preset
         let (host_registry, host_manager) = Self::create_host_integration(&preset)?;
@@ -465,7 +465,7 @@ impl CapabilityAwareEngine {
     }
 
     /// Get function signature by name
-    pub fn get_function_signature(&self, instance_handle: InstanceHandle, func_name: &str) -> Result<Option<wrt_foundation::types::FuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>>> {
+    pub fn get_function_signature(&self, instance_handle: InstanceHandle, func_name: &str) -> Result<Option<wrt_foundation::types::FuncType<RuntimeProvider>>> {
         let instance = self.instances
             .get(&instance_handle)?
             .ok_or_else(|| Error::resource_not_found("Instance not found"))?;

@@ -2,14 +2,21 @@
 //!
 //! This module provides the implementation for WebAssembly function types.
 
-use crate::prelude::{Debug, RuntimeFuncType};
+use crate::prelude::Debug;
+#[cfg(feature = "std")]
+use crate::prelude::RuntimeFuncType;
+#[cfg(not(feature = "std"))]
+use wrt_foundation::types::FuncType as RuntimeFuncType;
 use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
 
 /// Placeholder Function type for runtime functions
 #[derive(Debug, Clone)]
 pub struct Function {
     /// Function type signature
+    #[cfg(feature = "std")]
     pub func_type: RuntimeFuncType,
+    #[cfg(not(feature = "std"))]
+    pub func_type: RuntimeFuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>,
     /// Function body (placeholder)
     pub body: wrt_foundation::bounded::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     /// Function index in the module (optional)
@@ -18,6 +25,7 @@ pub struct Function {
 
 impl Function {
     /// Create a new function
+    #[cfg(feature = "std")]
     pub fn new(func_type: RuntimeFuncType) -> Result<Self, wrt_error::Error> {
         let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
         Ok(Self {
@@ -27,8 +35,29 @@ impl Function {
         })
     }
     
+    #[cfg(not(feature = "std"))]
+    pub fn new(func_type: RuntimeFuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>) -> Result<Self, wrt_error::Error> {
+        let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        Ok(Self {
+            func_type,
+            body: wrt_foundation::bounded::BoundedVec::new(provider)?,
+            function_index: None,
+        })
+    }
+    
     /// Create a new function with an index
+    #[cfg(feature = "std")]
     pub fn new_with_index(func_type: RuntimeFuncType, index: u32) -> Result<Self, wrt_error::Error> {
+        let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        Ok(Self {
+            func_type,
+            body: wrt_foundation::bounded::BoundedVec::new(provider)?,
+            function_index: Some(index),
+        })
+    }
+    
+    #[cfg(not(feature = "std"))]
+    pub fn new_with_index(func_type: RuntimeFuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>, index: u32) -> Result<Self, wrt_error::Error> {
         let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
         Ok(Self {
             func_type,

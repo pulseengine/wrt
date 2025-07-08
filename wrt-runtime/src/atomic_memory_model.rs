@@ -10,7 +10,7 @@ use wrt_foundation::traits::BoundedCapacity;
 use crate::atomic_execution::{AtomicMemoryContext, AtomicExecutionStats};
 use crate::thread_manager::{ThreadManager, ThreadId, ThreadState};
 use crate::bounded_runtime_infra::{
-    BoundedThreadMap, RuntimeProvider, new_thread_map
+    BoundedThreadMap, RuntimeProvider, new_thread_map, create_runtime_provider
 };
 use wrt_error::{Error, ErrorCategory, Result};
 use wrt_instructions::atomic_ops::{MemoryOrdering, AtomicOp};
@@ -19,8 +19,8 @@ use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
 // Import platform ordering from wrt-foundation abstraction layer
 use core::sync::atomic::Ordering as AtomicOrdering;
 
-// Type aliases for capability-based memory allocation
-type AtomicProvider1K = wrt_foundation::safe_memory::NoStdProvider<1024>;
+// Type aliases for capability-based memory allocation - imported above on line 13
+type AtomicProvider1K = RuntimeProvider;
 type DataRaceVec = wrt_foundation::bounded::BoundedVec<DataRaceReport, 64, AtomicProvider1K>;
 type OrderingViolationVec = wrt_foundation::bounded::BoundedVec<OrderingViolationReport, 64, AtomicProvider1K>;
 type DeadlockVec = wrt_foundation::bounded::BoundedVec<DeadlockReport, 32, AtomicProvider1K>;
@@ -289,22 +289,22 @@ impl AtomicMemoryModel {
     
     fn detect_data_races(&self) -> Result<DataRaceVec> {
         // Simplified data race detection - real implementation would be more sophisticated
-        wrt_foundation::bounded::BoundedVec::new(safe_managed_alloc!(1024, CrateId::Runtime).unwrap())
+        wrt_foundation::bounded::BoundedVec::new(create_runtime_provider()?)
             .map_err(|_| Error::memory_error("Failed to create data race report vector"))
     }
     
     fn detect_ordering_violations(&self) -> Result<OrderingViolationVec> {
-        wrt_foundation::bounded::BoundedVec::new(safe_managed_alloc!(1024, CrateId::Runtime).unwrap())
+        wrt_foundation::bounded::BoundedVec::new(create_runtime_provider()?)
             .map_err(|_| Error::memory_error("Failed to create ordering violation report vector"))
     }
     
     fn detect_potential_deadlocks(&self) -> Result<DeadlockVec> {
-        wrt_foundation::bounded::BoundedVec::new(safe_managed_alloc!(1024, CrateId::Runtime).unwrap())
+        wrt_foundation::bounded::BoundedVec::new(create_runtime_provider()?)
             .map_err(|_| Error::memory_error("Failed to create deadlock report vector"))
     }
     
     fn validate_sync_state(&self) -> Result<SyncViolationVec> {
-        wrt_foundation::bounded::BoundedVec::new(safe_managed_alloc!(1024, CrateId::Runtime).unwrap())
+        wrt_foundation::bounded::BoundedVec::new(create_runtime_provider()?)
             .map_err(|_| Error::memory_error("Failed to create sync violation report vector"))
     }
     
@@ -485,13 +485,13 @@ impl ConsistencyValidationResult {
     fn new() -> Result<Self> {
         Ok(Self {
             is_consistent: true,
-            data_races: wrt_foundation::bounded::BoundedVec::new(safe_managed_alloc!(1024, CrateId::Runtime).unwrap())
+            data_races: wrt_foundation::bounded::BoundedVec::new(create_runtime_provider()?)
                 .map_err(|_| Error::memory_error("Failed to create data races vector"))?,
-            ordering_violations: wrt_foundation::bounded::BoundedVec::new(safe_managed_alloc!(1024, CrateId::Runtime).unwrap())
+            ordering_violations: wrt_foundation::bounded::BoundedVec::new(create_runtime_provider()?)
                 .map_err(|_| Error::memory_error("Failed to create ordering violations vector"))?,
-            potential_deadlocks: wrt_foundation::bounded::BoundedVec::new(safe_managed_alloc!(1024, CrateId::Runtime).unwrap())
+            potential_deadlocks: wrt_foundation::bounded::BoundedVec::new(create_runtime_provider()?)
                 .map_err(|_| Error::memory_error("Failed to create potential deadlocks vector"))?,
-            sync_violations: wrt_foundation::bounded::BoundedVec::new(safe_managed_alloc!(1024, CrateId::Runtime).unwrap())
+            sync_violations: wrt_foundation::bounded::BoundedVec::new(create_runtime_provider()?)
                 .map_err(|_| Error::memory_error("Failed to create sync violations vector"))?,
         })
     }

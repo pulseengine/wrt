@@ -23,6 +23,9 @@ use wrt_foundation::{
     budget_aware_provider::CrateId,
     safe_managed_alloc,
 };
+use crate::bounded_runtime_infra::create_runtime_provider;
+use wrt_foundation::{
+};
 // Add placeholder aliases for missing types
 use crate::module::{Export as WrtExport, Import as WrtImport, Function, WrtExpr, LocalEntry};
 use wrt_foundation::types::CustomSection as WrtCustomSection;
@@ -45,7 +48,7 @@ use alloc::format;
 #[cfg(feature = "std")]
 type String = std::string::String;
 #[cfg(not(feature = "std"))]
-type String = wrt_foundation::bounded::BoundedString<256, crate::bounded_runtime_infra::BaseRuntimeProvider>;
+type String = wrt_foundation::bounded::BoundedString<256, crate::bounded_runtime_infra::RuntimeProvider>;
 
 // Define trait locally if not available from wrt_decoder
 pub trait RuntimeModuleBuilder {
@@ -58,14 +61,14 @@ pub trait RuntimeModuleBuilder {
     fn add_function_type(&mut self, func_type: FuncType<StdMemoryProvider>) -> Result<u32>;
     fn add_import(&mut self, import: WrtImport) -> Result<u32>;
     fn add_function(&mut self, type_idx: u32) -> Result<u32>;
-    fn add_function_body(&mut self, func_idx: u32, type_idx: u32, body: wrt_foundation::bounded::BoundedVec<u8, 4096, crate::bounded_runtime_infra::BaseRuntimeProvider>) -> Result<()>;
+    fn add_function_body(&mut self, func_idx: u32, type_idx: u32, body: wrt_foundation::bounded::BoundedVec<u8, 4096, crate::bounded_runtime_infra::RuntimeProvider>) -> Result<()>;
     fn add_memory(&mut self, memory_type: WrtMemoryType) -> Result<u32>;
     fn add_table(&mut self, table_type: WrtTableType) -> Result<u32>;
     fn add_global(&mut self, global_type: WrtGlobalType) -> Result<u32>;
     fn add_export(&mut self, export: WrtExport) -> Result<()>;
     fn add_element(&mut self, element: WrtElementSegment) -> Result<u32>;
     fn add_data(&mut self, data: WrtDataSegment) -> Result<u32>;
-    fn add_custom_section(&mut self, section: WrtCustomSection<crate::bounded_runtime_infra::BaseRuntimeProvider>) -> Result<()>;
+    fn add_custom_section(&mut self, section: WrtCustomSection<crate::bounded_runtime_infra::RuntimeProvider>) -> Result<()>;
     fn build(self) -> Result<Self::Module>;
 }
 
@@ -129,7 +132,7 @@ impl RuntimeModuleBuilder for ModuleBuilder {
         Ok(0)
     }
     
-    fn add_custom_section(&mut self, _section: WrtCustomSection<crate::bounded_runtime_infra::BaseRuntimeProvider>) -> Result<()> {
+    fn add_custom_section(&mut self, _section: WrtCustomSection<crate::bounded_runtime_infra::RuntimeProvider>) -> Result<()> {
         // Custom section handling not implemented
         Ok(())
     }
@@ -139,7 +142,7 @@ impl RuntimeModuleBuilder for ModuleBuilder {
         Ok(0)
     }
     
-    fn add_function_body(&mut self, func_idx: u32, type_idx: u32, body: wrt_foundation::bounded::BoundedVec<u8, 4096, crate::bounded_runtime_infra::BaseRuntimeProvider>) -> Result<()> {
+    fn add_function_body(&mut self, func_idx: u32, type_idx: u32, body: wrt_foundation::bounded::BoundedVec<u8, 4096, crate::bounded_runtime_infra::RuntimeProvider>) -> Result<()> {
         use crate::instruction_parser::parse_instructions;
         use crate::module::{Function, WrtExpr};
         
@@ -148,8 +151,8 @@ impl RuntimeModuleBuilder for ModuleBuilder {
         
         // For now, create empty function with proper types
         // TODO: Implement proper bytecode parsing with compatible types
-        let provider1 = safe_managed_alloc!(8192, CrateId::Runtime)?;
-        let provider2 = safe_managed_alloc!(8192, CrateId::Runtime)?;
+        let provider1 = create_runtime_provider()?;
+        let provider2 = create_runtime_provider()?;
         let instructions = wrt_foundation::bounded::BoundedVec::new(provider1)?;
         let locals = wrt_foundation::bounded::BoundedVec::new(provider2)?;
         
@@ -191,11 +194,11 @@ impl RuntimeModuleBuilder for ModuleBuilder {
 }
 
 /// Parse local variable declarations from function body bytecode
-fn parse_locals_from_body(bytecode: &[u8]) -> Result<wrt_foundation::bounded::BoundedVec<wrt_foundation::types::LocalEntry, 64, crate::bounded_runtime_infra::BaseRuntimeProvider>> {
+fn parse_locals_from_body(bytecode: &[u8]) -> Result<wrt_foundation::bounded::BoundedVec<wrt_foundation::types::LocalEntry, 64, crate::bounded_runtime_infra::RuntimeProvider>> {
     use wrt_foundation::bounded::BoundedVec;
     use wrt_foundation::types::LocalEntry;
     
-    let provider = crate::bounded_runtime_infra::BaseRuntimeProvider::default();
+    let provider = create_runtime_provider()?;
     let mut locals = BoundedVec::new(provider)?;
     
     if bytecode.is_empty() {
@@ -287,10 +290,10 @@ pub fn load_module_from_binary(binary: &[u8]) -> Result<Module> {
         let decoder_module = wrt_decoder::decode_module(binary)?;
         Module::from_wrt_module(&decoder_module)
     }
-    #[cfg(all(not(feature = "decoder")))]
+    #[cfg(all(not(feature = "decoder"), feature = "std"))]
     {
         // Decoder not available - create an empty module
-        Err(Error::parse_invalid_binary("Decoder not available"))
+        Err(Error::runtime_execution_error("Decoder not available"))
     }
     #[cfg(not(feature = "std"))]
     {

@@ -136,8 +136,7 @@ impl LinuxFutex {
         if result >= 0 {
             Ok(result as u32) // Number of waiters woken up
         } else {
-            Err(Error::runtime_execution_error(",
-            ))
+            Err(Error::runtime_execution_error("Failed to acquire mutex lock"))
         }
     }
 }

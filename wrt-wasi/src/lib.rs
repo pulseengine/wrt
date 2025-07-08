@@ -266,6 +266,9 @@ pub mod prelude {
     
     pub use super::error::{codes, kinds};
     
+    // Re-export component values
+    pub use wrt_foundation::Value;
+    
     // Re-export commonly used WRT foundation types
     pub use wrt_foundation::{
         BoundedVec, BoundedMap, BoundedString,

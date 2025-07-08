@@ -121,6 +121,9 @@ pub mod execution;
 // Re-export common types from prelude
 pub use prelude::*;
 
+// Re-export bounded slice functionality
+pub use bounded_slice::{BoundedSlice, BoundedVecSliceExt};
+
 /// `Result` type alias for WRT operations using `wrt_error::Error`
 pub type WrtResult<T> = core::result::Result<T, Error>;
 
@@ -129,12 +132,16 @@ pub type WrtResult<T> = core::result::Result<T, Error>;
 pub mod atomic_memory;
 /// Bounded collections for memory safety
 pub mod bounded;
+/// Bounded slice abstraction for safe slice-like access
+pub mod bounded_slice;
 /// Binary std/no_std choice
 pub mod bounded_collections;
 /// Binary std/no_std choice
 pub mod builder;
 /// WebAssembly Component Model built-in types
 pub mod builtin;
+// /// String conversion traits for component model integration  
+// pub mod string_conversion;
 /// WebAssembly Component Model types
 pub mod component;
 /// Type conversion utilities

@@ -115,12 +115,15 @@ pub struct RealtimeMonitor {
 impl RealtimeMonitor {
     /// Create a new realtime monitor
     pub fn new(config: MonitorConfig) -> Self {
+        #[cfg(feature = "std")]
+        let history_capacity = config.history_size;
+        
         Self {
             config,
             active: AtomicBool::new(false),
             sample_counter: AtomicUsize::new(0),
             #[cfg(feature = "std")]
-            history: Arc::new(Mutex::new(VecDeque::with_capacity(history_size))),
+            history: Arc::new(Mutex::new(VecDeque::with_capacity(history_capacity))),
             #[cfg(feature = "std")]
             alerts: Arc::new(Mutex::new(Vec::new())),
         }

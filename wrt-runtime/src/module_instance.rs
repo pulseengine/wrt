@@ -17,8 +17,9 @@ use wrt_foundation::verification::Checksum;
 use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
 use wrt_instructions::reference_ops::ReferenceOperations;
 
-// Type alias for FuncType to make signatures more readable - matches NoStdProvider<8192> from module.rs
-type WrtFuncType = wrt_foundation::types::FuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>;
+// Type alias for FuncType to make signatures more readable - uses unified RuntimeProvider
+use crate::bounded_runtime_infra::{RuntimeProvider, BoundedMemoryVec, BoundedTableVec, BoundedGlobalVec, BoundedImportMap, BoundedImportExportName, create_runtime_provider};
+type WrtFuncType = wrt_foundation::types::FuncType<RuntimeProvider>;
 
 // Platform sync primitives - use prelude imports for consistency
 #[cfg(feature = "std")]
@@ -38,15 +39,15 @@ pub struct ModuleInstance {
     /// The module this instance was instantiated from
     module: Arc<Module>,
     /// The instance's memory (using safety-critical wrapper types)
-    memories: Arc<Mutex<wrt_foundation::bounded::BoundedVec<MemoryWrapper, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>>>,
+    memories: Arc<Mutex<BoundedMemoryVec<MemoryWrapper>>>,
     /// The instance's tables (using safety-critical wrapper types)
-    tables: Arc<Mutex<wrt_foundation::bounded::BoundedVec<TableWrapper, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>>>,
+    tables: Arc<Mutex<BoundedTableVec<TableWrapper>>>,
     /// The instance's globals (using safety-critical wrapper types)
-    globals: Arc<Mutex<wrt_foundation::bounded::BoundedVec<GlobalWrapper, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>>>,
+    globals: Arc<Mutex<BoundedGlobalVec<GlobalWrapper>>>,
     /// Instance ID for debugging
     instance_id: usize,
     /// Imported instance indices to resolve imports
-    imports: wrt_format::HashMap<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>, wrt_format::HashMap<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>, (usize, usize)>>,
+    imports: BoundedImportMap<BoundedImportMap<(usize, usize)>>,
     /// Debug information (optional)
     #[cfg(feature = "debug")]
     debug_info: Option<DwarfDebugInfo<'static>>,
@@ -56,16 +57,13 @@ impl ModuleInstance {
     /// Create a new module instance from a module
     pub fn new(module: Module, instance_id: usize) -> Result<Self> {
         // Allocate memory for memories collection
-        let memories_provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
-        let memories_vec = wrt_foundation::bounded::BoundedVec::new(memories_provider)?;
+        let memories_vec = wrt_foundation::bounded::BoundedVec::new(create_runtime_provider()?)?;
         
         // Allocate memory for tables collection
-        let tables_provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
-        let tables_vec = wrt_foundation::bounded::BoundedVec::new(tables_provider)?;
+        let tables_vec = wrt_foundation::bounded::BoundedVec::new(create_runtime_provider()?)?;
         
         // Allocate memory for globals collection
-        let globals_provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
-        let globals_vec = wrt_foundation::bounded::BoundedVec::new(globals_provider)?;
+        let globals_vec = wrt_foundation::bounded::BoundedVec::new(create_runtime_provider()?)?;
         
         Ok(Self {
             module: Arc::new(module),
@@ -151,12 +149,12 @@ impl ModuleInstance {
         let params_slice = ty.params.as_slice().map_err(|_| Error::runtime_error("Failed to access params"))?;
         let results_slice = ty.results.as_slice().map_err(|_| Error::runtime_error("Failed to access results"))?;
         
-        let mut params = wrt_foundation::bounded::BoundedVec::<wrt_foundation::ValueType, 128, crate::memory_adapter::StdMemoryProvider>::new(
-            crate::memory_adapter::StdMemoryProvider::default()
+        let mut params = wrt_foundation::bounded::BoundedVec::<wrt_foundation::ValueType, 128, RuntimeProvider>::new(
+            create_runtime_provider()?
         ).map_err(|_| Error::memory_error("Failed to create params vec"))?;
         
-        let mut results = wrt_foundation::bounded::BoundedVec::<wrt_foundation::ValueType, 128, crate::memory_adapter::StdMemoryProvider>::new(
-            crate::memory_adapter::StdMemoryProvider::default()
+        let mut results = wrt_foundation::bounded::BoundedVec::<wrt_foundation::ValueType, 128, RuntimeProvider>::new(
+            create_runtime_provider()?
         ).map_err(|_| Error::memory_error("Failed to create results vec"))?;
         
         for param in params_slice {
@@ -284,9 +282,7 @@ impl ModuleInstance {
             Error::runtime_function_not_found("Function index not found")
         })?;
 
-        self.module.types.get(function.type_idx as usize).map_err(|_| {
-            Error::validation_type_mismatch("Type index not found")
-        })
+        Ok(self.module.types.get(function.type_idx as usize)?)
     }
 
     /// Get a table by index - alias for compatibility with tail_call.rs
@@ -296,9 +292,7 @@ impl ModuleInstance {
 
     /// Get a type by index - alias for compatibility with tail_call.rs
     pub fn get_type(&self, idx: usize) -> Result<WrtFuncType> {
-        self.module.types.get(idx).map_err(|_| {
-            Error::validation_type_mismatch("Type index not found")
-        })
+        Ok(self.module.types.get(idx)?)
     }
 }
 
@@ -351,36 +345,77 @@ impl Default for ModuleInstance {
     fn default() -> Self {
         // Create a default module instance with a default module
         let default_module = Module::default();
-        Self::new(default_module, 0).unwrap_or_else(|_| {
-            // Fallback implementation if allocation fails
-            // Use safe_managed_alloc! for proper budget-aware allocation
-            let memories_provider = safe_managed_alloc!(1024, CrateId::Runtime).unwrap_or_else(|_| {
-                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
-            });
-            let tables_provider = safe_managed_alloc!(1024, CrateId::Runtime).unwrap_or_else(|_| {
-                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
-            });
-            let globals_provider = safe_managed_alloc!(1024, CrateId::Runtime).unwrap_or_else(|_| {
-                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
-            });
-            
-            Self {
-                module: Arc::new(Module::default()),
-                memories: Arc::new(Mutex::new(
-                    wrt_foundation::bounded::BoundedVec::new(memories_provider).unwrap()
-                )),
-                tables: Arc::new(Mutex::new(
-                    wrt_foundation::bounded::BoundedVec::new(tables_provider).unwrap()
-                )),
-                globals: Arc::new(Mutex::new(
-                    wrt_foundation::bounded::BoundedVec::new(globals_provider).unwrap()
-                )),
-                instance_id: 0,
-                imports: Default::default(),
-                #[cfg(feature = "debug")]
-                debug_info: None,
+        // Default implementation must succeed for basic functionality
+        // Use minimal memory allocation that should always work
+        match Self::new(default_module, 0) {
+            Ok(instance) => instance,
+            Err(_) => {
+                // Create minimal instance using RuntimeProvider for type consistency
+                // This maintains controllability while avoiding allocation failures
+                use crate::bounded_runtime_infra::{create_runtime_provider};
+                // Use the factory function - if this fails, we have a fundamental system issue
+                let runtime_provider = match create_runtime_provider() {
+                    Ok(provider) => provider,
+                    Err(_) => {
+                        // Last resort: try to create a minimal provider
+                        // This should work even in constrained environments
+                        match create_runtime_provider() {
+                            Ok(provider) => provider,
+                            Err(_) => {
+                                // System is in unrecoverable state - but we must return something
+                                // Create an invalid instance that will fail safely later
+                                return Self {
+                                    module: Arc::new(Module::default()),
+                                    memories: Arc::new(Mutex::new(Default::default())),
+                                    tables: Arc::new(Mutex::new(Default::default())),
+                                    globals: Arc::new(Mutex::new(Default::default())),
+                                    instance_id: 0,
+                                    imports: Default::default(),
+                                    #[cfg(feature = "debug")]
+                                    debug_info: None,
+                                };
+                            }
+                        }
+                    }
+                };
+                Self {
+                    module: Arc::new(Module::default()),
+                    memories: Arc::new(Mutex::new(
+                        // Try to create with RuntimeProvider, fallback to empty vector creation
+                        wrt_foundation::bounded::BoundedVec::new(runtime_provider.clone())
+                            .unwrap_or_else(|_| {
+                                // Last resort: try creating another provider
+                                let fallback_provider = create_runtime_provider()
+                                    .expect("Failed to create fallback runtime provider");
+                                wrt_foundation::bounded::BoundedVec::new(fallback_provider)
+                                    .expect("Failed to create even minimal memory vector")
+                            })
+                    )),
+                    tables: Arc::new(Mutex::new(
+                        wrt_foundation::bounded::BoundedVec::new(runtime_provider.clone())
+                            .unwrap_or_else(|_| {
+                                let fallback_provider = create_runtime_provider()
+                                    .expect("Failed to create fallback runtime provider");
+                                wrt_foundation::bounded::BoundedVec::new(fallback_provider)
+                                    .expect("Failed to create even minimal table vector")
+                            })
+                    )),
+                    globals: Arc::new(Mutex::new(
+                        wrt_foundation::bounded::BoundedVec::new(runtime_provider)
+                            .unwrap_or_else(|_| {
+                                let fallback_provider = create_runtime_provider()
+                                    .expect("Failed to create fallback runtime provider");
+                                wrt_foundation::bounded::BoundedVec::new(fallback_provider)
+                                    .expect("Failed to create even minimal global vector")
+                            })
+                    )),
+                    instance_id: 0,
+                    imports: Default::default(),
+                    #[cfg(feature = "debug")]
+                    debug_info: None,
+                }
             }
-        })
+        }
     }
 }
 

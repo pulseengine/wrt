@@ -128,8 +128,7 @@ impl LinuxArm64MteAllocator {
         let result = unsafe { Self::prctl(PR_SET_TAGGED_ADDR_CTRL, mte_flags, 0, 0, 0) };
 
         if result != 0 {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("MTE tagging not supported on this system"));
         }
 
         Ok(())
@@ -263,8 +262,7 @@ impl LinuxArm64MteAllocator {
         let result = Self::mprotect(guard_page_addr, WASM_PAGE_SIZE, PROT_NONE);
 
         if result != 0 {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Failed to apply MTE tag to memory region"));
         }
 
         Ok(())
@@ -371,8 +369,7 @@ impl PageAllocator for LinuxArm64MteAllocator {
 
         // Check for mapping failure
         if ptr == MAP_FAILED {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Failed to validate MTE tagged memory"));
         }
 
         // Create tagged pointer if MTE is available

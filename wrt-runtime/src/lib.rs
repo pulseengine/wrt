@@ -77,6 +77,7 @@ pub mod table;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub mod thread_manager;
 pub mod types;
+pub mod type_conversion;
 
 // Platform-aware runtime and unified memory management
 pub mod platform_runtime;

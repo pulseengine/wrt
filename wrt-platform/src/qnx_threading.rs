@@ -152,8 +152,7 @@ impl PlatformThreadHandle for QnxThreadHandle {
         let result = unsafe { ffi::pthread_join(self.tid, &mut retval) };
 
         if result != 0 {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("QNX thread creation failed"));
         }
 
         // Get the result
@@ -280,8 +279,7 @@ impl QnxThreadPool {
         
         // Initialize attributes
         if unsafe { ffi::pthread_attr_init(&mut attr) } != 0 {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("QNX thread priority setting failed"));
         }
 
         // Set scheduling policy (FIFO for determinism)
@@ -290,7 +288,7 @@ impl QnxThreadPool {
             return Err(Error::new(
                 ErrorCategory::Platform,
                 1,
-                "));
+                "Failed to set thread scheduling policy"));
         }
 
         // Set priority
@@ -303,8 +301,7 @@ impl QnxThreadPool {
 
         if unsafe { ffi::pthread_attr_setschedparam(&mut attr, &sched_param) } != 0 {
             unsafe { ffi::pthread_attr_destroy(&mut attr) };
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("QNX thread join failed"));
         }
 
         // Set stack size
@@ -318,15 +315,14 @@ impl QnxThreadPool {
             return Err(Error::new(
                 ErrorCategory::Platform,
                 1,
-                "));
+                "Failed to set thread stack size"));
         }
 
         // Don't inherit scheduling from parent
         if unsafe { ffi::pthread_attr_setinheritsched(&mut attr, ffi::PTHREAD_EXPLICIT_SCHED) } != 0
         {
             unsafe { ffi::pthread_attr_destroy(&mut attr) };
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("QNX thread state query failed"));
         }
 
         Ok(attr)
@@ -334,7 +330,7 @@ impl QnxThreadPool {
 }
 
 /// Thread entry point
-extern ") -> *mut core::ffi::c_void {
+extern "C" fn thread_entry(arg: *mut core::ffi::c_void) -> *mut core::ffi::c_void {
     let context = unsafe { Box::from_raw(arg as *mut ThreadContext) };
 
     // Set CPU affinity if specified

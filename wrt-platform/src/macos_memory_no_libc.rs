@@ -194,8 +194,7 @@ impl PageAllocator for MacOsAllocator {
         maximum_pages: Option<u32>,
     ) -> Result<(NonNull<u8>, usize)> {
         if self.base_ptr.is_some() {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Memory allocation failed: out of memory"));
         }
 
         if initial_pages == 0 {

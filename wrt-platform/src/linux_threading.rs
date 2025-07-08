@@ -162,8 +162,7 @@ impl CgroupController {
         let fd = unsafe { ffi::open(filepath.as_ptr() as *const i8, 1, 0) }; // O_WRONLY
 
         if fd < 0 {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Failed to create thread: resource limits exceeded"));
         }
 
         let written = unsafe { ffi::write(fd, value.as_ptr() as *const _, value.len()) };
@@ -231,8 +230,7 @@ impl PlatformThreadHandle for LinuxThreadHandle {
         let result = unsafe { ffi::pthread_join(self.tid, &mut retval) };
 
         if result != 0 {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Failed to set thread priority"));
         }
 
         // Get the result
@@ -360,8 +358,7 @@ impl LinuxThreadPool {
         };
 
         if result != 0 {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Thread join failed"));
         }
 
         Ok(())

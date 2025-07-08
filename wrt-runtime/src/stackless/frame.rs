@@ -42,7 +42,7 @@ pub use wrt_instructions::control_ops::BranchTarget as Label;
 // Internal imports
 use super::engine::StacklessEngine;
 use crate::prelude::*;
-use crate::memory_adapter::StdMemoryProvider;
+use crate::bounded_runtime_infra::RuntimeProvider;
 use crate::{
     global::Global,
     memory::Memory,
@@ -68,12 +68,18 @@ pub trait FrameBehavior {
     /// Returns a mutable reference to the program counter.
     fn pc_mut(&mut self) -> &mut usize;
 
-    /// Returns a slice of the local variables for the current frame.
+    /// Returns the number of local variables in the current frame.
     /// This includes function arguments followed by declared local variables.
-    fn locals(&self) -> &[Value];
-
-    /// Returns a mutable slice of the local variables.
-    fn locals_mut(&mut self) -> &mut [Value];
+    fn locals_len(&self) -> usize;
+    
+    /// Get local variable by index with ASIL-compliant bounds checking.
+    fn get_local(&self, index: usize) -> Result<Value>;
+    
+    /// Set local variable by index with ASIL-compliant verification.
+    fn set_local(&mut self, index: usize, value: Value) -> Result<()>;
+    
+    /// Get multiple locals for batch operations (performance optimization).
+    fn get_locals_range(&self, start: usize, len: usize) -> Result<Vec<Value>>;
 
     /// Returns a reference to the module instance this frame belongs to.
     fn module_instance(&self) -> &Arc<ModuleInstance>;
@@ -82,7 +88,7 @@ pub trait FrameBehavior {
     fn function_index(&self) -> u32;
 
     /// Returns the type (signature) of the function this frame represents.
-    fn function_type(&self) -> &FuncType<StdMemoryProvider>;
+    fn function_type(&self) -> &FuncType<RuntimeProvider>;
 
     /// Returns the arity (number of return values) of the function.
     fn arity(&self) -> usize;
@@ -131,7 +137,7 @@ pub struct StacklessFrame {
     /// Index of the function in the module.
     func_idx: u32,
     /// Type of the function.
-    func_type: FuncType<StdMemoryProvider>,
+    func_type: FuncType<RuntimeProvider>,
     /// Arity of the function (number of result values).
     arity: usize,
     /// Block depths for control flow.
@@ -142,7 +148,7 @@ pub struct StacklessFrame {
 }
 
 /// Context for a control flow block (block, loop, if).
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 struct BlockContext {
     /// The type of the block.
     block_type: BlockType,
@@ -237,9 +243,9 @@ impl StacklessFrame {
         };
 
         #[cfg(not(feature = "std"))]
-        let mut locals_vec = {
-            let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
-            let mut bounded_vec = wrt_foundation::bounded::BoundedVec::new(provider)?;
+        let mut locals_vec: LocalsVec = {
+            let provider = crate::types::RuntimeProvider::default();
+            let mut bounded_vec = LocalsVec::new(provider)?;
             for value in invocation_inputs.iter() {
                 bounded_vec.push(value.clone())?;
             }
@@ -300,12 +306,82 @@ impl FrameBehavior for StacklessFrame {
         &mut self.pc
     }
 
-    fn locals(&self) -> &[Value] {
-        &self.locals
+    fn locals_len(&self) -> usize {
+        #[cfg(feature = "std")]
+        {
+            // In std mode, LocalsVec is Vec<Value> which supports slicing
+            self.locals.len()
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            // ASIL-compliant: graceful degradation on error
+            self.locals.len()
+        }
     }
 
+    /* REMOVED - old API
     fn locals_mut(&mut self) -> &mut [Value] {
-        &mut self.locals
+        // ASIL-compliant: This should never fail if properly constructed
+        // Return empty slice and log the error for diagnostics
+        // ASIL-compliant: Check if BoundedVec provides mutable access
+        if let Ok(len) = self.locals.len() {
+            if let Ok(slice) = self.locals.get_mut(0..len) {
+                return slice;
+            }
+        }
+        // Fallback for error cases
+        match None {
+            Ok(slice) => slice,
+            Err(_) => {
+                // ASIL-compliant error handling: memory corruption detected
+                // Return empty slice from static storage to avoid undefined behavior
+                // This should trigger error reporting at the engine level
+                static mut EMERGENCY_EMPTY: [Value; 0] = [];
+                unsafe { &mut EMERGENCY_EMPTY }
+            }
+        }
+    }
+    */
+
+    // NEW ASIL-compliant API methods
+    fn get_local(&self, index: usize) -> Result<Value> {
+        #[cfg(feature = "std")]
+        {
+            self.locals.get(index).cloned()
+                .ok_or_else(|| Error::memory_out_of_bounds("Local variable index out of bounds"))
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.locals.get(index).map_err(|_| {
+                Error::memory_out_of_bounds("Local variable access failed")
+            })
+        }
+    }
+    
+    fn set_local(&mut self, index: usize, value: Value) -> Result<()> {
+        #[cfg(feature = "std")]
+        {
+            if index < self.locals.len() {
+                self.locals[index] = value;
+                Ok(())
+            } else {
+                Err(Error::memory_out_of_bounds("Local variable index out of bounds"))
+            }
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.locals.set(index, value).map(|_| ()).map_err(|_| {
+                Error::memory_out_of_bounds("Local variable assignment failed")
+            })
+        }
+    }
+    
+    fn get_locals_range(&self, start: usize, len: usize) -> Result<Vec<Value>> {
+        let mut result = Vec::with_capacity(len);
+        for i in start..start + len {
+            result.push(self.get_local(i)?);
+        }
+        Ok(result)
     }
 
     fn module_instance(&self) -> &Arc<ModuleInstance> {
@@ -316,7 +392,7 @@ impl FrameBehavior for StacklessFrame {
         self.func_idx
     }
 
-    fn function_type(&self) -> &FuncType<StdMemoryProvider> {
+    fn function_type(&self) -> &FuncType<RuntimeProvider> {
         &self.func_type
     }
 
@@ -338,9 +414,10 @@ impl FrameBehavior for StacklessFrame {
                 return Ok(ControlFlow::Return { values: Vec::new() });
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+                    let provider = crate::bounded_runtime_infra::create_runtime_provider()?;
+                    let empty_vec: crate::types::ValueStackVec = wrt_foundation::bounded::BoundedVec::new(provider)?;
                     return Ok(ControlFlow::Return { 
-                        values: wrt_foundation::bounded::BoundedVec::new(provider)? 
+                        values: empty_vec
                     });
                 }
             } else {
@@ -507,8 +584,9 @@ impl FrameBehavior for StacklessFrame {
                     }
                     #[cfg(not(feature = "std"))]
                     {
-                        let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
-                        let mut return_values = wrt_foundation::bounded::BoundedVec::new(provider)?;
+                        use crate::bounded_runtime_infra::create_runtime_provider;
+                        let provider = create_runtime_provider()?;
+                        let mut return_values = ValueStackVec::new(provider)?;
                         for _ in 0..self.arity {
                             let value = engine.exec_stack.values.pop().map_err(|e| {
                                 Error::runtime_stack_underflow("Stack operation error")
@@ -595,8 +673,8 @@ impl FrameBehavior for StacklessFrame {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
-                    let mut return_values = wrt_foundation::bounded::BoundedVec::new(provider)?;
+                    let provider = crate::bounded_runtime_infra::create_runtime_provider()?;
+                    let mut return_values: crate::types::ValueStackVec = wrt_foundation::bounded::BoundedVec::new(provider)?;
                     for _ in 0..self.arity {
                         let value = engine.exec_stack.values.pop().map_err(|e| {
                             Error::runtime_stack_underflow("Stack operation error")
@@ -638,8 +716,8 @@ impl FrameBehavior for StacklessFrame {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
-                    let mut args = wrt_foundation::bounded::BoundedVec::new(provider)?;
+                    let provider = crate::bounded_runtime_infra::create_runtime_provider()?;
+                    let mut args: crate::types::ValueStackVec = wrt_foundation::bounded::BoundedVec::new(provider)?;
                     
                     // Pop arguments from stack in reverse order (last param first)
                     for _ in 0..target_func_type.params.len() {
@@ -716,8 +794,8 @@ impl FrameBehavior for StacklessFrame {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
-                    let mut args = wrt_foundation::bounded::BoundedVec::new(provider)?;
+                    let provider = crate::bounded_runtime_infra::create_runtime_provider()?;
+                    let mut args: crate::types::ValueStackVec = wrt_foundation::bounded::BoundedVec::new(provider)?;
                     for _ in 0..actual_func_type.params.len() {
                         let value = engine.exec_stack.values.pop().map_err(|e| {
                             Error::runtime_stack_underflow("Stack operation error")
@@ -737,9 +815,7 @@ impl FrameBehavior for StacklessFrame {
 
             // Local variable instructions
             Instruction::LocalGet(local_idx) => {
-                let value = self.locals.get(local_idx as usize).ok_or_else(|| {
-                    Error::runtime_execution_error("Invalid local variable index")
-                })?;
+                let value = self.get_local(local_idx as usize)?;
                 engine.exec_stack.values.push(value.clone()).map_err(|e| {
                     Error::runtime_stack_overflow("Stack overflow during local.get")
                 })?;
@@ -3519,7 +3595,7 @@ impl FrameBehavior for StacklessFrame {
                     #[cfg(not(feature = "std"))]
                     { 
                         // Manual truncation: remove fractional part
-                        a as i32 as f32
+                        a as i32 as f64
                     }
                 };
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
@@ -5674,17 +5750,41 @@ impl StacklessFrame {
         }
         #[cfg(not(feature = "std"))]
         {
-            let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
-            let mut temp_buffer: wrt_foundation::bounded::BoundedVec<u8, 4096, _> = wrt_foundation::bounded::BoundedVec::new(provider)?;
-            // Ensure we have the right capacity
-            for _ in 0..n.min(4096) {
-                temp_buffer.push(0u8).unwrap();
+            // For no_std, we need to handle memory copy differently
+            // Since BoundedVec doesn't provide as_mut_slice(), we'll use a different approach
+            
+            // Check if n is too large for our bounded buffer
+            if n > 4096 {
+                // For large copies, we need to do it in chunks
+                let chunk_size = 4096u32;
+                let mut copied = 0u32;
+                
+                while copied < n {
+                    let to_copy = (n - copied).min(chunk_size);
+                    let provider = wrt_foundation::safe_managed_alloc!(4096, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
+                    let mut temp_buffer: wrt_foundation::bounded::BoundedVec<u8, 4096, _> = wrt_foundation::bounded::BoundedVec::new(provider)?;
+                    
+                    // Fill buffer with zeros
+                    for _ in 0..to_copy {
+                        temp_buffer.push(0u8).map_err(|_| Error::memory_error("Failed to allocate temp buffer"))?;
+                    }
+                    
+                    // Read chunk into a temporary array then copy to BoundedVec
+                    let mut chunk_data = [0u8; 4096];
+                    src_memory.read(src_offset + copied, &mut chunk_data[..to_copy as usize])?;
+                    
+                    // Write chunk to destination
+                    dst_memory.write(dst_offset + copied, &chunk_data[..to_copy as usize])?;
+                    
+                    copied += to_copy;
+                }
+                Ok(())
+            } else {
+                // For small copies, use a fixed-size buffer
+                let mut temp_buffer = [0u8; 4096];
+                src_memory.read(src_offset, &mut temp_buffer[..n as usize])?;
+                dst_memory.write(dst_offset, &temp_buffer[..n as usize])
             }
-            // Read into a slice view of the bounded vec
-            let slice = temp_buffer.as_mut_slice().map_err(|_| Error::memory_error("Failed to get mutable slice from bounded vec"
-            ))?;
-            src_memory.read(src_offset, &mut slice[..n as usize])?;
-            dst_memory.write(dst_offset, &slice[..n as usize])
         }
     }
 

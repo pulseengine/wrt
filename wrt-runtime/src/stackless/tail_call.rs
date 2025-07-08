@@ -16,7 +16,8 @@ use wrt_error::{Error, Result};
 use wrt_foundation::types::FuncType;
 
 // Type alias for FuncType to match module_instance.rs  
-type WrtFuncType = wrt_foundation::types::FuncType<wrt_foundation::safe_memory::NoStdProvider<8192>>;
+use crate::bounded_runtime_infra::RuntimeProvider;
+type WrtFuncType = wrt_foundation::types::FuncType<RuntimeProvider>;
 
 #[cfg(feature = "std")]
 use std::vec::Vec;

@@ -219,8 +219,7 @@ impl ZephyrAllocator {
             // Initialize memory domain
             let result = k_mem_domain_init(domain, 1, &partition as *const _ as *mut _);
             if result != 0 {
-                return Err(Error::runtime_execution_error(",
-                ));
+                return Err(Error::runtime_execution_error("Zephyr memory pool allocation failed"));
             }
 
             self.memory_domain = NonNull::new(domain);
@@ -356,16 +355,14 @@ impl PageAllocator for ZephyrAllocator {
         };
 
         if ptr.is_null() {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Zephyr memory alignment requirement not met"));
         }
 
         // Convert raw pointer to NonNull
         let base_ptr = NonNull::new(ptr).ok_or_else(|| {
             Error::new(
                 ErrorCategory::System, 1,
-                
-                ")
+                "Failed to create NonNull pointer")
         })?;
 
         // Set up memory domain isolation if enabled
@@ -396,8 +393,7 @@ impl PageAllocator for ZephyrAllocator {
 
     fn grow(&mut self, current_pages: u32, additional_pages: u32) -> Result<()> {
         let Some(_base_ptr) = self.base_ptr else {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Zephyr memory pool exhausted"));
         };
 
         if additional_pages == 0 {

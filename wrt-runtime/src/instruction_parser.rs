@@ -13,13 +13,14 @@ use wrt_foundation::{
 use wrt_error::{Error, ErrorCategory, Result};
 
 // Type aliases for capability-based memory allocation
-type InstructionProvider = wrt_foundation::safe_memory::NoStdProvider<8192>;
+use crate::bounded_runtime_infra::{RuntimeProvider, create_runtime_provider};
+type InstructionProvider = RuntimeProvider;
 type InstructionVec = BoundedVec<Instruction<InstructionProvider>, 1024, InstructionProvider>;
 type TargetVec = BoundedVec<u32, 256, InstructionProvider>;
 
 /// Parse WebAssembly bytecode into runtime instructions
 pub fn parse_instructions(bytecode: &[u8]) -> Result<InstructionVec> {
-    let provider = safe_managed_alloc!(8192, CrateId::Runtime)?;
+    let provider = create_runtime_provider()?;
     let mut instructions = BoundedVec::new(provider).map_err(|_| {
         Error::memory_error("Failed to allocate instruction vector")
     })?;
@@ -92,7 +93,7 @@ fn parse_instruction(bytecode: &[u8], offset: usize) -> Result<(Instruction<Inst
         }
         0x0E => {
             // BrTable
-            let provider = safe_managed_alloc!(8192, CrateId::Runtime)?; // Provider for BoundedVec
+            let provider = create_runtime_provider()?; // Provider for BoundedVec
             let mut targets = BoundedVec::new(provider).map_err(|_| Error::parse_error("Failed to create BrTable targets vector"))?;
             
             let (count, mut bytes_consumed) = read_leb128_u32(bytecode, offset + 1)?;

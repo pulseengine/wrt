@@ -1354,8 +1354,11 @@ impl Memory {
             // Write directly to the data handler with safety verification
             self.data.verify_access(current_dst, chunk_size)?;
             
-            // Write the buffer data directly using write_data
-            self.data.write_data(current_dst, &fill_buffer)?;
+            // Write the buffer data using memory write method
+            #[cfg(feature = "std")]
+            self.write(current_dst as u32, &fill_buffer)?;
+            #[cfg(not(feature = "std"))]
+            self.write(current_dst as u32, fill_buffer.as_slice()?)?;
 
             current_dst += chunk_size;
             remaining -= chunk_size;
@@ -2257,13 +2260,13 @@ impl MemoryOperations for Memory {
         // Handle overlapping regions by using a temporary buffer
         // Read source data first
         #[cfg(feature = "std")]
-        let temp_data = {
+        {
             let mut buffer = vec![0u8; size_usize];
             self.read(src, &mut buffer)?;
-            buffer
-        };
+            self.write(dest, &buffer)?;
+        }
         
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(feature = "std"))]
         {
             // For no_std, copy byte by byte
             // This is less efficient but works in constrained environments
@@ -2275,12 +2278,7 @@ impl MemoryOperations for Memory {
                 let byte = self.get_byte(src + i as u32)?;
                 self.set_byte(dest + i as u32, byte)?;
             }
-            return Ok(());
         }
-        
-        // Write to destination
-        // Copy to destination
-        self.write(dest, &temp_data)?;
         
         Ok(())
     }

@@ -185,8 +185,7 @@ impl ZephyrFutex {
             if timeout_ticks != i64::MAX {
                 let elapsed = unsafe { k_uptime_ticks() } - start_time;
                 if elapsed >= timeout_ticks {
-                    return Err(Error::runtime_execution_error(",
-                    ));
+                    return Err(Error::runtime_execution_error("Zephyr mutex lock timeout"));
                 }
             }
 
@@ -323,8 +322,7 @@ impl FutexLike for ZephyrSemaphoreFutex {
             if timeout_ticks != i64::MAX {
                 let elapsed = unsafe { k_uptime_ticks() } - start_time;
                 if elapsed >= timeout_ticks {
-                    return Err(Error::runtime_execution_error(",
-                    ));
+                    return Err(Error::runtime_execution_error("Zephyr semaphore wait timeout"));
                 }
             }
 

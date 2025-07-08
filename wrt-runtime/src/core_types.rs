@@ -3,7 +3,8 @@
 //! This module provides essential type definitions that are used throughout
 //! the runtime. These types are designed to work in both std and `no_std` environments.
 
-use crate::simple_types::{LocalsVec, ParameterVec, RuntimeProvider, ValueStackVec};
+use crate::simple_types::{LocalsVec, ParameterVec, ValueStackVec};
+use crate::bounded_runtime_infra::RuntimeProvider;
 use crate::prelude::ToString;
 use wrt_foundation::{
     traits::{Checksummable, ToBytes, FromBytes},
