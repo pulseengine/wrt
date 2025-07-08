@@ -80,7 +80,7 @@ impl FuelTrackedThreadContext {
             self.check_fuel_status()?;
         }
 
-        Ok(())
+        Ok(()
     }
 
     /// Consume fuel for specific WebAssembly instruction types
@@ -161,7 +161,7 @@ impl FuelTrackedThreadContext {
             });
         }
 
-        Ok(())
+        Ok(()
     }
 
     pub fn add_fuel(&self, amount: u64) -> u64 {
@@ -292,7 +292,7 @@ impl FuelTrackedThreadManager {
 
     pub fn consume_thread_fuel(&self, thread_id: ThreadId, amount: u64) -> ThreadSpawnResult<()> {
         if !self.fuel_enforcement.load(Ordering::Acquire) {
-            return Ok(());
+            return Ok(();
         }
 
         let context = self.thread_contexts.get(&thread_id).ok_or_else(|| ThreadSpawnError {
@@ -310,7 +310,7 @@ impl FuelTrackedThreadManager {
             })?;
         }
 
-        Ok(())
+        Ok(()
     }
 
     pub fn add_thread_fuel(&mut self, thread_id: ThreadId, amount: u64) -> ThreadSpawnResult<u64> {
@@ -480,7 +480,7 @@ mod tests {
 
         assert_eq!(context.get_remaining_fuel(), 1000);
         assert_eq!(context.get_consumed_fuel(), 0);
-        assert!(!context.fuel_exhausted.load(Ordering::Acquire));
+        assert!(!context.fuel_exhausted.load(Ordering::Acquire);
     }
 
     #[test]
@@ -488,15 +488,15 @@ mod tests {
         let context =
             FuelTrackedThreadContext::new(ThreadId::new(1), ComponentInstanceId::new(1), 1000);
 
-        assert!(context.consume_fuel(100).is_ok());
+        assert!(context.consume_fuel(100).is_ok();
         assert_eq!(context.get_remaining_fuel(), 900);
         assert_eq!(context.get_consumed_fuel(), 100);
 
-        assert!(context.consume_fuel(900).is_ok());
+        assert!(context.consume_fuel(900).is_ok();
         assert_eq!(context.get_remaining_fuel(), 0);
 
-        assert!(context.consume_fuel(1).is_err());
-        assert!(context.fuel_exhausted.load(Ordering::Acquire));
+        assert!(context.consume_fuel(1).is_err();
+        assert!(context.fuel_exhausted.load(Ordering::Acquire);
     }
 
     #[test]
@@ -510,7 +510,7 @@ mod tests {
     #[test]
     fn test_fuel_thread_config() {
         let config = create_fuel_thread_config(5000);
-        assert_eq!(config.initial_fuel, Some(5000));
+        assert_eq!(config.initial_fuel, Some(5000);
         assert_eq!(config.fuel_per_ms, FUEL_PER_MS);
         assert!(!config.allow_fuel_extension);
 

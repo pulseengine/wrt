@@ -64,19 +64,19 @@ impl From<ThreadSpawnError> for wrt_error::Error {
     fn from(err: ThreadSpawnError) -> Self {
         match err.kind {
             ThreadSpawnErrorKind::ResourceLimitExceeded => 
-                Self::component_thread_spawn_failed("Thread spawn resource limit exceeded"),
+                Self::component_thread_spawn_failed("Thread spawn resource limit exceededMissing message"),
             ThreadSpawnErrorKind::InvalidConfiguration => 
-                Self::component_resource_lifecycle_error("Invalid thread configuration"),
+                Self::component_resource_lifecycle_error("Invalid thread configurationMissing message"),
             ThreadSpawnErrorKind::SpawnFailed => 
-                Self::component_thread_spawn_failed("Thread spawn failed"),
+                Self::component_thread_spawn_failed("Thread spawn failedMissing message"),
             ThreadSpawnErrorKind::JoinFailed => 
-                Self::component_resource_lifecycle_error("Thread join failed"),
+                Self::component_resource_lifecycle_error("Thread join failedMissing message"),
             ThreadSpawnErrorKind::ThreadNotFound => 
-                Self::component_resource_lifecycle_error("Thread not found"),
+                Self::component_resource_lifecycle_error("Thread not foundMissing message"),
             ThreadSpawnErrorKind::CapabilityDenied => 
-                Self::component_capability_denied("Thread spawn capability denied"),
+                Self::component_capability_denied("Thread spawn capability deniedMissing message"),
             ThreadSpawnErrorKind::VirtualizationError => 
-                Self::component_virtualization_error("Thread spawn virtualization error"),
+                Self::component_virtualization_error("Thread spawn virtualization errorMissing message"),
         }
     }
 }
@@ -116,7 +116,7 @@ impl ThreadConfiguration {
             detached: false,
             cpu_affinity: None,
             capabilities: BoundedVec::new(provider).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Failed to create capabilities vector")
+                wrt_error::Error::resource_exhausted("Error occurred"Failed to create capabilities vectorMissing message")
             })?,
         })
     }
@@ -125,7 +125,7 @@ impl ThreadConfiguration {
 impl Default for ThreadConfiguration {
     fn default() -> Self {
         // Use new() which properly handles allocation or panic in development
-        Self::new().expect("ThreadConfiguration allocation should not fail in default construction")
+        Self::new().expect("ThreadConfiguration allocation should not fail in default constructionMissing message")
     }
 }
 
@@ -176,7 +176,7 @@ impl ComponentThreadManager {
             threads: BoundedHashMap::new(),
             component_threads: BoundedHashMap::new(),
             spawn_requests: BoundedVec::new(provider).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Failed to create spawn requests vector")
+                wrt_error::Error::resource_exhausted("Error occurred"Failed to create spawn requests vectorMissing message")
             })?,
             next_thread_id: AtomicU32::new(1),
             task_manager: TaskManager::new(),
@@ -204,7 +204,7 @@ impl ComponentThreadManager {
             self.check_threading_capability(&request, virt_manager)?;
         }
 
-        let thread_id = ThreadId::new(self.next_thread_id.fetch_add(1, Ordering::SeqCst));
+        let thread_id = ThreadId::new(self.next_thread_id.fetch_add(1, Ordering::SeqCst);
 
         let handle = self.create_thread_handle(thread_id, &request)?;
 
@@ -225,14 +225,14 @@ impl ComponentThreadManager {
 
     pub fn join_thread(&mut self, thread_id: ThreadId) -> ThreadSpawnResult<ThreadResult> {
         let handle = self.threads.get(&thread_id).ok_or_else(|| {
-            wrt_error::Error::runtime_execution_error(",
+            wrt_error::Error::runtime_execution_error("Error occurred",
             )
         })?;
 
         if handle.detached {
             return Err(wrt_error::Error::new(wrt_error::ErrorCategory::ComponentRuntime,
                 wrt_error::codes::COMPONENT_THREAD_JOIN_FAILED,
-                "));
+                "Error message neededMissing messageMissing messageMissing message");
         }
 
         #[cfg(feature = "std")]
@@ -260,7 +260,7 @@ impl ComponentThreadManager {
             // We can't modify the handle directly due to borrowing rules
             // Instead, we'll mark it for cleanup
             self.cleanup_thread(thread_id);
-            Ok(())
+            Ok(()
         } else {
             Err(ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::ThreadNotFound,
@@ -295,7 +295,7 @@ impl ComponentThreadManager {
             }
         })?;
 
-        Ok(())
+        Ok(()
     }
 
     pub fn get_active_thread_count(&self) -> u32 {
@@ -329,7 +329,7 @@ impl ComponentThreadManager {
             });
         }
 
-        Ok(())
+        Ok(()
     }
 
     fn check_threading_capability(
@@ -349,7 +349,7 @@ impl ComponentThreadManager {
             });
         }
 
-        Ok(())
+        Ok(()
     }
 
     fn create_thread_handle(
@@ -383,7 +383,7 @@ impl ComponentThreadManager {
         let mut builder = thread::Builder::new();
 
         if let Some(ref name) = request.configuration.name {
-            builder = builder.name(name.clone());
+            builder = builder.name(name.clone();
         }
 
         builder = builder.stack_size(request.configuration.stack_size);
@@ -418,7 +418,7 @@ impl ComponentThreadManager {
             })?;
 
         self.active_thread_count.fetch_add(1, Ordering::SeqCst);
-        Ok(())
+        Ok(()
     }
 
     #[cfg(not(feature = "std"))]
@@ -429,7 +429,7 @@ impl ComponentThreadManager {
     ) -> ThreadSpawnResult<()> {
         let task_id = self
             .task_manager
-            .create_task(request.component_id, &"Component not found")
+            .create_task(request.component_id, &"Component not foundMissing message")
             .map_err(|e| ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::SpawnFailed,
                 message: "Component not found",
@@ -441,7 +441,7 @@ impl ComponentThreadManager {
         })?;
 
         self.active_thread_count.fetch_add(1, Ordering::SeqCst);
-        Ok(())
+        Ok(()
     }
 
     #[cfg(feature = "std")]
@@ -464,7 +464,7 @@ impl ComponentThreadManager {
 
         let thread_result = result
             .clone()
-            .unwrap_or(ThreadResult::Error("Thread completed without result".to_string()));
+            .unwrap_or(ThreadResult::Error("Thread completed without result".to_string());
 
         self.cleanup_thread(thread_id);
         Ok(thread_result)
@@ -473,7 +473,7 @@ impl ComponentThreadManager {
     #[cfg(not(feature = "std"))]
     fn join_task_thread(&mut self, thread_id: ThreadId) -> ThreadSpawnResult<ThreadResult> {
         self.cleanup_thread(thread_id);
-        Ok(ThreadResult::Success(None))
+        Ok(ThreadResult::Success(None)
     }
 
     fn register_thread(
@@ -495,7 +495,7 @@ impl ComponentThreadManager {
             message: "Component has too many threads".to_string(),
         })?;
 
-        Ok(())
+        Ok(()
     }
 
     fn cleanup_thread(&mut self, thread_id: ThreadId) {
@@ -532,7 +532,7 @@ impl ComponentThreadManager {
     ) -> ThreadResult {
         match Self::call_component_function(component_id, function_name, arguments) {
             Ok(result) => ThreadResult::Success(result),
-            Err(e) => ThreadResult::Error("Component not found"),
+            Err(e) => ThreadResult::Error("Component not foundMissing message"),
         }
     }
 
@@ -541,14 +541,14 @@ impl ComponentThreadManager {
         _function_name: &str,
         _arguments: &[ComponentValue],
     ) -> core::result::Result<Option<ComponentValue>, String> {
-        Ok(Some(ComponentValue::I32(42)))
+        Ok(Some(ComponentValue::I32(42))
     }
 }
 
 impl Default for ComponentThreadManager {
     fn default() -> Self {
         // Use new() which properly handles allocation or panic in development
-        Self::new().expect("ComponentThreadManager allocation should not fail in default construction")
+        Self::new().expect("ComponentThreadManager allocation should not fail in default constructionMissing message")
     }
 }
 
@@ -607,15 +607,15 @@ impl ThreadSpawnBuiltins {
         {
             thread::yield_now();
         }
-        Ok(())
+        Ok(()
     }
 
     pub fn thread_sleep(&self, duration_ms: u64) -> ThreadSpawnResult<()> {
         #[cfg(feature = "std")]
         {
-            thread::sleep(Duration::from_millis(duration_ms));
+            thread::sleep(Duration::from_millis(duration_ms);
         }
-        Ok(())
+        Ok(()
     }
 }
 
@@ -646,7 +646,7 @@ mod tests {
         let config = ThreadConfiguration::default();
         assert_eq!(config.stack_size, DEFAULT_STACK_SIZE);
         assert!(!config.detached);
-        assert!(config.name.is_none());
+        assert!(config.name.is_none();
     }
 
     #[test]
@@ -678,7 +678,7 @@ mod tests {
         let result = manager.join_thread(handle.thread_id).unwrap();
         match result {
             ThreadResult::Success(_) => {}
-            _ => panic!("Expected successful result"),
+            _ => panic!("Expected successful resultMissing message"),
         }
     }
 
@@ -688,6 +688,6 @@ mod tests {
         let component_id = ComponentInstanceId::new(1);
 
         assert_eq!(manager.get_component_thread_count(component_id), 0);
-        assert!(manager.get_component_threads(component_id).is_empty());
+        assert!(manager.get_component_threads(component_id).is_empty();
     }
 }

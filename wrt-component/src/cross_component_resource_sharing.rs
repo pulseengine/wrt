@@ -447,7 +447,7 @@ impl CrossComponentResourceSharingManager {
             },
         )?;
 
-        Ok(())
+        Ok(()
     }
 
     pub fn access_shared_resource(
@@ -561,7 +561,7 @@ impl CrossComponentResourceSharingManager {
             )?;
         }
 
-        Ok(())
+        Ok(()
     }
 
     pub fn add_sharing_policy(&mut self, policy: SharingPolicy) -> ResourceSharingResult<u32> {
@@ -591,7 +591,7 @@ impl CrossComponentResourceSharingManager {
             resource: None,
         })?;
 
-        Ok(())
+        Ok(()
     }
 
     pub fn get_shared_resources_for_component(
@@ -643,7 +643,7 @@ impl CrossComponentResourceSharingManager {
             });
         }
 
-        Ok(())
+        Ok(()
     }
 
     fn check_sharing_policies(
@@ -662,7 +662,7 @@ impl CrossComponentResourceSharingManager {
             }
         }
 
-        Ok(())
+        Ok(()
     }
 
     fn policy_applies_to(
@@ -737,7 +737,7 @@ impl CrossComponentResourceSharingManager {
             _ => {} // Other rules would be checked elsewhere
         }
 
-        Ok(())
+        Ok(()
     }
 
     fn would_create_circular_dependency(
@@ -833,7 +833,7 @@ impl CrossComponentResourceSharingManager {
             })?;
         }
 
-        Ok(())
+        Ok(()
     }
 
     fn process_resource_transfer(
@@ -850,7 +850,7 @@ impl CrossComponentResourceSharingManager {
             resource: None,
         })?;
 
-        Ok(())
+        Ok(()
     }
 
     fn execute_sharing_callbacks(
@@ -863,7 +863,7 @@ impl CrossComponentResourceSharingManager {
                 callback(shared_resource, agreement)?;
             }
         }
-        Ok(())
+        Ok(()
     }
 
     fn get_agreement(&self, agreement_id: u32) -> ResourceSharingResult<&SharingAgreement> {
@@ -902,7 +902,7 @@ impl CrossComponentResourceSharingManager {
             })?;
         }
 
-        Ok(())
+        Ok(()
     }
 
     fn count_active_agreements(&self) -> usize {
@@ -997,7 +997,7 @@ mod tests {
     #[test]
     fn test_sharing_manager_creation() {
         let manager = CrossComponentResourceSharingManager::new().unwrap();
-        assert!(manager.enforce_policies.load(Ordering::Acquire));
+        assert!(manager.enforce_policies.load(Ordering::Acquire);
     }
 
     #[test]
@@ -1016,9 +1016,9 @@ mod tests {
 
     #[test]
     fn test_basic_policy_creation() {
-        let policy = create_basic_sharing_policy("test-policy").unwrap();
-        assert_eq!(policy.name, "test-policy");
-        assert!(matches!(policy.applies_to, PolicyScope::Global));
+        let policy = create_basic_sharing_policy("test-policyMissing message").unwrap();
+        assert_eq!(policy.name, "test-policyMissing message");
+        assert!(matches!(policy.applies_to, PolicyScope::Global);
         assert!(policy.enabled);
     }
 }

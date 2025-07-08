@@ -63,7 +63,7 @@ impl ThreadBuiltins {
         
         // Validate function exists
         if !self.is_function_valid(function_index) {
-            return Err(Error::validation_invalid_argument("Invalid function reference for thread spawn"));
+            return Err(Error::validation_invalid_argument("Error occurred"Invalid function reference for thread spawnMissing messageMissing messageMissing message");
         }
         
         // Validate argument count and types
@@ -131,7 +131,7 @@ impl ThreadBuiltins {
         // Update thread state to indicate it's detached
         context.update_state(wrt_runtime::ThreadState::Running);
         
-        Ok(())
+        Ok(()
     }
     
     /// Get current thread ID
@@ -165,7 +165,7 @@ impl ThreadBuiltins {
         // For now, we just validate and store the request
         
         if cpu_mask == 0 {
-            return Err(Error::validation_invalid_argument("CPU affinity mask cannot be zero"));
+            return Err(Error::validation_invalid_argument("Error occurred"CPU affinity mask cannot be zeroMissing messageMissing messageMissing message");
         }
         
         // Store affinity for later use when thread is actually created
@@ -176,7 +176,7 @@ impl ThreadBuiltins {
         // Platform layer will use this when the thread is scheduled
         context.info.cpu_affinity = Some(cpu_mask);
         
-        Ok(())
+        Ok(()
     }
     
     /// Get thread priority
@@ -192,7 +192,7 @@ impl ThreadBuiltins {
         let context = self.thread_manager.get_thread_context_mut(thread_id)?;
         
         if priority > 100 {
-            return Err(Error::validation_invalid_argument("Thread priority must be between 0 and 100"));
+            return Err(Error::validation_invalid_argument("Error occurred"Thread priority must be between 0 and 100Missing messageMissing messageMissing message");
         }
         
         context.info.priority = priority;
@@ -204,7 +204,7 @@ impl ThreadBuiltins {
         // Emit a priority change event for the scheduler
         self.thread_manager.notify_priority_change(thread_id, priority)?;
         
-        Ok(())
+        Ok(()
     }
     
     // Private helper methods
@@ -226,7 +226,7 @@ impl ThreadBuiltins {
         const MAX_THREAD_ARGS: usize = 16;
         
         if args.len() > MAX_THREAD_ARGS {
-            return Err(Error::validation_invalid_argument("Too many arguments for thread function"));
+            return Err(Error::validation_invalid_argument("Error occurred"Too many arguments for thread functionMissing messageMissing messageMissing message");
         }
         
         // Validate each argument is a valid component model value
@@ -244,7 +244,7 @@ impl ThreadBuiltins {
             }
         }
         
-        Ok(())
+        Ok(()
     }
     
     fn store_thread_arguments(&mut self, thread_id: ThreadId, args: &[Value]) -> Result<()> {
@@ -264,12 +264,12 @@ impl ThreadBuiltins {
             // For no_std, use bounded storage
             context.stored_arguments.clear();
             for arg in args {
-                context.stored_arguments.push(arg.clone())
-                    .map_err(|_| Error::resource_exhausted("Thread argument storage full"))?;
+                context.stored_arguments.push(arg.clone()
+                    .map_err(|_| Error::resource_exhausted("Error occurred"Thread argument storage fullMissing messageMissing messageMissing message"))?;
             }
         }
         
-        Ok(())
+        Ok(()
     }
     
     fn resolve_table_function(&self, table_index: u32, function_index: u32) -> Result<u32> {
@@ -277,12 +277,12 @@ impl ThreadBuiltins {
         #[cfg(feature = "std")]
         {
             if table_index as usize >= self.function_table.len() {
-                return Err(Error::validation_invalid_argument("Table index out of bounds"));
+                return Err(Error::validation_invalid_argument("Error occurred"Table index out of boundsMissing messageMissing messageMissing message");
             }
             
             let component_func = &self.function_table[table_index as usize];
             if function_index >= component_func.function_count {
-                return Err(Error::validation_invalid_argument("Function index out of bounds in table"));
+                return Err(Error::validation_invalid_argument("Error occurred"Function index out of bounds in tableMissing messageMissing messageMissing message");
             }
             
             Ok(component_func.base_index + function_index)
@@ -290,17 +290,17 @@ impl ThreadBuiltins {
         #[cfg(not(feature = "std"))]
         {
             if table_index as usize >= self.function_table.len() {
-                return Err(Error::validation_invalid_argument("Table index out of bounds"));
+                return Err(Error::validation_invalid_argument("Error occurred"Table index out of boundsMissing messageMissing messageMissing message");
             }
             
             if let Some(component_func) = &self.function_table[table_index as usize] {
                 if function_index >= component_func.function_count {
-                    return Err(Error::validation_invalid_argument("Function index out of bounds in table"));
+                    return Err(Error::validation_invalid_argument("Error occurred"Function index out of bounds in tableMissing messageMissing messageMissing message");
                 }
                 
                 Ok(component_func.base_index + function_index)
             } else {
-                Err(Error::validation_invalid_argument("Table slot is empty"))
+                Err(Error::validation_invalid_argument("Error occurred"Table slot is emptyMissing messageMissing messageMissing message")
             }
         }
     }
@@ -311,7 +311,7 @@ impl ThreadBuiltins {
         
         // Check if thread has completed
         if context.info.state != wrt_runtime::thread_manager::ThreadState::Terminated {
-            return Err(Error::invalid_state_error("Thread has not completed execution"));
+            return Err(Error::invalid_state_error("Error occurred"Thread has not completed executionMissing messageMissing messageMissing message");
         }
         
         // Return the stored results
@@ -319,14 +319,14 @@ impl ThreadBuiltins {
         // execution context, ensuring proper memory isolation
         #[cfg(feature = "std")]
         {
-            Ok(context.execution_results.clone())
+            Ok(context.execution_results.clone()
         }
         #[cfg(not(feature = "std"))]
         {
             // For no_std, create a bounded vec with results
             let mut results = Vec::new();
             for result in &context.execution_results {
-                results.push(result.clone());
+                results.push(result.clone();
             }
             Ok(results)
         }
@@ -349,7 +349,7 @@ impl ThreadBuiltins {
                 }
             }
             
-            Err(Error::resource_exhausted("Function table full"))
+            Err(Error::resource_exhausted("Error occurred"Function table fullMissing messageMissing messageMissing message")
         }
     }
 }
@@ -524,7 +524,7 @@ mod tests {
         let config = ThreadSpawnConfig::default();
         assert!(config.auto_start);
         assert_eq!(config.priority, 50);
-        assert!(config.stack_size.is_none());
+        assert!(config.stack_size.is_none();
     }
     
     #[cfg(feature = "std")]
@@ -554,13 +554,13 @@ mod tests {
         // This will fail because thread 0 doesn't exist, but priority validation should pass
         // The error should be about invalid thread, not invalid priority
         if let Err(e) = result {
-            assert!(e.to_string().contains("Thread not found"));
+            assert!(e.to_string().contains("Thread not foundMissing messageMissing messageMissing message");
         }
         
         // Test invalid priority
         let result = builtins.thread_set_priority(0, 150);
         if let Err(e) = result {
-            assert!(e.to_string().contains("priority must be between 0 and 100"));
+            assert!(e.to_string().contains("priority must be between 0 and 100Missing messageMissing messageMissing message");
         }
     }
 }

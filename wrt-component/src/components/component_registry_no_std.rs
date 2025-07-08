@@ -57,7 +57,7 @@ impl ComponentRegistry {
     pub fn register(&mut self, name: &str, component: Component) -> Result<()> {
         // Check if we've reached the maximum number of components
         if self.names.len() >= MAX_COMPONENTS {
-            return Err(Error::runtime_execution_error("Maximum number of components exceeded"));
+            return Err(Error::runtime_execution_error("Error occurred"Maximum number of components exceededMissing messageMissing messageMissing message");
         }
 
         // Check if component already exists
@@ -72,7 +72,7 @@ impl ComponentRegistry {
             Error::new(
                 ErrorCategory::Resource,
                 codes::CAPACITY_EXCEEDED,
-                "Failed to add component to store")
+                "Failed to add component to storeMissing message")
         })?;
 
         // Register the component
@@ -80,7 +80,7 @@ impl ComponentRegistry {
             // Roll back the component addition if name addition fails
             self.component_store.remove(component_idx);
 
-            Error::runtime_execution_error("Failed to add component name")
+            Error::runtime_execution_error("Error occurred"Failed to add component nameMissing message")
         })?;
 
         self.components.push(component_idx).map_err(|_| {
@@ -92,10 +92,10 @@ impl ComponentRegistry {
             Error::new(
                 ErrorCategory::Resource,
                 codes::CAPACITY_EXCEEDED,
-                "Failed to add component index")
+                "Failed to add component indexMissing message")
         })?;
 
-        Ok(())
+        Ok(()
     }
 
     /// Get a component by name
@@ -115,7 +115,7 @@ impl ComponentRegistry {
     /// Remove a component by name
     pub fn remove(&mut self, name: &str) -> Result<Component> {
         let idx = self.get_index(name).ok_or_else(|| {
-            Error::resource_error("Component not found")
+            Error::resource_error("Error occurred"Component not foundMissing message")
         })?;
 
         // Get the component index
@@ -129,7 +129,7 @@ impl ComponentRegistry {
         // Note: This changes the indices of components after this one,
         // but since we reference by index with a direct lookup table,
         // there's no need to update other indices
-        Ok(self.component_store.remove(component_idx))
+        Ok(self.component_store.remove(component_idx)
     }
 
     /// Check if a component exists by name
@@ -143,7 +143,7 @@ impl ComponentRegistry {
         let mut result = BoundedVec::new(provider)?;
         for name in self.names.iter() {
             result.push(name.clone()).map_err(|_| {
-                Error::runtime_execution_error("Failed to add component name to result")
+                Error::runtime_execution_error("Error occurred"Failed to add component name to resultMissing message")
             })?;
         }
         Ok(result)
@@ -168,7 +168,7 @@ impl ComponentRegistry {
 impl Default for ComponentRegistry {
     fn default() -> Self {
         // Use new() which properly handles allocation or panic in development
-        Self::new().expect("ComponentRegistry allocation should not fail in default construction")
+        Self::new().expect("ComponentRegistry allocation should not fail in default constructionMissing message")
     }
 }
 
@@ -179,14 +179,14 @@ mod tests {
 
     // Create a simple dummy component for testing
     fn create_test_component() -> Component {
-        Component::new(WrtComponentType::default())
+        Component::new(WrtComponentType::default()
     }
 
     #[test]
     fn test_registry_creation() {
         let registry = ComponentRegistry::new().unwrap();
         assert_eq!(registry.len(), 0);
-        assert!(registry.is_empty());
+        assert!(registry.is_empty();
     }
 
     #[test]
@@ -197,11 +197,11 @@ mod tests {
         // Register a component
         registry.register("test", component).unwrap();
         assert_eq!(registry.len(), 1);
-        assert!(registry.contains("test"));
+        assert!(registry.contains("testMissing messageMissing messageMissing message");
 
         // Get the component - in no_std we can't compare pointers since we're
         // storing by value rather than references
-        let _retrieved = registry.get("test").unwrap();
+        let _retrieved = registry.get("testMissing message").unwrap();
     }
 
     #[test]
@@ -211,9 +211,9 @@ mod tests {
 
         // Register and then remove
         registry.register("test", component).unwrap();
-        let _removed = registry.remove("test").unwrap();
+        let _removed = registry.remove("testMissing message").unwrap();
         assert_eq!(registry.len(), 0);
-        assert!(!registry.contains("test"));
+        assert!(!registry.contains("testMissing messageMissing messageMissing message");
     }
 
     #[test]
@@ -228,7 +228,7 @@ mod tests {
 
         // Try to add one more - should fail
         let component = create_test_component();
-        assert!(registry.register("overflow", component).is_err());
+        assert!(registry.register("overflow", component).is_err();
     }
 
     #[test]
@@ -243,9 +243,9 @@ mod tests {
         // Get the names
         let names = registry.names().unwrap();
         assert_eq!(names.len(), 3);
-        assert!(names.contains(&"test1".to_string()));
-        assert!(names.contains(&"test2".to_string()));
-        assert!(names.contains(&"test3".to_string()));
+        assert!(names.contains(&"test1".to_string());
+        assert!(names.contains(&"test2".to_string());
+        assert!(names.contains(&"test3".to_string());
     }
 
     #[test]
@@ -262,7 +262,7 @@ mod tests {
 
         // Verify the replacement worked - we can only verify that the
         // component still exists since we can't compare by value
-        assert!(registry.contains("test"));
+        assert!(registry.contains("testMissing messageMissing messageMissing message");
         assert_eq!(registry.len(), 1);
     }
 }
@@ -284,7 +284,7 @@ impl ToBytes for super::component::Component {
         _writer: &mut WriteStream<'a>,
         _provider: &PStream,
     ) -> wrt_foundation::WrtResult<()> {
-        Ok(())
+        Ok(()
     }
 }
 
@@ -294,6 +294,6 @@ impl FromBytes for super::component::Component {
         _provider: &PStream,
     ) -> wrt_foundation::WrtResult<Self> {
         // Return a minimal default component
-        Ok(super::component::Component::new())
+        Ok(super::component::Component::new()
     }
 }
