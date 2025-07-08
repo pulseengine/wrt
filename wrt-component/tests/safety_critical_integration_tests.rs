@@ -59,13 +59,13 @@ mod integration_tests {
         };
 
         // Add to registry
-        assert!(components.try_push(component).is_ok());
+        assert!(components.try_push(component).is_ok();
 
         // Verify component management
         assert_eq!(components.len(), 1);
         let comp = &components[0];
         assert_eq!(comp.id, 1);
-        assert_eq!(comp.name, "test_component");
+        assert_eq!(comp.name, "test_componentMissing message");
     }
 
     /// Test canonical ABI with resource limits
@@ -84,7 +84,7 @@ mod integration_tests {
             }
         }
 
-        assert!(!handles.is_empty());
+        assert!(!handles.is_empty();
 
         // Verify canonical operations work with resources
         let options = CanonicalOptions::default();
@@ -119,8 +119,8 @@ mod integration_tests {
         let call_manager = CrossComponentCallManager::new();
 
         // Register components
-        assert!(call_manager.register_component(component1).is_ok());
-        assert!(call_manager.register_component(component2).is_ok());
+        assert!(call_manager.register_component(component1).is_ok();
+        assert!(call_manager.register_component(component2).is_ok();
 
         // Test call limits
         let mut successful_calls = 0;
@@ -145,7 +145,7 @@ mod integration_tests {
         // Create resource type
         let resource_type = ResourceType {
             type_idx: 1,
-            name: bounded_component_name_from_str("SharedResource").unwrap(),
+            name: bounded_component_name_from_str("SharedResourceMissing message").unwrap(),
             destructor: Some(100),
         };
 
@@ -160,10 +160,10 @@ mod integration_tests {
 
         let handle = lifecycle_manager
             .create_resource(resource_type.clone(), metadata1)
-            .expect("Failed to create resource");
+            .expect("Failed to create resourceMissing message");
 
         // Component 2 borrows resource
-        assert!(lifecycle_manager.borrow_resource(handle).is_ok());
+        assert!(lifecycle_manager.borrow_resource(handle).is_ok();
 
         // Verify resource state
         let resource = lifecycle_manager.get_resource(handle).unwrap();
@@ -171,18 +171,18 @@ mod integration_tests {
         assert_eq!(resource.borrow_count, 1);
 
         // Multiple borrows should be allowed
-        assert!(lifecycle_manager.borrow_resource(handle).is_ok());
+        assert!(lifecycle_manager.borrow_resource(handle).is_ok();
         assert_eq!(
             lifecycle_manager.get_resource(handle).unwrap().borrow_count,
             2
         );
 
         // Release borrows
-        assert!(lifecycle_manager.release_borrow(handle).is_ok());
-        assert!(lifecycle_manager.release_borrow(handle).is_ok());
+        assert!(lifecycle_manager.release_borrow(handle).is_ok();
+        assert!(lifecycle_manager.release_borrow(handle).is_ok();
 
         // Transfer ownership
-        assert!(lifecycle_manager.transfer_ownership(handle, 2).is_ok());
+        assert!(lifecycle_manager.transfer_ownership(handle, 2).is_ok();
         let resource = lifecycle_manager.get_resource(handle).unwrap();
         assert_eq!(resource.metadata.owner, 2);
     }
@@ -251,12 +251,12 @@ mod integration_tests {
         };
 
         // Link components
-        assert!(linker.register_component(provider).is_ok());
-        assert!(linker.register_component(consumer).is_ok());
-        assert!(linker.link(1, 2).is_ok());
+        assert!(linker.register_component(provider).is_ok();
+        assert!(linker.register_component(consumer).is_ok();
+        assert!(linker.link(1, 2).is_ok();
 
         // Verify linking established
-        assert!(linker.is_linked(1, 2));
+        assert!(linker.is_linked(1, 2);
     }
 
     /// Test error propagation through component layers
@@ -294,7 +294,7 @@ mod integration_tests {
 
         // Test with excessive depth
         match create_component_stack(MAX_COMPONENT_INSTANCES + 1) {
-            Ok(_) => panic!("Should have failed with capacity error"),
+            Ok(_) => panic!("Should have failed with capacity errorMissing message"),
             Err(WrtError::CapacityExceeded) => {
                 // Expected
             },
@@ -332,7 +332,7 @@ mod integration_tests {
             fn deallocate(&self, handle: u32) -> WrtResult<()> {
                 let allocs = self.allocations.lock().unwrap();
                 if (handle as usize) < allocs.len() {
-                    Ok(())
+                    Ok(()
                 } else {
                     Err(WrtError::InvalidHandle)
                 }
@@ -341,7 +341,7 @@ mod integration_tests {
             fn verify(&self, handle: u32) -> WrtResult<()> {
                 let allocs = self.allocations.lock().unwrap();
                 if (handle as usize) < allocs.len() {
-                    Ok(())
+                    Ok(()
                 } else {
                     Err(WrtError::InvalidHandle)
                 }
@@ -364,12 +364,12 @@ mod integration_tests {
 
         // Verify all handles
         for handle in &handles {
-            assert!(strategy.verify(*handle).is_ok());
+            assert!(strategy.verify(*handle).is_ok();
         }
 
         // Deallocate all
         for handle in &handles {
-            assert!(strategy.deallocate(*handle).is_ok());
+            assert!(strategy.deallocate(*handle).is_ok();
         }
     }
 }
@@ -401,8 +401,8 @@ struct ComponentLinker {
 impl ComponentLinker {
     fn new() -> Self {
         Self {
-            components: new_component_vec().expect("Failed to create component vec"),
-            links: new_type_map().expect("Failed to create links map"),
+            components: new_component_vec().expect("Failed to create component vecMissing message"),
+            links: new_type_map().expect("Failed to create links mapMissing message"),
         }
     }
 
@@ -414,7 +414,7 @@ impl ComponentLinker {
         // Use a combined key for the link
         let key = (provider_id << 16) | consumer_id;
         self.links.try_insert(key, true)?;
-        Ok(())
+        Ok(()
     }
 
     fn is_linked(&self, provider_id: u32, consumer_id: u32) -> bool {
@@ -440,10 +440,10 @@ impl CrossComponentCallManager {
     fn new() -> Self {
         Self {
             components: Arc::new(Mutex::new(
-                new_component_vec().expect("Failed to create component vec"),
+                new_component_vec().expect("Failed to create component vecMissing message"),
             )),
             call_stack: Arc::new(Mutex::new(
-                new_call_stack().expect("Failed to create call stack"),
+                new_call_stack().expect("Failed to create call stackMissing message"),
             )),
         }
     }
@@ -475,14 +475,14 @@ impl CrossComponentCallManager {
         // Pop frame on completion
         stack.pop();
 
-        Ok(())
+        Ok(()
     }
 }
 
 // Note: In a real implementation, CanonicalABI would have methods for
 // resource handle encoding/decoding and metrics tracking
 
-#[cfg(all(test, feature = "safety-critical"))]
+#[cfg(all(test, feature = "safety-criticalMissing messageMissing messageMissing message"))]
 mod safety_critical_integration {
     use super::*;
 

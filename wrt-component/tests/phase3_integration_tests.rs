@@ -196,12 +196,12 @@ impl Future for DeadlineConstrainedTask {
 
     fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.completed {
-            return Poll::Ready(Ok(self.fuel_consumed));
+            return Poll::Ready(Ok(self.fuel_consumed);
         }
 
         if self.current_phase >= self.execution_phases.len() {
             self.completed = true;
-            return Poll::Ready(Ok(self.fuel_consumed));
+            return Poll::Ready(Ok(self.fuel_consumed);
         }
 
         let phase = self.execution_phases[self.current_phase];
@@ -220,7 +220,7 @@ impl Future for DeadlineConstrainedTask {
 
         if self.current_phase >= self.execution_phases.len() {
             self.completed = true;
-            Poll::Ready(Ok(self.fuel_consumed))
+            Poll::Ready(Ok(self.fuel_consumed)
         } else {
             Poll::Pending
         }
@@ -282,12 +282,12 @@ mod tests {
             .unwrap();
 
         // Verify WCET results include safety margins
-        assert!(control_wcet.wcet_fuel > control_task.calculate_wcet());
-        assert!(monitoring_wcet.wcet_fuel > monitoring_task.calculate_wcet());
+        assert!(control_wcet.wcet_fuel > control_task.calculate_wcet();
+        assert!(monitoring_wcet.wcet_fuel > monitoring_task.calculate_wcet();
         assert_eq!(control_wcet.confidence_level, 0.8); // Static analysis confidence
-        assert!(control_wcet.critical_path.is_some());
+        assert!(control_wcet.critical_path.is_some();
 
-        println!("WCET Analysis Results:");
+        println!("WCET Analysis Results:Missing message");
         println!(
             "- ASIL-C Control Task: WCET = {} fuel, BCET = {} fuel",
             control_wcet.wcet_fuel, control_wcet.bcet_fuel
@@ -328,7 +328,7 @@ mod tests {
             control_task.calculate_wcet(),
             control_task.calculate_bcet(),
         );
-        assert!(result1.is_ok());
+        assert!(result1.is_ok();
 
         let result2 = scheduler.add_deadline_task(
             monitoring_task.task_id,
@@ -339,7 +339,7 @@ mod tests {
             monitoring_task.calculate_wcet(),
             monitoring_task.calculate_bcet(),
         );
-        assert!(result2.is_ok());
+        assert!(result2.is_ok();
 
         let result3 = scheduler.add_deadline_task(
             background_task.task_id,
@@ -350,7 +350,7 @@ mod tests {
             background_task.calculate_wcet(),
             background_task.calculate_bcet(),
         );
-        assert!(result3.is_ok());
+        assert!(result3.is_ok();
 
         // Verify tasks were added
         let stats = scheduler.get_statistics();
@@ -366,7 +366,7 @@ mod tests {
         // Test schedulability analysis
         let analysis = scheduler.analyze_schedulability().unwrap();
         assert!(analysis.schedulable);
-        println!("Schedulability Analysis:");
+        println!("Schedulability Analysis:Missing message");
         println!("- Total utilization: {:.3}", analysis.total_utilization);
         println!("- Utilization bound: {:.3}", analysis.utilization_bound);
         println!("- Schedulable: {}", analysis.schedulable);
@@ -441,7 +441,7 @@ mod tests {
 
         // Next should be medium period task
         let next_task = scheduler.schedule_next_task().unwrap();
-        assert_eq!(next_task, Some(medium_period_task));
+        assert_eq!(next_task, Some(medium_period_task);
 
         let stats = scheduler.get_statistics();
         assert_eq!(
@@ -564,7 +564,7 @@ mod tests {
 
         // Only ASIL-C and ASIL-D tasks remain active
         let next_task = scheduler.schedule_next_task().unwrap();
-        assert!(next_task == Some(asil_d_task) || next_task == Some(asil_c_task));
+        assert!(next_task == Some(asil_d_task) || next_task == Some(asil_c_task);
     }
 
     #[test]
@@ -603,7 +603,7 @@ mod tests {
 
         // Perform initial WCET analysis
         let wcet_result = wcet_analyzer
-            .analyze_task_wcet(task_id, component_id, Some(WcetAnalysisMethod::Static))
+            .analyze_task_wcet(task_id, component_id, Some(WcetAnalysisMethod::Static)
             .unwrap();
 
         // Collect execution samples
@@ -648,7 +648,7 @@ mod tests {
             1
         );
 
-        println!("WCET Validation Results:");
+        println!("WCET Validation Results:Missing message");
         println!("- Static WCET: {} fuel", wcet_result.wcet_fuel);
         println!("- Measurement WCET: {} fuel", refined_result.wcet_fuel);
         println!("- Sample count: {}", refined_result.sample_count);
@@ -870,7 +870,7 @@ mod tests {
                 / 1000.0;
         assert!(current_util <= 0.5);
 
-        println!("ASIL-C Compliance Verification Results:");
+        println!("ASIL-C Compliance Verification Results:Missing message");
         println!(
             "✓ Zero deadline misses: {}",
             scheduler_stats
@@ -894,8 +894,8 @@ mod tests {
             "✓ WCET analysis samples: {}",
             wcet_stats.total_samples.load(core::sync::atomic::Ordering::Acquire)
         );
-        println!("✓ Deterministic scheduling: Hybrid RM+EDF with fuel bounds");
-        println!("✓ Freedom from interference: Component isolation enforced");
+        println!("✓ Deterministic scheduling: Hybrid RM+EDF with fuel boundsMissing message");
+        println!("✓ Freedom from interference: Component isolation enforcedMissing message");
     }
 
     #[test]
@@ -915,7 +915,7 @@ mod tests {
             50,
             40,
         );
-        assert!(valid_result.is_ok());
+        assert!(valid_result.is_ok();
 
         // Valid case: deadline = period
         let equal_result = scheduler.add_deadline_task(
@@ -927,7 +927,7 @@ mod tests {
             25,
             20,
         );
-        assert!(equal_result.is_ok());
+        assert!(equal_result.is_ok();
 
         // Invalid case: deadline > period
         let invalid_result = scheduler.add_deadline_task(
@@ -939,7 +939,7 @@ mod tests {
             20,
             15,
         );
-        assert!(invalid_result.is_err());
+        assert!(invalid_result.is_err();
     }
 }
 
@@ -993,15 +993,15 @@ mod examples {
         let priority_protocol = FuelPriorityInheritanceProtocol::new(VerificationLevel::Full)?;
         let channel_manager = FuelAsyncChannelManager::<String>::new(VerificationLevel::Full);
 
-        println!("Phase 3 ASIL-C async system created with:");
-        println!("- Fuel-aware WCET analysis with 99.9% confidence bounds");
-        println!("- Constrained deadline scheduler (deadline ≤ period)");
-        println!("- Hybrid Rate Monotonic + EDF scheduling");
-        println!("- ASIL-based criticality mode switching");
-        println!("- Real-time WCET enforcement and validation");
-        println!("- Freedom from interference with deadline guarantees");
+        println!("Phase 3 ASIL-C async system created with:Missing message");
+        println!("- Fuel-aware WCET analysis with 99.9% confidence boundsMissing message");
+        println!("- Constrained deadline scheduler (deadline ≤ period)Missing message");
+        println!("- Hybrid Rate Monotonic + EDF schedulingMissing message");
+        println!("- ASIL-based criticality mode switchingMissing message");
+        println!("- Real-time WCET enforcement and validationMissing message");
+        println!("- Freedom from interference with deadline guaranteesMissing message");
 
-        Ok(())
+        Ok(()
     }
 
     /// Example: ASIL-C engine control task with WCET analysis
@@ -1049,13 +1049,13 @@ mod examples {
             wcet_result.bcet_fuel,     // Use analyzed BCET
         )?;
 
-        println!("ASIL-C Engine Control Task configured:");
-        println!("- Period: 10ms (100Hz control rate)");
-        println!("- Deadline: 8ms (constrained deadline)");
+        println!("ASIL-C Engine Control Task configured:Missing message");
+        println!("- Period: 10ms (100Hz control rate)Missing message");
+        println!("- Deadline: 8ms (constrained deadline)Missing message");
         println!("- WCET: {} fuel units", wcet_result.wcet_fuel);
         println!("- BCET: {} fuel units", wcet_result.bcet_fuel);
-        println!("- Safety margin: included in WCET analysis");
+        println!("- Safety margin: included in WCET analysisMissing message");
 
-        Ok(())
+        Ok(()
     }
 }

@@ -76,7 +76,7 @@ impl Future for SimulatedAsyncWork {
 
     fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.polls_remaining == 0 {
-            Poll::Ready(Ok(self.result.take().unwrap_or(0)))
+            Poll::Ready(Ok(self.result.take().unwrap_or(0))
         } else {
             self.polls_remaining -= 1;
 
@@ -130,7 +130,7 @@ mod tests {
 
         // Release resource and verify cleanup
         let next_holder = protocol.release_resource(resource_id, low_priority_holder).unwrap();
-        assert_eq!(next_holder, Some(high_priority_task));
+        assert_eq!(next_holder, Some(high_priority_task);
 
         let final_stats = protocol.get_statistics();
         assert_eq!(
@@ -158,21 +158,21 @@ mod tests {
             .unwrap();
 
         // Test immediate send/receive
-        assert!(sender.try_send(42).is_ok());
+        assert!(sender.try_send(42).is_ok();
         let received = receiver.try_receive().unwrap();
         assert_eq!(received, 42);
 
         // Fill channel to test blocking behavior
         for i in 0..5 {
-            assert!(sender.try_send(i).is_ok());
+            assert!(sender.try_send(i).is_ok();
         }
 
         // Next send should indicate it would block
         let result = sender.try_send(999);
         assert!(matches!(
             result,
-            Err(super::super::async_::fuel_async_channels::ChannelError::WouldBlock(_))
-        ));
+            Err(super::super::async_::fuel_async_channels::ChannelError::WouldBlock(_)
+        );
 
         // Receive messages to make space
         for expected in 0..5 {
@@ -368,11 +368,11 @@ mod tests {
 
         // High priority producer should run first
         let next_task = preemptive_scheduler.schedule_next_task().unwrap();
-        assert_eq!(next_task, Some(TaskId::new(1)));
+        assert_eq!(next_task, Some(TaskId::new(1));
 
         // Simulate producer sending data
-        assert!(sender.try_send(100).is_ok());
-        assert!(sender.try_send(200).is_ok());
+        assert!(sender.try_send(100).is_ok();
+        assert!(sender.try_send(200).is_ok();
 
         // Producer becomes blocked (simulating I/O or resource wait)
         preemptive_scheduler
@@ -385,7 +385,7 @@ mod tests {
 
         // Consumer should run next
         let next_task = preemptive_scheduler.schedule_next_task().unwrap();
-        assert_eq!(next_task, Some(TaskId::new(2)));
+        assert_eq!(next_task, Some(TaskId::new(2));
 
         // Consumer receives data
         let received1 = receiver.try_receive().unwrap();
@@ -438,7 +438,7 @@ mod tests {
                 >= 2
         );
 
-        println!("Phase 2 Integration Test Results:");
+        println!("Phase 2 Integration Test Results:Missing message");
         println!(
             "- Executor fuel status: {}/{} fuel used",
             executor_stats.consumed, executor_stats.limit
@@ -529,7 +529,7 @@ mod tests {
 
         // Test 1: Safety-critical task has highest priority
         let first_scheduled = scheduler.schedule_next_task().unwrap();
-        assert_eq!(first_scheduled, Some(safety_critical_task));
+        assert_eq!(first_scheduled, Some(safety_critical_task);
 
         // Test 2: Safety-critical task completes without preemption
         scheduler
@@ -542,7 +542,7 @@ mod tests {
 
         // Test 3: Application task runs next
         let second_scheduled = scheduler.schedule_next_task().unwrap();
-        assert_eq!(second_scheduled, Some(application_task));
+        assert_eq!(second_scheduled, Some(application_task);
 
         // Test 4: Safety-critical task can preempt application task
         scheduler
@@ -595,13 +595,13 @@ mod tests {
         assert!(total_scheduler_fuel > 0); // Scheduler is tracking fuel
         assert!(total_scheduler_fuel < 1000); // Overhead is bounded
 
-        println!("ASIL-B Compliance Test Results:");
-        println!("✓ Priority isolation: Critical tasks scheduled first");
-        println!("✓ Temporal isolation: Non-preemptible critical sections");
-        println!("✓ Spatial isolation: Component-based task separation");
-        println!("✓ Resource bounds: Fuel budgets enforced");
-        println!("✓ Deterministic timing: Fuel-based scheduling");
-        println!("✓ Priority inheritance: Available for blocking scenarios");
+        println!("ASIL-B Compliance Test Results:Missing message");
+        println!("✓ Priority isolation: Critical tasks scheduled firstMissing message");
+        println!("✓ Temporal isolation: Non-preemptible critical sectionsMissing message");
+        println!("✓ Spatial isolation: Component-based task separationMissing message");
+        println!("✓ Resource bounds: Fuel budgets enforcedMissing message");
+        println!("✓ Deterministic timing: Fuel-based schedulingMissing message");
+        println!("✓ Priority inheritance: Available for blocking scenariosMissing message");
     }
 }
 
@@ -634,13 +634,13 @@ mod examples {
         // 4. Create channel manager for async communication
         let channel_manager = FuelAsyncChannelManager::<String>::new(VerificationLevel::Standard);
 
-        println!("Phase 2 async system created with:");
-        println!("- Fuel-based async executor with preemption support");
-        println!("- Priority inheritance protocol for preventing priority inversion");
-        println!("- Bounded async channels with flow control");
-        println!("- Preemptive scheduler with priority aging and deadline support");
+        println!("Phase 2 async system created with:Missing message");
+        println!("- Fuel-based async executor with preemption supportMissing message");
+        println!("- Priority inheritance protocol for preventing priority inversionMissing message");
+        println!("- Bounded async channels with flow controlMissing message");
+        println!("- Preemptive scheduler with priority aging and deadline supportMissing message");
 
-        Ok(())
+        Ok(()
     }
 
     /// Example: High-priority task with resource blocking
@@ -668,8 +668,8 @@ mod examples {
 
         // When resource is released, original priorities are restored
         let next_holder = protocol.release_resource(resource_id, low_priority_holder)?;
-        assert_eq!(next_holder, Some(high_priority_task));
+        assert_eq!(next_holder, Some(high_priority_task);
 
-        Ok(())
+        Ok(()
     }
 }

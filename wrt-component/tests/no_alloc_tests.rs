@@ -40,23 +40,23 @@ mod no_alloc_tests {
         // Test basic validation of a minimal component
         let basic_result =
             validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Basic);
-        assert!(basic_result.is_ok());
+        assert!(basic_result.is_ok();
 
         // Test standard validation of a minimal component
         let standard_result =
             validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Standard);
-        assert!(standard_result.is_ok());
+        assert!(standard_result.is_ok();
 
         // Test full validation of a minimal component
         let full_result = validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Full);
-        assert!(full_result.is_ok());
+        assert!(full_result.is_ok();
     }
 
     #[test]
     fn test_minimal_component() {
         // Create a minimal component with standard verification level
         let component = MinimalComponent::new(&MINIMAL_COMPONENT, VerificationLevel::Standard);
-        assert!(component.is_ok());
+        assert!(component.is_ok();
 
         // Check properties of the minimal component
         let component = component.unwrap();
@@ -64,24 +64,24 @@ mod no_alloc_tests {
         assert_eq!(component.export_count(), 0);
         assert_eq!(component.import_count(), 0);
         assert_eq!(component.module_count(), 0);
-        assert!(!component.has_start());
+        assert!(!component.has_start();
     }
 
     #[test]
     fn test_component_validation() {
         // Test validation of a minimal component
         let result = validate_component_no_alloc(&MINIMAL_COMPONENT);
-        assert!(result.is_ok());
+        assert!(result.is_ok();
 
         // Invalid component with incorrect magic number
         let invalid_component = [0x01, 0x61, 0x73, 0x6D, 0x0A, 0x00, 0x01, 0x00];
         let result = validate_component_no_alloc(&invalid_component);
-        assert!(result.is_err());
+        assert!(result.is_err();
 
         // Component that's too small
         let too_small = [0x00, 0x61];
         let result = validate_component_no_alloc(&too_small);
-        assert!(result.is_err());
+        assert!(result.is_err();
     }
 
     #[test]
@@ -98,7 +98,7 @@ mod no_alloc_tests {
 
         // All sections should be None
         for section in &header.sections {
-            assert!(section.is_none());
+            assert!(section.is_none();
         }
     }
 

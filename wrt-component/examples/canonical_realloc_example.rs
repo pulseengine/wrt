@@ -25,12 +25,12 @@ mod example {
         let memory = Memory::new(1, Some(10))?; // 1 initial page, max 10 pages
 
         // Binary std/no_std choice
-        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default()));
+        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default());
 
         // Binary std/no_std choice
         let instance_id = ComponentInstanceId(1);
         let options = CanonicalOptions::new(0, instance_id)
-            .with_realloc(42, realloc_manager.clone())
+            .with_realloc(42, realloc_manager.clone()
             .with_string_encoding(StringEncoding::Utf8);
 
         // Create lift context
@@ -48,7 +48,7 @@ mod example {
         // Binary std/no_std choice
         lift_context.cleanup()?;
 
-        Ok(())
+        Ok(()
     }
 
     /// Binary std/no_std choice
@@ -59,12 +59,12 @@ mod example {
         let mut memory = Memory::new(1, Some(10))?;
 
         // Binary std/no_std choice
-        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default()));
+        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default());
 
         // Create canonical options
         let instance_id = ComponentInstanceId(1);
         let options = CanonicalOptions::new(0, instance_id)
-            .with_realloc(42, realloc_manager.clone())
+            .with_realloc(42, realloc_manager.clone()
             .with_string_encoding(StringEncoding::Utf8);
 
         // Create lower context
@@ -78,14 +78,14 @@ mod example {
 
         // Binary std/no_std choice
         let allocations = lower_context.finish()?;
-        println!("Made {} allocations during lowering", allocations.len());
+        println!("Made {} allocations during lowering", allocations.len();
 
-        Ok(())
+        Ok(()
     }
 
     /// Binary std/no_std choice
     fn example_dynamic_list() -> Result<()> {
-        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default()));
+        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default());
         let instance_id = ComponentInstanceId(1);
 
         // Binary std/no_std choice
@@ -133,20 +133,20 @@ mod example {
             manager.deallocate(instance_id, new_ptr, new_capacity * element_size, alignment)?;
         }
 
-        println!("Deallocated list");
+        println!("Deallocated listMissing message");
 
         // Check metrics
         {
             let manager = realloc_manager.read().unwrap();
             let metrics = manager.metrics();
-            println!("Allocation metrics:");
+            println!("Allocation metrics:Missing message");
             println!("  Total allocations: {}", metrics.total_allocations);
             println!("  Total deallocations: {}", metrics.total_deallocations);
             println!("  Total bytes allocated: {}", metrics.total_bytes_allocated);
             println!("  Peak memory usage: {}", metrics.peak_memory_usage);
         }
 
-        Ok(())
+        Ok(()
     }
 
     /// Example of handling post-return cleanup
@@ -155,12 +155,12 @@ mod example {
         let instance = Instance::new(&module)?;
         let memory = Memory::new(1, Some(10))?;
 
-        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default()));
+        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default());
         let instance_id = ComponentInstanceId(1);
 
         // Binary std/no_std choice
         let options = CanonicalOptions::new(0, instance_id)
-            .with_realloc(42, realloc_manager.clone())
+            .with_realloc(42, realloc_manager.clone()
             .with_post_return(43); // post-return function index
 
         // Create lift context
@@ -175,9 +175,9 @@ mod example {
         // Binary std/no_std choice
         lift_context.cleanup()?;
 
-        println!("Cleanup complete - allocations freed and post-return called");
+        println!("Cleanup complete - allocations freed and post-return calledMissing message");
 
-        Ok(())
+        Ok(()
     }
 
     #[test]
@@ -193,7 +193,7 @@ mod example {
 
     #[test]
     fn test_realloc_manager_integration() {
-        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default()));
+        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default());
         let instance_id = ComponentInstanceId(1);
 
         // Binary std/no_std choice

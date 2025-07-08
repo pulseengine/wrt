@@ -33,8 +33,8 @@ fn test_value_type_to_format_val_type() {
     );
 
     // Test reference types that should return errors
-    assert!(value_type_to_format_val_type(&ValueType::FuncRef).is_err());
-    assert!(value_type_to_format_val_type(&ValueType::ExternRef).is_err());
+    assert!(value_type_to_format_val_type(&ValueType::FuncRef).is_err();
+    assert!(value_type_to_format_val_type(&ValueType::ExternRef).is_err();
 }
 
 /// Test conversion from format ValType to core ValueType
@@ -59,9 +59,9 @@ fn test_format_val_type_to_value_type() {
     );
 
     // Test complex types that should return errors
-    assert!(format_val_type_to_value_type(&FormatValType::String).is_err());
-    assert!(format_val_type_to_value_type(&FormatValType::Bool).is_err());
-    assert!(format_val_type_to_value_type(&FormatValType::Char).is_err());
+    assert!(format_val_type_to_value_type(&FormatValType::String).is_err();
+    assert!(format_val_type_to_value_type(&FormatValType::Bool).is_err();
+    assert!(format_val_type_to_value_type(&FormatValType::Char).is_err();
 }
 
 /// Test conversion from core ValueType to TypesValType
@@ -137,15 +137,15 @@ fn test_format_valtype_to_types_valtype() {
     );
 
     // Test compound types
-    let list_type = FormatValType::List(Box::new(FormatValType::S32));
-    let expected_list_type = TypesValType::List(Box::new(TypesValType::S32));
+    let list_type = FormatValType::List(Box::new(FormatValType::S32);
+    let expected_list_type = TypesValType::List(Box::new(TypesValType::S32);
     assert_eq!(
         format_valtype_to_types_valtype(&list_type),
         expected_list_type
     );
 
-    let option_type = FormatValType::Option(Box::new(FormatValType::S32));
-    let expected_option_type = TypesValType::Option(Box::new(TypesValType::S32));
+    let option_type = FormatValType::Option(Box::new(FormatValType::S32);
+    let expected_option_type = TypesValType::Option(Box::new(TypesValType::S32);
     assert_eq!(
         format_valtype_to_types_valtype(&option_type),
         expected_option_type
@@ -294,7 +294,7 @@ fn test_format_to_runtime_extern_type() {
                     assert_eq!(repr, 0); // Representation should be mapped to
                                          // index
                 },
-                _ => panic!("Expected indexed resource type"),
+                _ => panic!("Expected indexed resource typeMissing message"),
             }
         },
         _ => panic!("Expected Resource type, got {:?}", runtime_resource),
@@ -326,7 +326,7 @@ fn test_extern_type_roundtrip() {
             assert_eq!(func_type.params[1], ValueType::I64);
             assert_eq!(func_type.results[0], ValueType::F32);
         },
-        _ => panic!("Expected Function type after roundtrip"),
+        _ => panic!("Expected Function type after roundtripMissing message"),
     }
 }
 
@@ -364,14 +364,14 @@ fn test_conversion_traits() {
     };
 
     let runtime_func: Result<TypesExternType, _> = format_func.clone().into_runtime_type();
-    assert!(runtime_func.is_ok());
+    assert!(runtime_func.is_ok();
 
     // Test IntoFormatType for TypesExternType
     let func_type = TypesFuncType::new(vec![ValueType::I32], vec![ValueType::F32]);
     let extern_type = TypesExternType::Function(func_type);
 
     let format_type: Result<FormatExternType, _> = extern_type.into_format_type();
-    assert!(format_type.is_ok());
+    assert!(format_type.is_ok();
 }
 
 /// Test error handling in conversion functions
@@ -388,7 +388,7 @@ fn test_conversion_error_handling() {
 
     for val_type in unsupported_types {
         let result = format_val_type_to_value_type(&val_type);
-        assert!(result.is_err());
+        assert!(result.is_err();
     }
 
     // Test error when converting reference types to format types
@@ -396,6 +396,6 @@ fn test_conversion_error_handling() {
 
     for val_type in ref_types {
         let result = value_type_to_format_val_type(&val_type);
-        assert!(result.is_err());
+        assert!(result.is_err();
     }
 }

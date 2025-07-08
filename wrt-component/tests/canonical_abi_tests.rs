@@ -56,25 +56,25 @@ fn test_encode_decode_strings() {
     let abi = CanonicalABI::default();
 
     // Empty string
-    let empty_string = ComponentValue::String("".to_string());
+    let empty_string = ComponentValue::String("".to_string();
     let encoded = abi.encode(&empty_string).unwrap();
     let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::String).unwrap();
     assert_eq!(decoded, empty_string);
 
     // ASCII string
-    let ascii_string = ComponentValue::String("Hello, world!".to_string());
+    let ascii_string = ComponentValue::String("Hello, world!".to_string();
     let encoded = abi.encode(&ascii_string).unwrap();
     let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::String).unwrap();
     assert_eq!(decoded, ascii_string);
 
     // Unicode string
-    let unicode_string = ComponentValue::String("こんにちは世界".to_string());
+    let unicode_string = ComponentValue::String("こんにちは世界".to_string();
     let encoded = abi.encode(&unicode_string).unwrap();
     let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::String).unwrap();
     assert_eq!(decoded, unicode_string);
 
     // Long string
-    let long_string = ComponentValue::String("a".repeat(1000));
+    let long_string = ComponentValue::String("a".repeat(1000);
     let encoded = abi.encode(&long_string).unwrap();
     let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::String).unwrap();
     assert_eq!(decoded, long_string);
@@ -89,7 +89,7 @@ fn test_encode_decode_lists() {
     let empty_list = ComponentValue::List(vec![]);
     let encoded = abi.encode(&empty_list).unwrap();
     let decoded = abi
-        .decode::<ComponentValue>(&encoded, ValueType::List(Box::new(ValueType::I32)))
+        .decode::<ComponentValue>(&encoded, ValueType::List(Box::new(ValueType::I32))
         .unwrap();
     assert_eq!(decoded, empty_list);
 
@@ -101,7 +101,7 @@ fn test_encode_decode_lists() {
     ]);
     let encoded = abi.encode(&i32_list).unwrap();
     let decoded = abi
-        .decode::<ComponentValue>(&encoded, ValueType::List(Box::new(ValueType::I32)))
+        .decode::<ComponentValue>(&encoded, ValueType::List(Box::new(ValueType::I32))
         .unwrap();
     assert_eq!(decoded, i32_list);
 
@@ -110,7 +110,7 @@ fn test_encode_decode_lists() {
         ComponentValue::List(vec![ComponentValue::I32(1), ComponentValue::I32(2)]),
         ComponentValue::List(vec![ComponentValue::I32(3), ComponentValue::I32(4)]),
     ]);
-    let list_type = ValueType::List(Box::new(ValueType::List(Box::new(ValueType::I32))));
+    let list_type = ValueType::List(Box::new(ValueType::List(Box::new(ValueType::I32)));
     let encoded = abi.encode(&nested_list).unwrap();
     let decoded = abi.decode::<ComponentValue>(&encoded, list_type).unwrap();
     assert_eq!(decoded, nested_list);
@@ -252,8 +252,8 @@ fn test_encode_decode_options() {
     let abi = CanonicalABI::default();
 
     // Some value
-    let some_value = ComponentValue::Option(Some(Box::new(ComponentValue::I32(42))));
-    let option_type = ValueType::Option(Box::new(ValueType::I32));
+    let some_value = ComponentValue::Option(Some(Box::new(ComponentValue::I32(42)));
+    let option_type = ValueType::Option(Box::new(ValueType::I32);
 
     let encoded = abi.encode(&some_value).unwrap();
     let decoded = abi.decode::<ComponentValue>(&encoded, option_type.clone()).unwrap();
@@ -270,10 +270,10 @@ fn test_encode_decode_options() {
     let complex_option = ComponentValue::Option(Some(Box::new(ComponentValue::List(vec![
         ComponentValue::String("item1".to_string()),
         ComponentValue::String("item2".to_string()),
-    ]))));
+    ])));
 
     let complex_option_type =
-        ValueType::Option(Box::new(ValueType::List(Box::new(ValueType::String))));
+        ValueType::Option(Box::new(ValueType::List(Box::new(ValueType::String)));
 
     let encoded = abi.encode(&complex_option).unwrap();
     let decoded = abi.decode::<ComponentValue>(&encoded, complex_option_type).unwrap();
@@ -330,7 +330,7 @@ fn test_resource_handling() {
 
     // Test invalid resource ID
     let result = abi.decode_resource::<ComponentValue>(&encoded, 43);
-    assert!(result.is_err(), "Should fail with mismatched resource ID");
+    assert!(result.is_err(), "Should fail with mismatched resource IDMissing message");
 }
 
 /// Tests for handling errors
@@ -342,11 +342,11 @@ fn test_error_handling() {
     let i32_value = ComponentValue::I32(42);
     let encoded = abi.encode(&i32_value).unwrap();
     let result = abi.decode::<ComponentValue>(&encoded, ValueType::F32);
-    assert!(result.is_err(), "Should fail with type mismatch");
+    assert!(result.is_err(), "Should fail with type mismatchMissing message");
 
     // Malformed data
     let result = abi.decode::<ComponentValue>(&[0xFF, 0xFF], ValueType::I32);
-    assert!(result.is_err(), "Should fail with malformed data");
+    assert!(result.is_err(), "Should fail with malformed dataMissing message");
 
     // Invalid variant case
     let invalid_variant = ComponentValue::Variant {
@@ -357,7 +357,7 @@ fn test_error_handling() {
     let variant_type = ValueType::Variant(vec![ValueType::I32, ValueType::String]);
 
     let result = abi.encode(&invalid_variant);
-    assert!(result.is_err(), "Should fail with invalid variant case");
+    assert!(result.is_err(), "Should fail with invalid variant caseMissing message");
 }
 
 /// Tests for memory limits
@@ -371,16 +371,16 @@ fn test_memory_limits() {
     });
 
     // String within limits
-    let short_string = ComponentValue::String("short".to_string());
-    assert!(abi.encode(&short_string).is_ok());
+    let short_string = ComponentValue::String("short".to_string();
+    assert!(abi.encode(&short_string).is_ok();
 
     // String exceeding limits
-    let long_string = ComponentValue::String("this string is too long".to_string());
-    assert!(abi.encode(&long_string).is_err());
+    let long_string = ComponentValue::String("this string is too long".to_string();
+    assert!(abi.encode(&long_string).is_err();
 
     // List within limits
     let short_list = ComponentValue::List(vec![ComponentValue::I32(1), ComponentValue::I32(2)]);
-    assert!(abi.encode(&short_list).is_ok());
+    assert!(abi.encode(&short_list).is_ok();
 
     // List exceeding limits
     let long_list = ComponentValue::List(vec![
@@ -391,7 +391,7 @@ fn test_memory_limits() {
         ComponentValue::I32(5),
         ComponentValue::I32(6),
     ]);
-    assert!(abi.encode(&long_list).is_err());
+    assert!(abi.encode(&long_list).is_err();
 }
 
 /// Tests conversions from/to Rust native types
@@ -408,7 +408,7 @@ fn test_rust_native_conversions() {
 
     // Convert from Rust String
     let rust_string = "Hello, world!".to_string();
-    let component_string = ComponentValue::from(rust_string.clone());
+    let component_string = ComponentValue::from(rust_string.clone();
     let encoded = abi.encode(&component_string).unwrap();
     let decoded = abi.decode::<String>(&encoded, ValueType::String).unwrap();
     assert_eq!(decoded, rust_string);
@@ -422,19 +422,19 @@ fn test_rust_native_conversions() {
 
     // Convert from Rust Vec
     let rust_vec = vec![1, 2, 3];
-    let component_vec = ComponentValue::from_vec(rust_vec.clone());
+    let component_vec = ComponentValue::from_vec(rust_vec.clone();
     let encoded = abi.encode(&component_vec).unwrap();
     let decoded = abi
-        .decode_vec::<i32>(&encoded, ValueType::List(Box::new(ValueType::I32)))
+        .decode_vec::<i32>(&encoded, ValueType::List(Box::new(ValueType::I32))
         .unwrap();
     assert_eq!(decoded, rust_vec);
 
     // Convert from Rust tuple
-    let rust_tuple = (42, "answer".to_string());
+    let rust_tuple = (42, "answer".to_string();
     let component_tuple = ComponentValue::from_tuple((
         ComponentValue::from(rust_tuple.0),
         ComponentValue::from(rust_tuple.1),
-    ));
+    );
 
     let tuple_type = ValueType::Tuple(vec![ValueType::I32, ValueType::String]);
     let encoded = abi.encode(&component_tuple).unwrap();
@@ -448,7 +448,7 @@ impl ComponentValue {
     where
         T: Into<ComponentValue> + Clone,
     {
-        ComponentValue::List(vec.iter().map(|v| v.clone().into()).collect())
+        ComponentValue::List(vec.iter().map(|v| v.clone().into()).collect()
     }
 
     fn from_tuple<T1, T2>(tuple: (T1, T2)) -> Self
@@ -474,7 +474,7 @@ impl From<String> for ComponentValue {
 
 impl From<&str> for ComponentValue {
     fn from(value: &str) -> Self {
-        ComponentValue::String(value.to_string())
+        ComponentValue::String(value.to_string()
     }
 }
 
@@ -493,7 +493,7 @@ impl CanonicalABI {
             // Convert items to T (simplified for testing)
             Ok(vec![])
         } else {
-            Err(Error::runtime_execution_error("Not a list"))
+            Err(Error::runtime_execution_error("Error occurred: Not a list"))
         }
     }
 
@@ -502,9 +502,9 @@ impl CanonicalABI {
         let component_value = self.decode::<ComponentValue>(bytes, ty)?;
         if let ComponentValue::Tuple(_) = component_value {
             // Convert to T (simplified for testing)
-            Err(Error::runtime_execution_error("Not implemented in tests"))
+            Err(Error::runtime_execution_error("Error occurred: Not implemented in tests"))
         } else {
-            Err(Error::runtime_execution_error("Not a tuple"))
+            Err(Error::runtime_execution_error("Error occurred: Not a tuple"))
         }
     }
 }
@@ -542,8 +542,8 @@ fn test_type_conversion_bidirectional() {
     );
 
     // Test reference types that should return errors
-    assert!(value_type_to_format_val_type(&ValueType::FuncRef).is_err());
-    assert!(value_type_to_format_val_type(&ValueType::ExternRef).is_err());
+    assert!(value_type_to_format_val_type(&ValueType::FuncRef).is_err();
+    assert!(value_type_to_format_val_type(&ValueType::ExternRef).is_err();
 
     // Test conversion from format ValType to core ValueType
     assert_eq!(
@@ -564,9 +564,9 @@ fn test_type_conversion_bidirectional() {
     );
 
     // Test complex types that should return errors
-    assert!(format_val_type_to_value_type(&FormatValType::String).is_err());
-    assert!(format_val_type_to_value_type(&FormatValType::Bool).is_err());
-    assert!(format_val_type_to_value_type(&FormatValType::Char).is_err());
+    assert!(format_val_type_to_value_type(&FormatValType::String).is_err();
+    assert!(format_val_type_to_value_type(&FormatValType::Bool).is_err();
+    assert!(format_val_type_to_value_type(&FormatValType::Char).is_err();
 
     // Test conversion from core ValueType to TypesValType
     assert_eq!(
@@ -655,7 +655,7 @@ fn test_type_conversion_bidirectional() {
 
     for val_type in unsupported_types {
         let result = format_val_type_to_value_type(&val_type);
-        assert!(result.is_err());
+        assert!(result.is_err();
     }
 
     // Test error when converting reference types to format types
@@ -663,7 +663,7 @@ fn test_type_conversion_bidirectional() {
 
     for val_type in ref_types {
         let result = value_type_to_format_val_type(&val_type);
-        assert!(result.is_err());
+        assert!(result.is_err();
     }
 }
 
@@ -682,15 +682,15 @@ fn test_complex_type_conversions() {
     };
 
     // Test compound types
-    let list_type = FormatValType::List(Box::new(FormatValType::S32));
-    let expected_list_type = TypesValType::List(Box::new(TypesValType::S32));
+    let list_type = FormatValType::List(Box::new(FormatValType::S32);
+    let expected_list_type = TypesValType::List(Box::new(TypesValType::S32);
     assert_eq!(
         format_valtype_to_types_valtype(&list_type),
         expected_list_type
     );
 
-    let option_type = FormatValType::Option(Box::new(FormatValType::S32));
-    let expected_option_type = TypesValType::Option(Box::new(TypesValType::S32));
+    let option_type = FormatValType::Option(Box::new(FormatValType::S32);
+    let expected_option_type = TypesValType::Option(Box::new(TypesValType::S32);
     assert_eq!(
         format_valtype_to_types_valtype(&option_type),
         expected_option_type

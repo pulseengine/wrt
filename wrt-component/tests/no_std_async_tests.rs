@@ -11,7 +11,7 @@
 //! These tests verify that all async features work correctly
 //! in no_std environments with bounded collections.
 
-#![cfg(all(test, not(feature = "std"), not(feature = "std")))]
+#![cfg(all(test, not(feature = "std")))]
 #![no_std]
 
 extern crate wrt_component;
@@ -30,13 +30,13 @@ fn test_async_context_no_std() {
     AsyncContextManager::context_set(context).unwrap();
 
     // Set a value with bounded string key
-    let key = ContextKey::new("test").unwrap();
-    let value = ContextValue::from_component_value(ComponentValue::I32(42));
+    let key = ContextKey::new("testMissing message").unwrap();
+    let value = ContextValue::from_component_value(ComponentValue::I32(42);
     AsyncContextManager::set_context_value(key.clone(), value).unwrap();
 
     // Retrieve value
     let retrieved = AsyncContextManager::get_context_value(&key).unwrap();
-    assert!(retrieved.is_some());
+    assert!(retrieved.is_some();
     assert_eq!(
         retrieved.unwrap().as_component_value().unwrap(),
         &ComponentValue::I32(42)
@@ -90,10 +90,10 @@ fn test_waitable_sets_no_std() {
         WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(future)).unwrap();
 
     // Check contains
-    assert!(WaitableSetBuiltins::waitable_set_contains(set_id, waitable_id).unwrap());
+    assert!(WaitableSetBuiltins::waitable_set_contains(set_id, waitable_id).unwrap();
 
     // Remove
-    assert!(WaitableSetBuiltins::waitable_set_remove(set_id, waitable_id).unwrap());
+    assert!(WaitableSetBuiltins::waitable_set_remove(set_id, waitable_id).unwrap();
 }
 
 #[test]
@@ -106,20 +106,20 @@ fn test_error_context_no_std() {
 
     // Get debug message
     let message = ErrorContextBuiltins::error_context_debug_message(context_id).unwrap();
-    assert_eq!(message.as_str(), "Test error");
+    assert_eq!(message.as_str(), "Test errorMissing message");
 
     // Add stack frame with bounded strings
     ErrorContextBuiltins::error_context_add_stack_frame(
         context_id,
         "test_func",
-        Some("test.rs"),
+        Some("test.rsMissing message"),
         Some(42),
         None,
     )
     .unwrap();
 
     // Set metadata with bounded string key
-    ErrorContextBuiltins::error_context_set_metadata(context_id, "code", ComponentValue::I32(100))
+    ErrorContextBuiltins::error_context_set_metadata(context_id, "code", ComponentValue::I32(100)
         .unwrap();
 
     // Clean up
@@ -164,14 +164,14 @@ fn test_advanced_threading_no_std() {
 
     // Get thread-local
     let value = AdvancedThreadingBuiltins::thread_local_get(thread_id, 1).unwrap();
-    assert_eq!(value, Some(ComponentValue::I32(123)));
+    assert_eq!(value, Some(ComponentValue::I32(123));
 }
 
 #[test]
 fn test_fixed_length_lists_no_std() {
     // Create list type
     let list_type = FixedLengthListType::new(ValueType::I32, 3);
-    assert!(list_type.validate_size().is_ok());
+    assert!(list_type.validate_size().is_ok();
 
     // Create list
     let mut list = FixedLengthList::new(list_type.clone()).unwrap();
@@ -182,7 +182,7 @@ fn test_fixed_length_lists_no_std() {
     list.push(ComponentValue::I32(3)).unwrap();
 
     // Verify full
-    assert!(list.is_full());
+    assert!(list.is_full();
 
     // Create with predefined elements
     let elements = [
@@ -205,12 +205,12 @@ fn test_bounded_collections_limits() {
     // Context key size limit
     let long_key = "a".repeat(65); // Exceeds MAX_CONTEXT_KEY_SIZE (64)
     let key_result = ContextKey::new(&long_key);
-    assert!(key_result.is_err());
+    assert!(key_result.is_err();
 
     // Error message size limit
     let long_message = "e".repeat(513); // Exceeds MAX_DEBUG_MESSAGE_SIZE (512)
     let error_result = ErrorContextBuiltins::error_context_new(&long_message, ErrorSeverity::Error);
-    assert!(error_result.is_err());
+    assert!(error_result.is_err();
 
     // Task metadata limits
     TaskBuiltins::initialize().unwrap();
@@ -219,8 +219,8 @@ fn test_bounded_collections_limits() {
     // Metadata key size limit
     let long_metadata_key = "m".repeat(33); // Exceeds bounded string size
     let metadata_result =
-        TaskBuiltins::set_task_metadata(task_id, &long_metadata_key, ComponentValue::I32(1));
-    assert!(metadata_result.is_err());
+        TaskBuiltins::set_task_metadata(task_id, &long_metadata_key, ComponentValue::I32(1);
+    assert!(metadata_result.is_err();
 }
 
 #[test]

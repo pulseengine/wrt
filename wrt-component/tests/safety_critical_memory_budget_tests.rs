@@ -62,7 +62,7 @@ mod memory_budget_tests {
 
                     // Safety check to prevent infinite loop
                     if allocations.len() > 1000 {
-                        panic!("Too many allocations without hitting budget");
+                        panic!("Too many allocations without hitting budgetMissing message");
                     }
                 },
                 Err(WrtError::OutOfMemory) => {
@@ -83,13 +83,13 @@ mod memory_budget_tests {
     fn test_cross_collection_memory_sharing() {
         // Allocate different types of collections
         let vec1 = new_component_vec::<u32>();
-        assert!(vec1.is_ok());
+        assert!(vec1.is_ok();
 
         let map1 = new_export_map::<String>();
-        assert!(map1.is_ok());
+        assert!(map1.is_ok();
 
         let vec2 = new_resource_vec::<u64>();
-        assert!(vec2.is_ok());
+        assert!(vec2.is_ok();
 
         // All should share the same memory budget
         // Try to allocate many more until budget exhausted
@@ -139,7 +139,7 @@ mod memory_budget_tests {
                 },
                 Err(WrtError::OutOfMemory) => {
                     // Budget exhausted
-                    assert!(i > 0, "Should allocate at least one vector");
+                    assert!(i > 0, "Should allocate at least one vectorMissing message");
                     break;
                 },
                 Err(e) => panic!("Unexpected error: {:?}", e),
@@ -147,7 +147,7 @@ mod memory_budget_tests {
         }
 
         // Verify we allocated and filled some vectors
-        assert!(!vecs.is_empty());
+        assert!(!vecs.is_empty();
         let total_elements: usize = vecs.iter().map(|v| v.len()).sum();
         assert!(total_elements > 0);
     }
@@ -157,14 +157,14 @@ mod memory_budget_tests {
     fn test_individual_collection_limits() {
         // Test export map memory usage
         let map_result = new_export_map::<[u8; 256]>();
-        assert!(map_result.is_ok());
+        assert!(map_result.is_ok();
 
         let mut map = map_result.unwrap();
         let mut successful_inserts = 0;
 
         for i in 0..MAX_COMPONENT_EXPORTS {
-            let key = bounded_export_name_from_str(&format!("export_{:04}", i))
-                .expect("Failed to create key");
+            let key = bounded_export_name_from_str(&format!("export_{:04}", i)
+                .expect("Failed to create keyMissing message");
             let value = [i as u8; 256];
 
             match map.try_insert(key, value) {
@@ -175,7 +175,7 @@ mod memory_budget_tests {
         }
 
         // Should insert up to capacity
-        assert_eq!(successful_inserts, map.len());
+        assert_eq!(successful_inserts, map.len();
         assert!(successful_inserts > 0);
     }
 
@@ -207,7 +207,7 @@ mod memory_budget_tests {
 
             // Small delay to ensure cleanup
             #[cfg(feature = "std")]
-            std::thread::sleep(std::time::Duration::from_millis(10));
+            std::thread::sleep(std::time::Duration::from_millis(10);
         }
     }
 
@@ -222,18 +222,18 @@ mod memory_budget_tests {
                 Ok(name) => strings.push(name),
                 Err(WrtError::OutOfMemory) => {
                     // Budget exhausted
-                    assert!(i > 0, "Should allocate at least one string");
+                    assert!(i > 0, "Should allocate at least one stringMissing message");
                     break;
                 },
                 Err(e) => panic!("Unexpected error: {:?}", e),
             }
         }
 
-        assert!(!strings.is_empty());
+        assert!(!strings.is_empty();
 
         // Verify string contents are preserved
         for (i, s) in strings.iter().enumerate() {
-            assert_eq!(s.as_str(), format!("component_{}", i));
+            assert_eq!(s.as_str(), format!("component_{}", i);
         }
     }
 
@@ -248,7 +248,7 @@ mod memory_budget_tests {
         }
 
         let vec_result = new_component_vec::<ComplexData>();
-        assert!(vec_result.is_ok());
+        assert!(vec_result.is_ok();
 
         let mut vec = vec_result.unwrap();
         let mut count = 0;
@@ -268,7 +268,7 @@ mod memory_budget_tests {
             }
         }
 
-        assert_eq!(count, vec.len());
+        assert_eq!(count, vec.len();
         assert!(count > 0);
     }
 
@@ -389,7 +389,7 @@ mod memory_budget_tests {
             }
         }
 
-        assert!(!maps.is_empty());
+        assert!(!maps.is_empty();
 
         // Verify data integrity
         for (map_idx, map) in maps.iter().enumerate() {
@@ -402,7 +402,7 @@ mod memory_budget_tests {
     }
 }
 
-#[cfg(all(test, feature = "safety-critical"))]
+#[cfg(all(test, feature = "safety-criticalMissing messageMissing messageMissing message"))]
 mod safety_critical_budget_tests {
     use super::*;
 
@@ -411,7 +411,7 @@ mod safety_critical_budget_tests {
     fn test_safety_critical_budget_enforcement() {
         // In safety-critical mode, all allocations must be bounded
         let vec_result = new_component_vec::<u32>();
-        assert!(vec_result.is_ok());
+        assert!(vec_result.is_ok();
 
         // Verify managed allocation is used
         let guard_result = safe_managed_alloc!(1024, CrateId::Component);

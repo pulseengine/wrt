@@ -49,8 +49,8 @@ fn demo_synchronous_execution() {
         Ok(result) => {
             println!("Function executed successfully!");
             println!("Result: {:?}", result);
-            println!("State: {:?}", engine.state());
-            println!("Statistics: {:?}", engine.statistics());
+            println!("State: {:?}", engine.state();
+            println!("Statistics: {:?}", engine.statistics();
         },
         Err(e) => println!("Execution failed: {:?}", e),
     }
@@ -204,7 +204,7 @@ fn demo_engine_registry() {
 
     // Create multiple engines with different configurations
     let sync_engine_id = registry
-        .create_unified_engine(AgentConfiguration::default())
+        .create_unified_engine(AgentConfiguration::default()
         .expect("Failed to create sync engine");
 
     let stackless_config = AgentConfiguration {

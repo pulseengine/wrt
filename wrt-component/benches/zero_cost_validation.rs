@@ -5,7 +5,8 @@
 
 #![allow(unused_imports)]
 
-use std::collections::{HashMap as StdHashMap, Vec as StdVec};
+use std::collections::HashMap as StdHashMap;
+use std::vec::Vec as StdVec;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 #[cfg(feature = "safety-critical")]

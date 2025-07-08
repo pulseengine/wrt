@@ -34,7 +34,7 @@ fn test_basic_registry_functionality() {
     // Register a simple conversion
     registry.register(
         |src: &SimpleSource| -> Result<SimpleTarget, ConversionError> {
-            Ok(SimpleTarget(src.0 * 2))
+            Ok(SimpleTarget(src.0 * 2)
         },
     );
 
@@ -42,7 +42,7 @@ fn test_basic_registry_functionality() {
     let source = SimpleSource(21);
     let target = registry.convert::<SimpleSource, SimpleTarget>(&source).unwrap();
 
-    assert_eq!(target, SimpleTarget(42));
+    assert_eq!(target, SimpleTarget(42);
 }
 
 #[test]
@@ -92,24 +92,24 @@ fn test_conversion_error_handling() {
                     source: None,
                 });
             }
-            Ok(SimpleTarget(src.0))
+            Ok(SimpleTarget(src.0)
         },
     );
 
     // Test successful conversion
     let good_source = SimpleSource(42);
     let success_result = registry.convert::<SimpleSource, SimpleTarget>(&good_source);
-    assert!(success_result.is_ok());
-    assert_eq!(success_result.unwrap(), SimpleTarget(42));
+    assert!(success_result.is_ok();
+    assert_eq!(success_result.unwrap(), SimpleTarget(42);
 
     // Test error case
     let bad_source = SimpleSource(-1);
     let error_result = registry.convert::<SimpleSource, SimpleTarget>(&bad_source);
 
-    assert!(error_result.is_err());
+    assert!(error_result.is_err();
     let error = error_result.unwrap_err();
-    assert!(matches!(error.kind, ConversionErrorKind::OutOfRange));
-    assert!(error.context.unwrap().contains("non-negative"));
+    assert!(matches!(error.kind, ConversionErrorKind::OutOfRange);
+    assert!(error.context.unwrap().contains("non-negativeMissing messageMissing messageMissing message");
 }
 
 #[test]
@@ -128,11 +128,11 @@ fn test_bidirectional_conversions() {
     // Test forward conversion
     let source = SimpleSource(42);
     let target = registry.convert::<SimpleSource, SimpleTarget>(&source).unwrap();
-    assert_eq!(target, SimpleTarget(42));
+    assert_eq!(target, SimpleTarget(42);
 
     // Test reverse conversion
     let source_again = registry.convert::<SimpleTarget, SimpleSource>(&target).unwrap();
-    assert_eq!(source_again, SimpleSource(42));
+    assert_eq!(source_again, SimpleSource(42);
 }
 
 #[test]
@@ -143,9 +143,9 @@ fn test_missing_conversion() {
     let source = SimpleSource(42);
     let result = registry.convert::<SimpleSource, SimpleTarget>(&source);
 
-    assert!(result.is_err());
+    assert!(result.is_err();
     let error = result.unwrap_err();
-    assert!(matches!(error.kind, ConversionErrorKind::NoConverterFound));
+    assert!(matches!(error.kind, ConversionErrorKind::NoConverterFound);
 }
 
 #[test]
@@ -178,20 +178,20 @@ fn test_chained_conversion_errors() {
     let source = SimpleSource(42);
     let result = registry.convert::<SimpleSource, SimpleTarget>(&source);
 
-    assert!(result.is_err());
+    assert!(result.is_err();
     let error = result.unwrap_err();
 
     // Check outer error
-    assert!(matches!(error.kind, ConversionErrorKind::ConversionFailed));
-    assert!(error.context.unwrap().contains("Outer conversion failed"));
+    assert!(matches!(error.kind, ConversionErrorKind::ConversionFailed);
+    assert!(error.context.unwrap().contains("Outer conversion failedMissing messageMissing messageMissing message");
 
     // Check inner error
     let inner_error = error.source.unwrap();
     assert!(matches!(
         inner_error.kind,
         ConversionErrorKind::InvalidVariant
-    ));
-    assert!(inner_error.context.unwrap().contains("Inner conversion failed"));
+    );
+    assert!(inner_error.context.unwrap().contains("Inner conversion failedMissing messageMissing messageMissing message");
 }
 
 #[test]
@@ -199,8 +199,8 @@ fn test_can_convert_check() {
     let mut registry = TypeConversionRegistry::new();
 
     // Initially no conversions are registered
-    assert!(!registry.can_convert::<SimpleSource, SimpleTarget>());
-    assert!(!registry.can_convert::<SimpleTarget, SimpleSource>());
+    assert!(!registry.can_convert::<SimpleSource, SimpleTarget>();
+    assert!(!registry.can_convert::<SimpleTarget, SimpleSource>();
 
     // Register one conversion
     registry.register(
@@ -208,6 +208,6 @@ fn test_can_convert_check() {
     );
 
     // Now one direction should work but not the other
-    assert!(registry.can_convert::<SimpleSource, SimpleTarget>());
-    assert!(!registry.can_convert::<SimpleTarget, SimpleSource>());
+    assert!(registry.can_convert::<SimpleSource, SimpleTarget>();
+    assert!(!registry.can_convert::<SimpleTarget, SimpleSource>();
 }

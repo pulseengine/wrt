@@ -50,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     demo_fixed_length_lists()?;
 
     println!("\nAll Component Model features demonstrated successfully!");
-    Ok(())
+    Ok(()
 }
 
 #[cfg(feature = "std")]
@@ -65,13 +65,13 @@ fn demo_async_context() -> Result<(), Box<dyn std::error::Error>> {
     println!("  • Setting context value...");
     // wrt_component::AsyncContextManager::set_context_value(
     //     wrt_component::ContextKey::new("user_id".to_string()),
-    //     wrt_component::ContextValue::from_component_value(ComponentValue::I32(123))
+    //     wrt_component::ContextValue::from_component_value(ComponentValue::I32(123)
     // )?;
     println!("    ✓ Value set: user_id = 123");
 
     println!("  • Getting context value...");
     // let value = wrt_component::AsyncContextManager::get_context_value(
-    //     &wrt_component::ContextKey::new("user_id".to_string())
+    //     &wrt_component::ContextKey::new("user_id".to_string()
     // )?;
     println!("    ✓ Retrieved value: user_id = 123");
 
@@ -82,7 +82,7 @@ fn demo_async_context() -> Result<(), Box<dyn std::error::Error>> {
     // }
     println!("    ✓ Context scope completed");
 
-    Ok(())
+    Ok(()
 }
 
 #[cfg(feature = "std")]
@@ -118,7 +118,7 @@ fn demo_task_management() -> Result<(), Box<dyn std::error::Error>> {
     // let result = wrt_component::TaskBuiltins::task_wait(task_id)?;
     println!("    ✓ Task result retrieved: true");
 
-    Ok(())
+    Ok(()
 }
 
 #[cfg(feature = "std")]
@@ -156,7 +156,7 @@ fn demo_waitable_sets() -> Result<(), Box<dyn std::error::Error>> {
     // waitable_id)?;
     println!("    ✓ Waitable removed: true");
 
-    Ok(())
+    Ok(()
 }
 
 #[cfg(feature = "std")]
@@ -192,7 +192,7 @@ fn demo_error_contexts() -> Result<(), Box<dyn std::error::Error>> {
     // wrt_component::ErrorContextBuiltins::error_context_set_metadata(
     //     context_id,
     //     "component".to_string(),
-    //     ComponentValue::String("async_demo".to_string())
+    //     ComponentValue::String("async_demo".to_string()
     // )?;
     println!("    ✓ Metadata set: component = 'async_demo'");
 
@@ -205,7 +205,7 @@ fn demo_error_contexts() -> Result<(), Box<dyn std::error::Error>> {
     // wrt_component::ErrorContextBuiltins::error_context_drop(context_id)?;
     println!("    ✓ Error context dropped");
 
-    Ok(())
+    Ok(()
 }
 
 #[cfg(not(feature = "std"))]
@@ -286,7 +286,7 @@ fn demo_advanced_threading() -> Result<(), Box<dyn std::error::Error>> {
     // wrt_component::AdvancedThreadingBuiltins::thread_join(thread_id)?;
     println!("    ✓ Join result: Success(42)");
 
-    Ok(())
+    Ok(()
 }
 
 #[cfg(feature = "std")]
@@ -309,9 +309,9 @@ fn demo_fixed_length_lists() -> Result<(), Box<dyn std::error::Error>> {
     println!("    ✓ Added elements: [10, 20, 30]");
 
     println!("  • Checking list properties...");
-    // println!("    • Current length: {}", list.current_length());
-    // println!("    • Remaining capacity: {}", list.remaining_capacity());
-    // println!("    • Is full: {}", list.is_full());
+    // println!("    • Current length: {}", list.current_length();
+    // println!("    • Remaining capacity: {}", list.remaining_capacity();
+    // println!("    • Is full: {}", list.is_full();
     println!("    ✓ Length: 3, Remaining: 2, Full: false");
 
     println!("  • Creating list with predefined elements...");
@@ -352,7 +352,7 @@ fn demo_fixed_length_lists() -> Result<(), Box<dyn std::error::Error>> {
     // let fixed_list_type = wrt_component::ExtendedValueType::FixedLengthList(0);
     println!("    ✓ Extended types support both standard and fixed-length lists");
 
-    Ok(())
+    Ok(()
 }
 
 // Helper function to demonstrate practical usage patterns
@@ -373,10 +373,10 @@ fn demonstrate_async_patterns() -> Result<(), Box<dyn std::error::Error>> {
     //
     //         // Execute task in this context
     //         let task_id = wrt_component::task_helpers::with_task(|| {
-    //             Ok(ComponentValue::String("Operation completed".to_string()))
+    //             Ok(ComponentValue::String("Operation completed".to_string())
     //         })?;
     //
-    //         Ok(())
+    //         Ok(()
     //     }
     // }?;
     println!("    ✓ Scoped execution completed");
@@ -411,7 +411,7 @@ fn demonstrate_async_patterns() -> Result<(), Box<dyn std::error::Error>> {
     // )?;
     println!("    ✓ Error context chaining completed");
 
-    Ok(())
+    Ok(()
 }
 
 // Integration test demonstrating component interoperability

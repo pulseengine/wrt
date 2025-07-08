@@ -31,7 +31,7 @@ mod capacity_limit_tests {
     fn test_bounded_vec_capacity_limit() {
         // Test component instance vector
         let result = new_component_vec::<u32>();
-        assert!(result.is_ok(), "Failed to create component vector");
+        assert!(result.is_ok(), "Failed to create component vectorMissing message");
 
         let mut vec = result.unwrap();
 
@@ -47,16 +47,16 @@ mod capacity_limit_tests {
 
         // Verify we're at capacity
         assert_eq!(vec.len(), MAX_COMPONENT_INSTANCES);
-        assert!(vec.is_full());
+        assert!(vec.is_full();
 
         // Try to exceed capacity - should return error, not panic
         let overflow_result = vec.try_push(999);
-        assert!(overflow_result.is_err());
+        assert!(overflow_result.is_err();
         match overflow_result {
             Err(WrtError::CapacityExceeded) => {
                 // Expected error
             },
-            _ => panic!("Expected CapacityExceeded error"),
+            _ => panic!("Expected CapacityExceeded errorMissing message"),
         }
     }
 
@@ -64,37 +64,37 @@ mod capacity_limit_tests {
     #[test]
     fn test_export_vec_capacity() {
         let result = new_export_vec::<u32>();
-        assert!(result.is_ok());
+        assert!(result.is_ok();
 
         let mut vec = result.unwrap();
 
         // Test partial fill
         for i in 0..100 {
             let push_result = vec.try_push(i);
-            assert!(push_result.is_ok());
+            assert!(push_result.is_ok();
         }
 
         assert_eq!(vec.len(), 100);
-        assert!(!vec.is_full());
+        assert!(!vec.is_full();
 
         // Fill remaining capacity
         for i in 100..MAX_COMPONENT_EXPORTS {
             let push_result = vec.try_push(i as u32);
-            assert!(push_result.is_ok());
+            assert!(push_result.is_ok();
         }
 
-        assert!(vec.is_full());
+        assert!(vec.is_full();
 
         // Verify overflow handling
         let overflow = vec.try_push(0);
-        assert!(matches!(overflow, Err(WrtError::CapacityExceeded)));
+        assert!(matches!(overflow, Err(WrtError::CapacityExceeded));
     }
 
     /// Test resource handle vector limits
     #[test]
     fn test_resource_vec_limits() {
         let result = new_resource_vec::<u64>();
-        assert!(result.is_ok());
+        assert!(result.is_ok();
 
         let mut vec = result.unwrap();
 
@@ -105,18 +105,18 @@ mod capacity_limit_tests {
         for batch in 0..num_batches {
             for i in 0..batch_size {
                 let handle = (batch * batch_size + i) as u64;
-                assert!(vec.try_push(handle).is_ok());
+                assert!(vec.try_push(handle).is_ok();
             }
         }
 
         // Fill remaining
         let remaining = MAX_RESOURCE_HANDLES % batch_size;
         for i in 0..remaining {
-            assert!(vec.try_push(i as u64).is_ok());
+            assert!(vec.try_push(i as u64).is_ok();
         }
 
         assert_eq!(vec.len(), MAX_RESOURCE_HANDLES);
-        assert!(vec.is_full());
+        assert!(vec.is_full();
     }
 
     /// Test call stack depth limits
@@ -129,7 +129,7 @@ mod capacity_limit_tests {
         }
 
         let result = new_call_stack::<CallFrame>();
-        assert!(result.is_ok());
+        assert!(result.is_ok();
 
         let mut stack = result.unwrap();
 
@@ -153,7 +153,7 @@ mod capacity_limit_tests {
         };
 
         let overflow_result = stack.try_push(overflow_frame);
-        assert!(overflow_result.is_err());
+        assert!(overflow_result.is_err();
     }
 
     /// Test bounded string capacity
@@ -161,20 +161,20 @@ mod capacity_limit_tests {
     fn test_bounded_string_limits() {
         // Test component name
         let name_result = new_component_name();
-        assert!(name_result.is_ok());
+        assert!(name_result.is_ok();
 
         let mut name = name_result.unwrap();
 
         // Create a string at the limit
         let long_string = "a".repeat(MAX_COMPONENT_NAME_LEN);
         let set_result = name.try_set(&long_string);
-        assert!(set_result.is_ok());
+        assert!(set_result.is_ok();
         assert_eq!(name.len(), MAX_COMPONENT_NAME_LEN);
 
         // Try to exceed limit
         let too_long = "a".repeat(MAX_COMPONENT_NAME_LEN + 1);
         let overflow_result = name.try_set(&too_long);
-        assert!(overflow_result.is_err());
+        assert!(overflow_result.is_err();
     }
 
     /// Test export map capacity
@@ -182,14 +182,14 @@ mod capacity_limit_tests {
     fn test_export_map_capacity() {
         // Test with simple u32 keys instead of BoundedString
         let map_result = new_type_map::<String>();
-        assert!(map_result.is_ok());
+        assert!(map_result.is_ok();
 
         let mut map = map_result.unwrap();
 
         // Fill map to capacity
         for i in 0..100 {
             // Use fewer entries for testing
-            let insert_result = map.try_insert(i as u32, format!("value_{}", i));
+            let insert_result = map.try_insert(i as u32, format!("value_{}", i);
             assert!(insert_result.is_ok(), "Failed to insert at index {}", i);
         }
 
@@ -204,14 +204,14 @@ mod capacity_limit_tests {
     #[test]
     fn test_type_map_limits() {
         let map_result = new_type_map::<String>();
-        assert!(map_result.is_ok());
+        assert!(map_result.is_ok();
 
         let mut map = map_result.unwrap();
 
         // Test sparse insertions
         for i in (0..MAX_TYPE_DEFINITIONS).step_by(10) {
-            let insert_result = map.try_insert(i as u32, format!("type_{}", i));
-            assert!(insert_result.is_ok());
+            let insert_result = map.try_insert(i as u32, format!("type_{}", i);
+            assert!(insert_result.is_ok();
         }
 
         let expected_count = MAX_TYPE_DEFINITIONS / 10;
@@ -222,26 +222,26 @@ mod capacity_limit_tests {
     #[test]
     fn test_operand_stack_limits() {
         let stack_result = new_operand_stack::<i64>();
-        assert!(stack_result.is_ok());
+        assert!(stack_result.is_ok();
 
         let mut stack = stack_result.unwrap();
 
         // Simulate computation that uses full stack
         for i in 0..MAX_OPERAND_STACK_SIZE {
             let value = i as i64 * 2;
-            assert!(stack.try_push(value).is_ok());
+            assert!(stack.try_push(value).is_ok();
         }
 
         assert_eq!(stack.len(), MAX_OPERAND_STACK_SIZE);
-        assert!(stack.is_full());
+        assert!(stack.is_full();
 
         // Pop all values
         for i in (0..MAX_OPERAND_STACK_SIZE).rev() {
             let popped = stack.pop();
-            assert_eq!(popped, Some((i as i64) * 2));
+            assert_eq!(popped, Some((i as i64) * 2);
         }
 
-        assert!(stack.is_empty());
+        assert!(stack.is_empty();
     }
 
     /// Test memory instance limits
@@ -254,7 +254,7 @@ mod capacity_limit_tests {
         }
 
         let vec_result = new_memory_vec::<MockMemory>();
-        assert!(vec_result.is_ok());
+        assert!(vec_result.is_ok();
 
         let mut vec = vec_result.unwrap();
 
@@ -263,7 +263,7 @@ mod capacity_limit_tests {
                 base: i as u64 * 65536,
                 size: 65536,
             };
-            assert!(vec.try_push(mem).is_ok());
+            assert!(vec.try_push(mem).is_ok();
         }
 
         assert_eq!(vec.len(), MAX_MEMORY_INSTANCES);
@@ -275,31 +275,31 @@ mod capacity_limit_tests {
         type Callback = fn() -> WrtResult<()>;
 
         let vec_result = new_post_return_vec::<Callback>();
-        assert!(vec_result.is_ok());
+        assert!(vec_result.is_ok();
 
         let mut vec = vec_result.unwrap();
 
         fn dummy_callback() -> WrtResult<()> {
-            Ok(())
+            Ok(()
         }
 
         // Fill to capacity
         for _ in 0..MAX_POST_RETURN_CALLBACKS {
-            assert!(vec.try_push(dummy_callback).is_ok());
+            assert!(vec.try_push(dummy_callback).is_ok();
         }
 
-        assert!(vec.is_full());
+        assert!(vec.is_full();
 
         // Verify overflow protection
         let overflow = vec.try_push(dummy_callback);
-        assert!(overflow.is_err());
+        assert!(overflow.is_err();
     }
 
     /// Test that clear operations work correctly
     #[test]
     fn test_clear_operations() {
         let vec_result = new_component_vec::<u32>();
-        assert!(vec_result.is_ok());
+        assert!(vec_result.is_ok();
 
         let mut vec = vec_result.unwrap();
 
@@ -313,10 +313,10 @@ mod capacity_limit_tests {
         // Clear
         vec.clear();
         assert_eq!(vec.len(), 0);
-        assert!(vec.is_empty());
+        assert!(vec.is_empty();
 
         // Can push again after clear
-        assert!(vec.try_push(42).is_ok());
+        assert!(vec.try_push(42).is_ok();
         assert_eq!(vec.len(), 1);
     }
 
@@ -324,7 +324,7 @@ mod capacity_limit_tests {
     #[test]
     fn test_capacity_invariants() {
         let vec_result = new_import_vec::<String>();
-        assert!(vec_result.is_ok());
+        assert!(vec_result.is_ok();
 
         let mut vec = vec_result.unwrap();
 
@@ -361,7 +361,7 @@ mod capacity_limit_tests {
         }
 
         let map_result = new_resource_type_map::<ResourceTypeInfo>();
-        assert!(map_result.is_ok());
+        assert!(map_result.is_ok();
 
         let mut map = map_result.unwrap();
 
@@ -371,21 +371,21 @@ mod capacity_limit_tests {
                 name: format!("resource_type_{}", i),
                 size: i * 8,
             };
-            assert!(map.try_insert(i as u32, info).is_ok());
+            assert!(map.try_insert(i as u32, info).is_ok();
         }
 
         assert_eq!(map.len(), MAX_RESOURCE_TYPES);
 
         // Verify lookup works at capacity
         for i in 0..MAX_RESOURCE_TYPES {
-            let info = map.get(&(i as u32));
-            assert!(info.is_some());
-            assert_eq!(info.unwrap().name, format!("resource_type_{}", i));
+            let info = map.get(&(i as u32);
+            assert!(info.is_some();
+            assert_eq!(info.unwrap().name, format!("resource_type_{}", i);
         }
     }
 }
 
-#[cfg(all(test, feature = "safety-critical"))]
+#[cfg(all(test, feature = "safety-criticalMissing messageMissing messageMissing message"))]
 mod safety_critical_feature_tests {
     use super::*;
 
@@ -394,7 +394,7 @@ mod safety_critical_feature_tests {
     fn test_safety_critical_enforcement() {
         // In safety-critical mode, all allocations should use WRT allocator
         let vec_result = new_component_vec::<u32>();
-        assert!(vec_result.is_ok());
+        assert!(vec_result.is_ok();
 
         let vec = vec_result.unwrap();
 

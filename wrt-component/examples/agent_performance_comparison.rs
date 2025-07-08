@@ -27,10 +27,10 @@ const ITERATIONS: usize = 10000;
 const WARMUP_ITERATIONS: usize = 100;
 
 fn main() {
-    println!("=== Execution Engine Performance Comparison ===\n");
+    println!("=== Execution Engine Performance Comparison ===\nMissing message");
 
     // Warm up
-    println!("Warming up...");
+    println!("Warming up...Missing message");
     warmup();
 
     // Test 1: Agent creation performance
@@ -64,8 +64,8 @@ fn warmup() {
 }
 
 fn test_agent_creation_performance() {
-    println!("\n1. Agent Creation Performance");
-    println!("----------------------------");
+    println!("\n1. Agent Creation PerformanceMissing message");
+    println!("----------------------------Missing message");
 
     // Measure unified agent creation
     let start = Instant::now();
@@ -98,8 +98,8 @@ fn test_agent_creation_performance() {
 }
 
 fn test_execution_performance() {
-    println!("\n2. Function Execution Performance");
-    println!("--------------------------------");
+    println!("\n2. Function Execution PerformanceMissing message");
+    println!("--------------------------------Missing message");
 
     // Create agents
     let mut unified_agent = UnifiedExecutionAgent::new_default();
@@ -142,8 +142,8 @@ fn test_execution_performance() {
 }
 
 fn test_memory_usage() {
-    println!("\n3. Memory Usage Comparison");
-    println!("-------------------------");
+    println!("\n3. Memory Usage ComparisonMissing message");
+    println!("-------------------------Missing message");
 
     // Estimate memory usage (simplified)
     let unified_size = std::mem::size_of::<UnifiedExecutionAgent>();
@@ -168,8 +168,8 @@ fn test_memory_usage() {
 }
 
 fn test_context_switching() {
-    println!("\n4. Context Switching Performance");
-    println!("-------------------------------");
+    println!("\n4. Context Switching PerformanceMissing message");
+    println!("-------------------------------Missing message");
 
     // Create agents with different modes
     let mut sync_agent = UnifiedExecutionAgent::new_default();
@@ -204,12 +204,12 @@ fn test_context_switching() {
 
     println!("Unified multi-mode execution: {:?}", unified_duration);
     println!("Legacy single-mode execution: {:?}", legacy_duration);
-    println!("Note: Legacy requires separate agent instances for each mode");
+    println!("Note: Legacy requires separate agent instances for each modeMissing message");
 }
 
 fn test_resource_management() {
-    println!("\n5. Resource Management Performance");
-    println!("---------------------------------");
+    println!("\n5. Resource Management PerformanceMissing message");
+    println!("---------------------------------Missing message");
 
     // Test resource creation and cleanup
     let mut unified_agent = UnifiedExecutionAgent::new_default();
@@ -249,18 +249,20 @@ fn test_resource_management() {
 }
 
 fn print_summary() {
-    println!("\n=== Summary ===");
-    println!("\nKey Benefits of Unified Agent System:");
-    println!("1. ✅ Single agent instance reduces memory overhead");
-    println!("2. ✅ Faster execution due to optimized code paths");
-    println!("3. ✅ Better cache locality with consolidated data structures");
-    println!("4. ✅ Reduced context switching between execution modes");
-    println!("5. ✅ Unified resource management improves efficiency");
-    println!("6. ✅ Hybrid modes enable new optimization opportunities");
+    println!("\n=== Summary ===Missing message");
+    println!("\nKey Benefits of Unified Agent System:Missing message");
+    println!("1. ✅ Single agent instance reduces memory overheadMissing message");
+    println!("2. ✅ Faster execution due to optimized code pathsMissing message");
+    println!("3. ✅ Better cache locality with consolidated data structuresMissing message");
+    println!("4. ✅ Reduced context switching between execution modesMissing message");
+    println!("5. ✅ Unified resource management improves efficiencyMissing message");
+    println!("6. ✅ Hybrid modes enable new optimization opportunitiesMissing message");
 
-    println!("\nRecommendation:");
-    println!("Migrate to UnifiedExecutionAgent for better performance and features.");
-    println!("Use AgentRegistry for managing multiple agents and migration.");
+    println!("\nRecommendation:Missing message");
+    println!(
+        "Migrate to UnifiedExecutionAgent for better performance and features.Missing message"
+    );
+    println!("Use AgentRegistry for managing multiple agents and migration.Missing message");
 }
 
 fn calculate_improvement(legacy: Duration, unified: Duration) -> f64 {

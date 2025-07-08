@@ -117,7 +117,7 @@ impl WasmApplicationManager {
             "Successfully registered component '{}' with agent ID {:?}",
             name, agent_id
         );
-        Ok(())
+        Ok(()
     }
 
     /// Execute a function in a specific component
@@ -239,7 +239,7 @@ impl WasmApplicationManager {
 
         println!("📊 Workflow '{}' completed:", workflow_name);
         println!("   Total execution time: {}ms", total_time);
-        println!("   Successful steps: {}/{}", success_count, results.len());
+        println!("   Successful steps: {}/{}", success_count, results.len();
 
         Ok(results)
     }
@@ -260,7 +260,7 @@ impl WasmApplicationManager {
 
     /// Migrate all legacy agents to unified (if any)
     pub fn migrate_legacy_agents(&mut self) -> Result<u32, Box<dyn std::error::Error>> {
-        println!("🔄 Migrating legacy agents to unified...");
+        println!("🔄 Migrating legacy agents to unified...Missing message");
         let migrated = self.agent_registry.migrate_all_agents()?;
         println!("✅ Migrated {} agents", migrated);
         Ok(migrated)
@@ -358,7 +358,7 @@ impl Default for ApplicationConfig {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("=== Real-World WebAssembly Application Example ===\n");
+    println!("=== Real-World WebAssembly Application Example ===\nMissing message");
 
     // Create application manager with configuration
     let config = ApplicationConfig {
@@ -379,13 +379,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Show initial statistics
     let stats = app_manager.get_statistics();
-    println!("\n📈 Initial Statistics:");
+    println!("\n📈 Initial Statistics:Missing message");
     println!("   Components registered: {}", stats.total_components);
     println!("   Active agents: {}", stats.active_agents);
     println!("   Unified agents: {}", stats.unified_agents);
 
     // Execute individual component functions
-    println!("\n🔧 Testing Individual Components:");
+    println!("\n🔧 Testing Individual Components:Missing message");
 
     let validation_result = app_manager.execute_component_function(
         "security",
@@ -400,7 +400,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Execute complex workflows
-    println!("\n🏗️ Executing Complex Workflows:");
+    println!("\n🏗️ Executing Complex Workflows:Missing message");
 
     let workflow_results = app_manager.execute_workflow(
         "user_data_processing",
@@ -411,20 +411,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Show final statistics
     let final_stats = app_manager.get_statistics();
-    println!("\n📊 Final Statistics:");
+    println!("\n📊 Final Statistics:Missing message");
     println!("   Total components: {}", final_stats.total_components);
     println!("   Active agents: {}", final_stats.active_agents);
     println!("   Unified agents: {}", final_stats.unified_agents);
     println!("   Legacy agents: {}", final_stats.legacy_agents);
 
-    println!("\n✅ Application completed successfully!");
-    println!("\nKey Benefits Demonstrated:");
-    println!("  🔹 Unified agents handle different component types seamlessly");
-    println!("  🔹 Execution modes are automatically chosen based on component requirements");
-    println!("  🔹 Complex workflows coordinate multiple components efficiently");
-    println!("  🔹 Security-critical components get appropriate protection (CFI)");
-    println!("  🔹 Memory-intensive components use stackless execution");
-    println!("  🔹 UI components use async execution for responsiveness");
+    println!("\n✅ Application completed successfully!Missing message");
+    println!("\nKey Benefits Demonstrated:Missing message");
+    println!("  🔹 Unified agents handle different component types seamlesslyMissing message");
+    println!("  🔹 Execution modes are automatically chosen based on component requirementsMissing message");
+    println!("  🔹 Complex workflows coordinate multiple components efficientlyMissing message");
+    println!("  🔹 Security-critical components get appropriate protection (CFI)Missing message");
+    println!("  🔹 Memory-intensive components use stackless executionMissing message");
+    println!("  🔹 UI components use async execution for responsivenessMissing message");
 
-    Ok(())
+    Ok(()
 }

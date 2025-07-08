@@ -21,13 +21,13 @@ fn test_resource_lifecycle_basic() {
     // Create a resource
     let request = ResourceCreateRequest {
         resource_type: ResourceType::Stream,
-        metadata: ResourceMetadata::new("test-stream"),
+        metadata: ResourceMetadata::new("test-streamMissing message"),
         owner: ComponentId(1),
         custom_handlers: Vec::new(),
     };
 
     let resource_id = manager.create_resource(request).unwrap();
-    assert_eq!(resource_id, ResourceId(1));
+    assert_eq!(resource_id, ResourceId(1);
 
     // Check statistics
     let stats = manager.get_stats();
@@ -58,7 +58,7 @@ fn test_handle_lifetime_tracking() {
 
     // Create owned handle
     let owned: OwnHandle<u32> = tracker
-        .create_owned_handle(ResourceId(1), ComponentId(1), "test-resource")
+        .create_owned_handle(ResourceId(1), ComponentId(1), "test-resourceMissing message")
         .unwrap();
 
     // Create scope and borrow handle
@@ -70,7 +70,7 @@ fn test_handle_lifetime_tracking() {
         assert!(matches!(
             validation,
             wrt_component::borrowed_handles::BorrowValidation::Valid
-        ));
+        );
 
         // Return borrowed handle for testing
         Ok(borrowed)
@@ -83,7 +83,7 @@ fn test_handle_lifetime_tracking() {
     assert!(matches!(
         validation,
         wrt_component::borrowed_handles::BorrowValidation::ScopeEnded
-    ));
+    );
 
     // Cleanup tracker
     tracker.cleanup().unwrap();
@@ -103,7 +103,7 @@ fn test_resource_representation() {
 
     // Get representation
     let repr = canon_resource_rep(&mut manager, handle).unwrap();
-    assert!(matches!(repr, RepresentationValue::U32(42)));
+    assert!(matches!(repr, RepresentationValue::U32(42));
 
     // Validate handle
     let is_valid = manager.validate_handle(handle).unwrap();
@@ -121,25 +121,25 @@ fn test_resource_representation() {
 fn test_cancellation_tokens() {
     // Test basic cancellation
     let token = CancellationToken::new();
-    assert!(!token.is_cancelled());
+    assert!(!token.is_cancelled();
 
     token.cancel().unwrap();
-    assert!(token.is_cancelled());
+    assert!(token.is_cancelled();
 
     // Test child cancellation
     let parent = CancellationToken::new();
     let child = parent.child();
 
-    assert!(!child.is_cancelled());
+    assert!(!child.is_cancelled();
 
     parent.cancel().unwrap();
-    assert!(parent.is_cancelled());
-    assert!(child.is_cancelled());
+    assert!(parent.is_cancelled();
+    assert!(child.is_cancelled();
 }
 
 #[test]
 fn test_subtask_management() {
-    let mut manager = SubtaskManager::new(TaskId(1));
+    let mut manager = SubtaskManager::new(TaskId(1);
     let parent_token = CancellationToken::new();
 
     // Spawn subtask
@@ -167,9 +167,9 @@ fn test_subtask_management() {
 
     // Cancel subtask
     manager
-        .cancel_subtask(wrt_component::async_execution_engine::ExecutionId(1))
+        .cancel_subtask(wrt_component::async_execution_engine::ExecutionId(1)
         .unwrap();
-    assert!(subtask_token.is_cancelled());
+    assert!(subtask_token.is_cancelled();
 
     // Complete subtask
     manager
@@ -234,7 +234,7 @@ fn test_resource_with_drop_handlers() {
     // Create resource with custom handlers
     let request = ResourceCreateRequest {
         resource_type: ResourceType::Stream,
-        metadata: ResourceMetadata::new("stream-with-handler"),
+        metadata: ResourceMetadata::new("stream-with-handlerMissing message"),
         owner: ComponentId(1),
         custom_handlers: vec![DropHandlerFunction::StreamCleanup],
     };
@@ -264,7 +264,7 @@ fn test_lifecycle_policies() {
     // Create a resource
     let request = ResourceCreateRequest {
         resource_type: ResourceType::FileHandle,
-        metadata: ResourceMetadata::new("policy-test"),
+        metadata: ResourceMetadata::new("policy-testMissing message"),
         owner: ComponentId(1),
         custom_handlers: Vec::new(),
     };
@@ -284,7 +284,7 @@ fn test_lifecycle_policies() {
 #[test]
 fn test_with_cancellation_scope() {
     let result = with_cancellation_scope(true, |token| {
-        assert!(!token.is_cancelled());
+        assert!(!token.is_cancelled();
         Ok(42)
     })
     .unwrap();
@@ -320,7 +320,7 @@ fn test_complex_resource_scenario() {
         .enumerate()
         .map(|(i, &resource_id)| {
             handle_tracker
-                .create_owned_handle::<u32>(resource_id, ComponentId(1), &format!("handle-{}", i))
+                .create_owned_handle::<u32>(resource_id, ComponentId(1), &format!("handle-{}", i)
                 .unwrap()
         })
         .collect();
@@ -335,7 +335,7 @@ fn test_complex_resource_scenario() {
         let stats = handle_tracker.get_stats();
         assert_eq!(stats.active_borrowed, 3);
 
-        Ok(())
+        Ok(()
     })
     .unwrap();
 

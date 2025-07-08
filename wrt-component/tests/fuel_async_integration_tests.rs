@@ -43,7 +43,7 @@ impl Future for TestFuture {
 
     fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.polls_remaining == 0 {
-            Poll::Ready(Ok(self.result.take().unwrap_or(0)))
+            Poll::Ready(Ok(self.result.take().unwrap_or(0))
         } else {
             self.polls_remaining -= 1;
             Poll::Pending
@@ -127,7 +127,7 @@ mod tests {
 
         // Get next task
         let next_task = scheduler.next_task();
-        assert_eq!(next_task, Some(task_id));
+        assert_eq!(next_task, Some(task_id);
 
         // Remove task
         scheduler.remove_task(task_id).unwrap();
@@ -175,13 +175,13 @@ mod tests {
             .unwrap();
 
         // Should get high priority task first
-        assert_eq!(scheduler.next_task(), Some(high_task));
+        assert_eq!(scheduler.next_task(), Some(high_task);
 
         // Update high priority task to waiting state
         scheduler.update_task_state(high_task, 100, AsyncTaskState::Waiting).unwrap();
 
         // Should get normal priority task next
-        assert_eq!(scheduler.next_task(), Some(normal_task));
+        assert_eq!(scheduler.next_task(), Some(normal_task);
     }
 
     #[test]
@@ -205,7 +205,7 @@ mod tests {
 
         // Verify configuration was applied
         assert_eq!(config.default_fuel_budget, 5000);
-        assert_eq!(config.default_time_limit_ms, Some(2000));
+        assert_eq!(config.default_time_limit_ms, Some(2000);
         assert_eq!(config.default_priority, Priority::High);
     }
 
@@ -223,7 +223,7 @@ mod tests {
             Priority::Normal,
             TestFuture::new(3, 42),
         );
-        assert!(task1.is_ok());
+        assert!(task1.is_ok();
 
         // Should succeed with remaining fuel
         let task2 = executor.spawn_task(
@@ -232,7 +232,7 @@ mod tests {
             Priority::Normal,
             TestFuture::new(2, 84),
         );
-        assert!(task2.is_ok());
+        assert!(task2.is_ok();
 
         // Should fail when exceeding global fuel limit
         let task3 = executor.spawn_task(
@@ -241,7 +241,7 @@ mod tests {
             Priority::Normal,
             TestFuture::new(1, 126),
         );
-        assert!(task3.is_err());
+        assert!(task3.is_err();
 
         let status = executor.get_global_fuel_status();
         assert_eq!(status.active_tasks, 2);
@@ -284,7 +284,7 @@ mod tests {
             .unwrap();
 
         let _task2 = executor
-            .spawn_task(component_id, 1000, Priority::Normal, TestFuture::new(5, 84))
+            .spawn_task(component_id, 1000, Priority::Normal, TestFuture::new(5, 84)
             .unwrap();
 
         let status_before = executor.get_global_fuel_status();
@@ -292,7 +292,7 @@ mod tests {
 
         // Shutdown should succeed
         let shutdown_result = executor.shutdown();
-        assert!(shutdown_result.is_ok());
+        assert!(shutdown_result.is_ok();
 
         let status_after = executor.get_global_fuel_status();
         assert_eq!(status_after.active_tasks, 0);
@@ -379,13 +379,13 @@ mod tests {
             .unwrap();
 
         // Should cycle through tasks
-        assert_eq!(scheduler.next_task(), Some(task1));
+        assert_eq!(scheduler.next_task(), Some(task1);
         scheduler.update_task_state(task1, 100, AsyncTaskState::Waiting).unwrap();
 
-        assert_eq!(scheduler.next_task(), Some(task2));
+        assert_eq!(scheduler.next_task(), Some(task2);
         scheduler.update_task_state(task2, 100, AsyncTaskState::Waiting).unwrap();
 
-        assert_eq!(scheduler.next_task(), Some(task3));
+        assert_eq!(scheduler.next_task(), Some(task3);
         scheduler.update_task_state(task3, 100, AsyncTaskState::Waiting).unwrap();
 
         // Should wrap around back to task1 if it becomes ready again

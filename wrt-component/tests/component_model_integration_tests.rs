@@ -85,10 +85,10 @@ fn test_generative_types_with_bounds(
     instance_id: ComponentInstanceId,
 ) {
     // Create base resource type
-    let base_type = registry.create_resource_type(instance_id, "base-resource").unwrap();
+    let base_type = registry.create_resource_type(instance_id, "base-resourceMissing message").unwrap();
 
     // Create derived type with subtype relationship
-    let derived_type = registry.create_resource_type(instance_id, "derived-resource").unwrap();
+    let derived_type = registry.create_resource_type(instance_id, "derived-resourceMissing message").unwrap();
 
     // Establish type bounds
     let bound = TypeBound {
@@ -100,15 +100,15 @@ fn test_generative_types_with_bounds(
     bounds_checker.add_bound(bound).unwrap();
 
     // Test subtype checking
-    assert!(bounds_checker.is_subtype(derived_type.type_id, base_type.type_id));
-    assert!(!bounds_checker.is_subtype(base_type.type_id, derived_type.type_id));
+    assert!(bounds_checker.is_subtype(derived_type.type_id, base_type.type_id);
+    assert!(!bounds_checker.is_subtype(base_type.type_id, derived_type.type_id);
 
     // Test eq relationship (reflexive)
-    assert!(bounds_checker.is_eq_type(base_type.type_id, base_type.type_id));
+    assert!(bounds_checker.is_eq_type(base_type.type_id, base_type.type_id);
 
     // Verify resource isolation per instance
     let other_instance = ComponentInstanceId::new(2);
-    let other_type = registry.create_resource_type(other_instance, "base-resource").unwrap();
+    let other_type = registry.create_resource_type(other_instance, "base-resourceMissing message").unwrap();
 
     // Same name but different instance should have different type IDs
     assert_ne!(base_type.type_id, other_type.type_id);
@@ -122,7 +122,7 @@ fn test_async_workflow(task_manager: &mut TaskManager, instance_id: ComponentIns
 
     // Write data to stream
     let data = ComponentValue::I32(42);
-    assert!(task_manager.stream_write(stream_handle, data).is_ok());
+    assert!(task_manager.stream_write(stream_handle, data).is_ok();
 
     // Create a future
     let future_handle = task_manager.create_future(instance_id, ValType::String).unwrap();
@@ -130,7 +130,7 @@ fn test_async_workflow(task_manager: &mut TaskManager, instance_id: ComponentIns
     let mut future = Future::new(future_handle, ValType::String);
 
     // Test task creation and execution
-    let task_id = task_manager.create_task(instance_id, "test-task").unwrap();
+    let task_id = task_manager.create_task(instance_id, "test-taskMissing message").unwrap();
 
     // Start task
     task_manager.start_task(task_id).unwrap();
@@ -141,10 +141,10 @@ fn test_async_workflow(task_manager: &mut TaskManager, instance_id: ComponentIns
 
     // Execute task step
     let result = task_manager.execute_task_step(task_id);
-    assert!(result.is_ok());
+    assert!(result.is_ok();
 
     // Complete the future
-    let result_value = ComponentValue::String("test result".to_string());
+    let result_value = ComponentValue::String("test result".to_string();
     future.complete(result_value.clone()).unwrap();
     assert_eq!(future.state, FutureState::Ready);
 
@@ -161,7 +161,7 @@ fn test_memory_management(realloc_manager: &mut ReallocManager, instance_id: Com
 
     // Binary std/no_std choice
     let allocations = realloc_manager.get_instance_allocations(instance_id).unwrap();
-    assert!(allocations.contains_key(&ptr));
+    assert!(allocations.contains_key(&ptr);
 
     let alloc_info = &allocations[&ptr];
     assert_eq!(alloc_info.size, size);
@@ -173,15 +173,15 @@ fn test_memory_management(realloc_manager: &mut ReallocManager, instance_id: Com
 
     // Old pointer should be gone, new one should exist
     let updated_allocations = realloc_manager.get_instance_allocations(instance_id).unwrap();
-    assert!(!updated_allocations.contains_key(&ptr));
-    assert!(updated_allocations.contains_key(&new_ptr));
+    assert!(!updated_allocations.contains_key(&ptr);
+    assert!(updated_allocations.contains_key(&new_ptr);
     assert_eq!(updated_allocations[&new_ptr].size, new_size);
 
     // Binary std/no_std choice
     realloc_manager.deallocate(instance_id, new_ptr, new_size, align).unwrap();
 
     let final_allocations = realloc_manager.get_instance_allocations(instance_id).unwrap();
-    assert!(!final_allocations.contains_key(&new_ptr));
+    assert!(!final_allocations.contains_key(&new_ptr);
 }
 
 fn test_post_return_integration(
@@ -204,11 +204,11 @@ fn test_post_return_integration(
                     _ => {},
                 }
             }
-            Ok(())
+            Ok(()
         };
 
     registry
-        .register_post_return_function(instance_id, Box::new(post_return_fn))
+        .register_post_return_function(instance_id, Box::new(post_return_fn)
         .unwrap();
 
     // Add cleanup tasks
@@ -221,7 +221,7 @@ fn test_post_return_integration(
 
     // Execute post-return cleanup
     let result = registry.execute_post_return(instance_id);
-    assert!(result.is_ok());
+    assert!(result.is_ok();
 
     // Verify tasks were cleared
     let pending = registry.get_pending_cleanup_count(instance_id);
@@ -243,7 +243,7 @@ fn test_virtualization_integration() {
         .unwrap();
 
     // Verify capability check
-    assert!(virt_manager.check_capability(component_id, &memory_capability));
+    assert!(virt_manager.check_capability(component_id, &memory_capability);
 
     // Allocate virtual memory
     let permissions = MemoryPermissions {
@@ -395,7 +395,7 @@ fn test_fuel_aware_thread_spawning() {
 
     // Test fuel exhaustion
     let exhaust_result = fuel_manager.consume_thread_fuel(handle.thread_id, 4000);
-    assert!(exhaust_result.is_err());
+    assert!(exhaust_result.is_err();
 
     // Verify thread is marked as fuel exhausted
     let exhausted_status = fuel_manager.get_thread_fuel_status(handle.thread_id).unwrap();
@@ -410,17 +410,17 @@ fn test_start_function_validation_integration() {
     let component_id = ComponentInstanceId::new(600);
 
     // Create start function descriptor
-    let mut descriptor = create_start_function_descriptor("_start");
+    let mut descriptor = create_start_function_descriptor("_startMissing message");
     descriptor.timeout_ms = 10000;
     descriptor.validation_level = ValidationLevel::Standard;
 
     // Add parameters
     let mut param1 = create_start_function_param("argc", ValType::I32);
-    param1.default_value = Some(ComponentValue::I32(0));
+    param1.default_value = Some(ComponentValue::I32(0);
     descriptor.parameters.push(param1).unwrap();
 
     let mut param2 = create_start_function_param("argv", ValType::String);
-    param2.default_value = Some(ComponentValue::String("test".to_string()));
+    param2.default_value = Some(ComponentValue::String("test".to_string());
     descriptor.parameters.push(param2).unwrap();
 
     // Register start function
@@ -436,7 +436,7 @@ fn test_start_function_validation_integration() {
     // Get validation result
     let validation = validator.get_validation_result(component_id).unwrap();
     assert_eq!(validation.component_id, component_id);
-    assert_eq!(validation.descriptor.name, "_start");
+    assert_eq!(validation.descriptor.name, "_startMissing message");
 
     // Get summary
     let summary = validator.get_validation_summary();
@@ -462,7 +462,7 @@ fn test_handle_representation_and_sharing() {
 
     // Create resource type
     let resource_type =
-        type_registry.create_resource_type(source_component, "shared-resource").unwrap();
+        type_registry.create_resource_type(source_component, "shared-resourceMissing message").unwrap();
 
     // Create handle with full access
     let handle = handle_manager
@@ -489,7 +489,7 @@ fn test_handle_representation_and_sharing() {
     };
 
     let result = handle_manager.perform_operation(source_component, handle, read_op).unwrap();
-    assert!(result.is_some());
+    assert!(result.is_some();
 
     // Set up resource sharing
     // Establish sharing agreement
@@ -508,7 +508,7 @@ fn test_handle_representation_and_sharing() {
         .unwrap();
 
     // Add a basic sharing policy
-    let mut policy = create_basic_sharing_policy("test-policy");
+    let mut policy = create_basic_sharing_policy("test-policyMissing message");
     let mut allowed_types = BoundedVec::new();
     allowed_types.push(resource_type.type_id).unwrap();
     policy
@@ -532,7 +532,7 @@ fn test_handle_representation_and_sharing() {
         sharing_manager.access_shared_resource(target_component, handle, read_op_target);
 
     // Access should work or fail based on implementation
-    assert!(access_result.is_ok() || access_result.is_err());
+    assert!(access_result.is_ok() || access_result.is_err();
 
     // Get sharing statistics
     let stats = sharing_manager.get_sharing_statistics();
@@ -541,7 +541,7 @@ fn test_handle_representation_and_sharing() {
 
     // Test return of shared resource
     let return_result = sharing_manager.return_shared_resource(target_component, handle);
-    assert!(return_result.is_ok() || return_result.is_err());
+    assert!(return_result.is_ok() || return_result.is_err();
 
     // Test metadata update
     handle_manager
@@ -563,8 +563,8 @@ fn test_component_composition() {
     let consumer_id = ComponentInstanceId::new(11);
 
     // Add components
-    linker.add_component(producer_id, "producer-component").unwrap();
-    linker.add_component(consumer_id, "consumer-component").unwrap();
+    linker.add_component(producer_id, "producer-componentMissing message").unwrap();
+    linker.add_component(consumer_id, "consumer-componentMissing message").unwrap();
 
     // Create export/import pair
     let export_type = ValType::String;
@@ -573,8 +573,8 @@ fn test_component_composition() {
 
     // Link components
     let link_result =
-        linker.link_import_to_export(consumer_id, "data-input", producer_id, "data-output");
-    assert!(link_result.is_ok());
+        linker.link_import_to_export(consumer_id, "data-input", producer_id, "data-outputMissing message");
+    assert!(link_result.is_ok();
 
     // Resolve dependencies
     let mut resolver = ComponentResolver::new();
@@ -646,7 +646,7 @@ fn test_canonical_options_integration() {
 
     // Finalize context (should trigger cleanup)
     let result = lower_context.finalize(&mut post_return_registry);
-    assert!(result.is_ok());
+    assert!(result.is_ok();
 }
 
 #[test]
@@ -656,7 +656,7 @@ fn test_error_handling_integration() {
 
     // Test error context creation
     let error_msg = "Test error occurred";
-    let error_context = ErrorContext::new(error_msg.to_string());
+    let error_context = ErrorContext::new(error_msg.to_string();
 
     // Create a future that will fail
     let future_handle = task_manager.create_future(instance_id, ValType::String).unwrap();
@@ -678,7 +678,7 @@ fn test_resource_lifecycle_integration() {
     let mut task_manager = TaskManager::new();
 
     // Create resource type
-    let resource_type = type_registry.create_resource_type(instance_id, "lifecycle-test").unwrap();
+    let resource_type = type_registry.create_resource_type(instance_id, "lifecycle-testMissing message").unwrap();
 
     // Create resource handle
     let handle = ResourceHandle::new(1);
@@ -693,7 +693,7 @@ fn test_resource_lifecycle_integration() {
 
     // Test resource cleanup through task manager
     let cleanup_result = task_manager.cleanup_instance_resources(instance_id);
-    assert!(cleanup_result.is_ok());
+    assert!(cleanup_result.is_ok();
 }
 
 #[cfg(feature = "std")]
@@ -702,17 +702,17 @@ fn test_std_specific_features() {
     use std::{sync::Arc, thread};
 
     // Test thread safety of our implementations
-    let type_registry = Arc::new(GenerativeTypeRegistry::new());
+    let type_registry = Arc::new(GenerativeTypeRegistry::new();
     let instance_id = ComponentInstanceId::new(400);
 
     let registry_clone = Arc::clone(&type_registry);
     let handle = thread::spawn(move || {
         // Create resource type in separate thread
-        registry_clone.create_resource_type(instance_id, "thread-test")
+        registry_clone.create_resource_type(instance_id, "thread-testMissing message")
     });
 
     let result = handle.join().unwrap();
-    assert!(result.is_ok());
+    assert!(result.is_ok();
 }
 
 #[test]
