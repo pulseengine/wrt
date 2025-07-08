@@ -26,7 +26,7 @@ impl ResourceStrategy for MemoryStrategy {
             MemoryStrategy::ZeroCopy => match operation {
                 ResourceOperation::Read => Ok(data.to_vec()),
                 ResourceOperation::Write => Ok(data.to_vec()),
-                _ => Err(Error::runtime_execution_error("Unsupported operation for ZeroCopy strategy")),
+                _ => Err(Error::runtime_execution_error("Error occurred"Unsupported operation for ZeroCopy strategyMissing messageMissing messageMissing message")),
             },
 
             // Bounded-copy strategy - always copies but reuses buffers
@@ -35,7 +35,7 @@ impl ResourceStrategy for MemoryStrategy {
             // Isolated strategy - always copies and validates
             MemoryStrategy::Isolated => {
                 // In a real implementation this would include validation
-                Ok(data.to_vec())
+                Ok(data.to_vec()
             }
 
             // Copy strategy - always copies the data
@@ -45,13 +45,13 @@ impl ResourceStrategy for MemoryStrategy {
             MemoryStrategy::Reference => {
                 // In a real implementation, this would return a reference
                 // For testing purposes, we'll still return a vec
-                Ok(data.to_vec())
+                Ok(data.to_vec()
             }
 
             // Full isolation strategy - copies and performs full validation
             MemoryStrategy::FullIsolation => {
                 // In a real implementation this would include more extensive validation
-                Ok(data.to_vec())
+                Ok(data.to_vec()
             }
         }
     }
@@ -72,40 +72,40 @@ impl ResourceStrategy for MemoryStrategy {
             MemoryStrategy::ZeroCopy => match operation {
                 ResourceOperation::Read => {
                     let mut result = BoundedVec::with_capacity(data.len()).map_err(|e| {
-                        Error::component_not_found("Component not found")
+                        Error::component_not_found("Error occurred"Component not foundMissing message")
                     })?;
 
                     for &byte in data {
                         result.push(byte).map_err(|e| {
-                            Error::component_not_found("Component not found")
+                            Error::component_not_found("Error occurred"Component not foundMissing message")
                         })?;
                     }
                     Ok(result)
                 }
                 ResourceOperation::Write => {
                     let mut result = BoundedVec::with_capacity(data.len()).map_err(|e| {
-                        Error::component_not_found("Component not found")
+                        Error::component_not_found("Error occurred"Component not foundMissing message")
                     })?;
 
                     for &byte in data {
                         result.push(byte).map_err(|e| {
-                            Error::component_not_found("Component not found")
+                            Error::component_not_found("Error occurred"Component not foundMissing message")
                         })?;
                     }
                     Ok(result)
                 }
-                _ => Err(Error::runtime_execution_error("Unsupported operation for ZeroCopy strategy")),
+                _ => Err(Error::runtime_execution_error("Error occurred"Unsupported operation for ZeroCopy strategyMissing messageMissing messageMissing message")),
             },
 
             // Bounded-copy strategy - always copies but reuses buffers
             MemoryStrategy::BoundedCopy => {
                 let mut result = BoundedVec::with_capacity(data.len()).map_err(|e| {
-                    Error::component_not_found("Component not found")
+                    Error::component_not_found("Error occurred"Component not foundMissing message")
                 })?;
 
                 for &byte in data {
                     result.push(byte).map_err(|e| {
-                        Error::component_not_found("Component not found")
+                        Error::component_not_found("Error occurred"Component not foundMissing message")
                     })?;
                 }
                 Ok(result)
@@ -117,12 +117,12 @@ impl ResourceStrategy for MemoryStrategy {
             | MemoryStrategy::Reference
             | MemoryStrategy::FullIsolation => {
                 let mut result = BoundedVec::with_capacity(data.len()).map_err(|e| {
-                    Error::component_not_found("Component not found")
+                    Error::component_not_found("Error occurred"Component not foundMissing message")
                 })?;
 
                 for &byte in data {
                     result.push(byte).map_err(|e| {
-                        Error::component_not_found("Component not found")
+                        Error::component_not_found("Error occurred"Component not foundMissing message")
                     })?;
                 }
                 Ok(result)

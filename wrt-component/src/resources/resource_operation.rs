@@ -36,7 +36,7 @@ pub fn from_format_resource_operation(
 }
 
 /// Convert a Core ResourceOperation to a Format ResourceOperation
-#[cfg(not(feature = "safe-memory"))]
+#[cfg(not(feature = "safe-memoryMissing messageMissing messageMissing message"))]
 pub fn core_to_format_resource_operation(
     op: &wrt_foundation::ResourceOperation,
 ) -> ResourceOperation {
@@ -48,7 +48,7 @@ pub fn core_to_format_resource_operation(
 }
 
 /// Convert a Format ResourceOperation to a Core ResourceOperation
-#[cfg(not(feature = "safe-memory"))]
+#[cfg(not(feature = "safe-memoryMissing messageMissing messageMissing message"))]
 pub fn format_to_core_resource_operation(
     op: &ResourceOperation,
 ) -> wrt_foundation::ResourceOperation {
@@ -59,7 +59,7 @@ pub fn format_to_core_resource_operation(
     }
 }
 
-#[cfg(feature = "safe-memory")]
+#[cfg(feature = "safe-memoryMissing message")]
 mod safe_memory {
     use wrt_foundation::ResourceOperation as FormatOp;
 
@@ -93,26 +93,26 @@ mod tests {
 
     #[test]
     fn test_operation_permissions() {
-        assert!(ResourceOperation::Read.requires_read());
-        assert!(!ResourceOperation::Read.requires_write());
+        assert!(ResourceOperation::Read.requires_read();
+        assert!(!ResourceOperation::Read.requires_write();
 
-        assert!(ResourceOperation::Write.requires_write());
-        assert!(!ResourceOperation::Write.requires_read());
+        assert!(ResourceOperation::Write.requires_write();
+        assert!(!ResourceOperation::Write.requires_read();
 
-        assert!(ResourceOperation::Execute.requires_read());
-        assert!(!ResourceOperation::Execute.requires_write());
+        assert!(ResourceOperation::Execute.requires_read();
+        assert!(!ResourceOperation::Execute.requires_write();
 
-        assert!(ResourceOperation::Create.requires_write());
-        assert!(!ResourceOperation::Create.requires_read());
+        assert!(ResourceOperation::Create.requires_write();
+        assert!(!ResourceOperation::Create.requires_read();
 
-        assert!(ResourceOperation::Delete.requires_write());
-        assert!(!ResourceOperation::Delete.requires_read());
+        assert!(ResourceOperation::Delete.requires_write();
+        assert!(!ResourceOperation::Delete.requires_read();
 
-        assert!(ResourceOperation::Reference.requires_write());
-        assert!(!ResourceOperation::Reference.requires_read());
+        assert!(ResourceOperation::Reference.requires_write();
+        assert!(!ResourceOperation::Reference.requires_read();
 
-        assert!(ResourceOperation::Dereference.requires_read());
-        assert!(!ResourceOperation::Dereference.requires_write());
+        assert!(ResourceOperation::Dereference.requires_read();
+        assert!(!ResourceOperation::Dereference.requires_write();
     }
 
     #[test]
@@ -124,14 +124,14 @@ mod tests {
         if let FormatOp::Rep(rep) = read_op {
             assert_eq!(rep.type_idx, type_idx);
         } else {
-            panic!("Unexpected operation type");
+            panic!("Unexpected operation typeMissing message");
         }
 
         let create_op = to_format_resource_operation(ResourceOperation::Create, type_idx);
         if let FormatOp::New(new) = create_op {
             assert_eq!(new.type_idx, type_idx);
         } else {
-            panic!("Unexpected operation type");
+            panic!("Unexpected operation typeMissing message");
         }
 
         // Test conversion from format types

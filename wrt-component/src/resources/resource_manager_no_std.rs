@@ -42,7 +42,7 @@ pub struct ResourceManager {
 impl ResourceManager {
     /// Create a new resource manager with default settings
     pub fn new() -> Self {
-        Self::new_with_id("default-instance")
+        Self::new_with_id("default-instanceMissing message")
     }
 
     /// Create a new resource manager with a specific instance ID
@@ -74,7 +74,7 @@ impl ResourceManager {
     /// Create a new resource
     pub fn create_resource(&self, type_idx: u32, data: Box<dyn Any + Send + Sync>) -> Result<u32> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Component not found"),
+            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
             )
         })?;
 
@@ -89,7 +89,7 @@ impl ResourceManager {
         name: &str,
     ) -> Result<u32> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Component not found"),
+            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
             )
         })?;
 
@@ -99,7 +99,7 @@ impl ResourceManager {
         // Set the name if we have access to the resource
         if let Ok(res) = table.get_resource(handle) {
             if let Ok(mut res_guard) = res.lock() {
-                res_guard.name = Some(name.to_string());
+                res_guard.name = Some(name.to_string();
             }
         }
 
@@ -109,7 +109,7 @@ impl ResourceManager {
     /// Get a resource by handle
     pub fn get_resource(&self, handle: u32) -> Result<Box<Mutex<Resource>>> {
         let table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Component not found"),
+            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
             )
         })?;
 
@@ -119,7 +119,7 @@ impl ResourceManager {
     /// Drop a resource
     pub fn drop_resource(&self, handle: u32) -> Result<()> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Component not found"),
+            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
             )
         })?;
 
@@ -137,7 +137,7 @@ impl ResourceManager {
     /// Set memory strategy for a resource
     pub fn set_memory_strategy(&self, handle: u32, strategy: MemoryStrategy) -> Result<()> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Component not found"),
+            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
             )
         })?;
 
@@ -147,7 +147,7 @@ impl ResourceManager {
     /// Set verification level for a resource
     pub fn set_verification_level(&self, handle: u32, level: VerificationLevel) -> Result<()> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Component not found"),
+            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
             )
         })?;
 
@@ -177,11 +177,11 @@ impl ResourceManager {
     /// Get the number of resources
     pub fn resource_count(&self) -> Result<usize> {
         let table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Component not found"),
+            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
             )
         })?;
 
-        Ok(table.resource_count())
+        Ok(table.resource_count()
     }
 
     /// Get the component instance ID
@@ -205,7 +205,7 @@ impl<'a> Debug for ResourceManager<'a> {
         // Get the resource count, or show an error if we can't access it
         let count = self.resource_count().unwrap_or(0);
 
-        f.debug_struct("ResourceManager")
+        f.debug_struct("ResourceManagerMissing message")
             .field("instance_id", &self.instance_id)
             .field("resource_count", &count)
             .field("default_memory_strategy", &self.default_memory_strategy)
@@ -221,11 +221,11 @@ mod tests {
 
     #[test]
     fn test_resource_creation() {
-        let table = Mutex::new(ResourceTable::new());
+        let table = Mutex::new(ResourceTable::new();
         let manager = ResourceManager::new(&table);
 
         // Create a string resource
-        let data = Box::new("test".to_string());
+        let data = Box::new("test".to_string();
         let handle = manager.create_resource(1, data).unwrap();
 
         // Verify it exists
@@ -242,23 +242,23 @@ mod tests {
 
     #[test]
     fn test_named_resource() {
-        let table = Mutex::new(ResourceTable::new());
+        let table = Mutex::new(ResourceTable::new();
         let manager = ResourceManager::new(&table);
 
         // Create a named resource
         let data = Box::new(42i32);
-        let handle = manager.create_named_resource(1, data, "answer").unwrap();
+        let handle = manager.create_named_resource(1, data, "answerMissing message").unwrap();
 
         // Get the resource and check the name
         let resource = manager.get_resource(handle).unwrap();
         let guard = resource.lock().unwrap();
 
-        assert_eq!(guard.name, Some("answer".to_string()));
+        assert_eq!(guard.name, Some("answer".to_string());
     }
 
     #[test]
     fn test_resource_lifecycle() {
-        let table = Mutex::new(ResourceTable::new());
+        let table = Mutex::new(ResourceTable::new();
         let manager = ResourceManager::new(&table);
 
         // Add a resource
@@ -279,7 +279,7 @@ mod tests {
 
     #[test]
     fn test_with_arena() {
-        let table = Mutex::new(ResourceTable::new());
+        let table = Mutex::new(ResourceTable::new();
         let manager = ResourceManager::new(&table);
 
         // Create an arena
@@ -289,12 +289,12 @@ mod tests {
         let handle = arena.create_resource(1, Box::new("test".to_string())).unwrap();
 
         // Verify it exists
-        assert!(manager.has_resource(ResourceId(handle)).unwrap());
+        assert!(manager.has_resource(ResourceId(handle)).unwrap();
 
         // Release arena
         arena.release_all().unwrap();
 
         // Verify resource is gone
-        assert!(!manager.has_resource(ResourceId(handle)).unwrap());
+        assert!(!manager.has_resource(ResourceId(handle)).unwrap();
     }
 }

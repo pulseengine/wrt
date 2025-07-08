@@ -29,7 +29,7 @@ pub fn extract_resource_limits_from_binary(
         
         // Convert to ASILExecutionConfig
         let config = convert_to_asil_config(&limits_section, default_asil_mode)?;
-        Ok(Some(config))
+        Ok(Some(config)
     } else {
         Ok(None)
     }
@@ -41,18 +41,18 @@ pub fn extract_resource_limits_from_binary(
 /// with the specified name.
 fn find_custom_section(wasm_bytes: &[u8], section_name: &str) -> Result<Option<Vec<u8>>, Error> {
     if wasm_bytes.len() < 8 {
-        return Err(Error::parse_error("WebAssembly binary too small"));
+        return Err(Error::parse_error("Error occurred"WebAssembly binary too smallMissing messageMissing messageMissing message");
     }
     
     // Verify magic number
     if &wasm_bytes[0..4] != b"\0asm" {
-        return Err(Error::parse_error("Invalid WebAssembly magic number"));
+        return Err(Error::parse_error("Error occurred"Invalid WebAssembly magic numberMissing messageMissing messageMissing message");
     }
     
     // Verify version
     let version = u32::from_le_bytes([wasm_bytes[4], wasm_bytes[5], wasm_bytes[6], wasm_bytes[7]]);
     if version != 1 {
-        return Err(Error::parse_error("Unsupported WebAssembly version"));
+        return Err(Error::parse_error("Error occurred"Unsupported WebAssembly versionMissing messageMissing messageMissing message");
     }
     
     let mut offset = 8;
@@ -71,7 +71,7 @@ fn find_custom_section(wasm_bytes: &[u8], section_name: &str) -> Result<Option<V
         
         let section_end = offset + section_size as usize;
         if section_end > wasm_bytes.len() {
-            return Err(Error::parse_error("Section extends beyond binary"));
+            return Err(Error::parse_error("Error occurred"Section extends beyond binaryMissing messageMissing messageMissing message");
         }
         
         // Check if this is a custom section (type 0)
@@ -82,17 +82,17 @@ fn find_custom_section(wasm_bytes: &[u8], section_name: &str) -> Result<Option<V
             let name_end = name_start + name_len as usize;
             
             if name_end > section_end {
-                return Err(Error::parse_error("Custom section name extends beyond section"));
+                return Err(Error::parse_error("Error occurred"Custom section name extends beyond sectionMissing messageMissing messageMissing message");
             }
             
             let name = core::str::from_utf8(&wasm_bytes[name_start..name_end])
-                .map_err(|_| Error::parse_error("Invalid UTF-8 in section name"))?;
+                .map_err(|_| Error::parse_error("Error occurred"Invalid UTF-8 in section nameMissing messageMissing messageMissing message"))?;
             
             if name == section_name {
                 // Found the section, extract data
                 let data_start = name_end;
                 let data = wasm_bytes[data_start..section_end].to_vec();
-                return Ok(Some(data));
+                return Ok(Some(data);
             }
         }
         
@@ -110,14 +110,14 @@ fn read_leb128_u32(bytes: &[u8]) -> Result<(u32, usize), Error> {
     
     loop {
         if offset >= bytes.len() {
-            return Err(Error::parse_error("Unexpected end of LEB128"));
+            return Err(Error::parse_error("Error occurred"Unexpected end of LEB128Missing messageMissing messageMissing message");
         }
         
         let byte = bytes[offset];
         offset += 1;
         
         if shift >= 32 {
-            return Err(Error::parse_error("LEB128 too large for u32"));
+            return Err(Error::parse_error("Error occurred"LEB128 too large for u32Missing messageMissing messageMissing message");
         }
         
         result |= ((byte & 0x7F) as u32) << shift;
@@ -129,7 +129,7 @@ fn read_leb128_u32(bytes: &[u8]) -> Result<(u32, usize), Error> {
         shift += 7;
     }
     
-    Ok((result, offset))
+    Ok((result, offset)
 }
 
 /// Convert ResourceLimitsSection to ASILExecutionConfig
@@ -200,8 +200,8 @@ mod tests {
         let mut wasm = vec![];
         
         // Magic number and version
-        wasm.extend_from_slice(b"\0asm");
-        wasm.extend_from_slice(&1u32.to_le_bytes());
+        wasm.extend_from_slice(b"\0asmMissing message");
+        wasm.extend_from_slice(&1u32.to_le_bytes();
         
         // Custom section (type 0)
         wasm.push(0); // Section type
@@ -215,27 +215,27 @@ mod tests {
         
         // Name length and name
         wasm.push(name_len as u8); // Simple LEB128
-        wasm.extend_from_slice(section_name.as_bytes());
+        wasm.extend_from_slice(section_name.as_bytes();
         
         // Section data
         wasm.extend_from_slice(section_data);
         
         // Test finding the section
-        let result = find_custom_section(&wasm, "test.section").unwrap();
-        assert!(result.is_some());
+        let result = find_custom_section(&wasm, "test.sectionMissing message").unwrap();
+        assert!(result.is_some();
         assert_eq!(result.unwrap(), section_data);
         
         // Test finding non-existent section
-        let result = find_custom_section(&wasm, "non.existent").unwrap();
-        assert!(result.is_none());
+        let result = find_custom_section(&wasm, "non.existentMissing message").unwrap();
+        assert!(result.is_none();
     }
     
     #[test]
     fn test_leb128_parsing() {
         // Test simple values
-        assert_eq!(read_leb128_u32(&[0x00]).unwrap(), (0, 1));
-        assert_eq!(read_leb128_u32(&[0x7F]).unwrap(), (127, 1));
-        assert_eq!(read_leb128_u32(&[0x80, 0x01]).unwrap(), (128, 2));
-        assert_eq!(read_leb128_u32(&[0x80, 0x80, 0x01]).unwrap(), (16384, 3));
+        assert_eq!(read_leb128_u32(&[0x00]).unwrap(), (0, 1);
+        assert_eq!(read_leb128_u32(&[0x7F]).unwrap(), (127, 1);
+        assert_eq!(read_leb128_u32(&[0x80, 0x01]).unwrap(), (128, 2);
+        assert_eq!(read_leb128_u32(&[0x80, 0x80, 0x01]).unwrap(), (16384, 3);
     }
 }

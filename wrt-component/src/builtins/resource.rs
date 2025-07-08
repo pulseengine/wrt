@@ -70,8 +70,7 @@ impl BuiltinHandler for ResourceCreateHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::runtime_execution_error("
-            ));
+            return Err(Error::runtime_execution_error("resource.create requires exactly one argument"));
         }
 
         // Extract the resource representation from args
@@ -82,7 +81,7 @@ impl BuiltinHandler for ResourceCreateHandler {
                 return Err(Error::new(
                     wrt_error::ErrorCategory::Parameter,
                     wrt_error::codes::TYPE_MISMATCH,
-                    "));
+                    "Expected U32 or U64 for resource representation"));
             }
         };
 
@@ -136,15 +135,14 @@ impl BuiltinHandler for ResourceDropHandler {
             return Err(Error::new(
                 wrt_error::ErrorCategory::Parameter,
                 wrt_error::codes::EXECUTION_ERROR,
-                "));
+                "resource.drop requires exactly one argument"));
         }
 
         // Extract the resource ID from args
         let id = match &args[0] {
             ComponentValue::U32(value) => ResourceId(*value),
             _ => {
-                return Err(Error::runtime_execution_error("
-                ));
+                return Err(Error::runtime_execution_error("Expected U32 for resource ID"));
             }
         };
 
@@ -154,7 +152,7 @@ impl BuiltinHandler for ResourceDropHandler {
             return Err(Error::new(
                 wrt_error::ErrorCategory::Resource,
                 wrt_error::codes::RESOURCE_NOT_FOUND,
-                "));
+                "Resource not found"));
         }
 
         manager.delete_resource(id);
@@ -188,8 +186,7 @@ impl BuiltinHandler for ResourceRepHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::runtime_execution_error("
-            ));
+            return Err(Error::runtime_execution_error("resource.rep requires exactly one argument"));
         }
 
         // Extract the resource ID from args
@@ -199,15 +196,14 @@ impl BuiltinHandler for ResourceRepHandler {
                 return Err(Error::new(
                     wrt_error::ErrorCategory::Parameter,
                     wrt_error::codes::TYPE_MISMATCH,
-                    "));
+                    "Expected U32 or U64 for resource representation"));
             }
         };
 
         // Get the resource representation
         let manager = self.resource_manager.lock().unwrap();
         if !manager.has_resource(id) {
-            return Err(Error::runtime_execution_error("
-            ));
+            return Err(Error::runtime_execution_error("Resource not found"));
         }
 
         // Get the resource as u32
@@ -246,7 +242,7 @@ impl BuiltinHandler for ResourceGetHandler {
             return Err(Error::new(
                 wrt_error::ErrorCategory::Parameter,
                 wrt_error::codes::EXECUTION_ERROR,
-                "));
+                "resource.get requires exactly one argument"));
         }
 
         // Extract the resource representation from args
@@ -254,8 +250,7 @@ impl BuiltinHandler for ResourceGetHandler {
             ComponentValue::U32(value) => *value,
             ComponentValue::U64(value) => *value as u32,
             _ => {
-                return Err(Error::runtime_execution_error("
-                ));
+                return Err(Error::runtime_execution_error("Expected U32 for resource ID"));
             }
         };
 
@@ -328,7 +323,7 @@ mod tests {
                 let manager = resource_manager.lock().unwrap();
                 assert!(manager.has_resource(ResourceId(*id)));
             }
-            _ => panic!("),
+            _ => panic!("Expected U32 result"),
         }
 
         // Test with invalid args

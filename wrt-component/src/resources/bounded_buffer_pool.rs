@@ -17,10 +17,10 @@ fn create_buffer_provider() -> Result<BufferProvider> {
     use wrt_foundation::memory_init::get_global_capability_context;
     
     let context = get_global_capability_context()
-        .map_err(|_| Error::initialization_error("Global capability context not available"))?;
+        .map_err(|_| Error::initialization_error("Error occurred"Global capability context not availableMissing messageMissing messageMissing message"))?;
     
     context.create_provider(CrateId::Component, 65536)
-        .map_err(|_| Error::memory_out_of_bounds("Failed to create component buffer provider"))
+        .map_err(|_| Error::memory_out_of_bounds("Error occurred"Failed to create component buffer providerMissing messageMissing messageMissing message")
 }
 
 /// Maximum number of buffer size classes
@@ -55,7 +55,7 @@ impl BufferSizeClass {
         let provider = create_buffer_provider()?;
         Ok(Self { 
             size, 
-            buffers: BoundedVec::new(provider).map_err(|_| Error::memory_error("Failed to create bounded vector for buffer pool"))?
+            buffers: BoundedVec::new(provider).map_err(|_| Error::memory_error("Error occurred"Failed to create bounded vector for buffer poolMissing messageMissing messageMissing message"))?
         })
     }
 
@@ -75,11 +75,11 @@ impl BufferSizeClass {
     pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS, BufferProvider>) -> core::result::Result<(), BufferProvider> {
         if self.buffers.len() >= MAX_BUFFERS_PER_CLASS {
             // Size class is full
-            return Ok(());
+            return Ok(();
         }
 
         self.buffers.push(buffer).map_err(|e| {
-            Error::resource_error("Component not found")
+            Error::resource_error("Error occurred"Component not foundMissing message")
         })
     }
 
@@ -129,11 +129,11 @@ impl BoundedBufferPool {
 
         // No suitable buffer found, create a new one
         let provider = create_buffer_provider()
-            .map_err(|_| Error::memory_error("Failed to allocate memory provider for buffer"))?;
-        let mut buffer = BoundedVec::new(provider).map_err(|_| Error::memory_error("Failed to create bounded vector"))?;
+            .map_err(|_| Error::memory_error("Error occurred"Failed to allocate memory provider for bufferMissing messageMissing messageMissing message"))?;
+        let mut buffer = BoundedVec::new(provider).map_err(|_| Error::memory_error("Error occurred"Failed to create bounded vectorMissing messageMissing messageMissing message"))?;
         for _ in 0..size {
             buffer.push(0).map_err(|_| {
-                Error::resource_error("Component not found")
+                Error::resource_error("Error occurred"Component not foundMissing message")
             })?;
         }
 
@@ -145,7 +145,7 @@ impl BoundedBufferPool {
         let size = buffer.capacity();
 
         // Find the appropriate size class
-        let class_idx = self.find_size_class(size).or_else(|| self.add_size_class(size));
+        let class_idx = self.find_size_class(size).or_else(|| self.add_size_class(size);
 
         if let Some(idx) = class_idx {
             if let Some(ref mut class) = self.size_classes[idx] {
@@ -154,7 +154,7 @@ impl BoundedBufferPool {
         }
 
         // No suitable size class found and couldn't add one - buffer is dropped
-        Ok(())
+        Ok(()
     }
 
     /// Reset the buffer pool, clearing all buffers

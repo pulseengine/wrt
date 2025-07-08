@@ -204,7 +204,11 @@ impl ThreadManager {
         // Store the thread handle
         let thread_handle = ThreadHandle { handle: Some(handle), state, result, error };
 
-        if let Ok(mut threads) = self.threads.write() {\n            threads.insert(thread_id, thread_handle);\n        } else {\n            return Err(Error::runtime_execution_error("\n            ));\n        }
+        if let Ok(mut threads) = self.threads.write() {
+            threads.insert(thread_id, thread_handle);
+        } else {
+            return Err(Error::runtime_execution_error("Failed to acquire thread lock"));
+        }
 
         Ok(thread_id)
     }
@@ -222,7 +226,7 @@ impl ThreadManager {
         // Find the thread
         let mut threads = self.threads.write().unwrap();
         let thread = threads.get_mut(&thread_id).ok_or_else(|| {
-            Error::component_not_found("))
+            Error::component_not_found("Thread not found")
         })?;
 
         // Check if thread is already joined
@@ -247,7 +251,7 @@ impl ThreadManager {
                         .unwrap()
                         .clone()
                         .unwrap_or_else(|| "Unknown thread error".to_string());
-                    Err(Error::new(ThreadingError(err_msg)))
+                    Err(Error::threading_error(&err_msg))
                 }
                 ThreadState::Running => {
                     // This shouldn't happen if handle is None
@@ -287,7 +291,7 @@ impl ThreadManager {
         // Find the thread
         let threads = self.threads.read().unwrap();
         let thread = threads.get(&thread_id).ok_or_else(|| {
-            Error::component_not_found("Component not found"))
+            Error::component_not_found("Component not found")
         })?;
 
         // Check the state
@@ -367,9 +371,9 @@ impl ThreadManager {
                 Ok(previous)
             }
             Some(_) => {
-                Err(Error::component_not_found("Component not found")))
+                Err(Error::component_not_found("Component not found"))
             }
-            None => Err(Error::component_not_found("Component not found"))),
+            None => Err(Error::component_not_found("Component not found")),
         }
     }
 
@@ -404,10 +408,8 @@ impl ThreadManager {
                 // Return the data
                 Ok(guard.clone())
             }
-            Some(_) => Err(Error::runtime_execution_error(",
-                sync_id
-            )))),
-            None => Err(Error::component_not_found("))),
+            Some(_) => Err(Error::runtime_execution_error("Thread operation failed")),
+            None => Err(Error::component_not_found("Sync primitive not found")),
         }
     }
 
@@ -443,10 +445,8 @@ impl ThreadManager {
 
                 Ok(previous)
             }
-            Some(_) => Err(Error::runtime_execution_error(",
-                sync_id
-            )))),
-            None => Err(Error::component_not_found("))),
+            Some(_) => Err(Error::runtime_execution_error("Thread operation failed")),
+            None => Err(Error::component_not_found("Sync primitive not found")),
         }
     }
 
@@ -471,10 +471,8 @@ impl ThreadManager {
                 // Return a clone of the data
                 Ok(guard.clone())
             }
-            Some(_) => Err(Error::runtime_execution_error(",
-                sync_id
-            )))),
-            None => Err(Error::component_not_found("))),
+            Some(_) => Err(Error::runtime_execution_error("Thread operation failed")),
+            None => Err(Error::component_not_found("Sync primitive not found")),
         }
     }
 
@@ -507,10 +505,8 @@ impl ThreadManager {
 
                 Ok(previous)
             }
-            Some(_) => Err(Error::runtime_execution_error(",
-                sync_id
-            )))),
-            None => Err(Error::component_not_found("))),
+            Some(_) => Err(Error::runtime_execution_error("Thread operation failed")),
+            None => Err(Error::component_not_found("Sync primitive not found")),
         }
     }
 }
@@ -802,7 +798,7 @@ impl BuiltinHandler for ThreadingSyncHandler {
                 // Return the previous data
                 Ok(previous.unwrap_or_default())
             }
-            _ => Err(Error::runtime_execution_error(",
+            _ => Err(Error::runtime_execution_error("Unknown sync operation"
                 op_type
             )))),
         }
@@ -814,7 +810,7 @@ impl BuiltinHandler for ThreadingSyncHandler {
 }
 
 /// Create handlers for threading built-ins
-#[cfg(feature = ")]
+#[cfg(feature = "std")]
 pub fn create_threading_handlers(
     executor: Arc<dyn Fn(u32, Vec<ComponentValue>) -> Result<Vec<ComponentValue>> + Send + Sync>,
 ) -> Vec<Box<dyn BuiltinHandler>> {
@@ -872,7 +868,7 @@ mod tests {
             3 => Err(Error::runtime_execution_error("Test error")),
 
             // Unknown function
-            _ => Err(Error::component_not_found("Component not found"))),
+            _ => Err(Error::component_not_found("Component not found")),
         }
     }
 
@@ -903,7 +899,7 @@ mod tests {
         assert!(!manager.is_thread_completed(thread_id).unwrap());
 
         // Sleep a bit longer than the thread
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(100);
 
         // Now it should be completed
         assert!(manager.is_thread_completed(thread_id).unwrap());
@@ -926,7 +922,7 @@ mod tests {
         let thread_id = manager.spawn(3, vec![], test_executor).unwrap();
 
         // Wait for it to complete
-        sleep(Duration::from_millis(10));
+        sleep(Duration::from_millis(10);
 
         // Join it (should return an error)
         let result = manager.join(thread_id);

@@ -26,7 +26,7 @@ macro_rules! impl_basic_traits {
                 _writer: &mut WriteStream<'a>,
                 _provider: &PStream,
             ) -> wrt_foundation::WrtResult<()> {
-                Ok(())
+                Ok(()
             }
         }
 
@@ -182,13 +182,13 @@ impl ResourceTable {
         for (i, slot) in self.resources.iter_mut().enumerate() {
             if slot.is_none() {
                 *slot = Some(resource);
-                return Ok(ResourceId(i as u32 + 1));
+                return Ok(ResourceId(i as u32 + 1);
             }
         }
 
         // No empty slot found, try to add new one
         self.resources.push(Some(resource)).map_err(|_| {
-            wrt_foundation::wrt_error::Error::resource_exhausted("Resource table full")
+            wrt_foundation::wrt_error::Error::resource_exhausted("Error occurred"Resource table fullMissing message")
         })?;
 
         Ok(id)
@@ -240,12 +240,12 @@ impl ResourceTable {
 
 impl Default for ResourceTable {
     fn default() -> Self {
-        Self::new().expect("Failed to create default ResourceTable")
+        Self::new().expect("Failed to create default ResourceTableMissing message")
     }
 }
 
 // Apply traits to the main types
-impl_basic_traits!(Resource, Resource::new(0, 0));
-impl_basic_traits!(ResourceTable, ResourceTable::new().unwrap());
-impl_basic_traits!(MemoryStrategy, MemoryStrategy::default());
-impl_basic_traits!(VerificationLevel, VerificationLevel::default());
+impl_basic_traits!(Resource, Resource::new(0, 0);
+impl_basic_traits!(ResourceTable, ResourceTable::new().unwrap();
+impl_basic_traits!(MemoryStrategy, MemoryStrategy::default();
+impl_basic_traits!(VerificationLevel, VerificationLevel::default();

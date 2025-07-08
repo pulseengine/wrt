@@ -66,7 +66,7 @@ impl BudgetAwareResourceTablePool {
     /// 3. Resource limits are enforced
     pub fn create_table(&mut self) -> WrtResult<ResourceTable> {
         if self.active_tables >= self.max_tables {
-            return Err(wrt_foundation::wrt_error::Error::resource_exhausted("Maximum resource tables reached for component"));
+            return Err(wrt_foundation::wrt_error::Error::resource_exhausted("Error occurred"Maximum resource tables reached for componentMissing messageMissing messageMissing message");
         }
         
         // Create table with budget tracking
@@ -147,7 +147,7 @@ mod tests {
     #[test]
     fn test_budget_aware_resource_table_creation() {
         let result = create_budget_aware_resource_table();
-        assert!(result.is_ok(), "Failed to create budget-aware ResourceTable");
+        assert!(result.is_ok(), "Failed to create budget-aware ResourceTableMissing message");
     }
     
     #[test]
@@ -156,15 +156,15 @@ mod tests {
         
         // Create first table
         let table1 = pool.create_table();
-        assert!(table1.is_ok());
+        assert!(table1.is_ok();
         
         // Create second table
         let table2 = pool.create_table();
-        assert!(table2.is_ok());
+        assert!(table2.is_ok();
         
         // Third table should fail (exceeds limit)
         let table3 = pool.create_table();
-        assert!(table3.is_err());
+        assert!(table3.is_err();
         
         // Check statistics
         let stats = pool.get_usage_stats();
@@ -176,8 +176,8 @@ mod tests {
     #[test]
     fn test_budget_integration_verification() {
         let result = verify_budget_integration();
-        assert!(result.is_ok());
-        assert!(result.unwrap(), "Budget integration verification failed");
+        assert!(result.is_ok();
+        assert!(result.unwrap(), "Budget integration verification failedMissing message");
     }
     
     #[test]
@@ -189,14 +189,14 @@ mod tests {
         let table1 = pool1.create_table();
         let table2 = pool2.create_table();
         
-        assert!(table1.is_ok());
-        assert!(table2.is_ok());
+        assert!(table1.is_ok();
+        assert!(table2.is_ok();
         
         // Verify isolation in statistics
         let stats1 = pool1.get_usage_stats();
         let stats2 = pool2.get_usage_stats();
         
-        assert_eq!(stats1.component_id.as_index(), CrateId::Component.as_index());
-        assert_eq!(stats2.component_id.as_index(), CrateId::Runtime.as_index());
+        assert_eq!(stats1.component_id.as_index(), CrateId::Component.as_index();
+        assert_eq!(stats2.component_id.as_index(), CrateId::Runtime.as_index();
     }
 }

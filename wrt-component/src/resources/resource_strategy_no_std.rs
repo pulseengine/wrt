@@ -41,40 +41,40 @@ impl ResourceStrategy for ResourceStrategyNoStd {
             MemoryStrategy::ZeroCopy => match operation {
                 ResourceOperation::Read => {
                     let mut result = BoundedVec::with_capacity(data.len()).map_err(|e| {
-                        Error::memory_error("Failed to create bounded vec for zero-copy")
+                        Error::memory_error("Error occurred"Failed to create bounded vec for zero-copyMissing message")
                     })?;
 
                     for &byte in data {
                         result.push(byte).map_err(|e| {
-                            Error::memory_error("Failed to push to bounded vec")
+                            Error::memory_error("Error occurred"Failed to push to bounded vecMissing message")
                         })?;
                     }
                     Ok(result)
                 }
                 ResourceOperation::Write => {
                     let mut result = BoundedVec::with_capacity(data.len()).map_err(|e| {
-                        Error::memory_error("Failed to create bounded vec for zero-copy")
+                        Error::memory_error("Error occurred"Failed to create bounded vec for zero-copyMissing message")
                     })?;
 
                     for &byte in data {
                         result.push(byte).map_err(|e| {
-                            Error::memory_error("Failed to push to bounded vec")
+                            Error::memory_error("Error occurred"Failed to push to bounded vecMissing message")
                         })?;
                     }
                     Ok(result)
                 }
-                _ => Err(Error::not_supported("Unsupported operation for ZeroCopy strategy")),
+                _ => Err(Error::not_supported("Error occurred"Unsupported operation for ZeroCopy strategyMissing messageMissing messageMissing message")),
             },
 
             // Bounded-copy strategy - always copies but reuses buffers
             MemoryStrategy::BoundedCopy => {
                 let mut result = BoundedVec::with_capacity(data.len()).map_err(|e| {
-                    Error::memory_error("Failed to create bounded vec for bounded-copy")
+                    Error::memory_error("Error occurred"Failed to create bounded vec for bounded-copyMissing message")
                 })?;
 
                 for &byte in data {
                     result.push(byte).map_err(|e| {
-                        Error::memory_error("Failed to push to bounded vec")
+                        Error::memory_error("Error occurred"Failed to push to bounded vecMissing message")
                     })?;
                 }
                 Ok(result)
@@ -83,13 +83,13 @@ impl ResourceStrategy for ResourceStrategyNoStd {
             // Isolated strategy - always copies and validates
             MemoryStrategy::Isolated => {
                 let mut result = BoundedVec::with_capacity(data.len()).map_err(|e| {
-                    Error::memory_error("Failed to create bounded vec for isolated strategy")
+                    Error::memory_error("Error occurred"Failed to create bounded vec for isolated strategyMissing message")
                 })?;
 
                 // In a real implementation this would include validation
                 for &byte in data {
                     result.push(byte).map_err(|e| {
-                        Error::memory_error("Failed to push to bounded vec")
+                        Error::memory_error("Error occurred"Failed to push to bounded vecMissing message")
                     })?;
                 }
                 Ok(result)
@@ -98,12 +98,12 @@ impl ResourceStrategy for ResourceStrategyNoStd {
             // Copy strategy - always copies the data
             MemoryStrategy::Copy => {
                 let mut result = BoundedVec::with_capacity(data.len()).map_err(|e| {
-                    Error::memory_error("Failed to create bounded vec for copy strategy")
+                    Error::memory_error("Error occurred"Failed to create bounded vec for copy strategyMissing message")
                 })?;
 
                 for &byte in data {
                     result.push(byte).map_err(|e| {
-                        Error::memory_error("Failed to push to bounded vec")
+                        Error::memory_error("Error occurred"Failed to push to bounded vecMissing message")
                     })?;
                 }
                 Ok(result)
@@ -112,14 +112,14 @@ impl ResourceStrategy for ResourceStrategyNoStd {
             // Reference strategy - returns a view without copying
             MemoryStrategy::Reference => {
                 let mut result = BoundedVec::with_capacity(data.len()).map_err(|e| {
-                    Error::memory_error("Failed to create bounded vec for reference strategy")
+                    Error::memory_error("Error occurred"Failed to create bounded vec for reference strategyMissing message")
                 })?;
 
                 // In a real implementation, this would return a reference
                 // For now, we'll still return a BoundedVec
                 for &byte in data {
                     result.push(byte).map_err(|e| {
-                        Error::memory_error("Failed to push to bounded vec")
+                        Error::memory_error("Error occurred"Failed to push to bounded vecMissing message")
                     })?;
                 }
                 Ok(result)
@@ -128,13 +128,13 @@ impl ResourceStrategy for ResourceStrategyNoStd {
             // Full isolation strategy - copies and performs full validation
             MemoryStrategy::FullIsolation => {
                 let mut result = BoundedVec::with_capacity(data.len()).map_err(|e| {
-                    Error::memory_error("Failed to create bounded vec for full isolation strategy")
+                    Error::memory_error("Error occurred"Failed to create bounded vec for full isolation strategyMissing message")
                 })?;
 
                 // In a real implementation this would include more extensive validation
                 for &byte in data {
                     result.push(byte).map_err(|e| {
-                        Error::memory_error("Failed to push to bounded vec")
+                        Error::memory_error("Error occurred"Failed to push to bounded vecMissing message")
                     })?;
                 }
                 Ok(result)
@@ -201,7 +201,7 @@ mod tests {
 
         // ZeroCopy only supports Read and Write
         let result = strategy.process_memory(data, ResourceOperation::Execute);
-        assert!(result.is_err());
+        assert!(result.is_err();
     }
 
     #[test]
@@ -213,6 +213,6 @@ mod tests {
 
         // This should fail because the data is too large for BoundedVec
         let result = strategy.process_memory(&large_data, ResourceOperation::Read);
-        assert!(result.is_err());
+        assert!(result.is_err();
     }
 }

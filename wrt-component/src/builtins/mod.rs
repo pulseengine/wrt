@@ -211,8 +211,7 @@ impl BuiltinRegistry {
         // Define a default function executor for threading that just returns an error
         #[cfg(feature = "component-model-threading")]
         let function_executor: FunctionExecutor = Arc::new(|function_id, _args| {
-            Err(Error::runtime_execution_error("
-            ))
+            Err(Error::runtime_execution_error("Function executor not configured"))
         });
 
         let mut registry = Self {
@@ -220,7 +219,7 @@ impl BuiltinRegistry {
             // interceptor: None,
             component_name: component_name.to_string(),
             host_id: host_id.to_string(),
-            #[cfg(feature = ")]
+            #[cfg(feature = "std")]
             async_store,
             #[cfg(feature = "component-model-error-context")]
             error_store,
@@ -330,41 +329,8 @@ impl BuiltinRegistry {
         // Create interception context
         let context = InterceptContext::new(&self.component_name, builtin_type, &self.host_id);
 
-        // Apply interception if available
-        if let Some(interceptor) = &self.interceptor {
-            // Before interceptor
-            match interceptor.before_builtin(&context, args)? {
-                #[cfg(feature = "std")]
-                BeforeBuiltinResult::Continue(modified_args) => {
-                    // Execute with potentially modified args
-                    let result = handler.execute(&modified_args);
-
-                    // After interceptor
-                    interceptor.after_builtin(&context, args, result)
-                }
-                #[cfg(feature = "std")]
-                BeforeBuiltinResult::Bypass(result) => {
-                    // Skip execution and use provided result
-                    Ok(result)
-                }
-                #[cfg(not(feature = "std"))]
-                BeforeBuiltinResult::Continue => {
-                    // Execute with original args
-                    let result = handler.execute(args);
-
-                    // After interceptor (simplified for no_std)
-                    result
-                }
-                #[cfg(not(feature = "std"))]
-                BeforeBuiltinResult::Bypass => {
-                    // Skip execution and return empty result
-                    Ok(Vec::new())
-                }
-            }
-        } else {
-            // No interceptor, just execute
-            handler.execute(args)
-        }
+        // No interceptor currently, just execute
+        handler.execute(args)
     }
 
     /// Get the async store
@@ -395,7 +361,7 @@ impl Clone for BuiltinRegistry {
     fn clone(&self) -> Self {
         Self {
             handlers: self.handlers.iter().map(|h| h.clone_handler()).collect(),
-            interceptor: self.interceptor.clone(),
+            // interceptor: self.interceptor.clone(),
             component_name: self.component_name.clone(),
             host_id: self.host_id.clone(),
             #[cfg(feature = "component-model-async")]

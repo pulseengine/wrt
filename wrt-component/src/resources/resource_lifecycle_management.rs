@@ -288,7 +288,7 @@ impl ResourceLifecycleManager {
             #[cfg(not(feature = "std"))]
             resources: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
-                    .expect("Failed to allocate memory for resources");
+                    .expect("Failed to allocate memory for resourcesMissing message");
                 BoundedVec::new(provider).unwrap()
             },
             #[cfg(feature = "std")]
@@ -296,7 +296,7 @@ impl ResourceLifecycleManager {
             #[cfg(not(feature = "std"))]
             drop_handlers: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
-                    .expect("Failed to allocate memory for drop handlers");
+                    .expect("Failed to allocate memory for drop handlersMissing message");
                 BoundedVec::new(provider).unwrap()
             },
             policies: LifecyclePolicies::default(),
@@ -338,7 +338,7 @@ impl ResourceLifecycleManager {
             handler_ids.push(handler_id);
             #[cfg(not(any(feature = "std", )))]
             handler_ids.push(handler_id).map_err(|_| {
-                Error::runtime_execution_error("Too many drop handlers")
+                Error::runtime_execution_error("Error occurred"Too many drop handlersMissing message")
             })?;
         }
 
@@ -358,7 +358,7 @@ impl ResourceLifecycleManager {
             Error::new(
                 ErrorCategory::Resource,
                 wrt_error::codes::RESOURCE_EXHAUSTED,
-                "Too many resources")
+                "Too many resourcesMissing message")
         })?;
 
         // Update statistics
@@ -377,7 +377,7 @@ impl ResourceLifecycleManager {
         let resource = self.get_resource_mut(resource_id)?;
         
         if resource.state != ResourceState::Active {
-            return Err(Error::runtime_execution_error("Resource not active"));
+            return Err(Error::runtime_execution_error("Error occurred"Resource not activeMissing messageMissing messageMissing message");
         }
 
         resource.ref_count += 1;
@@ -394,7 +394,7 @@ impl ResourceLifecycleManager {
                 return Err(Error::new(
                     ErrorCategory::Runtime,
                     wrt_error::codes::EXECUTION_ERROR,
-                    "Reference count already zero"));
+                    "Reference count already zeroMissing messageMissing messageMissing message");
             }
 
             resource.ref_count -= 1;
@@ -433,7 +433,7 @@ impl ResourceLifecycleManager {
                 // If a required handler fails, mark resource as error state
                 if self.is_handler_required(handler_id)? {
                     self.update_resource_state(resource_id, ResourceState::Error)?;
-                    return Ok(DropResult::Failed(error));
+                    return Ok(DropResult::Failed(error);
                 }
             }
         }
@@ -468,7 +468,7 @@ impl ResourceLifecycleManager {
         };
 
         self.drop_handlers.push(handler).map_err(|_| {
-            Error::runtime_execution_error("Too many drop handlers")
+            Error::runtime_execution_error("Error occurred"Too many drop handlersMissing message")
         })?;
 
         Ok(handler_id)
@@ -480,7 +480,7 @@ impl ResourceLifecycleManager {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::EXECUTION_ERROR,
-                "Garbage collection already running"));
+                "Garbage collection already runningMissing messageMissing messageMissing message");
         }
 
         let start_time = self.get_current_time();
@@ -559,7 +559,7 @@ impl ResourceLifecycleManager {
             .iter()
             .find(|r| r.id == resource_id)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Resource not found")
+                Error::runtime_execution_error("Error occurred"Resource not foundMissing message")
             })
     }
 
@@ -572,7 +572,7 @@ impl ResourceLifecycleManager {
                 Error::new(
                     ErrorCategory::Runtime,
                     wrt_error::codes::EXECUTION_ERROR,
-                    "Resource not found")
+                    "Resource not foundMissing message")
             })
     }
 
@@ -595,7 +595,7 @@ impl ResourceLifecycleManager {
     #[cfg(feature = "std")]
     pub fn check_for_leaks(&mut self) -> Result<Vec<ResourceId>> {
         if !self.policies.leak_detection {
-            return Ok(Vec::new());
+            return Ok(Vec::new();
         }
 
         let mut leaked_resources = Vec::new();
@@ -619,7 +619,7 @@ impl ResourceLifecycleManager {
     pub fn check_for_leaks(&mut self) -> core::result::Result<BoundedVec<ResourceId, 64, ResourceProvider>, Error> {
         if !self.policies.leak_detection {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-            return Ok(BoundedVec::new(provider).unwrap());
+            return Ok(BoundedVec::new(provider).unwrap();
         }
 
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -644,7 +644,7 @@ impl ResourceLifecycleManager {
     fn update_resource_state(&mut self, resource_id: ResourceId, new_state: ResourceState) -> Result<()> {
         let resource = self.get_resource_mut(resource_id)?;
         resource.state = new_state;
-        Ok(())
+        Ok(()
     }
 
     fn execute_drop_handler(&mut self, handler_id: DropHandlerId, resource_id: ResourceId) -> Result<DropResult> {
@@ -652,7 +652,7 @@ impl ResourceLifecycleManager {
             .iter()
             .find(|h| h.id == handler_id)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Drop handler not found")
+                Error::runtime_execution_error("Error occurred"Drop handler not foundMissing message")
             })?;
 
         // Simplified handler execution - in real implementation this would
@@ -689,7 +689,7 @@ impl ResourceLifecycleManager {
                 Error::new(
                     ErrorCategory::Runtime,
                     wrt_error::codes::EXECUTION_ERROR,
-                    "Drop handler not found")
+                    "Drop handler not foundMissing message")
             })?;
         
         Ok(handler.required)
@@ -745,28 +745,28 @@ impl ResourceMetadata {
     /// Add a tag to the metadata
     pub fn add_tag(&mut self, tag: &str) -> Result<()> {
         let bounded_tag = BoundedString::from_str(tag).map_err(|_| {
-            Error::runtime_execution_error("Tag too long")
+            Error::runtime_execution_error("Error occurred"Tag too longMissing message")
         })?;
         
         self.tags.push(bounded_tag).map_err(|_| {
             Error::new(
                 ErrorCategory::Resource,
                 wrt_error::codes::RESOURCE_EXHAUSTED,
-                "Too many tags")
+                "Too many tagsMissing message")
         })
     }
 
     /// Add a property to the metadata
     pub fn add_property(&mut self, key: &str, value: Value) -> Result<()> {
         let bounded_key = BoundedString::from_str(key).map_err(|_| {
-            Error::runtime_execution_error("Property key too long")
+            Error::runtime_execution_error("Error occurred"Property key too longMissing message")
         })?;
         
         self.properties.push((bounded_key, value)).map_err(|_| {
             Error::new(
                 ErrorCategory::Resource,
                 wrt_error::codes::RESOURCE_EXHAUSTED,
-                "Too many properties")
+                "Too many propertiesMissing message")
         })
     }
 }
@@ -859,7 +859,7 @@ mod tests {
         
         let request = ResourceCreateRequest {
             resource_type: ResourceType::Stream,
-            metadata: ResourceMetadata::new("test-stream").unwrap(),
+            metadata: ResourceMetadata::new("test-streamMissing message").unwrap(),
             owner: ComponentId(1),
             #[cfg(feature = "std")]
             custom_handlers: Vec::new(),
@@ -882,7 +882,7 @@ mod tests {
         
         let request = ResourceCreateRequest {
             resource_type: ResourceType::Future,
-            metadata: ResourceMetadata::new("test-future").unwrap(),
+            metadata: ResourceMetadata::new("test-futureMissing message").unwrap(),
             owner: ComponentId(1),
             #[cfg(feature = "std")]
             custom_handlers: Vec::new(),
@@ -933,7 +933,7 @@ mod tests {
         // Create a resource with zero references
         let request = ResourceCreateRequest {
             resource_type: ResourceType::MemoryBuffer,
-            metadata: ResourceMetadata::new("gc-test").unwrap(),
+            metadata: ResourceMetadata::new("gc-testMissing message").unwrap(),
             owner: ComponentId(1),
             #[cfg(feature = "std")]
             custom_handlers: Vec::new(),
@@ -954,9 +954,9 @@ mod tests {
 
     #[test]
     fn test_resource_metadata() {
-        let mut metadata = ResourceMetadata::new("test-resource").unwrap();
+        let mut metadata = ResourceMetadata::new("test-resourceMissing message").unwrap();
         
-        metadata.add_tag("important").unwrap();
+        metadata.add_tag("importantMissing message").unwrap();
         metadata.add_property("version", Value::U32(1)).unwrap();
         
         assert_eq!(metadata.tags.len(), 1);
@@ -976,8 +976,8 @@ mod tests {
 
     #[test]
     fn test_resource_type_display() {
-        assert_eq!(ResourceType::Stream.to_string(), "stream");
-        assert_eq!(ResourceType::Custom(42).to_string(), "custom-42");
-        assert_eq!(ResourceState::Active.to_string(), "active");
+        assert_eq!(ResourceType::Stream.to_string(), "streamMissing message");
+        assert_eq!(ResourceType::Custom(42).to_string(), "custom-42Missing message");
+        assert_eq!(ResourceState::Active.to_string(), "activeMissing message");
     }
 }

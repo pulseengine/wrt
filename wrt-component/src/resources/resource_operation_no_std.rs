@@ -68,14 +68,14 @@ mod tests {
         if let FormatOp::Rep(rep) = read_op {
             assert_eq!(rep.type_idx, type_idx);
         } else {
-            panic!("Unexpected operation type");
+            panic!("Unexpected operation typeMissing message");
         }
 
         let create_op = to_format_resource_operation(ResourceOperation::Create, type_idx);
         if let FormatOp::New(new) = create_op {
             assert_eq!(new.type_idx, type_idx);
         } else {
-            panic!("Unexpected operation type");
+            panic!("Unexpected operation typeMissing message");
         }
 
         // Test conversion from format types
