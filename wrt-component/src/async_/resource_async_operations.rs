@@ -263,13 +263,12 @@ impl ResourceAsyncOperations {
         })?;
 
         if !context.async_config.enable_async_creation {
-            return Err(Error::runtime_execution_error(".to_string(),
-            ));
+            return Err(Error::runtime_execution_error("Async resource creation not enabled"));
         }
 
         // Check limits
         if context.owned_resources.len() >= context.resource_limits.max_owned_resources {
-            return Err(Error::resource_limit_exceeded("));
+            return Err(Error::resource_limit_exceeded("Too many owned resources"));
         }
 
         let operation_id = ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
@@ -330,8 +329,7 @@ impl ResourceAsyncOperations {
         })?;
 
         if !context.async_config.enable_async_methods {
-            return Err(Error::runtime_execution_error(".to_string(),
-            ));
+            return Err(Error::runtime_execution_error("Async resource methods not enabled"));
         }
 
         // Verify resource ownership or borrow
@@ -340,7 +338,7 @@ impl ResourceAsyncOperations {
                 context.borrowed_resources.get(&resource_handle)
                     .map(|borrow| &ResourceInfo {
                         handle: resource_handle,
-                        resource_type: ResourceType::new(")),
+                        resource_type: ResourceType::new("borrowed"),
                         state: ResourceState::Borrowed,
                         created_at: borrow.borrowed_at,
                         last_accessed: AtomicU64::new(self.get_timestamp()),
@@ -467,13 +465,12 @@ impl ResourceAsyncOperations {
         })?;
 
         if !context.async_config.enable_async_drop {
-            return Err(Error::runtime_execution_error(".to_string(),
-            ));
+            return Err(Error::runtime_execution_error("Async resource drop not enabled"));
         }
 
         // Verify ownership
         let resource_info = context.owned_resources.get_mut(&resource_handle).ok_or_else(|| {
-            Error::validation_invalid_input(")
+            Error::validation_invalid_input("Resource not found")
         })?;
 
         if resource_info.state == ResourceState::Dropped {

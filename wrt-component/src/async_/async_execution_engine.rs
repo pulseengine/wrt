@@ -389,8 +389,7 @@ impl AsyncExecutionEngine {
         };
         
         self.executions.push(execution).map_err(|_| {
-            Error::runtime_execution_error("
-            )
+            Error::runtime_execution_error("Failed to push execution to executions vector")
         })?;
         
         self.stats.executions_started += 1;
@@ -521,7 +520,7 @@ impl AsyncExecutionEngine {
                 Error::new(
                     ErrorCategory::Runtime,
                     wrt_error::codes::EXECUTION_ERROR,
-                    ")
+                    "Execution not found")
             })
     }
     
@@ -530,8 +529,7 @@ impl AsyncExecutionEngine {
             .iter()
             .find(|e| e.id == execution_id)
             .ok_or_else(|| {
-                Error::runtime_execution_error("
-                )
+                Error::runtime_execution_error("Execution not found")
             })
     }
     
@@ -562,8 +560,7 @@ impl AsyncExecutionEngine {
     fn register_subtask(&mut self, parent_id: ExecutionId, child_id: ExecutionId) -> Result<()> {
         let parent_index = self.find_execution_index(parent_id)?;
         self.executions[parent_index].children.push(child_id).map_err(|_| {
-            Error::runtime_execution_error("
-            )
+            Error::runtime_execution_error("Failed to register subtask")
         })?;
         self.stats.subtasks_spawned += 1;
         Ok(())
@@ -590,7 +587,7 @@ impl AsyncExecutionEngine {
             Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::EXECUTION_ERROR,
-                ")
+                "Failed to push call frame")
         })?;
         
         // Simulate execution completing
@@ -622,8 +619,7 @@ impl AsyncExecutionEngine {
         };
         
         self.executions[execution_index].context.call_stack.push(frame).map_err(|_| {
-            Error::runtime_execution_error("
-            )
+            Error::runtime_execution_error("Failed to push call frame")
         })?;
         
         Ok(StepResult::Waiting)
@@ -657,15 +653,14 @@ impl AsyncExecutionEngine {
         // Check if future is ready
         // For now, we simulate waiting
         let frame = CallFrame {
-            function: BoundedString::from_str(").unwrap_or_default(),
+            function: BoundedString::from_str("future.get").unwrap_or_default(),
             return_ip: 0,
             stack_pointer: 0,
             async_state: FrameAsyncState::AwaitingFuture(handle),
         };
         
         self.executions[execution_index].context.call_stack.push(frame).map_err(|_| {
-            Error::runtime_execution_error("
-            )
+            Error::runtime_execution_error("Failed to push call frame")
         })?;
         
         Ok(StepResult::Waiting)
@@ -698,15 +693,14 @@ impl AsyncExecutionEngine {
     ) -> Result<StepResult> {
         // Wait for multiple operations
         let frame = CallFrame {
-            function: BoundedString::from_str(").unwrap_or_default(),
+            function: BoundedString::from_str("wait.multiple").unwrap_or_default(),
             return_ip: 0,
             stack_pointer: 0,
             async_state: FrameAsyncState::AwaitingMultiple(wait_set.clone()),
         };
         
         self.executions[execution_index].context.call_stack.push(frame).map_err(|_| {
-            Error::runtime_execution_error("
-            )
+            Error::runtime_execution_error("Failed to push call frame")
         })?;
         
         Ok(StepResult::Waiting)
@@ -971,7 +965,7 @@ mod tests {
             async_state: FrameAsyncState::Sync,
         };
         
-        context.call_stack.push(frame).map_err(|_| Error::runtime_execution_error("Failed to push frame"))?;
+        context.call_stack.push(frame).map_err(|_| Error::runtime_execution_error("Context access failed"))?;
         assert_eq!(context.call_stack.len(), 1);
         
         context.reset();
@@ -987,9 +981,9 @@ mod tests {
             #[cfg(not(any(feature = "std", )))]
             futures: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                let mut futures = BoundedVec::new(provider).map_err(|_| Error::runtime_execution_error("Failed to create futures vector"))?;
-                futures.push(FutureHandle(1)).map_err(|_| Error::runtime_execution_error("Failed to push future"))?;
-                futures.push(FutureHandle(2)).map_err(|_| Error::runtime_execution_error("Failed to push future"))?;
+                let mut futures = BoundedVec::new(provider).map_err(|_| Error::runtime_execution_error("Context access failed"))?;
+                futures.push(FutureHandle(1)).map_err(|_| Error::runtime_execution_error("Context access failed"))?;
+                futures.push(FutureHandle(2)).map_err(|_| Error::runtime_execution_error("Context access failed"))?;
                 futures
             },
             #[cfg(feature = "std")]
@@ -997,8 +991,8 @@ mod tests {
             #[cfg(not(any(feature = "std", )))]
             streams: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                let mut streams = BoundedVec::new(provider).map_err(|_| Error::runtime_execution_error("Failed to create streams vector"))?;
-                streams.push(StreamHandle(3)).map_err(|_| Error::runtime_execution_error("Failed to push stream"))?;
+                let mut streams = BoundedVec::new(provider).map_err(|_| Error::runtime_execution_error("Context access failed"))?;
+                streams.push(StreamHandle(3)).map_err(|_| Error::runtime_execution_error("Context access failed"))?;
                 streams
             },
         };

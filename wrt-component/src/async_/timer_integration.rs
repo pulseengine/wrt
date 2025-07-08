@@ -614,8 +614,7 @@ impl CoreFuture for TimerFuture {
             if let Ok(mut timers) = timer_integration.lock() {
                 if let Some(timer) = timers.timers.get_mut(&self.timer_id) {
                     if timer.cancelled.load(Ordering::Acquire) {
-                        return Poll::Ready(Err(Error::runtime_execution_error(".to_string(),
-                        )));
+                        return Poll::Ready(Err(Error::runtime_execution_error("Timer cancelled")));
                     }
 
                     let current_time = timers.get_current_time();
@@ -627,7 +626,7 @@ impl CoreFuture for TimerFuture {
                         Poll::Pending
                     }
                 } else {
-                    Poll::Ready(Err(Error::validation_invalid_input(")))
+                    Poll::Ready(Err(Error::validation_invalid_input("Timer operation failed")))
                 }
             } else {
                 Poll::Ready(Err(Error::invalid_state_error("Timer manager unavailable")))
@@ -712,7 +711,7 @@ mod tests {
         assert_eq!(TimerType::Oneshot, TimerType::Oneshot);
         assert_ne!(TimerType::Oneshot, TimerType::Interval(1000));
         
-        match TimerType::Timeout { operation_id: 42, timeout_duration: 5000 } {
+        match (TimerType::Timeout { operation_id: 42, timeout_duration: 5000 }) {
             TimerType::Timeout { operation_id, timeout_duration } => {
                 assert_eq!(operation_id, 42);
                 assert_eq!(timeout_duration, 5000);

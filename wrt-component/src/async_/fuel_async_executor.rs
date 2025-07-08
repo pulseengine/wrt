@@ -571,15 +571,14 @@ impl ExecutionLimitsConfig {
         
         // Parse the resource limits custom section
         let resource_limits = ResourceLimitsSection::decode(custom_section_data)
-            .map_err(|e| Error::runtime_execution_error(", e),
-            ))?;
+            .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
         
         // Validate the resource limits
         resource_limits.validate()
             .map_err(|e| Error::new(
                 ErrorCategory::Parse,
                 codes::PARSE_ERROR,
-                &format!("),
+                "Invalid resource limits configuration",
             ))?;
         
         Ok(Self {
@@ -679,7 +678,7 @@ impl ExecutionContext {
     
     /// Create from configuration (alias for new for clarity)
     pub fn from_config(asil_config: ASILExecutionConfig) -> Result<Self, Error> {
-        Ok(Self::new(asil_config))
+        Ok(Self::new(asil_config)?)
     }
 
     /// Set the component instance for this execution context
@@ -691,9 +690,7 @@ impl ExecutionContext {
     pub fn can_continue_execution(&self) -> Result<bool, Error> {
         // Check stack depth limits
         if self.stack_depth >= self.max_stack_depth {
-            return Err(Error::runtime_execution_error(", 
-                    self.stack_depth, self.max_stack_depth),
-            ));
+            return Err(Error::runtime_execution_error("Stack depth limit exceeded"));
         }
 
         // Check ASIL-specific constraints
@@ -1271,7 +1268,7 @@ impl FuelAsyncExecutor {
             return Err(Error::new(
                 ErrorCategory::Component,
                 codes::COMPONENT_ALREADY_EXISTS,
-                format!("),
+                "Operation failed",
             ));
         }
         
@@ -1282,8 +1279,7 @@ impl FuelAsyncExecutor {
     /// Unregister a component instance
     pub fn unregister_component(&mut self, component_id: ComponentInstanceId) -> Result<(), Error> {
         if self.component_registry.remove(&component_id).is_none() {
-            return Err(Error::runtime_execution_error(", component_id),
-            ));
+            return Err(Error::runtime_execution_error("Component not found"));
         }
         Ok(())
     }
@@ -1419,21 +1415,19 @@ impl FuelAsyncExecutor {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::INVALID_INPUT,
-                format!("),
+                "Operation failed",
             ));
         }
 
         // Check max step fuel
         if fuel_to_consume > policy.max_step_fuel {
-            return Err(Error::runtime_execution_error(", 
-                    fuel_to_consume, policy.max_step_fuel),
-            ));
+            return Err(Error::runtime_execution_error("Fuel step limit exceeded"));
         }
 
         // Check preallocation requirement
         if policy.require_preallocation && remaining_fuel < fuel_to_consume {
             return Ok(FuelEnforcementDecision::Deny {
-                reason: "),
+                reason: "Insufficient preallocation",
             });
         }
 
@@ -1548,8 +1542,7 @@ impl FuelAsyncExecutor {
         // Extract resource limits from binary if available
         let asil_config = if let Some(wasm_bytes) = binary_data {
             extract_resource_limits_from_binary(wasm_bytes, self.asil_mode_for_priority(priority))
-                .unwrap_or_else(|_| None)
-                .unwrap_or_else(|| ASILExecutionConfig::from_asil_requirements(
+                .unwrap_or_else(|_| ASILExecutionConfig::from_asil_requirements(
                     self.asil_mode_for_priority(priority), 
                     1
                 ))
@@ -1944,7 +1937,7 @@ impl FuelAsyncExecutor {
                     return Err(Error::new(
                         ErrorCategory::Resource,
                         codes::RESOURCE_LIMIT_EXCEEDED,
-                        format!("Task {} cannot incur additional fuel debt: required {} but remaining budget is {}", task.id, deficit, remaining),
+                        &format!("Task {} cannot incur additional fuel debt: required {} but remaining budget is {}", task.id, deficit, remaining),
                     ));
                 }
             } else {
@@ -1983,7 +1976,7 @@ impl FuelAsyncExecutor {
                     return Err(Error::new(
                         ErrorCategory::Resource,
                         codes::EXECUTION_LIMIT_EXCEEDED,
-                        format!("Task {} must yield: {}", task.id, reason),
+                        &format!("Task {} must yield: {}", task.id, reason),
                     ));
                 },
             }
@@ -2521,8 +2514,7 @@ impl FuelAsyncExecutor {
         let module_instance = match component_instance.get_core_module_instance(0) {
             Some(instance) => instance,
             None => {
-                return Err(Error::runtime_execution_error(",
-                ));
+                return Err(Error::runtime_execution_error("Component instance not found"));
             }
         };
         
@@ -2579,8 +2571,7 @@ impl FuelAsyncExecutor {
             },
             Err(e) => {
                 // Execution error
-                Err(Error::runtime_execution_error(")),
-                ))
+                Err(e)
             }
         }
     }
@@ -2647,8 +2638,7 @@ impl FuelAsyncExecutor {
             },
             Err(e) => {
                 // Execution error
-                Err(Error::runtime_execution_error("WebAssembly execution resume failed: {}")),
-                ))
+                Err(e)
             }
         }
     }
@@ -3835,8 +3825,7 @@ impl ExecutorServices for FuelAsyncExecutor {
             }
             Ok(())
         } else {
-            Err(Error::runtime_execution_error("Task {} not found"),
-            ))
+            Err(Error::runtime_execution_error("Task not found"))
         }
     }
     

@@ -183,8 +183,8 @@ impl<T> FuelAsyncChannel<T> {
         enable_priority_inheritance: bool,
     ) -> Result<Self, Error> {
         if capacity > MAX_CHANNEL_CAPACITY {
-            return Err(Error::runtime_execution_error(", capacity, MAX_CHANNEL_CAPACITY),
-            ));
+            return Err(Error::runtime_execution_error("Channel capacity exceeds maximum allowed"),
+            );
         }
 
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
@@ -302,7 +302,7 @@ impl<T> FuelAsyncChannel<T> {
         };
 
         self.waiting_senders.push(waiter).map_err(|_| {
-            Error::resource_limit_exceeded(")
+            Error::resource_limit_exceeded("Too many waiting senders")
         })?;
 
         // Register priority inheritance if enabled

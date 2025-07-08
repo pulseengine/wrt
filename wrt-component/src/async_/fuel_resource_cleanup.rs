@@ -139,7 +139,7 @@ impl TaskCleanupContext {
             50, // Medium priority
             CLEANUP_EXECUTE_FUEL,
             true, // Critical
-        ))
+        ))?
     }
     
     /// Register stream ownership
@@ -153,7 +153,7 @@ impl TaskCleanupContext {
             60, // Higher priority than resources
             CLEANUP_EXECUTE_FUEL,
             false, // Non-critical
-        ))
+        ))?
     }
     
     /// Register handle table entry
@@ -167,7 +167,7 @@ impl TaskCleanupContext {
             40, // Lower priority
             CLEANUP_EXECUTE_FUEL,
             false, // Non-critical
-        ))
+        ))?
     }
     
     /// Execute cleanup
@@ -344,17 +344,15 @@ impl GlobalCleanupManager {
     
     /// Get cleanup context for a task
     pub fn get_context_mut(&mut self, task_id: u64) -> Result<&mut TaskCleanupContext> {
-        self.contexts.get_mut(&task_id).ok_or_else(|| {
-            Error::async_error("Task cleanup context not found")
-        })
+        self.contexts.get_mut(&task_id).ok_or_else(|| 
+            Error::async_error("Task cleanup context not found"))
     }
     
     /// Cancel a task and run cleanup
     pub fn cancel_task(&mut self, task_id: u64) -> Result<Vec<ContextualError>> {
         // Remove context
-        let mut context = self.contexts.remove(&task_id).ok_or_else(|| {
-            Error::async_error("Task not found for cancellation")
-        })?;
+        let mut context = self.contexts.remove(&task_id).ok_or_else(|| 
+            Error::async_error("Task not found for cancellation"))?;
         
         // Consume cancellation fuel
         context.consume_fuel(CLEANUP_CANCEL_FUEL)?;

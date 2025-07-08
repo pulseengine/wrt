@@ -229,8 +229,7 @@ impl<T> FuelHandleTable<T> {
         // Validate generation
         if entry.generation != handle.generation {
             self.stats.cache_misses.fetch_add(1, Ordering::Relaxed);
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Generation mismatch"));
         }
         
         // Check state
@@ -238,7 +237,7 @@ impl<T> FuelHandleTable<T> {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ACCESS_ERROR,
-                "));
+                "Handle not found"));
         }
         
         // Get data
@@ -269,8 +268,7 @@ impl<T> FuelHandleTable<T> {
         
         // Validate generation
         if entry.generation != handle.generation {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Generation mismatch"));
         }
         
         // Update state
@@ -279,7 +277,7 @@ impl<T> FuelHandleTable<T> {
         
         // Get data
         let data = entry.data.as_mut().ok_or_else(|| {
-            Error::resource_not_found(")
+            Error::resource_not_found("Handle data not found")
         })?;
         
         self.consume_fuel(HANDLE_UPDATE_FUEL)?;
@@ -300,13 +298,12 @@ impl<T> FuelHandleTable<T> {
         
         // Validate generation
         if entry.generation != handle.generation {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Generation mismatch"));
         }
         
         // Take data
         let data = entry.data.take().ok_or_else(|| {
-            Error::resource_not_found(")
+            Error::resource_not_found("Handle data not found")
         })?;
         
         // Update state

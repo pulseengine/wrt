@@ -5,9 +5,9 @@
 //! It integrates with the post-return mechanism to ensure proper resource management.
 
 #[cfg(not(feature = "std"))]
-use core::{fmt, mem};
+use core::fmt;
 #[cfg(feature = "std")]
-use std::{fmt, mem};
+use std::fmt;
 
 #[cfg(feature = "std")]
 use std::{
@@ -324,7 +324,7 @@ impl AsyncResourceCleanupManager {
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            Ok(results.into_vec())
+            Ok(results)
         }
     }
 
@@ -410,8 +410,7 @@ impl AsyncResourceCleanupManager {
             for (id, entries) in &mut self.cleanup_entries {
                 if *id == instance_id {
                     entries.push(entry).map_err(|_| {
-                        Error::runtime_execution_error("
-                        )
+                        Error::runtime_execution_error("Failed to add cleanup entry to instance")
                     })?;
                     found = true;
                     break;
@@ -425,12 +424,11 @@ impl AsyncResourceCleanupManager {
                     Error::new(
                         ErrorCategory::Resource,
                         wrt_error::codes::RESOURCE_EXHAUSTED,
-                        ")
+                        "Failed to create bounded vector for cleanup entries")
                 })?;
                 
                 self.cleanup_entries.push((instance_id, new_entries)).map_err(|_| {
-                    Error::runtime_execution_error("
-                    )
+                    Error::runtime_execution_error("Failed to add cleanup entry to manager")
                 })?;
             }
         }
@@ -444,7 +442,7 @@ impl AsyncResourceCleanupManager {
         Ok(())
     }
 
-    #[cfg(not(any(feature = ")))]
+    #[cfg(not(any(feature = "std")))]
     fn sort_entries_by_priority(&self, entries: &mut BoundedVec<AsyncCleanupEntry, MAX_ASYNC_RESOURCES_PER_INSTANCE>) {
         // Simple bubble sort for no_std
         for i in 0..entries.len() {
@@ -538,7 +536,7 @@ impl AsyncResourceCleanupManager {
 
 impl Default for AsyncResourceCleanupManager {
     fn default() -> Self {
-        Self::new().expect("Failed to create AsyncResourceCleanupManager with default")
+        Self::new().expect("Failed to create AsyncResourceCleanupManager with default settings")
     }
 }
 

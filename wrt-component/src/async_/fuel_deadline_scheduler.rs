@@ -288,8 +288,7 @@ impl FuelDeadlineScheduler {
 
         // Validate constrained deadline (deadline ≤ period)
         if deadline > period {
-            return Err(Error::runtime_execution_error(", deadline, period),
-            ));
+            return Err(Error::runtime_execution_error("Deadline must be less than or equal to period"));
         }
 
         // Validate WCET/BCET relationship
@@ -297,7 +296,7 @@ impl FuelDeadlineScheduler {
             return Err(Error::new(
                 ErrorCategory::InvalidInput,
                 codes::INVALID_ARGUMENT,
-                "),
+                "WCET must be greater than or equal to BCET",
             ));
         }
 
@@ -331,8 +330,7 @@ impl FuelDeadlineScheduler {
         // Perform schedulability analysis
         let schedulability = self.analyze_schedulability_with_new_task(&task)?;
         if !schedulability.schedulable {
-            return Err(Error::runtime_execution_error("Task would make system unschedulable (utilization: {:.2})"),
-            ));
+            return Err(Error::runtime_execution_error("Task would make system unschedulable"));
         }
 
         // Add task to system
@@ -688,8 +686,7 @@ impl FuelDeadlineScheduler {
     fn verify_wcet_budget(&self, task_id: TaskId, _current_time: u64) -> Result<(), Error> {
         if let Some(task) = self.task_info.get(&task_id) {
             if task.current_fuel_consumed >= task.wcet_fuel {
-                return Err(Error::runtime_execution_error(", task_id.0),
-                ));
+                return Err(Error::runtime_execution_error("WCET budget exceeded"));
             }
         }
         Ok(())
@@ -700,7 +697,7 @@ impl FuelDeadlineScheduler {
         self.consume_scheduler_fuel(DEADLINE_MISS_PENALTY)?;
         
         // In a real system, this might trigger a safety response
-        log::warn!(");
+        log::warn!("Task deadline violation detected");
         
         Ok(())
     }
@@ -714,8 +711,7 @@ impl FuelDeadlineScheduler {
             let miss_count = task.deadline_misses.load(Ordering::Acquire);
             if miss_count >= self.config.deadline_miss_threshold {
                 // Consider criticality mode switch
-                log::error!("Task {} missed {} deadlines, considering mode switch", 
-                           task_id.0, miss_count);
+                log::error!("Task {} missed {} deadlines, considering mode switch", task_id.0, miss_count);
             }
             
             let lateness = current_time.saturating_sub(task.absolute_deadline);

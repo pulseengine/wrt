@@ -143,14 +143,14 @@ impl FuelAsyncRuntime {
         let executor = Arc::new(Mutex::new(FuelAsyncExecutor::new(
             config.global_fuel_budget,
             config.verification_level,
-        )?));
+        )?);
         
         let components = BoundedHashMap::new(provider.clone())?;
         let task_results = BoundedHashMap::new(provider)?;
         
         let cleanup_manager = Arc::new(Mutex::new(
             GlobalCleanupManager::new(config.global_fuel_budget / 10)?
-        ));
+        );
         
         Ok(Self {
             executor,
@@ -204,8 +204,8 @@ impl FuelAsyncRuntime {
         
         // Get component instance
         let component = self.components.get(&component_id).ok_or_else(|| {
-            Error::component_resource_lifecycle_error("Component not registered")
-            )
+            Error::component_resource_lifecycle_error("Component not registered"))
+"            )
         })?.clone();
         
         // Resolve function export
@@ -213,7 +213,7 @@ impl FuelAsyncRuntime {
         
         // Create execution context
         let mut execution_context = ExecutionContext::new(asil_mode);
-        execution_context.set_component_instance(component.clone());
+        execution_context.set_component_instance(component.clone();
         execution_context.current_function_index = function_index;
         execution_context.function_params = params;
         
@@ -246,7 +246,7 @@ impl FuelAsyncRuntime {
             if self.total_fuel_consumed >= self.global_fuel_budget {
                 self.state = RuntimeState::Error;
                 return Err(Error::async_fuel_exhausted("Global runtime fuel budget exhausted"));
-            }
+"            }
             
             // Poll tasks
             let polled = self.poll_tasks()?;
@@ -287,7 +287,7 @@ impl FuelAsyncRuntime {
                     0,
                     Some(task_id),
                     "Task not found during execution",
-                )?));
+                )?);
             }
             
             // Poll tasks
@@ -300,7 +300,7 @@ impl FuelAsyncRuntime {
                     0,
                     Some(task_id),
                     "Global fuel budget exhausted",
-                )?));
+                )?);
             }
         }
         
@@ -330,7 +330,7 @@ impl FuelAsyncRuntime {
             for (task_id, task) in executor.get_tasks() {
                 match task.state {
                     AsyncTaskState::Completed => {
-                        completed_tasks.push((*task_id, TaskResult::Completed(vec![])));
+                        completed_tasks.push((*task_id, TaskResult::Completed(vec![]));
                         self.stats.total_completed += 1;
                     },
                     AsyncTaskState::Failed => {
@@ -340,11 +340,11 @@ impl FuelAsyncRuntime {
                             Some(*task_id),
                             "Task execution failed",
                         )?;
-                        completed_tasks.push((*task_id, TaskResult::Failed(error)));
+                        completed_tasks.push((*task_id, TaskResult::Failed(error));
                         self.stats.total_failed += 1;
                     },
                     AsyncTaskState::Cancelled => {
-                        completed_tasks.push((*task_id, TaskResult::Cancelled));
+                        completed_tasks.push((*task_id, TaskResult::Cancelled);
                         self.stats.total_cancelled += 1;
                     },
                     _ => {} // Task still running
@@ -376,7 +376,7 @@ impl FuelAsyncRuntime {
     
     /// Check if there are active tasks
     fn has_active_tasks(&self) -> Result<bool> {
-        Ok(self.executor.lock()?.has_tasks())
+        Ok(self.executor.lock()?.has_tasks()
     }
     
     /// Check if a specific task is complete
@@ -400,7 +400,7 @@ impl FuelAsyncRuntime {
     /// Get the result of a completed task
     pub fn get_task_result(&self, task_id: TaskId) -> Result<TaskResult> {
         if let Some(result) = self.task_results.get(&task_id) {
-            Ok(result.clone())
+            Ok(result.clone()
         } else {
             Err(Error::async_task_execution_failed("Task result not available"))
         }
@@ -457,10 +457,10 @@ impl FuelAsyncRuntime {
                 // Validate that the function index is reasonable
                 if function_index >= 65536 {
                     return Err(Error::component_instantiation_runtime_error("Function index out of range"));
-                }
+"                }
                 Ok(function_index)
             },
-            None => Err(Error::component_instantiation_runtime_error("Could not resolve function index")),
+            None => Err(Error::component_instantiation_runtime_error("Could not resolve function index"))),
         }
     }
     
@@ -548,7 +548,7 @@ impl SimpleAsyncExecutor {
         match self.runtime.run_until_task_complete(task_id)? {
             TaskResult::Completed(result) => Ok(result),
             TaskResult::Failed(error) => Err(Error::from(error)),
-            TaskResult::Cancelled => Err(Error::async_task_execution_failed("Task was cancelled")),
+            TaskResult::Cancelled => Err(Error::async_task_execution_failed("Task was cancelled"))),
         }
     }
 }
@@ -561,7 +561,7 @@ mod tests {
     fn test_runtime_creation() {
         let config = RuntimeConfig::default();
         let runtime = FuelAsyncRuntime::new(config);
-        assert!(runtime.is_ok());
+        assert!(runtime.is_ok();
         
         let runtime = runtime.unwrap();
         assert_eq!(runtime.state(), RuntimeState::Initializing);
@@ -579,7 +579,7 @@ mod tests {
         };
         
         let runtime = FuelAsyncRuntime::new(config);
-        assert!(runtime.is_ok());
+        assert!(runtime.is_ok();
         
         let runtime = runtime.unwrap();
         assert_eq!(runtime.global_fuel_budget, 500_000);
@@ -589,7 +589,7 @@ mod tests {
     #[test]
     fn test_simple_executor() {
         let executor = SimpleAsyncExecutor::new();
-        assert!(executor.is_ok());
+        assert!(executor.is_ok();
         
         let executor = executor.unwrap();
         assert_eq!(executor.runtime.state(), RuntimeState::Initializing);

@@ -385,7 +385,7 @@ impl AsyncCanonicalAbi {
             }
             Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,
                     wrt_error::errors::codes::INVALID_INPUT,
-                    "))
+                    "Invalid stream handle"))
         }
     }
 
@@ -586,13 +586,13 @@ impl AsyncCanonicalAbi {
                             FutureState::Cancelled => Ok(AsyncReadResult::Closed),
                             FutureState::Error => Ok(AsyncReadResult::Closed),
                             FutureState::Pending => Ok(AsyncReadResult::Blocked),
-                        },
-                    };
+                        }
+                    }
                 }
             }
             Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,
                     wrt_error::errors::codes::INVALID_INPUT,
-                    "))
+                    "Invalid stream handle"))
         }
     }
 

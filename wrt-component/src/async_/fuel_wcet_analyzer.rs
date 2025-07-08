@@ -430,10 +430,8 @@ impl FuelWcetAnalyzer {
     fn perform_measurement_analysis(&mut self, task_id: TaskId) -> Result<WcetAnalysisResult, Error> {
         let samples = self.execution_samples.get(&task_id)
             .ok_or_else(|| Error::resource_not_found("No execution samples available for measurement-based analysis"))?;
-
         if samples.len() < self.config.min_samples_for_stats {
-            return Err(Error::runtime_execution_error(".to_string(),
-            ));
+            return Err(Error::runtime_execution_error("Insufficient samples for statistical analysis"));
         }
 
         let fuel_values: Vec<u64> = samples.iter().map(|s| s.fuel_consumed).collect();
@@ -498,11 +496,10 @@ impl FuelWcetAnalyzer {
         self.consume_analysis_fuel(STATISTICAL_ANALYSIS_FUEL)?;
 
         let samples = self.execution_samples.get(&task_id)
-            .ok_or_else(|| Error::resource_not_found("))?;
+            .ok_or_else(|| Error::resource_not_found("No path history available for hybrid analysis"))?;
 
         if samples.len() < self.config.min_samples_for_stats {
-            return Err(Error::runtime_execution_error(".to_string(),
-            ));
+            return Err(Error::runtime_execution_error("Insufficient samples for statistical analysis"));
         }
 
         let fuel_values: Vec<u64> = samples.iter().map(|s| s.fuel_consumed).collect();
@@ -531,8 +528,8 @@ impl FuelWcetAnalyzer {
             return Err(Error::new(
                 ErrorCategory::InvalidInput,
                 codes::INSUFFICIENT_DATA,
-                "),
-            ));
+                 "Error message"),
+            );
         }
 
         let min_value = *values.iter().min().unwrap();
@@ -559,8 +556,7 @@ impl FuelWcetAnalyzer {
 
     fn calculate_percentile(&self, values: &[u64], percentile: f64) -> Result<u64, Error> {
         if values.is_empty() {
-            return Err(Error::runtime_execution_error(".to_string(),
-            ));
+            return Err(Error::runtime_execution_error("Insufficient samples for statistical analysis"));
         }
 
         let mut sorted_values = values.to_vec();
@@ -612,7 +608,7 @@ impl FuelWcetAnalyzer {
                     // Add sample if there's space
                     if path.measured_samples.len() < MAX_EXECUTION_SAMPLES {
                         path.measured_samples.push(fuel_consumed).map_err(|_| {
-                            Error::resource_limit_exceeded(")
+                            Error::resource_limit_exceeded("Path sample collection is full")
                         })?;
                     } else {
                         // Replace oldest sample

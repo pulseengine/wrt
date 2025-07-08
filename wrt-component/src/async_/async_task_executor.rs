@@ -92,8 +92,7 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
         // Check fuel budget strictly
         let fuel_consumed = context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
         if fuel_consumed >= self.max_execution_time {
-            return Err(Error::runtime_execution_error(".to_string(),
-            ));
+            return Err(Error::runtime_execution_error("Error occurred"));
         }
 
         // Execute with strict determinism
@@ -103,7 +102,7 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
                 ExecutionStepResult::Completed(result) => {
                     // Verify deterministic completion
                     if self.execution_counter != context.get_deterministic_timestamp() {
-                        return Err(Error::runtime_execution_error("));
+                        return Err(Error::runtime_execution_error("Invalid ASIL mode"));
                     }
                     Ok(ExecutionStepResult::Completed(result))
                 },
@@ -140,27 +139,26 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
                 max_fuel_per_slice,
             } => {
                 if !deterministic_execution {
-                    return Err(Error::runtime_execution_error(".to_string(),
-                    ));
+                    return Err(Error::runtime_execution_error("Error occurred"));
                 }
 
                 if !bounded_execution_time {
                     return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::INVALID_CONFIG,
-                        "),
-                    ));
+                         "Bounded execution time required for ASIL-D"),
+                    );
                 }
 
                 if context.stack_depth > self.max_stack_depth {
-                    return Err(Error::runtime_execution_error(", 
-                            context.stack_depth, self.max_stack_depth),
-                    ));
+                    return Err(Error::runtime_execution_error(
+                            &format!("Stack depth {} exceeds max {}", context.stack_depth, self.max_stack_depth))
+                    );
                 }
 
                 Ok(())
             },
-            _ => Err(Error::validation_invalid_input(")),
+            _ => Err(Error::validation_invalid_input("Invalid ASIL mode")),
         }
     }
 
@@ -223,8 +221,7 @@ impl AsyncTaskExecutor for ASILCTaskExecutor {
                     // Verify temporal isolation
                     let end_fuel = context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
                     if end_fuel - start_fuel > self.max_slice_duration {
-                        return Err(Error::runtime_execution_error(".to_string(),
-                        ));
+                        return Err(Error::runtime_execution_error("Error occurred"));
                     }
                     Ok(ExecutionStepResult::Completed(result))
                 },
@@ -258,21 +255,20 @@ impl AsyncTaskExecutor for ASILCTaskExecutor {
                     return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::INVALID_CONFIG,
-                        "),
+                        "Task execution failed",
                     ));
                 }
 
                 if temporal_isolation && !self.temporal_isolation {
-                    return Err(Error::runtime_execution_error(".to_string(),
-                    ));
+                    return Err(Error::runtime_execution_error("Error occurred"));
                 }
 
                 if resource_isolation && !self.resource_isolation {
                     return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::INVALID_CONFIG,
-                        "),
-                    ));
+                         "Resource isolation required for ASIL-C"),
+                    );
                 }
 
                 Ok(())
@@ -355,15 +351,14 @@ impl AsyncTaskExecutor for ASILBTaskExecutor {
                 max_execution_slice_ms,
             } => {
                 if strict_resource_limits && !self.strict_resource_limits {
-                    return Err(Error::runtime_execution_error(".to_string(),
-                    ));
+                    return Err(Error::runtime_execution_error("Resource limits required for strict mode"));
                 }
 
                 if max_execution_slice_ms < self.max_execution_slice_ms {
                     return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::INVALID_CONFIG,
-                        format!("),
+                        format!("Execution slice {} exceeds max {}", max_execution_slice_ms, self.max_execution_slice_ms)
                     ));
                 }
 
@@ -429,8 +424,7 @@ impl AsyncTaskExecutor for ASILATaskExecutor {
                     
                     if self.error_count >= self.max_error_count {
                         // Too many errors - fail task
-                        Err(Error::runtime_execution_error("ASIL-A task exceeded error limit: {}"),
-                        ))
+                        Err(Error::runtime_execution_error("ASIL-A task exceeded error limit"))
                     } else {
                         // Try to recover by yielding
                         Ok(ExecutionStepResult::Yielded)
@@ -451,12 +445,11 @@ impl AsyncTaskExecutor for ASILATaskExecutor {
         match asil_mode {
             ASILExecutionMode::A { error_detection } => {
                 if error_detection && !self.error_detection {
-                    return Err(Error::runtime_execution_error(".to_string(),
-                    ));
+                    return Err(Error::runtime_execution_error("Error occurred"));
                 }
                 Ok(())
             },
-            _ => Err(Error::validation_invalid_input(")),
+            _ => Err(Error::validation_invalid_input("Invalid ASIL mode")),
         }
     }
 

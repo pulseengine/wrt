@@ -330,7 +330,7 @@ impl FuelStreamManager {
     /// Get a mutable reference to a stream
     pub fn get_stream_mut(&mut self, stream_id: u64) -> Result<&mut ComponentStream> {
         self.streams.get_mut(&stream_id).ok_or_else(|| {
-            Error::runtime_execution_error(",
+            Error::runtime_execution_error("Error occurred",
             )
         })
     }
@@ -397,7 +397,7 @@ mod tests {
         
         match stream.poll_next(&mut cx) {
             Poll::Ready(Some(42)) => {},
-            _ => panic!("))"),
+            _ => panic!("Expected Ready(Some(42))"),
         }
         
         match stream.poll_next(&mut cx) {

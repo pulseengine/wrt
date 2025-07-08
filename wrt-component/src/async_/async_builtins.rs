@@ -360,7 +360,7 @@ impl TaskRegistry {
                 return Err(Error::runtime_execution_error("Task not found"));
             }
         }
-        #[cfg(not(feature = "))]
+        #[cfg(not(feature = "std"))]
         {
             for (task_handle, task_info) in &mut self.tasks {
                 if *task_handle == handle {
@@ -385,7 +385,7 @@ impl TaskRegistry {
                         .map_err(|_| Error::new(
                             ErrorCategory::Resource,
                             wrt_error::codes::RESOURCE_EXHAUSTED,
-                            "))?;
+                            "Failed to add task context entry"))?;
                     break;
                 }
             }
@@ -508,7 +508,7 @@ pub mod builtins {
             Err(_) => Err(Error::new(
                 ErrorCategory::Resource,
                 wrt_error::codes::RESOURCE_EXHAUSTED,
-                ")),
+                "Failed to spawn task")),
         }
     }
 
@@ -526,7 +526,7 @@ pub mod builtins {
             Err(_) => Err(Error::new(
                 ErrorCategory::Resource,
                 wrt_error::codes::RESOURCE_EXHAUSTED,
-                ")),
+                "Failed to spawn subtask")),
         }
     }
 
@@ -635,7 +635,7 @@ pub mod builtins {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::INVALID_OPERATION,
-                "))
+                "No current task context"))
         }
     }
 
@@ -658,7 +658,7 @@ pub mod builtins {
         let registry = get_task_registry();
         
         if let Some(current_task) = registry.get_current_task() {
-            #[cfg(feature = ")]
+            #[cfg(feature = "std")]
             {
                 if let Some(task_info) = registry.tasks.get_mut(&current_task) {
                     task_info.context.clear();
@@ -764,7 +764,7 @@ mod tests {
         let handle = registry.register_task(None, None).unwrap();
         
         // Test setting and getting context
-        let key = ");
+        let key = "test_key";
         registry.set_task_context(handle, key, value.clone()).unwrap();
         
         let retrieved = registry.get_task_context(handle, key);
@@ -804,7 +804,7 @@ mod tests {
             
             // Test context operations
             let key = "test_key";
-            let value = ComponentValue::String("test_value".to_string());
+            let value = ComponentValue::S32(42);
             
             registry.set_task_context(handle, key, value.clone()).unwrap();
             let retrieved = registry.get_task_context(handle, key);

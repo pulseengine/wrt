@@ -679,7 +679,7 @@ mod tests {
             assert!(matches!(result, 
                 crate::async_::optimized_async_channels::SendResult::Sent |
                 crate::async_::optimized_async_channels::SendResult::WouldBlock
-            ));
+            );
         }
 
         // Multiple receivers

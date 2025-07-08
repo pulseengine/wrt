@@ -131,7 +131,8 @@ impl ComponentModelAsyncOps {
         }
 
         if waitables.waitables.len() > MAX_WAITABLES {
-            return Err(Error::runtime_execution_error(", waitables.waitables.len(), MAX_WAITABLES),
+            return Err(Error::runtime_execution_error(
+                &format!("Too many waitables: {} exceeds limit {}", waitables.waitables.len(), MAX_WAITABLES)
             ));
         }
 
@@ -155,7 +156,7 @@ impl ComponentModelAsyncOps {
 
         // Register wait operation
         self.active_waits.insert(current_task, wait_op).map_err(|_| {
-            Error::resource_limit_exceeded(")
+            Error::resource_limit_exceeded("Too many active wait operations")
         })?;
 
         // Mark task as waiting

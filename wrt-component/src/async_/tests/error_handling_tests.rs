@@ -60,8 +60,8 @@ mod tests {
 
     impl ErrorHandlingHarness {
         fn new() -> Self {
-            let task_manager = Arc::new(Mutex::new(TaskManager::new()));
-            let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
+            let task_manager = Arc::new(Mutex::new(TaskManager::new());
+            let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new());
             
             let config = BridgeConfiguration {
                 enable_preemption: true,
@@ -72,11 +72,11 @@ mod tests {
             
             let bridge = Arc::new(Mutex::new(
                 TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap()
-            ));
+            );
 
-            let abi_support = AsyncCanonicalAbiSupport::new(bridge.clone());
-            let resource_ops = ResourceAsyncOperations::new(abi_support.clone());
-            let combinators = AsyncCombinators::new(bridge.clone());
+            let abi_support = AsyncCanonicalAbiSupport::new(bridge.clone();
+            let resource_ops = ResourceAsyncOperations::new(abi_support.clone();
+            let combinators = AsyncCombinators::new(bridge.clone();
             let channels = OptimizedAsyncChannels::new(bridge.clone(), None);
             let timers = TimerIntegration::new(bridge.clone(), None);
             let sync_primitives = AdvancedSyncPrimitives::new(bridge.clone(), None);
@@ -143,23 +143,23 @@ mod tests {
 
             match self.failure_mode {
                 FailureMode::NoFailure => {
-                    Poll::Ready(Ok(vec![ComponentValue::U32(self.id as u32)]))
+                    Poll::Ready(Ok(vec![ComponentValue::U32(self.id as u32)])
                 },
                 FailureMode::PanicOnPoll => {
                     self.error_harness.record_error();
-                    Poll::Ready(Err(Error::runtime_execution_error(", self.id),
-                    )))
+                    Poll::Ready(Err(Error::runtime_execution_error("Error occurred", self.id),
+                    ))
                 },
                 FailureMode::ExcessiveFuelConsumption => {
                     self.error_harness.record_error();
                     // Simulate excessive fuel consumption
-                    Poll::Ready(Err(Error::resource_exhausted("),
-                    )))
+                    Poll::Ready(Err(Error::resource_exhausted("Missing error message"),
+                    ))
                 },
                 FailureMode::ResourceExhaustion => {
                     self.error_harness.record_error();
-                    Poll::Ready(Err(Error::runtime_execution_error(", self.id),
-                    )))
+                    Poll::Ready(Err(Error::runtime_execution_error("Error occurred", self.id),
+                    ))
                 },
                 FailureMode::InvalidOperations => {
                     self.error_harness.record_error();
@@ -167,12 +167,12 @@ mod tests {
                         ErrorCategory::Validation,
                         codes::INVALID_INPUT,
                         format!("),
-                    )))
+                    ))
                 },
                 FailureMode::TimeoutFailure => {
                     self.error_harness.record_error();
-                    Poll::Ready(Err(Error::runtime_execution_error(", self.id),
-                    )))
+                    Poll::Ready(Err(Error::runtime_execution_error("Error occurred", self.id),
+                    ))
                 },
                 FailureMode::RecoveryAfterFailure => {
                     if polls == self.polls_until_failure {
@@ -181,7 +181,7 @@ mod tests {
                         Poll::Pending
                     } else if polls == self.polls_until_failure + 2 {
                         self.error_harness.record_recovery();
-                        Poll::Ready(Ok(vec![ComponentValue::U32(self.id as u32 + 1000)]))
+                        Poll::Ready(Ok(vec![ComponentValue::U32(self.id as u32 + 1000)])
                     } else {
                         cx.waker().wake_by_ref();
                         Poll::Pending
@@ -380,7 +380,7 @@ mod tests {
         
         // Count expected good tasks (those with NoFailure)
         let expected_good_tasks = task_configs.iter()
-            .filter(|(mode, _)| matches!(mode, FailureMode::NoFailure))
+            .filter(|(mode, _)| matches!(mode, FailureMode::NoFailure)
             .count();
         
         // System should remain functional despite task failures
@@ -395,7 +395,7 @@ mod tests {
         assert!(completed_tasks > 0, "No tasks completed despite failures");
         
         println!("Task Failure Isolation Test: PASSED");
-        println!("  Total Tasks: {}", task_configs.len());
+        println!("  Total Tasks: {}", task_configs.len();
         println!("  Completed Tasks: {}", completed_tasks);
         println!("  Expected Good Tasks: {}", expected_good_tasks);
         println!("  Errors Isolated: {}", errors);
@@ -769,7 +769,7 @@ mod tests {
             .filter(|&&mode| matches!(mode, 
                 FailureMode::RecoveryAfterFailure | 
                 FailureMode::NoFailure
-            ))
+            )
             .count();
         
         // System should remain stable after recovery
@@ -780,7 +780,7 @@ mod tests {
         assert_eq!(bridge_stats.active_components, 1);
         
         println!("Recovery and Graceful Degradation Test: PASSED");
-        println!("  Total Tasks: {}", recovery_tasks.len());
+        println!("  Total Tasks: {}", recovery_tasks.len();
         println!("  Completed Tasks: {}", completed_tasks);
         println!("  Expected Recoverable: {}", expected_recoverable);
         println!("  Errors: {}", errors);
@@ -794,7 +794,7 @@ mod tests {
         
         // Create multiple components to test system-wide stability
         let components: Vec<ComponentInstanceId> = (1..=3)
-            .map(|i| ComponentInstanceId::new(i))
+            .map(|i| ComponentInstanceId::new(i)
             .collect();
 
         for &component_id in &components {
@@ -850,7 +850,7 @@ mod tests {
         for &component_id in &components {
             // Create channels that might get exhausted
             for _ in 0..10 {
-                let _ = harness.channels.create_channel(component_id, ChannelType::Bounded(2));
+                let _ = harness.channels.create_channel(component_id, ChannelType::Bounded(2);
             }
             
             // Create timers
@@ -920,7 +920,7 @@ mod tests {
         let completion_rate = completed_tasks as f64 / task_count as f64;
         
         println!("System Stability Under Errors Test: PASSED");
-        println!("  Components: {}", components.len());
+        println!("  Components: {}", components.len();
         println!("  Total Tasks: {}", task_count);
         println!("  Completed Tasks: {}", completed_tasks);
         println!("  Completion Rate: {:.1}%", completion_rate * 100.0);

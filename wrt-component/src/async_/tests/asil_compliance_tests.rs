@@ -61,8 +61,8 @@ mod tests {
 
     impl ASILComplianceHarness {
         fn new_for_asil_level(asil_level: ASILLevel) -> Self {
-            let task_manager = Arc::new(Mutex::new(TaskManager::new()));
-            let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
+            let task_manager = Arc::new(Mutex::new(TaskManager::new());
+            let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new());
             
             let config = BridgeConfiguration {
                 enable_preemption: true,
@@ -83,11 +83,11 @@ mod tests {
             
             let bridge = Arc::new(Mutex::new(
                 TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap()
-            ));
+            );
 
-            let abi_support = AsyncCanonicalAbiSupport::new(bridge.clone());
-            let resource_ops = ResourceAsyncOperations::new(abi_support.clone());
-            let combinators = AsyncCombinators::new(bridge.clone());
+            let abi_support = AsyncCanonicalAbiSupport::new(bridge.clone();
+            let resource_ops = ResourceAsyncOperations::new(abi_support.clone();
+            let combinators = AsyncCombinators::new(bridge.clone();
             let channels = OptimizedAsyncChannels::new(bridge.clone(), None);
             let timers = TimerIntegration::new(bridge.clone(), None);
             let sync_primitives = AdvancedSyncPrimitives::new(bridge.clone(), None);
@@ -154,7 +154,7 @@ mod tests {
                     self.result_value.clone(),
                     ComponentValue::U32(current_executions),
                     ComponentValue::U32(fuel_consumed as u32),
-                ]))
+                ])
             } else {
                 // ASIL Compliance Check: Deterministic wakeup
                 cx.waker().wake_by_ref();
@@ -260,10 +260,10 @@ mod tests {
         }
 
         // Final ASIL-D compliance check
-        assert!(harness.verify_no_safety_violations(), "ASIL-D compliance violations detected");
-        assert_eq!(completed_tasks, NUM_TASKS, "Not all ASIL-D tasks completed");
+        assert!(harness.verify_no_safety_violations(), "ASIL-D compliance violations detectedMissing message");
+        assert_eq!(completed_tasks, NUM_TASKS, "Not all ASIL-D tasks completedMissing message");
         
-        println!("ASIL-D Deterministic Execution Test: PASSED");
+        println!("ASIL-D Deterministic Execution Test: PASSEDMissing message");
         println!("  Tasks Completed: {}/{}", completed_tasks, NUM_TASKS);
         println!("  Fuel Consumed: {}", final_stats.total_fuel_consumed);
         println!("  Fuel Budget: {}", total_fuel_budget);
@@ -300,7 +300,7 @@ mod tests {
         let non_critical_mutex = harness.sync_primitives.create_async_mutex(non_critical_component, false).unwrap();
         
         // Verify mutexes are separate
-        assert_ne!(critical_mutex, non_critical_mutex, "Spatial isolation violated: shared mutex");
+        assert_ne!(critical_mutex, non_critical_mutex, "Spatial isolation violated: shared mutexMissing message");
 
         // 2. Resource Isolation: Separate channels
         let (critical_sender, critical_receiver) = harness.channels.create_channel(
@@ -404,12 +404,12 @@ mod tests {
         // Verify no cross-component interference
         let channel_stats = harness.channels.get_channel_statistics();
         if channel_stats.total_channels_created < 2 {
-            harness.report_safety_violation("Channel isolation failed");
+            harness.report_safety_violation("Channel isolation failedMissing message");
         }
 
-        assert!(harness.verify_no_safety_violations(), "ASIL-C interference violations detected");
+        assert!(harness.verify_no_safety_violations(), "ASIL-C interference violations detectedMissing message");
         
-        println!("ASIL-C Freedom from Interference Test: PASSED");
+        println!("ASIL-C Freedom from Interference Test: PASSEDMissing message");
         println!("  Active Components: {}", final_stats.active_components);
         println!("  Tasks Completed: {}", completed_tasks);
         println!("  Channels Created: {}", channel_stats.total_channels_created);
@@ -445,7 +445,7 @@ mod tests {
         }
         
         if channels_created >= 100 {
-            harness.report_safety_violation("Channel creation not bounded");
+            harness.report_safety_violation("Channel creation not boundedMissing message");
         }
 
         // Test bounded timer creation
@@ -460,7 +460,7 @@ mod tests {
         }
         
         if timers_created >= 200 {
-            harness.report_safety_violation("Timer creation not bounded");
+            harness.report_safety_violation("Timer creation not boundedMissing message");
         }
 
         // Test bounded sync primitive creation
@@ -474,7 +474,7 @@ mod tests {
         }
         
         if mutexes_created >= 100 {
-            harness.report_safety_violation("Mutex creation not bounded");
+            harness.report_safety_violation("Mutex creation not boundedMissing message");
         }
 
         // Test bounded task creation
@@ -507,7 +507,7 @@ mod tests {
         }
         
         if tasks_created >= 200 {
-            harness.report_safety_violation("Task creation not bounded");
+            harness.report_safety_violation("Task creation not boundedMissing message");
         }
 
         // Verify resource limits were enforced
@@ -525,9 +525,9 @@ mod tests {
         assert!(mutexes_created < 100, "Mutexes not properly bounded: {}", mutexes_created);
         assert!(tasks_created < 200, "Tasks not properly bounded: {}", tasks_created);
 
-        assert!(harness.verify_no_safety_violations(), "ASIL-B resource violations detected");
+        assert!(harness.verify_no_safety_violations(), "ASIL-B resource violations detectedMissing message");
         
-        println!("ASIL-B Bounded Resource Usage Test: PASSED");
+        println!("ASIL-B Bounded Resource Usage Test: PASSEDMissing message");
         println!("  Channels Created: {} (bounded)", channels_created);
         println!("  Timers Created: {} (bounded)", timers_created);
         println!("  Mutexes Created: {} (bounded)", mutexes_created);
@@ -557,9 +557,9 @@ mod tests {
         let invalid_component = ComponentInstanceId::new(999);
         
         // Should fail gracefully
-        let result = harness.channels.create_channel(invalid_component, ChannelType::Bounded(8));
+        let result = harness.channels.create_channel(invalid_component, ChannelType::Bounded(8);
         if result.is_ok() {
-            harness.report_safety_violation("Invalid component operation not detected");
+            harness.report_safety_violation("Invalid component operation not detectedMissing message");
         }
 
         // 2. Resource exhaustion should be handled
@@ -581,7 +581,7 @@ mod tests {
                 // Should indicate backpressure or full
                 match send_result {
                     crate::async_::optimized_async_channels::SendResult::Sent => {
-                        harness.report_safety_violation("Channel overflow not detected");
+                        harness.report_safety_violation("Channel overflow not detectedMissing message");
                     },
                     _ => {}, // Expected - backpressure or full
                 }
@@ -597,11 +597,11 @@ mod tests {
 
         // Cancel timer and verify
         let cancel_result = harness.timers.cancel_timer(timer_id).unwrap();
-        assert!(cancel_result, "Timer cancellation failed");
+        assert!(cancel_result, "Timer cancellation failedMissing message");
 
         // Try to cancel again - should handle gracefully
         let second_cancel = harness.timers.cancel_timer(timer_id).unwrap();
-        assert!(!second_cancel, "Double cancellation not handled correctly");
+        assert!(!second_cancel, "Double cancellation not handled correctlyMissing message");
 
         // 4. Basic task execution
         let task_id = {
@@ -638,7 +638,7 @@ mod tests {
         }
 
         if !completed {
-            harness.report_safety_violation("Basic task execution failed");
+            harness.report_safety_violation("Basic task execution failedMissing message");
         }
 
         // Verify system state
@@ -647,13 +647,13 @@ mod tests {
             bridge.get_bridge_statistics()
         };
         
-        assert!(harness.verify_no_safety_violations(), "ASIL-A safety violations detected");
+        assert!(harness.verify_no_safety_violations(), "ASIL-A safety violations detectedMissing message");
         assert_eq!(final_stats.active_components, 1);
         
-        println!("ASIL-A Basic Safety Requirements Test: PASSED");
+        println!("ASIL-A Basic Safety Requirements Test: PASSEDMissing message");
         println!("  Task Completed: {}", completed);
-        println!("  Error Detection: Functional");
-        println!("  Resource Management: Functional");
+        println!("  Error Detection: FunctionalMissing message");
+        println!("  Resource Management: FunctionalMissing message");
     }
 
     #[test]
@@ -749,12 +749,12 @@ mod tests {
         }
 
         // Verify both systems completed successfully
-        assert!(asil_d_harness.verify_no_safety_violations(), "ASIL-D violations in compatibility test");
-        assert!(asil_a_harness.verify_no_safety_violations(), "ASIL-A violations in compatibility test");
-        assert!(d_completed, "ASIL-D task did not complete");
-        assert!(a_completed, "ASIL-A task did not complete");
+        assert!(asil_d_harness.verify_no_safety_violations(), "ASIL-D violations in compatibility testMissing message");
+        assert!(asil_a_harness.verify_no_safety_violations(), "ASIL-A violations in compatibility testMissing message");
+        assert!(d_completed, "ASIL-D task did not completeMissing message");
+        assert!(a_completed, "ASIL-A task did not completeMissing message");
         
-        println!("Cross-ASIL Level Compatibility Test: PASSED");
+        println!("Cross-ASIL Level Compatibility Test: PASSEDMissing message");
         println!("  ASIL-D Task Completed: {}", d_completed);
         println!("  ASIL-A Task Completed: {}", a_completed);
     }

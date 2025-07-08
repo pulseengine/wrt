@@ -191,15 +191,12 @@ impl FuelAsyncBridge {
 
         match outcome {
             TimeBoundedOutcome::Completed => result,
-            TimeBoundedOutcome::TimedOut => Err(Error::runtime_execution_error(".to_string(),
-            )),
+            TimeBoundedOutcome::TimedOut => Err(Error::runtime_execution_error("Execution timed out")),
             TimeBoundedOutcome::Terminated => Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::EXECUTION_LIMIT_EXCEEDED,
-                "),
-            )),
-            TimeBoundedOutcome::Error(e) => Err(Error::runtime_execution_error("Async function execution error: {}"),
-            )),
+                "Operation failed")),
+            TimeBoundedOutcome::Error(e) => Err(Error::runtime_execution_error("Async function execution error")),
         }
     }
 
@@ -257,8 +254,7 @@ impl FuelAsyncBridge {
                             results.push(Err(Error::runtime_execution_error("Async task failed")));
                         }
                         _ => {
-                            results.push(Err(Error::runtime_execution_error(".to_string(),
-                            )));
+                            results.push(Err(Error::runtime_execution_error("Task execution error")));
                         }
                     }
                 }
@@ -266,8 +262,8 @@ impl FuelAsyncBridge {
                     results.push(Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::TASK_NOT_FOUND,
-                        "),
-                    )));
+                        "Operation failed"),
+                    ));
                 }
             }
         }
@@ -394,8 +390,7 @@ impl FuelAsyncBridge {
                     }
                     AsyncTaskState::FuelExhausted => {
                         self.cleanup_bridge(task_id)?;
-                        return Err(Error::runtime_execution_error(".to_string(),
-                        ));
+                        return Err(Error::runtime_execution_error("Fuel exhausted"));
                     }
                     _ => {
                         // Continue execution
@@ -409,8 +404,8 @@ impl FuelAsyncBridge {
                 return Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::EXECUTION_LIMIT_EXCEEDED,
-                    "),
-                ));
+                    "Operation failed"),
+                );
             }
 
             // If no tasks were polled, yield briefly

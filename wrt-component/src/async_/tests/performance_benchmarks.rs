@@ -143,10 +143,10 @@ mod tests {
             let current = self.current_iteration.fetch_add(1, Ordering::AcqRel);
             
             if current >= self.iterations {
-                Poll::Ready(Ok(vec![ComponentValue::U32(self.id as u32)]))
+                Poll::Ready(Ok(vec![ComponentValue::U32(self.id as u32)])
             } else {
                 // Record operation timing
-                self.measurement.record_operation(PerformanceMeasurement::get_time());
+                self.measurement.record_operation(PerformanceMeasurement::get_time();
                 
                 // Yield to allow other tasks to run
                 cx.waker().wake_by_ref();
@@ -156,8 +156,8 @@ mod tests {
     }
 
     fn create_test_bridge() -> TaskManagerAsyncBridge {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new()));
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
+        let task_manager = Arc::new(Mutex::new(TaskManager::new());
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new());
         let config = BridgeConfiguration {
             enable_preemption: true,
             enable_dynamic_fuel: true,
@@ -173,7 +173,7 @@ mod tests {
         let component_id = ComponentInstanceId::new(1);
         bridge.initialize_component_async(component_id, None).unwrap();
 
-        let measurement = Arc::new(PerformanceMeasurement::new());
+        let measurement = Arc::new(PerformanceMeasurement::new();
         
         // Spawn multiple high-throughput tasks
         const NUM_TASKS: usize = 50;
@@ -212,7 +212,7 @@ mod tests {
             
             // Prevent infinite loop
             if round > 5000 {
-                eprintln!("Warning: Benchmark may not have completed all tasks");
+                eprintln!("Warning: Benchmark may not have completed all tasksMissing message");
                 break;
             }
         }
@@ -220,11 +220,11 @@ mod tests {
         let results = measurement.get_results();
         
         // Verify performance expectations
-        assert!(results.total_operations > 0, "No operations recorded");
+        assert!(results.total_operations > 0, "No operations recordedMissing message");
         assert!(results.throughput_ops_per_sec > 1000, 
             "Throughput too low: {} ops/sec", results.throughput_ops_per_sec);
         
-        println!("Async Task Throughput Benchmark:");
+        println!("Async Task Throughput Benchmark:Missing message");
         println!("  Total Operations: {}", results.total_operations);
         println!("  Throughput: {} ops/sec", results.throughput_ops_per_sec);
         println!("  Average Latency: {} μs", results.average_latency_us);
@@ -234,7 +234,7 @@ mod tests {
 
     #[test]
     fn benchmark_channel_throughput() {
-        let bridge = Arc::new(Mutex::new(create_test_bridge()));
+        let bridge = Arc::new(Mutex::new(create_test_bridge());
         let mut channels = OptimizedAsyncChannels::new(bridge.clone(), None);
         
         let component_id = ComponentInstanceId::new(1);
@@ -245,7 +245,7 @@ mod tests {
             ChannelType::Bounded(1024),
         ).unwrap();
 
-        let measurement = Arc::new(PerformanceMeasurement::new());
+        let measurement = Arc::new(PerformanceMeasurement::new();
         const NUM_MESSAGES: u32 = 10000;
 
         // Benchmark sending
@@ -293,11 +293,11 @@ mod tests {
         
         // Verify performance
         assert!(results.total_operations > NUM_MESSAGES as u64 / 2, 
-            "Too few operations recorded");
+            "Too few operations recordedMissing message");
         assert!(results.throughput_ops_per_sec > 5000, 
             "Channel throughput too low: {} ops/sec", results.throughput_ops_per_sec);
 
-        println!("Channel Throughput Benchmark:");
+        println!("Channel Throughput Benchmark:Missing message");
         println!("  Messages Processed: {}", received_count);
         println!("  Throughput: {} ops/sec", results.throughput_ops_per_sec);
         println!("  Average Latency: {} μs", results.average_latency_us);
@@ -305,7 +305,7 @@ mod tests {
 
     #[test]
     fn benchmark_sync_primitive_contention() {
-        let bridge = Arc::new(Mutex::new(create_test_bridge()));
+        let bridge = Arc::new(Mutex::new(create_test_bridge());
         let mut sync_primitives = AdvancedSyncPrimitives::new(bridge.clone(), None);
         
         let component_id = ComponentInstanceId::new(1);
@@ -314,7 +314,7 @@ mod tests {
         // Create mutex for contention testing
         let mutex_id = sync_primitives.create_async_mutex(component_id, false).unwrap();
         
-        let measurement = Arc::new(PerformanceMeasurement::new());
+        let measurement = Arc::new(PerformanceMeasurement::new();
         const NUM_CONTENTIONS: u32 = 1000;
 
         // Simulate high contention
@@ -340,11 +340,11 @@ mod tests {
         let results = measurement.get_results();
         
         // Verify contention handling
-        assert!(results.total_operations > 0, "No successful lock acquisitions");
+        assert!(results.total_operations > 0, "No successful lock acquisitionsMissing message");
         assert!(results.max_latency_us > results.min_latency_us, 
-            "No latency variation under contention");
+            "No latency variation under contentionMissing message");
 
-        println!("Sync Primitive Contention Benchmark:");
+        println!("Sync Primitive Contention Benchmark:Missing message");
         println!("  Successful Acquisitions: {}", results.total_operations);
         println!("  Average Latency: {} μs", results.average_latency_us);
         println!("  Max Latency: {} μs", results.max_latency_us);
@@ -352,13 +352,13 @@ mod tests {
 
     #[test]
     fn benchmark_timer_precision() {
-        let bridge = Arc::new(Mutex::new(create_test_bridge()));
+        let bridge = Arc::new(Mutex::new(create_test_bridge());
         let mut timers = TimerIntegration::new(bridge.clone(), None);
         
         let component_id = ComponentInstanceId::new(1);
         timers.initialize_component_timers(component_id, None).unwrap();
 
-        let measurement = Arc::new(PerformanceMeasurement::new());
+        let measurement = Arc::new(PerformanceMeasurement::new();
         const NUM_TIMERS: u32 = 100;
         const TIMER_DURATION: u64 = 100; // 100ms
 
@@ -398,9 +398,9 @@ mod tests {
         // Verify timer performance
         assert_eq!(timer_stats.total_timers_created, NUM_TIMERS as u64);
         assert!(timer_stats.total_timers_fired > 0);
-        assert!(results.total_operations > 0, "No timer processing operations recorded");
+        assert!(results.total_operations > 0, "No timer processing operations recordedMissing message");
 
-        println!("Timer Precision Benchmark:");
+        println!("Timer Precision Benchmark:Missing message");
         println!("  Timers Created: {}", timer_stats.total_timers_created);
         println!("  Timers Fired: {}", timer_stats.total_timers_fired);
         println!("  Processing Latency: {} μs", results.average_latency_us);
@@ -408,7 +408,7 @@ mod tests {
 
     #[test]
     fn stress_test_high_concurrency() {
-        let bridge = Arc::new(Mutex::new(create_test_bridge()));
+        let bridge = Arc::new(Mutex::new(create_test_bridge());
         
         // Initialize multiple components for stress testing
         const NUM_COMPONENTS: u32 = 10;
@@ -416,7 +416,7 @@ mod tests {
         const ITERATIONS_PER_TASK: u64 = 100;
 
         let components: Vec<ComponentInstanceId> = (1..=NUM_COMPONENTS)
-            .map(|i| ComponentInstanceId::new(i))
+            .map(|i| ComponentInstanceId::new(i)
             .collect();
 
         // Initialize all components
@@ -425,7 +425,7 @@ mod tests {
             bridge_guard.initialize_component_async(component_id, None).unwrap();
         }
 
-        let measurement = Arc::new(PerformanceMeasurement::new());
+        let measurement = Arc::new(PerformanceMeasurement::new();
         let mut total_tasks = 0;
 
         // Spawn tasks across all components
@@ -465,8 +465,8 @@ mod tests {
         let results = measurement.get_results();
         
         // Verify stress test results
-        assert!(completed_tasks > 0, "No tasks completed during stress test");
-        assert!(results.total_operations > 0, "No operations recorded during stress test");
+        assert!(completed_tasks > 0, "No tasks completed during stress testMissing message");
+        assert!(results.total_operations > 0, "No operations recorded during stress testMissing message");
 
         // Check final system state
         let final_stats = {
@@ -477,7 +477,7 @@ mod tests {
         assert_eq!(final_stats.active_components, NUM_COMPONENTS as u64);
         assert!(final_stats.total_async_tasks >= total_tasks as u64);
 
-        println!("High Concurrency Stress Test:");
+        println!("High Concurrency Stress Test:Missing message");
         println!("  Components: {}", NUM_COMPONENTS);
         println!("  Total Tasks: {}", total_tasks);
         println!("  Completed Tasks: {}", completed_tasks);
@@ -488,7 +488,7 @@ mod tests {
 
     #[test]
     fn benchmark_memory_usage() {
-        let bridge = Arc::new(Mutex::new(create_test_bridge()));
+        let bridge = Arc::new(Mutex::new(create_test_bridge());
         let mut channels = OptimizedAsyncChannels::new(bridge.clone(), None);
         let mut timers = TimerIntegration::new(bridge.clone(), None);
         let mut sync_primitives = AdvancedSyncPrimitives::new(bridge.clone(), None);
@@ -545,7 +545,7 @@ mod tests {
         let timer_stats = timers.get_timer_statistics();
         let sync_stats = sync_primitives.get_sync_statistics();
 
-        println!("Memory Usage Benchmark:");
+        println!("Memory Usage Benchmark:Missing message");
         println!("  Channels Created: {}", channel_stats.total_channels_created);
         println!("  Active Channels: {}", channel_stats.active_channels);
         println!("  Timers Created: {}", timer_stats.total_timers_created);
@@ -562,7 +562,7 @@ mod tests {
 
     #[test]
     fn benchmark_fuel_consumption_efficiency() {
-        let bridge = Arc::new(Mutex::new(create_test_bridge()));
+        let bridge = Arc::new(Mutex::new(create_test_bridge());
         
         let component_id = ComponentInstanceId::new(1);
         {
@@ -576,7 +576,7 @@ mod tests {
             bridge_guard.get_bridge_statistics()
         };
 
-        let measurement = Arc::new(PerformanceMeasurement::new());
+        let measurement = Arc::new(PerformanceMeasurement::new();
         const NUM_OPERATIONS: u32 = 1000;
 
         // Spawn fuel-consuming tasks
@@ -621,15 +621,15 @@ mod tests {
             0
         };
 
-        println!("Fuel Consumption Efficiency Benchmark:");
+        println!("Fuel Consumption Efficiency Benchmark:Missing message");
         println!("  Total Operations: {}", results.total_operations);
         println!("  Total Fuel Consumed: {}", fuel_consumed);
         println!("  Fuel per Operation: {}", fuel_per_operation);
         println!("  Operations per Second: {}", results.throughput_ops_per_sec);
 
         // Verify fuel efficiency
-        assert!(fuel_consumed > 0, "No fuel consumed");
-        assert!(fuel_per_operation > 0, "No fuel per operation");
+        assert!(fuel_consumed > 0, "No fuel consumedMissing message");
+        assert!(fuel_per_operation > 0, "No fuel per operationMissing message");
         assert!(fuel_per_operation < 1000, "Too much fuel per operation: {}", fuel_per_operation);
     }
 }

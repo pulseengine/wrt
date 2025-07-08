@@ -47,7 +47,7 @@ mod tests {
         
         // Poll the task
         let result = executor.poll_task(task_id);
-        assert!(result.is_ok());
+        assert!(result.is_ok();
         
         // Verify fuel consumption
         let fuel_consumed = executor.get_task_fuel_consumed(task_id).unwrap();
@@ -76,7 +76,7 @@ mod tests {
         // Execute in deterministic steps
         for _ in 0..5 {
             let result = executor.poll_task(task_id);
-            assert!(result.is_ok());
+            assert!(result.is_ok();
             
             // Verify deterministic fuel consumption
             let fuel = executor.get_task_fuel_consumed(task_id).unwrap();
@@ -106,15 +106,15 @@ mod tests {
         
         // Poll should yield
         let result = executor.poll_task(task_id);
-        assert!(result.is_ok());
+        assert!(result.is_ok();
         
         // Get task and verify yield state
         let task = executor.get_task(task_id).unwrap();
-        assert!(task.execution_context.last_yield_point.is_some());
+        assert!(task.execution_context.last_yield_point.is_some();
         
         let yield_point = task.execution_context.last_yield_point.as_ref().unwrap();
         assert_eq!(yield_point.instruction_pointer, 100);
-        assert!(matches!(yield_point.yield_type, YieldType::ExplicitYield));
+        assert!(matches!(yield_point.yield_type, YieldType::ExplicitYield);
     }
 
     /// Test async resource waiting
@@ -136,11 +136,11 @@ mod tests {
         let task = executor.get_task(task_id).unwrap();
         let yield_point = task.execution_context.last_yield_point.as_ref().unwrap();
         
-        assert!(matches!(yield_point.yield_type, YieldType::AsyncWait { resource_id: 12345 }));
+        assert!(matches!(yield_point.yield_type, YieldType::AsyncWait { resource_id: 12345 });
         assert!(matches!(
             yield_point.resumption_condition,
             Some(ResumptionCondition::ResourceAvailable { resource_id: 12345 })
-        ));
+        );
     }
 
     /// Test fuel exhaustion and recovery
@@ -174,7 +174,7 @@ mod tests {
         
         // Should be able to continue execution
         let result = executor.poll_task(task_id);
-        assert!(result.is_ok());
+        assert!(result.is_ok();
     }
 
     /// Test runtime integration with multiple tasks
@@ -191,7 +191,7 @@ mod tests {
         let mut runtime = FuelAsyncRuntime::new(config).unwrap();
         
         // Create mock component
-        let component = Arc::new(ComponentInstance::new());
+        let component = Arc::new(ComponentInstance::new();
         runtime.register_component(1, component.clone()).unwrap();
         
         // Spawn multiple tasks
@@ -223,7 +223,7 @@ mod tests {
         for task_id in task_ids {
             let result = runtime.get_task_result(task_id);
             // Tasks may or may not be complete depending on execution
-            assert!(result.is_ok() || result.is_err());
+            assert!(result.is_ok() || result.is_err();
         }
     }
 
@@ -310,7 +310,7 @@ mod tests {
         ).unwrap();
         
         // High priority task should preempt low priority
-        assert!(matches!(decision, crate::async_::fuel_preemption_support::PreemptionDecision::Preempt { .. }));
+        assert!(matches!(decision, crate::async_::fuel_preemption_support::PreemptionDecision::Preempt { .. });
     }
 
     /// Test yield point restoration after suspension
@@ -344,9 +344,9 @@ mod tests {
         
         // Verify yield point has complete state
         assert_eq!(yield_point.instruction_pointer, 300);
-        assert!(matches!(yield_point.yield_type, YieldType::ASILCompliance { .. }));
-        assert!(yield_point.yield_context.module_state.is_some());
-        assert_eq!(yield_point.fuel_at_yield, task.execution_context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire));
+        assert!(matches!(yield_point.yield_type, YieldType::ASILCompliance { .. });
+        assert!(yield_point.yield_context.module_state.is_some();
+        assert_eq!(yield_point.fuel_at_yield, task.execution_context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
         
         // Create new context and restore from yield point
         let mut new_context = ExecutionContext::new(ASILExecutionMode::D {
@@ -377,7 +377,7 @@ mod tests {
         let mut runtime = FuelAsyncRuntime::new(config).unwrap();
         
         // Register component
-        let component = Arc::new(ComponentInstance::new());
+        let component = Arc::new(ComponentInstance::new();
         runtime.register_component(1, component).unwrap();
         
         // Spawn tasks that would share resources

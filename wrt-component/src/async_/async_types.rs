@@ -271,8 +271,7 @@ impl<T> Future<T> {
     /// Set the future value
     pub fn set_value(&mut self, value: T) -> WrtResult<()> {
         if self.state != FutureState::Pending {
-            return Err(wrt_error::Error::runtime_execution_error("
-            ));
+            return Err(wrt_error::Error::runtime_execution_error("Future already completed"));
         }
         self.value = Some(value);
         self.state = FutureState::Ready;
@@ -308,7 +307,7 @@ impl ErrorContext {
             if let Some(trace) = &self.stack_trace {
                 result.push_str("\nStack trace:\n");
                 for frame in trace {
-                    result.push_str(&"Component not found");
+                    result.push_str(&format!("  {}\n", frame));
                 }
             }
             BoundedString::from_str(&result).unwrap_or_default()
@@ -347,8 +346,7 @@ impl DebugInfo {
     #[cfg(not(any(feature = "std", )))]
     pub fn add_property(&mut self, key: BoundedString<64, NoStdProvider<65536>>, value: ComponentValue) -> WrtResult<()> {
         self.properties.push((key, value)).map_err(|_| {
-            wrt_error::Error::runtime_execution_error("
-            )
+            wrt_error::Error::runtime_execution_error("Failed to add property")
         })
     }
 }
@@ -372,8 +370,7 @@ impl WaitableSet {
     pub fn add(&mut self, waitable: Waitable) -> WrtResult<u32> {
         let index = self.waitables.len();
         if index >= 64 {
-            return Err(wrt_error::Error::runtime_execution_error("
-            ));
+            return Err(wrt_error::Error::runtime_execution_error("Too many waitables"));
         }
 
         #[cfg(feature = "std")]
@@ -383,7 +380,7 @@ impl WaitableSet {
         #[cfg(not(any(feature = "std", )))]
         {
             self.waitables.push(waitable).map_err(|_| {
-                wrt_error::Error::runtime_execution_error("
+                wrt_error::Error::runtime_execution_error("Error occurred"
                 )
             })?;
         }
@@ -464,7 +461,7 @@ impl Default for WaitableSet {
 impl fmt::Display for StreamState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            StreamState::Open => write!(f, "),
+            StreamState::Open => write!(f, "open"),
             StreamState::Ready => write!(f, "ready"),
             StreamState::Closed => write!(f, "closed"),
             StreamState::Error => write!(f, "error"),

@@ -99,10 +99,10 @@ pub mod component_async {
         // Create a task for the async operation
         let task_id = task_manager
             .create_task(operation.component_id, &operation.name)
-            .map_err(|e| "Component not found")?;
+            .map_err(|e| Error::runtime_execution_error("Component not found"))?;
 
         // Start the task
-        task_manager.start_task(task_id).map_err(|e| "Component not found")?;
+        task_manager.start_task(task_id).map_err(|e| Error::runtime_execution_error("Failed to start task"))?;
 
         Ok(task_id)
     }

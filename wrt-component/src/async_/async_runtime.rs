@@ -306,7 +306,7 @@ impl AsyncRuntime {
     pub fn new() -> Result<Self> {
         Ok(Self {
             scheduler: TaskScheduler::new()?,
-            reactor: Reactor::new()?
+            reactor: Reactor::new()?,
             #[cfg(feature = "std")]
             streams: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
@@ -495,7 +495,7 @@ impl AsyncRuntime {
 
 impl TaskScheduler {
     /// Create new task scheduler
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self> {
         Ok(Self {
             #[cfg(feature = "std")]
             ready_queue: VecDeque::new(),

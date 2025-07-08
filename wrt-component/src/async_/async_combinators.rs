@@ -358,8 +358,7 @@ impl AsyncCombinators {
                     // In real implementation, would race future against timer
                     if timeout_ms_copy < 1000 {
                         // Simulate timeout
-                        Err(Error::runtime_execution_error(".to_string(),
-                        ))
+                        Err(Error::runtime_execution_error("Timeout occurred"))
                     } else {
                         Ok(vec![ComponentValue::U32(42)])
                     }
@@ -373,7 +372,7 @@ impl AsyncCombinators {
         stored_operation.task_id = Some(task_id);
 
         self.active_combinators.insert(combinator_id, stored_operation).map_err(|_| {
-            Error::resource_limit_exceeded(")
+            Error::resource_limit_exceeded("Too many active combinators")
         })?;
 
         self.combinator_stats.total_timeouts.fetch_add(1, Ordering::Relaxed);
@@ -644,8 +643,7 @@ pub fn create_timeout_future(duration_ms: u64) -> BoxedFuture {
         if duration_ms > 0 {
             Ok(ComponentValue::U32(1)) // Success
         } else {
-            Err(Error::runtime_execution_error("Timeout expired"),
-            ))
+            Err(Error::runtime_execution_error("Timeout expired"))
         }
     })
 }

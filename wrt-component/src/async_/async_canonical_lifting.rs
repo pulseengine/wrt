@@ -314,8 +314,7 @@ impl AsyncCanonicalEncoder {
     
     fn write_u8(&mut self, value: u8) -> Result<()> {
         self.buffer.push(value).map_err(|_| {
-            Error::runtime_execution_error("
-            )
+            Error::runtime_execution_error("Buffer overflow in encoder")
         })?;
         self.position += 1;
         Ok(())
@@ -448,7 +447,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
             Error::new(
                 ErrorCategory::Parse,
                 wrt_error::codes::PARSE_ERROR,
-                ")
+                "Invalid Unicode code point")
         })
     }
     
@@ -475,7 +474,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         Ok(result)
     }
     
-    fn decode_variant(&mut self, cases: &[(String, Option<ValType)], options: &CanonicalOptions) -> Result<Value> {
+    fn decode_variant(&mut self, cases: &[(String, Option<ValType>)], options: &CanonicalOptions) -> Result<Value> {
         let tag = self.decode_u32()?;
         
         if let Some((_, case_type)) = cases.get(tag as usize) {
@@ -486,8 +485,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
             };
             Ok(Value::Variant { tag, value })
         } else {
-            Err(Error::runtime_execution_error("
-            ))
+            Err(Error::runtime_execution_error("Invalid variant discriminant"))
         }
     }
     
@@ -507,7 +505,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
             _ => Err(Error::new(
                 ErrorCategory::Parse,
                 wrt_error::codes::PARSE_ERROR,
-                "))
+                "Invalid option discriminant"))
         }
     }
     
@@ -516,8 +514,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
         match discriminant {
             0 => Ok(Ok(Box::new(self.decode_value(ok_type, options)?))),
             1 => Ok(Err(Box::new(self.decode_value(err_type, options)?))),
-            _ => Err(Error::runtime_execution_error("
-            ))
+            _ => Err(Error::runtime_execution_error("Invalid result discriminant"))
         }
     }
     
@@ -565,7 +562,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
             return Err(Error::new(
                 ErrorCategory::Parse,
                 wrt_error::codes::PARSE_ERROR,
-                "));
+                "Unexpected end of buffer"));
         }
         
         let value = self.buffer[self.position];

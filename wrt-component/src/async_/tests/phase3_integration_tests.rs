@@ -50,7 +50,7 @@ mod tests {
 
         fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
             if self.polls_remaining == 0 {
-                Poll::Ready(Ok(vec![self.result_value.clone()]))
+                Poll::Ready(Ok(vec![self.result_value.clone()])
             } else {
                 self.polls_remaining -= 1;
                 cx.waker().wake_by_ref();
@@ -60,8 +60,8 @@ mod tests {
     }
 
     fn create_test_bridge() -> TaskManagerAsyncBridge {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new()));
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
+        let task_manager = Arc::new(Mutex::new(TaskManager::new());
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new());
         let config = BridgeConfiguration::default();
         TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap()
     }
@@ -131,10 +131,10 @@ mod tests {
         
         match status.operation_type {
             AsyncAbiOperationType::AsyncCall { function_name, args } => {
-                assert_eq!(function_name, "test_function");
+                assert_eq!(function_name, "test_functionMissing message");
                 assert_eq!(args.len(), 2);
             },
-            _ => panic!("Expected AsyncCall operation"),
+            _ => panic!("Expected AsyncCall operationMissing message"),
         }
 
         // Test async lifting
@@ -173,7 +173,7 @@ mod tests {
         resource_ops.initialize_component_resources(component_id, None, None).unwrap();
 
         // Test async resource creation
-        let resource_type = ResourceType::new("TestResource".to_string());
+        let resource_type = ResourceType::new("TestResource".to_string();
         let create_op = resource_ops.async_create_resource(
             component_id,
             resource_type.clone(),
@@ -385,7 +385,7 @@ mod tests {
             Priority::Normal,
         );
 
-        assert!(result.is_err());
+        assert!(result.is_err();
 
         // Test ABI error handling
         let abi_support = AsyncCanonicalAbiSupport::new(bridge);
@@ -400,6 +400,6 @@ mod tests {
             None,
         );
 
-        assert!(result.is_err());
+        assert!(result.is_err();
     }
 }
