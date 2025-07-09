@@ -75,7 +75,7 @@ impl Export {
         value: ExternValue,
     ) -> Result<Self> {
         let format_type = bidirectional::runtime_to_format_extern_type(&ty)?;
-        Ok(Self::new(name, format_type, value)
+        Ok(Self::new(name, format_type, value))
     }
 }
 

@@ -136,7 +136,7 @@ impl ReallocManager {
                 realloc_fn: Some(ReallocFunction { func_index, func_available: true })
             };
             self.allocations.push((instance_id, instance_allocs)).map_err(|_| {
-                Error::capacity_exceeded("Too many allocations")
+                Error::capacity_exceeded("too_many_allocations")
             })?;
         }
 
@@ -158,12 +158,12 @@ impl ReallocManager {
             .iter_mut()
             .find(|(id, _)| *id == instance_id)
             .map(|(_, allocs)| allocs)
-            .ok_or(Error::resource_not_found("Resource not found"))?;
+            .ok_or(Error::resource_not_found("resource_not_found"))?;
 
         // Binary std/no_std choice
         if instance_allocs.allocations.len() >= self.max_instance_allocations {
             self.metrics.failed_allocations += 1;
-            return Err(Error::capacity_exceeded("Too many types"));
+            return Err(Error::capacity_exceeded("too_many_types"));
         }
 
         // Binary std/no_std choice
@@ -175,7 +175,7 @@ impl ReallocManager {
         instance_allocs
             .allocations
             .push(allocation)
-            .map_err(|_| Error::capacity_exceeded("Too many types"))?;
+            .map_err(|_| Error::capacity_exceeded("too_many_types"))?;
 
         instance_allocs.total_bytes += size as usize;
 
@@ -204,14 +204,14 @@ impl ReallocManager {
             .iter_mut()
             .find(|(id, _)| *id == instance_id)
             .map(|(_, allocs)| allocs)
-            .ok_or(Error::resource_not_found("Resource not found"))?;
+            .ok_or(Error::resource_not_found("resource_not_found"))?;
 
         // Binary std/no_std choice
         let alloc_index = instance_allocs
             .allocations
             .iter()
             .position(|a| a.ptr == old_ptr && a.size == old_size && a.active)
-            .ok_or(Error::resource_not_found("Resource not found"))?;
+            .ok_or(Error::resource_not_found("resource_not_found"))?;
 
         // Binary std/no_std choice
         let new_ptr = self.call_realloc(instance_allocs, old_ptr, old_size, align, new_size)?;
@@ -258,7 +258,7 @@ impl ReallocManager {
         new_size: i32,
     ) -> Result<i32> {
         let realloc_fn =
-            instance_allocs.realloc_fn.as_ref().ok_or(Error::resource_not_found("Resource not found"))?;
+            instance_allocs.realloc_fn.as_ref().ok_or(Error::resource_not_found("resource_not_found"))?;
 
         // In a real implementation, this would call the actual wasm function
         // Binary std/no_std choice
@@ -276,16 +276,16 @@ impl ReallocManager {
     /// Binary std/no_std choice
     fn validate_allocation(&self, size: i32, align: i32) -> Result<()> {
         if size < 0 {
-            return Err(Error::validation_error("Type mismatch"));
+            return Err(Error::validation_error("type_mismatch"));
         }
 
         if size as usize > self.max_allocation_size {
-            return Err(Error::resource_not_found("Resource not found"));
+            return Err(Error::resource_not_found("resource_not_found"));
         }
 
         // Check alignment is power of 2
         if align <= 0 || (align & (align - 1)) != 0 {
-            return Err(Error::validation_error("Type mismatch"));
+            return Err(Error::validation_error("type_mismatch"));
         }
 
         Ok(())
@@ -360,7 +360,7 @@ pub mod helpers {
         let align = layout.align;
 
         // Check for overflow
-        let total_size = item_size.checked_mul(count).ok_or(Error::validation_error("Type mismatch"))?;
+        let total_size = item_size.checked_mul(count).ok_or(Error::validation_error("type_mismatch"))?;
 
         // Add alignment padding
         let aligned_size = align_size(total_size, align);

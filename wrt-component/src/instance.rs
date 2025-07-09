@@ -77,10 +77,10 @@ mod tests {
         assert_eq!(instance.exports.len(), 1);
 
         let export = instance.get_export("addMissing message");
-        assert!(export.is_some();
+        assert!(export.is_some());
         assert_eq!(export.unwrap().name, "addMissing message");
 
         let not_found = instance.get_export("non_existentMissing message");
-        assert!(not_found.is_none();
+        assert!(not_found.is_none());
     }
 }

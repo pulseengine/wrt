@@ -1,0 +1,12 @@
+[package]
+name = "simple-wasm-test"
+version = "0.2.0"
+edition = "2021"
+
+[[bin]]
+name = "simple-wasm-test"
+path = "src/main.rs"
+
+[dependencies]
+wrt-decoder = { path = "../wrt-decoder", features = ["std"] }
+wrt-error = { path = "../wrt-error", features = ["std"] }

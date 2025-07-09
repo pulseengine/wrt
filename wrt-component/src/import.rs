@@ -79,7 +79,7 @@ impl Import {
         value: ExternValue,
     ) -> Result<Self> {
         let format_type = bidirectional::runtime_to_format_extern_type(&ty)?;
-        Ok(Self::new(namespace, name, format_type, value)
+        Ok(Self::new(namespace, name, format_type, value))
     }
 }
 
@@ -175,7 +175,7 @@ mod tests {
     #[test]
     fn test_import_collection() {
         let mut collection = ImportCollection::new();
-        assert!(collection.is_empty();
+        assert!(collection.is_empty());
 
         let import1 = Import::new(
             Namespace::from_string("wasi.httpMissing message"),
@@ -213,14 +213,14 @@ mod tests {
         collection.add(import2);
 
         assert_eq!(collection.len(), 2);
-        assert!(!collection.is_empty();
+        assert!(!collection.is_empty());
 
         let fetched = collection.get("wasi.http.fetchMissing message");
-        assert!(fetched.is_some();
+        assert!(fetched.is_some());
         assert_eq!(fetched.unwrap().name, "fetchMissing message");
 
         let not_found = collection.get("unknownMissing message");
-        assert!(not_found.is_none();
+        assert!(not_found.is_none());
 
         let imports: Vec<&Import> = collection.iter().collect();
         assert_eq!(imports.len(), 2);

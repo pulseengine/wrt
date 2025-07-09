@@ -143,9 +143,9 @@ impl ComponentResolver {
         provided_value: ImportValue,
     ) -> core::result::Result<ResolvedImport, ComponentError> {
         // Check cache first
-        let cache_key = (instance_id, import_name.clone();
+        let cache_key = (instance_id, import_name.clone());
         if let Some(cached) = self.import_cache.get(&cache_key) {
-            return Ok(cached.clone();
+            return Ok(cached.clone());
         }
 
         // Validate import type compatibility
@@ -153,7 +153,7 @@ impl ComponentResolver {
 
         let resolved = ResolvedImport { name: import_name, value: provided_value, val_type };
 
-        self.import_cache.insert(cache_key, resolved.clone();
+        self.import_cache.insert(cache_key, resolved.clone());
         Ok(resolved)
     }
 
@@ -165,9 +165,9 @@ impl ComponentResolver {
         export_value: ExportValue,
     ) -> core::result::Result<ResolvedExport, ComponentError> {
         // Check cache first
-        let cache_key = (instance_id, export_name.clone();
+        let cache_key = (instance_id, export_name.clone());
         if let Some(cached) = self.export_cache.get(&cache_key) {
-            return Ok(cached.clone();
+            return Ok(cached.clone());
         }
 
         // Validate export type
@@ -175,7 +175,7 @@ impl ComponentResolver {
 
         let resolved = ResolvedExport { name: export_name, value: export_value, val_type };
 
-        self.export_cache.insert(cache_key, resolved.clone();
+        self.export_cache.insert(cache_key, resolved.clone());
         Ok(resolved)
     }
 
@@ -320,6 +320,28 @@ impl Default for ComponentResolver {
     }
 }
 
+/// Import resolution helper
+#[derive(Debug, Clone)]
+pub struct ImportResolution {
+    /// Import name
+    pub name: BoundedString<64, NoStdProvider<65536>>,
+    /// Instance ID
+    pub instance_id: ComponentInstanceId,
+    /// Resolved value
+    pub resolved_value: ComponentValue,
+}
+
+/// Export resolution helper
+#[derive(Debug, Clone)]
+pub struct ExportResolution {
+    /// Export name
+    pub name: BoundedString<64, NoStdProvider<65536>>,
+    /// Instance ID
+    pub instance_id: ComponentInstanceId,
+    /// Exported value
+    pub exported_value: ComponentValue,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -335,13 +357,13 @@ mod tests {
     fn test_import_resolution() {
         let mut resolver = ComponentResolver::new();
         let instance_id = ComponentInstanceId(1);
-        let import_name = BoundedString::from_str("test_importMissing message").unwrap();
+        let import_name = BoundedString::from_str("test_import").unwrap();
 
         let import_value =
             ImportValue::Value { val_type: ValType::U32, value: ComponentValue::U32(42) };
 
         let result = resolver.resolve_import(instance_id, import_name.clone(), import_value);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         let resolved = result.unwrap();
         assert_eq!(resolved.name, import_name);
@@ -351,15 +373,15 @@ mod tests {
     fn test_export_resolution() {
         let mut resolver = ComponentResolver::new();
         let instance_id = ComponentInstanceId(1);
-        let export_name = BoundedString::from_str("test_exportMissing message").unwrap();
+        let export_name = BoundedString::from_str("test_export").unwrap();
 
         let export_value = ExportValue::Value {
             val_type: ValType::String,
-            value: ComponentValue::String(BoundedString::from_str("helloMissing message").unwrap()),
+            value: ComponentValue::String(BoundedString::from_str("hello").unwrap()),
         };
 
         let result = resolver.resolve_export(instance_id, export_name.clone(), export_value);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         let resolved = result.unwrap();
         assert_eq!(resolved.name, export_name);
@@ -371,20 +393,20 @@ mod tests {
 
         // Create matching import and export
         let import = ResolvedImport {
-            name: BoundedString::from_str("testMissing message").unwrap(),
+            name: BoundedString::from_str("test").unwrap(),
             value: ImportValue::Value { val_type: ValType::U32, value: ComponentValue::U32(0) },
             val_type: Some(ValType::U32),
         };
 
         let export = ResolvedExport {
-            name: BoundedString::from_str("testMissing message").unwrap(),
+            name: BoundedString::from_str("test").unwrap(),
             value: ExportValue::Value { val_type: ValType::U32, value: ComponentValue::U32(42) },
             val_type: Some(ValType::U32),
         };
 
         let result = resolver.can_satisfy_import(&import, &export);
-        assert!(result.is_ok();
-        assert!(result.unwrap();
+        assert!(result.is_ok());
+        assert!(result.unwrap());
     }
 
     #[test]
@@ -392,15 +414,15 @@ mod tests {
         let resolver = ComponentResolver::new();
 
         // Test primitive type compatibility
-        assert!(resolver.are_types_compatible(&ValType::Bool, &ValType::Bool);
-        assert!(resolver.are_types_compatible(&ValType::U32, &ValType::U32);
-        assert!(!resolver.are_types_compatible(&ValType::U32, &ValType::U64);
+        assert!(resolver.are_types_compatible(&ValType::Bool, &ValType::Bool));
+        assert!(resolver.are_types_compatible(&ValType::U32, &ValType::U32));
+        assert!(!resolver.are_types_compatible(&ValType::U32, &ValType::U64));
 
         // Test structural type compatibility
-        let list_u32 = ValType::List(Box::new(ValType::U32);
-        let list_u64 = ValType::List(Box::new(ValType::U64);
-        assert!(resolver.are_types_compatible(&list_u32, &list_u32);
-        assert!(!resolver.are_types_compatible(&list_u32, &list_u64);
+        let list_u32 = ValType::List(Box::new(ValType::U32));
+        let list_u64 = ValType::List(Box::new(ValType::U64));
+        assert!(resolver.are_types_compatible(&list_u32, &list_u32));
+        assert!(!resolver.are_types_compatible(&list_u32, &list_u64));
     }
 }
 
@@ -422,7 +444,7 @@ macro_rules! impl_basic_traits {
                 _writer: &mut WriteStream<'a>,
                 _provider: &PStream,
             ) -> wrt_foundation::WrtResult<()> {
-                Ok(()
+                Ok(())
             }
         }
 
@@ -461,7 +483,7 @@ impl ImportResolution {
 
 impl Default for ImportResolution {
     fn default() -> Self {
-        Self::new().expect("ImportResolution allocation should not fail in default constructionMissing message")
+        Self::new().expect("ImportResolution allocation should not fail in default construction")
     }
 }
 
@@ -482,7 +504,7 @@ impl ExportResolution {
 
 impl Default for ExportResolution {
     fn default() -> Self {
-        Self::new().expect("ExportResolution allocation should not fail in default constructionMissing message")
+        Self::new().expect("ExportResolution allocation should not fail in default construction")
     }
 }
 

@@ -142,7 +142,7 @@ impl Default for PostReturnContext {
     fn default() -> Self {
         // For Default trait, we prefer to panic rather than return invalid state
         // This ensures capability-based allocation is always properly initialized
-        Self::new().expect("Failed to create PostReturnContext with proper capability allocation")
+        Self::new().expect("Failed to create PostReturnContext with proper capability allocationMissing message")
     }
 }
 
@@ -166,8 +166,7 @@ impl PostReturnContext {
     /// Add a cleanup entry to be executed during post-return
     pub fn add_cleanup(&mut self, entry: PostReturnEntry) -> Result<()> {
         if self.is_executing {
-            return Err(Error::runtime_invalid_state("Cannot add cleanup during post-return execution")
-            ));
+            return Err(Error::runtime_invalid_state("cannot_add_cleanup_during_post_return"));
         }
 
         #[cfg(feature = "std")]
@@ -177,8 +176,7 @@ impl PostReturnContext {
         #[cfg(not(feature = "std"))]
         {
             self.entries.push(entry).map_err(|_| {
-                Error::resource_exhausted("Post-return cleanup queue full")
-                )
+                Error::resource_exhausted("post_return_cleanup_queue_full")
             })?;
         }
 
@@ -209,8 +207,7 @@ impl PostReturnContext {
     /// Execute all pending post-return cleanup operations
     pub fn execute_post_return(&mut self, instance: &mut Instance, memory: &mut Memory, options: &CanonicalOptions) -> Result<()> {
         if self.is_executing {
-            return Err(Error::runtime_invalid_state("Post-return already executing")
-            ));
+            return Err(Error::runtime_invalid_state("post_return_already_executing"));
         }
 
         if !options.has_post_return() {
@@ -312,7 +309,7 @@ impl PostReturnContext {
             ComponentValue::String(s) => {
                 Ok(Value::I32(s.as_str().as_ptr() as i32))
             }
-            _ => Err(Error::runtime_execution_error("Unsupported ComponentValue type for post-return conversion"))
+            _ => Err(Error::runtime_execution_error("unsupported_component_value_type"))
         }
     }
 
@@ -507,8 +504,8 @@ mod tests {
 
     #[test]
     fn test_resource_type_display() {
-        assert_eq!(ResourceType::Memory.to_string(), "memory");
-        assert_eq!(ResourceType::File.to_string(), "file");
-        assert_eq!(ResourceType::Stream.to_string(), "stream");
+        assert_eq!(ResourceType::Memory.to_string(), "memoryMissing message");
+        assert_eq!(ResourceType::File.to_string(), "fileMissing message");
+        assert_eq!(ResourceType::Stream.to_string(), "streamMissing message");
     }
 }

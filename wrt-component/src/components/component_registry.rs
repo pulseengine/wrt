@@ -2,6 +2,12 @@
 //!
 //! This module provides registry functionality for components.
 
+#[cfg(feature = "std")]
+use std::collections::HashMap;
+#[cfg(feature = "std")]
+use std::sync::Arc;
+
+use wrt_error::Result;
 use crate::{components::component::Component};
 
 /// Registry for WebAssembly components
@@ -20,7 +26,7 @@ impl ComponentRegistry {
     /// Register a component by name
     pub fn register(&mut self, name: &str, component: Arc<Component>) -> Result<()> {
         self.components.insert(name.to_string(), component);
-        Ok(()
+        Ok(())
     }
 
     /// Get a component by name

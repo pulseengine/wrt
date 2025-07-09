@@ -1,0 +1,47 @@
+[package]
+name = "wrt-component-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[features]
+default = ["std"]
+std = []
+no_std = []
+safety-asil-b = []
+safety-asil-c = ["safety-asil-b"]
+safety-asil-d = ["safety-asil-c"]
+
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+wrt-component = { path = ".." }
+wrt-format = { path = "../../wrt-format" }
+wrt-foundation = { path = "../../wrt-foundation" }
+
+[[bin]]
+name = "fuzz_wit_parser"
+path = "fuzz_targets/fuzz_wit_parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_component_parser"
+path = "fuzz_targets/fuzz_component_parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_canonical_options"
+path = "fuzz_targets/fuzz_canonical_options.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_type_bounds"
+path = "fuzz_targets/fuzz_type_bounds.rs"
+test = false
+doc = false

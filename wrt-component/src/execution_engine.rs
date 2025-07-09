@@ -96,9 +96,9 @@ impl CallFrame {
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            self.locals.push(value).map_err(|_| {
+            self.locals.push(value).map_err(|_| 
                 wrt_error::Error::resource_exhausted("Too many local variables")
-            })
+            )?
         }
     }
 
@@ -260,10 +260,9 @@ impl ComponentExecutionEngine {
         func: fn(&[Value]) -> WrtResult<Value>,
     ) -> WrtResult<u32> {
         let index = self.host_functions.len() as u32;
-        self.host_functions.push(func).map_err(|_| {
+        self.host_functions.push(func).map_err(|_| 
             wrt_error::Error::resource_exhausted("Too many host functions")
-            )
-        })?;
+        )?;
         Ok(index)
     }
 
@@ -292,10 +291,9 @@ impl ComponentExecutionEngine {
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            self.call_stack.push(frame).map_err(|_| {
+            self.call_stack.push(frame).map_err(|_| 
                 wrt_error::Error::resource_exhausted("Call stack overflow")
-                )
-            })?;
+            )?;
         }
 
         // Execute the function
@@ -328,10 +326,9 @@ impl ComponentExecutionEngine {
         args: &[Value],
     ) -> WrtResult<Value> {
         // Get current instance ID
-        let instance_id = self.current_instance.ok_or_else(|| {
+        let instance_id = self.current_instance.ok_or_else(|| 
             wrt_error::Error::runtime_error("No current instance set")
-            )
-        })?;
+        )?;
 
         // Convert component values to canonical ABI format
         let component_values = self.convert_values_to_component(args)?;
@@ -506,8 +503,7 @@ impl ComponentExecutionEngine {
             Value::F64(v) => Ok(ComponentValue::F64(*v)),
             Value::Char(c) => Ok(ComponentValue::Char(*c)),
             Value::String(s) => Ok(ComponentValue::String(s.clone())),
-            _ => Err(wrt_error::Error::validation_invalid_input("Invalid input")
-            )),
+            _ => Err(wrt_error::Error::validation_invalid_input("Invalid input")),
         }
     }
 
@@ -528,8 +524,7 @@ impl ComponentExecutionEngine {
             ComponentValue::F64(v) => Ok(Value::F64(*v)),
             ComponentValue::Char(c) => Ok(Value::Char(*c)),
             ComponentValue::String(s) => Ok(Value::String(s.clone())),
-            _ => Err(wrt_error::Error::validation_invalid_input("Invalid input")
-            )),
+            _ => Err(wrt_error::Error::validation_invalid_input("Invalid input")),
         }
     }
 
@@ -548,10 +543,9 @@ impl ComponentExecutionEngine {
             }
             #[cfg(not(any(feature = "std", )))]
             {
-                wrt_foundation::bounded::BoundedString::from_str(module_name).map_err(|_| {
+                wrt_foundation::bounded::BoundedString::from_str(module_name).map_err(|_| 
                     wrt_error::Error::validation_invalid_input("Invalid input")
-                    )
-                })?
+                )?
             }
         };
         self.runtime_bridge
@@ -594,21 +588,18 @@ impl ComponentExecutionEngine {
     ) -> WrtResult<usize> {
         use crate::canonical_abi::ComponentType;
         
-        let name_string = wrt_foundation::bounded::BoundedString::from_str(name).map_err(|_| {
+        let name_string = wrt_foundation::bounded::BoundedString::from_str(name).map_err(|_| 
             wrt_error::Error::validation_invalid_input("Invalid input")
-            )
-        })?;
+        )?;
         
         let signature = crate::component_instantiation::FunctionSignature {
             name: name_string.clone(),
-            params: wrt_foundation::bounded::BoundedVec::from_slice(&[ComponentType::S32]).map_err(|_| {
+            params: wrt_foundation::bounded::BoundedVec::from_slice(&[ComponentType::S32]).map_err(|_| 
                 wrt_error::Error::resource_exhausted("Too many parameters")
-                )
-            })?,
-            returns: wrt_foundation::bounded::BoundedVec::from_slice(&[ComponentType::S32]).map_err(|_| {
+            )?,
+            returns: wrt_foundation::bounded::BoundedVec::from_slice(&[ComponentType::S32]).map_err(|_| 
                 wrt_error::Error::resource_exhausted("Too many return values")
-                )
-            })?,
+            )?,
         };
         
         self.runtime_bridge
@@ -714,18 +705,18 @@ mod tests {
         let mut frame = CallFrame::new(1, 2).unwrap();
 
         // Test pushing locals
-        assert!(frame.push_local(Value::U32(42)).is_ok();
-        assert!(frame.push_local(Value::Bool(true)).is_ok();
+        assert!(frame.push_local(Value::U32(42)).is_ok());
+        assert!(frame.push_local(Value::Bool(true)).is_ok());
 
         // Test getting locals
         assert_eq!(frame.get_local(0).unwrap(), &Value::U32(42));
-        assert_eq!(frame.get_local(1).unwrap(), &Value::Bool(true);
-        assert!(frame.get_local(2).is_err();
+        assert_eq!(frame.get_local(1).unwrap(), &Value::Bool(true));
+        assert!(frame.get_local(2).is_err());
 
         // Test setting locals
-        assert!(frame.set_local(0, Value::U32(100)).is_ok();
-        assert_eq!(frame.get_local(0).unwrap(), &Value::U32(100);
-        assert!(frame.set_local(10, Value::U32(200)).is_err();
+        assert!(frame.set_local(0, Value::U32(100)).is_ok());
+        assert_eq!(frame.get_local(0).unwrap(), &Value::U32(100));
+        assert!(frame.set_local(10, Value::U32(200)).is_err());
     }
 
     #[test]
@@ -755,7 +746,7 @@ mod tests {
         let mut engine = ComponentExecutionEngine::new().unwrap();
 
         fn test_func(_args: &[Value]) -> WrtResult<Value> {
-            Ok(Value::U32(42)
+            Ok(Value::U32(42))
         }
 
         let index = engine.register_host_function(test_func).unwrap();

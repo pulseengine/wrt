@@ -48,10 +48,10 @@ pub fn calculate_layout(ty: &FormatValType<ComponentProvider>) -> MemoryLayout {
     match ty {
         // Primitive types
         FormatValType::Bool => MemoryLayout::new(1, 1),
-        FormatValType::S8 | ValType::U8 => MemoryLayout::new(1, 1),
-        FormatValType::S16 | ValType::U16 => MemoryLayout::new(2, 2),
-        FormatValType::S32 | ValType::U32 => MemoryLayout::new(4, 4),
-        FormatValType::S64 | ValType::U64 => MemoryLayout::new(8, 8),
+        FormatValType::S8 | FormatValType::U8 => MemoryLayout::new(1, 1),
+        FormatValType::S16 | FormatValType::U16 => MemoryLayout::new(2, 2),
+        FormatValType::S32 | FormatValType::U32 => MemoryLayout::new(4, 4),
+        FormatValType::S64 | FormatValType::U64 => MemoryLayout::new(8, 8),
         FormatValType::F32 => MemoryLayout::new(4, 4),
         FormatValType::F64 => MemoryLayout::new(8, 8),
         FormatValType::Char => MemoryLayout::new(4, 4), // Unicode scalar value
@@ -79,14 +79,14 @@ pub fn calculate_layout(ty: &FormatValType<ComponentProvider>) -> MemoryLayout {
 
         // Results are variants with two cases (ok/err)
         FormatValType::Result(ok_ty, err_ty) => {
-            calculate_result_layout(ok_ty.as_deref(), err_ty.as_deref()
+            calculate_result_layout(ok_ty.as_deref(), err_ty.as_deref())
         }
 
         // Flags need bit storage
         FormatValType::Flags(names) => calculate_flags_layout(names.len()),
 
         // Resources are handles (u32)
-        FormatValType::Own(_) | ValType::Borrow(_) => MemoryLayout::new(4, 4),
+        FormatValType::Own(_) | FormatValType::Borrow(_) => MemoryLayout::new(4, 4),
 
         // Other types
         _ => MemoryLayout::new(0, 1), // Unknown types have zero size
@@ -140,7 +140,7 @@ fn calculate_tuple_layout(types: &[FormatValType<ComponentProvider>]) -> MemoryL
 /// Calculate layout for a variant type
 fn calculate_variant_layout(cases: &[(String, Option<FormatValType<ComponentProvider>>)]) -> MemoryLayout {
     // Discriminant size based on number of cases
-    let discriminant_size = discriminant_size(cases.len();
+    let discriminant_size = discriminant_size(cases.len());
     let discriminant_alignment = discriminant_size;
 
     // Find the largest payload
@@ -260,7 +260,7 @@ pub fn calculate_field_offsets(fields: &[(String, FormatValType<ComponentProvide
         // Align offset to field's alignment requirement
         offset = align_to(offset, layout.alignment);
 
-        result.push((name.clone(), offset, layout);
+        result.push((name.clone(), offset, layout));
         offset += layout.size;
     }
 
@@ -283,7 +283,7 @@ impl LayoutOptimizer {
 
         // Sort by alignment (descending) then by size (descending)
         fields_with_layout.sort_by(|a, b| {
-            b.2.alignment.cmp(&a.2.alignment).then_with(|| b.2.size.cmp(&a.2.size)
+            b.2.alignment.cmp(&a.2.alignment).then_with(|| b.2.size.cmp(&a.2.size))
         });
 
         fields_with_layout.into_iter().map(|(name, ty, _)| (name, ty)).collect()
@@ -392,7 +392,7 @@ impl CanonicalMemoryPool {
 
 impl Default for CanonicalMemoryPool {
     fn default() -> Self {
-        Self::new().expect("Failed to create CanonicalMemoryPoolMissing message")
+        Self::new().expect("Failed to create CanonicalMemoryPool")
     }
 }
 
@@ -402,21 +402,21 @@ mod tests {
 
     #[test]
     fn test_primitive_layouts() {
-        assert_eq!(calculate_layout(&ValType::Bool), MemoryLayout::new(1, 1);
-        assert_eq!(calculate_layout(&ValType::U8), MemoryLayout::new(1, 1);
-        assert_eq!(calculate_layout(&ValType::U16), MemoryLayout::new(2, 2);
-        assert_eq!(calculate_layout(&ValType::U32), MemoryLayout::new(4, 4);
-        assert_eq!(calculate_layout(&ValType::U64), MemoryLayout::new(8, 8);
-        assert_eq!(calculate_layout(&ValType::F32), MemoryLayout::new(4, 4);
-        assert_eq!(calculate_layout(&ValType::F64), MemoryLayout::new(8, 8);
+        assert_eq!(calculate_layout(&FormatValType::Bool), MemoryLayout::new(1, 1));
+        assert_eq!(calculate_layout(&FormatValType::U8), MemoryLayout::new(1, 1));
+        assert_eq!(calculate_layout(&FormatValType::U16), MemoryLayout::new(2, 2));
+        assert_eq!(calculate_layout(&FormatValType::U32), MemoryLayout::new(4, 4));
+        assert_eq!(calculate_layout(&FormatValType::U64), MemoryLayout::new(8, 8));
+        assert_eq!(calculate_layout(&FormatValType::F32), MemoryLayout::new(4, 4));
+        assert_eq!(calculate_layout(&FormatValType::F64), MemoryLayout::new(8, 8));
     }
 
     #[test]
     fn test_record_layout() {
         let fields = vec![
-            ("a".to_string(), ValType::U8),
-            ("b".to_string(), ValType::U32),
-            ("c".to_string(), ValType::U16),
+            ("a".to_string(), FormatValType::U8),
+            ("b".to_string(), FormatValType::U32),
+            ("c".to_string(), FormatValType::U16),
         ];
 
         let layout = calculate_record_layout(&fields);
@@ -446,18 +446,18 @@ mod tests {
     #[test]
     fn test_layout_optimizer() {
         let fields = vec![
-            ("a".to_string(), ValType::U8),
-            ("b".to_string(), ValType::U64),
-            ("c".to_string(), ValType::U16),
-            ("d".to_string(), ValType::U32),
+            ("a".to_string(), FormatValType::U8),
+            ("b".to_string(), FormatValType::U64),
+            ("c".to_string(), FormatValType::U16),
+            ("d".to_string(), FormatValType::U32),
         ];
 
         let optimized = LayoutOptimizer::optimize_field_order(&fields);
 
         // Should be reordered as: u64, u32, u16, u8 (by alignment)
-        assert_eq!(optimized[0].0, "bMissing message");
-        assert_eq!(optimized[1].0, "dMissing message");
-        assert_eq!(optimized[2].0, "cMissing message");
-        assert_eq!(optimized[3].0, "aMissing message");
+        assert_eq!(optimized[0].0, "b");
+        assert_eq!(optimized[1].0, "d");
+        assert_eq!(optimized[2].0, "c");
+        assert_eq!(optimized[3].0, "a");
     }
 }

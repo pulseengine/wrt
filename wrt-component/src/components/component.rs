@@ -47,7 +47,7 @@ impl<K: PartialEq + Clone, V: Clone> SimpleMap<K, V> {
         // Remove existing entry if present
         self.entries.retain(|(k, _)| k != &key);
         // Add new entry
-        let _ = self.entries.push((key, value);
+        let _ = self.entries.push((key, value));
     }
     
     pub fn get(&self, key: &K) -> Option<&V> {
@@ -309,7 +309,7 @@ impl RuntimeInstance {
     /// Register an exported memory
     pub fn register_memory(&mut self, name: String, memory: MemoryValue) -> Result<()> {
         self.memories.insert(name, memory);
-        Ok(()
+        Ok(())
     }
 
     /// Executes a function in the runtime
@@ -336,12 +336,11 @@ impl RuntimeInstance {
         if let ExternValue::Function(func_value) = function {
             // Validate arguments based on function signature
             if args.len() != func_value.ty.params.len() {
-                return Err(Error::validation_error(format!(
+                return Err(Error::validation_error(&format!(
                         "Expected {} arguments, got {}",
                         func_value.ty.params.len(),
                         args.len()
-                    ),
-                );
+                    )));
             }
 
             // Type check arguments
@@ -350,11 +349,10 @@ impl RuntimeInstance {
                 let expected_type = &param_type;
 
                 if !self.is_type_compatible(&arg_type, expected_type) {
-                    return Err(Error::validation_error(format!(
+                    return Err(Error::validation_error(&format!(
                             "Type mismatch for argument {}: expected {:?}, got {:?}",
                             i, expected_type, arg_type
-                        ),
-                    );
+                        )));
                 }
             }
 
@@ -377,7 +375,7 @@ impl RuntimeInstance {
             // Return a not implemented error for now
             // This will be extended to support function resolution from registered
             // callbacks
-            Err(Error::component_not_found("Missing error messageMissing messageMissing messageMissing message")
+            Err(Error::component_not_found("component_not_found"))
         } else {
             Err(Error::validation_error("Invalid function type"))
         }
@@ -402,7 +400,7 @@ impl RuntimeInstance {
         Err(Error::new(
             ErrorCategory::System,
             codes::NOT_IMPLEMENTED,
-            "Error message neededMissing messageMissing messageMissing message")
+            "error_message_needed"))
     }
 
     /// Get an export by name (functions only for now)
@@ -415,22 +413,22 @@ impl RuntimeInstance {
     pub fn get_export_value(&self, name: &str) -> Option<ExternValue> {
         // Check function exports first
         if let Some(function) = self.functions.get(name) {
-            return Some(function.clone();
+            return Some(function.clone());
         }
         
         // Check memory exports
         if let Some(memory) = self.memories.get(name) {
-            return Some(ExternValue::Memory(memory.clone());
+            return Some(ExternValue::Memory(memory.clone()));
         }
         
         // Check table exports
         if let Some(table) = self.tables.get(name) {
-            return Some(ExternValue::Table(table.clone());
+            return Some(ExternValue::Table(table.clone()));
         }
         
         // Check global exports
         if let Some(global) = self.globals.get(name) {
-            return Some(ExternValue::Global(global.clone());
+            return Some(ExternValue::Global(global.clone()));
         }
         
         None
@@ -442,7 +440,7 @@ impl RuntimeInstance {
             // Extract function index from export name or derive from it
             // In a real implementation, this would come from the module's export table
             // For now, we'll use a simple hash-based approach with better distribution
-            Some(self.hash_function_name_to_index(name)
+            Some(self.hash_function_name_to_index(name))
         } else {
             None
         }
@@ -479,7 +477,7 @@ struct ModuleInstance {
 
 /// Helper function to convert FormatValType to ValueType
 fn convert_to_valuetype(val_type_pair: &(String, FormatValType<ComponentProvider>)) -> ValueType {
-    format_val_type_to_value_type(&val_type_pair.1).expect("Failed to convert format value typeMissing message")
+    format_val_type_to_value_type(&val_type_pair.1).expect("Failed to convert format value type")
 }
 
 /// Represents an external value
@@ -649,11 +647,10 @@ impl MemoryValue {
     /// The current size in pages
     pub fn size(&self) -> Result<u32> {
         let memory = self.memory.read().map_err(|e| {
-            Error::memory_error("Component not found",
-            )
+            Error::memory_error("Failed to acquire memory read lock")
         })?;
 
-        Ok(memory.size()
+        Ok(memory.size())
     }
 
     /// Gets the current size of the memory in bytes
@@ -663,11 +660,10 @@ impl MemoryValue {
     /// The current size in bytes
     pub fn size_in_bytes(&self) -> Result<usize> {
         let memory = self.memory.read().map_err(|e| {
-            Error::memory_error("Component not found",
-            )
+            Error::memory_error("Failed to acquire memory read lock")
         })?;
 
-        Ok(memory.size_in_bytes()
+        Ok(memory.size_in_bytes())
     }
 
     /// Gets the peak memory usage in bytes
@@ -677,11 +673,10 @@ impl MemoryValue {
     /// The peak memory usage in bytes
     pub fn peak_usage(&self) -> Result<usize> {
         let memory = self.memory.read().map_err(|e| {
-            Error::memory_error("Component not found",
-            )
+            Error::memory_error("Failed to acquire memory read lock")
         })?;
 
-        Ok(memory.peak_usage()
+        Ok(memory.peak_usage())
     }
 
     /// Gets the number of memory accesses performed
@@ -691,11 +686,10 @@ impl MemoryValue {
     /// The number of memory accesses
     pub fn access_count(&self) -> Result<u64> {
         let memory = self.memory.read().map_err(|e| {
-            Error::memory_error("Component not found",
-            )
+            Error::memory_error("Failed to acquire memory read lock")
         })?;
 
-        Ok(memory.access_count()
+        Ok(memory.access_count())
     }
 
     /// Gets a debug name for this memory, if any
@@ -705,11 +699,10 @@ impl MemoryValue {
     /// The debug name, if any
     pub fn debug_name(&self) -> Result<Option<String>> {
         let memory = self.memory.read().map_err(|e| {
-            Error::memory_error("Component not found",
-            )
+            Error::memory_error("Failed to acquire memory read lock")
         })?;
 
-        Ok(memory.debug_name().map(String::from)
+        Ok(memory.debug_name().map(String::from))
     }
 
     /// Sets a debug name for this memory
@@ -719,12 +712,11 @@ impl MemoryValue {
     /// * `name` - The debug name to set
     pub fn set_debug_name(&self, name: &str) -> Result<()> {
         let mut memory = self.memory.write().map_err(|e| {
-            Error::memory_error("Component not found",
-            )
+            Error::memory_error("Failed to acquire memory write lock")
         })?;
 
         memory.set_debug_name(name);
-        Ok(()
+        Ok(())
     }
 
     /// Verifies the integrity of the memory
@@ -738,8 +730,7 @@ impl MemoryValue {
     /// Returns an error if the memory is invalid
     pub fn verify_integrity(&self) -> Result<()> {
         let memory = self.memory.read().map_err(|e| {
-            Error::memory_error("Component not found",
-            )
+            Error::memory_error("Failed to acquire memory read lock")
         })?;
 
         memory.verify_integrity()
@@ -794,14 +785,12 @@ impl Host {
 
         // Validate arguments
         if args.len() != function.ty.params.len() {
-            return Err(Error::validation_error("Component not found",
-            );
+            return Err(Error::validation_error("Argument count mismatch"));
         }
 
         // Actual function calling would happen here
         // This requires integration with the actual host function mechanism
-        Err(Error::runtime_execution_error("Component validation failed",
-        )
+        Err(Error::runtime_execution_error("Function execution not implemented"))
     }
 }
 
@@ -831,7 +820,7 @@ impl Component {
     ) {
         self.verification_level = level;
         // Propagate to resource table
-        self.resource_table.set_verification_level(convert_verification_level(level);
+        self.resource_table.set_verification_level(convert_verification_level(level));
     }
 
     /// Get the current verification level
@@ -879,7 +868,7 @@ impl BuiltinRequirements {
     /// Check if the requirements can be satisfied with the given available
     /// built-ins
     pub fn can_be_satisfied(&self, available: &HashSet<BuiltinType>) -> bool {
-        self.requirements.iter().all(|req| available.contains(req)
+        self.requirements.iter().all(|req| available.contains(req))
     }
 }
 
@@ -897,11 +886,11 @@ pub fn scan_builtins(bytes: &[u8]) -> Result<BuiltinRequirements> {
                 return Ok(requirements);
             }
             Err(err) => {
-                return Err(Error::component_not_found("Component not found");
+                return Err(Error::component_not_found("Component not found"));
             }
         }
     }
-    #[cfg(not(feature = "decoderMissing messageMissing messageMissing message"))]
+    #[cfg(not(feature = "decoder"))]
     {
         // Without decoder, return empty requirements
         Ok(requirements)
@@ -916,7 +905,7 @@ fn scan_module_for_builtins(module: &[u8], requirements: &mut BuiltinRequirement
     if module.is_empty() {
         Err(Error::runtime_execution_error("Function execution not implemented"))
     } else {
-        Ok(()
+        Ok(())
     }
 }
 
@@ -964,13 +953,13 @@ fn scan_functions_for_builtins(
         }
     }
 
-    Ok(()
+    Ok(())
 }
 
 /// Extracts embedded modules from a binary
 fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
     // Try to decode as component
-    #[cfg(feature = "decoderMissing message")]
+    #[cfg(feature = "decoder")]
     {
         match wrt_decoder::component::decode_component(bytes) {
             Ok(component) => {
@@ -989,11 +978,11 @@ fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
                 return Ok(modules);
             }
             Err(err) => {
-                return Err(Error::component_not_found("Component not found");
+                return Err(Error::component_not_found("Component not found"));
             }
         }
     }
-    #[cfg(not(feature = "decoderMissing messageMissing messageMissing message"))]
+    #[cfg(not(feature = "decoder"))]
     {
         // Without decoder, return empty modules list
         Ok({
@@ -1017,7 +1006,7 @@ pub fn component_value_to_value(
     use crate::type_conversion::types_componentvalue_to_core_value;
 
     // Use the new conversion function
-    types_componentvalue_to_core_value(component_value).unwrap_or(Value::I32(0)
+    types_componentvalue_to_core_value(component_value).unwrap_or(Value::I32(0))
     // Provide a sensible default on error
 }
 
@@ -1062,11 +1051,11 @@ mod tests {
     #[test]
     fn test_runtime_instance_creation() {
         let runtime = RuntimeInstance::new();
-        assert!(runtime.functions.is_empty();
-        assert!(runtime.memories.is_empty();
-        assert!(runtime.tables.is_empty();
-        assert!(runtime.globals.is_empty();
-        assert!(runtime.module_instance.is_none();
+        assert!(runtime.functions.is_empty());
+        assert!(runtime.memories.is_empty());
+        assert!(runtime.tables.is_empty());
+        assert!(runtime.globals.is_empty());
+        assert!(runtime.module_instance.is_none());
     }
 
     #[test]
@@ -1079,9 +1068,9 @@ mod tests {
         let func_value = FunctionValue { ty: func_type, export_name: "test_function".to_string() };
         let extern_value = ExternValue::Function(func_value);
 
-        assert!(runtime.register_function("test_function".to_string(), extern_value).is_ok();
+        assert!(runtime.register_function("test_function".to_string(), extern_value).is_ok());
         assert_eq!(runtime.functions.len(), 1);
-        assert!(runtime.functions.contains_key("test_functionMissing messageMissing messageMissing message");
+        assert!(runtime.functions.contains_key("test_function"));
     }
 
     #[test]
@@ -1093,13 +1082,13 @@ mod tests {
         let result = runtime.execute_function("nonexistent", args);
 
         // Verify the error
-        assert!(result.is_err();
+        assert!(result.is_err());
         match result {
             Err(e) => {
                 assert_eq!(e.category(), ErrorCategory::Runtime);
-                assert!(e.to_string().contains("not foundMissing messageMissing messageMissing message");
+                assert!(e.to_string().contains("not found"));
             }
-            _ => panic!("Expected an errorMissing message"),
+            _ => panic!("Expected an error"),
         }
     }
 
@@ -1122,13 +1111,13 @@ mod tests {
         let result = runtime.execute_function("test_func", args);
 
         // Verify the error
-        assert!(result.is_err();
+        assert!(result.is_err());
         match result {
             Err(e) => {
                 assert_eq!(e.category(), ErrorCategory::Validation);
-                assert!(e.to_string().contains("Expected 2 argumentsMissing messageMissing messageMissing message");
+                assert!(e.to_string().contains("Expected 2 arguments"));
             }
-            _ => panic!("Expected an errorMissing message"),
+            _ => panic!("Expected an error"),
         }
     }
 
@@ -1151,13 +1140,13 @@ mod tests {
         let result = runtime.execute_function("test_func", args);
 
         // Verify the error
-        assert!(result.is_err();
+        assert!(result.is_err());
         match result {
             Err(e) => {
                 assert_eq!(e.category(), ErrorCategory::Validation);
-                assert!(e.to_string().contains("Type mismatch for argumentMissing messageMissing messageMissing message");
+                assert!(e.to_string().contains("Type mismatch for argument"));
             }
-            _ => panic!("Expected an errorMissing message"),
+            _ => panic!("Expected an error"),
         }
     }
 
@@ -1180,14 +1169,14 @@ mod tests {
         let result = runtime.execute_function("test_func", args);
 
         // Verify we get a NOT_IMPLEMENTED error
-        assert!(result.is_err();
+        assert!(result.is_err());
         match result {
             Err(e) => {
                 assert_eq!(e.category(), ErrorCategory::System);
                 assert_eq!(e.code(), codes::NOT_IMPLEMENTED);
-                assert!(e.to_string().contains("not implementedMissing messageMissing messageMissing message");
+                assert!(e.to_string().contains("not implemented"));
             }
-            _ => panic!("Expected a not implemented errorMissing message"),
+            _ => panic!("Expected a not implemented error"),
         }
     }
 }

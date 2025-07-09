@@ -340,10 +340,9 @@ impl CrossComponentCallManager {
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            self.targets.push(target).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Error occurred"Too many call targetsMissing messageMissing messageMissing message")
-                )
-            })?;
+            self.targets.push(target).map_err(|_| 
+                wrt_error::Error::resource_exhausted("Too many call targets")
+            )?;
         }
 
         Ok(target_id)
@@ -359,21 +358,19 @@ impl CrossComponentCallManager {
     ) -> WrtResult<CrossCallResult> {
         // Check call depth
         if self.call_stack.len() >= self.max_call_depth {
-            return Err(wrt_error::Error::resource_exhausted("Error occurred"Maximum call depth exceededMissing message")
-            );
+            return Err(wrt_error::Error::resource_exhausted("Maximum call depth exceeded"));
         }
 
         // Get target
         let target = self
             .targets
             .get(target_id as usize)
-            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Error occurred"Invalid inputMissing message")
-            ))?
+            .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))?
             .clone();
 
         // Check permissions
         if !target.permissions.allowed {
-            return Err(wrt_error::Error::runtime_error("Error occurred"Cross-component call not allowedMissing message")
+            return Err(wrt_error::Error::runtime_error("Cross-component call not allowed")
             );
         }
 
@@ -400,10 +397,9 @@ impl CrossComponentCallManager {
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            self.call_stack.push(call_frame).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Error occurred"Call stack overflowMissing messageMissing messageMissing message")
-                )
-            })?;
+            self.call_stack.push(call_frame).map_err(|_| 
+                wrt_error::Error::resource_exhausted("Call stack overflow")
+            )?;
         }
 
         // Prepare arguments with resource transfer
@@ -506,20 +502,20 @@ impl CrossComponentCallManager {
                             transfer_type,
                         )?;
                         transferred_resources.push(transferred);
-                        prepared_args.push(arg.clone();
+                        prepared_args.push(arg.clone());
                     } else {
-                        return Err(wrt_error::Error::runtime_error("Error occurred"Resource transfer not allowedMissing message")
+                        return Err(wrt_error::Error::runtime_error("Resource transfer not allowed")
                         );
                     }
                 }
                 _ => {
                     // Regular value arguments
-                    prepared_args.push(arg.clone();
+                    prepared_args.push(arg.clone());
                 }
             }
         }
 
-        Ok((prepared_args, transferred_resources)
+        Ok((prepared_args, transferred_resources))
     }
 
     /// Transfer a resource between components
@@ -531,8 +527,7 @@ impl CrossComponentCallManager {
         transfer_type: ResourceTransferPolicy,
     ) -> WrtResult<TransferredResource> {
         match transfer_type {
-            ResourceTransferPolicy::None => Err(wrt_error::Error::runtime_error("Error occurred"Resource transfer not allowedMissing message")
-            )),
+            ResourceTransferPolicy::None => Err(wrt_error::Error::runtime_error("Resource transfer not allowed")),
             ResourceTransferPolicy::Transfer => {
                 // Transfer ownership
                 self.resource_manager.transfer_ownership(
@@ -576,7 +571,7 @@ impl CrossComponentCallManager {
                 }
             }
         }
-        Ok(()
+        Ok(())
     }
 
     /// Restore resources after failed call
@@ -601,7 +596,7 @@ impl CrossComponentCallManager {
                 }
             }
         }
-        Ok(()
+        Ok(())
     }
 
     /// Get current time (simplified)
@@ -698,7 +693,7 @@ impl CrossComponentCallManager {
                 new_stats.call_count = 1;
                 new_stats.avg_duration_ns = duration_ns;
                 new_stats.last_call_time = self.get_current_time();
-                let _ = self.call_frequency.push((key, new_stats);
+                let _ = self.call_frequency.push((key, new_stats));
             }
         }
     }
@@ -724,13 +719,12 @@ impl CrossComponentCallManager {
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            self.pending_transfers.push(transfer).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Error occurred"Too many pending transfersMissing messageMissing messageMissing message")
-                )
-            })?;
+            self.pending_transfers.push(transfer).map_err(|_| 
+                wrt_error::Error::resource_exhausted("Too many pending transfers")
+            )?;
         }
         
-        Ok(()
+        Ok(())
     }
 
     /// Process batch resource transfers for optimization
@@ -738,7 +732,7 @@ impl CrossComponentCallManager {
         #[cfg(feature = "std")]
         {
             if self.pending_transfers.is_empty() {
-                return Ok(();
+                return Ok(());
             }
 
             // Group transfers by target component for batch processing
@@ -790,7 +784,7 @@ impl CrossComponentCallManager {
             }
         }
         
-        Ok(()
+        Ok(())
     }
 
     /// Cache a call target for future optimized access
@@ -817,13 +811,12 @@ impl CrossComponentCallManager {
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            self.call_cache.push((key, cached_target)).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Error occurred"Call cache fullMissing messageMissing messageMissing message")
-                )
-            })?;
+            self.call_cache.push((key, cached_target)).map_err(|_| 
+                wrt_error::Error::resource_exhausted("Call cache full")
+            )?;
         }
         
-        Ok(()
+        Ok(())
     }
 
     /// Calculate a hash of the function signature for caching
@@ -923,7 +916,7 @@ impl Default for CrossComponentCallManager {
     fn default() -> Self {
         Self::new().unwrap_or_else(|_| {
             // In case of allocation failure, panic as this is a critical error
-            panic!("Failed to create CrossComponentCallManager: memory allocation failedMissing message")
+            panic!("Failed to create CrossComponentCallManager: memory allocation failed")
         })
     }
 }
@@ -978,10 +971,10 @@ mod tests {
 
     #[test]
     fn test_resource_transfer_policy_display() {
-        assert_eq!(ResourceTransferPolicy::None.to_string(), "noneMissing message");
-        assert_eq!(ResourceTransferPolicy::Transfer.to_string(), "transferMissing message");
-        assert_eq!(ResourceTransferPolicy::Borrow.to_string(), "borrowMissing message");
-        assert_eq!(ResourceTransferPolicy::Copy.to_string(), "copyMissing message");
+        assert_eq!(ResourceTransferPolicy::None.to_string(), "none");
+        assert_eq!(ResourceTransferPolicy::Transfer.to_string(), "transfer");
+        assert_eq!(ResourceTransferPolicy::Borrow.to_string(), "borrow");
+        assert_eq!(ResourceTransferPolicy::Copy.to_string(), "copy");
     }
 
     #[test]
@@ -1004,7 +997,7 @@ mod tests {
         let mut manager = CrossComponentCallManager::new().unwrap();
 
         // No targets registered - should not be allowed
-        assert!(!manager.is_call_allowed(0, 1);
+        assert!(!manager.is_call_allowed(0, 1));
 
         // Register a target
         let target = CallTarget::new(
@@ -1017,7 +1010,7 @@ mod tests {
         manager.register_target(target).unwrap();
 
         // Now should be allowed
-        assert!(manager.is_call_allowed(0, 1);
+        assert!(manager.is_call_allowed(0, 1));
     }
 
     #[test]
@@ -1058,7 +1051,7 @@ mod tests {
 
         // Flush them
         let result = manager.flush_pending_transfers();
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         #[cfg(feature = "std")]
         {

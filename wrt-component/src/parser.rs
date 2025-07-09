@@ -48,13 +48,13 @@ fn scan_for_builtins_fallback(binary: &[u8]) -> Result<Vec<String>> {
     
     // Validate WebAssembly magic number and version
     if binary.len() < 8 {
-        return Err(Error::parse_error("Error occurred"Binary too short to be a valid WebAssembly moduleMissing message")
+        return Err(Error::parse_error("Binary too short to be a valid WebAssembly module"))
         );
     }
     
     // Check magic number
     if &binary[0..4] != b"\0asm" {
-        return Err(Error::parse_error("Error occurred"Invalid WebAssembly magic numberMissing message")
+        return Err(Error::parse_error("Invalid WebAssembly magic number"))
         );
     }
     
@@ -72,7 +72,7 @@ fn scan_for_builtins_fallback(binary: &[u8]) -> Result<Vec<String>> {
         
         // Read section size
         let (section_size, new_offset) = binary::read_leb128_u32(binary, offset)
-            .map_err(|e| Error::parse_error("Error occurred"Failed to read section sizeMissing message")
+            .map_err(|e| Error::parse_error("Failed to read section size")
             ))?;
         offset = new_offset;
         
@@ -157,7 +157,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
 
     for i in 0..5 { // Max 5 bytes for u32
         if offset + i >= data.len() {
-            return Err(Error::parse_error("Error occurred"Unexpected end of data while reading LEB128Missing message")
+            return Err(Error::parse_error("Unexpected end of data while reading LEB128")
             );
         }
 
@@ -172,7 +172,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
 
         shift += 7;
         if shift >= 32 {
-            return Err(Error::parse_error("Error occurred"LEB128 value too large for u32Missing message")
+            return Err(Error::parse_error("LEB128 value too large for u32")
             );
         }
     }
@@ -231,17 +231,17 @@ pub fn map_import_to_builtin(import_name: &str) -> Option<BuiltinType> {
         "async.wait" => Some(BuiltinType::AsyncWait),
 
         // Feature-gated error context operations
-        #[cfg(feature = "component-model-error-contextMissing message")]
+        #[cfg(feature = "component-model-error-context")]
         "error.new" => Some(BuiltinType::ErrorNew),
-        #[cfg(feature = "component-model-error-contextMissing message")]
+        #[cfg(feature = "component-model-error-context")]
         "error.trace" => Some(BuiltinType::ErrorTrace),
 
         // Feature-gated threading operations
-        #[cfg(feature = "component-model-threadingMissing message")]
+        #[cfg(feature = "component-model-threading")]
         "threading.spawn" => Some(BuiltinType::ThreadingSpawn),
-        #[cfg(feature = "component-model-threadingMissing message")]
+        #[cfg(feature = "component-model-threading")]
         "threading.join" => Some(BuiltinType::ThreadingJoin),
-        #[cfg(feature = "component-model-threadingMissing message")]
+        #[cfg(feature = "component-model-threading")]
         "threading.sync" => Some(BuiltinType::ThreadingSync),
 
         // Unknown import name (including "random_get_bytes" which is handled separately)
@@ -284,12 +284,12 @@ mod tests {
     #[test]
     fn test_scan_for_builtins() {
         // Create a test module with a wasi_builtin import for resource.create
-        let module = create_test_module("wasi_builtin", "resource.createMissing message");
+        let module = create_test_module("wasi_builtin", "resource.create");
 
         // Test that we can find the built-in import
         let builtin_names = scan_for_builtins(&module).unwrap();
         assert_eq!(builtin_names.len(), 1);
-        assert_eq!(builtin_names[0], "resource.createMissing message");
+        assert_eq!(builtin_names[0], "resource.create");
 
         // Test the mapping to built-in types
         let required_builtins = get_required_builtins(&module).unwrap();
@@ -300,12 +300,12 @@ mod tests {
     #[test]
     fn test_random_builtin_import() {
         // Create a test module with a random_get_bytes import
-        let module = create_test_module("wasi_builtin", "random_get_bytesMissing message");
+        let module = create_test_module("wasi_builtin", "random_get_bytes");
 
         // We should be able to identify the import
         let builtin_names = scan_for_builtins(&module).unwrap();
         assert_eq!(builtin_names.len(), 1);
-        assert_eq!(builtin_names[0], "random_get_bytesMissing message");
+        assert_eq!(builtin_names[0], "random_get_bytes");
 
         // Since random_get_bytes is not in our map_import_to_builtin function,
         // we should see no builtin types when we call get_required_builtins
@@ -316,7 +316,7 @@ mod tests {
     #[test]
     fn test_non_builtin_imports() {
         // Create a test module with an import that is not from wasi_builtin
-        let module = create_test_module("other_module", "other_importMissing message");
+        let module = create_test_module("other_module", "other_import");
 
         // We should not find any built-in imports
         let builtin_names = scan_for_builtins(&module).unwrap();
@@ -330,10 +330,10 @@ mod tests {
     #[test]
     fn test_multiple_builtin_imports() {
         // Create test modules with different wasi_builtin imports
-        let resource_create_module = create_test_module("wasi_builtin", "resource.createMissing message");
-        let resource_drop_module = create_test_module("wasi_builtin", "resource.dropMissing message");
-        let resource_rep_module = create_test_module("wasi_builtin", "resource.repMissing message");
-        let resource_get_module = create_test_module("wasi_builtin", "resource.getMissing message");
+        let resource_create_module = create_test_module("wasi_builtin", "resource.create");
+        let resource_drop_module = create_test_module("wasi_builtin", "resource.drop");
+        let resource_rep_module = create_test_module("wasi_builtin", "resource.rep");
+        let resource_get_module = create_test_module("wasi_builtin", "resource.get");
 
         // Verify all are correctly identified
         assert_eq!(scan_for_builtins(&resource_create_module).unwrap(), vec!["resource.create"]);
