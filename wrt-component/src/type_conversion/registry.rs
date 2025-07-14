@@ -57,14 +57,14 @@ impl fmt::Display for ConversionError {
             write!(f, "\nCaused by: {}", source)?;
         }
 
-        Ok(()
+        Ok(())
     }
 }
 
 #[cfg(feature = "std")]
 impl std::error::Error for ConversionError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.source.as_ref().map(|e| e.as_ref() as &(dyn std::error::Error + 'static)
+        self.source.as_ref().map(|e| e.as_ref() as &(dyn std::error::Error + 'static))
     }
 }
 
@@ -162,7 +162,7 @@ where
         let result = self.converter.convert(from)?;
 
         // Box the result as Any
-        Ok(Box::new(result)
+        Ok(Box::new(result))
     }
 
     fn source_type_id(&self) -> TypeId {
@@ -191,7 +191,8 @@ pub struct TypeConversionRegistry {
     #[cfg(feature = "std")]
     std_enabled: bool,
 
-        alloc_enabled: bool,
+    #[cfg(not(feature = "std"))]
+    alloc_enabled: bool,
 }
 
 impl TypeConversionRegistry {
@@ -202,7 +203,8 @@ impl TypeConversionRegistry {
     }
 
     /// Create a new, empty type conversion registry (no_std version)
-        pub fn new() -> Self {
+    #[cfg(not(feature = "std"))]
+    pub fn new() -> Self {
         Self { conversions: HashMap::new(), alloc_enabled: true }
     }
 
@@ -221,8 +223,8 @@ impl TypeConversionRegistry {
             _phantom_to: PhantomData,
         };
 
-        let key = (TypeId::of::<From>(), TypeId::of::<To>();
-        self.conversions.insert(key, Box::new(adapter);
+        let key = (TypeId::of::<From>(), TypeId::of::<To>());
+        self.conversions.insert(key, Box::new(adapter));
         self
     }
 
@@ -232,7 +234,7 @@ impl TypeConversionRegistry {
         From: Convertible + 'static,
         To: Convertible + 'static,
     {
-        let key = (TypeId::of::<From>(), TypeId::of::<To>();
+        let key = (TypeId::of::<From>(), TypeId::of::<To>());
         self.conversions.contains_key(&key)
     }
 
@@ -242,7 +244,7 @@ impl TypeConversionRegistry {
         From: Convertible + 'static,
         To: Convertible + 'static,
     {
-        let key = (TypeId::of::<From>(), TypeId::of::<To>();
+        let key = (TypeId::of::<From>(), TypeId::of::<To>());
 
         // Look up the converter in the registry
         let converter = self.conversions.get(&key).ok_or_else(|| ConversionError {
@@ -296,7 +298,8 @@ impl TypeConversionRegistry {
             Self { conversions: HashMap::new(), std_enabled: self.std_enabled }
         }
 
-                {
+        #[cfg(not(feature = "std"))]
+        {
             Self { conversions: HashMap::new(), alloc_enabled: self.alloc_enabled }
         }
     }
@@ -320,14 +323,14 @@ mod tests {
 
         // Register a simple conversion function
         registry.register(|src: &TestSourceType| -> core::result::Result<TestTargetType, ConversionError> {
-            Ok(TestTargetType(src.0 * 2)
+            Ok(TestTargetType(src.0 * 2))
         });
 
         // Test the conversion
         let source = TestSourceType(21);
         let target = registry.convert::<TestSourceType, TestTargetType>(&source).unwrap();
 
-        assert_eq!(target, TestTargetType(42);
+        assert_eq!(target, TestTargetType(42));
     }
 
     #[test]
@@ -341,9 +344,9 @@ mod tests {
         let source = TestSourceType(42);
         let result = registry.convert::<TestSourceType, AnotherType>(&source);
 
-        assert!(result.is_err();
+        assert!(result.is_err());
         if let Err(err) = result {
-            assert!(matches!(err.kind, ConversionErrorKind::NoConverterFound);
+            assert!(matches!(err.kind, ConversionErrorKind::NoConverterFound));
         }
     }
 
@@ -353,12 +356,12 @@ mod tests {
 
         // Register a conversion
         registry.register(|src: &TestSourceType| -> core::result::Result<TestTargetType, ConversionError> {
-            Ok(TestTargetType(src.0)
+            Ok(TestTargetType(src.0))
         });
 
         // Check conversions
-        assert!(registry.can_convert::<TestSourceType, TestTargetType>();
-        assert!(!registry.can_convert::<TestTargetType, TestSourceType>();
+        assert!(registry.can_convert::<TestSourceType, TestTargetType>());
+        assert!(!registry.can_convert::<TestTargetType, TestSourceType>());
     }
 
     #[test]
@@ -376,21 +379,21 @@ mod tests {
                     source: None,
                 });
             }
-            Ok(TestTargetType(src.0)
+            Ok(TestTargetType(src.0))
         });
 
         // Test successful conversion
         let good_source = TestSourceType(42);
-        assert!(registry.convert::<TestSourceType, TestTargetType>(&good_source).is_ok();
+        assert!(registry.convert::<TestSourceType, TestTargetType>(&good_source).is_ok());
 
         // Test failed conversion
         let bad_source = TestSourceType(-1);
         let result = registry.convert::<TestSourceType, TestTargetType>(&bad_source);
 
-        assert!(result.is_err();
+        assert!(result.is_err());
         if let Err(err) = result {
-            assert!(matches!(err.kind, ConversionErrorKind::OutOfRange);
-            assert!(err.context.unwrap().contains("must be non-negativeMissing messageMissing messageMissing message");
+            assert!(matches!(err.kind, ConversionErrorKind::OutOfRange));
+            assert!(err.context.unwrap().contains("must be non-negative"));
         }
     }
 
@@ -406,11 +409,11 @@ mod tests {
         // Test primitive types
         let bool_type = FormatValType::Bool;
         let result = registry.convert::<FormatValType, TypesValType>(&bool_type).unwrap();
-        assert!(matches!(result, TypesValType::Bool);
+        assert!(matches!(result, TypesValType::Bool));
 
         let s32_type = FormatValType::S32;
         let result = registry.convert::<FormatValType, TypesValType>(&s32_type).unwrap();
-        assert!(matches!(result, TypesValType::S32);
+        assert!(matches!(result, TypesValType::S32));
     }
 
     #[test]
@@ -423,11 +426,11 @@ mod tests {
         // Test primitive types
         let bool_type = TypesValType::Bool;
         let result = registry.convert::<TypesValType, FormatValType>(&bool_type).unwrap();
-        assert!(matches!(result, FormatValType::Bool);
+        assert!(matches!(result, FormatValType::Bool));
 
         let s32_type = TypesValType::S32;
         let result = registry.convert::<TypesValType, FormatValType>(&s32_type).unwrap();
-        assert!(matches!(result, FormatValType::S32);
+        assert!(matches!(result, FormatValType::S32));
     }
 
     // ====== TESTS MIGRATED FROM REGISTRY_TEST.RS ======
@@ -446,12 +449,12 @@ mod tests {
 
         // Register a simple conversion
         registry.register(|src: &SimpleSource| -> core::result::Result<SimpleTarget, ConversionError> {
-            Ok(SimpleTarget(src.0 * 2)
+            Ok(SimpleTarget(src.0 * 2))
         });
 
         // Test the conversion
         let source = SimpleSource(21);
         let result = registry.convert::<SimpleSource, SimpleTarget>(&source).unwrap();
-        assert_eq!(result, SimpleTarget(42);
+        assert_eq!(result, SimpleTarget(42));
     }
 }

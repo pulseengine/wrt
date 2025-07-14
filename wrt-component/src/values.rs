@@ -50,7 +50,7 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> WrtFo
         CanonicalValType::Record(fields) => {
             let converted_fields = fields
                 .iter()
-                .map(|(name, val_type)| (name.clone(), convert_common_to_format_valtype(val_type))
+                .map(|(name, val_type)| (name.clone(), convert_common_to_format_valtype(val_type)))
                 .collect();
             WrtFormatValType::Record(converted_fields)
         }
@@ -69,7 +69,7 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> WrtFo
             WrtFormatValType::Variant(converted_cases)
         }
         CanonicalValType::List(elem_type) => {
-            WrtFormatValType::List(Box::new(convert_common_to_format_valtype(elem_type))
+            WrtFormatValType::List(Box::new(convert_common_to_format_valtype(elem_type)))
         }
         CanonicalValType::Tuple(types) => {
             let converted_types =
@@ -79,10 +79,10 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> WrtFo
         CanonicalValType::Flags(names) => WrtFormatValType::Flags(names.clone()),
         CanonicalValType::Enum(variants) => WrtFormatValType::Enum(variants.clone()),
         CanonicalValType::Option(inner_type) => {
-            WrtFormatValType::Option(Box::new(convert_common_to_format_valtype(inner_type))
+            WrtFormatValType::Option(Box::new(convert_common_to_format_valtype(inner_type)))
         }
         CanonicalValType::Result(result_type) => {
-            WrtFormatValType::Result(Box::new(convert_common_to_format_valtype(result_type))
+            WrtFormatValType::Result(Box::new(convert_common_to_format_valtype(result_type)))
         }
         CanonicalValType::Own(idx) => WrtFormatValType::Own(*idx),
         CanonicalValType::Borrow(idx) => WrtFormatValType::Borrow(*idx),
@@ -91,13 +91,13 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> WrtFo
         }
         CanonicalValType::Void => {
             // Void doesn't have a direct mapping, convert to a unit tuple
-            WrtFormatValType::Tuple(Vec::new()
+            WrtFormatValType::Tuple(Vec::new())
         }
         CanonicalValType::ErrorContext => WrtFormatValType::ErrorContext,
         CanonicalValType::Result { ok: _, err: _ } => {
             // For WrtFormatValType, we create a Result with a generic type placeholder
             // Since WrtFormatValType::Result requires a concrete type, we'll use a default
-            WrtFormatValType::Result(Box::new(WrtFormatValType::Unit)
+            WrtFormatValType::Result(Box::new(WrtFormatValType::Unit))
         }
     }
 }
@@ -122,7 +122,7 @@ pub fn convert_format_to_common_valtype(format_type: &WrtFormatValType) -> Canon
         WrtFormatValType::Record(fields) => {
             let converted_fields = fields
                 .iter()
-                .map(|(name, val_type)| (name.clone(), convert_format_to_common_valtype(val_type))
+                .map(|(name, val_type)| (name.clone(), convert_format_to_common_valtype(val_type)))
                 .collect();
             CanonicalValType::Record(converted_fields)
         }
@@ -141,7 +141,7 @@ pub fn convert_format_to_common_valtype(format_type: &WrtFormatValType) -> Canon
             CanonicalValType::Variant(converted_cases)
         }
         WrtFormatValType::List(elem_type) => {
-            CanonicalValType::List(Box::new(convert_format_to_common_valtype(elem_type))
+            CanonicalValType::List(Box::new(convert_format_to_common_valtype(elem_type)))
         }
         WrtFormatValType::Tuple(types) => {
             let converted_types =
@@ -151,7 +151,7 @@ pub fn convert_format_to_common_valtype(format_type: &WrtFormatValType) -> Canon
         WrtFormatValType::Flags(names) => CanonicalValType::Flags(names.clone()),
         WrtFormatValType::Enum(variants) => CanonicalValType::Enum(variants.clone()),
         WrtFormatValType::Option(inner_type) => {
-            CanonicalValType::Option(Box::new(convert_format_to_common_valtype(inner_type))
+            CanonicalValType::Option(Box::new(convert_format_to_common_valtype(inner_type)))
         }
         WrtFormatValType::Result(result_type) => {
             // Convert to CanonicalValType::Result with both ok and err as None for now
