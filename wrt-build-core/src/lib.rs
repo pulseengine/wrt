@@ -68,6 +68,9 @@ pub mod validation;
 pub mod verification_tool;
 pub mod verify;
 pub mod wasm;
+pub mod wast;
+pub mod wast_execution;
+pub mod wast_test_runner;
 
 // Public API
 pub use build::BuildSystem;
