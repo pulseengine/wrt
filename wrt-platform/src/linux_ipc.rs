@@ -75,7 +75,7 @@ impl IpcChannel for LinuxDomainSocket {
         
         // Create Unix domain socket listener
         let listener = UnixListener::bind(&socket_path)
-            .map_err(|e| Error::runtime_execution_error(&format!("Failed to bind Unix socket: {}", e)))?
+            .map_err(|e| Error::runtime_execution_error(&format!("Failed to bind Unix socket: {}", e)))?;
         
         let mut socket = Self::new(socket_path);
         socket.listener = Some(Arc::new(Mutex::new(listener)));

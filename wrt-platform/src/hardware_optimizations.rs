@@ -370,13 +370,15 @@ pub mod intel {
         }
 
         fn is_available() -> bool {
-            #[cfg(target_arch = "aarch64")]
+            #[cfg(target_arch = "x86_64")]
             {
                 // Check for CET support via CPUID
-                return cfg!(target_feature = "shstk") || cfg!(target_feature = "ibt");
+                cfg!(target_feature = "shstk") || cfg!(target_feature = "ibt")
             }
             #[cfg(not(target_arch = "x86_64"))]
-            false
+            {
+                false
+            }
         }
 
         fn enable() -> Result<Self, Error> {
@@ -429,13 +431,15 @@ pub mod intel {
         }
 
         fn is_available() -> bool {
-            #[cfg(target_arch = "aarch64")]
+            #[cfg(target_arch = "x86_64")]
             {
                 // Check for PKU support
-                return cfg!(target_feature = "pku");
+                cfg!(target_feature = "pku")
             }
             #[cfg(not(target_arch = "x86_64"))]
-            false
+            {
+                false
+            }
         }
 
         fn enable() -> Result<Self, Error> {
@@ -525,13 +529,15 @@ pub mod riscv {
         }
 
         fn is_available() -> bool {
-            #[cfg(target_arch = "aarch64")]
+            #[cfg(target_arch = "riscv64")]
             {
                 // Check for PMP support
-                return true; // RISC-V spec requires PMP
+                true // RISC-V spec requires PMP
             }
             #[cfg(not(target_arch = "riscv64"))]
-            false
+            {
+                false
+            }
         }
 
         fn enable() -> Result<Self, Error> {
@@ -593,13 +599,15 @@ pub mod riscv {
         }
 
         fn is_available() -> bool {
-            #[cfg(target_arch = "aarch64")]
+            #[cfg(target_arch = "riscv64")]
             {
                 // Check for zisslpcfi extension support
-                return cfg!(target_feature = "zisslpcfi");
+                cfg!(target_feature = "zisslpcfi")
             }
             #[cfg(not(target_arch = "riscv64"))]
-            false
+            {
+                false
+            }
         }
 
         fn enable() -> Result<Self, Error> {

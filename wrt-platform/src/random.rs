@@ -39,27 +39,27 @@ impl PlatformRandom {
     pub fn get_secure_bytes(buffer: &mut [u8]) -> Result<()> {
         #[cfg(target_os = "linux")]
         {
-            Self::linux_random(buffer)
+            return Self::linux_random(buffer);
         }
         
         #[cfg(target_os = "macos")]
         {
-            Self::macos_random(buffer)
+            return Self::macos_random(buffer);
         }
         
         #[cfg(target_os = "windows")]
         {
-            Self::windows_random(buffer)
+            return Self::windows_random(buffer);
         }
         
         #[cfg(target_os = "nto")]
         {
-            Self::qnx_random(buffer)
+            return Self::qnx_random(buffer);
         }
         
         #[cfg(target_os = "vxworks")]
         {
-            Self::vxworks_random(buffer)
+            return Self::vxworks_random(buffer);
         }
         
         #[cfg(all(
@@ -218,7 +218,7 @@ impl PlatformRandom {
         
         #[cfg(feature = "platform-tock")]
         {
-            Self::tock_random(buffer)
+            return Self::tock_random(buffer);
         }
         
         #[cfg(not(feature = "platform-tock"))]
