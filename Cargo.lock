@@ -280,6 +280,7 @@ dependencies = [
  "which",
  "wrt-build-core",
  "wrt-decoder",
+ "wrt-foundation",
 ]
 
 [[package]]
@@ -4007,9 +4008,12 @@ dependencies = [
  "tempfile",
  "toml",
  "walkdir",
+ "wast 235.0.0",
+ "wat",
  "wrt-decoder",
  "wrt-error",
  "wrt-foundation",
+ "wrt-runtime",
 ]
 
 [[package]]

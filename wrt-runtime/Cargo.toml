@@ -41,7 +41,8 @@ std = [
     "wrt-intercept/std",
     "dep:wrt-platform",
     "wrt-sync/std",
-    "wrt-foundation/std"]
+    "wrt-foundation/std",
+    "wrt-foundation/platform-memory"]
 
 # Allocation support for no_std environments
 alloc = [
