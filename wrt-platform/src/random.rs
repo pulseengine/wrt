@@ -82,11 +82,14 @@ impl PlatformRandom {
         
         let mut urandom = File::open("/dev/urandom").map_err(|_| Error::runtime_execution_error("Failed to open /dev/urandom"))?;
         
-        urandom.read_exact(buffer).map_err(|e| Error::new(
-            ErrorCategory::Resource,
-            codes::SYSTEM_IO_ERROR_CODE,
-            &format!("Failed to read from /dev/urandom: {}", e),
-        ))?;
+        urandom.read_exact(buffer).map_err(|e| {
+            let error_msg = format!("Failed to read from /dev/urandom: {}", e);
+            Error::new(
+                ErrorCategory::Resource,
+                codes::SYSTEM_IO_ERROR_CODE,
+                &error_msg,
+            )
+        })?;
         
         Ok(())
     }
@@ -149,7 +152,8 @@ impl PlatformRandom {
         };
         
         if result != STATUS_SUCCESS {
-            return Err(Error::runtime_execution_error(&format!("ProcessPrng failed with status: {}", result)));
+            let error_msg = format!("ProcessPrng failed with status: {}", result);
+            return Err(Error::runtime_execution_error(&error_msg));
         }
         
         Ok(())
@@ -164,11 +168,14 @@ impl PlatformRandom {
         // QNX recommends /dev/random for cryptographic purposes
         let mut random = File::open("/dev/random").map_err(|_| Error::runtime_execution_error("Failed to open /dev/random"))?;
         
-        random.read_exact(buffer).map_err(|e| Error::new(
-            ErrorCategory::Resource,
-            codes::SYSTEM_IO_ERROR_CODE,
-            &format!("Failed to read from /dev/random: {}", e),
-        ))?;
+        random.read_exact(buffer).map_err(|e| {
+            let error_msg = format!("Failed to read from /dev/random: {}", e);
+            Error::new(
+                ErrorCategory::Resource,
+                codes::SYSTEM_IO_ERROR_CODE,
+                &error_msg,
+            )
+        })?;
         
         Ok(())
     }
