@@ -85,9 +85,19 @@ pub mod platform_runtime;
 // Bounded infrastructure for static memory allocation
 pub mod bounded_runtime_infra;
 
+// Smart runtime provider that prevents stack overflow
+pub mod runtime_provider;
+
 // Capability-based execution engine
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub mod engine;
+
+// Engine factory pattern for architecture refactoring
+pub mod engine_factory;
+
+// Comprehensive testing infrastructure
+#[cfg(feature = "std")]
+pub mod testing_framework;
 
 // Instruction parser for bytecode to instruction conversion
 pub mod instruction_parser;
