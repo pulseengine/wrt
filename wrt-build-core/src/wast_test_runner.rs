@@ -178,8 +178,7 @@ impl WastTestRunner {
     ) -> Result<()> {
         match directive {
             WastDirective::Module(module) => {
-                let binary =
-                    module.encode().unwrap_or_default().context("Failed to encode module")?;
+                let binary = module.encode().unwrap_or_default();
                 engine.load_module(None, &binary).context("Failed to load module")?;
             },
             WastDirective::AssertReturn { exec, results, .. } => {
@@ -207,7 +206,7 @@ impl WastTestRunner {
                 module, message, ..
             } => {
                 // Test invalid modules
-                match module.encode().or_else(|_| Ok(vec![])) {
+                match module.encode() {
                     Ok(_) => {
                         return Err(anyhow::anyhow!(
                             "Expected invalid module but encoding succeeded"
@@ -222,7 +221,7 @@ impl WastTestRunner {
                 module, message, ..
             } => {
                 // Test malformed modules
-                match module.encode().or_else(|_| Ok(vec![])) {
+                match module.encode() {
                     Ok(_) => {
                         return Err(anyhow::anyhow!(
                             "Expected malformed module but encoding succeeded"
@@ -239,8 +238,7 @@ impl WastTestRunner {
                 // Test unlinkable modules
                 let binary = module
                     .encode()
-                    .unwrap_or_default()
-                    .context("Failed to encode module for unlinkable test")?;
+                    .unwrap_or_default();
                 match engine.load_module(None, &binary) {
                     Ok(_) => {
                         return Err(anyhow::anyhow!(
