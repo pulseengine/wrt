@@ -573,7 +573,7 @@ impl AdvancedThreadingBuiltins {
                 }
             } else {
                 Err(Error::runtime_execution_error("Error occurred"
-                )
+            })?;
             }
         })?
     }
@@ -616,7 +616,7 @@ impl AdvancedThreadingBuiltins {
                 thread.set_thread_local(key, value, destructor)
             } else {
                 Err(Error::runtime_execution_error("Error occurred"
-                )
+            })?;
             }
         })?
     }

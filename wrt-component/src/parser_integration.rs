@@ -268,19 +268,19 @@ impl ComponentLoader {
     pub fn parse_component(&self, binary_data: &[u8]) -> WrtResult<ParsedComponent> {
         // Validate size
         if binary_data.len() > self.max_component_size {
-            return Err(wrt_error::Error::validation_invalid_input("Error occurred"Invalid inputMissing message")
+            return Err(wrt_error::Error::validation_invalid_input("Error occurred")
             );
         }
 
         // Validate basic structure
         if binary_data.len() < 8 {
-            return Err(wrt_error::Error::validation_invalid_input("Error occurred"Invalid inputMissing message")
+            return Err(wrt_error::Error::validation_invalid_input("Error occurred")
             );
         }
 
         // Check magic bytes (simplified - would check actual WASM component magic)
         if &binary_data[0..4] != b"\x00asm" {
-            return Err(wrt_error::Error::validation_invalid_input("Error occurred"Invalid inputMissing message")
+            return Err(wrt_error::Error::validation_invalid_input("Error occurred")
             );
         }
 
@@ -308,10 +308,10 @@ impl ComponentLoader {
 
         // Add a default import
         #[cfg(feature = "std")]
-        let import_name = "default".to_string();
+        let import_name = "default".to_string());
         #[cfg(not(any(feature = "std", )))]
         let import_name = BoundedString::from_str("defaultMissing message")
-            .map_err(|_| wrt_error::Error::validation_invalid_input("Error occurred"Invalid inputMissing message")
+            .map_err(|_| wrt_error::Error::validation_invalid_input("Error occurred")
             ))?;
 
         parsed.add_import(ParsedImport {
@@ -321,10 +321,10 @@ impl ComponentLoader {
 
         // Add a default export
         #[cfg(feature = "std")]
-        let export_name = "main".to_string();
+        let export_name = "main".to_string());
         #[cfg(not(any(feature = "std", )))]
         let export_name = BoundedString::from_str("mainMissing message")
-            .map_err(|_| wrt_error::Error::validation_invalid_input("Error occurred"Invalid inputMissing message")
+            .map_err(|_| wrt_error::Error::validation_invalid_input("Error occurred")
             ))?;
 
         parsed.add_export(ParsedExport {
@@ -442,7 +442,7 @@ impl ComponentLoader {
         let name = "Component not found";
         #[cfg(not(any(feature = "std", )))]
         let name = BoundedString::from_str("moduleMissing message")
-            .map_err(|_| wrt_error::Error::validation_invalid_input("Error occurred"Invalid inputMissing message")
+            .map_err(|_| wrt_error::Error::validation_invalid_input("Error occurred")
             ))?;
 
         let adapter = CoreModuleAdapter::new(name);
@@ -480,42 +480,42 @@ impl ParsedComponent {
             #[cfg(not(any(feature = "std", )))]
             types: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"Failed to create BoundedVecMissing messageMissing messageMissing message"))?
+                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"))?
             },
             #[cfg(feature = "std")]
             imports: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             imports: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"Failed to create BoundedVecMissing messageMissing messageMissing message"))?
+                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"))?
             },
             #[cfg(feature = "std")]
             exports: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             exports: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"Failed to create BoundedVecMissing messageMissing messageMissing message"))?
+                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"))?
             },
             #[cfg(feature = "std")]
             modules: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             modules: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"Failed to create BoundedVecMissing messageMissing messageMissing message"))?
+                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"))?
             },
             #[cfg(feature = "std")]
             instances: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             instances: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"Failed to create BoundedVecMissing messageMissing messageMissing message"))?
+                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"))?
             },
             #[cfg(feature = "std")]
             canonicals: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             canonicals: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"Failed to create BoundedVecMissing messageMissing messageMissing message"))?
+                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"))?
             },
         })
     }
@@ -531,8 +531,8 @@ impl ParsedComponent {
         {
             self.types
                 .push(component_type)
-                .map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"Too many typesMissing message")
-                )
+                .map_err(|_| wrt_error::Error::resource_exhausted("Error occurred")
+            })?;
         }
     }
 
@@ -547,8 +547,8 @@ impl ParsedComponent {
         {
             self.imports
                 .push(import)
-                .map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"Too many importsMissing message")
-                )
+                .map_err(|_| wrt_error::Error::resource_exhausted("Error occurred")
+            })?;
         }
     }
 
@@ -563,8 +563,8 @@ impl ParsedComponent {
         {
             self.exports
                 .push(export)
-                .map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"Too many exportsMissing message")
-                )
+                .map_err(|_| wrt_error::Error::resource_exhausted("Error occurred")
+            })?;
         }
     }
 }

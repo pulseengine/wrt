@@ -1719,7 +1719,7 @@ impl FuelAsyncExecutor {
                         self.ready_queue.clone(),
                         weak_self.clone(),
                         task.execution_context.asil_config.mode,
-                    )
+                    )?
                 } else {
                     // Fallback to no-op waker if self_ref not set
                     create_noop_waker()

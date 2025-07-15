@@ -87,7 +87,7 @@ fn encode_latin1(s: &str) -> Result<Vec<u8>> {
     for c in s.chars() {
         let code_point = c as u32;
         if code_point > 0xFF {
-            return Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message");
+            return Err(Error::component_not_found("Error occurred"));
         }
         bytes.push(code_point as u8);
     }
@@ -98,15 +98,14 @@ fn encode_latin1(s: &str) -> Result<Vec<u8>> {
 /// Decode from UTF-8
 fn decode_utf8(bytes: &[u8]) -> Result<String> {
     core::str::from_utf8(bytes).map(|s| s.to_string()).map_err(|e| {
-        Error::component_not_found("Error occurred"Component not foundMissing message")
+        Error::component_not_found("Error occurred")
     })
 }
 
 /// Decode from UTF-16 Little Endian
 fn decode_utf16_le(bytes: &[u8]) -> Result<String> {
     if bytes.len() % 2 != 0 {
-        return Err(Error::runtime_execution_error("Error occurred",
-        );
+        return Err(Error::runtime_execution_error("Error occurred"));
     }
 
     let mut code_units = Vec::new();
@@ -116,15 +115,14 @@ fn decode_utf16_le(bytes: &[u8]) -> Result<String> {
     }
 
     String::from_utf16(&code_units).map_err(|e| {
-        Error::component_not_found("Missing error messageMissing message")
+        Error::component_not_found("Unknown string encoding")
     })
 }
 
 /// Decode from UTF-16 Big Endian
 fn decode_utf16_be(bytes: &[u8]) -> Result<String> {
     if bytes.len() % 2 != 0 {
-        return Err(Error::runtime_execution_error("Error occurred",
-        );
+        return Err(Error::runtime_execution_error("Error occurred"));
     }
 
     let mut code_units = Vec::new();
@@ -134,7 +132,7 @@ fn decode_utf16_be(bytes: &[u8]) -> Result<String> {
     }
 
     String::from_utf16(&code_units).map_err(|e| {
-        Error::component_not_found("Missing error messageMissing message")
+        Error::component_not_found("Unknown string encoding")
     })
 }
 
@@ -142,7 +140,7 @@ fn decode_utf16_be(bytes: &[u8]) -> Result<String> {
 fn decode_latin1(bytes: &[u8]) -> Result<String> {
     // Latin-1 is a direct mapping from bytes to Unicode code points 0x00-0xFF
     let chars: Vec<char> = bytes.iter().map(|&b| b as char).collect();
-    Ok(chars.into_iter().collect()
+    Ok(chars.into_iter().collect())
 }
 
 /// String transcoding utilities for the canonical ABI
@@ -163,7 +161,7 @@ impl StringTranscoder {
     pub fn transcode(&self, input: &[u8]) -> Result<Vec<u8>> {
         if self.source_encoding == self.target_encoding {
             // No transcoding needed
-            return Ok(input.to_vec();
+            return Ok(input.to_vec());
         }
 
         // First decode from source encoding
@@ -230,7 +228,7 @@ pub fn lift_string_with_options(
 ) -> Result<String> {
     // Check bounds for length prefix
     if addr as usize + 4 > memory.len() {
-        return Err(Error::runtime_out_of_bounds("Error occurred"String length prefix out of boundsMissing messageMissing messageMissing message");
+        return Err(Error::runtime_out_of_bounds("Error occurred"));
     }
 
     // Read length prefix
@@ -241,14 +239,14 @@ pub fn lift_string_with_options(
     // Check length limit
     if let Some(max_len) = options.max_length {
         if length > max_len {
-            return Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message");
+            return Err(Error::component_not_found("Error occurred"));
         }
     }
 
     // Check bounds for string data
     let data_start = addr as usize + 4;
     if data_start + length > memory.len() {
-        return Err(Error::runtime_out_of_bounds("Error occurred"String data out of boundsMissing messageMissing messageMissing message");
+        return Err(Error::runtime_out_of_bounds("Error occurred"));
     }
 
     // Extract string bytes
@@ -291,7 +289,7 @@ pub fn lower_string_with_options(
     // Check bounds
     let total_size = 4 + encoded.len();
     if addr as usize + total_size > memory.len() {
-        return Err(Error::runtime_out_of_bounds("Missing error messageMissing messageMissing messageMissing message");
+        return Err(Error::runtime_out_of_bounds("String data exceeds memory bounds"));
     }
 
     // Write length prefix
@@ -301,7 +299,7 @@ pub fn lower_string_with_options(
     // Write string data
     memory[addr as usize + 4..addr as usize + 4 + encoded.len()].copy_from_slice(&encoded);
 
-    Ok(()
+    Ok(())
 }
 
 /// Validate a string according to Component Model rules
@@ -309,12 +307,11 @@ fn validate_string(s: &str) -> Result<()> {
     // Check for isolated surrogates (not allowed in Component Model)
     for ch in s.chars() {
         if (0xD800..=0xDFFF).contains(&(ch as u32)) {
-            return Err(Error::runtime_execution_error("Error occurred",
-            );
+            return Err(Error::runtime_execution_error("Error occurred"));
         }
     }
 
-    Ok(()
+    Ok(())
 }
 
 #[cfg(test)]
@@ -323,7 +320,8 @@ mod tests {
 
     #[test]
     fn test_utf8_encoding() {
-        let text = Missing message").unwrap();
+        let text = "Hello, world!";
+        let encoded = encode_string(text, StringEncoding::Utf8).unwrap();
         let decoded = decode_string(&encoded, StringEncoding::Utf8).unwrap();
         assert_eq!(text, decoded);
     }
@@ -362,7 +360,7 @@ mod tests {
     fn test_latin1_encoding_error() {
         let text = "Hello, 世界!"; // Contains non-Latin-1 characters
         let result = encode_string(text, StringEncoding::Latin1);
-        assert!(result.is_err();
+        assert!(result.is_err());
     }
 
     #[test]

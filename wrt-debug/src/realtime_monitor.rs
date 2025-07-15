@@ -117,7 +117,7 @@ impl RealtimeMonitor {
     pub fn new(config: MonitorConfig) -> Self {
         #[cfg(feature = "std")]
         let history_capacity = config.history_size;
-        
+
         Self {
             config,
             active: AtomicBool::new(false),

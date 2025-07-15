@@ -62,7 +62,7 @@ impl Import {
         if ns_str.is_empty() {
             self.name.clone()
         } else {
-            "Component not found"
+            format!("{}.{}", ns_str, self.name)
         }
     }
 
@@ -132,7 +132,7 @@ mod tests {
 
     #[test]
     fn test_import_identifier() {
-        let namespace = Namespace::from_string("wasi.httpMissing message");
+        let namespace = Namespace::from_string("wasi.http");
         let import = Import::new(
             namespace,
             "fetch".to_string(),
@@ -149,10 +149,10 @@ mod tests {
             }),
         );
 
-        assert_eq!(import.identifier(), "wasi.http.fetchMissing message");
+        assert_eq!(import.identifier(), "wasi.http.fetch");
 
         // Test without namespace
-        let empty_ns = Namespace::from_string("Error");
+        let empty_ns = Namespace::from_string("");
         let import2 = Import::new(
             empty_ns,
             "print".to_string(),
@@ -169,7 +169,7 @@ mod tests {
             }),
         );
 
-        assert_eq!(import2.identifier(), "printMissing message");
+        assert_eq!(import2.identifier(), "print");
     }
 
     #[test]
@@ -178,7 +178,7 @@ mod tests {
         assert!(collection.is_empty());
 
         let import1 = Import::new(
-            Namespace::from_string("wasi.httpMissing message"),
+            Namespace::from_string("wasi.http"),
             "fetch".to_string(),
             ExternType::Function {
                 params: vec![("arg".to_string(), ValType::U32)],
@@ -194,7 +194,7 @@ mod tests {
         );
 
         let import2 = Import::new(
-            Namespace::from_string("wasi.ioMissing message"),
+            Namespace::from_string("wasi.io"),
             "read".to_string(),
             ExternType::Function {
                 params: vec![("arg".to_string(), ValType::U32)],
@@ -215,11 +215,11 @@ mod tests {
         assert_eq!(collection.len(), 2);
         assert!(!collection.is_empty());
 
-        let fetched = collection.get("wasi.http.fetchMissing message");
+        let fetched = collection.get("wasi.http.fetch");
         assert!(fetched.is_some());
-        assert_eq!(fetched.unwrap().name, "fetchMissing message");
+        assert_eq!(fetched.unwrap().name, "fetch");
 
-        let not_found = collection.get("unknownMissing message");
+        let not_found = collection.get("unknown");
         assert!(not_found.is_none());
 
         let imports: Vec<&Import> = collection.iter().collect();

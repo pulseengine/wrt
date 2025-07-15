@@ -17,6 +17,14 @@ use wrt::{
 #[cfg(test)]
 mod simple_spec_tests;
 
+// Include comprehensive test suite with expected failures
+#[cfg(test)]
+mod comprehensive_test_suite;
+
+// Include test statistics validation
+#[cfg(test)]
+mod test_statistics_validation;
+
 // Include SIMD instruction tests
 #[cfg(test)]
 mod simd_tests;

@@ -565,7 +565,7 @@ impl ErrorContextBuiltins {
                 Ok(()
             } else {
                 Err(Error::runtime_execution_error("Error occurred"
-                )
+            })?;
             }
         })?
     }
@@ -588,7 +588,7 @@ impl ErrorContextBuiltins {
                 Ok(()
             } else {
                 Err(Error::runtime_execution_error("Error occurred"
-                )
+            })?;
             }
         })?
     }
@@ -606,7 +606,7 @@ impl ErrorContextBuiltins {
                 Ok(()
             } else {
                 Err(Error::runtime_execution_error("Error occurred"
-                )
+            })?;
             }
         })?
     }
@@ -623,7 +623,7 @@ impl ErrorContextBuiltins {
                 Ok(()
             } else {
                 Err(Error::runtime_execution_error("Error occurred"
-                )
+            })?;
             }
         })?
     }
@@ -650,7 +650,7 @@ pub mod error_context_helpers {
     /// Create an error context from a standard error
     #[cfg(feature = "std")]
     pub fn from_error(error: &Error) -> Result<ErrorContextId> {
-        let message = error.message().to_string();
+        let message = error.message().to_string());
         let severity = match error.category() {
             ErrorCategory::InvalidInput | ErrorCategory::Type => ErrorSeverity::Warning,
             ErrorCategory::Runtime | ErrorCategory::Memory => ErrorSeverity::Error,

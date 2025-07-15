@@ -48,14 +48,12 @@ fn scan_for_builtins_fallback(binary: &[u8]) -> Result<Vec<String>> {
     
     // Validate WebAssembly magic number and version
     if binary.len() < 8 {
-        return Err(Error::parse_error("Binary too short to be a valid WebAssembly module"))
-        );
+        return Err(Error::parse_error("Binary too short to be a valid WebAssembly module"));
     }
     
     // Check magic number
     if &binary[0..4] != b"\0asm" {
-        return Err(Error::parse_error("Invalid WebAssembly magic number"))
-        );
+        return Err(Error::parse_error("Invalid WebAssembly magic number"));
     }
     
     let mut builtin_names = Vec::new();
@@ -72,8 +70,7 @@ fn scan_for_builtins_fallback(binary: &[u8]) -> Result<Vec<String>> {
         
         // Read section size
         let (section_size, new_offset) = binary::read_leb128_u32(binary, offset)
-            .map_err(|e| Error::parse_error("Failed to read section size")
-            ))?;
+            .map_err(|e| Error::parse_error("Failed to read section size"))?;
         offset = new_offset;
         
         let section_end = offset + section_size as usize;
@@ -133,7 +130,7 @@ fn parse_builtins_from_import_section(data: &[u8]) -> Result<Vec<String>> {
         
         // Check if this is a wasi_builtin import
         if module_name == "wasi_builtin" {
-            builtin_names.push(import_name.to_string();
+            builtin_names.push(import_name.to_string());
         }
         
         // Skip import kind and type info
@@ -177,7 +174,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
         }
     }
 
-    Ok((result, bytes_read)
+    Ok((result, bytes_read))
 }
 
 /// Scan a WebAssembly binary for built-in imports and map them to built-in
@@ -293,7 +290,7 @@ mod tests {
 
         // Test the mapping to built-in types
         let required_builtins = get_required_builtins(&module).unwrap();
-        assert!(required_builtins.contains(&BuiltinType::ResourceCreate);
+        assert!(required_builtins.contains(&BuiltinType::ResourceCreate));
         assert_eq!(required_builtins.len(), 1);
     }
 
@@ -344,15 +341,15 @@ mod tests {
         // Verify all map to correct builtin types
         assert!(get_required_builtins(&resource_create_module)
             .unwrap()
-            .contains(&BuiltinType::ResourceCreate);
+            .contains(&BuiltinType::ResourceCreate));
         assert!(get_required_builtins(&resource_drop_module)
             .unwrap()
-            .contains(&BuiltinType::ResourceDrop);
+            .contains(&BuiltinType::ResourceDrop));
         assert!(get_required_builtins(&resource_rep_module)
             .unwrap()
-            .contains(&BuiltinType::ResourceRep);
+            .contains(&BuiltinType::ResourceRep));
         assert!(get_required_builtins(&resource_get_module)
             .unwrap()
-            .contains(&BuiltinType::ResourceGet);
+            .contains(&BuiltinType::ResourceGet));
     }
 }

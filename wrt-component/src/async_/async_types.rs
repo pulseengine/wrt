@@ -380,8 +380,7 @@ impl WaitableSet {
         #[cfg(not(any(feature = "std", )))]
         {
             self.waitables.push(waitable).map_err(|_| {
-                wrt_error::Error::runtime_execution_error("Error occurred"
-                )
+                wrt_error::Error::runtime_execution_error("Error occurred")
             })?;
         }
 

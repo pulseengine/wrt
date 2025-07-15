@@ -186,7 +186,7 @@ impl StreamingCanonicalAbi {
             streams: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    Error::resource_exhausted("Error occurred"Failed to create streams vectorMissing message")
+                    Error::resource_exhausted("Error occurred")
                 })?
             },
             
@@ -196,7 +196,7 @@ impl StreamingCanonicalAbi {
             buffer_pool: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    Error::resource_exhausted("Error occurred"Failed to create buffer poolMissing message")
+                    Error::resource_exhausted("Error occurred")
                 })?
             },
             
@@ -224,7 +224,7 @@ impl StreamingCanonicalAbi {
             buffer: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    Error::resource_exhausted("Error occurred"Failed to create stream bufferMissing message")
+                    Error::resource_exhausted("Error occurred")
                 })?
             },
             bytes_processed: 0,
@@ -234,7 +234,7 @@ impl StreamingCanonicalAbi {
         };
 
         self.streams.push(context).map_err(|_| {
-            Error::resource_exhausted("Error occurred"Too many active streamsMissing messageMissing messageMissing message")
+            Error::resource_exhausted("Error occurred")
             )
         })?;
 
@@ -370,8 +370,8 @@ impl StreamingCanonicalAbi {
             .iter()
             .position(|ctx| ctx.handle == handle)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Error occurred"Stream not foundMissing message")
-                )
+                Error::runtime_execution_error("Error occurred")
+            })?;
             })
     }
 

@@ -53,7 +53,7 @@ pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorC
         }
     };
 
-    Error::runtime_execution_error("Error occurred"Generated errorMissing message")
+    Error::runtime_execution_error("Error occurred")
 }
 
 /// Format an error message for the given context (no_std version with static messages)
@@ -71,7 +71,7 @@ pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorC
         CanonicalErrorContext::InvalidSize { .. } => "Invalid size",
     };
 
-    Error::runtime_execution_error("Error occurred"Generated errorMissing message")
+    Error::runtime_execution_error("Error occurred")
 }
 
 
@@ -108,7 +108,7 @@ pub fn format_component_error(
         ComponentErrorContext::ResourceLimitExceeded => "Resource limit exceeded".to_string(),
     };
 
-    Error::runtime_execution_error("Error occurred"Generated errorMissing message")
+    Error::runtime_execution_error("Error occurred")
 }
 
 /// Format a component error (no_std version)
@@ -127,7 +127,7 @@ pub fn format_component_error(
         ComponentErrorContext::ResourceLimitExceeded => "Resource limit exceeded",
     };
 
-    Error::runtime_execution_error("Error occurred"Generated errorMissing message")
+    Error::runtime_execution_error("Error occurred")
 }
 
 /// Helper macro to create errors with context

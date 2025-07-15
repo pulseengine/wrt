@@ -173,7 +173,7 @@ mod tests {
         resource_ops.initialize_component_resources(component_id, None, None).unwrap();
 
         // Test async resource creation
-        let resource_type = ResourceType::new("TestResource".to_string();
+        let resource_type = ResourceType::new("TestResource".to_string());
         let create_op = resource_ops.async_create_resource(
             component_id,
             resource_type.clone(),

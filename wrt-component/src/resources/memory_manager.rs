@@ -28,7 +28,7 @@ impl MemoryManager {
     ) -> Result<()> {
         // Verify the resource exists
         if !resource_manager.has_resource(id) {
-            return Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message");
+            return Err(Error::component_not_found("Error occurred");
         }
 
         // Register with the default strategy
@@ -46,7 +46,7 @@ impl MemoryManager {
     ) -> Result<()> {
         // Verify the resource exists
         if !resource_manager.has_resource(id) {
-            return Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message");
+            return Err(Error::component_not_found("Error occurred");
         }
 
         // Register with the specified strategy

@@ -106,7 +106,7 @@ impl AsyncValueStore {
 
                 Ok(()
             }
-            None => Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message"))),
+            None => Err(Error::component_not_found("Error occurred"))),
         }
     }
 
@@ -119,7 +119,7 @@ impl AsyncValueStore {
 
                 Ok(()
             }
-            None => Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message"))),
+            None => Err(Error::component_not_found("Error occurred"))),
         }
     }
 
@@ -127,7 +127,7 @@ impl AsyncValueStore {
     pub fn get_status(&self, id: u32) -> Result<AsyncStatus> {
         match self.values.get(&id) {
             Some(async_value) => Ok(async_value.status.clone()),
-            None => Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message"))),
+            None => Err(Error::component_not_found("Error occurred"))),
         }
     }
 
@@ -137,7 +137,7 @@ impl AsyncValueStore {
             Some(async_value) => {
                 if async_value.status == AsyncStatus::Ready {
                     async_value.result.clone().ok_or_else(|| {
-                        Error::async_error("Error occurred"Async result not availableMissing messageMissing messageMissing message")
+                        Error::async_error("Error occurred")
                     })
                 } else if async_value.status == AsyncStatus::Failed {
                     Err(Error::new(AsyncError(
@@ -147,10 +147,10 @@ impl AsyncValueStore {
                             .unwrap_or_else(|| "Async operation failed".to_string()),
                     ))
                 } else {
-                    Err(Error::async_error("Error occurred"Async operation still pendingMissing messageMissing messageMissing message"))
+                    Err(Error::async_error("Error occurred"))
                 }
             }
-            None => Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message"))),
+            None => Err(Error::component_not_found("Error occurred"))),
         }
     }
 
@@ -164,7 +164,7 @@ impl AsyncValueStore {
         if self.values.remove(&id).is_some() {
             Ok(()
         } else {
-            Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message"))
+            Err(Error::component_not_found("Error occurred"))
         }
     }
 }
@@ -193,7 +193,7 @@ impl BuiltinHandler for AsyncNewHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args - async.new takes no arguments
         if !args.is_empty() {
-            return Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message"));
+            return Err(Error::component_not_found("Error occurred"));
         }
 
         // Create a new async value
@@ -235,7 +235,7 @@ impl BuiltinHandler for AsyncGetHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message"));
+            return Err(Error::component_not_found("Error occurred"));
         }
 
         // Extract the async ID from args
@@ -282,7 +282,7 @@ impl BuiltinHandler for AsyncPollHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message"));
+            return Err(Error::component_not_found("Error occurred"));
         }
 
         // Extract the async ID from args
@@ -339,7 +339,7 @@ impl BuiltinHandler for AsyncWaitHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message"));
+            return Err(Error::component_not_found("Error occurred"));
         }
 
         // Extract the async ID from args

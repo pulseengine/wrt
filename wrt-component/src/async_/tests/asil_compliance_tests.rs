@@ -497,7 +497,7 @@ mod tests {
                     },
                     ComponentAsyncTaskType::AsyncFunction,
                     Priority::Normal,
-                )
+            })?;
             };
             
             match result {

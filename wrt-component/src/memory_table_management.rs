@@ -267,7 +267,7 @@ impl ComponentMemoryManager {
             for _ in 0..initial_size {
                 data.push(0u8).map_err(|_| {
                     wrt_error::Error::resource_exhausted("Memory allocation failed")
-                    )
+                })?;
                 })?;
             }
         }
@@ -289,7 +289,7 @@ impl ComponentMemoryManager {
         {
             self.memories.push(memory).map_err(|_| {
                 wrt_error::Error::resource_exhausted("Too many memories")
-                )
+            })?;
             })?;
         }
 
@@ -437,7 +437,7 @@ impl ComponentMemoryManager {
             for _ in 0..additional_size {
                 memory.data.push(0u8).map_err(|_| {
                     wrt_error::Error::resource_exhausted("Memory allocation failed")
-                    )
+                })?;
                 })?;
             }
         }
@@ -531,7 +531,7 @@ impl ComponentMemoryManager {
         {
             self.sharing_policies.push(policy).map_err(|_| {
                 wrt_error::Error::resource_exhausted("Too many sharing policies")
-                )
+            })?;
             })
         }
     }
@@ -591,7 +591,7 @@ impl ComponentTableManager {
             for _ in 0..limits.min {
                 elements.push(TableElement::Null).map_err(|_| {
                     wrt_error::Error::resource_exhausted("Table allocation failed")
-                    )
+                })?;
                 })?;
             }
         }
@@ -606,7 +606,7 @@ impl ComponentTableManager {
         {
             self.tables.push(table).map_err(|_| {
                 wrt_error::Error::resource_exhausted("Too many tables")
-                )
+            })?;
             })?;
         }
 
@@ -685,7 +685,7 @@ impl ComponentTableManager {
             for _ in 0..size {
                 table.elements.push(init.clone()).map_err(|_| {
                     wrt_error::Error::resource_exhausted("Table allocation failed")
-                    )
+                })?;
                 })?;
             }
         }
@@ -704,7 +704,7 @@ impl ComponentTableManager {
         {
             self.sharing_policies.push(policy).map_err(|_| {
                 wrt_error::Error::resource_exhausted("Too many sharing policies")
-                )
+            })?;
             })
         }
     }

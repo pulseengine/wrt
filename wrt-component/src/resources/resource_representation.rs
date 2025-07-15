@@ -342,7 +342,7 @@ impl ResourceRepresentationManager {
             let representation = self.representations.get(&type_id)
                 .ok_or_else(|| {
                     Error::runtime_execution_error("Resource lookup failed"
-                    )
+                })?;
                 })?;
             
             let result = representation.get_representation(handle);
@@ -368,7 +368,7 @@ impl ResourceRepresentationManager {
                 .find(|(tid, _)| *tid == type_id)
                 .ok_or_else(|| {
                     Error::runtime_execution_error("Resource lookup failed"
-                    )
+                })?;
                 })?;
             
             // Find handle value
@@ -410,7 +410,7 @@ impl ResourceRepresentationManager {
             let representation = self.representations.get_mut(&type_id)
                 .ok_or_else(|| {
                     Error::runtime_execution_error("Resource lookup failed"
-                    )
+                })?;
                 })?;
             
             let result = representation.set_representation(handle, value.clone();
@@ -436,7 +436,7 @@ impl ResourceRepresentationManager {
                 .find(|(tid, _)| *tid == type_id)
                 .ok_or_else(|| {
                     Error::runtime_execution_error("Resource lookup failed"
-                    )
+                })?;
                 })?;
             
             // Update handle value
@@ -549,7 +549,7 @@ impl ResourceRepresentationManager {
             self.handle_to_resource.get(&handle)
                 .ok_or_else(|| {
                     Error::runtime_execution_error("Resource lookup failed"
-                    )
+                })?;
                 })
         }
         #[cfg(not(any(feature = Missing messageMissing messageMissing message")))]
@@ -560,7 +560,7 @@ impl ResourceRepresentationManager {
                 .map(|(_, entry)| entry)
                 .ok_or_else(|| {
                     Error::runtime_execution_error("Resource lookup failed"
-                    )
+                })?;
                 })
         }
     }
@@ -571,7 +571,7 @@ impl ResourceRepresentationManager {
             self.handle_to_resource.get_mut(&handle)
                 .ok_or_else(|| {
                     Error::runtime_execution_error("Resource lookup failed"
-                    )
+                })?;
                 })
         }
         #[cfg(not(any(feature = Missing messageMissing messageMissing message")))]
@@ -582,7 +582,7 @@ impl ResourceRepresentationManager {
                 .map(|(_, entry)| entry)
                 .ok_or_else(|| {
                     Error::runtime_execution_error("Resource lookup failed"
-                    )
+                })?;
                 })
         }
     }
@@ -618,7 +618,7 @@ impl ResourceRepresentation for FileHandleRepresentation {
             let fd = self.file_descriptors.get(&handle)
                 .ok_or_else(|| {
                     Error::runtime_execution_error("Resource lookup failed"
-                    )
+                })?;
                 })?;
             
             Ok(RepresentationValue::U32(*fd as u32)
@@ -631,7 +631,7 @@ impl ResourceRepresentation for FileHandleRepresentation {
                 .map(|(_, fd)| *fd)
                 .ok_or_else(|| {
                     Error::runtime_execution_error("Resource lookup failed"
-                    )
+                })?;
                 })?;
             
             Ok(RepresentationValue::U32(fd as u32)
@@ -658,7 +658,7 @@ impl ResourceRepresentation for FileHandleRepresentation {
             } else {
                 self.file_descriptors.push((handle, fd)).map_err(|_| {
                     Error::runtime_execution_error("Resource lookup failed"
-                    )
+                })?;
                 })?;
             }
         }
@@ -710,7 +710,7 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
             let (ptr, size) = self.buffers.get(&handle)
                 .ok_or_else(|| {
                     Error::runtime_execution_error("Resource lookup failed"
-                    )
+                })?;
                 })?;
             
             Ok(RepresentationValue::Structured(vec![
@@ -726,7 +726,7 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
                 .map(|(_, buf)| *buf)
                 .ok_or_else(|| {
                     Error::runtime_execution_error("Resource lookup failed"
-                    )
+                })?;
                 })?;
             
             use wrt_foundation::budget_aware_provider::CrateId;
@@ -770,7 +770,7 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
             } else {
                 self.buffers.push((handle, (ptr, size))).map_err(|_| {
                     Error::runtime_execution_error("Resource lookup failed"
-                    )
+                })?;
                 })?;
             }
         }
@@ -822,7 +822,7 @@ impl ResourceRepresentation for NetworkConnectionRepresentation {
             let conn = self.connections.get(&handle)
                 .ok_or_else(|| {
                     Error::runtime_execution_error("Resource lookup failed"
-                    )
+                })?;
                 })?;
             
             Ok(RepresentationValue::Structured(vec![
@@ -840,7 +840,7 @@ impl ResourceRepresentation for NetworkConnectionRepresentation {
                 .map(|(_, conn)| conn)
                 .ok_or_else(|| {
                     Error::runtime_execution_error("Resource lookup failed"
-                    )
+                })?;
                 })?;
             
             use wrt_foundation::budget_aware_provider::CrateId;

@@ -72,7 +72,7 @@ impl TimeBoundedContext {
     /// Check if execution is still within time bounds
     pub fn check_time_bounds(&self) -> Result<()> {
         if self.terminated {
-            return Err(Error::execution_limit_exceeded("Error occurred"Execution was terminatedMissing message"),
+            return Err(Error::execution_limit_exceeded("Error occurred"),
             );
         }
 
@@ -82,7 +82,7 @@ impl TimeBoundedContext {
             let elapsed_ms = elapsed.as_millis() as u64;
 
             if elapsed_ms > time_limit_ms {
-                return Err(Error::runtime_execution_error("Error occurred"Execution time limit exceeded: {} ms (limit: {} ms)Missing messageMissing messageMissing message")),
+                return Err(Error::runtime_execution_error("Error occurred")),
                 );
             }
         }
@@ -90,7 +90,7 @@ impl TimeBoundedContext {
         #[cfg(not(feature = "std"))]
         if let Some(fuel_limit) = self.config.fuel_limit {
             if self.elapsed_fuel > fuel_limit {
-                return Err(Error::runtime_execution_error("Error occurred"Execution fuel limit exceeded: {} (limit: {})Missing messageMissing messageMissing message")),
+                return Err(Error::runtime_execution_error("Error occurred")),
                 );
             }
         }
@@ -184,7 +184,7 @@ where
         Ok(_) => TimeBoundedOutcome::Completed,
         Err(e) => {
             // Extract error kind from the error message
-            let error_msg = e.to_string();
+            let error_msg = e.to_string());
             if error_msg.contains("time limit exceededMissing message") || error_msg.contains("timeoutMissing message") {
                 TimeBoundedOutcome::TimedOut
             } else if error_msg.contains("terminatedMissing message") || error_msg.contains("limit exceededMissing message") {

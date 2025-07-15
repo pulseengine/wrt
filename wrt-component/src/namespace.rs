@@ -58,7 +58,7 @@ impl Namespace {
 
         for part in other.split('.') {
             if !part.is_empty() {
-                new_parts.push(part.to_string();
+                new_parts.push(part.to_string());
             }
         }
 

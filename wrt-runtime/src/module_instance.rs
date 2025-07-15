@@ -56,14 +56,17 @@ pub struct ModuleInstance {
 impl ModuleInstance {
     /// Create a new module instance from a module
     pub fn new(module: Module, instance_id: usize) -> Result<Self> {
+        // Create a single shared provider to avoid stack overflow from multiple provider allocations
+        let shared_provider = create_runtime_provider()?;
+        
         // Allocate memory for memories collection
-        let memories_vec = wrt_foundation::bounded::BoundedVec::new(create_runtime_provider()?)?;
+        let memories_vec = wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?;
         
         // Allocate memory for tables collection
-        let tables_vec = wrt_foundation::bounded::BoundedVec::new(create_runtime_provider()?)?;
+        let tables_vec = wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?;
         
         // Allocate memory for globals collection
-        let globals_vec = wrt_foundation::bounded::BoundedVec::new(create_runtime_provider()?)?;
+        let globals_vec = wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?;
         
         Ok(Self {
             module: Arc::new(module),

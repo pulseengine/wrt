@@ -241,19 +241,20 @@ fn run_wast_test(file_path: &str, wrtd_path: &str) -> TestResult {
         .count();
     
     // Check for unsupported features
+    // Updated based on deep codebase analysis - these features ARE implemented:
+    // - multi-memory: Multiple memory instances supported in module_instance.rs
+    // - function-references: RefType, call_ref implemented in reference_ops.rs
+    // - relaxed-simd: All ops defined in simd_ops.rs
+    // - tail-call: Full implementation in stackless/tail_call.rs
+    // - extended-const: Const expressions with arithmetic in const_expr.rs
     let unsupported_features = [
-        "exception-handling",
-        "gc",
-        "threads",
-        "multi-memory",
-        "function-references",
-        "relaxed-simd",
-        "tail-call",
-        "wasm-3.0",
-        "wide-arithmetic",
-        "custom-page-sizes",
-        "extended-const",
-        "annotations"
+        "exception-handling",  // No try/catch/throw implementation found
+        "gc",                 // Only partial type support, no runtime
+        "threads",            // Not verified in analysis
+        "wasm-3.0",          // Future specification
+        "wide-arithmetic",    // i64.add128 etc not found
+        "custom-page-sizes",  // Advanced memory feature
+        "annotations"         // Metadata feature
     ];
     
     for feature in &unsupported_features {

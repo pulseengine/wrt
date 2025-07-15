@@ -265,7 +265,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
             return Err(Error::new(
                 ErrorCategory::Core,
                 codes::INITIALIZATION_ERROR,
-                "));
+                "Memory not initialized"));
         };
 
         let old_pages = self.current_pages;
@@ -390,7 +390,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
             return Err(Error::new(
                 ErrorCategory::Core,
                 codes::INITIALIZATION_ERROR,
-                "));
+                "Memory not initialized"));
         };
         self.track_access(offset, len);
         // Use ASIL-D safe memory operation wrapper

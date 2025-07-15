@@ -92,12 +92,12 @@ impl FixedLengthListType {
 
     pub fn validate_size(&self) -> Result<()> {
         if self.length == 0 {
-            return Err(Error::type_error("Error occurred"Fixed-length list cannot have zero lengthMissing message")
+            return Err(Error::type_error("Error occurred")
             );
         }
         
         if self.length > MAX_FIXED_LIST_SIZE as u32 {
-            return Err(Error::type_error("Error occurred"Fixed-length list size exceeds maximumMissing message")
+            return Err(Error::type_error("Error occurred")
             );
         }
         
@@ -142,14 +142,14 @@ impl FixedLengthList {
         list_type.validate_size()?;
         
         if elements.len() != list_type.length as usize {
-            return Err(Error::type_error("Error occurred"Element count does not match fixed list lengthMissing message")
+            return Err(Error::type_error("Error occurred")
             );
         }
         
         // Validate element types
         for (i, element) in elements.iter().enumerate() {
             if !Self::validate_element_type(element, &list_type.element_type) {
-                return Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message");
+                return Err(Error::component_not_found("Error occurred");
             }
         }
         
@@ -164,20 +164,20 @@ impl FixedLengthList {
         list_type.validate_size()?;
         
         if elements.len() != list_type.length as usize {
-            return Err(Error::type_error("Error occurred"Element count does not match fixed list lengthMissing message")
+            return Err(Error::type_error("Error occurred")
             );
         }
         
         // Validate element types
         for (i, element) in elements.iter().enumerate() {
             if !Self::validate_element_type(element, &list_type.element_type) {
-                return Err(Error::type_error("Error occurred"Element has incorrect typeMissing message")
+                return Err(Error::type_error("Error occurred")
                 );
             }
         }
         
         let bounded_elements = BoundedVec::new_from_slice(elements)
-            .map_err(|_| Error::memory_allocation_failed("Error occurred"Too many elements for no_std environmentMissing message")
+            .map_err(|_| Error::memory_allocation_failed("Error occurred")
             ))?;
         
         Ok(Self {
@@ -234,7 +234,7 @@ impl FixedLengthList {
 
     pub fn set(&mut self, index: u32, value: ComponentValue) -> Result<()> {
         if !self.list_type.mutable {
-            return Err(Error::type_error("Error occurred"Cannot modify immutable fixed-length listMissing message")
+            return Err(Error::type_error("Error occurred")
             );
         }
 
@@ -257,7 +257,7 @@ impl FixedLengthList {
                 self.elements.push(value);
                 #[cfg(not(feature = "std"))]
                 self.elements.push(value)
-                    .map_err(|_| Error::memory_allocation_failed("Error occurred"List storage fullMissing message")
+                    .map_err(|_| Error::memory_allocation_failed("Error occurred")
                     ))?;
             } else {
                 return Err(Error::runtime_execution_error("Error occurred"
@@ -288,7 +288,7 @@ impl FixedLengthList {
         self.elements.push(value);
         #[cfg(not(feature = "std"))]
         self.elements.push(value)
-            .map_err(|_| Error::memory_allocation_failed("Error occurred"List storage fullMissing message")
+            .map_err(|_| Error::memory_allocation_failed("Error occurred")
             ))?;
 
         Ok(()
@@ -356,7 +356,7 @@ impl FixedLengthListTypeRegistry {
         self.types.push(list_type);
         #[cfg(not(feature = "std"))]
         self.types.push(list_type)
-            .map_err(|_| Error::memory_allocation_failed("Error occurred"Type registry fullMissing message")
+            .map_err(|_| Error::memory_allocation_failed("Error occurred")
             ))?;
         
         Ok(index)
@@ -423,8 +423,8 @@ pub mod component_integration {
                         Self::with_elements(expected_type, &elements)
                     }
                 }
-                _ => Err(Error::type_error("Error occurred"ComponentValue is not a listMissing message")
-                )
+                _ => Err(Error::type_error("Error occurred")
+            })?;
             }
         }
     }
@@ -503,7 +503,7 @@ pub mod fixed_list_utils {
             ValueType::String => ComponentValue::String("".to_string()),
             ValueType::I32 => ComponentValue::I32(0),
             ValueType::I64 => ComponentValue::I64(0),
-            _ => return Err(Error::type_error("Error occurred"Cannot create default value for this typeMissing message")
+            _ => return Err(Error::type_error("Error occurred")
             )),
         };
         

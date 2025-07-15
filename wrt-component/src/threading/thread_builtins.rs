@@ -63,7 +63,7 @@ impl ThreadBuiltins {
         
         // Validate function exists
         if !self.is_function_valid(function_index) {
-            return Err(Error::validation_invalid_argument("Error occurred"Invalid function reference for thread spawnMissing messageMissing messageMissing message");
+            return Err(Error::validation_invalid_argument("Error occurred");
         }
         
         // Validate argument count and types
@@ -165,7 +165,7 @@ impl ThreadBuiltins {
         // For now, we just validate and store the request
         
         if cpu_mask == 0 {
-            return Err(Error::validation_invalid_argument("Error occurred"CPU affinity mask cannot be zeroMissing messageMissing messageMissing message");
+            return Err(Error::validation_invalid_argument("Error occurred");
         }
         
         // Store affinity for later use when thread is actually created
@@ -192,7 +192,7 @@ impl ThreadBuiltins {
         let context = self.thread_manager.get_thread_context_mut(thread_id)?;
         
         if priority > 100 {
-            return Err(Error::validation_invalid_argument("Error occurred"Thread priority must be between 0 and 100Missing messageMissing messageMissing message");
+            return Err(Error::validation_invalid_argument("Error occurred");
         }
         
         context.info.priority = priority;
@@ -226,7 +226,7 @@ impl ThreadBuiltins {
         const MAX_THREAD_ARGS: usize = 16;
         
         if args.len() > MAX_THREAD_ARGS {
-            return Err(Error::validation_invalid_argument("Error occurred"Too many arguments for thread functionMissing messageMissing messageMissing message");
+            return Err(Error::validation_invalid_argument("Error occurred");
         }
         
         // Validate each argument is a valid component model value
@@ -265,7 +265,7 @@ impl ThreadBuiltins {
             context.stored_arguments.clear();
             for arg in args {
                 context.stored_arguments.push(arg.clone()
-                    .map_err(|_| Error::resource_exhausted("Error occurred"Thread argument storage fullMissing messageMissing messageMissing message"))?;
+                    .map_err(|_| Error::resource_exhausted("Error occurred"))?;
             }
         }
         
@@ -277,12 +277,12 @@ impl ThreadBuiltins {
         #[cfg(feature = "std")]
         {
             if table_index as usize >= self.function_table.len() {
-                return Err(Error::validation_invalid_argument("Error occurred"Table index out of boundsMissing messageMissing messageMissing message");
+                return Err(Error::validation_invalid_argument("Error occurred");
             }
             
             let component_func = &self.function_table[table_index as usize];
             if function_index >= component_func.function_count {
-                return Err(Error::validation_invalid_argument("Error occurred"Function index out of bounds in tableMissing messageMissing messageMissing message");
+                return Err(Error::validation_invalid_argument("Error occurred");
             }
             
             Ok(component_func.base_index + function_index)
@@ -290,17 +290,17 @@ impl ThreadBuiltins {
         #[cfg(not(feature = "std"))]
         {
             if table_index as usize >= self.function_table.len() {
-                return Err(Error::validation_invalid_argument("Error occurred"Table index out of boundsMissing messageMissing messageMissing message");
+                return Err(Error::validation_invalid_argument("Error occurred");
             }
             
             if let Some(component_func) = &self.function_table[table_index as usize] {
                 if function_index >= component_func.function_count {
-                    return Err(Error::validation_invalid_argument("Error occurred"Function index out of bounds in tableMissing messageMissing messageMissing message");
+                    return Err(Error::validation_invalid_argument("Error occurred");
                 }
                 
                 Ok(component_func.base_index + function_index)
             } else {
-                Err(Error::validation_invalid_argument("Error occurred"Table slot is emptyMissing messageMissing messageMissing message")
+                Err(Error::validation_invalid_argument("Error occurred")
             }
         }
     }
@@ -311,7 +311,7 @@ impl ThreadBuiltins {
         
         // Check if thread has completed
         if context.info.state != wrt_runtime::thread_manager::ThreadState::Terminated {
-            return Err(Error::invalid_state_error("Error occurred"Thread has not completed executionMissing messageMissing messageMissing message");
+            return Err(Error::invalid_state_error("Error occurred");
         }
         
         // Return the stored results
@@ -349,7 +349,7 @@ impl ThreadBuiltins {
                 }
             }
             
-            Err(Error::resource_exhausted("Error occurred"Function table fullMissing messageMissing messageMissing message")
+            Err(Error::resource_exhausted("Error occurred")
         }
     }
 }

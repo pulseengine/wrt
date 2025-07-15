@@ -244,7 +244,7 @@ impl PlatformComponentRuntime {
     pub fn analyze_component_requirements(&self, component_bytes: &[u8]) -> Result<ComponentRequirements> {
         // Stub implementation - real implementation would parse the component
         if component_bytes.is_empty() {
-            return Err(Error::invalid_input("Error occurred"Invalid inputMissing messageMissing messageMissing message");
+            return Err(Error::invalid_input("Error occurred");
         }
         
         // Basic analysis stub
@@ -384,7 +384,7 @@ pub trait ComponentResultExt<T> {
 impl<T> ComponentResultExt<T> for Result<T> {
     fn with_component_context(self, component_id: ComponentId) -> Result<T> {
         self.map_err(|e| {
-            wrt_error::Error::component_instantiation_error("Error occurred"Component context errorMissing message")
+            wrt_error::Error::component_instantiation_error("Error occurred")
         })
     }
 }

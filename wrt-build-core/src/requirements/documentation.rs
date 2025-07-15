@@ -877,7 +877,7 @@ mod tests {
 
     #[test]
     fn test_documentation_verification_framework_creation() {
-        let framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp"));
+        let mut framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp"));
         let (result, _diagnostics) = framework.verify_all_documentation().unwrap();
 
         assert_eq!(result.total_requirements, 0);
@@ -949,7 +949,7 @@ mod tests {
 
     #[test]
     fn test_documentation_report_generation() {
-        let framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp"));
+        let mut framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp"));
         let (report, _diagnostics) = framework.generate_report();
 
         assert_eq!(report.overall_compliance, 100.0);

@@ -39,7 +39,7 @@ use wrt_foundation::WrtResult;
 use crate::unified_execution_agent_stubs::{AsyncReadResult, Future as ComponentFuture, FutureHandle, FutureState, Stream, StreamHandle, StreamState};
 
 // Import CFI types when available
-#[cfg(feature = "cfiMissing message")]
+#[cfg(feature = "cfi")]
 use crate::unified_execution_agent_stubs::{
     DefaultCfiControlFlowOps, CfiControlFlowProtection, CfiExecutionContext, CfiProtectedBranchTarget,
 };
@@ -64,7 +64,7 @@ pub struct UnifiedExecutionAgent {
     #[cfg(feature = "async")]
     async_state: AsyncExecutionState,
     /// CFI protection capabilities  
-    #[cfg(feature = "cfiMissing message")]
+    #[cfg(feature = "cfi")]
     cfi_state: CfiExecutionState,
     /// Stackless execution capabilities
     stackless_state: StacklessExecutionState,
@@ -129,7 +129,7 @@ pub struct AsyncExecutionState {
 }
 
 /// CFI execution state for security protection
-#[cfg(feature = "cfiMissing message")]
+#[cfg(feature = "cfi")]
 #[derive(Debug, Clone)]
 pub struct CfiExecutionState {
     /// CFI control flow operations handler
@@ -178,7 +178,7 @@ pub struct UnifiedCallFrame {
     #[cfg(feature = "async")]
     pub async_state: FrameAsyncState,
     /// CFI protection state
-    #[cfg(feature = "cfiMissing message")]
+    #[cfg(feature = "cfi")]
     pub cfi_state: FrameCfiState,
 }
 
@@ -225,7 +225,7 @@ pub enum ExecutionMode {
     /// Stackless execution for memory constraints
     Stackless,
     /// CFI-protected execution
-    #[cfg(feature = "cfiMissing message")]
+    #[cfg(feature = "cfi")]
     CfiProtected,
     /// Hybrid mode combining multiple capabilities
     Hybrid(HybridModeFlags),
@@ -274,11 +274,11 @@ pub struct UnifiedExecutionStatistics {
     pub async_operations: u64,
     
     /// CFI statistics
-    #[cfg(feature = "cfiMissing message")]
+    #[cfg(feature = "cfi")]
     pub cfi_instructions_protected: u64,
-    #[cfg(feature = "cfiMissing message")]
+    #[cfg(feature = "cfi")]
     pub cfi_violations_detected: u64,
-    #[cfg(feature = "cfiMissing message")]
+    #[cfg(feature = "cfi")]
     pub cfi_overhead_ns: u64,
     
     /// Stackless execution statistics
@@ -302,7 +302,7 @@ pub enum FrameAsyncState {
 }
 
 /// CFI frame state for CFI protection
-#[cfg(feature = "cfiMissing message")]
+#[cfg(feature = "cfi")]
 #[derive(Debug, Clone)]
 pub struct FrameCfiState {
     /// Shadow stack entry
@@ -331,7 +331,7 @@ pub struct WaitSet {
 }
 
 /// Shadow stack entry for CFI protection
-#[cfg(feature = "cfiMissing message")]
+#[cfg(feature = "cfi")]
 #[derive(Debug, Clone)]
 pub struct ShadowStackEntry {
     pub return_address: u32,
@@ -340,7 +340,7 @@ pub struct ShadowStackEntry {
 }
 
 /// CFI violation policy
-#[cfg(feature = "cfiMissing message")]
+#[cfg(feature = "cfi")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CfiViolationPolicy {
     /// Log violation and continue execution
@@ -509,7 +509,7 @@ impl UnifiedExecutionAgent {
                 },
             },
             
-            #[cfg(feature = "cfiMissing message")]
+            #[cfg(feature = "cfi")]
             cfi_state: CfiExecutionState {
                 cfi_ops: DefaultCfiControlFlowOps,
                 cfi_protection: CfiControlFlowProtection::default(),
@@ -537,7 +537,7 @@ impl UnifiedExecutionAgent {
 
     /// Create agent with default configuration
     pub fn new_default() -> WrtResult<Self> {
-        Self::new(AgentConfiguration::default()
+        Self::new(AgentConfiguration::default())
     }
 
     /// Create agent for async execution
@@ -550,7 +550,7 @@ impl UnifiedExecutionAgent {
     }
 
     /// Create agent for CFI-protected execution
-    #[cfg(feature = "cfiMissing message")]
+    #[cfg(feature = "cfi")]
     pub fn new_cfi_protected() -> WrtResult<Self> {
         Self::new(AgentConfiguration {
             execution_mode: ExecutionMode::CfiProtected,
@@ -597,7 +597,7 @@ impl UnifiedExecutionAgent {
         let frame = UnifiedCallFrame {
             instance_id,
             function_index,
-            function_name: BoundedString::from_str("functionMissing message").unwrap_or_default(),
+            function_name: BoundedString::from_str("function").unwrap_or_default(),
             #[cfg(feature = "std")]
             locals: args.to_vec(),
             #[cfg(not(feature = "std"))]
@@ -605,14 +605,14 @@ impl UnifiedExecutionAgent {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 let mut locals = BoundedVec::new(provider)?;
                 for arg in args.iter().take(64) {
-                    let _ = locals.push(arg.clone();
+                    let _ = locals.push(arg.clone());
                 }
                 locals
             },
             return_address: Some(0),
             #[cfg(feature = "async")]
             async_state: FrameAsyncState::Sync,
-            #[cfg(feature = "cfiMissing message")]
+            #[cfg(feature = "cfi")]
             cfi_state: FrameCfiState {
                 shadow_entry: None,
                 landing_pad_required: false,
@@ -629,7 +629,7 @@ impl UnifiedExecutionAgent {
             ExecutionMode::Asynchronous => {
                 self.execute_async_call(frame, args)
             },
-            #[cfg(feature = "cfiMissing message")]
+            #[cfg(feature = "cfi")]
             ExecutionMode::CfiProtected => {
                 self.execute_cfi_protected_call(frame, args)
             },
@@ -652,7 +652,7 @@ impl UnifiedExecutionAgent {
         #[cfg(not(feature = "std"))]
         {
             self.core_state.call_stack.push(frame).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Error occurred"Call stack overflowMissing message")
+                wrt_error::Error::resource_exhausted("Error occurred")
             })?;
         }
 
@@ -660,13 +660,13 @@ impl UnifiedExecutionAgent {
         #[cfg(feature = "std")]
         let function_name = "Component not found";
         #[cfg(not(feature = "std"))]
-        let function_name = BoundedString::from_str("Component operation resultMissing message").unwrap_or_default();
+        let function_name = BoundedString::from_str("Component operation result").unwrap_or_default();
         
         let component_values = self.convert_values_to_component(args)?;
         
         let result = self.core_state.runtime_bridge
             .execute_component_function(frame.instance_id, &function_name, &component_values)
-            .map_err(|_| wrt_error::Error::runtime_error("Error occurred"Component operation resultMissing messageMissing messageMissing message"))?;
+            .map_err(|_| wrt_error::Error::runtime_error("Error occurred"))?;
 
         // Pop frame
         #[cfg(feature = "std")]
@@ -682,7 +682,7 @@ impl UnifiedExecutionAgent {
         self.statistics.instructions_executed += 1;
 
         // Convert result back
-        Ok(result.into()
+        Ok(result.into())
     }
 
     /// Execute stackless function call
@@ -747,7 +747,7 @@ impl UnifiedExecutionAgent {
         #[cfg(not(feature = "std"))]
         {
             self.async_state.executions.push(async_execution).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Error occurred"Too many async executionsMissing message")
+                wrt_error::Error::resource_exhausted("Error occurred")
             })?;
         }
 
@@ -760,7 +760,7 @@ impl UnifiedExecutionAgent {
     }
 
     /// Execute CFI-protected function call
-    #[cfg(feature = "cfiMissing message")]
+    #[cfg(feature = "cfi")]
     fn execute_cfi_protected_call(&mut self, frame: UnifiedCallFrame, args: &[Value]) -> WrtResult<Value> {
         // Update CFI context
         self.cfi_state.cfi_context.current_function = frame.function_index;
@@ -780,7 +780,7 @@ impl UnifiedExecutionAgent {
     fn execute_hybrid_call(&mut self, frame: UnifiedCallFrame, args: &[Value], flags: HybridModeFlags) -> WrtResult<Value> {
         // Apply capabilities based on flags
         if flags.cfi_enabled {
-            #[cfg(feature = "cfiMissing message")]
+            #[cfg(feature = "cfi")]
             {
                 self.cfi_state.cfi_context.current_function = frame.function_index;
                 self.statistics.cfi_instructions_protected += 1;
@@ -838,7 +838,7 @@ impl UnifiedExecutionAgent {
     fn convert_values_to_component(&self, values: &[Value]) -> WrtResult<Vec<ComponentValue>> {
         let mut component_values = Vec::new();
         for value in values {
-            component_values.push(value.clone().into();
+            component_values.push(value.clone().into());
         }
         Ok(component_values)
     }
@@ -849,7 +849,7 @@ impl UnifiedExecutionAgent {
         let mut component_values = BoundedVec::new(provider)?;
         for value in values.iter().take(16) {
             component_values.push(value.clone()).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Error occurred"Too many component valuesMissing message")
+                wrt_error::Error::resource_exhausted("Error occurred")
             })?;
         }
         Ok(component_values)
@@ -903,7 +903,7 @@ impl Default for UnifiedExecutionAgent {
         Self::new_default().unwrap_or_else(|_| {
             // This should never happen in practice, but we need a fallback for the Default trait
             // In production code, prefer using new_default() directly which returns Result
-            panic!("Failed to create default UnifiedExecutionAgent: memory allocation errorMissing message")
+            panic!("Failed to create default UnifiedExecutionAgent: memory allocation error")
         })
     }
 }
@@ -932,7 +932,7 @@ macro_rules! impl_basic_traits {
                 _writer: &mut WriteStream<'a>,
                 _provider: &PStream,
             ) -> wrt_foundation::WrtResult<()> {
-                Ok(()
+                Ok(())
             }
         }
 
@@ -948,7 +948,7 @@ macro_rules! impl_basic_traits {
 }
 
 // Apply macro to UnifiedExecutionAgent
-impl_basic_traits!(UnifiedExecutionAgent, UnifiedExecutionAgent::default();
+impl_basic_traits!(UnifiedExecutionAgent, UnifiedExecutionAgent::default());
 
 #[cfg(test)]
 mod tests {
@@ -967,7 +967,7 @@ mod tests {
         let args = [Value::U32(42), Value::Bool(true)];
         
         let result = agent.call_function(1, 2, &args);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(agent.state(), UnifiedExecutionState::Completed);
         assert_eq!(agent.statistics().function_calls, 1);
     }
@@ -978,7 +978,7 @@ mod tests {
         let args = [Value::U32(100)];
         
         let result = agent.call_function(1, 5, &args);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(agent.statistics().stackless_frames, 1);
     }
 
@@ -989,7 +989,7 @@ mod tests {
         let args = [Value::F32(3.14)];
         
         let result = agent.call_function(2, 3, &args);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(agent.statistics().async_executions_started, 1);
         assert_eq!(agent.statistics().async_executions_completed, 1);
     }
@@ -1005,7 +1005,7 @@ mod tests {
         let args = [Value::S64(-100)];
         
         let result = agent.call_function(1, 1, &args);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(agent.statistics().stackless_frames, 1);
     }
 

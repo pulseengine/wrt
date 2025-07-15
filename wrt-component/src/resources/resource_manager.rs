@@ -122,7 +122,7 @@ impl ResourceManager {
     /// Add a resource interceptor
     pub fn add_interceptor(&self, interceptor: Arc<dyn ResourceInterceptor>) -> Result<()> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
         table.add_interceptor(interceptor);
@@ -132,7 +132,7 @@ impl ResourceManager {
     /// Create a new resource
     pub fn create_resource(&self, type_idx: u32, data: Arc<dyn Any + Send + Sync>) -> Result<u32> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
         table.create_resource(type_idx, data)
@@ -152,7 +152,7 @@ impl ResourceManager {
         name: &str,
     ) -> Result<u32> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
 
@@ -162,7 +162,7 @@ impl ResourceManager {
         // Set the name if we have access to the resource
         if let Ok(res) = table.get_resource(handle) {
             if let Ok(mut res_guard) = res.lock() {
-                res_guard.name = Some(name.to_string();
+                res_guard.name = Some(name.to_string());
             }
         }
 
@@ -172,7 +172,7 @@ impl ResourceManager {
     /// Borrow a resource
     pub fn borrow_resource(&self, handle: u32) -> Result<u32> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
         table.borrow_resource(handle)
@@ -188,7 +188,7 @@ impl ResourceManager {
 
         // Attempt to downcast to the requested type
         let resource_guard = resource.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
 
@@ -198,7 +198,7 @@ impl ResourceManager {
             let cloned_data = Arc::new(Mutex::new(typed_data.clone());
             Ok(cloned_data)
         } else {
-            Err(Error::component_not_found("Error occurred"Component not foundMissing message"),
+            Err(Error::component_not_found("Error occurred"),
             )
         }
     }
@@ -206,7 +206,7 @@ impl ResourceManager {
     /// Drop a resource
     pub fn drop_resource(&self, handle: u32) -> Result<()> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
         table.drop_resource(handle)
@@ -220,7 +220,7 @@ impl ResourceManager {
     /// Get a resource by handle
     pub fn get_resource(&self, handle: u32) -> Result<Arc<Mutex<Resource>>> {
         let table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
         table.get_resource(handle)
@@ -241,7 +241,7 @@ impl ResourceManager {
         operation: FormatResourceOperation,
     ) -> Result<ComponentValue> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
         table.apply_operation(handle, operation)
@@ -250,7 +250,7 @@ impl ResourceManager {
     /// Set memory strategy for a resource
     pub fn set_memory_strategy(&self, handle: u32, strategy: MemoryStrategy) -> Result<()> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
         table.set_memory_strategy(handle, strategy)
@@ -259,7 +259,7 @@ impl ResourceManager {
     /// Set verification level for a resource
     pub fn set_verification_level(&self, handle: u32, level: VerificationLevel) -> Result<()> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
         table.set_verification_level(handle, level)
@@ -288,7 +288,7 @@ impl ResourceManager {
     /// Get the number of resources
     pub fn resource_count(&self) -> Result<usize> {
         let table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
         Ok(table.resource_count()
@@ -297,7 +297,7 @@ impl ResourceManager {
     /// Clean up unused resources
     pub fn cleanup_unused_resources(&self) -> Result<usize> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
         Ok(table.cleanup_unused_resources()
@@ -306,7 +306,7 @@ impl ResourceManager {
     /// Clear all resources (legacy API)
     pub fn clear(&self) -> Result<()> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
         let _ = table.cleanup_unused_resources();

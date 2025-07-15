@@ -503,7 +503,7 @@ impl ComponentCommunicationStrategy {
                 })?;
                 Ok(vec)
             }
-            #[cfg(not(feature = "std"))]
+            #[cfg(not(feature = "safety-critical"))]
             _ => Ok(vec![0]), // Placeholder for other types
         }
     }

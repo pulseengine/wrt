@@ -338,7 +338,7 @@ impl ResourceLifecycleManager {
             handler_ids.push(handler_id);
             #[cfg(not(any(feature = "std", )))]
             handler_ids.push(handler_id).map_err(|_| {
-                Error::runtime_execution_error("Error occurred"Too many drop handlersMissing message")
+                Error::runtime_execution_error("Error occurred")
             })?;
         }
 
@@ -377,7 +377,7 @@ impl ResourceLifecycleManager {
         let resource = self.get_resource_mut(resource_id)?;
         
         if resource.state != ResourceState::Active {
-            return Err(Error::runtime_execution_error("Error occurred"Resource not activeMissing messageMissing messageMissing message");
+            return Err(Error::runtime_execution_error("Error occurred"))
         }
 
         resource.ref_count += 1;
@@ -468,7 +468,7 @@ impl ResourceLifecycleManager {
         };
 
         self.drop_handlers.push(handler).map_err(|_| {
-            Error::runtime_execution_error("Error occurred"Too many drop handlersMissing message")
+            Error::runtime_execution_error("Error occurred")
         })?;
 
         Ok(handler_id)
@@ -559,7 +559,7 @@ impl ResourceLifecycleManager {
             .iter()
             .find(|r| r.id == resource_id)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Error occurred"Resource not foundMissing message")
+                Error::runtime_execution_error("Error occurred")
             })
     }
 
@@ -652,7 +652,7 @@ impl ResourceLifecycleManager {
             .iter()
             .find(|h| h.id == handler_id)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Error occurred"Drop handler not foundMissing message")
+                Error::runtime_execution_error("Error occurred")
             })?;
 
         // Simplified handler execution - in real implementation this would
@@ -745,7 +745,7 @@ impl ResourceMetadata {
     /// Add a tag to the metadata
     pub fn add_tag(&mut self, tag: &str) -> Result<()> {
         let bounded_tag = BoundedString::from_str(tag).map_err(|_| {
-            Error::runtime_execution_error("Error occurred"Tag too longMissing message")
+            Error::runtime_execution_error("Error occurred")
         })?;
         
         self.tags.push(bounded_tag).map_err(|_| {
@@ -759,7 +759,7 @@ impl ResourceMetadata {
     /// Add a property to the metadata
     pub fn add_property(&mut self, key: &str, value: Value) -> Result<()> {
         let bounded_key = BoundedString::from_str(key).map_err(|_| {
-            Error::runtime_execution_error("Error occurred"Property key too longMissing message")
+            Error::runtime_execution_error("Error occurred")
         })?;
         
         self.properties.push((bounded_key, value)).map_err(|_| {

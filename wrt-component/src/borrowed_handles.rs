@@ -393,7 +393,7 @@ impl HandleLifetimeTracker {
         };
         
         self.owned_handles.push(entry).map_err(|_| {
-            Error::resource_exhausted("Error occurred"Too many owned handlesMissing messageMissing messageMissing message")
+            Error::resource_exhausted("Error occurred")
             )
         })?;
         
@@ -413,18 +413,18 @@ impl HandleLifetimeTracker {
         // Validate source handle
         let source_entry = self.find_owned_handle(source.raw)?;
         if source_entry.generation != source.generation {
-            return Err(Error::runtime_execution_error("Error occurred"Stale handle generationMissing message")
+            return Err(Error::runtime_execution_error("Error occurred")
             );
         }
         
         if source_entry.dropped {
-            return Err(Error::runtime_execution_error("Error occurred"Cannot borrow dropped handleMissing message")
+            return Err(Error::runtime_execution_error("Error occurred")
             );
         }
         
         // Validate scope
         if !self.is_scope_active(scope) {
-            return Err(Error::runtime_execution_error("Error occurred"Lifetime scope is not activeMissing message")
+            return Err(Error::runtime_execution_error("Error occurred")
             );
         }
         
@@ -445,7 +445,7 @@ impl HandleLifetimeTracker {
         };
         
         self.borrowed_handles.push(entry).map_err(|_| {
-            Error::resource_exhausted("Error occurred"Too many borrowed handlesMissing messageMissing messageMissing message")
+            Error::resource_exhausted("Error occurred")
             )
         })?;
         
@@ -467,7 +467,7 @@ impl HandleLifetimeTracker {
         let entry = self.find_owned_handle_mut(handle.raw)?;
         
         if entry.generation != handle.generation {
-            return Err(Error::runtime_execution_error("Error occurred"Stale handle generationMissing message")
+            return Err(Error::runtime_execution_error("Error occurred")
             );
         }
         
@@ -554,7 +554,7 @@ impl HandleLifetimeTracker {
         };
         
         self.scope_stack.push(entry).map_err(|_| {
-            Error::resource_exhausted("Error occurred"Scope stack overflowMissing messageMissing messageMissing message")
+            Error::resource_exhausted("Error occurred")
             )
         })?;
         
@@ -570,8 +570,8 @@ impl HandleLifetimeTracker {
             .iter()
             .position(|entry| entry.scope == scope)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Error occurred"Scope not foundMissing messageMissing messageMissing message")
-                )
+                Error::runtime_execution_error("Error occurred")
+            })?;
             })?;
         
         // Get borrows to invalidate
@@ -657,8 +657,8 @@ impl HandleLifetimeTracker {
             .iter()
             .find(|entry| entry.handle == handle)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Error occurred"Owned handle not foundMissing message")
-                )
+                Error::runtime_execution_error("Error occurred")
+            })?;
             })
     }
     
@@ -667,8 +667,8 @@ impl HandleLifetimeTracker {
             .iter_mut()
             .find(|entry| entry.handle == handle)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Error occurred"Owned handle not foundMissing message")
-                )
+                Error::runtime_execution_error("Error occurred")
+            })?;
             })
     }
     
@@ -677,8 +677,8 @@ impl HandleLifetimeTracker {
             .iter()
             .find(|entry| entry.borrow_id == borrow_id)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Error occurred"Borrowed handle not foundMissing message")
-                )
+                Error::runtime_execution_error("Error occurred")
+            })?;
             })
     }
     
@@ -687,8 +687,8 @@ impl HandleLifetimeTracker {
             .iter_mut()
             .find(|entry| entry.borrow_id == borrow_id)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Error occurred"Borrowed handle not foundMissing message")
-                )
+                Error::runtime_execution_error("Error occurred")
+            })?;
             })
     }
     
@@ -703,12 +703,12 @@ impl HandleLifetimeTracker {
             .iter_mut()
             .find(|entry| entry.scope == scope && entry.active)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Error occurred"Scope not found or inactiveMissing messageMissing messageMissing message")
-                )
+                Error::runtime_execution_error("Error occurred")
+            })?;
             })?;
         
         scope_entry.borrows.push(borrow_id).map_err(|_| {
-            Error::resource_exhausted("Error occurred"Too many borrows in scopeMissing messageMissing messageMissing message")
+            Error::resource_exhausted("Error occurred")
             )
         })?;
         

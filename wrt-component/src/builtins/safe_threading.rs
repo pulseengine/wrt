@@ -85,7 +85,7 @@ impl BuiltinHandler for SafeThreadingSpawnHandler {
         // Spawn thread with safety checks
         match self.thread_manager.spawn_thread(request) {
             Ok(thread_id) => Ok(vec![ComponentValue::U64(thread_id)]),
-            Err(e) => Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message"))),
+            Err(e) => Err(Error::component_not_found("Error occurred"))),
         }
     }
 
@@ -140,13 +140,13 @@ impl BuiltinHandler for SafeThreadingJoinHandler {
                     Err(Error::new(ThreadingError(msg))
                 }
                 wrt_platform::wasm_thread_manager::ThreadExecutionResult::Cancelled => {
-                    Err(Error::threading_error("Error occurred"Thread was cancelledMissing messageMissing messageMissing message"))
+                    Err(Error::threading_error("Error occurred"))
                 }
                 wrt_platform::wasm_thread_manager::ThreadExecutionResult::Timeout => {
-                    Err(Error::threading_error("Error occurred"Thread timed outMissing messageMissing messageMissing message"))
+                    Err(Error::threading_error("Error occurred"))
                 }
             },
-            Err(e) => Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message"))),
+            Err(e) => Err(Error::component_not_found("Error occurred"))),
         }
     }
 
@@ -231,7 +231,7 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
                 match self.thread_manager.cancel_thread(thread_id) {
                     Ok(()) => Ok(vec![ComponentValue::U32(1)]), // Success
                     Err(e) => {
-                        Err(Error::component_not_found("Error occurred"Component not foundMissing messageMissing messageMissing message"))
+                        Err(Error::component_not_found("Error occurred"))
                     }
                 }
             }

@@ -542,6 +542,13 @@ pub struct Module {
 }
 
 impl Module {
+    /// Creates a truly empty module without any allocations
+    /// This is used to avoid circular dependencies during engine initialization
+    pub fn empty() -> Self {
+        // Use the derived Default implementation which creates empty collections
+        Self::default()
+    }
+    
     /// Creates a new empty module
     pub fn new() -> Result<Self> {
         let provider = create_runtime_provider()?;
@@ -566,20 +573,29 @@ impl Module {
         })
     }
 
+
     /// Creates a runtime Module from a `wrt_format::module::Module`.
     /// This is the primary constructor after decoding.
     #[cfg(feature = "std")]
     pub fn from_wrt_module(wrt_module: &wrt_format::module::Module) -> Result<Self> {
-        let mut runtime_module = Self::new()?;
+        // Ensure memory system is initialized before creating providers
+        wrt_foundation::memory_init::MemoryInitializer::ensure_initialized()?;
+        
+        // Use empty() instead of new() to avoid memory allocation during initialization
+        // This prevents stack overflow when the memory system isn't fully initialized
+        let mut runtime_module = Self::empty();
         
         // Map start function if present
         runtime_module.start = wrt_module.start;
         
+        // Create a single shared provider for the entire module to avoid stack overflow
+        // from creating multiple providers in tight loops
+        let shared_provider = create_runtime_provider()?;
+        
         // Convert types
         for func_type in &wrt_module.types {
-            let provider = create_runtime_provider()?;
-            let mut params = wrt_foundation::bounded::BoundedVec::new(provider.clone())?;
-            let mut results = wrt_foundation::bounded::BoundedVec::new(provider.clone())?;
+            let mut params = wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?;
+            let mut results = wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?;
             
             for param in &func_type.params {
                 params.push(*param)?;
@@ -601,7 +617,6 @@ impl Module {
             let locals = crate::type_conversion::convert_locals_to_bounded(&func.locals)?;
             
             // Parse the function body bytecode into instructions
-            let provider = create_runtime_provider()?;
             let instructions = crate::instruction_parser::parse_instructions(&func.code)?;
             let body = WrtExpr { instructions };
             
@@ -616,12 +631,10 @@ impl Module {
         // Convert exports
         for export in &wrt_module.exports {
             // Create the export name with correct provider size (8192)
-            let provider1 = create_runtime_provider()?;
-            let name = wrt_foundation::bounded::BoundedString::from_str_truncate(&export.name, provider1)?;
+            let name = wrt_foundation::bounded::BoundedString::from_str_truncate(&export.name, shared_provider.clone())?;
             
             // Create key with correct type for ExportMap (BoundedString<256, RuntimeProvider>)
-            let provider2 = create_runtime_provider()?;
-            let map_key = wrt_foundation::bounded::BoundedString::from_str_truncate(&export.name, provider2)?;
+            let map_key = wrt_foundation::bounded::BoundedString::from_str_truncate(&export.name, shared_provider.clone())?;
             
             let kind = match export.kind {
                 FormatExportKind::Function => ExportKind::Function,
@@ -652,7 +665,11 @@ impl Module {
     pub fn from_wrt_module_nostd(
         wrt_module: &wrt_format::module::Module
     ) -> Result<Self> {
-        let mut runtime_module = Self::new()?;
+        // Ensure memory system is initialized before creating providers
+        wrt_foundation::memory_init::MemoryInitializer::ensure_initialized()?;
+        
+        // Use empty() instead of new() to avoid memory allocation during initialization
+        let mut runtime_module = Self::empty();
         
         // Map start function if present
         runtime_module.start = wrt_module.start;

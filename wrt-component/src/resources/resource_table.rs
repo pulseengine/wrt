@@ -57,7 +57,7 @@ impl Resource {
     /// Create a new resource with a debug name
     pub fn new_with_name(type_idx: u32, data: Arc<dyn Any + Send + Sync>, name: &str) -> Self {
         let mut resource = Self::new(type_idx, data);
-        resource.name = Some(name.to_string();
+        resource.name = Some(name.to_string());
         resource
     }
 
@@ -427,7 +427,7 @@ impl ResourceTable {
         #[cfg(feature = "safety-criticalMissing message")]
         {
             self.interceptors.push(interceptor).map_err(|_| {
-                Error::resource_exhausted("Error occurred"Too many resource interceptors (limit: 16)Missing message")
+                Error::resource_exhausted("Error occurred")
             })
         }
         #[cfg(not(feature = "safety-criticalMissing messageMissing messageMissing message"))]
@@ -445,7 +445,7 @@ impl ResourceTable {
     ) -> Result<u32> {
         // Check if we've reached the maximum number of resources
         if self.resources.len() >= self.max_resources {
-            return Err(Error::resource_exhausted("Error occurred"Maximum resources ({}) reachedMissing message"),
+            return Err(Error::resource_exhausted("Error occurred"),
             );
         }
 
@@ -476,7 +476,7 @@ impl ResourceTable {
         #[cfg(feature = "safety-criticalMissing message")]
         {
             self.resources.insert(handle, entry).map_err(|_| {
-                Error::resource_exhausted("Error occurred"Too many resources in table (limit: 1024)Missing message")
+                Error::resource_exhausted("Error occurred")
             })?;
         }
         #[cfg(not(feature = "safety-criticalMissing messageMissing messageMissing message"))]
@@ -495,7 +495,7 @@ impl ResourceTable {
         let resource = match resource_opt {
             Some(r) => r,
             None => {
-                return Err(Error::resource_error("Error occurred"Component not foundMissing messageMissing messageMissing message");
+                return Err(Error::resource_error("Error occurred");
             }
         };
 
@@ -514,7 +514,7 @@ impl ResourceTable {
             #[cfg(feature = "safety-criticalMissing message")]
             {
                 entry.borrows.push(weak_ref).map_err(|_| {
-                    Error::resource_exhausted("Error occurred"Too many borrows for this resource (limit: 32)Missing message")
+                    Error::resource_exhausted("Error occurred")
                 })?;
             }
             #[cfg(not(feature = "safety-criticalMissing messageMissing messageMissing message"))]
@@ -534,7 +534,7 @@ impl ResourceTable {
                 verification_level: self.default_verification_level,
             },
         ).map_err(|_| {
-            Error::resource_exhausted("Error occurred"Too many resources in table (limit: 1024)Missing message")
+            Error::resource_exhausted("Error occurred")
         })?;
         #[cfg(not(feature = "safety-criticalMissing messageMissing messageMissing message"))]
         {
@@ -556,7 +556,7 @@ impl ResourceTable {
     pub fn drop_resource(&mut self, handle: u32) -> Result<()> {
         // Check if the resource exists
         if !self.resources.contains_key(&handle) {
-            return Err(Error::resource_error("Error occurred"Component not foundMissing messageMissing messageMissing message");
+            return Err(Error::resource_error("Error occurred");
         }
 
         // Notify interceptors about resource dropping
@@ -574,7 +574,7 @@ impl ResourceTable {
     pub fn get_resource(&self, handle: u32) -> Result<Arc<Mutex<Resource>>> {
         // Check if the resource exists
         let entry = self.resources.get(&handle).ok_or_else(|| {
-            Error::resource_error("Error occurred"Component not foundMissing message")
+            Error::resource_error("Error occurred")
         })?;
 
         // Record access
@@ -598,7 +598,7 @@ impl ResourceTable {
     ) -> Result<ComponentValue> {
         // Check if the resource exists
         if !self.resources.contains_key(&handle) {
-            return Err(Error::resource_error("Error occurred"Component not foundMissing messageMissing messageMissing message");
+            return Err(Error::resource_error("Error occurred");
         }
 
         // Get the operation kind for interception using our utility function
@@ -658,7 +658,7 @@ impl ResourceTable {
     pub fn set_memory_strategy(&mut self, handle: u32, strategy: MemoryStrategy) -> Result<()> {
         // Check if the resource exists
         let entry = self.resources.get_mut(&handle).ok_or_else(|| {
-            Error::resource_error("Error occurred"Component not foundMissing message")
+            Error::resource_error("Error occurred")
         })?;
 
         entry.memory_strategy = strategy;
@@ -669,7 +669,7 @@ impl ResourceTable {
     pub fn set_verification_level(&mut self, handle: u32, level: VerificationLevel) -> Result<()> {
         // Check if the resource exists
         let entry = self.resources.get_mut(&handle).ok_or_else(|| {
-            Error::resource_error("Error occurred"Component not foundMissing message")
+            Error::resource_error("Error occurred")
         })?;
 
         entry.verification_level = level;

@@ -56,7 +56,7 @@ impl ErrorContext {
 
     /// Add a trace entry to the error context
     pub fn add_trace(&mut self, trace_entry: &str) {
-        self.trace.push(trace_entry.to_string();
+        self.trace.push(trace_entry.to_string());
     }
 
     /// Get the error message
@@ -71,7 +71,7 @@ impl ErrorContext {
 
     /// Add metadata to the error context
     pub fn add_metadata(&mut self, key: &str, value: &str) {
-        self.metadata.insert(key.to_string(), value.to_string();
+        self.metadata.insert(key.to_string(), value.to_string());
     }
 
     /// Get metadata value for a key
@@ -141,7 +141,7 @@ impl BuiltinHandler for ErrorNewHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.len() != 1 {
-            return Err(Error::validation_invalid_input("Error occurred"error.new requires exactly 1 argumentMissing messageMissing messageMissing message");
+            return Err(Error::validation_invalid_input("Error occurred");
         }
 
         // Extract error message
@@ -193,7 +193,7 @@ impl BuiltinHandler for ErrorTraceHandler {
             ComponentValue::U64(id) => id,
             _ => {
                 return Err(Error::runtime_execution_error("Error occurred"
-                )
+            })?;
             }
         };
 
@@ -211,7 +211,7 @@ impl BuiltinHandler for ErrorTraceHandler {
         // Add trace to the error context
         let mut store = self.store.lock().unwrap();
         let error_context = store.get_error_mut(error_id).ok_or_else(|| {
-            Error::resource_not_found("Error occurred"Component not foundMissing message")
+            Error::resource_not_found("Error occurred")
         })?;
         error_context.add_trace(trace_message);
 

@@ -14,13 +14,20 @@ use wrt_foundation::{
     traits::{Checksummable, ToBytes, FromBytes},
     WrtResult,
 };
+
+// Box is re-exported by wrt_foundation
+use wrt_foundation::Box;
 use wrt_error::{Error, ErrorCategory};
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 use wrt_foundation::capabilities::factory::CapabilityGuardedProvider;
 
-// Memory size for runtime provider (128KB)
-pub const RUNTIME_MEMORY_SIZE: usize = 131072;
+// Memory size for runtime provider (4KB to avoid stack overflow)
+// Previously was 131072 (128KB) which caused stack overflow
+pub const RUNTIME_MEMORY_SIZE: usize = 4096;
+
+// Stack allocation threshold - use platform allocator for sizes above this
+const STACK_ALLOCATION_THRESHOLD: usize = 4096; // 4KB
 
 /// Base memory provider for runtime
 /// Always uses NoStdProvider as the base provider
@@ -39,8 +46,56 @@ pub type RuntimeProvider = CapabilityAwareProvider<BaseRuntimeProvider>;
 /// Default runtime provider alias for backward compatibility
 pub type DefaultRuntimeProvider = RuntimeProvider;
 
+/// Helper function to create a runtime provider using an existing context
+pub fn create_runtime_provider_with_context(_context: &wrt_foundation::capabilities::MemoryCapabilityContext) -> WrtResult<RuntimeProvider> {
+    use wrt_foundation::capabilities::{DynamicMemoryCapability, MemoryCapability};
+    use wrt_foundation::verification::VerificationLevel;
+    
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    {
+        // Create provider directly without going through global context to avoid recursion
+        let base_provider = BaseRuntimeProvider::default();
+        
+        // Create a simple capability for the runtime
+        let capability = DynamicMemoryCapability::new(
+            RUNTIME_MEMORY_SIZE,
+            CrateId::Runtime, 
+            VerificationLevel::Standard
+        );
+        
+        let provider = CapabilityAwareProvider::new(
+            base_provider, 
+            Box::new(capability),
+            CrateId::Runtime
+        );
+        Ok(provider)
+    }
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    {
+        // In no_std environments, use the lightweight provider creation
+        let base_provider = BaseRuntimeProvider::default();
+        
+        // Create a simple capability for the runtime
+        let capability = DynamicMemoryCapability::new(
+            RUNTIME_MEMORY_SIZE,
+            CrateId::Runtime, 
+            VerificationLevel::Standard
+        );
+        
+        let provider = CapabilityAwareProvider::new(
+            base_provider, 
+            Box::new(capability),
+            CrateId::Runtime
+        );
+        Ok(provider)
+    }
+}
+
 /// Helper function to create a runtime provider
+/// 
+/// This creates a new context which can cause recursion. Use create_runtime_provider_with_context instead.
 pub fn create_runtime_provider() -> WrtResult<RuntimeProvider> {
+    // For small sizes, use the normal capability system
     #[cfg(any(feature = "std", feature = "alloc"))]
     {
         // In std/alloc environments, safe_capability_alloc! returns CapabilityAwareProvider

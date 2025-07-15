@@ -467,8 +467,7 @@ impl DynamicQuotaManager {
         #[cfg(not(any(feature = "std", )))]
         {
             self.nodes.push((node_id, node)).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Error occurred"Too many quota nodesMissing messageMissing messageMissing message")
-                )
+                wrt_error::Error::resource_exhausted("Too many quota nodes")
             })?;
         }
 
@@ -499,13 +498,12 @@ impl DynamicQuotaManager {
 
             #[cfg(feature = "std")]
             {
-                self.reservations.insert(reservation_id, (node_id, request.amount);
+                self.reservations.insert(reservation_id, (node_id, request.amount));
             }
             #[cfg(not(any(feature = "std", )))]
             {
                 self.reservations.push((reservation_id, (node_id, request.amount))).map_err(|_| {
-                    wrt_error::Error::resource_exhausted("Error occurred"Too many reservationsMissing messageMissing messageMissing message")
-                    )
+                    wrt_error::Error::resource_exhausted("Too many reservations")
                 })?;
             }
 
@@ -574,7 +572,7 @@ impl DynamicQuotaManager {
             }
         }
 
-        Ok(()
+        Ok(())
     }
 
     /// Update quota based on system conditions
@@ -592,7 +590,7 @@ impl DynamicQuotaManager {
             }
         }
 
-        Ok(()
+        Ok(())
     }
 
     /// Get quota status for a node
@@ -640,7 +638,7 @@ impl DynamicQuotaManager {
             }
         }
 
-        Err(wrt_foundation::wrt_error::Error::invalid_value("Error occurred"Quota node not foundMissing messageMissing messageMissing message")
+        Err(wrt_foundation::wrt_error::Error::invalid_value("Quota node not found"))
     }
 
     /// Check hierarchical quota constraints
@@ -649,7 +647,7 @@ impl DynamicQuotaManager {
         
         while let Some(id) = current_id {
             let node = self.get_quota_status(id).ok_or_else(|| {
-                wrt_foundation::wrt_error::Error::invalid_value("Error occurred"Invalid node IDMissing message")
+                wrt_foundation::wrt_error::Error::invalid_value("Invalid node ID")
             })?;
 
             if !node.can_allocate(amount) {
@@ -760,7 +758,7 @@ impl DynamicQuotaManager {
             }
         }
 
-        Ok(()
+        Ok(())
     }
 
     /// Get current time (simplified)
@@ -820,22 +818,22 @@ mod tests {
         let mut node = QuotaNode::new(1, QuotaNodeType::Component, 100, None, ResourceType::Memory, 1024);
         
         // Normal allocation
-        assert!(node.allocate(512, 1000);
+        assert!(node.allocate(512, 1000));
         assert_eq!(node.current_usage, 512);
         assert_eq!(node.status, QuotaStatus::Normal);
         
         // Warning threshold
-        assert!(node.allocate(300, 1001);
+        assert!(node.allocate(300, 1001));
         assert_eq!(node.current_usage, 812);
         assert_eq!(node.status, QuotaStatus::Normal); // 79% < 80%
         
         // Critical threshold
-        assert!(node.allocate(200, 1002);
+        assert!(node.allocate(200, 1002));
         assert_eq!(node.current_usage, 1012);
         assert_eq!(node.status, QuotaStatus::Critical); // 98% >= 95%
         
         // Over limit
-        assert!(!node.allocate(100, 1003);
+        assert!(!node.allocate(100, 1003));
         assert_eq!(node.failure_count, 1);
     }
 
@@ -844,7 +842,7 @@ mod tests {
         let mut node = QuotaNode::new(1, QuotaNodeType::Component, 100, None, ResourceType::Memory, 1024);
         
         // Allocate and then deallocate
-        assert!(node.allocate(1000, 1000);
+        assert!(node.allocate(1000, 1000));
         assert_eq!(node.status, QuotaStatus::Critical);
         
         node.deallocate(500, 1001);
@@ -912,7 +910,7 @@ mod tests {
         let response = manager.request_quota(&request).unwrap();
         assert!(response.granted);
         assert_eq!(response.amount_granted, 2 * 1024 * 1024);
-        assert!(response.reservation_id.is_some();
+        assert!(response.reservation_id.is_some());
         
         // Check quota status
         let node = manager.get_quota_status(comp_id).unwrap();

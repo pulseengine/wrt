@@ -130,13 +130,13 @@ impl ResourceLimits {
     /// Validate resource limits
     pub fn validate(&self) -> Result<()> {
         if self.max_resource_types == 0 {
-            return Err(Error::invalid_input("Error occurred"max_resource_types cannot be zeroMissing messageMissing messageMissing message");
+            return Err(Error::invalid_input("Error occurred");
         }
         if self.max_resources_per_instance == 0 {
-            return Err(Error::invalid_input("Error occurred"max_resources_per_instance cannot be zeroMissing messageMissing messageMissing message");
+            return Err(Error::invalid_input("Error occurred");
         }
         if self.max_global_resources == 0 {
-            return Err(Error::invalid_input("Error occurred"max_global_resources cannot be zeroMissing messageMissing messageMissing message");
+            return Err(Error::invalid_input("Error occurred");
         }
         Ok(()
     }
@@ -332,7 +332,7 @@ impl BoundedResourceManager {
         
         // Validate safety level compatibility
         if safety_level as u8 > self.safety_context.effective_asil() as u8 {
-            return Err(Error::invalid_input("Error occurred"Resource safety level exceeds runtime safety levelMissing messageMissing messageMissing message");
+            return Err(Error::invalid_input("Error occurred");
         }
         
         let type_id = ResourceTypeId(self.next_type_id);
@@ -367,7 +367,7 @@ impl BoundedResourceManager {
         // Validate resource type exists
         let resource_type = self.resource_types.iter()
             .find(|rt| rt.id == type_id)
-            .ok_or(Error::invalid_input("Error occurred"Resource type not foundMissing messageMissing messageMissing message"))?;
+            .ok_or(Error::invalid_input("Error occurred"))?;
         
         // Create resource
         let resource_id = ResourceId(self.next_resource_id);
@@ -411,7 +411,7 @@ impl BoundedResourceManager {
             .ok_or(Error::COMPONENT_NOT_FOUND)?;
         
         if resource.ownership != ResourceOwnership::Owned {
-            return Err(Error::invalid_input("Error occurred"Cannot transfer non-owned resourceMissing messageMissing messageMissing message");
+            return Err(Error::invalid_input("Error occurred");
         }
         
         let source_instance = resource.instance_id;
@@ -452,7 +452,7 @@ impl BoundedResourceManager {
             .ok_or(Error::COMPONENT_NOT_FOUND)?;
         
         if resource.state != ResourceState::Active {
-            return Err(Error::invalid_input("Error occurred"Cannot borrow inactive resourceMissing messageMissing messageMissing message");
+            return Err(Error::invalid_input("Error occurred");
         }
         
         // Create a new handle for the borrowed reference
@@ -593,7 +593,7 @@ impl BoundedResourceManager {
         // Validate resource integrity
         for resource in &self.global_resources {
             if !self.resource_types.iter().any(|rt| rt.id == resource.type_id) {
-                return Err(Error::invalid_input("Error occurred"Resource type not foundMissing messageMissing messageMissing message");
+                return Err(Error::invalid_input("Error occurred");
             }
         }
         

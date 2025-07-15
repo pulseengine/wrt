@@ -297,7 +297,7 @@ impl ResourceManager {
             self.stats.active_resources -= 1;
         }
 
-        Ok(()
+        Ok(())
     }
 }
 
@@ -359,7 +359,7 @@ impl ResourceTable {
         self.stats.total_entries += 1;
         self.stats.active_entries += 1;
 
-        Ok(()
+        Ok(())
     }
 
     /// Remove a resource from the table
@@ -383,7 +383,7 @@ pub fn create_resource_data_bytes(data: &[u8]) -> core::result::Result<ResourceD
     for &byte in data {
         vec.push(byte).map_err(|_| ResourceError::LimitExceeded)?;
     }
-    Ok(ResourceData::Bytes(vec)
+    Ok(ResourceData::Bytes(vec))
 }
 
 /// Helper function to create resource data from external reference
@@ -394,7 +394,7 @@ pub fn create_resource_data_external(reference: u64) -> ResourceData {
 /// Helper function to create resource data from custom data (std only)
 #[cfg(feature = "std")]
 pub fn create_resource_data_custom<T: std::any::Any + Send + Sync>(data: T) -> ResourceData {
-    ResourceData::Custom(Box::new(data)
+    ResourceData::Custom(Box::new(data))
 }
 
 /// Helper function to create a resource type
@@ -430,7 +430,7 @@ macro_rules! impl_basic_traits {
                 _writer: &mut WriteStream<'a>,
                 _provider: &PStream,
             ) -> wrt_foundation::WrtResult<()> {
-                Ok(()
+                Ok(())
             }
         }
 
@@ -467,9 +467,9 @@ impl Default for ResourceData {
 }
 
 // Apply macro to types that need traits
-impl_basic_traits!(ResourceHandle, ResourceHandle::default();
-impl_basic_traits!(ResourceTypeId, ResourceTypeId::default();
-impl_basic_traits!(ResourceData, ResourceData::default();
+impl_basic_traits!(ResourceHandle, ResourceHandle::default());
+impl_basic_traits!(ResourceTypeId, ResourceTypeId::default());
+impl_basic_traits!(ResourceData, ResourceData::default());
 
 // Tests moved from resource_management_tests.rs
 #[cfg(test)]
@@ -484,10 +484,10 @@ mod tests {
     fn test_resource_handle_creation() {
         let handle = ResourceHandle::new(42);
         assert_eq!(handle.id(), 42);
-        assert!(handle.is_valid();
+        assert!(handle.is_valid());
 
         let invalid_handle = ResourceHandle(INVALID_HANDLE);
-        assert!(!invalid_handle.is_valid();
+        assert!(!invalid_handle.is_valid());
         assert_eq!(invalid_handle.id(), u32::MAX);
     }
 

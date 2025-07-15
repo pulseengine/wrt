@@ -245,14 +245,14 @@ impl PostReturnRegistry {
             #[cfg(not(any(feature = "std", )))]
             functions: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"Failed to create post-return functions vectorMissing messageMissing messageMissing message"))?
+                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"))?
             },
             #[cfg(feature = "std")]
             pending_cleanups: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
             pending_cleanups: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"Failed to create pending cleanups vectorMissing messageMissing messageMissing message"))?
+                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"))?
             },
             async_engine: None,
             cancellation_manager: None,
@@ -279,14 +279,14 @@ impl PostReturnRegistry {
             #[cfg(not(any(feature = "std", )))]
             functions: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"Failed to create post-return functions vectorMissing messageMissing messageMissing message"))?
+                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"))?
             },
             #[cfg(feature = "std")]
             pending_cleanups: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
             pending_cleanups: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"Failed to create pending cleanups vectorMissing messageMissing messageMissing message"))?
+                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"))?
             },
             async_engine,
             cancellation_manager,
@@ -321,14 +321,14 @@ impl PostReturnRegistry {
         #[cfg(not(any(feature = "std", )))]
         {
             self.functions.push((instance_id, post_return_fn)).map_err(|_| {
-                Error::resource_exhausted("Error occurred"Too many post-return functionsMissing messageMissing messageMissing message")
-                )
+                Error::resource_exhausted("Error occurred")
             })?;
-            let provider = safe_managed_alloc!(65536, CrateId::Component).map_err(|_| Error::resource_exhausted("Error occurred"Failed to allocate memory for cleanup tasksMissing messageMissing messageMissing message"))?;
-            let cleanup_vec = BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"Failed to create cleanup tasks vectorMissing messageMissing messageMissing message"))?;
+            })?;
+            let provider = safe_managed_alloc!(65536, CrateId::Component).map_err(|_| Error::resource_exhausted("Error occurred"))?;
+            let cleanup_vec = BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"))?;
             self.pending_cleanups.push((instance_id, cleanup_vec)).map_err(|_| {
-                Error::resource_exhausted("Error occurred"Too many cleanup instancesMissing messageMissing messageMissing message")
-                )
+                Error::resource_exhausted("Error occurred")
+            })?;
             })?;
         }
 
@@ -347,12 +347,12 @@ impl PostReturnRegistry {
                 .pending_cleanups
                 .get_mut(&instance_id)
                 .ok_or_else(|| {
-                    Error::runtime_execution_error("Error occurred"Instance not found for cleanupMissing messageMissing messageMissing message")
-                    )
+                    Error::runtime_execution_error("Error occurred")
+                })?;
                 })?;
 
             if cleanup_tasks.len() >= self.max_cleanup_tasks {
-                return Err(Error::resource_exhausted("Error occurred"Too many cleanup tasksMissing message")
+                return Err(Error::resource_exhausted("Error occurred")
                 );
             }
 
@@ -369,8 +369,8 @@ impl PostReturnRegistry {
             for (id, cleanup_tasks) in &mut self.pending_cleanups {
                 if *id == instance_id {
                     cleanup_tasks.push(task).map_err(|_| {
-                        Error::resource_exhausted("Error occurred"Too many cleanup tasksMissing messageMissing messageMissing message")
-                        )
+                        Error::resource_exhausted("Error occurred")
+                    })?;
                     })?;
                     
                     // Update peak tasks metric
@@ -383,7 +383,7 @@ impl PostReturnRegistry {
                 }
             }
             
-            return Err(Error::runtime_execution_error("Error occurred"Instance not found for cleanupMissing message")
+            return Err(Error::runtime_execution_error("Error occurred")
             );
         }
 
@@ -402,8 +402,8 @@ impl PostReturnRegistry {
             .functions
             .get_mut(&instance_id)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Error occurred"Post-return function not foundMissing messageMissing messageMissing message")
-                )
+                Error::runtime_execution_error("Error occurred")
+            })?;
             })?;
         
         #[cfg(not(any(feature = "std", )))]
@@ -416,13 +416,13 @@ impl PostReturnRegistry {
                 }
             }
             found.ok_or_else(|| {
-                Error::runtime_execution_error("Error occurred"Post-return function not foundMissing message")
-                )
+                Error::runtime_execution_error("Error occurred")
+            })?;
             })?
         };
 
         if post_return_fn.executing {
-            return Err(Error::runtime_execution_error("Error occurred"Post-return function already executingMissing message")
+            return Err(Error::runtime_execution_error("Error occurred")
             );
         }
 
@@ -965,7 +965,7 @@ pub mod helpers {
         priority: u8,
     ) -> Result<CleanupTask> {
         let cleanup_id = BoundedString::from_str(cleanup_id).map_err(|_| {
-            Error::runtime_execution_error("Error occurred"Cleanup ID too longMissing messageMissing messageMissing message")
+            Error::runtime_execution_error("Error occurred")
             )
         })?;
 

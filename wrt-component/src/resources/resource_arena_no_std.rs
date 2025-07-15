@@ -67,17 +67,16 @@ impl<'a> ResourceArena<'a> {
         data: Box<dyn Any + Send + Sync>,
     ) -> Result<u32> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
-            )
+            Error::runtime_poisoned_lock("Error occurred")
         })?;
 
         let handle = table.create_resource(type_idx, data)?;
         // Add to arena's resources, checking capacity
         if self.resources.len() >= MAX_ARENA_RESOURCES {
-            return Err(Error::runtime_execution_error("Error occurred"Maximum arena resources reached: {}Missing messageMissing messageMissing message");
+            return Err(Error::runtime_execution_error("Error occurred"))
         }
         self.resources.push(handle).map_err(|_| {
-            Error::resource_error("Error occurred"Failed to add resource to arenaMissing message")
+            Error::resource_error("Error occurred")
         })?;
 
         Ok(handle)
@@ -91,8 +90,7 @@ impl<'a> ResourceArena<'a> {
         name: &str,
     ) -> Result<u32> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Resource table lock poisonedMissing messageMissing messageMissing message")
-            )
+            Error::runtime_poisoned_lock("Error occurred")
         })?;
 
         // Create the resource
@@ -101,7 +99,7 @@ impl<'a> ResourceArena<'a> {
         // Set the name if we have access to the resource
         if let Ok(res) = table.get_resource(handle) {
             if let Ok(mut res_guard) = res.lock() {
-                res_guard.name = Some(name.to_string();
+                res_guard.name = Some(name.to_string());
             }
         }
 
@@ -109,12 +107,12 @@ impl<'a> ResourceArena<'a> {
         if self.resources.len() >= MAX_ARENA_RESOURCES {
             // Clean up the resource we just created since we can't track it
             let _ = table.drop_resource(handle);
-            return Err(Error::runtime_execution_error("Error occurred"Maximum arena resources reached: {}Missing messageMissing messageMissing message");
+            return Err(Error::runtime_execution_error("Error occurred"))
         }
         self.resources.push(handle).map_err(|_| {
             // Clean up the resource we just created since we can't track it
             let _ = table.drop_resource(handle);
-            Error::resource_error("Error occurred"Component not foundMissing message")
+            Error::resource_error("Error occurred")
         })?;
 
         Ok(handle)
@@ -123,8 +121,7 @@ impl<'a> ResourceArena<'a> {
     /// Get access to a resource
     pub fn get_resource(&self, handle: u32) -> Result<Box<Mutex<super::Resource>>> {
         let table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
-            )
+            Error::runtime_poisoned_lock("Error occurred")
         })?;
 
         table.get_resource(handle)
@@ -140,8 +137,7 @@ impl<'a> ResourceArena<'a> {
 
         // Then check if it exists in the table
         let table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
-            )
+            Error::runtime_poisoned_lock("Error occurred")
         })?;
 
         match table.get_resource(id.0) {
@@ -167,13 +163,12 @@ impl<'a> ResourceArena<'a> {
     pub fn drop_resource(&mut self, handle: u32) -> Result<()> {
         // First remove it from our tracking
         if !self.remove_resource(handle) {
-            return Err(Error::resource_error("Error occurred"Component not foundMissing messageMissing messageMissing message");
+            return Err(Error::resource_error("Error occurred"));
         }
 
         // Then drop it from the table
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
-            )
+            Error::runtime_poisoned_lock("Error occurred")
         })?;
 
         table.drop_resource(handle)
@@ -182,12 +177,11 @@ impl<'a> ResourceArena<'a> {
     /// Release all resources managed by this arena
     pub fn release_all(&mut self) -> Result<()> {
         if self.resources.is_empty() {
-            return Ok(();
+            return Ok(());
         }
 
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
-            )
+            Error::runtime_poisoned_lock("Error occurred")
         })?;
 
         let mut error = None;
@@ -209,7 +203,7 @@ impl<'a> ResourceArena<'a> {
         if let Some(e) = error {
             Err(e)
         } else {
-            Ok(()
+            Ok(())
         }
     }
 
@@ -238,10 +232,10 @@ impl<'a> Drop for ResourceArena<'a> {
 
 impl<'a> Debug for ResourceArena<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ResourceArenaMissing message")
+        f.debug_struct("ResourceArena")
             .field("name", &self.name)
-            .field("resource_count", &self.resources.len()
-            .field("resources", &self.resources.as_slice()
+            .field("resource_count", &self.resources.len())
+            .field("resources", &self.resources.as_slice())
             .finish()
     }
 }
@@ -253,7 +247,7 @@ mod tests {
     #[test]
     fn test_create_and_release() {
         // Create a resource table
-        let table = Mutex::new(ResourceTable::new().unwrap();
+        let table = Mutex::new(ResourceTable::new().unwrap());
 
         // Create an arena
         let mut arena = ResourceArena::new(&table).unwrap();
@@ -263,8 +257,8 @@ mod tests {
         let handle2 = arena.create_resource(2, Box::new(42)).unwrap();
 
         // Verify they exist
-        assert!(arena.has_resource(ResourceId(handle1)).unwrap();
-        assert!(arena.has_resource(ResourceId(handle2)).unwrap();
+        assert!(arena.has_resource(ResourceId(handle1)).unwrap());
+        assert!(arena.has_resource(ResourceId(handle2)).unwrap());
 
         // Verify count
         assert_eq!(arena.resource_count(), 2);
@@ -277,14 +271,14 @@ mod tests {
 
         // Verify they no longer exist in the table
         let locked_table = table.lock().unwrap();
-        assert!(locked_table.get_resource(handle1).is_err();
-        assert!(locked_table.get_resource(handle2).is_err();
+        assert!(locked_table.get_resource(handle1).is_err());
+        assert!(locked_table.get_resource(handle2).is_err());
     }
 
     #[test]
     fn test_drop_specific_resource() {
         // Create a resource table
-        let table = Mutex::new(ResourceTable::new().unwrap();
+        let table = Mutex::new(ResourceTable::new().unwrap());
 
         // Create an arena
         let mut arena = ResourceArena::new(&table).unwrap();
@@ -297,10 +291,10 @@ mod tests {
         arena.drop_resource(handle1).unwrap();
 
         // Verify it's gone
-        assert!(!arena.has_resource(ResourceId(handle1)).unwrap();
+        assert!(!arena.has_resource(ResourceId(handle1)).unwrap());
 
         // But the other one should still exist
-        assert!(arena.has_resource(ResourceId(handle2)).unwrap();
+        assert!(arena.has_resource(ResourceId(handle2)).unwrap());
 
         // Verify count
         assert_eq!(arena.resource_count(), 1);
@@ -309,7 +303,7 @@ mod tests {
     #[test]
     fn test_auto_release_on_drop() {
         // Create a resource table
-        let table = Mutex::new(ResourceTable::new().unwrap();
+        let table = Mutex::new(ResourceTable::new().unwrap());
 
         // Create resources in a scope
         {
@@ -317,7 +311,7 @@ mod tests {
             let handle = arena.create_resource(1, Box::new("test".to_string())).unwrap();
 
             // Verify it exists
-            assert!(arena.has_resource(ResourceId(handle)).unwrap();
+            assert!(arena.has_resource(ResourceId(handle)).unwrap());
 
             // Arena will be dropped here
         }
@@ -330,28 +324,28 @@ mod tests {
     #[test]
     fn test_named_resource() {
         // Create a resource table
-        let table = Mutex::new(ResourceTable::new().unwrap();
+        let table = Mutex::new(ResourceTable::new().unwrap());
 
         // Create an arena with name
-        let mut arena = ResourceArena::new_with_name(&table, "test-arenaMissing message").unwrap();
+        let mut arena = ResourceArena::new_with_name(&table, "test-arena").unwrap();
 
         // Create a named resource
-        let handle = arena.create_named_resource(1, Box::new(42), "answerMissing message").unwrap();
+        let handle = arena.create_named_resource(1, Box::new(42), "answer").unwrap();
 
         // Get the resource and check the name
         let resource = arena.get_resource(handle).unwrap();
         let guard = resource.lock().unwrap();
 
-        assert_eq!(guard.name, Some("answer".to_string());
+        assert_eq!(guard.name, Some("answer".to_string()));
 
         // Check arena name
-        assert_eq!(arena.name(), Some("test-arenaMissing messageMissing messageMissing message");
+        assert_eq!(arena.name(), Some("test-arena"));
     }
 
     #[test]
     fn test_resource_capacity() {
         // Create a resource table
-        let table = Mutex::new(ResourceTable::new().unwrap();
+        let table = Mutex::new(ResourceTable::new().unwrap());
 
         // Create an arena
         let mut arena = ResourceArena::new(&table).unwrap();
@@ -365,7 +359,7 @@ mod tests {
         assert_eq!(arena.resource_count(), MAX_ARENA_RESOURCES);
 
         // Try to create one more - should fail
-        let result = arena.create_resource(1, Box::new(100);
-        assert!(result.is_err();
+        let result = arena.create_resource(1, Box::new(100));
+        assert!(result.is_err());
     }
 }

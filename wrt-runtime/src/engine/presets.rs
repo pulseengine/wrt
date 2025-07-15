@@ -79,7 +79,7 @@ pub fn qm() -> Result<MemoryCapabilityContext> {
     );
 
     // Register dynamic capabilities for all crates
-    for &(crate_id, budget) in QM_BUDGETS {
+    for &(crate_id, budget) in QM_BUDGETS.iter() {
         context.register_dynamic_capability(crate_id, budget)?;
     }
 

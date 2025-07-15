@@ -757,7 +757,7 @@ impl ResourceManager {
             ResourceOwnership::Borrowed { owner, owner_handle } => (owner, owner_handle),
             _ => {
                 return Err(Error::runtime_invalid_state("Resource is not borrowed"),
-                )
+            })?;
             }
         };
 

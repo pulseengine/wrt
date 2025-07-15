@@ -290,7 +290,6 @@ impl ResourceLifecycleManager {
         #[cfg(feature = "std")]
         let mut resource = self.resources.remove(&handle).ok_or_else(|| {
             Error::resource_invalid_handle("Component not found")
-        }
         })?;
 
         #[cfg(not(feature = "std"))]
@@ -302,7 +301,6 @@ impl ResourceLifecycleManager {
             })?
             .ok_or_else(|| {
                 Error::resource_invalid_handle("Invalid resource handle")
-            }
             })?;
 
         // Check state
@@ -348,7 +346,6 @@ impl ResourceLifecycleManager {
         #[cfg(feature = "std")]
         let resource = self.resources.get_mut(&handle).ok_or_else(|| {
             Error::resource_invalid_handle("Component not found")
-        }
         })?;
 
         #[cfg(not(feature = "std"))]
@@ -360,7 +357,6 @@ impl ResourceLifecycleManager {
             })?
             .ok_or_else(|| {
                 Error::resource_invalid_handle("Invalid resource handle")
-            }
             })?;
 
         // Check state
@@ -420,7 +416,6 @@ impl ResourceLifecycleManager {
         #[cfg(feature = "std")]
         let resource = self.resources.get_mut(&handle).ok_or_else(|| {
             Error::resource_invalid_handle("Component not found")
-        }
         })?;
 
         #[cfg(not(feature = "std"))]
@@ -432,7 +427,6 @@ impl ResourceLifecycleManager {
             })?
             .ok_or_else(|| {
                 Error::resource_invalid_handle("Invalid resource handle")
-            }
             })?;
 
         // Find and remove borrow
@@ -491,7 +485,6 @@ impl ResourceLifecycleManager {
         #[cfg(feature = "std")]
         let resource = self.resources.get_mut(&handle).ok_or_else(|| {
             Error::resource_invalid_handle("Component not found")
-        }
         })?;
 
         #[cfg(not(feature = "std"))]
@@ -503,7 +496,6 @@ impl ResourceLifecycleManager {
             })?
             .ok_or_else(|| {
                 Error::resource_invalid_handle("Invalid resource handle")
-            }
             })?;
 
         // Check ownership
@@ -540,8 +532,7 @@ impl ResourceLifecycleManager {
         #[cfg(feature = "std")]
         {
             self.resources.get(&handle).ok_or_else(|| {
-                Error::resource_invalid_handle("Component not found"),
-                )
+                Error::resource_invalid_handle("Component not found")
             })
         }
 
@@ -553,8 +544,7 @@ impl ResourceLifecycleManager {
                     Error::resource_error("Failed to get resource")
                 })?
                 .ok_or_else(|| {
-                    Error::resource_invalid_handle("Invalid resource handle"),
-                    )
+                    Error::resource_invalid_handle("Invalid resource handle")
                 })
         }
     }

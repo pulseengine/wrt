@@ -44,7 +44,7 @@ impl ResourceArena {
         data: Arc<dyn Any + Send + Sync>,
     ) -> Result<u32> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
 
@@ -61,7 +61,7 @@ impl ResourceArena {
         name: &str,
     ) -> Result<u32> {
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
 
@@ -71,7 +71,7 @@ impl ResourceArena {
         // Set the name if we have access to the resource
         if let Ok(res) = table.get_resource(handle) {
             if let Ok(mut res_guard) = res.lock() {
-                res_guard.name = Some(name.to_string();
+                res_guard.name = Some(name.to_string());
             }
         }
 
@@ -92,7 +92,7 @@ impl ResourceArena {
     /// Get access to a resource
     pub fn get_resource(&self, handle: u32) -> Result<Arc<Mutex<super::Resource>>> {
         let table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
 
@@ -102,7 +102,7 @@ impl ResourceArena {
     /// Check if a resource exists
     pub fn has_resource(&self, id: ResourceId) -> Result<bool> {
         let table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
 
@@ -135,12 +135,12 @@ impl ResourceArena {
     pub fn drop_resource(&mut self, handle: u32) -> Result<()> {
         // First remove it from our tracking
         if !self.remove_resource(handle) {
-            return Err(Error::resource_error("Error occurred"Component not foundMissing messageMissing messageMissing message");
+            return Err(Error::resource_error("Error occurred");
         }
 
         // Then drop it from the table
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
 
@@ -154,7 +154,7 @@ impl ResourceArena {
         }
 
         let mut table = self.table.lock().map_err(|e| {
-            Error::runtime_poisoned_lock("Error occurred"Component not foundMissing message"),
+            Error::runtime_poisoned_lock("Error occurred"),
             )
         })?;
 
@@ -190,7 +190,7 @@ impl ResourceArena {
 
     /// Set the name of this arena
     pub fn set_name(&mut self, name: &str) {
-        self.name = Some(name.to_string();
+        self.name = Some(name.to_string());
     }
 
     /// Get all resources managed by this arena

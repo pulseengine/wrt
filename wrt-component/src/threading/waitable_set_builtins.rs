@@ -264,12 +264,12 @@ impl WaitableSetImpl {
     pub fn check_ready(&mut self) -> Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS, NoStdProvider<65536>>> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let mut ready = BoundedVec::new(provider).map_err(|_| {
-            Error::runtime_execution_error("Error occurred"Failed to create ready waitables vectorMissing message")
+            Error::runtime_execution_error("Error occurred")
         })?;
         for (_, entry) in self.waitables.iter_mut() {
             if entry.check_ready() {
                 ready.push(entry.clone()
-                    .map_err(|_| Error::runtime_execution_error("Error occurred"Failed to add ready waitableMissing messageMissing messageMissing message"))?;
+                    .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
             }
         }
         Ok(ready)
@@ -427,7 +427,7 @@ impl WaitableSetBuiltins {
                 set.add_waitable(waitable)
             } else {
                 Err(Error::runtime_execution_error("Error occurred"
-                )
+            })?;
             }
         })?
     }
@@ -455,7 +455,7 @@ impl WaitableSetBuiltins {
                 Ok(set.poll().unwrap_or(WaitResult::Timeout)
             } else {
                 Err(Error::runtime_execution_error("Error occurred"
-                )
+            })?;
             }
         })?
     }
@@ -513,7 +513,7 @@ impl WaitableSetBuiltins {
                 Ok(set.check_ready()
             } else {
                 Err(Error::runtime_execution_error("Error occurred"
-                )
+            })?;
             }
         })?
     }
@@ -525,7 +525,7 @@ impl WaitableSetBuiltins {
                 set.check_ready()
             } else {
                 Err(Error::runtime_execution_error("Error occurred"
-                )
+            })?;
             }
         })?
     }

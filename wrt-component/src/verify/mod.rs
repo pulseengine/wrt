@@ -33,13 +33,13 @@ pub mod kani_verification {
             // Add imports with type constraints
             for i in 0..import_count {
                 let import_name = if i % 2 == 0 { "func_import" } else { "memory_import" };
-                imports.push(import_name.to_string();
+                imports.push(import_name.to_string());
             }
 
             // Add exports with type constraints
             for i in 0..export_count {
                 let export_name = if i % 2 == 0 { "func_export" } else { "memory_export" };
-                exports.push(export_name.to_string();
+                exports.push(export_name.to_string());
             }
 
             // Verify type consistency
@@ -244,7 +244,7 @@ pub mod kani_verification {
             // Create a minimal component
             let imports = if has_imports {
                 let mut imp = Vec::new();
-                imp.push("required_func".to_string();
+                imp.push("required_func".to_string());
                 imp
             } else {
                 Vec::new()
@@ -252,7 +252,7 @@ pub mod kani_verification {
 
             let exports = if has_exports {
                 let mut exp = Vec::new();
-                exp.push("exported_func".to_string();
+                exp.push("exported_func".to_string());
                 exp
             } else {
                 Vec::new()

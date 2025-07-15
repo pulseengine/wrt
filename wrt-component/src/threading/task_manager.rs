@@ -199,7 +199,7 @@ impl TaskManager {
             tasks: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::runtime_execution_error("Error occurred"Failed to create task storageMissing message")
+                    wrt_error::Error::runtime_execution_error("Error occurred")
                 })?
             },
             #[cfg(feature = "std")]
@@ -208,7 +208,7 @@ impl TaskManager {
             ready_queue: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::runtime_execution_error("Error occurred"Failed to create ready queueMissing message")
+                    wrt_error::Error::runtime_execution_error("Error occurred")
                 })?
             },
             current_task: None,
@@ -250,7 +250,7 @@ impl TaskManager {
             subtasks: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::runtime_execution_error("Error occurred"Failed to create subtasks storageMissing message")
+                    wrt_error::Error::runtime_execution_error("Error occurred")
                 })?
             },
             #[cfg(feature = "std")]
@@ -259,7 +259,7 @@ impl TaskManager {
             borrowed_handles: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::runtime_execution_error("Error occurred"Failed to create borrowed handles storageMissing message")
+                    wrt_error::Error::runtime_execution_error("Error occurred")
                 })?
             },
             context: TaskContext {
@@ -271,7 +271,7 @@ impl TaskManager {
                 call_stack: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                     BoundedVec::new(provider).map_err(|_| {
-                        wrt_error::Error::runtime_execution_error("Error occurred"Failed to create call stack storageMissing message")
+                        wrt_error::Error::runtime_execution_error("Error occurred")
                     })?
                 },
                 #[cfg(feature = "std")]
@@ -280,7 +280,7 @@ impl TaskManager {
                 storage: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                     BoundedVec::new(provider).map_err(|_| {
-                        wrt_error::Error::runtime_execution_error("Error occurred"Failed to create task storageMissing message")
+                        wrt_error::Error::runtime_execution_error("Error occurred")
                     })?
                 },
                 created_at: self.get_current_time(),
@@ -314,7 +314,7 @@ impl TaskManager {
         {
             self.tasks.push((task_id, task)).map_err(|_| {
                 wrt_error::Error::runtime_execution_error("Error occurred"
-                )
+            })?;
             })?;
         }
 
@@ -362,7 +362,7 @@ impl TaskManager {
                 {
                     self.ready_queue.push(task_id).map_err(|_| {
                         wrt_error::Error::runtime_execution_error("Error occurred"
-                        )
+                    })?;
                     })?;
                 }
             }
@@ -405,7 +405,7 @@ impl TaskManager {
                 Ok(()
             } else {
                 Err(wrt_error::Error::runtime_execution_error("Error occurred"
-                )
+            })?;
             }
         } else {
             Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,
@@ -427,11 +427,11 @@ impl TaskManager {
                 {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                     let mut bounded_values = BoundedVec::new(provider).map_err(|_| {
-                        wrt_error::Error::runtime_execution_error("Error occurred"Failed to create return values storageMissing message")
+                        wrt_error::Error::runtime_execution_error("Error occurred")
                     })?;
                     for value in values {
                         bounded_values.push(value).map_err(|_| {
-                            wrt_error::Error::runtime_execution_error("Error occurred"Failed to store return valueMissing message")
+                            wrt_error::Error::runtime_execution_error("Error occurred")
                         })?;
                     }
                     task.return_values = Some(bounded_values);
@@ -501,7 +501,7 @@ impl TaskManager {
                 Ok(()
             } else {
                 Err(wrt_error::Error::runtime_execution_error("Error occurred"
-                )
+            })?;
             }
         } else {
             Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,

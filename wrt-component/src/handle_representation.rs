@@ -608,7 +608,7 @@ impl HandleRepresentationManager {
                             | (HandleOperation::Drop, HandleOperation::Drop)
                             | (HandleOperation::Share { .. }, HandleOperation::Share { .. })
                             | (HandleOperation::Borrow { .. }, HandleOperation::Borrow { .. })
-                    )
+                })?;
                 });
 
                 if !operation_allowed {

@@ -24,6 +24,7 @@ std = ["wrt-build-core/std"]
 # Core build system
 wrt-build-core = { path = "../wrt-build-core" }
 wrt-decoder = { path = "../wrt-decoder" }
+wrt-foundation = { path = "../wrt-foundation" }
 
 # CLI framework
 clap = { version = "4.5.4", features = ["derive", "env"] }

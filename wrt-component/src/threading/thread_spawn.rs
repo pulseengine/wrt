@@ -116,7 +116,7 @@ impl ThreadConfiguration {
             detached: false,
             cpu_affinity: None,
             capabilities: BoundedVec::new(provider).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Error occurred"Failed to create capabilities vectorMissing message")
+                wrt_error::Error::resource_exhausted("Error occurred")
             })?,
         })
     }
@@ -176,7 +176,7 @@ impl ComponentThreadManager {
             threads: BoundedHashMap::new(),
             component_threads: BoundedHashMap::new(),
             spawn_requests: BoundedVec::new(provider).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Error occurred"Failed to create spawn requests vectorMissing message")
+                wrt_error::Error::resource_exhausted("Error occurred")
             })?,
             next_thread_id: AtomicU32::new(1),
             task_manager: TaskManager::new(),

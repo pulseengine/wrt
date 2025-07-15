@@ -153,6 +153,18 @@ impl MemoryInitializer {
         // ASIL-D safe error reset using atomic pattern
         INIT_ERROR_PTR.store(core::ptr::null_mut(), Ordering::Release);
     }
+    
+    /// Ensure memory system is initialized (safe to call multiple times)
+    ///
+    /// This is a convenience method that checks if the memory system is already
+    /// initialized and only initializes it if needed. Safe to call from any context.
+    pub fn ensure_initialized() -> Result<()> {
+        if Self::is_initialized() {
+            Ok(())
+        } else {
+            Self::initialize()
+        }
+    }
 }
 
 /// Macro to ensure memory system is initialized

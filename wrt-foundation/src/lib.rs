@@ -244,6 +244,9 @@ pub mod fault_detection;
 pub mod safety_monitor;
 // Production telemetry and logging infrastructure (ASIL-A)
 pub mod telemetry;
+// Heap-based memory provider to avoid stack overflow
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub mod heap_provider;
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]

@@ -441,7 +441,7 @@ impl TaskBuiltins {
                 Ok(()
             } else {
                 Err(Error::runtime_execution_error("Error occurred"
-                )
+            })?;
             }
         })?
     }
@@ -490,7 +490,7 @@ impl TaskBuiltins {
                 }
             } else {
                 Err(Error::runtime_execution_error("Error occurred"
-                )
+            })?;
             }
         })?
     }
@@ -572,12 +572,12 @@ pub mod task_helpers {
     pub fn wait_for_tasks(task_ids: &[TaskId]) -> Result<BoundedVec<Option<TaskReturn>, MAX_TASKS, NoStdProvider<65536>>> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let mut results = BoundedVec::new(provider).map_err(|_| {
-            Error::runtime_execution_error("Error occurred"Failed to create results vectorMissing message")
+            Error::runtime_execution_error("Error occurred")
         })?;
         for &task_id in task_ids {
             let result = TaskBuiltins::task_wait(task_id)?;
             results.push(result)
-                .map_err(|_| Error::runtime_execution_error("Error occurred"Failed to add task resultMissing messageMissing messageMissing message"))?;
+                .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
         }
         Ok(results)
     }

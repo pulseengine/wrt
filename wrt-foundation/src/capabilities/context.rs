@@ -126,8 +126,8 @@ impl MemoryCapabilityContext {
     ) -> Result<()> {
         let capability =
             DynamicMemoryCapability::new(max_allocation, crate_id, self.default_verification_level);
-
-        self.register_capability(crate_id, Box::new(capability))
+        let boxed_capability = Box::new(capability);
+        self.register_capability(crate_id, boxed_capability)
     }
 
     /// Register a static memory capability for a crate

@@ -66,7 +66,7 @@ impl BudgetAwareResourceTablePool {
     /// 3. Resource limits are enforced
     pub fn create_table(&mut self) -> WrtResult<ResourceTable> {
         if self.active_tables >= self.max_tables {
-            return Err(wrt_foundation::wrt_error::Error::resource_exhausted("Error occurred"Maximum resource tables reached for componentMissing messageMissing messageMissing message");
+            return Err(wrt_foundation::wrt_error::Error::resource_exhausted("Error occurred");
         }
         
         // Create table with budget tracking

@@ -9,6 +9,7 @@ use std::{path::PathBuf, process};
 
 // External crates
 use anyhow::{Context, Result};
+use chrono;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 
@@ -16,7 +17,7 @@ use colored::Colorize;
 use wrt_build_core::{
     cache::CacheManager,
     config::{AsilLevel, BuildProfile},
-    diagnostics::Severity,
+    diagnostics::{DiagnosticCollection, Severity},
     filtering::{FilterOptionsBuilder, GroupBy, SortBy, SortDirection},
     formatters::{FormatterFactory, OutputFormat},
     kani::{KaniConfig, KaniVerifier},
@@ -586,6 +587,30 @@ enum Commands {
         /// Clean extracted test files
         #[arg(long)]
         clean: bool,
+
+        /// Run WAST test suite
+        #[arg(long)]
+        run_wast: bool,
+
+        /// Directory containing WAST files
+        #[arg(long, default_value = "external/testsuite")]
+        wast_dir: String,
+
+        /// Filter WAST files by pattern
+        #[arg(long)]
+        wast_filter: Option<String>,
+
+        /// Show per-assertion results
+        #[arg(long)]
+        per_assertion: bool,
+
+        /// Output file for WAST test report
+        #[arg(long)]
+        wast_report: Option<String>,
+
+        /// Timeout for individual tests in milliseconds
+        #[arg(long, default_value = "5000")]
+        test_timeout_ms: u64,
     },
 
     /// Requirements verification with SCORE methodology
@@ -1183,6 +1208,14 @@ fn parse_args() -> Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Initialize the memory system at the very beginning
+    // This must happen before any other operations to prevent stack overflow
+    // when creating engines or using capability-based memory
+    if let Err(e) = wrt_foundation::memory_init::MemoryInitializer::initialize() {
+        eprintln!("Warning: Failed to initialize memory system: {}", e);
+        // Continue execution - the system should still work with default providers
+    }
+
     // Handle special help cases before parsing
     let args: Vec<String> = std::env::args().collect();
     if args.len() >= 2 && (args[1] == "help" && args.get(2) == Some(&"diagnostics".to_string())) {
@@ -1450,6 +1483,12 @@ async fn main() -> Result<()> {
             wabt_path,
             validate,
             clean,
+            run_wast,
+            wast_dir,
+            wast_filter,
+            per_assertion,
+            wast_report,
+            test_timeout_ms,
         } => {
             cmd_testsuite(
                 &build_system,
@@ -1457,6 +1496,13 @@ async fn main() -> Result<()> {
                 wabt_path.clone(),
                 *validate,
                 *clean,
+                *run_wast,
+                wast_dir.clone(),
+                wast_filter.clone(),
+                *per_assertion,
+                wast_report.clone(),
+                *test_timeout_ms,
+                &mut global,
             )
             .await
         },
@@ -2953,7 +2999,15 @@ async fn cmd_testsuite(
     wabt_path: Option<String>,
     validate: bool,
     clean: bool,
+    run_wast: bool,
+    wast_dir: String,
+    wast_filter: Option<String>,
+    per_assertion: bool,
+    wast_report: Option<String>,
+    test_timeout_ms: u64,
+    global: &mut GlobalArgs,
 ) -> Result<()> {
+    eprintln!("DEBUG: cmd_testsuite called with run_wast={}", run_wast);
     if clean {
         println!("{} Cleaning extracted test files...", "🧹".bright_blue());
         // TODO: Implement cleaning through wrt-build-core
@@ -2976,7 +3030,187 @@ async fn cmd_testsuite(
         // TODO: Implement validation through wrt-build-core
     }
 
-    println!("{} Testsuite operations completed", "✅".bright_green());
+    if run_wast {
+        use wrt_build_core::wast::{ReportFormat, WastConfig, WastTestRunner};
+
+        eprintln!("DEBUG: run_wast is true, starting WAST test suite...");
+
+        // Initialize the memory system before running WAST tests
+        eprintln!("DEBUG: Initializing memory system...");
+        // The memory system initialization is handled by wrt-build-core internally
+        // No need to initialize it here as the WastEngine will do it when needed
+        eprintln!("DEBUG: Memory system initialization delegated to WastEngine");
+
+        println!("{} Running WAST test suite...", "🧪".bright_blue());
+
+        let workspace_root = build_system.workspace_root();
+        eprintln!("DEBUG: workspace_root = {:?}", workspace_root);
+        eprintln!("DEBUG: wast_dir = {:?}", wast_dir);
+        let test_directory = workspace_root.join(&wast_dir);
+
+        if !test_directory.exists() {
+            anyhow::bail!(
+                "WAST test directory not found: {}",
+                test_directory.display()
+            );
+        }
+
+        // Determine report format
+        let report_format = match global.output_format {
+            OutputFormat::Json | OutputFormat::JsonLines => ReportFormat::Json,
+            OutputFormat::Human => ReportFormat::Human,
+        };
+
+        // Create WAST configuration
+        let config = WastConfig {
+            test_directory,
+            file_filter: wast_filter,
+            per_assertion,
+            report_format,
+            test_timeout_ms,
+        };
+
+        // Create and run WAST test runner
+        eprintln!("DEBUG: About to create WastTestRunner with config...");
+        let mut runner =
+            WastTestRunner::new(config).context("Failed to create WAST test runner")?;
+        eprintln!("DEBUG: WastTestRunner created successfully");
+        let start_time = std::time::Instant::now();
+
+        match runner.run_all_tests() {
+            Ok(results) => {
+                let total_time = start_time.elapsed();
+
+                // Generate output based on format
+                match global.output_format {
+                    OutputFormat::Json | OutputFormat::JsonLines => {
+                        // JSON output
+                        let output = serde_json::json!({
+                            "wast_test_results": {
+                                "summary": runner.stats,
+                                "files": results,
+                                "execution_time_ms": total_time.as_millis(),
+                                "diagnostics": runner.diagnostics()
+                            }
+                        });
+
+                        if let Some(report_file) = wast_report {
+                            let report_path = workspace_root.join(report_file);
+                            std::fs::write(&report_path, serde_json::to_string_pretty(&output)?)?;
+                            println!(
+                                "{} WAST report written to {}",
+                                "✅".bright_green(),
+                                report_path.display()
+                            );
+                        } else {
+                            println!("{}", serde_json::to_string_pretty(&output)?);
+                        }
+                    },
+                    OutputFormat::Human => {
+                        // Human-readable output
+                        let summary = runner.generate_summary(&results);
+                        println!("{}", summary);
+
+                        if per_assertion {
+                            println!("\n{} Per-assertion Results:", "📊".bright_cyan());
+                            for file_result in &results {
+                                println!("\n📄 {}", file_result.file_path.bright_cyan());
+                                for directive in &file_result.directive_results {
+                                    let status_icon = match directive.result {
+                                        wrt_build_core::wast::TestResult::Passed => "✅",
+                                        wrt_build_core::wast::TestResult::Failed => "❌",
+                                        wrt_build_core::wast::TestResult::Skipped => "⏭️",
+                                    };
+                                    println!(
+                                        "  {} {} ({})",
+                                        status_icon, directive.directive_name, directive.test_type
+                                    );
+                                    if let Some(error) = &directive.error_message {
+                                        println!("    Error: {}", error.bright_red());
+                                    }
+                                }
+                            }
+                        }
+
+                        // Show overall results
+                        let total_files = results.len();
+                        let passed_files = results
+                            .iter()
+                            .filter(|r| r.status == wrt_build_core::wast::TestResult::Passed)
+                            .count();
+                        let failed_files = results
+                            .iter()
+                            .filter(|r| r.status == wrt_build_core::wast::TestResult::Failed)
+                            .count();
+
+                        println!("\n{} Overall Results:", "📈".bright_blue());
+                        println!(
+                            "  Files: {} total, {} passed, {} failed",
+                            total_files, passed_files, failed_files
+                        );
+                        println!(
+                            "  Assertions: {} passed, {} failed",
+                            runner.stats.passed, runner.stats.failed
+                        );
+                        println!("  Execution time: {:.2}s", total_time.as_secs_f64());
+
+                        if let Some(report_file) = wast_report {
+                            let report_path = workspace_root.join(report_file);
+                            let markdown_report =
+                                generate_markdown_report(&runner, &results, total_time);
+                            std::fs::write(&report_path, markdown_report)?;
+                            println!(
+                                "{} Markdown report written to {}",
+                                "✅".bright_green(),
+                                report_path.display()
+                            );
+                        }
+                    },
+                }
+
+                // Output diagnostics if in diagnostic mode
+                if !runner.diagnostics().is_empty() {
+                    let formatter = FormatterFactory::create(global.output_format.clone());
+                    // Convert diagnostics to DiagnosticCollection
+                    let mut collection = DiagnosticCollection::new(
+                        std::path::PathBuf::from("."),
+                        "wast-test".to_string(),
+                    );
+                    collection.diagnostics = runner.diagnostics().to_vec();
+                    print!("{}", formatter.format_collection(&collection));
+                }
+
+                // Exit with error code if tests failed
+                if runner.stats.failed > 0 {
+                    anyhow::bail!(
+                        "WAST tests failed: {} assertions failed",
+                        runner.stats.failed
+                    );
+                }
+            },
+            Err(e) => {
+                global.output.error(&format!("WAST test execution failed: {}", e));
+                return Err(e);
+            },
+        }
+    }
+
+    if !extract && !validate && !clean && !run_wast {
+        println!(
+            "{} No testsuite operations specified. Available options:",
+            "ℹ️".bright_blue()
+        );
+        println!("  --extract      Extract test modules from .wast files");
+        println!("  --validate     Run validation tests");
+        println!("  --clean        Clean extracted test files");
+        println!("  --run-wast     Run WAST test suite");
+        println!();
+        println!("Examples:");
+        println!("  cargo-wrt testsuite --run-wast");
+        println!("  cargo-wrt testsuite --run-wast --wast-filter \"simd\"");
+        println!("  cargo-wrt testsuite --run-wast --per-assertion --output json");
+    }
+
     Ok(())
 }
 
@@ -4649,4 +4883,117 @@ For command-specific help: cargo-wrt <command> --help
         "•".bright_green(),
         "🔗".bright_cyan()
     );
+}
+
+/// Generate a markdown report for WAST test results
+fn generate_markdown_report(
+    runner: &wrt_build_core::wast::WastTestRunner,
+    results: &[wrt_build_core::wast::WastFileResult],
+    total_time: std::time::Duration,
+) -> String {
+    let mut report = String::new();
+
+    report.push_str("# WAST Test Suite Report\n\n");
+    report.push_str(&format!(
+        "Generated on: {}\n\n",
+        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string()
+    ));
+
+    // Summary
+    report.push_str("## Summary\n\n");
+    report.push_str(&format!(
+        "- **Files processed**: {}\n",
+        runner.stats.files_processed
+    ));
+    report.push_str(&format!(
+        "- **Total assertions**: {} passed, {} failed, {} skipped\n",
+        runner.stats.passed, runner.stats.failed, runner.stats.skipped
+    ));
+    report.push_str(&format!(
+        "- **Execution time**: {:.2}s\n",
+        total_time.as_secs_f64()
+    ));
+
+    // Test type breakdown
+    report.push_str("\n## Test Type Breakdown\n\n");
+    report.push_str(&format!(
+        "- **assert_return**: {}\n",
+        runner.stats.assert_return_count
+    ));
+    report.push_str(&format!(
+        "- **assert_trap**: {}\n",
+        runner.stats.assert_trap_count
+    ));
+    report.push_str(&format!(
+        "- **assert_invalid**: {}\n",
+        runner.stats.assert_invalid_count
+    ));
+    report.push_str(&format!(
+        "- **assert_malformed**: {}\n",
+        runner.stats.assert_malformed_count
+    ));
+    report.push_str(&format!(
+        "- **assert_unlinkable**: {}\n",
+        runner.stats.assert_unlinkable_count
+    ));
+    report.push_str(&format!(
+        "- **assert_exhaustion**: {}\n",
+        runner.stats.assert_exhaustion_count
+    ));
+    report.push_str(&format!(
+        "- **register**: {}\n",
+        runner.stats.register_count
+    ));
+
+    // File results
+    report.push_str("\n## File Results\n\n");
+    report.push_str("| File | Status | Directives | Execution Time |\n");
+    report.push_str("|------|--------|------------|----------------|\n");
+
+    for file_result in results {
+        let status_icon = match file_result.status {
+            wrt_build_core::wast::TestResult::Passed => "✅ Passed",
+            wrt_build_core::wast::TestResult::Failed => "❌ Failed",
+            wrt_build_core::wast::TestResult::Skipped => "⏭️ Skipped",
+        };
+        report.push_str(&format!(
+            "| {} | {} | {} | {}ms |\n",
+            file_result.file_path,
+            status_icon,
+            file_result.directives_count,
+            file_result.execution_time_ms
+        ));
+    }
+
+    // Failed tests details
+    let failed_files: Vec<_> = results
+        .iter()
+        .filter(|r| r.status == wrt_build_core::wast::TestResult::Failed)
+        .collect();
+    if !failed_files.is_empty() {
+        report.push_str("\n## Failed Tests Details\n\n");
+        for file_result in failed_files {
+            report.push_str(&format!("### {}\n\n", file_result.file_path));
+
+            if let Some(error) = &file_result.error_message {
+                report.push_str(&format!("**File Error**: {}\n\n", error));
+            }
+
+            for directive in &file_result.directive_results {
+                if directive.result == wrt_build_core::wast::TestResult::Failed {
+                    report.push_str(&format!(
+                        "- **{}**: {}\n",
+                        directive.directive_name,
+                        directive.error_message.as_deref().unwrap_or("Unknown error")
+                    ));
+                }
+            }
+            report.push_str("\n");
+        }
+    }
+
+    report.push_str("\n---\n");
+    report.push_str("*Generated by cargo-wrt testsuite*\n");
+
+    report
 }

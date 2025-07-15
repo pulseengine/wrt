@@ -296,8 +296,8 @@ impl WitComponentContext {
         
         // Create interface mapping
         let interface_name = interface.name.name.as_str()
-            .map_err(|_| Error::parse_error("Error occurred"Invalid interface nameMissing messageMissing messageMissing message"))?
-            .to_string();
+            .map_err(|_| Error::parse_error("Error occurred"))?
+            .to_string());
         
         let mapping = InterfaceMapping {
             wit_name: interface.name.name.clone(),
@@ -367,8 +367,8 @@ impl WitComponentContext {
         };
         
         let type_name = type_decl.name.name.as_str()
-            .map_err(|_| Error::parse_error("Error occurred"Invalid type nameMissing messageMissing messageMissing message"))?
-            .to_string();
+            .map_err(|_| Error::parse_error("Error occurred"))?
+            .to_string());
         
         self.type_mappings.insert(type_name, mapping.clone();
         
@@ -398,7 +398,7 @@ impl WitComponentContext {
             TypeExpr::Named(named) => {
                 // Look up named type
                 let type_name = named.name.name.as_str()
-                    .map_err(|_| Error::parse_error("Error occurred"Invalid type nameMissing messageMissing messageMissing message"))?;
+                    .map_err(|_| Error::parse_error("Error occurred"))?;
                 
                 if let Some(mapping) = self.type_mappings.get(type_name) {
                     Ok(mapping.component_type.clone()

@@ -16,6 +16,7 @@ use crate::{
 };
 use wrt_foundation::Value; // Add Value import
 use wrt_foundation::bounded::BoundedVec;
+use wrt_foundation::bounded_collections::BoundedMap;
 use wrt_foundation::verification::VerificationLevel;
 use wrt_instructions::control_ops::{ControlContext, FunctionOperations, BranchTarget, Block};
 use wrt_instructions::arithmetic_ops::{ArithmeticOp, ArithmeticContext};
@@ -215,8 +216,8 @@ pub enum StacklessExecutionState {
 /// Represents the execution stack in a stackless implementation
 #[derive(Debug)]
 pub struct StacklessStack {
-    /// Shared module reference
-    module: Arc<Module>,
+    /// Shared module reference (optional for lazy initialization)
+    module: Option<Arc<Module>>,
     /// Current instance index
     instance_idx: usize,
     /// The operand stack
@@ -277,9 +278,20 @@ impl StacklessStack {
             pc: 0,
             instance_idx,
             func_idx: 0,
-            module,
+            module: Some(module),
             capacity: MAX_VALUES, // For backward compatibility
         }
+    }
+
+
+    /// Get the module reference, ensuring it's available
+    pub fn module(&self) -> Result<&Arc<Module>> {
+        self.module.as_ref().ok_or_else(|| Error::runtime_execution_error("No module loaded in stack"))
+    }
+
+    /// Set the module reference for this stack
+    pub fn set_module(&mut self, module: Arc<Module>) {
+        self.module = Some(module);
     }
 }
 
@@ -290,21 +302,39 @@ impl Default for StacklessEngine {
 }
 
 impl StacklessEngine {
-    /// Creates a new stackless execution engine.
+    /// Creates a new stackless execution engine
     pub fn new() -> Self {
         let provider = DefaultMemoryProvider::default();
+        
+        // Create empty collections that will work for basic operations
+        // The actual memory management will be handled by the capability system
+        let values = BoundedVec::default();
+        let labels = BoundedVec::default();
+        let operand_stack = BoundedVec::default();
+        let locals = BoundedVec::default();
+        
         Self {
-            exec_stack: StacklessStack::new(Arc::new(Module::new().unwrap()), 0),
+            exec_stack: StacklessStack {
+                module: None,
+                instance_idx: 0,
+                values,
+                labels,
+                frame_count: 0,
+                state: StacklessExecutionState::Running,
+                pc: 0,
+                func_idx: 0,
+                capacity: MAX_VALUES,
+            },
             fuel: None,
             stats: ExecutionStats::default(),
             callbacks: Arc::new(Mutex::new(StacklessCallbackRegistry::default())),
-            max_call_depth: None,
+            max_call_depth: Some(256),
             instance_count: 0,
             current_module: None,
             verification_level: VerificationLevel::Standard,
-            operand_stack: BoundedVec::new(provider.clone()).unwrap(),
+            operand_stack,
             call_frames_count: 0,
-            locals: BoundedVec::new(provider).unwrap(),
+            locals,
         }
     }
 
@@ -413,10 +443,20 @@ impl StacklessEngine {
     
     /// Store module instance for execution
     pub fn set_current_module(&mut self, instance: Arc<ModuleInstance>) -> Result<u32> {
+        // Ensure the engine is properly initialized with memory providers
+        self.ensure_initialized()?;
+        
         // Store the module instance reference
         self.current_module = Some(instance);
         self.instance_count += 1;
         Ok(self.instance_count as u32 - 1)
+    }
+    
+    /// Ensure the engine collections are properly initialized
+    fn ensure_initialized(&mut self) -> Result<()> {
+        // With the new default approach, collections are initialized in new()
+        // This method is now a no-op for compatibility
+        Ok(())
     }
 
     /// Get memory from current module instance with ASIL-B safety checks
