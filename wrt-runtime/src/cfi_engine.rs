@@ -800,6 +800,11 @@ impl CfiExecutionEngine {
             CfiHardwareInstruction::ArmBti { mode } => {
                 self.validate_arm_bti_instruction(*mode)
             }
+            #[cfg(not(target_arch = "aarch64"))]
+            _ => {
+                // No hardware CFI instructions supported on this architecture
+                Ok(())
+            }
         }
     }
 
