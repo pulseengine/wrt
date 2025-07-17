@@ -281,8 +281,7 @@ fn execute_memory_grow(
 fn extract_i32(value: &Value) -> Result<i32> {
     match value {
         Value::I32(val) => Ok(*val),
-        _ => Err(Error::runtime_execution_error("Expected i32 value, got {:?}")
-        ))
+        _ => Err(Error::runtime_execution_error("Expected i32 value, got {:?}"))
     }
 }
 

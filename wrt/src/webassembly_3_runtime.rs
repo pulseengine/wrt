@@ -249,14 +249,12 @@ impl WebAssembly3Runtime {
                 // Basic throw implementation
                 self.stats.throw_operations += 1;
                 // For now, return error to simulate exception
-                Err(Error::runtime_execution_error("Exception thrown with tag {}")
-                ))
+                Err(Error::runtime_execution_error("Exception thrown with tag {}"))
             },
             ExceptionOperation::Rethrow { relative_depth } => {
                 // Basic rethrow implementation
                 self.stats.rethrow_operations += 1;
-                Err(Error::runtime_execution_error("Exception rethrown at depth {}")
-                ))
+                Err(Error::runtime_execution_error("Exception rethrown at depth {}"))
             },
         }
     }

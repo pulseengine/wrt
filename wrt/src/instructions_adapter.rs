@@ -128,8 +128,7 @@ impl<'a> ExecutionContext for WrtExecutionContextAdapter<'a> {
     fn pop_value_expected(&mut self, expected_type: ValueType) -> Result<Value> {
         let value = self.pop_value()?;
         if value.value_type() != expected_type {
-            return Err(Error::runtime_execution_error("Expected {:?}, got {:?}"),
-            ));
+            return Err(Error::runtime_execution_error("Expected {:?}, got {:?}"));
         }
         Ok(value)
     }
@@ -191,8 +190,7 @@ impl<'a> SimdContext for WrtExecutionContextAdapter<'a> {
 fn extract_v128_bytes(value: &Value) -> Result<[u8; 16]> {
     match value {
         Value::V128(bytes) => Ok(*bytes),
-        _ => Err(Error::runtime_execution_error("Expected v128 value, got {:?}")
-        ))
+        _ => Err(Error::runtime_execution_error("Expected v128 value, got {:?}"))
     }
 }
 

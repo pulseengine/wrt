@@ -7,6 +7,9 @@ use wrt_error::{Error, Result};
 use wrt_foundation::CrateId;
 use crate::prelude::*;
 
+#[cfg(not(feature = "std"))]
+use alloc::{boxed::Box, vec, vec::Vec};
+
 /// Available engine types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EngineType {

@@ -68,12 +68,12 @@ macro_rules! format {
 #[macro_export]
 macro_rules! vec {
     () => {{
-        use wrt_foundation::safe_managed_alloc, budget_aware_provider::CrateId};
+        use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
         let guard = safe_managed_alloc!(1024, CrateId::Runtime).unwrap();
         wrt_foundation::bounded::BoundedVec::new(guard.provider().clone()).unwrap()
     }};
     ($($x:expr),*) => {{
-        use wrt_foundation::safe_managed_alloc, budget_aware_provider::CrateId};
+        use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
         let guard = safe_managed_alloc!(1024, CrateId::Runtime).unwrap();
         let mut v = wrt_foundation::bounded::BoundedVec::new(guard.provider().clone()).unwrap();
         $(v.push($x).unwrap();)*
@@ -163,12 +163,13 @@ pub use wrt_runtime::{
     stackless::{
         StacklessEngine, StacklessExecutionState, StacklessFrame,
     },
-    // Capability-based engine (when available)
-    #[cfg(any(feature = "std", feature = "alloc"))]
-    engine::{
-        CapabilityEngine, CapabilityAwareEngine, EnginePreset,
-        ModuleHandle, InstanceHandle, EngineBuilder,
-    },
+};
+
+// Capability-based engine (when available)
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use wrt_runtime::engine::{
+    CapabilityEngine, CapabilityAwareEngine, EnginePreset,
+    ModuleHandle, InstanceHandle, EngineBuilder,
 };
 // Note: wrt-sync exports would go here if available
 // Import synchronization primitives for no_std
