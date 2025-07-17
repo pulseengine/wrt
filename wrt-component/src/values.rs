@@ -1043,7 +1043,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 let mut name_bytes = vec![0u8; name_len];
                 reader.read_exact(&mut name_bytes)?;
                 let field_name = String::from_utf8(name_bytes).map_err(|e| {
-                    Error::parse_error("Missing error messageMissing message")
+                    Error::parse_error("Invalid field name in record")
                 })?;
 
                 // Read field value
@@ -1078,7 +1078,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
             let mut name_bytes = vec![0u8; name_len];
             reader.read_exact(&mut name_bytes)?;
             let case_name = String::from_utf8(name_bytes).map_err(|e| {
-                Error::parse_error("Missing error messageMissing message")
+                Error::parse_error("Invalid case name in variant")
             })?;
 
             // Find the case in the list
@@ -1196,7 +1196,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
             let fixed_size = reader.read_u32_le()?;
 
             if fixed_size != *size {
-                return Err(Error::parse_error("Missing error messageMissing messageMissing messageMissing message");
+                return Err(Error::parse_error("Fixed size mismatch"));
             }
 
             // Read each item
@@ -1222,7 +1222,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
                 let item_str = String::from_utf8(item_bytes).map_err(|e| {
                     Error::parse_error("Component not found")
                 })?;
-                items.push(ComponentComponentValue::String(item_str);
+                items.push(ComponentComponentValue::String(item_str));
             }
 
             Ok(ComponentComponentValue::ErrorContext(items))
@@ -1243,7 +1243,7 @@ pub fn serialize_component_values(values: &[ComponentComponentValue]) -> Result<
 
     // Write the number of values
     let count = values.len() as u32;
-    buffer.extend_from_slice(&count.to_le_bytes();
+    buffer.extend_from_slice(&count.to_le_bytes());
 
     // Serialize each value
     for value in values {
@@ -1251,7 +1251,7 @@ pub fn serialize_component_values(values: &[ComponentComponentValue]) -> Result<
 
         // Write the size of this value's bytes
         let size = value_bytes.len() as u32;
-        buffer.extend_from_slice(&size.to_le_bytes();
+        buffer.extend_from_slice(&size.to_le_bytes());
 
         // Write the value bytes
         buffer.extend_from_slice(&value_bytes);
@@ -1274,7 +1274,7 @@ pub fn serialize_component_values_with_stream<'a, P: wrt_foundation::MemoryProvi
         serialize_component_value_with_stream(value, writer, provider)?;
     }
 
-    Ok(()
+    Ok(())
 }
 
 /// Deserialize multiple component values
@@ -1387,10 +1387,7 @@ pub fn core_to_component_value(value: &Value, ty: &WrtFormatValType) -> crate::W
         (ComponentComponentValue::S64(v), ComponentValType::U64) => Ok(ComponentComponentValue::U64(*v as u64)),
 
         // Error for type mismatch
-        _ => Err(Error::runtime_execution_error("Unknown value type"))
-                value, types_val_type
-            ),
-        )),
+        _ => Err(Error::runtime_execution_error("Type conversion failed"))
     }
 }
 
@@ -1449,7 +1446,7 @@ mod tests {
 
         for value in values {
             let encoded = serialize_component_value(&value).unwrap();
-            let format_type = convert_common_to_format_valtype(&value.get_type();
+            let format_type = convert_common_to_format_valtype(&value.get_type());
             let decoded = deserialize_component_value(&encoded, &format_type).unwrap();
 
             // Only check bools since we only implemented deserialization for a subset of
@@ -1506,7 +1503,7 @@ mod tests {
         let values = vec![
             ComponentComponentValue::Bool(true),
             ComponentComponentValue::S32(42),
-            ComponentComponentValue::String(Missing messageMissing messageMissing message")),
+            ComponentComponentValue::String("test string".to_string()),
         ];
 
         // Serialize using stream
@@ -1527,7 +1524,7 @@ mod tests {
             deserialize_component_values_with_stream(&mut reader, &format_types, &handler).unwrap();
 
         // Verify count
-        assert_eq!(values.len(), decoded.len();
+        assert_eq!(values.len(), decoded.len());
 
         // Verify individual values
         assert_eq!(values[0], decoded[0]);
@@ -1538,7 +1535,7 @@ mod tests {
         {
             assert_eq!(original, decoded_val);
         } else {
-            panic!("Expected S32 valuesMissing message");
+            panic!("Expected S32 values");
         }
 
         // For String, compare the string values
@@ -1547,7 +1544,7 @@ mod tests {
         {
             assert_eq!(original, decoded_val);
         } else {
-            panic!("Expected String valuesMissing message");
+            panic!("Expected String values");
         }
     }
 }

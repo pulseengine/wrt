@@ -37,11 +37,14 @@
 
 
 // Cross-environment imports
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
 #[cfg(feature = "std")]
 use std::{collections::HashMap, string::String, vec::Vec};
 
 #[cfg(all(not(feature = "std")))]
-use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
+use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec, vec};
 
 #[cfg(not(feature = "std"))]
 use wrt_foundation::safe_memory::NoStdProvider;

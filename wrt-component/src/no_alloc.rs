@@ -106,7 +106,7 @@ pub fn validate_component_no_alloc(bytes: &[u8]) -> Result<()> {
     // Currently we only do header validation in pure no_std mode
     // A more comprehensive validation would be added here for real-world use
 
-    Ok(()
+    Ok(())
 }
 
 /// The types of validation levels for component validation
@@ -145,7 +145,7 @@ pub fn validate_component_with_level(bytes: &[u8], level: ValidationLevel) -> Re
                 validate_component_imports_exports(bytes)?;
             }
 
-            Ok(()
+            Ok(())
         }
     }
 }
@@ -162,18 +162,18 @@ pub fn validate_component_with_level(bytes: &[u8], level: ValidationLevel) -> Re
 fn validate_component_structure(bytes: &[u8]) -> Result<()> {
     // Verify header
     if bytes.len() < 8 {
-        return Err(Error::parse_error("Error occurred");
+        return Err(Error::parse_error("Component header too short"));
     }
 
     // Verify magic number and version
     if &bytes[0..8] != &COMPONENT_MAGIC {
-        return Err(Error::parse_error("Error occurred");
+        return Err(Error::parse_error("Invalid component magic number"));
     }
 
     // For now, we just do basic validation
     // More comprehensive validation would be added here
 
-    Ok(()
+    Ok(())
 }
 
 /// Validates component imports and exports
@@ -189,7 +189,7 @@ fn validate_component_imports_exports(bytes: &[u8]) -> Result<()> {
     // This is a placeholder for more comprehensive validation
     // that would check import/export consistency
 
-    Ok(()
+    Ok(())
 }
 
 /// A minimal compatibility layer for pure no_std environments
@@ -270,7 +270,7 @@ mod tests {
     #[test]
     fn test_verify_component_header() {
         let result = verify_component_header(&MINIMAL_COMPONENT);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -290,13 +290,13 @@ mod tests {
         // Standard validation should also pass for this test
         let std_result =
             validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Standard);
-        assert!(std_result.is_ok();
+        assert!(std_result.is_ok());
     }
 
     #[test]
     fn test_minimal_component() {
         let component = MinimalComponent::new(&MINIMAL_COMPONENT, VerificationLevel::Standard);
-        assert!(component.is_ok();
+        assert!(component.is_ok());
 
         let component = component.unwrap();
         assert_eq!(component.size(), 8);

@@ -236,9 +236,7 @@ impl WastTestRunner {
                 module, message, ..
             } => {
                 // Test unlinkable modules
-                let binary = module
-                    .encode()
-                    .unwrap_or_default();
+                let binary = module.encode().unwrap_or_default();
                 match engine.load_module(None, &binary) {
                     Ok(_) => {
                         return Err(anyhow::anyhow!(

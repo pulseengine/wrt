@@ -394,7 +394,7 @@ impl AdvancedThreadRegistry {
     pub fn cleanup_finished_threads(&mut self) {
         #[cfg(feature = "std")]
         {
-            self.threads.retain(|_, thread| !thread.state.is_finished();
+            self.threads.retain(|_, thread| !thread.state.is_finished());
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -615,7 +615,7 @@ impl AdvancedThreadingBuiltins {
     pub fn thread_local_get(thread_id: AdvancedThreadId, key: u32) -> Result<Option<ComponentValue>> {
         Self::with_registry(|registry| {
             if let Some(thread) = registry.get_thread(thread_id) {
-                thread.get_thread_local(key).map(|entry| entry.value.clone()
+                thread.get_thread_local(key).map(|entry| entry.value.clone())
             } else {
                 None
             }

@@ -12,7 +12,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     component_value::WrtComponentValue,
     safe_memory::SafeMemory,
     budget_aware_provider::CrateId,
@@ -219,12 +219,12 @@ pub struct CrossComponentResourceSharingManager {
     virt_manager: Option<VirtualizationManager>,
     post_return_registry: PostReturnRegistry,
 
-    sharing_agreements: BoundedHashMap<u32, SharingAgreement, MAX_SHARING_AGREEMENTS>,
-    shared_resources: BoundedHashMap<ResourceHandle, SharedResource, MAX_SHARED_RESOURCES>,
+    sharing_agreements: BoundedMap<u32, SharingAgreement, MAX_SHARING_AGREEMENTS>,
+    shared_resources: BoundedMap<ResourceHandle, SharedResource, MAX_SHARED_RESOURCES>,
     sharing_policies: SharingPolicyVec,
     transfer_queue: TransferRequestVec,
 
-    callbacks: BoundedHashMap<String, SharingCallback, MAX_SHARING_CALLBACKS>,
+    callbacks: BoundedMap<String, SharingCallback, MAX_SHARING_CALLBACKS>,
 
     next_agreement_id: AtomicU32,
     next_policy_id: AtomicU32,
@@ -256,12 +256,12 @@ impl CrossComponentResourceSharingManager {
             virt_manager: None,
             post_return_registry: PostReturnRegistry::new(),
 
-            sharing_agreements: BoundedHashMap::new(),
-            shared_resources: BoundedHashMap::new(),
+            sharing_agreements: BoundedMap::new(provider.clone())?,
+            shared_resources: BoundedMap::new(provider.clone())?,
             sharing_policies: BoundedVec::new(sharing_policies_provider).unwrap(),
             transfer_queue: BoundedVec::new(transfer_queue_provider).unwrap(),
 
-            callbacks: BoundedHashMap::new(),
+            callbacks: BoundedMap::new(provider.clone())?,
 
             next_agreement_id: AtomicU32::new(1),
             next_policy_id: AtomicU32::new(1),

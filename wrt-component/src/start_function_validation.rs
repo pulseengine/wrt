@@ -6,7 +6,7 @@ use crate::{
 };
 use core::{fmt, time::Duration};
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     component_value::ComponentValue,
     safe_memory::{SafeMemory, NoStdProvider},
     budget_aware_provider::CrateId,
@@ -132,7 +132,7 @@ pub enum SideEffectSeverity {
 }
 
 pub struct StartFunctionValidator {
-    validations: BoundedHashMap<
+    validations: BoundedMap<
         ComponentInstanceId,
         StartFunctionValidation,
         MAX_START_FUNCTION_VALIDATIONS,
@@ -147,7 +147,7 @@ pub struct StartFunctionValidator {
 impl StartFunctionValidator {
     pub fn new() -> Self {
         Self {
-            validations: BoundedHashMap::new(),
+            validations: BoundedMap::new(provider.clone())?,
             execution_engine: ComponentExecutionEngine::new(),
             post_return_registry: PostReturnRegistry::new(),
             default_timeout_ms: DEFAULT_START_TIMEOUT_MS,

@@ -13,7 +13,7 @@ use core::{
     sync::atomic::{AtomicBool, AtomicU32, Ordering},
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     safe_memory::{SafeMemory, NoStdProvider},
     budget_aware_provider::CrateId,
     safe_managed_alloc,
@@ -141,8 +141,8 @@ pub struct VirtualComponent {
     pub parent: Option<ComponentInstanceId>,
     pub children: BoundedVec<ComponentInstanceId, MAX_VIRTUAL_COMPONENTS, NoStdProvider<65536>>,
     pub capabilities: BoundedVec<Capability, MAX_CAPABILITY_GRANTS, NoStdProvider<65536>>,
-    pub virtual_imports: BoundedHashMap<String, VirtualImport, MAX_VIRTUAL_IMPORTS>,
-    pub virtual_exports: BoundedHashMap<String, VirtualExport, MAX_VIRTUAL_EXPORTS>,
+    pub virtual_imports: BoundedMap<String, VirtualImport, MAX_VIRTUAL_IMPORTS>,
+    pub virtual_exports: BoundedMap<String, VirtualExport, MAX_VIRTUAL_EXPORTS>,
     pub memory_regions: BoundedVec<VirtualMemoryRegion, MAX_VIRTUAL_MEMORY_REGIONS, NoStdProvider<65536>>,
     pub isolation_level: IsolationLevel,
     pub resource_limits: ResourceLimits,
@@ -232,10 +232,10 @@ impl Default for ResourceLimits {
 
 pub struct VirtualizationManager {
     virtual_components:
-        BoundedHashMap<ComponentInstanceId, VirtualComponent, MAX_VIRTUAL_COMPONENTS>,
+        BoundedMap<ComponentInstanceId, VirtualComponent, MAX_VIRTUAL_COMPONENTS>,
     capability_grants: BoundedVec<CapabilityGrant, MAX_CAPABILITY_GRANTS, NoStdProvider<65536>>,
-    host_exports: BoundedHashMap<String, HostExport, MAX_VIRTUAL_EXPORTS>,
-    sandbox_registry: BoundedHashMap<ComponentInstanceId, SandboxState, MAX_VIRTUAL_COMPONENTS>,
+    host_exports: BoundedMap<String, HostExport, MAX_VIRTUAL_EXPORTS>,
+    sandbox_registry: BoundedMap<ComponentInstanceId, SandboxState, MAX_VIRTUAL_COMPONENTS>,
     next_virtual_id: AtomicU32,
     virtualization_enabled: AtomicBool,
 }
@@ -287,10 +287,10 @@ impl VirtualizationManager {
         })?;
 
         Ok(Self {
-            virtual_components: BoundedHashMap::new(),
+            virtual_components: BoundedMap::new(provider.clone())?,
             capability_grants,
-            host_exports: BoundedHashMap::new(),
-            sandbox_registry: BoundedHashMap::new(),
+            host_exports: BoundedMap::new(provider.clone())?,
+            sandbox_registry: BoundedMap::new(provider.clone())?,
             next_virtual_id: AtomicU32::new(1000),
             virtualization_enabled: AtomicBool::new(true),
         })
@@ -342,8 +342,8 @@ impl VirtualizationManager {
                     message: "Failed to create capabilities storage".to_string(),
                 })?
             },
-            virtual_imports: BoundedHashMap::new(),
-            virtual_exports: BoundedHashMap::new(),
+            virtual_imports: BoundedMap::new(provider.clone())?,
+            virtual_exports: BoundedMap::new(provider.clone())?,
             memory_regions: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| VirtualizationError {

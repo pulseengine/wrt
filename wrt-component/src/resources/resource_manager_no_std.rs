@@ -5,6 +5,7 @@
 
 use wrt_error::kinds::PoisonedLockError;
 use wrt_foundation::{bounded::BoundedString, safe_memory::NoStdProvider};
+use core::fmt::{self, Debug};
 
 #[cfg(not(feature = "std"))]
 use alloc::{boxed::Box, string::String, sync::Arc};
@@ -198,7 +199,7 @@ impl<'a> Debug for ResourceManager<'a> {
         // Get the resource count, or show an error if we can't access it
         let count = self.resource_count().unwrap_or(0);
 
-        f.debug_struct("ResourceManagerMissing message")
+        f.debug_struct("ResourceManager")
             .field("instance_id", &self.instance_id)
             .field("resource_count", &count)
             .field("default_memory_strategy", &self.default_memory_strategy)

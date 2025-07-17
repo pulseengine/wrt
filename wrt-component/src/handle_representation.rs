@@ -10,7 +10,7 @@ use core::{
     sync::atomic::{AtomicBool, AtomicU32, Ordering},
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     component_value::ComponentValue,
     safe_memory::SafeMemory,
     budget_aware_provider::CrateId,
@@ -165,7 +165,7 @@ pub struct HandleMetadata {
     pub access_count: u32,
     pub creator_component: ComponentInstanceId,
     pub tags: BoundedVec<String, 16>,
-    pub custom_data: BoundedHashMap<String, ComponentValue, 32>,
+    pub custom_data: BoundedMap<String, ComponentValue, 32>,
 }
 
 #[derive(Debug, Clone)]
@@ -190,8 +190,8 @@ pub struct HandleAccessPolicy {
 
 pub struct HandleRepresentationManager {
     representations:
-        BoundedHashMap<ResourceHandle, HandleRepresentation, MAX_HANDLE_REPRESENTATIONS>,
-    metadata: BoundedHashMap<ResourceHandle, HandleMetadata, MAX_HANDLE_METADATA>,
+        BoundedMap<ResourceHandle, HandleRepresentation, MAX_HANDLE_REPRESENTATIONS>,
+    metadata: BoundedMap<ResourceHandle, HandleMetadata, MAX_HANDLE_METADATA>,
     access_policies: BoundedVec<HandleAccessPolicy, MAX_ACCESS_POLICIES>,
     type_registry: GenerativeTypeRegistry,
     bounds_checker: TypeBoundsChecker,
@@ -203,8 +203,8 @@ pub struct HandleRepresentationManager {
 impl HandleRepresentationManager {
     pub fn new() -> HandleRepresentationResult<Self> {
         Ok(Self {
-            representations: BoundedHashMap::new(),
-            metadata: BoundedHashMap::new(),
+            representations: BoundedMap::new(provider.clone())?,
+            metadata: BoundedMap::new(provider.clone())?,
             access_policies: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider)?
@@ -262,7 +262,7 @@ impl HandleRepresentationManager {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider)?
             },
-            custom_data: BoundedHashMap::new(),
+            custom_data: BoundedMap::new(provider.clone())?,
         };
 
         self.metadata.insert(handle, metadata).map_err(|_| HandleRepresentationError {

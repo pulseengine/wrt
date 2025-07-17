@@ -242,7 +242,7 @@ impl ErrorContextImpl {
                     Error::memory_allocation_failed("Failed to create stack trace vector")
                 })?
             },
-            metadata: BoundedMap::new(),
+            metadata: BoundedMap::new(provider.clone())?,
             error_code: None,
             source_error: None,
         })
@@ -366,7 +366,7 @@ impl ErrorContextRegistry {
             #[cfg(feature = "std")]
             contexts: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            contexts: BoundedMap::new(),
+            contexts: BoundedMap::new(provider.clone())?,
         }
     }
 

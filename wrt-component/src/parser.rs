@@ -154,8 +154,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
 
     for i in 0..5 { // Max 5 bytes for u32
         if offset + i >= data.len() {
-            return Err(Error::parse_error("Unexpected end of data while reading LEB128")
-            );
+            return Err(Error::parse_error("Unexpected end of data while reading LEB128"));
         }
 
         let byte = data[offset + i];
@@ -169,8 +168,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
 
         shift += 7;
         if shift >= 32 {
-            return Err(Error::parse_error("LEB128 value too large for u32")
-            );
+            return Err(Error::parse_error("LEB128 value too large for u32"));
         }
     }
 

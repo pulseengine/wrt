@@ -27,7 +27,7 @@ fn create_component_provider() -> Result<CapabilityAwareProvider<wrt_foundation:
         .map_err(|_| Error::initialization_error("Error occurred"))?;
     
     context.create_provider(CrateId::Component, 4096)
-        .map_err(|_| Error::memory_out_of_bounds("Error occurred")
+        .map_err(|_| Error::memory_out_of_bounds("Error occurred"))?
 }
 
 /// Map of export names to exports using bounded collections
@@ -44,7 +44,7 @@ pub struct ExportMap<P: MemoryProvider + Default + Clone> {
 
 impl<P: MemoryProvider + Default + Clone> Default for ExportMap<P> {
     fn default() -> Self {
-        Self::new().expect("Failed to create default ExportMapMissing message")
+        Self::new().expect("Failed to create default ExportMap")
     }
 }
 
@@ -68,19 +68,19 @@ impl<P: MemoryProvider + Default + Clone> ExportMap<P> {
     pub fn add(&mut self, name: &str, export: Arc<Export>) -> Result<()> {
         let bounded_name = BoundedString::from_str(name, self.exports.provider().clone())?;
         self.exports.insert(bounded_name, export)?;
-        Ok(()
+        Ok(())
     }
 
     /// Get an export by name
     pub fn get(&self, name: &str) -> Result<Option<Arc<Export>>> {
         let bounded_name = BoundedString::from_str(name, self.exports.provider().clone())?;
-        Ok(self.exports.get(&bounded_name).cloned()
+        Ok(self.exports.get(&bounded_name).cloned())
     }
 
     /// Remove an export by name
     pub fn remove(&mut self, name: &str) -> Result<Option<Arc<Export>>> {
         let bounded_name = BoundedString::from_str(name, self.exports.provider().clone())?;
-        Ok(self.exports.remove(&bounded_name)
+        Ok(self.exports.remove(&bounded_name))
     }
 
     /// Check if an export exists by name
