@@ -5,7 +5,7 @@
 
 use crate::{
     async_::fuel_async_executor::{AsyncTaskState, AsyncTaskStatus, FuelAsyncExecutor},
-    task_manager::{TaskId, TaskState},
+    threading::task_manager::{TaskId, TaskState},
     ComponentInstanceId,
     prelude::*,
 };
@@ -15,7 +15,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     operations::{record_global_operation, Type as OperationType},
     verification::VerificationLevel,
     CrateId, safe_managed_alloc,
@@ -62,7 +62,7 @@ pub struct FuelAsyncScheduler {
     /// Current scheduling policy
     policy: SchedulingPolicy,
     /// Scheduled tasks indexed by task ID
-    scheduled_tasks: BoundedHashMap<TaskId, ScheduledTask, 128>,
+    scheduled_tasks: BoundedMap<TaskId, ScheduledTask, 128>,
     /// Priority queue for priority-based scheduling
     priority_queue: BoundedVec<TaskId, 128>,
     /// Round-robin queue
@@ -84,7 +84,7 @@ impl FuelAsyncScheduler {
         
         Ok(Self {
             policy,
-            scheduled_tasks: BoundedHashMap::new(),
+            scheduled_tasks: BoundedMap::new(provider.clone())?,
             priority_queue: BoundedVec::new(provider.clone())?,
             round_robin_queue: BoundedVec::new(provider)?,
             round_robin_position: AtomicUsize::new(0),

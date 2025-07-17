@@ -50,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     demo_fixed_length_lists()?;
 
     println!("\nAll Component Model features demonstrated successfully!");
-    Ok(()
+    Ok(())
 }
 
 #[cfg(feature = "std")]
@@ -82,7 +82,7 @@ fn demo_async_context() -> Result<(), Box<dyn std::error::Error>> {
     // }
     println!("    ✓ Context scope completed");
 
-    Ok(()
+    Ok(())
 }
 
 #[cfg(feature = "std")]
@@ -118,7 +118,7 @@ fn demo_task_management() -> Result<(), Box<dyn std::error::Error>> {
     // let result = wrt_component::TaskBuiltins::task_wait(task_id)?;
     println!("    ✓ Task result retrieved: true");
 
-    Ok(()
+    Ok(())
 }
 
 #[cfg(feature = "std")]
@@ -156,7 +156,7 @@ fn demo_waitable_sets() -> Result<(), Box<dyn std::error::Error>> {
     // waitable_id)?;
     println!("    ✓ Waitable removed: true");
 
-    Ok(()
+    Ok(())
 }
 
 #[cfg(feature = "std")]
@@ -205,7 +205,7 @@ fn demo_error_contexts() -> Result<(), Box<dyn std::error::Error>> {
     // wrt_component::ErrorContextBuiltins::error_context_drop(context_id)?;
     println!("    ✓ Error context dropped");
 
-    Ok(()
+    Ok(())
 }
 
 #[cfg(not(feature = "std"))]
@@ -286,7 +286,7 @@ fn demo_advanced_threading() -> Result<(), Box<dyn std::error::Error>> {
     // wrt_component::AdvancedThreadingBuiltins::thread_join(thread_id)?;
     println!("    ✓ Join result: Success(42)");
 
-    Ok(()
+    Ok(())
 }
 
 #[cfg(feature = "std")]
@@ -352,7 +352,7 @@ fn demo_fixed_length_lists() -> Result<(), Box<dyn std::error::Error>> {
     // let fixed_list_type = wrt_component::ExtendedValueType::FixedLengthList(0);
     println!("    ✓ Extended types support both standard and fixed-length lists");
 
-    Ok(()
+    Ok(())
 }
 
 // Helper function to demonstrate practical usage patterns
@@ -376,7 +376,7 @@ fn demonstrate_async_patterns() -> Result<(), Box<dyn std::error::Error>> {
     //             Ok(ComponentValue::String("Operation completed".to_string())
     //         })?;
     //
-    //         Ok(()
+    //         Ok(())
     //     }
     // }?;
     println!("    ✓ Scoped execution completed");
@@ -411,7 +411,7 @@ fn demonstrate_async_patterns() -> Result<(), Box<dyn std::error::Error>> {
     // )?;
     println!("    ✓ Error context chaining completed");
 
-    Ok(()
+    Ok(())
 }
 
 // Integration test demonstrating component interoperability

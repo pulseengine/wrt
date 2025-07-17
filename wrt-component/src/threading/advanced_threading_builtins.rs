@@ -67,7 +67,7 @@ impl AdvancedThreadId {
     pub fn new() -> Self {
         static COUNTER: core::sync::atomic::AtomicU64 = 
             core::sync::atomic::AtomicU64::new(1);
-        Self(COUNTER.fetch_add(1, core::sync::atomic::Ordering::SeqCst)
+        Self(COUNTER.fetch_add(1, core::sync::atomic::Ordering::SeqCst))
     }
 
     pub fn as_u64(&self) -> u64 {
@@ -108,8 +108,7 @@ impl FunctionReference {
     #[cfg(not(any(feature = "std", )))]
     pub fn new(name: &str, signature: FunctionSignature, module_index: u32, function_index: u32) -> Result<Self> {
         let bounded_name = BoundedString::new_from_str(name)
-            .map_err(|_| Error::runtime_execution_error("Error occurred"
-            ))?;
+            .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
         Ok(Self {
             name: bounded_name,
             signature,
@@ -152,8 +151,7 @@ impl IndirectCall {
     #[cfg(not(any(feature = "std", )))]
     pub fn new(table_index: u32, function_index: u32, type_index: u32, arguments: &[ComponentValue]) -> Result<Self> {
         let bounded_args = BoundedVec::new_from_slice(arguments)
-            .map_err(|_| Error::runtime_execution_error("Error occurred"
-            ))?;
+            .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
         Ok(Self {
             table_index,
             function_index,
@@ -243,7 +241,7 @@ impl AdvancedThread {
             #[cfg(feature = "std")]
             thread_locals: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            thread_locals: BoundedMap::new(),
+            thread_locals: BoundedMap::new(provider.clone())?,
             result: None,
             error: None,
             parent_thread: None,
@@ -271,9 +269,8 @@ impl AdvancedThread {
     #[cfg(not(any(feature = "std", )))]
     pub fn add_child(&mut self, child_id: AdvancedThreadId) -> Result<()> {
         self.child_threads.push(child_id)
-            .map_err(|_| Error::runtime_execution_error("Error occurred"
-            ))?;
-        Ok(()
+            .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
+        Ok(())
     }
 
     pub fn start(&mut self) {
@@ -313,14 +310,13 @@ impl AdvancedThread {
         #[cfg(feature = "std")]
         {
             self.thread_locals.insert(key, entry);
-            Ok(()
+            Ok(())
         }
         #[cfg(not(any(feature = "std", )))]
         {
             self.thread_locals.insert(key, entry)
-                .map_err(|_| Error::runtime_execution_error("Error occurred"
-                ))?;
-            Ok(()
+                .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
+            Ok(())
         }
     }
 
@@ -360,7 +356,7 @@ impl AdvancedThreadRegistry {
             #[cfg(feature = "std")]
             threads: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            threads: BoundedMap::new(),
+            threads: BoundedMap::new(provider.clone())?,
         }
     }
 
@@ -374,8 +370,7 @@ impl AdvancedThreadRegistry {
         #[cfg(not(any(feature = "std", )))]
         {
             self.threads.insert(id, thread)
-                .map_err(|_| Error::runtime_execution_error("Error occurred"
-                ))?;
+                .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
             Ok(id)
         }
     }
@@ -430,10 +425,9 @@ impl AdvancedThreadingBuiltins {
     /// Initialize the global advanced thread registry
     pub fn initialize() -> Result<()> {
         let mut registry_ref = ADVANCED_THREAD_REGISTRY.try_borrow_mut()
-            .map_err(|_| Error::runtime_execution_error("Error occurred"
-            ))?;
-        *registry_ref = Some(AdvancedThreadRegistry::new();
-        Ok(()
+            .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
+        *registry_ref = Some(AdvancedThreadRegistry::new());
+        Ok(())
     }
 
     /// Get the global registry
@@ -447,9 +441,8 @@ impl AdvancedThreadingBuiltins {
                 wrt_error::codes::INVALID_STATE,
                 "Error message neededMissing messageMissing messageMissing message"))?;
         let registry = registry_ref.as_ref()
-            .ok_or_else(|| Error::runtime_execution_error("Error occurred"
-            ))?;
-        Ok(f(registry)
+            .ok_or_else(|| Error::runtime_execution_error("Error occurred"))?;
+        Ok(f(registry))
     }
 
     /// Get the global registry mutably
@@ -463,8 +456,7 @@ impl AdvancedThreadingBuiltins {
                 wrt_error::codes::INVALID_STATE,
                 "Error message neededMissing messageMissing messageMissing message"))?;
         let registry = registry_ref.as_mut()
-            .ok_or_else(|| Error::runtime_execution_error("Error occurred"
-            ))?;
+            .ok_or_else(|| Error::runtime_execution_error("Error occurred"))?;
         f(registry)
     }
 
@@ -554,16 +546,16 @@ impl AdvancedThreadingBuiltins {
                 match thread.state {
                     AdvancedThreadState::Completed => {
                         if let Some(result) = thread.result.take() {
-                            Ok(ThreadJoinResult::Success(result)
+                            Ok(ThreadJoinResult::Success(result))
                         } else {
                             Ok(ThreadJoinResult::Success(ComponentValue::I32(0))) // Default success
                         }
                     }
                     AdvancedThreadState::Failed => {
                         if let Some(error) = thread.error.take() {
-                            Ok(ThreadJoinResult::Error(error)
+                            Ok(ThreadJoinResult::Error(error))
                         } else {
-                            Ok(ThreadJoinResult::Error(ThreadError::ExecutionFailed)
+                            Ok(ThreadJoinResult::Error(ThreadError::ExecutionFailed))
                         }
                     }
                     AdvancedThreadState::Cancelled => {
@@ -572,10 +564,9 @@ impl AdvancedThreadingBuiltins {
                     _ => Ok(ThreadJoinResult::NotReady)
                 }
             } else {
-                Err(Error::runtime_execution_error("Error occurred"
-            })?;
+                Err(Error::runtime_execution_error("Error occurred"))
             }
-        })?
+        })
     }
 
     /// Get thread state
@@ -594,14 +585,14 @@ impl AdvancedThreadingBuiltins {
         Self::with_registry_mut(|registry| {
             if let Some(thread) = registry.get_thread_mut(thread_id) {
                 thread.cancel();
-                Ok(()
+                Ok(())
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     wrt_error::codes::RESOURCE_INVALID_HANDLE,
-                    "Error message neededMissing messageMissing messageMissing message")
+                    "Error message neededMissing messageMissing messageMissing message"))
             }
-        })?
+        })
     }
 
     /// Set thread-local value
@@ -615,10 +606,9 @@ impl AdvancedThreadingBuiltins {
             if let Some(thread) = registry.get_thread_mut(thread_id) {
                 thread.set_thread_local(key, value, destructor)
             } else {
-                Err(Error::runtime_execution_error("Error occurred"
-            })?;
+                Err(Error::runtime_execution_error("Error occurred"))
             }
-        })?
+        })
     }
 
     /// Get thread-local value
@@ -711,12 +701,11 @@ pub mod advanced_threading_helpers {
                     if let Some(child) = registry.get_thread_mut(child_id) {
                         child.cancel();
                         cancelled.push(child_id)
-                            .map_err(|_| Error::runtime_execution_error("Error occurred"
-                            ))?;
+                            .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
                     }
                 }
             }
-            Ok(()
+            Ok(())
         })?;
         
         Ok(cancelled)

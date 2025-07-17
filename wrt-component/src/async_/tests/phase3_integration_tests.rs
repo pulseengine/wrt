@@ -216,7 +216,7 @@ mod tests {
         abi_support.initialize_component_abi(component_id, CanonicalOptions::default()).unwrap();
 
         // Test future operations
-        let future_handle = crate::async_types::FutureHandle::new(1);
+        let future_handle = crate::async_::async_types::FutureHandle::new(1);
         
         let future_read = abi_support.handle_future_operation(
             component_id,
@@ -237,7 +237,7 @@ mod tests {
         ).unwrap();
 
         // Test stream operations
-        let stream_handle = crate::async_types::StreamHandle::new(2);
+        let stream_handle = crate::async_::async_types::StreamHandle::new(2);
         
         let stream_read = abi_support.handle_stream_operation(
             component_id,
@@ -273,7 +273,7 @@ mod tests {
         bridge.initialize_component_async(component_id, None).unwrap();
 
         // Test task.wait implementation
-        let waitables = crate::async_types::WaitableSet::new();
+        let waitables = crate::async_::async_types::WaitableSet::new();
         
         // In real implementation, would set up actual waitables
         // let result = bridge.task_wait(waitables).unwrap();

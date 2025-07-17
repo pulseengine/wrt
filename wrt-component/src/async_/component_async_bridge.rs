@@ -20,7 +20,7 @@ use core::{
     task::{Context, Poll},
 };
 use wrt_foundation::{
-    bounded_collections::BoundedHashMap,
+    bounded_collections::BoundedMap,
     verification::VerificationLevel,
     Arc, Weak, sync::Mutex,
     CrateId, safe_managed_alloc,
@@ -39,9 +39,9 @@ pub struct ComponentAsyncBridge {
     /// Thread manager for fuel tracking
     thread_manager: Arc<Mutex<FuelTrackedThreadManager>>,
     /// Mapping from component tasks to executor tasks
-    task_mapping: BoundedHashMap<ComponentTaskId, crate::task_manager::TaskId, 1024>,
+    task_mapping: BoundedMap<ComponentTaskId, crate::threading::task_manager::TaskId, 1024>,
     /// Per-component async operation limits
-    component_limits: BoundedHashMap<ComponentInstanceId, AsyncComponentLimits, 256>,
+    component_limits: BoundedMap<ComponentInstanceId, AsyncComponentLimits, 256>,
     /// Global async fuel budget
     global_async_fuel_budget: AtomicU64,
     /// Verification level for async operations
@@ -76,8 +76,8 @@ impl ComponentAsyncBridge {
             executor,
             task_manager,
             thread_manager,
-            task_mapping: BoundedHashMap::new(),
-            component_limits: BoundedHashMap::new(),
+            task_mapping: BoundedMap::new(provider.clone())?,
+            component_limits: BoundedMap::new(provider.clone())?,
             global_async_fuel_budget: AtomicU64::new(u64::MAX),
             verification_level: VerificationLevel::Standard,
         })

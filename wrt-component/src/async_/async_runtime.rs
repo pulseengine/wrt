@@ -21,13 +21,14 @@ use wrt_foundation::{
 };
 
 use crate::{
-    async_types::{
-        AsyncReadResult, Future, FutureHandle, FutureState, Stream, StreamHandle, StreamState,
-        Waitable, WaitableSet,
-    },
-    task_manager::{Task, TaskContext, TaskId, TaskManager, TaskState, TaskType},
+    threading::task_manager::{Task, TaskContext, TaskId, TaskManager, TaskState, TaskType},
     types::{ValType, Value},
     WrtResult,
+};
+
+use super::async_types::{
+    AsyncReadResult, Future, FutureHandle, FutureState, Stream, StreamHandle, StreamState,
+    Waitable, WaitableSet,
 };
 
 use wrt_error::{Error, ErrorCategory, Result};

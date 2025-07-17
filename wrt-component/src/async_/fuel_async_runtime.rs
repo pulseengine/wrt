@@ -20,7 +20,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     operations::{record_global_operation, Type as OperationType, global_fuel_consumed},
     verification::VerificationLevel,
     safe_managed_alloc, CrateId,
@@ -46,7 +46,7 @@ pub struct FuelAsyncRuntime {
     /// Core async executor
     executor: Arc<Mutex<FuelAsyncExecutor>>,
     /// Component registry
-    components: BoundedHashMap<ComponentInstanceId, Arc<ComponentInstance>, MAX_COMPONENTS>,
+    components: BoundedMap<ComponentInstanceId, Arc<ComponentInstance>, MAX_COMPONENTS>,
     /// Global fuel budget for the runtime
     global_fuel_budget: u64,
     /// Total fuel consumed across all operations
@@ -60,7 +60,7 @@ pub struct FuelAsyncRuntime {
     /// Verification level for runtime operations
     verification_level: VerificationLevel,
     /// Task completion results
-    task_results: BoundedHashMap<TaskId, TaskResult, MAX_RUNTIME_TASKS>,
+    task_results: BoundedMap<TaskId, TaskResult, MAX_RUNTIME_TASKS>,
 }
 
 /// Runtime execution state
@@ -145,8 +145,8 @@ impl FuelAsyncRuntime {
             config.verification_level,
         )?);
         
-        let components = BoundedHashMap::new(provider.clone())?;
-        let task_results = BoundedHashMap::new(provider)?;
+        let components = BoundedMap::new(provider.clone())?;
+        let task_results = BoundedMap::new(provider)?;
         
         let cleanup_manager = Arc::new(Mutex::new(
             GlobalCleanupManager::new(config.global_fuel_budget / 10)?

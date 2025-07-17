@@ -14,7 +14,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     verification::VerificationLevel,
     CrateId, safe_managed_alloc,
 };
@@ -32,9 +32,9 @@ const MAX_FUEL_ALLOCATION: u64 = 100_000;
 /// Dynamic fuel manager for adaptive allocation
 pub struct FuelDynamicManager {
     /// Task execution history for behavior analysis
-    task_history: BoundedHashMap<TaskId, TaskExecutionHistory, MAX_HISTORY_ENTRIES>,
+    task_history: BoundedMap<TaskId, TaskExecutionHistory, MAX_HISTORY_ENTRIES>,
     /// Component fuel quotas
-    component_quotas: BoundedHashMap<ComponentInstanceId, ComponentFuelQuota, 256>,
+    component_quotas: BoundedMap<ComponentInstanceId, ComponentFuelQuota, 256>,
     /// System load metrics
     system_load: SystemLoadMetrics,
     /// Fuel allocation policy
@@ -118,8 +118,8 @@ impl FuelDynamicManager {
     /// Create a new dynamic fuel manager
     pub fn new(allocation_policy: FuelAllocationPolicy, fuel_reserve: u64) -> Result<Self, Error> {
         Ok(Self {
-            task_history: BoundedHashMap::new(),
-            component_quotas: BoundedHashMap::new(),
+            task_history: BoundedMap::new(provider.clone())?,
+            component_quotas: BoundedMap::new(provider.clone())?,
             system_load: SystemLoadMetrics {
                 total_active_tasks: AtomicU32::new(0),
                 avg_fuel_rate: AtomicU64::new(0),

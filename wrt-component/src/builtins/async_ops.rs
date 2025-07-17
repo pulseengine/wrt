@@ -104,9 +104,9 @@ impl AsyncValueStore {
                 async_value.status = AsyncStatus::Ready;
                 async_value.result = Some(result);
 
-                Ok(()
+                Ok(())
             }
-            None => Err(Error::component_not_found("Error occurred"))),
+            None => Err(Error::component_not_found("Error occurred")),
         }
     }
 
@@ -117,9 +117,9 @@ impl AsyncValueStore {
                 async_value.status = AsyncStatus::Failed;
                 async_value.error = Some(error);
 
-                Ok(()
+                Ok(())
             }
-            None => Err(Error::component_not_found("Error occurred"))),
+            None => Err(Error::component_not_found("Error occurred")),
         }
     }
 
@@ -127,7 +127,7 @@ impl AsyncValueStore {
     pub fn get_status(&self, id: u32) -> Result<AsyncStatus> {
         match self.values.get(&id) {
             Some(async_value) => Ok(async_value.status.clone()),
-            None => Err(Error::component_not_found("Error occurred"))),
+            None => Err(Error::component_not_found("Error occurred")),
         }
     }
 
@@ -140,8 +140,8 @@ impl AsyncValueStore {
                         Error::async_error("Error occurred")
                     })
                 } else if async_value.status == AsyncStatus::Failed {
-                    Err(Error::new(AsyncError(
-                        async_value
+                    Err(Error::async_error(
+                        &async_value
                             .error
                             .clone()
                             .unwrap_or_else(|| "Async operation failed".to_string()),
@@ -150,7 +150,7 @@ impl AsyncValueStore {
                     Err(Error::async_error("Error occurred"))
                 }
             }
-            None => Err(Error::component_not_found("Error occurred"))),
+            None => Err(Error::component_not_found("Error occurred")),
         }
     }
 
@@ -162,7 +162,7 @@ impl AsyncValueStore {
     /// Remove an async value
     pub fn remove_async(&mut self, id: u32) -> Result<()> {
         if self.values.remove(&id).is_some() {
-            Ok(()
+            Ok(())
         } else {
             Err(Error::component_not_found("Error occurred"))
         }
@@ -242,9 +242,7 @@ impl BuiltinHandler for AsyncGetHandler {
         let async_id = match &args[0] {
             ComponentValue::U32(id) => *id,
             _ => {
-                return Err(Error::runtime_execution_error("Error occurred",
-                    args[0]
-                ));
+                return Err(Error::runtime_execution_error("Error occurred"));
             }
         };
 
@@ -289,9 +287,7 @@ impl BuiltinHandler for AsyncPollHandler {
         let async_id = match &args[0] {
             ComponentValue::U32(id) => *id,
             _ => {
-                return Err(Error::runtime_execution_error("Error occurred",
-                    args[0]
-                ));
+                return Err(Error::runtime_execution_error("Error occurred"));
             }
         };
 
@@ -346,9 +342,7 @@ impl BuiltinHandler for AsyncWaitHandler {
         let async_id = match &args[0] {
             ComponentValue::U32(id) => *id,
             _ => {
-                return Err(Error::runtime_execution_error("Error occurred",
-                    args[0]
-                ));
+                return Err(Error::runtime_execution_error("Error occurred"));
             }
         };
 
@@ -368,7 +362,7 @@ impl BuiltinHandler for AsyncWaitHandler {
                     drop(store);
 
                     #[cfg(feature = "std")]
-                    std::thread::sleep(std::time::Duration::from_millis(1);
+                    std::thread::sleep(std::time::Duration::from_millis(1));
 
                     // Continue polling
                     continue;
@@ -395,7 +389,7 @@ pub fn create_async_handlers(
     ];
 
     #[cfg(feature = "std")]
-    handlers.push(Box::new(AsyncWaitHandler::new(async_store));
+    handlers.push(Box::new(AsyncWaitHandler::new(async_store)));
 
     handlers
 }
@@ -428,17 +422,17 @@ mod tests {
         store.set_error(id2, "Test error".to_string()).unwrap();
 
         assert_eq!(store.get_status(id2).unwrap(), AsyncStatus::Failed);
-        assert!(store.get_result(id2).is_err();
+        assert!(store.get_result(id2).is_err());
 
         // Test removal
-        assert!(store.remove_async(id).is_ok();
-        assert!(store.get_status(id).is_err();
+        assert!(store.remove_async(id).is_ok());
+        assert!(store.get_status(id).is_err());
     }
 
     #[test]
     fn test_async_new_handler() {
-        let store = Arc::new(Mutex::new(AsyncValueStore::new());
-        let handler = AsyncNewHandler::new(store.clone();
+        let store = Arc::new(Mutex::new(AsyncValueStore::new()));
+        let handler = AsyncNewHandler::new(store.clone());
 
         // Test with valid args (empty)
         let args = vec![];
@@ -449,7 +443,7 @@ mod tests {
             ComponentValue::U32(id) => {
                 // Verify the async value was created
                 let async_store = store.lock().unwrap();
-                assert!(async_store.has_async(*id);
+                assert!(async_store.has_async(*id));
             }
             _ => panic!("Expected U32 resultMissing message"),
         }
@@ -457,12 +451,12 @@ mod tests {
         // Test with invalid args
         let invalid_args = vec![ComponentValue::U32(1)];
         let error = handler.execute(&invalid_args);
-        assert!(error.is_err();
+        assert!(error.is_err());
     }
 
     #[test]
     fn test_async_get_handler() {
-        let store = Arc::new(Mutex::new(AsyncValueStore::new());
+        let store = Arc::new(Mutex::new(AsyncValueStore::new()));
 
         // Create a new async value and set its result
         let id = {
@@ -490,7 +484,7 @@ mod tests {
 
     #[test]
     fn test_async_poll_handler() {
-        let store = Arc::new(Mutex::new(AsyncValueStore::new());
+        let store = Arc::new(Mutex::new(AsyncValueStore::new()));
 
         // Create multiple async values with different statuses
         let (pending_id, ready_id, failed_id) = {
@@ -528,7 +522,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_async_wait_handler() {
-        let store = Arc::new(Mutex::new(AsyncValueStore::new());
+        let store = Arc::new(Mutex::new(AsyncValueStore::new()));
 
         // Create an async value that's already ready
         let id = {
@@ -556,7 +550,7 @@ mod tests {
 
     #[test]
     fn test_create_async_handlers() {
-        let store = Arc::new(Mutex::new(AsyncValueStore::new());
+        let store = Arc::new(Mutex::new(AsyncValueStore::new()));
         let handlers = create_async_handlers(store);
 
         // Check that the right number of handlers were created

@@ -179,7 +179,7 @@ mod tests {
         let coalescer = WakeCoalescer::new().unwrap();
         
         // Add multiple wakes for the same task
-        let task_id = crate::task_manager::TaskId::new(42);
+        let task_id = crate::threading::task_manager::TaskId::new(42);
         for _ in 0..5 {
             coalescer.add_wake(task_id).unwrap();
         }
@@ -188,8 +188,8 @@ mod tests {
         assert_eq!(coalescer.pending_count(), 1);
         
         // Add wakes for different tasks
-        coalescer.add_wake(crate::task_manager::TaskId::new(43)).unwrap();
-        coalescer.add_wake(crate::task_manager::TaskId::new(44)).unwrap();
+        coalescer.add_wake(crate::threading::task_manager::TaskId::new(43)).unwrap();
+        coalescer.add_wake(crate::threading::task_manager::TaskId::new(44)).unwrap();
         
         assert_eq!(coalescer.pending_count(), 3);
     }

@@ -13,7 +13,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     operations::{record_global_operation, Type as OperationType},
     verification::VerificationLevel,
     CrateId, safe_managed_alloc,
@@ -105,11 +105,11 @@ pub struct WcetAnalysisResult {
 /// WCET analyzer for fuel-based timing analysis
 pub struct FuelWcetAnalyzer {
     /// WCET analysis results indexed by task
-    analysis_results: BoundedHashMap<TaskId, WcetAnalysisResult, MAX_WCET_ENTRIES>,
+    analysis_results: BoundedMap<TaskId, WcetAnalysisResult, MAX_WCET_ENTRIES>,
     /// Control flow paths for each task
-    task_paths: BoundedHashMap<TaskId, BoundedVec<ControlFlowPath, MAX_CONTROL_FLOW_PATHS>, MAX_WCET_ENTRIES>,
+    task_paths: BoundedMap<TaskId, BoundedVec<ControlFlowPath, MAX_CONTROL_FLOW_PATHS>, MAX_WCET_ENTRIES>,
     /// Execution samples for each task
-    execution_samples: BoundedHashMap<TaskId, BoundedVec<ExecutionSample, MAX_EXECUTION_SAMPLES>, MAX_WCET_ENTRIES>,
+    execution_samples: BoundedMap<TaskId, BoundedVec<ExecutionSample, MAX_EXECUTION_SAMPLES>, MAX_WCET_ENTRIES>,
     /// Analysis configuration
     config: WcetAnalyzerConfig,
     /// Performance statistics
@@ -179,9 +179,9 @@ impl FuelWcetAnalyzer {
         verification_level: VerificationLevel,
     ) -> Result<Self, Error> {
         Ok(Self {
-            analysis_results: BoundedHashMap::new(),
-            task_paths: BoundedHashMap::new(),
-            execution_samples: BoundedHashMap::new(),
+            analysis_results: BoundedMap::new(provider.clone())?,
+            task_paths: BoundedMap::new(provider.clone())?,
+            execution_samples: BoundedMap::new(provider.clone())?,
             config,
             stats: WcetAnalyzerStats {
                 total_analyses: AtomicUsize::new(0),

@@ -14,7 +14,7 @@ use core::{
     sync::atomic::{AtomicU64, AtomicU32, Ordering},
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     operations::{record_global_operation, Type as OperationType},
     verification::VerificationLevel,
     safe_managed_alloc, CrateId,
@@ -144,8 +144,9 @@ impl<T> FuelHandleTable<T> {
         fuel_budget: u64,
         verification_level: VerificationLevel,
     ) -> Result<Self> {
+        let buffer_size = core::mem::size_of::<HandleEntry<T>>() * initial_capacity + 4096;
         let provider = safe_managed_alloc!(
-            core::mem::size_of::<HandleEntry<T>>() * initial_capacity + 4096,
+            buffer_size,
             CrateId::Component
         )?;
         
@@ -359,7 +360,7 @@ impl<T> FuelHandleTable<T> {
 /// Handle table manager for multiple tables
 pub struct HandleTableManager {
     /// Tables by ID
-    tables: BoundedHashMap<u64, Box<dyn core::any::Any + Send + Sync>, MAX_HANDLE_TABLES>,
+    tables: BoundedMap<u64, Box<dyn core::any::Any + Send + Sync>, MAX_HANDLE_TABLES>,
     /// Next table ID
     next_table_id: AtomicU64,
     /// Global fuel budget
@@ -372,7 +373,7 @@ impl HandleTableManager {
     /// Create a new handle table manager
     pub fn new(global_fuel_budget: u64) -> Result<Self> {
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
-        let tables = BoundedHashMap::new(provider)?;
+        let tables = BoundedMap::new(provider)?;
         
         Ok(Self {
             tables,

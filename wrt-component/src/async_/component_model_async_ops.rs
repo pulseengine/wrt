@@ -21,7 +21,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedVec, BoundedHashMap},
+    bounded_collections::{BoundedVec, BoundedMap},
     sync::Mutex,
     Arc, Weak,
     CrateId, safe_managed_alloc,
@@ -42,7 +42,7 @@ pub struct ComponentModelAsyncOps {
     /// Reference to the task manager
     task_manager: Arc<Mutex<TaskManager>>,
     /// Active wait operations
-    active_waits: BoundedHashMap<TaskId, WaitOperation, 128>,
+    active_waits: BoundedMap<TaskId, WaitOperation, 128>,
     /// Waitable registry
     waitable_registry: WaitableRegistry,
     /// Operation statistics
@@ -67,13 +67,13 @@ struct WaitOperation {
 /// Registry for managing waitables
 struct WaitableRegistry {
     /// Future handles (readable state)
-    futures_readable: BoundedHashMap<FutureHandle, WaitableState, 256>,
+    futures_readable: BoundedMap<FutureHandle, WaitableState, 256>,
     /// Future handles (writable state)
-    futures_writable: BoundedHashMap<FutureHandle, WaitableState, 256>,
+    futures_writable: BoundedMap<FutureHandle, WaitableState, 256>,
     /// Stream handles (readable state)
-    streams_readable: BoundedHashMap<StreamHandle, WaitableState, 128>,
+    streams_readable: BoundedMap<StreamHandle, WaitableState, 128>,
     /// Stream handles (writable state)
-    streams_writable: BoundedHashMap<StreamHandle, WaitableState, 128>,
+    streams_writable: BoundedMap<StreamHandle, WaitableState, 128>,
 }
 
 /// State of a waitable
@@ -110,7 +110,7 @@ impl ComponentModelAsyncOps {
         Ok(Self {
             executor,
             task_manager,
-            active_waits: BoundedHashMap::new(),
+            active_waits: BoundedMap::new(provider.clone())?,
             waitable_registry: WaitableRegistry::new()?,
             stats: AsyncOpStats::default(),
         })
@@ -364,10 +364,10 @@ impl ComponentModelAsyncOps {
 impl WaitableRegistry {
     fn new() -> Result<Self, Error> {
         Ok(Self {
-            futures_readable: BoundedHashMap::new(),
-            futures_writable: BoundedHashMap::new(),
-            streams_readable: BoundedHashMap::new(),
-            streams_writable: BoundedHashMap::new(),
+            futures_readable: BoundedMap::new(provider.clone())?,
+            futures_writable: BoundedMap::new(provider.clone())?,
+            streams_readable: BoundedMap::new(provider.clone())?,
+            streams_writable: BoundedMap::new(provider.clone())?,
         })
     }
 

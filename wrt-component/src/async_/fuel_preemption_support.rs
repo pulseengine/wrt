@@ -17,7 +17,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec, BoundedBinaryHeap},
+    bounded_collections::{BoundedMap, BoundedVec, BoundedBinaryHeap},
     verification::VerificationLevel,
     Arc, sync::Mutex,
     CrateId, safe_managed_alloc,
@@ -35,11 +35,11 @@ pub struct FuelPreemptionManager {
     /// Preemption policies
     preemption_policy: PreemptionPolicy,
     /// Task preemption state
-    task_states: BoundedHashMap<TaskId, PreemptionState, 1024>,
+    task_states: BoundedMap<TaskId, PreemptionState, 1024>,
     /// Preemption queue ordered by priority
     preemption_queue: BoundedBinaryHeap<PreemptionRequest, 256>,
     /// Active preemption points
-    preemption_points: BoundedHashMap<TaskId, BoundedVec<PreemptionPoint, MAX_PREEMPTION_POINTS>, 512>,
+    preemption_points: BoundedMap<TaskId, BoundedVec<PreemptionPoint, MAX_PREEMPTION_POINTS>, 512>,
     /// Global preemption enabled flag
     preemption_enabled: AtomicBool,
     /// Preemption statistics
@@ -160,9 +160,9 @@ impl FuelPreemptionManager {
         
         Ok(Self {
             preemption_policy: policy,
-            task_states: BoundedHashMap::new(),
+            task_states: BoundedMap::new(provider.clone())?,
             preemption_queue: BoundedBinaryHeap::new(provider.clone())?,
-            preemption_points: BoundedHashMap::new(),
+            preemption_points: BoundedMap::new(provider.clone())?,
             preemption_enabled: AtomicBool::new(policy != PreemptionPolicy::Disabled),
             stats: PreemptionStatistics::default(),
         })

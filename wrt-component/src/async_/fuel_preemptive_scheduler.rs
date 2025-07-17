@@ -19,7 +19,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     operations::{record_global_operation, Type as OperationType},
     verification::VerificationLevel,
     CrateId, safe_managed_alloc,
@@ -48,7 +48,7 @@ pub struct FuelPreemptiveScheduler {
     /// Currently running task
     current_task: Option<RunningTaskContext>,
     /// Task information indexed by TaskId
-    task_info: BoundedHashMap<TaskId, PreemptiveTaskInfo, MAX_PREEMPTIVE_TASKS>,
+    task_info: BoundedMap<TaskId, PreemptiveTaskInfo, MAX_PREEMPTIVE_TASKS>,
     /// Scheduling configuration
     config: PreemptiveSchedulerConfig,
     /// Priority inheritance protocol
@@ -215,7 +215,7 @@ impl FuelPreemptiveScheduler {
         Ok(Self {
             priority_queues,
             current_task: None,
-            task_info: BoundedHashMap::new(),
+            task_info: BoundedMap::new(provider.clone())?,
             config,
             priority_protocol,
             stats: PreemptiveSchedulerStats {

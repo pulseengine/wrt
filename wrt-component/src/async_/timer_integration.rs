@@ -21,7 +21,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec, BoundedBinaryHeap},
+    bounded_collections::{BoundedMap, BoundedVec, BoundedBinaryHeap},
     component_value::ComponentValue,
     Arc, Weak, sync::Mutex,
     CrateId, safe_managed_alloc,
@@ -45,11 +45,11 @@ pub struct TimerIntegration {
     /// Bridge for task management
     bridge: Arc<Mutex<TaskManagerAsyncBridge>>,
     /// Active timers
-    timers: BoundedHashMap<TimerId, Timer, MAX_GLOBAL_TIMERS>,
+    timers: BoundedMap<TimerId, Timer, MAX_GLOBAL_TIMERS>,
     /// Timer queue ordered by expiration time
     timer_queue: BoundedBinaryHeap<TimerEntry, MAX_GLOBAL_TIMERS>,
     /// Component timer contexts
-    component_contexts: BoundedHashMap<ComponentInstanceId, ComponentTimerContext, 128>,
+    component_contexts: BoundedMap<ComponentInstanceId, ComponentTimerContext, 128>,
     /// Next timer ID
     next_timer_id: AtomicU64,
     /// Current time (simulated)
@@ -137,7 +137,7 @@ struct ComponentTimerContext {
     /// Timers owned by this component
     owned_timers: BoundedVec<TimerId, MAX_TIMERS_PER_COMPONENT>,
     /// Active timeouts
-    active_timeouts: BoundedHashMap<u64, TimerId, 64>, // operation_id -> timer_id
+    active_timeouts: BoundedMap<u64, TimerId, 64>, // operation_id -> timer_id
     /// Timer limits
     timer_limits: TimerLimits,
     /// Rate limiting state
@@ -212,9 +212,9 @@ impl TimerIntegration {
         
         Self {
             bridge,
-            timers: BoundedHashMap::new(),
+            timers: BoundedMap::new(provider.clone())?,
             timer_queue: BoundedBinaryHeap::new(provider).unwrap(),
-            component_contexts: BoundedHashMap::new(),
+            component_contexts: BoundedMap::new(provider.clone())?,
             next_timer_id: AtomicU64::new(1),
             current_time: AtomicU64::new(0),
             timer_stats: TimerStatistics::default(),
@@ -239,7 +239,7 @@ impl TimerIntegration {
         let context = ComponentTimerContext {
             component_id,
             owned_timers: BoundedVec::new(provider)?,
-            active_timeouts: BoundedHashMap::new(),
+            active_timeouts: BoundedMap::new(provider.clone())?,
             timer_limits: limits,
             rate_limit_state: RateLimitState {
                 fires_this_period: AtomicU32::new(0),

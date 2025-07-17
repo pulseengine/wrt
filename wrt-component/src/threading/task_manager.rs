@@ -20,7 +20,7 @@ use wrt_foundation::{
 };
 
 use crate::{
-    async_types::{
+    async_::async_types::{
         AsyncReadResult, ErrorContext, ErrorContextHandle, Future, FutureHandle, Stream,
         StreamHandle, Waitable, WaitableSet,
     },
@@ -199,7 +199,7 @@ impl TaskManager {
             tasks: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::runtime_execution_error("Error occurred")
+                    wrt_error::Error::runtime_execution_error("Error occurred"))
                 })?
             },
             #[cfg(feature = "std")]
@@ -208,7 +208,7 @@ impl TaskManager {
             ready_queue: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::runtime_execution_error("Error occurred")
+                    wrt_error::Error::runtime_execution_error("Error occurred"))
                 })?
             },
             current_task: None,
@@ -232,8 +232,7 @@ impl TaskManager {
     ) -> WrtResult<TaskId> {
         // Check task limit
         if self.tasks.len() >= self.max_concurrent_tasks {
-            return Err(wrt_error::Error::runtime_execution_error("Error occurred"
-            );
+            return Err(wrt_error::Error::runtime_execution_error("Error occurred")));
         }
 
         let task_id = TaskId(self.next_task_id);
@@ -250,7 +249,7 @@ impl TaskManager {
             subtasks: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::runtime_execution_error("Error occurred")
+                    wrt_error::Error::runtime_execution_error("Error occurred"))
                 })?
             },
             #[cfg(feature = "std")]
@@ -259,7 +258,7 @@ impl TaskManager {
             borrowed_handles: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::runtime_execution_error("Error occurred")
+                    wrt_error::Error::runtime_execution_error("Error occurred"))
                 })?
             },
             context: TaskContext {
@@ -271,7 +270,7 @@ impl TaskManager {
                 call_stack: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                     BoundedVec::new(provider).map_err(|_| {
-                        wrt_error::Error::runtime_execution_error("Error occurred")
+                        wrt_error::Error::runtime_execution_error("Error occurred"))
                     })?
                 },
                 #[cfg(feature = "std")]
@@ -280,7 +279,7 @@ impl TaskManager {
                 storage: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                     BoundedVec::new(provider).map_err(|_| {
-                        wrt_error::Error::runtime_execution_error("Error occurred")
+                        wrt_error::Error::runtime_execution_error("Error occurred"))
                     })?
                 },
                 created_at: self.get_current_time(),
@@ -313,8 +312,7 @@ impl TaskManager {
         #[cfg(not(feature = "std"))]
         {
             self.tasks.push((task_id, task)).map_err(|_| {
-                wrt_error::Error::runtime_execution_error("Error occurred"
-            })?;
+                wrt_error::Error::runtime_execution_error("Error occurred"))
             })?;
         }
 
@@ -361,13 +359,12 @@ impl TaskManager {
                 #[cfg(not(feature = "std"))]
                 {
                     self.ready_queue.push(task_id).map_err(|_| {
-                        wrt_error::Error::runtime_execution_error("Error occurred"
-                    })?;
+                        wrt_error::Error::runtime_execution_error("Error occurred"))
                     })?;
                 }
             }
         }
-        Ok(()
+        Ok(())
     }
 
     /// Get next ready task
@@ -402,15 +399,14 @@ impl TaskManager {
             if task.state == TaskState::Ready {
                 task.state = TaskState::Running;
                 self.current_task = Some(task_id);
-                Ok(()
+                Ok(())
             } else {
-                Err(wrt_error::Error::runtime_execution_error("Error occurred"
-            })?;
+                Err(wrt_error::Error::runtime_execution_error("Error occurred")))
             }
         } else {
             Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,
                 wrt_error::errors::codes::INVALID_INPUT,
-                "Error message neededMissing messageMissing messageMissing message")
+                "Error message neededMissing messageMissing messageMissing message"))
         }
     }
 
@@ -427,11 +423,11 @@ impl TaskManager {
                 {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                     let mut bounded_values = BoundedVec::new(provider).map_err(|_| {
-                        wrt_error::Error::runtime_execution_error("Error occurred")
+                        wrt_error::Error::runtime_execution_error("Error occurred"))
                     })?;
                     for value in values {
                         bounded_values.push(value).map_err(|_| {
-                            wrt_error::Error::runtime_execution_error("Error occurred")
+                            wrt_error::Error::runtime_execution_error("Error occurred"))
                         })?;
                     }
                     task.return_values = Some(bounded_values);
@@ -441,15 +437,14 @@ impl TaskManager {
                 self.cleanup_task_resources(task_id)?;
 
                 self.current_task = task.parent;
-                Ok(()
+                Ok(())
             } else {
                 Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,
                     wrt_error::errors::codes::INVALID_INPUT,
-                    "Error message neededMissing messageMissing messageMissing message")
+                    "Error message neededMissing messageMissing messageMissing message"))
             }
         } else {
-            Err(wrt_error::Error::runtime_execution_error("Error occurred"
-            )
+            Err(wrt_error::Error::runtime_execution_error("Error occurred")))
         }
     }
 
@@ -471,8 +466,7 @@ impl TaskManager {
                 Ok(u32::MAX) // Convention: MAX means Missing messageMissing messageMissing message")
             }
         } else {
-            Err(wrt_error::Error::runtime_execution_error("Error occurred"
-            )
+            Err(wrt_error::Error::runtime_execution_error("Error occurred")))
         }
     }
 
@@ -498,15 +492,14 @@ impl TaskManager {
                 }
 
                 self.current_task = task.parent;
-                Ok(()
+                Ok(())
             } else {
-                Err(wrt_error::Error::runtime_execution_error("Error occurred"
-            })?;
+                Err(wrt_error::Error::runtime_execution_error("Error occurred")))
             }
         } else {
             Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,
                 wrt_error::errors::codes::INVALID_INPUT,
-                "Error message neededMissing messageMissing messageMissing message")
+                "Error message neededMissing messageMissing messageMissing message"))
         }
     }
 

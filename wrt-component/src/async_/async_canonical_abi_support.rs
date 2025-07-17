@@ -21,7 +21,7 @@ use core::{
     task::{Context, Poll},
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     component_value::ComponentValue,
     resource::ResourceHandle,
     CrateId, safe_managed_alloc,
@@ -42,9 +42,9 @@ pub struct AsyncCanonicalAbiSupport {
     /// Task manager bridge
     bridge: TaskManagerAsyncBridge,
     /// Active async ABI operations
-    async_operations: BoundedHashMap<AsyncAbiOperationId, AsyncAbiOperation, MAX_ASYNC_ABI_OPS>,
+    async_operations: BoundedMap<AsyncAbiOperationId, AsyncAbiOperation, MAX_ASYNC_ABI_OPS>,
     /// Component ABI contexts
-    abi_contexts: BoundedHashMap<ComponentInstanceId, ComponentAbiContext, 128>,
+    abi_contexts: BoundedMap<ComponentInstanceId, ComponentAbiContext, 128>,
     /// Next operation ID
     next_operation_id: AtomicU64,
     /// ABI statistics
@@ -65,7 +65,7 @@ struct AsyncAbiOperation {
     resource_handle: Option<ResourceHandle>,
     lifting_context: Option<LiftingContext>,
     lowering_context: Option<LoweringContext>,
-    task_id: Option<crate::task_manager::TaskId>,
+    task_id: Option<crate::threading::task_manager::TaskId>,
     created_at: u64,
     fuel_consumed: AtomicU64,
 }
@@ -138,11 +138,11 @@ struct ComponentAbiContext {
     /// Active async calls
     active_calls: BoundedVec<AsyncAbiOperationId, 64>,
     /// Resource async operations
-    resource_operations: BoundedHashMap<ResourceHandle, Vec<AsyncAbiOperationId>, 32>,
+    resource_operations: BoundedMap<ResourceHandle, Vec<AsyncAbiOperationId>, 32>,
     /// Future callbacks
-    future_callbacks: BoundedHashMap<FutureHandle, AsyncAbiOperationId, 64>,
+    future_callbacks: BoundedMap<FutureHandle, AsyncAbiOperationId, 64>,
     /// Stream callbacks
-    stream_callbacks: BoundedHashMap<StreamHandle, AsyncAbiOperationId, 32>,
+    stream_callbacks: BoundedMap<StreamHandle, AsyncAbiOperationId, 32>,
 }
 
 /// ABI operation statistics
@@ -164,8 +164,8 @@ impl AsyncCanonicalAbiSupport {
     pub fn new(bridge: TaskManagerAsyncBridge) -> Self {
         Self {
             bridge,
-            async_operations: BoundedHashMap::new(),
-            abi_contexts: BoundedHashMap::new(),
+            async_operations: BoundedMap::new(provider.clone())?,
+            abi_contexts: BoundedMap::new(provider.clone())?,
             next_operation_id: AtomicU64::new(1),
             abi_stats: AbiStatistics::default(),
         }
@@ -183,9 +183,9 @@ impl AsyncCanonicalAbiSupport {
             component_id,
             default_options,
             active_calls: BoundedVec::new(provider.clone())?,
-            resource_operations: BoundedHashMap::new(),
-            future_callbacks: BoundedHashMap::new(),
-            stream_callbacks: BoundedHashMap::new(),
+            resource_operations: BoundedMap::new(provider.clone())?,
+            future_callbacks: BoundedMap::new(provider.clone())?,
+            stream_callbacks: BoundedMap::new(provider.clone())?,
         };
 
         self.abi_contexts.insert(component_id, context).map_err(|_| {

@@ -23,7 +23,7 @@ use core::{
     task::{Context, Poll},
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     component_value::ComponentValue,
     Arc, Weak, sync::Mutex,
     CrateId, safe_managed_alloc,
@@ -39,7 +39,7 @@ pub struct ComponentAsyncTask {
     /// Component Model task ID
     pub component_task_id: TaskId,
     /// Executor task ID
-    pub executor_task_id: crate::task_manager::TaskId,
+    pub executor_task_id: crate::threading::task_manager::TaskId,
     /// Component instance
     pub component_id: ComponentInstanceId,
     /// Task type
@@ -80,11 +80,11 @@ pub struct TaskManagerAsyncBridge {
     /// Async executor bridge
     async_bridge: ComponentAsyncBridge,
     /// Active async tasks
-    async_tasks: BoundedHashMap<TaskId, ComponentAsyncTask, MAX_ASYNC_CONTEXTS>,
+    async_tasks: BoundedMap<TaskId, ComponentAsyncTask, MAX_ASYNC_CONTEXTS>,
     /// Task mapping (component task -> executor task)
-    task_mapping: BoundedHashMap<TaskId, crate::task_manager::TaskId, MAX_ASYNC_CONTEXTS>,
+    task_mapping: BoundedMap<TaskId, crate::threading::task_manager::TaskId, MAX_ASYNC_CONTEXTS>,
     /// Component async contexts
-    async_contexts: BoundedHashMap<ComponentInstanceId, ComponentAsyncContext, 128>,
+    async_contexts: BoundedMap<ComponentInstanceId, ComponentAsyncContext, 128>,
     /// Bridge statistics
     bridge_stats: BridgeStatistics,
     /// Bridge configuration
@@ -98,9 +98,9 @@ struct ComponentAsyncContext {
     /// Active async tasks for this component
     active_tasks: BoundedVec<TaskId, 64>,
     /// Future handles owned by component
-    futures: BoundedHashMap<FutureHandle, TaskId, 64>,
+    futures: BoundedMap<FutureHandle, TaskId, 64>,
     /// Stream handles owned by component
-    streams: BoundedHashMap<StreamHandle, TaskId, 64>,
+    streams: BoundedMap<StreamHandle, TaskId, 64>,
     /// Component async state
     async_state: ComponentAsyncState,
     /// Resource limits
@@ -190,9 +190,9 @@ impl TaskManagerAsyncBridge {
         Ok(Self {
             task_manager,
             async_bridge,
-            async_tasks: BoundedHashMap::new(),
-            task_mapping: BoundedHashMap::new(),
-            async_contexts: BoundedHashMap::new(),
+            async_tasks: BoundedMap::new(provider.clone())?,
+            task_mapping: BoundedMap::new(provider.clone())?,
+            async_contexts: BoundedMap::new(provider.clone())?,
             bridge_stats: BridgeStatistics::default(),
             config,
         })
@@ -219,8 +219,8 @@ impl TaskManagerAsyncBridge {
         let context = ComponentAsyncContext {
             component_id,
             active_tasks: BoundedVec::new(provider.clone())?,
-            futures: BoundedHashMap::new(),
-            streams: BoundedHashMap::new(),
+            futures: BoundedMap::new(provider.clone())?,
+            streams: BoundedMap::new(provider.clone())?,
             async_state: ComponentAsyncState::Active,
             resource_limits: limits,
         };

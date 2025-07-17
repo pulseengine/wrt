@@ -20,7 +20,7 @@ use core::{
     task::{Context, Poll, Waker},
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedVec, BoundedHashMap},
+    bounded_collections::{BoundedVec, BoundedMap},
     component_value::ComponentValue,
     Arc, Weak, sync::Mutex,
     CrateId, safe_managed_alloc,
@@ -44,9 +44,9 @@ pub struct OptimizedAsyncChannels {
     /// Bridge for task management
     bridge: Arc<Mutex<TaskManagerAsyncBridge>>,
     /// Active channels
-    channels: BoundedHashMap<ChannelId, AsyncChannel, 512>,
+    channels: BoundedMap<ChannelId, AsyncChannel, 512>,
     /// Component channel contexts
-    component_contexts: BoundedHashMap<ComponentInstanceId, ComponentChannelContext, 128>,
+    component_contexts: BoundedMap<ComponentInstanceId, ComponentChannelContext, 128>,
     /// Next channel ID
     next_channel_id: AtomicU64,
     /// Channel statistics
@@ -176,9 +176,9 @@ struct ComponentChannelContext {
     /// Channels owned by this component
     owned_channels: BoundedVec<ChannelId, MAX_CHANNELS_PER_COMPONENT>,
     /// Senders held by this component
-    senders: BoundedHashMap<ChannelId, ChannelSender, MAX_CHANNELS_PER_COMPONENT>,
+    senders: BoundedMap<ChannelId, ChannelSender, MAX_CHANNELS_PER_COMPONENT>,
     /// Receivers held by this component
-    receivers: BoundedHashMap<ChannelId, ChannelReceiver, MAX_CHANNELS_PER_COMPONENT>,
+    receivers: BoundedMap<ChannelId, ChannelReceiver, MAX_CHANNELS_PER_COMPONENT>,
     /// Channel quotas and limits
     channel_limits: ChannelLimits,
 }
@@ -236,8 +236,8 @@ impl OptimizedAsyncChannels {
     ) -> Self {
         Self {
             bridge,
-            channels: BoundedHashMap::new(),
-            component_contexts: BoundedHashMap::new(),
+            channels: BoundedMap::new(provider.clone())?,
+            component_contexts: BoundedMap::new(provider.clone())?,
             next_channel_id: AtomicU64::new(1),
             channel_stats: ChannelStatistics::default(),
             global_config: config.unwrap_or_default(),
@@ -261,8 +261,8 @@ impl OptimizedAsyncChannels {
         let context = ComponentChannelContext {
             component_id,
             owned_channels: BoundedVec::new(provider.clone())?,
-            senders: BoundedHashMap::new(),
-            receivers: BoundedHashMap::new(),
+            senders: BoundedMap::new(provider.clone())?,
+            receivers: BoundedMap::new(provider.clone())?,
             channel_limits: limits,
         };
 
@@ -551,7 +551,8 @@ impl OptimizedAsyncChannels {
     // Private helper methods
 
     fn create_channel_buffer(&self, channel_type: ChannelType, capacity: usize) -> Result<ChannelBuffer, Error> {
-        let provider = safe_managed_alloc!(capacity * 128, CrateId::Component)?;
+        let buffer_size = capacity * 128;
+        let provider = safe_managed_alloc!(buffer_size, CrateId::Component)?;
         
         match channel_type {
             ChannelType::Bounded(_) => {

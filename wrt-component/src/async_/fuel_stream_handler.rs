@@ -272,7 +272,7 @@ impl ComponentStream {
 /// Stream manager for tracking all active streams
 pub struct FuelStreamManager {
     /// Active streams by ID
-    streams: BoundedHashMap<u64, ComponentStream, MAX_STREAM_BUFFER>,
+    streams: BoundedMap<u64, ComponentStream, MAX_STREAM_BUFFER>,
     /// Next stream ID
     next_stream_id: u64,
     /// Global fuel budget for all streams
@@ -285,7 +285,7 @@ impl FuelStreamManager {
     /// Create a new stream manager
     pub fn new(global_fuel_budget: u64) -> Result<Self> {
         let provider = safe_managed_alloc!(8192, CrateId::Component)?;
-        let streams = BoundedHashMap::new(provider)?;
+        let streams = BoundedMap::new(provider)?;
         
         Ok(Self {
             streams,

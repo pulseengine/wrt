@@ -19,7 +19,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     operations::{record_global_operation, Type as OperationType},
     verification::VerificationLevel,
     CrateId, safe_managed_alloc,
@@ -123,7 +123,7 @@ pub struct CriticalityLevelQueue {
 /// Fuel-aware constrained deadline scheduler
 pub struct FuelDeadlineScheduler {
     /// Tasks indexed by TaskId
-    task_info: BoundedHashMap<TaskId, DeadlineConstrainedTask, MAX_DEADLINE_TASKS>,
+    task_info: BoundedMap<TaskId, DeadlineConstrainedTask, MAX_DEADLINE_TASKS>,
     /// Criticality level queues (highest first)
     criticality_queues: BoundedVec<CriticalityLevelQueue, MAX_CRITICALITY_LEVELS>,
     /// Current criticality mode
@@ -249,7 +249,7 @@ impl FuelDeadlineScheduler {
         let priority_protocol = FuelPriorityInheritanceProtocol::new(verification_level)?;
 
         Ok(Self {
-            task_info: BoundedHashMap::new(),
+            task_info: BoundedMap::new(provider.clone())?,
             criticality_queues,
             current_mode: CriticalityMode::Low,
             priority_protocol,

@@ -196,7 +196,7 @@ impl WaitableSetImpl {
             #[cfg(feature = "std")]
             waitables: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            waitables: BoundedMap::new(),
+            waitables: BoundedMap::new(provider.clone())?,
             closed: false,
         }
     }
@@ -320,7 +320,7 @@ impl WaitableSetRegistry {
             #[cfg(feature = "std")]
             sets: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            sets: BoundedMap::new(),
+            sets: BoundedMap::new(provider.clone())?,
         }
     }
 

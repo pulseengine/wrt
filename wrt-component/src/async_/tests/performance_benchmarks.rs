@@ -319,7 +319,7 @@ mod tests {
 
         // Simulate high contention
         for i in 0..NUM_CONTENTIONS {
-            let task_id = crate::task_manager::TaskId::new(i as u64 + 1);
+            let task_id = crate::threading::task_manager::TaskId::new(i as u64 + 1);
             let op_start = PerformanceMeasurement::get_time();
             
             // Try to acquire mutex

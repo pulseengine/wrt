@@ -14,7 +14,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     operations::{record_global_operation, Type as OperationType},
     verification::VerificationLevel,
     CrateId, safe_managed_alloc,
@@ -36,13 +36,13 @@ const PRIORITY_RESTORATION_FUEL: u64 = 8;
 /// Priority inheritance protocol manager
 pub struct FuelPriorityInheritanceProtocol {
     /// Active inheritance chains indexed by resource ID
-    inheritance_chains: BoundedHashMap<ResourceId, InheritanceChain, MAX_ACTIVE_PROTOCOLS>,
+    inheritance_chains: BoundedMap<ResourceId, InheritanceChain, MAX_ACTIVE_PROTOCOLS>,
     /// Task priority donations tracking
-    priority_donations: BoundedHashMap<TaskId, PriorityDonation, MAX_ACTIVE_PROTOCOLS>,
+    priority_donations: BoundedMap<TaskId, PriorityDonation, MAX_ACTIVE_PROTOCOLS>,
     /// Original priorities before inheritance
-    original_priorities: BoundedHashMap<TaskId, Priority, MAX_ACTIVE_PROTOCOLS>,
+    original_priorities: BoundedMap<TaskId, Priority, MAX_ACTIVE_PROTOCOLS>,
     /// Resource blocking relationships
-    blocking_relationships: BoundedHashMap<TaskId, BlockingInfo, MAX_ACTIVE_PROTOCOLS>,
+    blocking_relationships: BoundedMap<TaskId, BlockingInfo, MAX_ACTIVE_PROTOCOLS>,
     /// Global protocol statistics
     protocol_stats: ProtocolStatistics,
     /// Verification level for fuel tracking
@@ -139,10 +139,10 @@ impl FuelPriorityInheritanceProtocol {
     /// Create a new priority inheritance protocol manager
     pub fn new(verification_level: VerificationLevel) -> Result<Self, Error> {
         Ok(Self {
-            inheritance_chains: BoundedHashMap::new(),
-            priority_donations: BoundedHashMap::new(),
-            original_priorities: BoundedHashMap::new(),
-            blocking_relationships: BoundedHashMap::new(),
+            inheritance_chains: BoundedMap::new(provider.clone())?,
+            priority_donations: BoundedMap::new(provider.clone())?,
+            original_priorities: BoundedMap::new(provider.clone())?,
+            blocking_relationships: BoundedMap::new(provider.clone())?,
             protocol_stats: ProtocolStatistics {
                 total_inheritances: AtomicUsize::new(0),
                 total_donations: AtomicUsize::new(0),

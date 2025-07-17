@@ -17,7 +17,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedVec, BoundedHashMap},
+    bounded_collections::{BoundedVec, BoundedMap},
     operations::{record_global_operation, Type as OperationType},
     verification::VerificationLevel,
     CrateId, safe_managed_alloc,
@@ -146,7 +146,7 @@ pub struct ReceiveFuture<T> {
 /// Channel manager for organizing multiple async channels
 pub struct FuelAsyncChannelManager<T> {
     /// Active channels indexed by ID
-    channels: BoundedHashMap<ChannelId, FuelAsyncChannel<T>, MAX_ASYNC_CHANNELS>,
+    channels: BoundedMap<ChannelId, FuelAsyncChannel<T>, MAX_ASYNC_CHANNELS>,
     /// Global channel statistics
     global_stats: ChannelManagerStats,
     /// Next channel ID counter
@@ -442,7 +442,7 @@ impl<T> FuelAsyncChannelManager<T> {
     /// Create a new channel manager
     pub fn new(verification_level: VerificationLevel) -> Self {
         Self {
-            channels: BoundedHashMap::new(),
+            channels: BoundedMap::new(provider.clone())?,
             global_stats: ChannelManagerStats {
                 total_channels_created: AtomicUsize::new(0),
                 active_channels: AtomicUsize::new(0),

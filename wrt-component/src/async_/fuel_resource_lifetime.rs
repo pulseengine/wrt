@@ -15,7 +15,7 @@ use core::{
     marker::PhantomData,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     operations::{record_global_operation, Type as OperationType},
     verification::VerificationLevel,
     safe_managed_alloc, CrateId,
@@ -216,7 +216,7 @@ impl<T> Drop for ResourceGuard<T> {
 /// Resource lifetime manager
 pub struct ResourceLifetimeManager {
     /// Resources by handle
-    resources: BoundedHashMap<ResourceHandle, Arc<dyn core::any::Any + Send + Sync>, MAX_RESOURCES_PER_COMPONENT>,
+    resources: BoundedMap<ResourceHandle, Arc<dyn core::any::Any + Send + Sync>, MAX_RESOURCES_PER_COMPONENT>,
     /// Next resource handle
     next_handle: AtomicU64,
     /// Component ID
@@ -233,7 +233,7 @@ impl ResourceLifetimeManager {
     /// Create a new resource lifetime manager
     pub fn new(component_id: u64, global_fuel_budget: u64) -> Result<Self> {
         let provider = safe_managed_alloc!(8192, CrateId::Component)?;
-        let resources = BoundedHashMap::new(provider.clone())?;
+        let resources = BoundedMap::new(provider.clone())?;
         let cleanup_callbacks = BoundedVec::new(provider)?;
         
         Ok(Self {
@@ -420,7 +420,7 @@ impl Drop for ResourceScope {
 /// Component resource tracker
 pub struct ComponentResourceTracker {
     /// Resource managers by component ID
-    managers: BoundedHashMap<u64, Arc<wrt_foundation::sync::Mutex<ResourceLifetimeManager>>, 128>,
+    managers: BoundedMap<u64, Arc<wrt_foundation::sync::Mutex<ResourceLifetimeManager>>, 128>,
     /// Global resource fuel budget
     global_fuel_budget: u64,
 }
@@ -429,7 +429,7 @@ impl ComponentResourceTracker {
     /// Create a new component resource tracker
     pub fn new(global_fuel_budget: u64) -> Result<Self> {
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
-        let managers = BoundedHashMap::new(provider)?;
+        let managers = BoundedMap::new(provider)?;
         
         Ok(Self {
             managers,

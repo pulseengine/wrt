@@ -14,7 +14,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     component_value::ComponentValue,
     safe_memory::{SafeMemory, NoStdProvider},
     budget_aware_provider::CrateId,
@@ -156,9 +156,9 @@ pub struct ThreadSpawnRequest {
 }
 
 pub struct ComponentThreadManager {
-    threads: BoundedHashMap<ThreadId, ThreadHandle, MAX_THREAD_JOIN_HANDLES>,
+    threads: BoundedMap<ThreadId, ThreadHandle, MAX_THREAD_JOIN_HANDLES>,
     component_threads:
-        BoundedHashMap<ComponentInstanceId, BoundedVec<ThreadId, MAX_THREADS_PER_COMPONENT, NoStdProvider<65536>>, 64>,
+        BoundedMap<ComponentInstanceId, BoundedVec<ThreadId, MAX_THREADS_PER_COMPONENT, NoStdProvider<65536>>, 64>,
     spawn_requests: BoundedVec<ThreadSpawnRequest, MAX_THREAD_SPAWN_REQUESTS, NoStdProvider<65536>>,
     next_thread_id: AtomicU32,
     task_manager: TaskManager,
@@ -173,8 +173,8 @@ impl ComponentThreadManager {
     pub fn new() -> wrt_error::Result<Self> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
         Ok(Self {
-            threads: BoundedHashMap::new(),
-            component_threads: BoundedHashMap::new(),
+            threads: BoundedMap::new(provider.clone())?,
+            component_threads: BoundedMap::new(provider.clone())?,
             spawn_requests: BoundedVec::new(provider).map_err(|_| {
                 wrt_error::Error::resource_exhausted("Error occurred")
             })?,

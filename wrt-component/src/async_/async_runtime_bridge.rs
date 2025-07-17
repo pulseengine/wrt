@@ -4,11 +4,12 @@
 //! that are different from Rust's async/await. This module provides optional bridges between them.
 
 use crate::{
-    async_types::{
-        Future as WasmFuture, FutureHandle, FutureState, Stream as WasmStream, StreamHandle,
-    },
-    task_manager::{TaskId, TaskManager, TaskState},
+    threading::task_manager::{TaskId, TaskManager, TaskState},
     ComponentInstanceId, ValType,
+};
+
+use super::async_types::{
+    Future as WasmFuture, FutureHandle, FutureState, Stream as WasmStream, StreamHandle,
 };
 use core::{
     pin::Pin,

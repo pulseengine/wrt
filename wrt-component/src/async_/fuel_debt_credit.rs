@@ -9,7 +9,7 @@ use crate::{
 };
 use core::sync::atomic::{AtomicU64, Ordering};
 use wrt_foundation::{
-    bounded_collections::BoundedHashMap,
+    bounded_collections::BoundedMap,
     sync::Mutex,
     Arc,
     CrateId, safe_managed_alloc,
@@ -27,9 +27,9 @@ const DEFAULT_CREDIT: u64 = 1000;
 /// Fuel debt and credit management system
 pub struct FuelDebtCreditSystem {
     /// Task debt balances
-    task_debts: Arc<Mutex<BoundedHashMap<TaskId, u64, 256>>>,
+    task_debts: Arc<Mutex<BoundedMap<TaskId, u64, 256>>>,
     /// Task credit balances
-    task_credits: Arc<Mutex<BoundedHashMap<TaskId, u64, 256>>>,
+    task_credits: Arc<Mutex<BoundedMap<TaskId, u64, 256>>>,
     /// Global debt counter
     global_debt: AtomicU64,
     /// Global credit counter
@@ -71,8 +71,8 @@ impl FuelDebtCreditSystem {
         let _provider = safe_managed_alloc!(4096, CrateId::Component)?;
         
         Ok(Self {
-            task_debts: Arc::new(Mutex::new(BoundedHashMap::new())),
-            task_credits: Arc::new(Mutex::new(BoundedHashMap::new())),
+            task_debts: Arc::new(Mutex::new(BoundedMap::new(provider.clone())?)),
+            task_credits: Arc::new(Mutex::new(BoundedMap::new(provider.clone())?)),
             global_debt: AtomicU64::new(0),
             global_credit: AtomicU64::new(0),
             debt_policy,

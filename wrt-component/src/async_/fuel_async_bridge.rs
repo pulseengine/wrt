@@ -21,7 +21,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::BoundedHashMap,
+    bounded_collections::BoundedMap,
     operations::{record_global_operation, Type as OperationType},
     verification::VerificationLevel,
     CrateId, safe_managed_alloc,
@@ -43,7 +43,7 @@ pub struct FuelAsyncBridge {
     /// Scheduler for task ordering
     scheduler: FuelAsyncScheduler,
     /// Active bridges indexed by task ID
-    active_bridges: BoundedHashMap<TaskId, AsyncBridgeContext, MAX_ASYNC_BRIDGES>,
+    active_bridges: BoundedMap<TaskId, AsyncBridgeContext, MAX_ASYNC_BRIDGES>,
     /// Global bridge configuration
     default_config: AsyncBridgeConfig,
     /// Verification level for bridge operations
@@ -117,7 +117,7 @@ impl FuelAsyncBridge {
         Ok(Self {
             executor,
             scheduler,
-            active_bridges: BoundedHashMap::new(),
+            active_bridges: BoundedMap::new(provider.clone())?,
             default_config: config,
             verification_level,
         })

@@ -627,8 +627,8 @@ mod tests {
         let mutex1 = harness.sync_primitives.create_async_mutex(component_id, false).unwrap();
         let mutex2 = harness.sync_primitives.create_async_mutex(component_id, false).unwrap();
 
-        let task1 = crate::task_manager::TaskId::new(1);
-        let task2 = crate::task_manager::TaskId::new(2);
+        let task1 = crate::threading::task_manager::TaskId::new(1);
+        let task2 = crate::threading::task_manager::TaskId::new(2);
 
         // Test 1: Basic mutex contention
         let result1 = harness.sync_primitives.lock_async_mutex(mutex1, task1, component_id).unwrap();
@@ -661,7 +661,7 @@ mod tests {
         assert_eq!(acq2, SemaphoreAcquireResult::Acquired);
 
         // Try to acquire when exhausted
-        let task3 = crate::task_manager::TaskId::new(3);
+        let task3 = crate::threading::task_manager::TaskId::new(3);
         let acq3 = harness.sync_primitives.acquire_semaphore(semaphore, task3, component_id).unwrap();
         assert_eq!(acq3, SemaphoreAcquireResult::WouldBlock);
         harness.record_error(); // Exhaustion handled

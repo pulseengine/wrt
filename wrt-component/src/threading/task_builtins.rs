@@ -177,7 +177,7 @@ impl Task {
             #[cfg(feature = "std")]
             metadata: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            metadata: BoundedMap::new(),
+            metadata: BoundedMap::new(provider.clone())?,
         }
     }
 
@@ -190,7 +190,7 @@ impl Task {
             #[cfg(feature = "std")]
             metadata: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            metadata: BoundedMap::new(),
+            metadata: BoundedMap::new(provider.clone())?,
         }
     }
 
@@ -282,7 +282,7 @@ impl TaskRegistry {
             #[cfg(feature = "std")]
             tasks: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            tasks: BoundedMap::new(),
+            tasks: BoundedMap::new(provider.clone())?,
         }
     }
 

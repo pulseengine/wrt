@@ -183,14 +183,14 @@ mod tests {
 
         // Calculate allocations
         let alloc1 = fuel_manager.calculate_fuel_allocation(
-            crate::task_manager::TaskId::new(1),
+            crate::threading::task_manager::TaskId::new(1),
             ComponentInstanceId::new(1),
             1000,
             Priority::Normal,
         ).unwrap();
 
         let alloc2 = fuel_manager.calculate_fuel_allocation(
-            crate::task_manager::TaskId::new(2),
+            crate::threading::task_manager::TaskId::new(2),
             ComponentInstanceId::new(2),
             1000,
             Priority::Normal,
@@ -203,7 +203,7 @@ mod tests {
     #[test]
     fn test_fuel_exhaustion_recovery() {
         let mut fuel_manager = FuelDynamicManager::new(FuelAllocationPolicy::Adaptive, 10_000).unwrap();
-        let task_id = crate::task_manager::TaskId::new(1);
+        let task_id = crate::threading::task_manager::TaskId::new(1);
         
         // Simulate task execution
         fuel_manager.update_task_history(task_id, 1000, 10, false).unwrap();
@@ -281,8 +281,8 @@ mod tests {
         let mut preemption_mgr = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap();
         
         // Register tasks with different quantums
-        let task1 = crate::task_manager::TaskId::new(1);
-        let task2 = crate::task_manager::TaskId::new(2);
+        let task1 = crate::threading::task_manager::TaskId::new(1);
+        let task2 = crate::threading::task_manager::TaskId::new(2);
         
         preemption_mgr.register_task(task1, Priority::Normal, true, 1000).unwrap();
         preemption_mgr.register_task(task2, Priority::Normal, true, 500).unwrap();
@@ -304,7 +304,7 @@ mod tests {
     #[test]
     fn test_allocation_policy_comparison() {
         let base_fuel = 1000;
-        let task_id = crate::task_manager::TaskId::new(1);
+        let task_id = crate::threading::task_manager::TaskId::new(1);
         let component_id = ComponentInstanceId::new(1);
         
         // Test different policies

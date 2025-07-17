@@ -20,7 +20,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     component_value::ComponentValue,
     Arc, Weak, sync::Mutex,
     CrateId, safe_managed_alloc,
@@ -41,7 +41,7 @@ pub struct AsyncCombinators {
     /// Bridge for task management
     bridge: Arc<Mutex<TaskManagerAsyncBridge>>,
     /// Active combinator operations
-    active_combinators: BoundedHashMap<CombinatorId, CombinatorOperation, 512>,
+    active_combinators: BoundedMap<CombinatorId, CombinatorOperation, 512>,
     /// Next combinator ID
     next_combinator_id: AtomicU64,
     /// Combinator statistics
@@ -128,7 +128,7 @@ impl AsyncCombinators {
     pub fn new(bridge: Arc<Mutex<TaskManagerAsyncBridge>>) -> Self {
         Self {
             bridge,
-            active_combinators: BoundedHashMap::new(),
+            active_combinators: BoundedMap::new(provider.clone())?,
             next_combinator_id: AtomicU64::new(1),
             combinator_stats: CombinatorStatistics::default(),
         }

@@ -22,7 +22,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     component_value::ComponentValue,
     Arc, Weak, sync::Mutex,
     CrateId, safe_managed_alloc,
@@ -49,9 +49,9 @@ pub struct AdvancedSyncPrimitives {
     /// Bridge for task management
     bridge: Arc<Mutex<TaskManagerAsyncBridge>>,
     /// Active sync primitives
-    primitives: BoundedHashMap<SyncPrimitiveId, SyncPrimitive, 512>,
+    primitives: BoundedMap<SyncPrimitiveId, SyncPrimitive, 512>,
     /// Component sync contexts
-    component_contexts: BoundedHashMap<ComponentInstanceId, ComponentSyncContext, 128>,
+    component_contexts: BoundedMap<ComponentInstanceId, ComponentSyncContext, 128>,
     /// Next primitive ID
     next_primitive_id: AtomicU64,
     /// Sync statistics
@@ -221,8 +221,8 @@ impl AdvancedSyncPrimitives {
     ) -> Self {
         Self {
             bridge,
-            primitives: BoundedHashMap::new(),
-            component_contexts: BoundedHashMap::new(),
+            primitives: BoundedMap::new(provider.clone())?,
+            component_contexts: BoundedMap::new(provider.clone())?,
             next_primitive_id: AtomicU64::new(1),
             sync_stats: SyncStatistics::default(),
             sync_config: config.unwrap_or_default(),

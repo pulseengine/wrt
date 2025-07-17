@@ -290,7 +290,7 @@ mod tests {
             
             if step == 2 { // Around 60ms
                 // Timer should have fired, test sync operations
-                let task_id = crate::task_manager::TaskId::new(1);
+                let task_id = crate::threading::task_manager::TaskId::new(1);
                 
                 let mutex_result = harness.sync_primitives.lock_async_mutex(
                     mutex_id, 
@@ -577,7 +577,7 @@ mod tests {
 
         // 3. Sync primitive operations
         let mutex_id = harness.sync_primitives.create_async_mutex(component_id, false).unwrap();
-        let task_id = crate::task_manager::TaskId::new(1);
+        let task_id = crate::threading::task_manager::TaskId::new(1);
         
         let _ = harness.sync_primitives.lock_async_mutex(mutex_id, task_id, component_id);
         let _ = harness.sync_primitives.unlock_async_mutex(mutex_id, task_id);
@@ -629,7 +629,7 @@ mod tests {
         ).unwrap();
 
         // Simulate concurrent access from multiple tasks
-        let task_ids: Vec<_> = (1..=5).map(|i| crate::task_manager::TaskId::new(i)).collect();
+        let task_ids: Vec<_> = (1..=5).map(|i| crate::threading::task_manager::TaskId::new(i)).collect();
 
         // Test concurrent mutex access
         let mut mutex_results = Vec::new();

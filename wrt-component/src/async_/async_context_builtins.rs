@@ -140,7 +140,7 @@ impl AsyncContext {
             #[cfg(feature = "std")]
             data: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            data: BoundedMap::new(),
+            data: BoundedMap::new(provider.clone())?,
         }
     }
 

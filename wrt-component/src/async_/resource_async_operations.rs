@@ -19,7 +19,7 @@ use core::{
     task::{Context, Poll},
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     component_value::ComponentValue,
     resource::{ResourceHandle, ResourceType},
     CrateId, safe_managed_alloc,
@@ -42,9 +42,9 @@ pub struct ResourceAsyncOperations {
     /// Resource lifecycle manager
     lifecycle_manager: ResourceLifecycleManager,
     /// Active resource operations
-    active_operations: BoundedHashMap<ResourceOperationId, ResourceAsyncOperation, MAX_ASYNC_RESOURCE_OPS>,
+    active_operations: BoundedMap<ResourceOperationId, ResourceAsyncOperation, MAX_ASYNC_RESOURCE_OPS>,
     /// Component resource contexts
-    resource_contexts: BoundedHashMap<ComponentInstanceId, ComponentResourceContext, 128>,
+    resource_contexts: BoundedMap<ComponentInstanceId, ComponentResourceContext, 128>,
     /// Next operation ID
     next_operation_id: AtomicU64,
     /// Resource operation statistics
@@ -129,9 +129,9 @@ pub enum ResourceState {
 struct ComponentResourceContext {
     component_id: ComponentInstanceId,
     /// Active resource handles owned by component
-    owned_resources: BoundedHashMap<ResourceHandle, ResourceInfo, 128>,
+    owned_resources: BoundedMap<ResourceHandle, ResourceInfo, 128>,
     /// Borrowed resource handles
-    borrowed_resources: BoundedHashMap<ResourceHandle, BorrowInfo, 64>,
+    borrowed_resources: BoundedMap<ResourceHandle, BorrowInfo, 64>,
     /// Active async operations
     active_operations: BoundedVec<ResourceOperationId, 64>,
     /// Resource quotas and limits
@@ -204,8 +204,8 @@ impl ResourceAsyncOperations {
         Self {
             abi_support,
             lifecycle_manager: ResourceLifecycleManager::new(),
-            active_operations: BoundedHashMap::new(),
-            resource_contexts: BoundedHashMap::new(),
+            active_operations: BoundedMap::new(provider.clone())?,
+            resource_contexts: BoundedMap::new(provider.clone())?,
             next_operation_id: AtomicU64::new(1),
             resource_stats: ResourceOperationStats::default(),
         }
@@ -236,8 +236,8 @@ impl ResourceAsyncOperations {
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
         let context = ComponentResourceContext {
             component_id,
-            owned_resources: BoundedHashMap::new(),
-            borrowed_resources: BoundedHashMap::new(),
+            owned_resources: BoundedMap::new(provider.clone())?,
+            borrowed_resources: BoundedMap::new(provider.clone())?,
             active_operations: BoundedVec::new(provider)?,
             resource_limits: limits,
             async_config: config,

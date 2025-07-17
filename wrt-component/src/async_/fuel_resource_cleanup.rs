@@ -17,7 +17,7 @@ use core::{
     sync::atomic::{AtomicU64, AtomicBool, Ordering},
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedVec, BoundedHashMap},
+    bounded_collections::{BoundedVec, BoundedMap},
     operations::{record_global_operation, Type as OperationType},
     verification::VerificationLevel,
     safe_managed_alloc, CrateId,
@@ -289,7 +289,7 @@ impl TaskCleanupContext {
 /// Global cleanup manager
 pub struct GlobalCleanupManager {
     /// Cleanup contexts by task ID
-    contexts: BoundedHashMap<u64, TaskCleanupContext, MAX_TRACKED_TASKS>,
+    contexts: BoundedMap<u64, TaskCleanupContext, MAX_TRACKED_TASKS>,
     /// Component resource tracker
     resource_tracker: Arc<Mutex<ComponentResourceTracker>>,
     /// Stream manager
@@ -308,7 +308,7 @@ impl GlobalCleanupManager {
         global_fuel_budget: u64,
     ) -> Result<Self> {
         let provider = safe_managed_alloc!(8192, CrateId::Component)?;
-        let contexts = BoundedHashMap::new(provider)?;
+        let contexts = BoundedMap::new(provider)?;
         
         let resource_tracker = Arc::new(Mutex::new(
             ComponentResourceTracker::new(global_fuel_budget / 3)?

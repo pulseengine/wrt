@@ -15,7 +15,7 @@ use core::{
     time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedHashMap, BoundedVec},
+    bounded_collections::{BoundedMap, BoundedVec},
     component_value::ComponentValue,
 };
 use wrt_platform::{
@@ -202,8 +202,8 @@ impl Default for FuelThreadConfiguration {
 /// Thread manager with integrated fuel tracking
 pub struct FuelTrackedThreadManager {
     base_manager: ComponentThreadManager,
-    thread_contexts: BoundedHashMap<ThreadId, FuelTrackedThreadContext, 512>,
-    time_bounds: BoundedHashMap<ThreadId, TimeBoundedContext, 512>,
+    thread_contexts: BoundedMap<ThreadId, FuelTrackedThreadContext, 512>,
+    time_bounds: BoundedMap<ThreadId, TimeBoundedContext, 512>,
     global_fuel_limit: AtomicU64,
     global_fuel_consumed: AtomicU64,
     fuel_enforcement: AtomicBool,
@@ -213,8 +213,8 @@ impl FuelTrackedThreadManager {
     pub fn new() -> ThreadSpawnResult<Self> {
         Ok(Self {
             base_manager: ComponentThreadManager::new()?,
-            thread_contexts: BoundedHashMap::new(),
-            time_bounds: BoundedHashMap::new(),
+            thread_contexts: BoundedMap::new(provider.clone())?,
+            time_bounds: BoundedMap::new(provider.clone())?,
             global_fuel_limit: AtomicU64::new(u64::MAX),
             global_fuel_consumed: AtomicU64::new(0),
             fuel_enforcement: AtomicBool::new(true),
@@ -394,8 +394,8 @@ impl Default for FuelTrackedThreadManager {
     fn default() -> Self {
         Self::new().unwrap_or_else(|_| FuelTrackedThreadManager {
             base_manager: ComponentThreadManager::default(),
-            thread_contexts: BoundedHashMap::new(),
-            time_bounds: BoundedHashMap::new(),
+            thread_contexts: BoundedMap::new(provider.clone())?,
+            time_bounds: BoundedMap::new(provider.clone())?,
             global_fuel_limit: AtomicU64::new(u64::MAX),
             global_fuel_consumed: AtomicU64::new(0),
             fuel_enforcement: AtomicBool::new(true),

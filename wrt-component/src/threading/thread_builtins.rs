@@ -63,7 +63,7 @@ impl ThreadBuiltins {
         
         // Validate function exists
         if !self.is_function_valid(function_index) {
-            return Err(Error::validation_invalid_argument("Error occurred");
+            return Err(Error::validation_invalid_argument("Invalid function index"));
         }
         
         // Validate argument count and types
@@ -131,7 +131,7 @@ impl ThreadBuiltins {
         // Update thread state to indicate it's detached
         context.update_state(wrt_runtime::ThreadState::Running);
         
-        Ok(()
+        Ok(())
     }
     
     /// Get current thread ID
@@ -165,7 +165,7 @@ impl ThreadBuiltins {
         // For now, we just validate and store the request
         
         if cpu_mask == 0 {
-            return Err(Error::validation_invalid_argument("Error occurred");
+            return Err(Error::validation_invalid_argument("Error occurred"));
         }
         
         // Store affinity for later use when thread is actually created
@@ -176,7 +176,7 @@ impl ThreadBuiltins {
         // Platform layer will use this when the thread is scheduled
         context.info.cpu_affinity = Some(cpu_mask);
         
-        Ok(()
+        Ok(())
     }
     
     /// Get thread priority
@@ -192,7 +192,7 @@ impl ThreadBuiltins {
         let context = self.thread_manager.get_thread_context_mut(thread_id)?;
         
         if priority > 100 {
-            return Err(Error::validation_invalid_argument("Error occurred");
+            return Err(Error::validation_invalid_argument("Error occurred"));
         }
         
         context.info.priority = priority;
@@ -204,7 +204,7 @@ impl ThreadBuiltins {
         // Emit a priority change event for the scheduler
         self.thread_manager.notify_priority_change(thread_id, priority)?;
         
-        Ok(()
+        Ok(())
     }
     
     // Private helper methods
@@ -226,7 +226,7 @@ impl ThreadBuiltins {
         const MAX_THREAD_ARGS: usize = 16;
         
         if args.len() > MAX_THREAD_ARGS {
-            return Err(Error::validation_invalid_argument("Error occurred");
+            return Err(Error::validation_invalid_argument("Error occurred"));
         }
         
         // Validate each argument is a valid component model value
@@ -244,7 +244,7 @@ impl ThreadBuiltins {
             }
         }
         
-        Ok(()
+        Ok(())
     }
     
     fn store_thread_arguments(&mut self, thread_id: ThreadId, args: &[Value]) -> Result<()> {
@@ -264,12 +264,12 @@ impl ThreadBuiltins {
             // For no_std, use bounded storage
             context.stored_arguments.clear();
             for arg in args {
-                context.stored_arguments.push(arg.clone()
+                context.stored_arguments.push(arg.clone())
                     .map_err(|_| Error::resource_exhausted("Error occurred"))?;
             }
         }
         
-        Ok(()
+        Ok(())
     }
     
     fn resolve_table_function(&self, table_index: u32, function_index: u32) -> Result<u32> {
@@ -300,7 +300,7 @@ impl ThreadBuiltins {
                 
                 Ok(component_func.base_index + function_index)
             } else {
-                Err(Error::validation_invalid_argument("Error occurred")
+                Err(Error::validation_invalid_argument("Invalid component function"))
             }
         }
     }
