@@ -141,12 +141,12 @@ impl WastTestRunner {
     pub fn run_wast_content(&mut self, content: &str, source_name: Option<&str>) -> Result<()> {
         let buf = ParseBuffer::new(content).context("Failed to create parse buffer")?;
 
-        let wast: Wast = parser::parse(&buf).context("Failed to parse WAST content")?;
+        let mut wast: Wast = parser::parse(&buf).context("Failed to parse WAST content")?;
 
         let mut engine = WastEngine::new()?;
         let source = source_name.unwrap_or("inline");
 
-        for (directive_idx, directive) in wast.directives.iter().enumerate() {
+        for (directive_idx, directive) in wast.directives.iter_mut().enumerate() {
             self.stats.total_directives += 1;
 
             match self.execute_directive(&mut engine, directive, directive_idx, source) {
@@ -172,7 +172,7 @@ impl WastTestRunner {
     fn execute_directive(
         &mut self,
         engine: &mut WastEngine,
-        directive: &WastDirective,
+        directive: &mut WastDirective,
         directive_idx: usize,
         source: &str,
     ) -> Result<()> {
