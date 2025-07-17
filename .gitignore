@@ -46,3 +46,4 @@ docs_output/
 .DS_Store
 .cursor/
 .cursorignore
+*.rlib
