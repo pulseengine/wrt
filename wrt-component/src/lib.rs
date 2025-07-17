@@ -70,7 +70,7 @@ pub mod instantiation;
 #[cfg(not(feature = "std"))]
 pub mod instance_no_std;
 pub mod memory_layout;
-#[cfg(feature = "safety-criticalMissing message")]
+#[cfg(feature = "safety-critical")]
 pub mod memory_limits;
 pub mod parser;
 pub mod resource_management;
@@ -90,11 +90,11 @@ pub mod values;
 pub mod async_;
 
 // Threading support
-#[cfg(feature = "component-model-threadingMissing message")]
+#[cfg(feature = "component-model-threading")]
 pub mod threading;
 
 // Include verification module when the kani feature is enabled
-#[cfg(feature = "kaniMissing message")]
+#[cfg(feature = "kani")]
 pub mod verify;
 
 // Essential re-exports only
