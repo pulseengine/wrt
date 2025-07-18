@@ -5,7 +5,7 @@
 //!
 //! # Operations Supported
 //! - memory.fill - Fill memory region with a byte value
-//! - memory.copy - Copy memory region within the same memory 
+//! - memory.copy - Copy memory region within the same memory
 //! - memory.init - Initialize memory from a data segment
 //! - data.drop - Drop (mark as unavailable) a data segment
 //! - memory.size - Get memory size in pages
@@ -22,11 +22,11 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use wrt_error::{Result, Error, ErrorCategory, codes};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::values::Value;
 use wrt_instructions::memory_ops::{
-    MemoryFill, MemoryCopy, MemoryInit, DataDrop, MemorySize, MemoryGrow,
-    MemoryOperations, DataSegmentOperations
+    DataDrop, DataSegmentOperations, MemoryCopy, MemoryFill, MemoryGrow, MemoryInit,
+    MemoryOperations, MemorySize,
 };
 
 #[cfg(not(feature = "std"))]
@@ -35,7 +35,13 @@ use alloc::format;
 /// Provider trait for bulk memory management across ASIL levels
 pub trait BulkMemoryProvider {
     /// Execute bulk memory operation with provider-specific optimizations
-    fn execute_with_provider(&self, op: &BulkMemoryOp, inputs: &[Value], memory: &mut dyn MemoryOperations, data_segments: Option<&mut dyn DataSegmentOperations>) -> Result<Option<Value>>;
+    fn execute_with_provider(
+        &self,
+        op: &BulkMemoryOp,
+        inputs: &[Value],
+        memory: &mut dyn MemoryOperations,
+        data_segments: Option<&mut dyn DataSegmentOperations>,
+    ) -> Result<Option<Value>>;
 }
 
 /// Bulk memory operation types
@@ -83,13 +89,13 @@ pub fn execute_bulk_memory_operation(
 ) -> Result<Option<Value>> {
     // Validate input count
     validate_input_count(&op, inputs)?;
-    
+
     // Execute operation using provider-specific implementation
     let result = provider.execute_with_provider(&op, inputs, memory, data_segments)?;
-    
+
     // Validate result
     validate_bulk_memory_result(&op, &result)?;
-    
+
     Ok(result)
 }
 
@@ -98,11 +104,13 @@ pub fn execute_bulk_memory_operation(
 fn validate_input_count(op: &BulkMemoryOp, inputs: &[Value]) -> Result<()> {
     let expected = op.input_count();
     let actual = inputs.len();
-    
+
     if actual != expected {
-        return Err(Error::runtime_execution_error("Bulk memory operation {:?} expects {} inputs, got {}"));
+        return Err(Error::runtime_execution_error(
+            "Bulk memory operation {:?} expects {} inputs, got {}",
+        ));
     }
-    
+
     Ok(())
 }
 
@@ -111,20 +119,26 @@ fn validate_input_count(op: &BulkMemoryOp, inputs: &[Value]) -> Result<()> {
 fn validate_bulk_memory_result(op: &BulkMemoryOp, result: &Option<Value>) -> Result<()> {
     let expects_result = op.produces_result();
     let has_result = result.is_some();
-    
+
     if expects_result && !has_result {
-        return Err(Error::runtime_execution_error("Bulk memory operation {:?} should produce a result but didn't"));
+        return Err(Error::runtime_execution_error(
+            "Bulk memory operation {:?} should produce a result but didn't",
+        ));
     }
-    
+
     if !expects_result && has_result {
-        return Err(Error::runtime_execution_error("Bulk memory operation {:?} should not produce a result but did"));
+        return Err(Error::runtime_execution_error(
+            "Bulk memory operation {:?} should not produce a result but did",
+        ));
     }
-    
+
     // Validate result type for operations that produce values
     if let Some(value) = result {
         match value {
             Value::I32(_) => Ok(()),
-            _ => Err(Error::runtime_execution_error("Invalid result type for bulk memory operation {:?}"))
+            _ => Err(Error::runtime_execution_error(
+                "Invalid result type for bulk memory operation {:?}",
+            )),
         }
     } else {
         Ok(())
@@ -135,15 +149,15 @@ impl BulkMemoryOp {
     /// Get the number of input values this operation expects
     pub fn input_count(&self) -> usize {
         match self {
-            BulkMemoryOp::Fill(_) => 3,    // dest, value, size
-            BulkMemoryOp::Copy(_) => 3,    // dest, src, size
-            BulkMemoryOp::Init(_) => 3,    // dest, src, size
+            BulkMemoryOp::Fill(_) => 3,     // dest, value, size
+            BulkMemoryOp::Copy(_) => 3,     // dest, src, size
+            BulkMemoryOp::Init(_) => 3,     // dest, src, size
             BulkMemoryOp::DataDrop(_) => 0, // no inputs
-            BulkMemoryOp::Size(_) => 0,    // no inputs
-            BulkMemoryOp::Grow(_) => 1,    // delta pages
+            BulkMemoryOp::Size(_) => 0,     // no inputs
+            BulkMemoryOp::Grow(_) => 1,     // delta pages
         }
     }
-    
+
     /// Check if this operation produces a result value
     pub fn produces_result(&self) -> bool {
         match self {
@@ -162,11 +176,11 @@ pub struct AssilCompliantBulkMemoryProvider;
 
 impl BulkMemoryProvider for AssilCompliantBulkMemoryProvider {
     fn execute_with_provider(
-        &self, 
-        op: &BulkMemoryOp, 
-        inputs: &[Value], 
+        &self,
+        op: &BulkMemoryOp,
+        inputs: &[Value],
         memory: &mut dyn MemoryOperations,
-        data_segments: Option<&mut dyn DataSegmentOperations>
+        data_segments: Option<&mut dyn DataSegmentOperations>,
     ) -> Result<Option<Value>> {
         match op {
             BulkMemoryOp::Fill(fill_op) => {
@@ -178,12 +192,16 @@ impl BulkMemoryProvider for AssilCompliantBulkMemoryProvider {
                 Ok(None)
             },
             BulkMemoryOp::Init(init_op) => {
-                let data_segments = data_segments.ok_or_else(|| Error::validation_error("Data segments required for memory.init operation"))?;
+                let data_segments = data_segments.ok_or_else(|| {
+                    Error::validation_error("Data segments required for memory.init operation")
+                })?;
                 execute_memory_init(init_op, inputs, memory, data_segments)?;
                 Ok(None)
             },
             BulkMemoryOp::DataDrop(drop_op) => {
-                let data_segments = data_segments.ok_or_else(|| Error::validation_error("Data segments required for data.drop operation"))?;
+                let data_segments = data_segments.ok_or_else(|| {
+                    Error::validation_error("Data segments required for data.drop operation")
+                })?;
                 execute_data_drop(drop_op, data_segments)?;
                 Ok(None)
             },
@@ -211,9 +229,11 @@ fn execute_memory_fill(
 ) -> Result<()> {
     // Validate inputs
     if inputs.len() != 3 {
-        return Err(Error::validation_error("memory.fill requires exactly 3 inputs: dest, value, size"));
+        return Err(Error::validation_error(
+            "memory.fill requires exactly 3 inputs: dest, value, size",
+        ));
     }
-    
+
     fill_op.execute(memory, &inputs[0], &inputs[1], &inputs[2])
 }
 
@@ -225,9 +245,11 @@ fn execute_memory_copy(
 ) -> Result<()> {
     // Validate inputs
     if inputs.len() != 3 {
-        return Err(Error::validation_error("memory.copy requires exactly 3 inputs: dest, src, size"));
+        return Err(Error::validation_error(
+            "memory.copy requires exactly 3 inputs: dest, src, size",
+        ));
     }
-    
+
     copy_op.execute(memory, &inputs[0], &inputs[1], &inputs[2])
 }
 
@@ -240,9 +262,11 @@ fn execute_memory_init(
 ) -> Result<()> {
     // Validate inputs
     if inputs.len() != 3 {
-        return Err(Error::validation_error("memory.init requires exactly 3 inputs: dest, src, size"));
+        return Err(Error::validation_error(
+            "memory.init requires exactly 3 inputs: dest, src, size",
+        ));
     }
-    
+
     init_op.execute(memory, data_segments, &inputs[0], &inputs[1], &inputs[2])
 }
 
@@ -255,10 +279,7 @@ fn execute_data_drop(
 }
 
 /// Execute memory.size operation
-fn execute_memory_size(
-    size_op: &MemorySize,
-    memory: &dyn MemoryOperations,
-) -> Result<Value> {
+fn execute_memory_size(size_op: &MemorySize, memory: &dyn MemoryOperations) -> Result<Value> {
     size_op.execute(memory)
 }
 
@@ -270,9 +291,11 @@ fn execute_memory_grow(
 ) -> Result<Value> {
     // Validate inputs
     if inputs.len() != 1 {
-        return Err(Error::validation_error("memory.grow requires exactly 1 input: delta_pages"));
+        return Err(Error::validation_error(
+            "memory.grow requires exactly 1 input: delta_pages",
+        ));
     }
-    
+
     grow_op.execute(memory, &inputs[0])
 }
 
@@ -281,7 +304,9 @@ fn execute_memory_grow(
 fn extract_i32(value: &Value) -> Result<i32> {
     match value {
         Value::I32(val) => Ok(*val),
-        _ => Err(Error::runtime_execution_error("Expected i32 value, got {:?}"))
+        _ => Err(Error::runtime_execution_error(
+            "Expected i32 value, got {:?}",
+        )),
     }
 }
 
@@ -302,7 +327,7 @@ pub fn memory_fill(
         Value::I32(value as i32),
         Value::I32(size as i32),
     ];
-    
+
     let provider = AssilCompliantBulkMemoryProvider;
     execute_bulk_memory_operation(
         BulkMemoryOp::Fill(fill_op),
@@ -311,7 +336,7 @@ pub fn memory_fill(
         None,
         &provider,
     )?;
-    
+
     Ok(())
 }
 
@@ -328,7 +353,7 @@ pub fn memory_copy(
         Value::I32(src as i32),
         Value::I32(size as i32),
     ];
-    
+
     let provider = AssilCompliantBulkMemoryProvider;
     execute_bulk_memory_operation(
         BulkMemoryOp::Copy(copy_op),
@@ -337,7 +362,7 @@ pub fn memory_copy(
         None,
         &provider,
     )?;
-    
+
     Ok(())
 }
 
@@ -356,7 +381,7 @@ pub fn memory_init(
         Value::I32(src as i32),
         Value::I32(size as i32),
     ];
-    
+
     let provider = AssilCompliantBulkMemoryProvider;
     execute_bulk_memory_operation(
         BulkMemoryOp::Init(init_op),
@@ -365,17 +390,14 @@ pub fn memory_init(
         Some(data_segments),
         &provider,
     )?;
-    
+
     Ok(())
 }
 
 /// High-level data drop operation
-pub fn data_drop(
-    data_segments: &mut dyn DataSegmentOperations,
-    data_index: u32,
-) -> Result<()> {
+pub fn data_drop(data_segments: &mut dyn DataSegmentOperations, data_index: u32) -> Result<()> {
     let drop_op = DataDrop::new(data_index);
-    
+
     let provider = AssilCompliantBulkMemoryProvider;
     execute_bulk_memory_operation(
         BulkMemoryOp::DataDrop(drop_op),
@@ -385,14 +407,14 @@ pub fn data_drop(
         Some(data_segments),
         &provider,
     )?;
-    
+
     Ok(())
 }
 
 /// High-level memory size operation
 pub fn memory_size(memory: &dyn MemoryOperations) -> Result<u32> {
     let size_op = MemorySize::new(0); // Memory index 0 for MVP
-    
+
     let provider = AssilCompliantBulkMemoryProvider;
     // Use a mutable reference for the trait object, even though we don't mutate for size
     let mut dummy_memory = EmptyMemory;
@@ -403,23 +425,20 @@ pub fn memory_size(memory: &dyn MemoryOperations) -> Result<u32> {
         None,
         &provider,
     )?;
-    
+
     // Instead, call the size operation directly
     let result = size_op.execute(memory)?;
     match result {
         Value::I32(pages) => Ok(pages as u32),
-        _ => Err(Error::type_error("memory.size should return i32"))
+        _ => Err(Error::type_error("memory.size should return i32")),
     }
 }
 
 /// High-level memory grow operation
-pub fn memory_grow(
-    memory: &mut dyn MemoryOperations,
-    delta_pages: u32,
-) -> Result<u32> {
+pub fn memory_grow(memory: &mut dyn MemoryOperations, delta_pages: u32) -> Result<u32> {
     let grow_op = MemoryGrow::new(0); // Memory index 0 for MVP
     let inputs = [Value::I32(delta_pages as i32)];
-    
+
     let provider = AssilCompliantBulkMemoryProvider;
     let result = execute_bulk_memory_operation(
         BulkMemoryOp::Grow(grow_op),
@@ -428,7 +447,7 @@ pub fn memory_grow(
         None,
         &provider,
     )?;
-    
+
     match result {
         Some(Value::I32(old_pages)) => {
             if old_pages < 0 {
@@ -436,8 +455,8 @@ pub fn memory_grow(
             } else {
                 Ok(old_pages as u32)
             }
-        }
-        _ => Err(Error::type_error("memory.grow should return i32"))
+        },
+        _ => Err(Error::type_error("memory.grow should return i32")),
     }
 }
 
@@ -447,16 +466,28 @@ struct EmptyMemory;
 impl MemoryOperations for EmptyMemory {
     #[cfg(feature = "std")]
     fn read_bytes(&self, _offset: u32, _len: u32) -> Result<Vec<u8>> {
-        Err(Error::runtime_unsupported_operation("EmptyMemory read not supported"))
+        Err(Error::runtime_unsupported_operation(
+            "EmptyMemory read not supported",
+        ))
     }
-    
+
     #[cfg(not(feature = "std"))]
-    fn read_bytes(&self, _offset: u32, _len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::safe_memory::NoStdProvider<65_536>>> {
-        Err(Error::runtime_unsupported_operation("EmptyMemory read not supported"))
+    fn read_bytes(
+        &self,
+        _offset: u32,
+        _len: u32,
+    ) -> Result<
+        wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::safe_memory::NoStdProvider<65_536>>,
+    > {
+        Err(Error::runtime_unsupported_operation(
+            "EmptyMemory read not supported",
+        ))
     }
 
     fn write_bytes(&mut self, _offset: u32, _bytes: &[u8]) -> Result<()> {
-        Err(Error::runtime_unsupported_operation("EmptyMemory write not supported"))
+        Err(Error::runtime_unsupported_operation(
+            "EmptyMemory write not supported",
+        ))
     }
 
     fn size_in_bytes(&self) -> Result<usize> {
@@ -464,14 +495,20 @@ impl MemoryOperations for EmptyMemory {
     }
 
     fn grow(&mut self, _bytes: usize) -> Result<()> {
-        Err(Error::runtime_unsupported_operation("EmptyMemory grow not supported"))
+        Err(Error::runtime_unsupported_operation(
+            "EmptyMemory grow not supported",
+        ))
     }
 
     fn fill(&mut self, _offset: u32, _value: u8, _size: u32) -> Result<()> {
-        Err(Error::runtime_unsupported_operation("EmptyMemory fill not supported"))
+        Err(Error::runtime_unsupported_operation(
+            "EmptyMemory fill not supported",
+        ))
     }
 
     fn copy(&mut self, _dest: u32, _src: u32, _size: u32) -> Result<()> {
-        Err(Error::runtime_unsupported_operation("EmptyMemory copy not supported"))
+        Err(Error::runtime_unsupported_operation(
+            "EmptyMemory copy not supported",
+        ))
     }
 }

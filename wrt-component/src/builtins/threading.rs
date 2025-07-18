@@ -615,7 +615,7 @@ impl BuiltinHandler for ThreadingJoinHandler {
         let thread_id = match args[0] {
             ComponentValue::U64(id) => id,
             _ => {
-                return Err(Error::threading_error("threading.join argument must be a thread ID"))
+                return Err(Error::threading_error("threading.join argument must be a thread ID"));
             }
         };
 
@@ -798,9 +798,7 @@ impl BuiltinHandler for ThreadingSyncHandler {
                 // Return the previous data
                 Ok(previous.unwrap_or_default())
             }
-            _ => Err(Error::runtime_execution_error("Unknown sync operation"
-                op_type
-            )))),
+            _ => Err(Error::runtime_execution_error(&format!("Unknown sync operation: {}", op_type))),
         }
     }
 
@@ -899,7 +897,7 @@ mod tests {
         assert!(!manager.is_thread_completed(thread_id).unwrap());
 
         // Sleep a bit longer than the thread
-        sleep(Duration::from_millis(100);
+        sleep(Duration::from_millis(100));
 
         // Now it should be completed
         assert!(manager.is_thread_completed(thread_id).unwrap());
@@ -922,7 +920,7 @@ mod tests {
         let thread_id = manager.spawn(3, vec![], test_executor).unwrap();
 
         // Wait for it to complete
-        sleep(Duration::from_millis(10);
+        sleep(Duration::from_millis(10));
 
         // Join it (should return an error)
         let result = manager.join(thread_id);

@@ -122,7 +122,10 @@ impl Default for CfiConfiguration {
             landing_pad_timeout_ns: Some(1_000_000), // 1ms
             violation_policy: wrt_runtime::CfiViolationPolicy::ReturnError,
             enable_temporal_validation: true,
-            hardware_features: CfiHardwareFeatures { auto_detect: true, ..Default::default() },
+            hardware_features: CfiHardwareFeatures {
+                auto_detect: true,
+                ..Default::default()
+            },
         }
     }
 }
@@ -180,8 +183,11 @@ impl CfiProtectedEngine {
         // Update metadata statistics
         self.execution_stats.metadata_stats.functions_analyzed +=
             cfi_metadata.functions.len() as u64;
-        self.execution_stats.metadata_stats.indirect_call_sites +=
-            cfi_metadata.functions.iter().map(|f| f.indirect_call_sites.len() as u64).sum::<u64>();
+        self.execution_stats.metadata_stats.indirect_call_sites += cfi_metadata
+            .functions
+            .iter()
+            .map(|f| f.indirect_call_sites.len() as u64)
+            .sum::<u64>();
         self.execution_stats.metadata_stats.return_sites +=
             cfi_metadata.functions.iter().map(|f| f.return_sites.len() as u64).sum::<u64>();
 
@@ -249,8 +255,10 @@ impl CfiProtectedEngine {
             .iter()
             .find(|f| f.function_index == function_index)
             .ok_or_else(|| {
-                Error::runtime_execution_error(", function_index),
-                )
+                Error::runtime_execution_error(&format!(
+                    "Function {} not found in CFI metadata",
+                    function_index
+                ))
             })?;
 
         // Set up CFI protection for this function
@@ -325,7 +333,7 @@ impl CfiProtectedEngine {
         Err(Error::new(
             ErrorCategory::Runtime,
             codes::FUNCTION_NOT_FOUND,
-            format!("),
+            format!("Function '{}' not found in module exports", function_name),
         ))
     }
 
@@ -505,7 +513,10 @@ mod tests {
     #[test]
     fn test_cfi_configuration_default() {
         let config = CfiConfiguration::default();
-        assert_eq!(config.protection_level, wrt_instructions::CfiProtectionLevel::Hybrid);
+        assert_eq!(
+            config.protection_level,
+            wrt_instructions::CfiProtectionLevel::Hybrid
+        );
         assert_eq!(config.max_shadow_stack_depth, 1024);
         assert!(config.hardware_features.auto_detect);
     }

@@ -39,17 +39,14 @@ impl BuiltinHandler for SafeThreadingSpawnHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.is_empty() {
-            return Err(Error::runtime_execution_error("Error occurred".to_string(),
-            ));
+            return Err(Error::runtime_execution_error("Error occurred".to_string()));
         }
 
         // Extract function ID
         let function_id = match args[0] {
             ComponentValue::U32(id) => id,
             _ => {
-                return Err(Error::new(ThreadingError(
-                    Missing message"),
-                ));
+                return Err(Error::component_thread_spawn_failed("Invalid function ID type"));
             }
         };
 
@@ -85,12 +82,12 @@ impl BuiltinHandler for SafeThreadingSpawnHandler {
         // Spawn thread with safety checks
         match self.thread_manager.spawn_thread(request) {
             Ok(thread_id) => Ok(vec![ComponentValue::U64(thread_id)]),
-            Err(e) => Err(Error::component_not_found("Error occurred"))),
+            Err(e) => Err(Error::component_thread_spawn_failed("Thread spawn failed")),
         }
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
-        Box::new(self.clone()
+        Box::new(self.clone())
     }
 }
 
@@ -116,17 +113,14 @@ impl BuiltinHandler for SafeThreadingJoinHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.len() != 1 {
-            return Err(Error::runtime_execution_error("Error occurred".to_string(),
-            ));
+            return Err(Error::runtime_execution_error("Error occurred".to_string()));
         }
 
         // Extract thread ID
         let thread_id = match args[0] {
             ComponentValue::U64(id) => id,
             _ => {
-                return Err(Error::new(ThreadingError(
-                    Missing message"),
-                ));
+                return Err(Error::component_thread_spawn_failed("Invalid thread ID type"));
             }
         };
 
@@ -137,7 +131,7 @@ impl BuiltinHandler for SafeThreadingJoinHandler {
                     Ok(values)
                 }
                 wrt_platform::wasm_thread_manager::ThreadExecutionResult::Error(msg) => {
-                    Err(Error::new(ThreadingError(msg))
+                    Err(Error::component_thread_spawn_failed(&msg))
                 }
                 wrt_platform::wasm_thread_manager::ThreadExecutionResult::Cancelled => {
                     Err(Error::threading_error("Error occurred"))
@@ -146,12 +140,12 @@ impl BuiltinHandler for SafeThreadingJoinHandler {
                     Err(Error::threading_error("Error occurred"))
                 }
             },
-            Err(e) => Err(Error::component_not_found("Error occurred"))),
+            Err(e) => Err(Error::component_thread_spawn_failed("Thread join failed")),
         }
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
-        Box::new(self.clone()
+        Box::new(self.clone())
     }
 }
 
@@ -177,54 +171,44 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.is_empty() {
-            return Err(Error::runtime_execution_error("Error occurred".to_string(),
-            ));
+            return Err(Error::runtime_execution_error("Error occurred".to_string()));
         }
 
         // Extract operation type
         let op_type = match &args[0] {
             ComponentValue::String(s) => s.as_str(),
             _ => {
-                return Err(Error::new(ThreadingError(
-                    Missing message"),
-                ));
+                return Err(Error::component_thread_spawn_failed("Invalid operation type"));
             }
         };
 
         match op_type {
             "is-running" => {
                 if args.len() != 2 {
-                    return Err(Error::runtime_execution_error("Error occurred".to_string(),
-                    ));
+                    return Err(Error::runtime_execution_error("Error occurred".to_string()));
                 }
 
                 let thread_id = match args[1] {
                     ComponentValue::U64(id) => id,
                     _ => {
-                        return Err(Error::new(ThreadingError(
-                            Missing message"),
-                        ));
+                        return Err(Error::component_thread_spawn_failed("Invalid thread ID type"));
                     }
                 };
 
                 match self.thread_manager.is_thread_running(thread_id) {
                     Ok(running) => Ok(vec![ComponentValue::U32(if running { 1 } else { 0 })]),
-                    Err(e) => Err(Error::runtime_execution_error("Error occurred",
-                        e
-                    )))),
+                    Err(e) => Err(Error::runtime_execution_error("Error occurred")),
                 }
             }
-            Missing message") != 2 {
-                    return Err(Error::runtime_execution_error("Error occurred".to_string(),
-                    ));
+            "cancel" => {
+                if args.len() != 2 {
+                    return Err(Error::runtime_execution_error("Error occurred".to_string()));
                 }
 
                 let thread_id = match args[1] {
                     ComponentValue::U64(id) => id,
                     _ => {
-                        return Err(Error::new(ThreadingError(
-                            Missing message"),
-                        ));
+                        return Err(Error::component_thread_spawn_failed("Invalid thread ID type"));
                     }
                 };
 
@@ -241,7 +225,7 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
                     Ok(results) => {
                         let mut response = vec![ComponentValue::U32(results.len() as u32)];
                         for (thread_id, health) in results {
-                            response.push(ComponentValue::U64(thread_id);
+                            response.push(ComponentValue::U64(thread_id));
                             let health_code = match health {
                                 wrt_platform::threading::ThreadHealth::Healthy => 0,
                                 wrt_platform::threading::ThreadHealth::CpuQuotaExceeded => 1,
@@ -249,23 +233,21 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
                                 wrt_platform::threading::ThreadHealth::Deadlocked => 3,
                                 wrt_platform::threading::ThreadHealth::Unresponsive => 4,
                             };
-                            response.push(ComponentValue::U32(health_code);
+                            response.push(ComponentValue::U32(health_code));
                         }
                         Ok(response)
                     }
-                    Err(e) => Err(Error::runtime_execution_error("Error occurred",
-                        e
-                    )))),
+                    Err(e) => Err(Error::runtime_execution_error("Error occurred")),
                 }
             }
-            Missing message") {
+            "active-count" => {
+                match self.thread_manager.active_thread_count() {
                     Ok(count) => Ok(vec![ComponentValue::U32(count as u32)]),
-                    Err(e) => Err(Error::runtime_execution_error("Error occurred",
-                        e
-                    )))),
+                    Err(e) => Err(Error::runtime_execution_error("Error occurred")),
                 }
             }
-            Missing message");
+            "stats" => {
+                let stats = self.thread_manager.get_stats();
                 Ok(vec![
                     ComponentValue::U32(stats.total_threads as u32),
                     ComponentValue::U64(stats.pool_stats.total_spawned),
@@ -274,14 +256,12 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
                     ComponentValue::U32(stats.modules_registered as u32),
                 ])
             }
-            _ => Err(Error::runtime_execution_error("Error occurred",
-                op_type
-            )))),
+            _ => Err(Error::runtime_execution_error("Unknown operation type")),
         }
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
-        Box::new(self.clone()
+        Box::new(self.clone())
     }
 }
 
@@ -290,7 +270,7 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
 pub fn create_safe_threading_handlers(
     executor: Arc<dyn Fn(u32, Vec<ComponentValue>) -> Result<Vec<ComponentValue>> + Send + Sync>,
     module_info: WasmModuleInfo,
-) -> core::result::Result<(Arc<WasmThreadManager>, Vec<Box<dyn BuiltinHandler>>)> {
+) -> Result<(Arc<WasmThreadManager>, Vec<Box<dyn BuiltinHandler>>)> {
     // Create thread pool configuration based on module requirements
     let config = ThreadPoolConfig {
         max_threads: module_info.max_threads,
@@ -324,7 +304,7 @@ pub fn create_safe_threading_handlers(
         Box::new(SafeThreadingStatusHandler::new(thread_manager.clone())),
     ];
 
-    Ok((thread_manager, handlers)
+    Ok((thread_manager, handlers))
 }
 
 /// Create no-op handlers for no_std environments
@@ -332,9 +312,9 @@ pub fn create_safe_threading_handlers(
 pub fn create_safe_threading_handlers(
     _executor: Arc<dyn Fn(u32, Vec<ComponentValue>) -> Result<Vec<ComponentValue>> + Send + Sync>,
     _module_info: WasmModuleInfo,
-) -> core::result::Result<(Arc<()>, Vec<Box<dyn BuiltinHandler>>)> {
+) -> Result<(Arc<()>, Vec<Box<dyn BuiltinHandler>>)> {
     // Threading is not supported in no_std mode
-    Ok((Arc::new(()), Vec::new())
+    Ok((Arc::new(()), Vec::new()))
 }
 
 #[cfg(test)]
@@ -369,7 +349,7 @@ mod tests {
         let module = create_test_module();
 
         let result = create_safe_threading_handlers(executor, module);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         let (_manager, handlers) = result.unwrap();
         assert_eq!(handlers.len(), 3);
@@ -386,11 +366,11 @@ mod tests {
         // Test spawn with function ID
         let args = vec![ComponentValue::U32(100)];
         let result = spawn_handler.execute(&args);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         let thread_id = match &result.unwrap()[0] {
             ComponentValue::U64(id) => *id,
-            _ => panic!("Expected U64 thread IDMissing message"),
+            _ => panic!("Expected U64 thread ID"),
         };
         assert!(thread_id > 0);
     }
@@ -406,7 +386,7 @@ mod tests {
         // Test stats operation
         let args = vec![ComponentValue::String("stats".to_string())];
         let result = status_handler.execute(&args);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         let stats = result.unwrap();
         assert!(stats.len() >= 5); // Should return multiple statistics

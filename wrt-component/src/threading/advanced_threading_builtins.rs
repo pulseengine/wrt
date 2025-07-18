@@ -632,8 +632,8 @@ impl AdvancedThreadingBuiltins {
     pub fn cleanup_finished_threads() -> Result<()> {
         Self::with_registry_mut(|registry| {
             registry.cleanup_finished_threads();
-            Ok(()
-        })?
+            Ok(())
+        })
     }
 
     /// Get thread count

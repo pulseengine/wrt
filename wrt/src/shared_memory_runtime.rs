@@ -23,27 +23,29 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use wrt_error::{Result, Error, ErrorCategory, codes};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::{
-    shared_memory::{MemoryType, SharedMemoryManager, SharedMemorySegment, SharedMemoryAccess, SharedMemoryStats},
+    shared_memory::{
+        MemoryType, SharedMemoryAccess, SharedMemoryManager, SharedMemorySegment, SharedMemoryStats,
+    },
+    traits::BoundedCapacity,
     values::Value,
     MemArg,
-    traits::BoundedCapacity,
-};
-use wrt_runtime::{
-    atomic_execution_safe::{SafeAtomicMemoryContext, AtomicExecutionStats},
-    thread_manager::{ThreadManager, ThreadId, ThreadExecutionContext},
-    memory::MemoryOperations,
 };
 use wrt_instructions::atomic_ops::{AtomicWaitNotifyOp, MemoryOrdering};
-use wrt_sync::{WrtMutex, WrtRwLock, SafeAtomicCounter};
+use wrt_runtime::{
+    atomic_execution_safe::{AtomicExecutionStats, SafeAtomicMemoryContext},
+    memory::MemoryOperations,
+    thread_manager::{ThreadExecutionContext, ThreadId, ThreadManager},
+};
+use wrt_sync::{SafeAtomicCounter, WrtMutex, WrtRwLock};
 
-#[cfg(feature = "std")]
-use std::{sync::Arc, collections::HashMap, time::Duration};
 #[cfg(not(feature = "std"))]
-use alloc::{sync::Arc, collections::BTreeMap as HashMap};
+use alloc::{collections::BTreeMap as HashMap, sync::Arc};
 #[cfg(not(feature = "std"))]
 use core::time::Duration;
+#[cfg(feature = "std")]
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 /// Maximum number of shared memory instances per module
 pub const MAX_SHARED_MEMORIES: usize = 16;
@@ -54,10 +56,20 @@ pub const MAX_SHARED_MEMORY_THREADS: usize = 256;
 /// Provider trait for shared memory management across ASIL levels
 pub trait SharedMemoryProvider {
     /// Execute shared memory operation with provider-specific optimizations
-    fn execute_with_provider(&self, context: &mut SharedMemoryContext, operation: SharedMemoryOperation) -> Result<Option<Value>>;
-    
+    fn execute_with_provider(
+        &self,
+        context: &mut SharedMemoryContext,
+        operation: SharedMemoryOperation,
+    ) -> Result<Option<Value>>;
+
     /// Validate shared memory access for ASIL compliance
-    fn validate_shared_access(&self, context: &SharedMemoryContext, thread_id: ThreadId, addr: u64, access: SharedMemoryAccess) -> Result<()>;
+    fn validate_shared_access(
+        &self,
+        context: &SharedMemoryContext,
+        thread_id: ThreadId,
+        addr: u64,
+        access: SharedMemoryAccess,
+    ) -> Result<()>;
 }
 
 /// Shared memory operation types
@@ -95,10 +107,7 @@ pub enum SharedMemoryOperation {
         count: u32,
     },
     /// Grow shared memory
-    Grow {
-        memory_index: u32,
-        delta_pages: u32,
-    },
+    Grow { memory_index: u32, delta_pages: u32 },
 }
 
 /// Thread-safe shared memory instance
@@ -125,7 +134,9 @@ impl SharedMemoryInstance {
         capability_context: wrt_foundation::capabilities::MemoryCapabilityContext,
     ) -> Result<Self> {
         if !memory_type.is_shared() {
-            return Err(Error::validation_error("SharedMemoryInstance requires shared memory type"));
+            return Err(Error::validation_error(
+                "SharedMemoryInstance requires shared memory type",
+            ));
         }
 
         memory_type.validate()?;
@@ -156,19 +167,24 @@ impl SharedMemoryInstance {
         operation: SharedMemoryOperation,
     ) -> Result<Option<Value>> {
         match operation {
-            SharedMemoryOperation::AtomicLoad { address, ordering, .. } => {
+            SharedMemoryOperation::AtomicLoad {
+                address, ordering, ..
+            } => {
                 let mut atomic_context = self.atomic_context.lock().map_err(|_| {
                     Error::runtime_execution_error("Failed to acquire atomic context lock")
                 })?;
-                
+
                 // Validate access
                 self.validate_atomic_access(thread_id, address as u64)?;
-                
+
                 // Execute atomic load
-                let memarg = MemArg { offset: address, align: 2 }; // Assume 4-byte alignment
+                let memarg = MemArg {
+                    offset: address,
+                    align: 2,
+                }; // Assume 4-byte alignment
                 let load_op = wrt_instructions::atomic_ops::AtomicLoadOp::I32AtomicLoad { memarg };
                 let atomic_op = wrt_instructions::atomic_ops::AtomicOp::Load(load_op);
-                
+
                 let result = atomic_context.execute_atomic(thread_id, atomic_op)?;
                 if result.len() == 1 {
                     Ok(Some(Value::I32(result[0] as i32)))
@@ -176,41 +192,53 @@ impl SharedMemoryInstance {
                     Err(Error::runtime_execution_error("Invalid atomic load result"))
                 }
             },
-            
+
             SharedMemoryOperation::AtomicStore { address, value, .. } => {
                 let mut atomic_context = self.atomic_context.lock().map_err(|_| {
                     Error::runtime_execution_error("Failed to acquire atomic context lock")
                 })?;
-                
+
                 // Validate access
                 self.validate_atomic_access(thread_id, address as u64)?;
-                
+
                 // Execute atomic store
-                let memarg = MemArg { offset: address, align: 2 }; // Assume 4-byte alignment
-                let store_op = wrt_instructions::atomic_ops::AtomicStoreOp::I32AtomicStore { memarg };
+                let memarg = MemArg {
+                    offset: address,
+                    align: 2,
+                }; // Assume 4-byte alignment
+                let store_op =
+                    wrt_instructions::atomic_ops::AtomicStoreOp::I32AtomicStore { memarg };
                 let atomic_op = wrt_instructions::atomic_ops::AtomicOp::Store(store_op);
-                
+
                 atomic_context.execute_atomic(thread_id, atomic_op)?;
                 Ok(None)
             },
-            
-            SharedMemoryOperation::AtomicWait { address, expected, timeout, .. } => {
+
+            SharedMemoryOperation::AtomicWait {
+                address,
+                expected,
+                timeout,
+                ..
+            } => {
                 let mut atomic_context = self.atomic_context.lock().map_err(|_| {
                     Error::runtime_execution_error("Failed to acquire atomic context lock")
                 })?;
-                
+
                 // Validate access
                 self.validate_atomic_access(thread_id, address as u64)?;
-                
+
                 // Execute atomic wait
-                let memarg = MemArg { offset: address, align: 2 };
+                let memarg = MemArg {
+                    offset: address,
+                    align: 2,
+                };
                 let wait_op = match expected {
                     Value::I32(_) => AtomicWaitNotifyOp::MemoryAtomicWait32 { memarg },
                     Value::I64(_) => AtomicWaitNotifyOp::MemoryAtomicWait64 { memarg },
                     _ => return Err(Error::type_error("Atomic wait expects i32 or i64 value")),
                 };
                 let atomic_op = wrt_instructions::atomic_ops::AtomicOp::WaitNotify(wait_op);
-                
+
                 let result = atomic_context.execute_atomic(thread_id, atomic_op)?;
                 if result.len() == 1 {
                     Ok(Some(Value::I32(result[0] as i32)))
@@ -218,81 +246,92 @@ impl SharedMemoryInstance {
                     Err(Error::runtime_execution_error("Invalid atomic wait result"))
                 }
             },
-            
+
             SharedMemoryOperation::AtomicNotify { address, count, .. } => {
                 let mut atomic_context = self.atomic_context.lock().map_err(|_| {
                     Error::runtime_execution_error("Failed to acquire atomic context lock")
                 })?;
-                
+
                 // Validate access
                 self.validate_atomic_access(thread_id, address as u64)?;
-                
+
                 // Execute atomic notify
-                let memarg = MemArg { offset: address, align: 2 };
+                let memarg = MemArg {
+                    offset: address,
+                    align: 2,
+                };
                 let notify_op = AtomicWaitNotifyOp::MemoryAtomicNotify { memarg };
                 let atomic_op = wrt_instructions::atomic_ops::AtomicOp::WaitNotify(notify_op);
-                
+
                 let result = atomic_context.execute_atomic(thread_id, atomic_op)?;
                 if result.len() == 1 {
                     Ok(Some(Value::I32(result[0] as i32)))
                 } else {
-                    Err(Error::runtime_execution_error("Invalid atomic notify result"))
+                    Err(Error::runtime_execution_error(
+                        "Invalid atomic notify result",
+                    ))
                 }
             },
-            
+
             SharedMemoryOperation::Grow { delta_pages, .. } => {
                 let mut memory = self.memory.write().map_err(|_| {
                     Error::runtime_execution_error("Failed to acquire memory write lock")
                 })?;
-                
+
                 let current_size = memory.size_in_bytes()?;
                 let page_size = 65536; // WebAssembly page size
                 let new_bytes = delta_pages as usize * page_size;
-                
+
                 memory.grow(new_bytes)?;
                 let new_pages = (current_size / page_size) as i32;
                 Ok(Some(Value::I32(new_pages)))
             },
-            
+
             SharedMemoryOperation::Initialize { .. } => {
                 // Initialization handled during construction
                 Ok(None)
             },
         }
     }
-    
+
     /// Validate atomic access to shared memory
     fn validate_atomic_access(&self, thread_id: ThreadId, address: u64) -> Result<()> {
-        let manager = self.manager.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire manager lock")
-        })?;
-        
+        let manager = self
+            .manager
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire manager lock"))?;
+
         if !manager.allows_atomic_at(address) {
-            return Err(Error::runtime_execution_error("Atomic operations not allowed at this address"));
+            return Err(Error::runtime_execution_error(
+                "Atomic operations not allowed at this address",
+            ));
         }
-        
+
         // Update statistics
-        let mut stats = self.stats.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire stats lock")
-        })?;
+        let mut stats = self
+            .stats
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire stats lock"))?;
         stats.record_atomic_operation();
-        
+
         Ok(())
     }
-    
+
     /// Get shared memory statistics
     pub fn get_stats(&self) -> Result<SharedMemoryStats> {
-        let stats = self.stats.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire stats lock")
-        })?;
+        let stats = self
+            .stats
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire stats lock"))?;
         Ok(stats.clone())
     }
-    
+
     /// Get atomic execution statistics
     pub fn get_atomic_stats(&self) -> Result<AtomicExecutionStats> {
-        let atomic_context = self.atomic_context.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire atomic context lock")
-        })?;
+        let atomic_context = self
+            .atomic_context
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire atomic context lock"))?;
         Ok(atomic_context.stats.clone())
     }
 }
@@ -305,10 +344,10 @@ pub struct SharedMemoryContext {
     memories: HashMap<u32, Arc<SharedMemoryInstance>>,
     #[cfg(not(feature = "std"))]
     memories: [(u32, Option<Arc<SharedMemoryInstance>>); MAX_SHARED_MEMORIES],
-    
+
     /// Thread-safe counter for memory allocation
     memory_counter: SafeAtomicCounter,
-    
+
     /// Global shared memory statistics
     pub global_stats: Arc<WrtMutex<SharedMemoryStats>>,
 }
@@ -325,46 +364,52 @@ impl SharedMemoryContext {
             global_stats: Arc::new(WrtMutex::new(SharedMemoryStats::new())),
         }
     }
-    
+
     /// Register a shared memory instance
     pub fn register_shared_memory(&mut self, memory: Arc<SharedMemoryInstance>) -> Result<u32> {
         let memory_index = self.memory_counter.increment() as u32;
-        
+
         #[cfg(feature = "std")]
         {
             if self.memories.len() >= MAX_SHARED_MEMORIES {
-                return Err(Error::memory_error("Maximum number of shared memories reached"));
+                return Err(Error::memory_error(
+                    "Maximum number of shared memories reached",
+                ));
             }
             self.memories.insert(memory_index, memory);
         }
-        
+
         #[cfg(not(feature = "std"))]
         {
             if let Some(slot) = self.memories.iter_mut().find(|(_, mem)| mem.is_none()) {
                 slot.1 = Some(memory);
             } else {
-                return Err(Error::memory_error("Maximum number of shared memories reached"));
+                return Err(Error::memory_error(
+                    "Maximum number of shared memories reached",
+                ));
             }
         }
-        
+
         // Update global statistics
-        let mut global_stats = self.global_stats.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire global stats lock")
-        })?;
+        let mut global_stats = self
+            .global_stats
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire global stats lock"))?;
         global_stats.registered_segments += 1;
-        
+
         Ok(memory_index)
     }
-    
+
     /// Get shared memory instance by index
     pub fn get_shared_memory(&self, memory_index: u32) -> Result<Arc<SharedMemoryInstance>> {
         #[cfg(feature = "std")]
         {
-            self.memories.get(&memory_index).cloned().ok_or_else(|| {
-                Error::runtime_execution_error("Shared memory index not found")
-            })
+            self.memories
+                .get(&memory_index)
+                .cloned()
+                .ok_or_else(|| Error::runtime_execution_error("Shared memory index not found"))
         }
-        
+
         #[cfg(not(feature = "std"))]
         {
             self.memories
@@ -372,12 +417,10 @@ impl SharedMemoryContext {
                 .find(|(idx, _)| *idx == memory_index)
                 .and_then(|(_, mem)| mem.as_ref())
                 .cloned()
-                .ok_or_else(|| {
-                    Error::runtime_execution_error("Shared memory index not found")
-                })
+                .ok_or_else(|| Error::runtime_execution_error("Shared memory index not found"))
         }
     }
-    
+
     /// Execute shared memory operation
     pub fn execute_operation(
         &self,
@@ -392,16 +435,17 @@ impl SharedMemoryContext {
             SharedMemoryOperation::AtomicNotify { memory_index, .. } => *memory_index,
             SharedMemoryOperation::Grow { memory_index, .. } => *memory_index,
         };
-        
+
         let memory = self.get_shared_memory(memory_index)?;
         memory.execute_atomic_operation(thread_id, operation)
     }
-    
+
     /// Get global shared memory statistics
     pub fn get_global_stats(&self) -> Result<SharedMemoryStats> {
-        let stats = self.global_stats.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire global stats lock")
-        })?;
+        let stats = self
+            .global_stats
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire global stats lock"))?;
         Ok(stats.clone())
     }
 }
@@ -424,10 +468,10 @@ impl SharedMemoryProvider for ASILCompliantSharedMemoryProvider {
         // For ASIL compliance, we use a dummy thread ID
         // In real implementation, this would come from the execution context
         let thread_id = wrt_runtime::thread_manager::ThreadId::from_u32(1);
-        
+
         context.execute_operation(thread_id, operation)
     }
-    
+
     fn validate_shared_access(
         &self,
         context: &SharedMemoryContext,
@@ -437,9 +481,11 @@ impl SharedMemoryProvider for ASILCompliantSharedMemoryProvider {
     ) -> Result<()> {
         // Basic validation - in real implementation would use capability system
         if addr > u32::MAX as u64 {
-            return Err(Error::validation_error("Memory address exceeds 32-bit range"));
+            return Err(Error::validation_error(
+                "Memory address exceeds 32-bit range",
+            ));
         }
-        
+
         Ok(())
     }
 }
@@ -456,21 +502,20 @@ pub fn create_shared_memory(
     capability_context: wrt_foundation::capabilities::MemoryCapabilityContext,
 ) -> Result<Arc<SharedMemoryInstance>> {
     // Create memory instance - simplified for demonstration
-    let memory_impl = wrt_runtime::memory::Memory::new(
-        wrt_foundation::ComponentMemoryType {
-            memory_type: memory_type.clone(),
-            initial: vec![],
-            maximum: memory_type.max_pages(),
-        }
-    ).map_err(|_| Error::runtime_execution_error("Failed to create memory instance"))?;
-    
+    let memory_impl = wrt_runtime::memory::Memory::new(wrt_foundation::ComponentMemoryType {
+        memory_type: memory_type.clone(),
+        initial: vec![],
+        maximum: memory_type.max_pages(),
+    })
+    .map_err(|_| Error::runtime_execution_error("Failed to create memory instance"))?;
+
     let shared_memory = SharedMemoryInstance::new(
         memory_type,
         Box::new(memory_impl),
         thread_manager,
         capability_context,
     )?;
-    
+
     Ok(Arc::new(shared_memory))
 }
 
@@ -488,11 +533,13 @@ pub fn shared_memory_compare_and_swap(
         address,
         ordering: MemoryOrdering::SeqCst,
     };
-    
+
     let result = memory.execute_atomic_operation(thread_id, operation)?;
     match result {
         Some(Value::I32(old_value)) => Ok(old_value),
-        _ => Err(Error::type_error("Expected i32 result from atomic operation"))
+        _ => Err(Error::type_error(
+            "Expected i32 result from atomic operation",
+        )),
     }
 }
 
@@ -510,11 +557,11 @@ pub fn shared_memory_wait(
         expected: Value::I32(expected),
         timeout,
     };
-    
+
     let result = memory.execute_atomic_operation(thread_id, operation)?;
     match result {
         Some(Value::I32(wait_result)) => Ok(wait_result),
-        _ => Err(Error::type_error("Expected i32 result from wait operation"))
+        _ => Err(Error::type_error("Expected i32 result from wait operation")),
     }
 }
 
@@ -530,10 +577,12 @@ pub fn shared_memory_notify(
         address,
         count,
     };
-    
+
     let result = memory.execute_atomic_operation(thread_id, operation)?;
     match result {
         Some(Value::I32(notify_count)) => Ok(notify_count as u32),
-        _ => Err(Error::type_error("Expected i32 result from notify operation"))
+        _ => Err(Error::type_error(
+            "Expected i32 result from notify operation",
+        )),
     }
 }

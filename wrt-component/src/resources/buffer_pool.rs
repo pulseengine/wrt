@@ -1,8 +1,10 @@
 // Use BTreeMap for all cases to ensure deterministic ordering and no_std compatibility
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, vec::Vec};
-#[cfg(all(not(feature = "std")))]
-use std::{collections::BTreeMap, vec::Vec};
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{collections::BTreeMap, vec::Vec};
 
 /// Binary std/no_std choice
 #[cfg(feature = "std")]
@@ -16,7 +18,7 @@ pub struct BufferPool {
 }
 
 /// A simplified buffer pool for no_std environments
-#[cfg(not(any(feature = "std", )))]
+#[cfg(not(feature = "std"))]
 pub struct BufferPool {
     /// Simplified buffer management for no_std
     max_buffer_size: usize,
@@ -88,7 +90,7 @@ impl BufferPool {
     }
 }
 
-#[cfg(not(any(feature = "std", )))]
+#[cfg(not(feature = "std"))]
 impl BufferPool {
     /// Create a new buffer pool with default settings
     pub fn new() -> Self {
@@ -159,8 +161,8 @@ mod tests {
         let mut pool = BufferPool::new();
 
         // Allocate and return some buffers
-        pool.return_buffer(pool.allocate(100);
-        pool.return_buffer(pool.allocate(200);
+        pool.return_buffer(pool.allocate(100));
+        pool.return_buffer(pool.allocate(200));
 
         // Check stats
         let stats_before = pool.stats();

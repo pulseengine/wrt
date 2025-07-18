@@ -30,7 +30,10 @@ use wrt_foundation::{
 };
 
 use crate::async_::async_types::{AsyncReadResult, Future as ComponentFuture, FutureHandle, FutureState, Stream, StreamHandle, StreamState};
+#[cfg(feature = "component-model-threading")]
 use crate::threading::task_manager::{Task, TaskContext, TaskId, TaskState};
+#[cfg(not(feature = "component-model-threading"))]
+use crate::types::TaskId;
 use crate::types::{ValType, Value};
 use wrt_error::Result as WrtResult;
 

@@ -44,7 +44,7 @@ pub fn load_module(binary: &[u8]) -> Result<Module> {
     
     // Create module using runtime's load_from_binary which now uses unified API
     let mut dummy_module = Module::new()?;
-    dummy_module.load_from_binary(binary)
+    dummy_module.load_from_binary(binary)?
 }
 
 /// Decode and validate a WebAssembly binary module

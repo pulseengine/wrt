@@ -144,8 +144,8 @@ fn test_format_valtype_to_types_valtype() {
         expected_list_type
     );
 
-    let option_type = FormatValType::Option(Box::new(FormatValType::S32);
-    let expected_option_type = TypesValType::Option(Box::new(TypesValType::S32);
+    let option_type = FormatValType::Option(Box::new(FormatValType::S32));
+    let expected_option_type = TypesValType::Option(Box::new(TypesValType::S32));
     assert_eq!(
         format_valtype_to_types_valtype(&option_type),
         expected_option_type
@@ -371,7 +371,7 @@ fn test_conversion_traits() {
     let extern_type = TypesExternType::Function(func_type);
 
     let format_type: Result<FormatExternType, _> = extern_type.into_format_type();
-    assert!(format_type.is_ok();
+    assert!(format_type.is_ok());
 }
 
 /// Test error handling in conversion functions
@@ -388,7 +388,7 @@ fn test_conversion_error_handling() {
 
     for val_type in unsupported_types {
         let result = format_val_type_to_value_type(&val_type);
-        assert!(result.is_err();
+        assert!(result.is_err());
     }
 
     // Test error when converting reference types to format types
@@ -396,6 +396,6 @@ fn test_conversion_error_handling() {
 
     for val_type in ref_types {
         let result = value_type_to_format_val_type(&val_type);
-        assert!(result.is_err();
+        assert!(result.is_err());
     }
 }

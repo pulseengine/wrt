@@ -5,16 +5,15 @@
 
 use wrt_foundation::{
     bounded::{BoundedString, BoundedVec},
-    managed_alloc,
-    budget_aware_provider::CrateId,
     bounded_collections::BoundedMap as BoundedHashMap,
-    WrtResult,
+    budget_aware_provider::CrateId,
+    managed_alloc, WrtResult,
 };
 
-#[cfg(feature = "std")]
-use std::boxed::Box;
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
+#[cfg(feature = "std")]
+use std::boxed::Box;
 
 /// Default memory size for WRT allocations (256KB)
 pub const WRT_DEFAULT_MEMORY_SIZE: usize = 262144;
@@ -65,8 +64,11 @@ pub const MAX_COMPONENT_INSTANCES: usize = 256;
 #[macro_export]
 macro_rules! bounded_vec {
     ($max_size:expr) => {{
-        use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
-        let guard = safe_managed_alloc!($crate::bounded_wrt_infra::WRT_DEFAULT_MEMORY_SIZE, CrateId::Runtime)?;
+        use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
+        let guard = safe_managed_alloc!(
+            $crate::bounded_wrt_infra::WRT_DEFAULT_MEMORY_SIZE,
+            CrateId::Runtime
+        )?;
         wrt_foundation::bounded::BoundedVec::new(guard.provider().clone())
     }};
 }
@@ -75,13 +77,21 @@ macro_rules! bounded_vec {
 #[macro_export]
 macro_rules! bounded_string {
     ($max_len:expr) => {{
-        use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
-        let guard = safe_managed_alloc!($crate::bounded_wrt_infra::WRT_DEFAULT_MEMORY_SIZE, CrateId::Runtime)?;
-        Ok(wrt_foundation::bounded::BoundedString::new(guard.provider().clone()))
+        use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
+        let guard = safe_managed_alloc!(
+            $crate::bounded_wrt_infra::WRT_DEFAULT_MEMORY_SIZE,
+            CrateId::Runtime
+        )?;
+        Ok(wrt_foundation::bounded::BoundedString::new(
+            guard.provider().clone(),
+        ))
     }};
     ($s:expr, $max_len:expr) => {{
-        use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
-        let guard = safe_managed_alloc!($crate::bounded_wrt_infra::WRT_DEFAULT_MEMORY_SIZE, CrateId::Runtime)?;
+        use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
+        let guard = safe_managed_alloc!(
+            $crate::bounded_wrt_infra::WRT_DEFAULT_MEMORY_SIZE,
+            CrateId::Runtime
+        )?;
         wrt_foundation::bounded::BoundedString::from_str($s, guard.provider().clone())
     }};
 }
@@ -90,8 +100,11 @@ macro_rules! bounded_string {
 #[macro_export]
 macro_rules! bounded_map {
     ($max_entries:expr) => {{
-        use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
-        let guard = safe_managed_alloc!($crate::bounded_wrt_infra::WRT_DEFAULT_MEMORY_SIZE, CrateId::Runtime)?;
+        use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
+        let guard = safe_managed_alloc!(
+            $crate::bounded_wrt_infra::WRT_DEFAULT_MEMORY_SIZE,
+            CrateId::Runtime
+        )?;
         wrt_foundation::bounded_collections::BoundedMap::new(guard.provider().clone())
     }};
 }

@@ -41,7 +41,7 @@ pub use std::{
 };
 
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-pub use wrt_foundation::allocator::{WrtVec as Vec, WrtHashMap as HashMap};
+pub use wrt_foundation::allocator::{WrtHashMap as HashMap, WrtVec as Vec};
 
 // HashSet for safety-critical mode (simplified as it's less commonly used)
 #[cfg(all(feature = "std", feature = "safety-critical"))]
@@ -51,7 +51,7 @@ pub use std::collections::HashSet; // Using std HashSet - bounded alternative is
 #[cfg(not(feature = "std"))]
 pub use wrt_foundation::{
     bounded::{BoundedString as String, BoundedVec as Vec},
-    bounded_collections::{BoundedSet as HashSet, BoundedMap as HashMap},
+    bounded_collections::{BoundedMap as HashMap, BoundedSet as HashSet},
 };
 
 // Binary std/no_std choice - format macro not available without alloc
@@ -118,10 +118,7 @@ pub use wrt_foundation::{
     },
     component_value::{ComponentValue, ValType},
     // Safe memory types - prioritizing these over standard collections
-    safe_memory::{
-        MemoryProvider, SafeMemoryHandler,
-        SafeSlice, SafeStack,
-    },
+    safe_memory::{MemoryProvider, SafeMemoryHandler, SafeSlice, SafeStack},
     // Core types
     types::{BlockType, FuncType, ValueType},
     // validation::{Checksummed}, // Not available yet
@@ -132,18 +129,26 @@ pub use wrt_foundation::{
 // Re-export clean types from wrt-foundation (when available)
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use wrt_foundation::clean_types::{
-    ValType as CleanValType,
-    FuncType as CleanFuncType,
-    MemoryType as CleanMemoryType,
-    TableType as CleanTableType,
-    GlobalType as CleanGlobalType,
+    Case,
     ComponentType as CleanComponentType,
+    Enum,
     ExternType as CleanExternType,
-    InstanceType as CleanInstanceType,
-    Value as CleanValue,
     // Nested types
-    Field, Record, Tuple, Variant, Case, Enum, Result_ as CleanResult, Flags,
-    Limits as CleanLimits, RefType as CleanRefType,
+    Field,
+    Flags,
+    FuncType as CleanFuncType,
+    GlobalType as CleanGlobalType,
+    InstanceType as CleanInstanceType,
+    Limits as CleanLimits,
+    MemoryType as CleanMemoryType,
+    Record,
+    RefType as CleanRefType,
+    Result_ as CleanResult,
+    TableType as CleanTableType,
+    Tuple,
+    ValType as CleanValType,
+    Value as CleanValue,
+    Variant,
 };
 // Note: wrt-host exports would go here if available
 // Note: wrt-instructions behavior exports would go here if available
@@ -160,16 +165,14 @@ pub use wrt_runtime::{
     module::Module,
     module_instance::ModuleInstance,
     // Stackless engine
-    stackless::{
-        StacklessEngine, StacklessExecutionState, StacklessFrame,
-    },
+    stackless::{StacklessEngine, StacklessExecutionState, StacklessFrame},
 };
 
 // Capability-based engine (when available)
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use wrt_runtime::engine::{
-    CapabilityEngine, CapabilityAwareEngine, EnginePreset,
-    ModuleHandle, InstanceHandle, EngineBuilder,
+    CapabilityAwareEngine, CapabilityEngine, EngineBuilder, EnginePreset, InstanceHandle,
+    ModuleHandle,
 };
 // Note: wrt-sync exports would go here if available
 // Import synchronization primitives for no_std

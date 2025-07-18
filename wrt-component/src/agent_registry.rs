@@ -36,13 +36,13 @@ pub struct AgentRegistry {
     #[cfg(feature = "std")]
     unified_agents: HashMap<AgentId, Box<UnifiedExecutionAgent>>,
     #[cfg(not(feature = "std"))]
-    unified_agents: BoundedVec<(AgentId, UnifiedExecutionAgent), MAX_AGENTS>,
+    unified_agents: BoundedVec<(AgentId, UnifiedExecutionAgent), MAX_AGENTS, crate::bounded_component_infra::ComponentProvider>,
     
     /// Legacy agents (deprecated)
     #[cfg(feature = "std")]
     legacy_agents: HashMap<AgentId, Box<dyn LegacyExecutionAgent>>,
     #[cfg(not(feature = "std"))]
-    legacy_agents: BoundedVec<(AgentId, LegacyAgentType), 16>,
+    legacy_agents: BoundedVec<(AgentId, LegacyAgentType), 16, crate::bounded_component_infra::ComponentProvider>,
     
     /// Next agent ID
     next_agent_id: u32,
@@ -78,7 +78,7 @@ pub struct MigrationStatus {
     #[cfg(feature = "std")]
     pub pending_migrations: Vec<AgentId>,
     #[cfg(not(feature = "std"))]
-    pub pending_migrations: BoundedVec<AgentId, MAX_AGENTS>,
+    pub pending_migrations: BoundedVec<AgentId, MAX_AGENTS, crate::bounded_component_infra::ComponentProvider>,
     
     /// Completed migrations
     pub completed_migrations: u32,
@@ -87,7 +87,7 @@ pub struct MigrationStatus {
     #[cfg(feature = "std")]
     pub warnings: Vec<MigrationWarning>,
     #[cfg(not(feature = "std"))]
-    pub warnings: BoundedVec<MigrationWarning, 16>,
+    pub warnings: BoundedVec<MigrationWarning, 16, crate::bounded_component_infra::ComponentProvider>,
 }
 
 /// Migration warning information
@@ -548,7 +548,7 @@ impl AgentRegistry {
         #[cfg(feature = "std")]
         let legacy_ids: Vec<AgentId> = self.legacy_agents.keys().copied().collect();
         #[cfg(not(feature = "std"))]
-        let legacy_ids: BoundedVec<AgentId, MAX_AGENTS> = {
+        let legacy_ids: BoundedVec<AgentId, MAX_AGENTS, crate::bounded_component_infra::ComponentProvider> = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
             let mut ids = BoundedVec::new(provider)?;
             for (id, _) in &self.legacy_agents {

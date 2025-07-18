@@ -24,7 +24,7 @@ use core::{
 
 // Conditional imports for WRT allocator
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{WrtVec, CrateId};
+use wrt_foundation::allocator::{CrateId, WrtVec};
 
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
 use std::vec::Vec;
@@ -64,12 +64,12 @@ pub enum ResourceRepresentation {
     Handle64,
     /// Represented as a specific record type
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    Record(WrtVec<String, {CrateId::Wrt as u8}, 32>),
+    Record(WrtVec<String, { CrateId::Wrt as u8 }, 32>),
     #[cfg(not(all(feature = "std", feature = "safety-critical")))]
     Record(Vec<String>),
     /// Aggregated resource (composed of other resources)
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    Aggregate(WrtVec<ResourceType, {CrateId::Wrt as u8}, 16>),
+    Aggregate(WrtVec<ResourceType, { CrateId::Wrt as u8 }, 16>),
     #[cfg(not(all(feature = "std", feature = "safety-critical")))]
     Aggregate(Vec<ResourceType>),
 }
@@ -95,7 +95,7 @@ impl PartialEq for ResourceRepresentation {
                     }
                 }
                 true
-            }
+            },
             _ => false,
         }
     }
@@ -133,60 +133,66 @@ pub struct ResourceTable {
 
 impl ResourceRepresentation {
     /// Create a new Record representation with bounded capacity
-    #[cfg(feature = \"safety-critical\")]
+    #[cfg(feature = "safety-critical")]
     pub fn new_record() -> Result<Self> {
         Ok(Self::Record(WrtVec::new()))
     }
-    
-    #[cfg(not(feature = \"safety-critical\"))]
+
+    #[cfg(not(feature = "safety-critical"))]
     pub fn new_record() -> Result<Self> {
         Ok(Self::Record(Vec::new()))
     }
-    
+
     /// Create a new Aggregate representation with bounded capacity
-    #[cfg(feature = \"safety-critical\")]
+    #[cfg(feature = "safety-critical")]
     pub fn new_aggregate() -> Result<Self> {
         Ok(Self::Aggregate(WrtVec::new()))
     }
-    
-    #[cfg(not(feature = \"safety-critical\"))]
+
+    #[cfg(not(feature = "safety-critical"))]
     pub fn new_aggregate() -> Result<Self> {
         Ok(Self::Aggregate(Vec::new()))
     }
-    
+
     /// Add a field to a Record representation
     pub fn add_field(&mut self, field_name: String) -> Result<()> {
         match self {
-            #[cfg(feature = \"safety-critical\")]
-            Self::Record(fields) => {
-                fields.push(field_name).map_err(|_| {
-                    kinds::ExecutionError(\"Record field capacity exceeded (limit: 32)\".to_string()).into()
-                })
-            },
-            #[cfg(not(feature = \"safety-critical\"))]
+            #[cfg(feature = "safety-critical")]
+            Self::Record(fields) => fields.push(field_name).map_err(|_| {
+                kinds::ExecutionError("Record field capacity exceeded (limit: 32)".to_string())
+                    .into()
+            }),
+            #[cfg(not(feature = "safety-critical"))]
             Self::Record(fields) => {
                 fields.push(field_name);
                 Ok(())
             },
-            _ => Err(kinds::ExecutionError(\"Cannot add field to non-Record representation\".to_string()).into()),
+            _ => Err(kinds::ExecutionError(
+                "Cannot add field to non-Record representation".to_string(),
+            )
+            .into()),
         }
     }
-    
+
     /// Add a resource to an Aggregate representation
     pub fn add_resource(&mut self, resource_type: ResourceType) -> Result<()> {
         match self {
-            #[cfg(feature = \"safety-critical\")]
-            Self::Aggregate(resources) => {
-                resources.push(resource_type).map_err(|_| {
-                    kinds::ExecutionError(\"Aggregate resource capacity exceeded (limit: 16)\".to_string()).into()
-                })
-            },
-            #[cfg(not(feature = \"safety-critical\"))]
+            #[cfg(feature = "safety-critical")]
+            Self::Aggregate(resources) => resources.push(resource_type).map_err(|_| {
+                kinds::ExecutionError(
+                    "Aggregate resource capacity exceeded (limit: 16)".to_string(),
+                )
+                .into()
+            }),
+            #[cfg(not(feature = "safety-critical"))]
             Self::Aggregate(resources) => {
                 resources.push(resource_type);
                 Ok(())
             },
-            _ => Err(kinds::ExecutionError(\"Cannot add resource to non-Aggregate representation\".to_string()).into()),
+            _ => Err(kinds::ExecutionError(
+                "Cannot add resource to non-Aggregate representation".to_string(),
+            )
+            .into()),
         }
     }
 }
@@ -210,7 +216,12 @@ impl ResourceTable {
         let id = ResourceId(self.next_id);
         self.next_id += 1;
 
-        let resource = Resource { resource_type, id, data, ref_count: 1 };
+        let resource = Resource {
+            resource_type,
+            id,
+            data,
+            ref_count: 1,
+        };
 
         // Find an empty slot or add to the end
         let index = self.resources.iter().position(std::option::Option::is_none);

@@ -993,8 +993,7 @@ impl CallContextManager {
         #[cfg(feature = "std")]
         self.contexts.insert(call_id, managed_context);
         #[cfg(not(feature = "std"))]
-        self.contexts.push((call_id, managed_context)).map_err(|_| Error::runtime_execution_error("Error occurred",
-        ))?;
+        self.contexts.push((call_id, managed_context)).map_err(|_| Error::runtime_execution_error("Error occurred"))?;
 
         Ok(call_id)
     }

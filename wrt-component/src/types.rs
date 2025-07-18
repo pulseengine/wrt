@@ -26,6 +26,11 @@ pub struct StreamHandle(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FutureHandle(pub u32);
 
+// Fallback TaskId when threading features are not enabled
+#[cfg(not(feature = "component-model-threading"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TaskId(pub u32);
+
 /// Canonical ComponentInstance definition for ASIL-D type safety
 /// 
 /// This is the single source of truth for ComponentInstance across the codebase

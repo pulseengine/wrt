@@ -25,7 +25,6 @@ pub enum CanonicalErrorContext {
 /// Format an error message for the given context
 #[cfg(feature = "std")]
 pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorContext) -> Error {
-    use alloc::format;
 
     let message = match context {
         CanonicalErrorContext::OutOfBounds { addr, size } => {
@@ -93,7 +92,6 @@ pub fn format_component_error(
     code: u32,
     context: ComponentErrorContext,
 ) -> Error {
-    use alloc::format;
 
     let message = match context {
         ComponentErrorContext::ImportNotFound(name) => {

@@ -6,20 +6,23 @@
 
 use core::{fmt, marker::PhantomData};
 
-#[cfg(feature = "std")]
-use std::boxed::Box;
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
+#[cfg(feature = "std")]
+use std::boxed::Box;
 
 use wrt_error::{codes, Error, Result};
-use wrt_foundation::{{
-    bounded::{BoundedStack, BoundedString, BoundedVec, WasmName},
-    resource::{ResourceId, ResourceItem, ResourceType},
-    verification::VerificationLevel,
-    MemoryProvider,
-    managed_alloc,
-    budget_aware_provider::CrateId,
-}, safe_managed_alloc};
+use wrt_foundation::{
+    safe_managed_alloc,
+    {
+        bounded::{BoundedStack, BoundedString, BoundedVec, WasmName},
+        budget_aware_provider::CrateId,
+        managed_alloc,
+        resource::{ResourceId, ResourceItem, ResourceType},
+        verification::VerificationLevel,
+        MemoryProvider,
+    },
+};
 
 // Constants for bounded collection limits
 const MAX_RESOURCE_COUNT: usize = 256;
@@ -93,7 +96,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
     pub fn create_resource(&mut self, type_idx: u32, name_str: Option<&str>) -> Result<ResourceId> {
         // Validate type index
         if type_idx as usize >= self.resource_type_count {
-            return Err(Error::runtime_execution_error(",
+            return Err(Error::runtime_execution_error(
+                "Invalid resource type index",
             ));
         }
 
@@ -109,7 +113,12 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
 
         // Create resource
         let resource_id = ResourceId(self.resource_count as u32);
-        let resource = BoundedResource { id: resource_id, resource_type, name, is_dropped: false };
+        let resource = BoundedResource {
+            id: resource_id,
+            resource_type,
+            name,
+            is_dropped: false,
+        };
 
         // Add to table
         self.resources.push(resource)?;
@@ -125,16 +134,16 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
             return Err(Error::new(
                 wrt_error::ErrorCategory::Resource,
                 codes::RESOURCE_NOT_FOUND,
-                "));
+                "Resource not found",
+            ));
         }
 
         // Get the resource
         let resource = self.resources.get(idx)?;
-        
+
         // Check if the resource is dropped
         if resource.is_dropped {
-            return Err(Error::runtime_execution_error(",
-            ));
+            return Err(Error::runtime_execution_error("Resource has been dropped"));
         }
 
         Ok(resource)
@@ -147,17 +156,17 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
             return Err(Error::new(
                 wrt_error::ErrorCategory::Resource,
                 codes::RESOURCE_NOT_FOUND,
-                "));
+                "Resource not found",
+            ));
         }
 
         // Get mutable reference to mark as dropped
         if let Ok(resource) = self.resources.get(idx) {
             if resource.is_dropped {
-                return Err(Error::runtime_execution_error(",
-                ));
+                return Err(Error::runtime_execution_error("Resource already dropped"));
             }
         }
-        
+
         // Mark as dropped - need to get and recreate since we can't get mutable reference
         if let Ok(mut resource) = self.resources.get(idx) {
             resource.is_dropped = true;
@@ -201,15 +210,18 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
 /// Returns the table wrapped in a Box<dyn Any> to hide the provider type
 pub fn create_default_resource_table() -> Result<Box<dyn core::any::Any>> {
     // Use managed allocation to get a provider
-    let guard = safe_managed_alloc!(1024, CrateId::Runtime).map_err(|_e| Error::new(
-        wrt_error::ErrorCategory::Resource,
-        codes::MEMORY_OUT_OF_BOUNDS,
-        "))?;
-    
+    let guard = safe_managed_alloc!(1024, CrateId::Runtime).map_err(|_e| {
+        Error::new(
+            wrt_error::ErrorCategory::Resource,
+            codes::MEMORY_OUT_OF_BOUNDS,
+            "Failed to allocate memory for resource table",
+        )
+    })?;
+
     // Extract provider and create table
     let provider = guard.provider().clone();
     let table = BoundedResourceTable::new(provider, VerificationLevel::Standard)?;
-    
+
     // Return table wrapped in Box<dyn Any>
     Ok(Box::new((table, guard)) as Box<dyn core::any::Any>)
 }
@@ -223,7 +235,7 @@ mod tests {
         // Use managed allocation
         let guard = safe_managed_alloc!(1024, CrateId::Runtime).expect("Failed to allocate memory");
         let provider = guard.provider().clone();
-        
+
         let mut table = BoundedResourceTable::new(provider.clone(), VerificationLevel::Standard)
             .expect("Failed to create resource table");
 
@@ -232,8 +244,9 @@ mod tests {
         let resource_type = ResourceType::Record(record_fields);
 
         // Register the type
-        let type_idx =
-            table.register_resource_type(resource_type).expect("Failed to register resource type");
+        let type_idx = table
+            .register_resource_type(resource_type)
+            .expect("Failed to register resource type");
 
         // Create a resource
         let resource_id = table
@@ -245,7 +258,10 @@ mod tests {
 
         assert_eq!(resource.id, resource_id);
         assert!(!resource.is_dropped);
-        assert_eq!(resource.name.as_ref().unwrap().as_str().unwrap(), "test_resource");
+        assert_eq!(
+            resource.name.as_ref().unwrap().as_str().unwrap(),
+            "test_resource"
+        );
 
         // Drop the resource
         table.drop_resource(resource_id).expect("Failed to drop resource");

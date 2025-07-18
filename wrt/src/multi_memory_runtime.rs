@@ -23,27 +23,24 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use wrt_error::{Result, Error, ErrorCategory, codes};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::{
-    values::Value,
-    types::ValueType,
-    ComponentMemoryType,
-    traits::BoundedCapacity,
+    traits::BoundedCapacity, types::ValueType, values::Value, ComponentMemoryType,
 };
 use wrt_instructions::{
+    memory_ops::{DataSegmentOperations, MemoryOperations},
     multi_memory::{
-        MultiMemoryLoad, MultiMemoryStore, MultiMemoryBulk, MultiMemoryCrossCopy,
-        MultiMemorySize, MultiMemoryGrow, MAX_MEMORIES
+        MultiMemoryBulk, MultiMemoryCrossCopy, MultiMemoryGrow, MultiMemoryLoad, MultiMemorySize,
+        MultiMemoryStore, MAX_MEMORIES,
     },
-    memory_ops::{MemoryOperations, DataSegmentOperations},
 };
 use wrt_runtime::memory::Memory;
-use wrt_sync::{WrtMutex, SafeAtomicCounter};
+use wrt_sync::{SafeAtomicCounter, WrtMutex};
 
-#[cfg(feature = "std")]
-use std::{sync::Arc, collections::HashMap};
 #[cfg(not(feature = "std"))]
-use alloc::{sync::Arc, collections::BTreeMap as HashMap, boxed::Box};
+use alloc::{boxed::Box, collections::BTreeMap as HashMap, sync::Arc};
+#[cfg(feature = "std")]
+use std::{collections::HashMap, sync::Arc};
 
 #[cfg(not(feature = "std"))]
 use alloc::format;
@@ -51,10 +48,20 @@ use alloc::format;
 /// Provider trait for multi-memory management across ASIL levels
 pub trait MultiMemoryProvider {
     /// Execute multi-memory operation with provider-specific optimizations
-    fn execute_with_provider(&self, context: &mut MultiMemoryContext, operation: MultiMemoryOperation) -> Result<Option<Value>>;
-    
+    fn execute_with_provider(
+        &self,
+        context: &mut MultiMemoryContext,
+        operation: MultiMemoryOperation,
+    ) -> Result<Option<Value>>;
+
     /// Validate multi-memory access for ASIL compliance
-    fn validate_memory_access(&self, context: &MultiMemoryContext, memory_index: u32, offset: u64, size: u64) -> Result<()>;
+    fn validate_memory_access(
+        &self,
+        context: &MultiMemoryContext,
+        memory_index: u32,
+        offset: u64,
+        size: u64,
+    ) -> Result<()>;
 }
 
 /// Multi-memory operation types
@@ -87,9 +94,7 @@ pub enum MultiMemoryOperation {
         size: Value,
     },
     /// Get memory size
-    Size {
-        size_op: MultiMemorySize,
-    },
+    Size { size_op: MultiMemorySize },
     /// Grow memory
     Grow {
         grow_op: MultiMemoryGrow,
@@ -113,9 +118,8 @@ pub struct MultiMemoryInstance {
 impl MultiMemoryInstance {
     /// Create new multi-memory instance
     pub fn new(memory_index: u32, memory_type: ComponentMemoryType) -> Result<Self> {
-        let memory = Memory::new(memory_type.clone()).map_err(|_| {
-            Error::runtime_execution_error("Failed to create memory instance")
-        })?;
+        let memory = Memory::new(memory_type.clone())
+            .map_err(|_| Error::runtime_execution_error("Failed to create memory instance"))?;
 
         Ok(Self {
             memory_index,
@@ -127,33 +131,42 @@ impl MultiMemoryInstance {
 
     /// Execute load operation on this memory
     pub fn execute_load(&self, load_op: &MultiMemoryLoad, address: &Value) -> Result<Value> {
-        let memory = self.memory.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire memory lock")
-        })?;
+        let memory = self
+            .memory
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire memory lock"))?;
 
         let result = load_op.execute_with_memory(&*memory, address)?;
 
         // Update statistics
-        let mut stats = self.stats.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire stats lock")
-        })?;
+        let mut stats = self
+            .stats
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire stats lock"))?;
         stats.load_operations += 1;
 
         Ok(result)
     }
 
     /// Execute store operation on this memory
-    pub fn execute_store(&self, store_op: &MultiMemoryStore, address: &Value, value: &Value) -> Result<()> {
-        let mut memory = self.memory.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire memory lock")
-        })?;
+    pub fn execute_store(
+        &self,
+        store_op: &MultiMemoryStore,
+        address: &Value,
+        value: &Value,
+    ) -> Result<()> {
+        let mut memory = self
+            .memory
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire memory lock"))?;
 
         store_op.execute_with_memory(&mut *memory, address, value)?;
 
         // Update statistics
-        let mut stats = self.stats.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire stats lock")
-        })?;
+        let mut stats = self
+            .stats
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire stats lock"))?;
         stats.store_operations += 1;
 
         Ok(())
@@ -161,18 +174,20 @@ impl MultiMemoryInstance {
 
     /// Execute bulk operation on this memory
     pub fn execute_bulk(&self, bulk_op: &MultiMemoryBulk, args: &[Value]) -> Result<()> {
-        let mut memory = self.memory.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire memory lock")
-        })?;
+        let mut memory = self
+            .memory
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire memory lock"))?;
 
         // Dummy data segments for now - in real implementation would be provided by module
         let mut dummy_data_segments = DummyDataSegments;
         bulk_op.execute_with_memory(&mut *memory, &mut dummy_data_segments, args)?;
 
         // Update statistics
-        let mut stats = self.stats.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire stats lock")
-        })?;
+        let mut stats = self
+            .stats
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire stats lock"))?;
         stats.bulk_operations += 1;
 
         Ok(())
@@ -180,9 +195,10 @@ impl MultiMemoryInstance {
 
     /// Get memory size in pages
     pub fn get_size(&self) -> Result<Value> {
-        let memory = self.memory.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire memory lock")
-        })?;
+        let memory = self
+            .memory
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire memory lock"))?;
 
         let size_bytes = memory.size_in_bytes()?;
         let pages = (size_bytes / 65536) as i32; // 64KB pages
@@ -191,9 +207,10 @@ impl MultiMemoryInstance {
 
     /// Grow memory by specified pages
     pub fn grow(&self, delta_pages: i32) -> Result<Value> {
-        let mut memory = self.memory.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire memory lock")
-        })?;
+        let mut memory = self
+            .memory
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire memory lock"))?;
 
         let current_size = memory.size_in_bytes()?;
         let current_pages = (current_size / 65536) as i32;
@@ -203,9 +220,10 @@ impl MultiMemoryInstance {
             memory.grow(new_bytes)?;
 
             // Update statistics
-            let mut stats = self.stats.lock().map_err(|_| {
-                Error::runtime_execution_error("Failed to acquire stats lock")
-            })?;
+            let mut stats = self
+                .stats
+                .lock()
+                .map_err(|_| Error::runtime_execution_error("Failed to acquire stats lock"))?;
             stats.grow_operations += 1;
         }
 
@@ -214,9 +232,10 @@ impl MultiMemoryInstance {
 
     /// Get memory statistics
     pub fn get_stats(&self) -> Result<MultiMemoryStats> {
-        let stats = self.stats.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire stats lock")
-        })?;
+        let stats = self
+            .stats
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire stats lock"))?;
         Ok(stats.clone())
     }
 }
@@ -264,17 +283,24 @@ impl MultiMemoryContext {
 
         #[cfg(not(feature = "std"))]
         {
-            if let Some(slot) = self.memories.iter_mut().find(|(idx, mem)| *idx == memory_index && mem.is_none()) {
+            if let Some(slot) = self
+                .memories
+                .iter_mut()
+                .find(|(idx, mem)| *idx == memory_index && mem.is_none())
+            {
                 slot.1 = Some(memory);
             } else {
-                return Err(Error::memory_error("Memory index already exists or maximum memories reached"));
+                return Err(Error::memory_error(
+                    "Memory index already exists or maximum memories reached",
+                ));
             }
         }
 
         // Update global statistics
-        let mut global_stats = self.global_stats.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire global stats lock")
-        })?;
+        let mut global_stats = self
+            .global_stats
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire global stats lock"))?;
         global_stats.registered_memories += 1;
 
         Ok(memory_index)
@@ -284,9 +310,10 @@ impl MultiMemoryContext {
     pub fn get_memory(&self, memory_index: u32) -> Result<Arc<MultiMemoryInstance>> {
         #[cfg(feature = "std")]
         {
-            self.memories.get(&memory_index).cloned().ok_or_else(|| {
-                Error::runtime_execution_error("Memory index not found")
-            })
+            self.memories
+                .get(&memory_index)
+                .cloned()
+                .ok_or_else(|| Error::runtime_execution_error("Memory index not found"))
         }
 
         #[cfg(not(feature = "std"))]
@@ -296,34 +323,50 @@ impl MultiMemoryContext {
                 .find(|(idx, _)| *idx == memory_index)
                 .and_then(|(_, mem)| mem.as_ref())
                 .cloned()
-                .ok_or_else(|| {
-                    Error::runtime_execution_error("Memory index not found")
-                })
+                .ok_or_else(|| Error::runtime_execution_error("Memory index not found"))
         }
     }
 
     /// Execute multi-memory operation
     pub fn execute_operation(&self, operation: MultiMemoryOperation) -> Result<Option<Value>> {
         match operation {
-            MultiMemoryOperation::Load { memory_index, load_op, address } => {
+            MultiMemoryOperation::Load {
+                memory_index,
+                load_op,
+                address,
+            } => {
                 let memory = self.get_memory(memory_index)?;
                 let result = memory.execute_load(&load_op, &address)?;
                 Ok(Some(result))
             },
 
-            MultiMemoryOperation::Store { memory_index, store_op, address, value } => {
+            MultiMemoryOperation::Store {
+                memory_index,
+                store_op,
+                address,
+                value,
+            } => {
                 let memory = self.get_memory(memory_index)?;
                 memory.execute_store(&store_op, &address, &value)?;
                 Ok(None)
             },
 
-            MultiMemoryOperation::Bulk { memory_index, bulk_op, args } => {
+            MultiMemoryOperation::Bulk {
+                memory_index,
+                bulk_op,
+                args,
+            } => {
                 let memory = self.get_memory(memory_index)?;
                 memory.execute_bulk(&bulk_op, &args)?;
                 Ok(None)
             },
 
-            MultiMemoryOperation::CrossCopy { cross_copy_op, dest_addr, src_addr, size } => {
+            MultiMemoryOperation::CrossCopy {
+                cross_copy_op,
+                dest_addr,
+                src_addr,
+                size,
+            } => {
                 let dest_memory = self.get_memory(cross_copy_op.dest_memory)?;
                 let src_memory = self.get_memory(cross_copy_op.src_memory)?;
 
@@ -348,7 +391,10 @@ impl MultiMemoryContext {
                 Ok(Some(result))
             },
 
-            MultiMemoryOperation::Grow { grow_op, delta_pages } => {
+            MultiMemoryOperation::Grow {
+                grow_op,
+                delta_pages,
+            } => {
                 let memory = self.get_memory(grow_op.memory_index)?;
                 let delta = match delta_pages {
                     Value::I32(val) => val,
@@ -367,8 +413,16 @@ impl MultiMemoryContext {
     }
 
     #[cfg(not(feature = "std"))]
-    pub fn get_memory_indices(&self) -> Result<wrt_foundation::bounded::BoundedVec<u32, MAX_MEMORIES, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
-        use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
+    pub fn get_memory_indices(
+        &self,
+    ) -> Result<
+        wrt_foundation::bounded::BoundedVec<
+            u32,
+            MAX_MEMORIES,
+            wrt_foundation::safe_memory::NoStdProvider<1024>,
+        >,
+    > {
+        use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
         let provider = safe_managed_alloc!(1024, CrateId::Runtime)?;
         let mut indices = wrt_foundation::bounded::BoundedVec::new(provider).map_err(|_| {
             Error::runtime_execution_error("Failed to create memory indices vector")
@@ -385,9 +439,10 @@ impl MultiMemoryContext {
 
     /// Get global multi-memory statistics
     pub fn get_global_stats(&self) -> Result<MultiMemoryStats> {
-        let stats = self.global_stats.lock().map_err(|_| {
-            Error::runtime_execution_error("Failed to acquire global stats lock")
-        })?;
+        let stats = self
+            .global_stats
+            .lock()
+            .map_err(|_| Error::runtime_execution_error("Failed to acquire global stats lock"))?;
         Ok(stats.clone())
     }
 }
@@ -425,7 +480,9 @@ impl MultiMemoryProvider for ASILCompliantMultiMemoryProvider {
 
         // Basic bounds checking
         if offset.saturating_add(size) > u32::MAX as u64 {
-            return Err(Error::validation_error("Memory access exceeds 32-bit address space"));
+            return Err(Error::validation_error(
+                "Memory access exceeds 32-bit address space",
+            ));
         }
 
         Ok(())
@@ -436,16 +493,20 @@ impl ASILCompliantMultiMemoryProvider {
     /// Validate multi-memory operation
     fn validate_operation(&self, operation: &MultiMemoryOperation) -> Result<()> {
         match operation {
-            MultiMemoryOperation::Load { memory_index, .. } |
-            MultiMemoryOperation::Store { memory_index, .. } |
-            MultiMemoryOperation::Bulk { memory_index, .. } => {
+            MultiMemoryOperation::Load { memory_index, .. }
+            | MultiMemoryOperation::Store { memory_index, .. }
+            | MultiMemoryOperation::Bulk { memory_index, .. } => {
                 if *memory_index >= MAX_MEMORIES as u32 {
                     return Err(Error::validation_error("Memory index exceeds maximum"));
                 }
             },
             MultiMemoryOperation::CrossCopy { cross_copy_op, .. } => {
-                if cross_copy_op.dest_memory >= MAX_MEMORIES as u32 || cross_copy_op.src_memory >= MAX_MEMORIES as u32 {
-                    return Err(Error::validation_error("Cross-copy memory index exceeds maximum"));
+                if cross_copy_op.dest_memory >= MAX_MEMORIES as u32
+                    || cross_copy_op.src_memory >= MAX_MEMORIES as u32
+                {
+                    return Err(Error::validation_error(
+                        "Cross-copy memory index exceeds maximum",
+                    ));
                 }
             },
             MultiMemoryOperation::Size { size_op } => {
@@ -510,7 +571,8 @@ impl MultiMemoryStats {
         if self.registered_memories == 0 {
             0.0
         } else {
-            (self.load_operations + self.store_operations + self.bulk_operations) as f64 / self.registered_memories as f64
+            (self.load_operations + self.store_operations + self.bulk_operations) as f64
+                / self.registered_memories as f64
         }
     }
 }
@@ -563,7 +625,7 @@ pub fn load_i32_from_memory(
     let result = context.execute_operation(operation)?;
     match result {
         Some(Value::I32(value)) => Ok(value),
-        _ => Err(Error::type_error("Expected i32 result from memory load"))
+        _ => Err(Error::type_error("Expected i32 result from memory load")),
     }
 }
 
@@ -628,6 +690,6 @@ pub fn grow_memory(
                 Ok(old_pages as u32)
             }
         },
-        _ => Err(Error::type_error("Expected i32 result from memory grow"))
+        _ => Err(Error::type_error("Expected i32 result from memory grow")),
     }
 }

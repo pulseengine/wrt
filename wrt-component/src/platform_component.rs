@@ -44,8 +44,8 @@ impl ComponentInstance {
         static NEXT_COMPONENT_ID: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(1);
         static NEXT_INSTANCE_ID: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(1);
         
-        let component_id = ComponentId(NEXT_COMPONENT_ID.fetch_add(1, core::sync::atomic::Ordering::SeqCst);
-        let instance_id = InstanceId(NEXT_INSTANCE_ID.fetch_add(1, core::sync::atomic::Ordering::SeqCst);
+        let component_id = ComponentId(NEXT_COMPONENT_ID.fetch_add(1, core::sync::atomic::Ordering::SeqCst));
+        let instance_id = InstanceId(NEXT_INSTANCE_ID.fetch_add(1, core::sync::atomic::Ordering::SeqCst));
         
         Ok(Self {
             id: component_id,
@@ -180,7 +180,7 @@ impl ComponentMemoryBudget {
         }).map_err(|_| Error::OUT_OF_MEMORY)?;
         
         self.available_memory = self.available_memory.saturating_sub(size);
-        Ok(()
+        Ok(())
     }
     
     pub fn deallocate(&mut self, component_id: ComponentId) -> Result<()> {
@@ -198,7 +198,7 @@ impl ComponentMemoryBudget {
         }
         
         self.available_memory += freed_memory;
-        Ok(()
+        Ok(())
     }
 }
 
@@ -244,7 +244,7 @@ impl PlatformComponentRuntime {
     pub fn analyze_component_requirements(&self, component_bytes: &[u8]) -> Result<ComponentRequirements> {
         // Stub implementation - real implementation would parse the component
         if component_bytes.is_empty() {
-            return Err(Error::invalid_input("Error occurred");
+            return Err(Error::invalid_input("Error occurred"));
         }
         
         // Basic analysis stub
@@ -309,7 +309,7 @@ impl PlatformComponentRuntime {
         // Free the component's memory
         self.memory_budget.deallocate(component_id)?;
         
-        Ok(()
+        Ok(())
     }
     
     pub fn get_component(&self, component_id: ComponentId) -> Option<&ComponentInstance> {
@@ -330,7 +330,7 @@ impl PlatformComponentRuntime {
             self.safety_context.clone(),
         );
         
-        self.execution_context = Some(context.clone();
+        self.execution_context = Some(context.clone());
         Ok(context)
     }
     
@@ -411,7 +411,7 @@ mod tests {
         let component_id = runtime.instantiate_component(component_bytes).unwrap();
         
         assert_eq!(runtime.instance_count(), 1);
-        assert!(runtime.get_component(component_id).is_some();
+        assert!(runtime.get_component(component_id).is_some());
     }
     
     #[test]
@@ -441,6 +441,6 @@ mod tests {
         runtime.terminate_component(component_id).unwrap();
         
         assert_eq!(runtime.instance_count(), 0);
-        assert!(runtime.get_component(component_id).is_none();
+        assert!(runtime.get_component(component_id).is_none());
     }
 }

@@ -20,31 +20,32 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use wrt_error::{Result, Error, ErrorCategory, codes};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::values::Value;
 
 // Import all WebAssembly 3.0 runtime modules
 use crate::{
-    shared_memory_runtime::{SharedMemoryContext, SharedMemoryOperation, ASILCompliantSharedMemoryProvider},
-    multi_memory_runtime::{MultiMemoryContext, MultiMemoryOperation, ASILCompliantMultiMemoryProvider},
     atomic_runtime::{execute_atomic_operation, ASILCompliantAtomicProvider},
+    multi_memory_runtime::{
+        ASILCompliantMultiMemoryProvider, MultiMemoryContext, MultiMemoryOperation,
+    },
+    shared_memory_runtime::{
+        ASILCompliantSharedMemoryProvider, SharedMemoryContext, SharedMemoryOperation,
+    },
 };
 
 use wrt_runtime::{
-    stackless::{StacklessEngine, tail_call::TailCallContext},
-    thread_manager::{ThreadManager, ThreadId},
     atomic_execution_safe::SafeAtomicMemoryContext,
+    stackless::{tail_call::TailCallContext, StacklessEngine},
+    thread_manager::{ThreadId, ThreadManager},
 };
 
-use wrt_instructions::{
-    atomic_ops::AtomicOp,
-    control_ops::ControlOp,
-};
+use wrt_instructions::{atomic_ops::AtomicOp, control_ops::ControlOp};
 
-#[cfg(feature = "std")]
-use std::sync::Arc;
 #[cfg(not(feature = "std"))]
 use alloc::sync::Arc;
+#[cfg(feature = "std")]
+use std::sync::Arc;
 
 #[cfg(not(feature = "std"))]
 use alloc::format;
@@ -75,9 +76,7 @@ pub enum ThreadsOperation {
         args: Vec<Value>,
     },
     /// Thread join operation
-    ThreadJoin {
-        thread_id: ThreadId,
-    },
+    ThreadJoin { thread_id: ThreadId },
 }
 
 /// Tail call operations  
@@ -106,20 +105,13 @@ pub enum ExceptionOperation {
         instructions: Vec<u8>, // Simplified - would be proper instruction sequence
     },
     /// Catch block
-    Catch {
-        tag_index: u32,
-    },
+    Catch { tag_index: u32 },
     /// Catch all block
     CatchAll,
     /// Throw exception
-    Throw {
-        tag_index: u32,
-        args: Vec<Value>,
-    },
+    Throw { tag_index: u32, args: Vec<Value> },
     /// Rethrow exception
-    Rethrow {
-        relative_depth: u32,
-    },
+    Rethrow { relative_depth: u32 },
 }
 
 /// WebAssembly 3.0 runtime context integrating all features
@@ -127,7 +119,7 @@ pub enum ExceptionOperation {
 pub struct WebAssembly3Runtime {
     /// Shared memory context for threads
     shared_memory: SharedMemoryContext,
-    /// Multi-memory context 
+    /// Multi-memory context
     multi_memory: MultiMemoryContext,
     /// Thread manager for thread operations
     thread_manager: ThreadManager,
@@ -185,11 +177,14 @@ impl WebAssembly3Runtime {
                 // For now, return a placeholder
                 Ok(Some(Value::I32(0)))
             },
-            ThreadsOperation::ThreadSpawn { function_index, args } => {
+            ThreadsOperation::ThreadSpawn {
+                function_index,
+                args,
+            } => {
                 // Create new thread execution context
                 let thread_config = wrt_runtime::thread_manager::ThreadConfig::default();
                 let thread_id = self.thread_manager.create_thread(thread_config)?;
-                
+
                 // In real implementation, would spawn thread and execute function
                 self.stats.threads_spawned += 1;
                 Ok(Some(Value::I32(thread_id.as_u32() as i32)))
@@ -204,21 +199,35 @@ impl WebAssembly3Runtime {
     }
 
     /// Execute multi-memory operation
-    fn execute_multi_memory_operation(&mut self, operation: MultiMemoryOperation) -> Result<Option<Value>> {
+    fn execute_multi_memory_operation(
+        &mut self,
+        operation: MultiMemoryOperation,
+    ) -> Result<Option<Value>> {
         let provider = ASILCompliantMultiMemoryProvider;
         provider.execute_with_provider(&mut self.multi_memory, operation)
     }
 
     /// Execute tail call operation
-    fn execute_tail_call_operation(&mut self, operation: TailCallOperation) -> Result<Option<Value>> {
+    fn execute_tail_call_operation(
+        &mut self,
+        operation: TailCallOperation,
+    ) -> Result<Option<Value>> {
         match operation {
-            TailCallOperation::ReturnCall { function_index, args } => {
+            TailCallOperation::ReturnCall {
+                function_index,
+                args,
+            } => {
                 // In real implementation, would perform tail call optimization
                 // For now, simulate successful tail call
                 self.stats.direct_tail_calls += 1;
                 Ok(None) // Tail calls don't return values directly
             },
-            TailCallOperation::ReturnCallIndirect { table_index, type_index, function_reference, args } => {
+            TailCallOperation::ReturnCallIndirect {
+                table_index,
+                type_index,
+                function_reference,
+                args,
+            } => {
                 // In real implementation, would perform indirect tail call via table
                 self.stats.indirect_tail_calls += 1;
                 Ok(None)
@@ -227,9 +236,15 @@ impl WebAssembly3Runtime {
     }
 
     /// Execute exception handling operation (partial implementation)
-    fn execute_exception_operation(&mut self, operation: ExceptionOperation) -> Result<Option<Value>> {
+    fn execute_exception_operation(
+        &mut self,
+        operation: ExceptionOperation,
+    ) -> Result<Option<Value>> {
         match operation {
-            ExceptionOperation::Try { block_type, instructions } => {
+            ExceptionOperation::Try {
+                block_type,
+                instructions,
+            } => {
                 // Basic try block implementation
                 // In real implementation, would set up exception handling context
                 self.stats.try_blocks += 1;
@@ -249,12 +264,16 @@ impl WebAssembly3Runtime {
                 // Basic throw implementation
                 self.stats.throw_operations += 1;
                 // For now, return error to simulate exception
-                Err(Error::runtime_execution_error("Exception thrown with tag {}"))
+                Err(Error::runtime_execution_error(
+                    "Exception thrown with tag {}",
+                ))
             },
             ExceptionOperation::Rethrow { relative_depth } => {
                 // Basic rethrow implementation
                 self.stats.rethrow_operations += 1;
-                Err(Error::runtime_execution_error("Exception rethrown at depth {}"))
+                Err(Error::runtime_execution_error(
+                    "Exception rethrown at depth {}",
+                ))
             },
         }
     }
@@ -304,19 +323,19 @@ pub struct WebAssembly3Stats {
     pub tail_call_operations: u64,
     /// Exception handling operations
     pub exception_operations: u64,
-    
+
     // Detailed thread statistics
     /// Number of threads spawned
     pub threads_spawned: u64,
     /// Number of threads joined
     pub threads_joined: u64,
-    
+
     // Detailed tail call statistics
     /// Direct tail calls executed
     pub direct_tail_calls: u64,
     /// Indirect tail calls executed
     pub indirect_tail_calls: u64,
-    
+
     // Detailed exception handling statistics
     /// Try blocks entered
     pub try_blocks: u64,
@@ -355,8 +374,10 @@ impl WebAssembly3Stats {
         if self.total_operations == 0 {
             0.0
         } else {
-            let feature_ops = self.threads_operations + self.multi_memory_operations + 
-                             self.tail_call_operations + self.exception_operations;
+            let feature_ops = self.threads_operations
+                + self.multi_memory_operations
+                + self.tail_call_operations
+                + self.exception_operations;
             feature_ops as f64 / self.total_operations as f64
         }
     }
@@ -409,17 +430,22 @@ pub fn webassembly3_atomic_cas(
     replacement: i32,
 ) -> Result<i32> {
     // This would integrate with the atomic runtime
-    let atomic_op = AtomicOp::Cmpxchg(wrt_instructions::atomic_ops::AtomicCmpxchgInstr::I32AtomicRmwCmpxchg {
-        memarg: wrt_foundation::MemArg { offset: address, align: 2 }
-    });
-    
+    let atomic_op = AtomicOp::Cmpxchg(
+        wrt_instructions::atomic_ops::AtomicCmpxchgInstr::I32AtomicRmwCmpxchg {
+            memarg: wrt_foundation::MemArg {
+                offset: address,
+                align: 2,
+            },
+        },
+    );
+
     let threads_op = ThreadsOperation::Atomic(atomic_op);
     let feature = WebAssembly3Feature::Threads(threads_op);
-    
+
     let result = runtime.execute_feature(feature)?;
     match result {
         Some(Value::I32(old_value)) => Ok(old_value),
-        _ => Err(Error::type_error("Expected i32 result from atomic CAS"))
+        _ => Err(Error::type_error("Expected i32 result from atomic CAS")),
     }
 }
 
@@ -429,13 +455,18 @@ pub fn webassembly3_spawn_thread(
     function_index: u32,
     args: Vec<Value>,
 ) -> Result<ThreadId> {
-    let threads_op = ThreadsOperation::ThreadSpawn { function_index, args };
+    let threads_op = ThreadsOperation::ThreadSpawn {
+        function_index,
+        args,
+    };
     let feature = WebAssembly3Feature::Threads(threads_op);
-    
+
     let result = runtime.execute_feature(feature)?;
     match result {
         Some(Value::I32(thread_id_val)) => Ok(ThreadId::from_u32(thread_id_val as u32)),
-        _ => Err(Error::type_error("Expected i32 thread ID from spawn operation"))
+        _ => Err(Error::type_error(
+            "Expected i32 thread ID from spawn operation",
+        )),
     }
 }
 
@@ -445,9 +476,12 @@ pub fn webassembly3_tail_call(
     function_index: u32,
     args: Vec<Value>,
 ) -> Result<()> {
-    let tail_call_op = TailCallOperation::ReturnCall { function_index, args };
+    let tail_call_op = TailCallOperation::ReturnCall {
+        function_index,
+        args,
+    };
     let feature = WebAssembly3Feature::TailCalls(tail_call_op);
-    
+
     runtime.execute_feature(feature)?;
     Ok(())
 }
@@ -459,7 +493,7 @@ pub fn webassembly3_load_from_memory(
     address: u32,
 ) -> Result<i32> {
     use wrt_instructions::multi_memory::MultiMemoryLoad;
-    
+
     let load_op = MultiMemoryLoad::i32_load(memory_index, 0, 2);
     let multi_memory_op = MultiMemoryOperation::Load {
         memory_index,
@@ -467,11 +501,11 @@ pub fn webassembly3_load_from_memory(
         address: Value::I32(address as i32),
     };
     let feature = WebAssembly3Feature::MultiMemory(multi_memory_op);
-    
+
     let result = runtime.execute_feature(feature)?;
     match result {
         Some(Value::I32(value)) => Ok(value),
-        _ => Err(Error::type_error("Expected i32 result from memory load"))
+        _ => Err(Error::type_error("Expected i32 result from memory load")),
     }
 }
 
@@ -485,7 +519,7 @@ pub fn webassembly3_try_block(
         instructions,
     };
     let feature = WebAssembly3Feature::Exceptions(exception_op);
-    
+
     runtime.execute_feature(feature)?;
     Ok(())
 }

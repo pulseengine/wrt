@@ -13,7 +13,7 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use wrt_error::{Result, Error, ErrorCategory, codes};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::values::Value;
 use wrt_instructions::simd_ops::SimdOp;
 
@@ -52,13 +52,13 @@ pub fn execute_simd_operation(
 ) -> Result<Value> {
     // Validate input count
     validate_input_count(&op, inputs)?;
-    
+
     // Execute operation using provider-specific implementation
     let result = provider.execute_with_provider(&op, inputs)?;
-    
+
     // Validate result
     validate_simd_result(&op, &result)?;
-    
+
     Ok(result)
 }
 
@@ -67,11 +67,16 @@ pub fn execute_simd_operation(
 fn validate_input_count(op: &SimdOp, inputs: &[Value]) -> Result<()> {
     let expected = op.input_count();
     let actual = inputs.len();
-    
+
     if actual != expected {
-        return Err(Error::runtime_execution_error("SIMD operation {:?} expects {} inputs, got {}"));
+        return Err(Error::runtime_execution_error(
+            "SIMD operation {:?} expects {} inputs, got {}",
+            op,
+            expected,
+            actual,
+        ));
     }
-    
+
     Ok(())
 }
 
@@ -79,13 +84,13 @@ fn validate_input_count(op: &SimdOp, inputs: &[Value]) -> Result<()> {
 #[inline]
 fn validate_simd_result(op: &SimdOp, result: &Value) -> Result<()> {
     let expected_outputs = op.output_count();
-    
+
     // Store operations should not produce output
     if expected_outputs == 0 {
         // For store operations, we should get a unit value or validate memory state
         return Ok(());
     }
-    
+
     // Verify result type for operations that produce v128
     match result {
         Value::V128(_) => Ok(()),
@@ -96,7 +101,10 @@ fn validate_simd_result(op: &SimdOp, result: &Value) -> Result<()> {
         Value::I64(_) => Ok(()),
         Value::F32(_) => Ok(()),
         Value::F64(_) => Ok(()),
-        _ => Err(Error::runtime_execution_error("Invalid result type for SIMD operation {:?}"))
+        _ => Err(Error::runtime_execution_error(
+            "Invalid result type for SIMD operation {:?}",
+            result,
+        )),
     }
 }
 
@@ -106,22 +114,58 @@ pub struct AssilCompliantSimdProvider;
 impl SimdProvider for AssilCompliantSimdProvider {
     fn execute_with_provider(&self, op: &SimdOp, inputs: &[Value]) -> Result<Value> {
         use SimdOp::*;
-        
+
         match op {
             // Load Operations
-            V128Load { offset: _, align: _ } => execute_v128_load(inputs),
-            V128Load8x8S { offset: _, align: _ } => execute_v128_load_8x8_s(inputs),
-            V128Load8x8U { offset: _, align: _ } => execute_v128_load_8x8_u(inputs),
-            V128Load16x4S { offset: _, align: _ } => execute_v128_load_16x4_s(inputs),
-            V128Load16x4U { offset: _, align: _ } => execute_v128_load_16x4_u(inputs),
-            V128Load32x2S { offset: _, align: _ } => execute_v128_load_32x2_s(inputs),
-            V128Load32x2U { offset: _, align: _ } => execute_v128_load_32x2_u(inputs),
-            V128Load8Splat { offset: _, align: _ } => execute_v128_load_8_splat(inputs),
-            V128Load16Splat { offset: _, align: _ } => execute_v128_load_16_splat(inputs),
-            V128Load32Splat { offset: _, align: _ } => execute_v128_load_32_splat(inputs),
-            V128Load64Splat { offset: _, align: _ } => execute_v128_load_64_splat(inputs),
-            V128Store { offset: _, align: _ } => execute_v128_store(inputs),
-            
+            V128Load {
+                offset: _,
+                align: _,
+            } => execute_v128_load(inputs),
+            V128Load8x8S {
+                offset: _,
+                align: _,
+            } => execute_v128_load_8x8_s(inputs),
+            V128Load8x8U {
+                offset: _,
+                align: _,
+            } => execute_v128_load_8x8_u(inputs),
+            V128Load16x4S {
+                offset: _,
+                align: _,
+            } => execute_v128_load_16x4_s(inputs),
+            V128Load16x4U {
+                offset: _,
+                align: _,
+            } => execute_v128_load_16x4_u(inputs),
+            V128Load32x2S {
+                offset: _,
+                align: _,
+            } => execute_v128_load_32x2_s(inputs),
+            V128Load32x2U {
+                offset: _,
+                align: _,
+            } => execute_v128_load_32x2_u(inputs),
+            V128Load8Splat {
+                offset: _,
+                align: _,
+            } => execute_v128_load_8_splat(inputs),
+            V128Load16Splat {
+                offset: _,
+                align: _,
+            } => execute_v128_load_16_splat(inputs),
+            V128Load32Splat {
+                offset: _,
+                align: _,
+            } => execute_v128_load_32_splat(inputs),
+            V128Load64Splat {
+                offset: _,
+                align: _,
+            } => execute_v128_load_64_splat(inputs),
+            V128Store {
+                offset: _,
+                align: _,
+            } => execute_v128_store(inputs),
+
             // Splat Operations
             I8x16Splat => execute_i8x16_splat(inputs),
             I16x8Splat => execute_i16x8_splat(inputs),
@@ -129,7 +173,7 @@ impl SimdProvider for AssilCompliantSimdProvider {
             I64x2Splat => execute_i64x2_splat(inputs),
             F32x4Splat => execute_f32x4_splat(inputs),
             F64x2Splat => execute_f64x2_splat(inputs),
-            
+
             // Arithmetic Operations - i8x16
             I8x16Add => execute_i8x16_add(inputs),
             I8x16Sub => execute_i8x16_sub(inputs),
@@ -140,7 +184,7 @@ impl SimdProvider for AssilCompliantSimdProvider {
             I8x16MaxS => execute_i8x16_max_s(inputs),
             I8x16MaxU => execute_i8x16_max_u(inputs),
             I8x16AvgrU => execute_i8x16_avgr_u(inputs),
-            
+
             // Arithmetic Operations - i16x8
             I16x8Add => execute_i16x8_add(inputs),
             I16x8Sub => execute_i16x8_sub(inputs),
@@ -152,7 +196,7 @@ impl SimdProvider for AssilCompliantSimdProvider {
             I16x8MaxS => execute_i16x8_max_s(inputs),
             I16x8MaxU => execute_i16x8_max_u(inputs),
             I16x8AvgrU => execute_i16x8_avgr_u(inputs),
-            
+
             // Arithmetic Operations - i32x4
             I32x4Add => execute_i32x4_add(inputs),
             I32x4Sub => execute_i32x4_sub(inputs),
@@ -163,14 +207,14 @@ impl SimdProvider for AssilCompliantSimdProvider {
             I32x4MinU => execute_i32x4_min_u(inputs),
             I32x4MaxS => execute_i32x4_max_s(inputs),
             I32x4MaxU => execute_i32x4_max_u(inputs),
-            
+
             // Arithmetic Operations - i64x2
             I64x2Add => execute_i64x2_add(inputs),
             I64x2Sub => execute_i64x2_sub(inputs),
             I64x2Mul => execute_i64x2_mul(inputs),
             I64x2Neg => execute_i64x2_neg(inputs),
             I64x2Abs => execute_i64x2_abs(inputs),
-            
+
             // Arithmetic Operations - f32x4
             F32x4Add => execute_f32x4_add(inputs),
             F32x4Sub => execute_f32x4_sub(inputs),
@@ -183,7 +227,7 @@ impl SimdProvider for AssilCompliantSimdProvider {
             F32x4Max => execute_f32x4_max(inputs),
             F32x4Pmin => execute_f32x4_pmin(inputs),
             F32x4Pmax => execute_f32x4_pmax(inputs),
-            
+
             // Arithmetic Operations - f64x2
             F64x2Add => execute_f64x2_add(inputs),
             F64x2Sub => execute_f64x2_sub(inputs),
@@ -196,7 +240,7 @@ impl SimdProvider for AssilCompliantSimdProvider {
             F64x2Max => execute_f64x2_max(inputs),
             F64x2Pmin => execute_f64x2_pmin(inputs),
             F64x2Pmax => execute_f64x2_pmax(inputs),
-            
+
             // Bitwise Operations
             V128Not => execute_v128_not(inputs),
             V128And => execute_v128_and(inputs),
@@ -204,14 +248,14 @@ impl SimdProvider for AssilCompliantSimdProvider {
             V128Xor => execute_v128_xor(inputs),
             V128AndNot => execute_v128_andnot(inputs),
             V128Bitselect => execute_v128_bitselect(inputs),
-            
+
             // Test Operations
             V128AnyTrue => execute_v128_any_true(inputs),
             I8x16AllTrue => execute_i8x16_all_true(inputs),
             I16x8AllTrue => execute_i16x8_all_true(inputs),
             I32x4AllTrue => execute_i32x4_all_true(inputs),
             I64x2AllTrue => execute_i64x2_all_true(inputs),
-            
+
             // Comparison Operations - i8x16
             I8x16Eq => execute_i8x16_eq(inputs),
             I8x16Ne => execute_i8x16_ne(inputs),
@@ -223,7 +267,7 @@ impl SimdProvider for AssilCompliantSimdProvider {
             I8x16LeU => execute_i8x16_le_u(inputs),
             I8x16GeS => execute_i8x16_ge_s(inputs),
             I8x16GeU => execute_i8x16_ge_u(inputs),
-            
+
             // Comparison Operations - i16x8
             I16x8Eq => execute_i16x8_eq(inputs),
             I16x8Ne => execute_i16x8_ne(inputs),
@@ -235,7 +279,7 @@ impl SimdProvider for AssilCompliantSimdProvider {
             I16x8LeU => execute_i16x8_le_u(inputs),
             I16x8GeS => execute_i16x8_ge_s(inputs),
             I16x8GeU => execute_i16x8_ge_u(inputs),
-            
+
             // Comparison Operations - i32x4
             I32x4Eq => execute_i32x4_eq(inputs),
             I32x4Ne => execute_i32x4_ne(inputs),
@@ -247,7 +291,7 @@ impl SimdProvider for AssilCompliantSimdProvider {
             I32x4LeU => execute_i32x4_le_u(inputs),
             I32x4GeS => execute_i32x4_ge_s(inputs),
             I32x4GeU => execute_i32x4_ge_u(inputs),
-            
+
             // Comparison Operations - i64x2
             I64x2Eq => execute_i64x2_eq(inputs),
             I64x2Ne => execute_i64x2_ne(inputs),
@@ -255,7 +299,7 @@ impl SimdProvider for AssilCompliantSimdProvider {
             I64x2GtS => execute_i64x2_gt_s(inputs),
             I64x2LeS => execute_i64x2_le_s(inputs),
             I64x2GeS => execute_i64x2_ge_s(inputs),
-            
+
             // Comparison Operations - f32x4
             F32x4Eq => execute_f32x4_eq(inputs),
             F32x4Ne => execute_f32x4_ne(inputs),
@@ -263,7 +307,7 @@ impl SimdProvider for AssilCompliantSimdProvider {
             F32x4Gt => execute_f32x4_gt(inputs),
             F32x4Le => execute_f32x4_le(inputs),
             F32x4Ge => execute_f32x4_ge(inputs),
-            
+
             // Comparison Operations - f64x2
             F64x2Eq => execute_f64x2_eq(inputs),
             F64x2Ne => execute_f64x2_ne(inputs),
@@ -271,7 +315,7 @@ impl SimdProvider for AssilCompliantSimdProvider {
             F64x2Gt => execute_f64x2_gt(inputs),
             F64x2Le => execute_f64x2_le(inputs),
             F64x2Ge => execute_f64x2_ge(inputs),
-            
+
             // Shift Operations
             I8x16Shl => execute_i8x16_shl(inputs),
             I8x16ShrS => execute_i8x16_shr_s(inputs),
@@ -285,7 +329,7 @@ impl SimdProvider for AssilCompliantSimdProvider {
             I64x2Shl => execute_i64x2_shl(inputs),
             I64x2ShrS => execute_i64x2_shr_s(inputs),
             I64x2ShrU => execute_i64x2_shr_u(inputs),
-            
+
             // Lane Access Operations
             I8x16ExtractLaneS { lane } => execute_i8x16_extract_lane_s(inputs, *lane),
             I8x16ExtractLaneU { lane } => execute_i8x16_extract_lane_u(inputs, *lane),
@@ -301,7 +345,7 @@ impl SimdProvider for AssilCompliantSimdProvider {
             F32x4ReplaceLane { lane } => execute_f32x4_replace_lane(inputs, *lane),
             F64x2ExtractLane { lane } => execute_f64x2_extract_lane(inputs, *lane),
             F64x2ReplaceLane { lane } => execute_f64x2_replace_lane(inputs, *lane),
-            
+
             // Conversion Operations
             I32x4TruncSatF32x4S => execute_i32x4_trunc_sat_f32x4_s(inputs),
             I32x4TruncSatF32x4U => execute_i32x4_trunc_sat_f32x4_u(inputs),
@@ -313,13 +357,13 @@ impl SimdProvider for AssilCompliantSimdProvider {
             F64x2ConvertLowI32x4U => execute_f64x2_convert_low_i32x4_u(inputs),
             F32x4DemoteF64x2Zero => execute_f32x4_demote_f64x2_zero(inputs),
             F64x2PromoteLowF32x4 => execute_f64x2_promote_low_f32x4(inputs),
-            
+
             // Narrow Operations
             I8x16NarrowI16x8S => execute_i8x16_narrow_i16x8_s(inputs),
             I8x16NarrowI16x8U => execute_i8x16_narrow_i16x8_u(inputs),
             I16x8NarrowI32x4S => execute_i16x8_narrow_i32x4_s(inputs),
             I16x8NarrowI32x4U => execute_i16x8_narrow_i32x4_u(inputs),
-            
+
             // Extend Operations
             I16x8ExtendLowI8x16S => execute_i16x8_extend_low_i8x16_s(inputs),
             I16x8ExtendHighI8x16S => execute_i16x8_extend_high_i8x16_s(inputs),
@@ -333,11 +377,11 @@ impl SimdProvider for AssilCompliantSimdProvider {
             I64x2ExtendHighI32x4S => execute_i64x2_extend_high_i32x4_s(inputs),
             I64x2ExtendLowI32x4U => execute_i64x2_extend_low_i32x4_u(inputs),
             I64x2ExtendHighI32x4U => execute_i64x2_extend_high_i32x4_u(inputs),
-            
+
             // Shuffle Operations
             I8x16Swizzle => execute_i8x16_swizzle(inputs),
             I8x16Shuffle { lanes } => execute_i8x16_shuffle(inputs, *lanes),
-            
+
             // Saturating Arithmetic
             I8x16AddSatS => execute_i8x16_add_sat_s(inputs),
             I8x16AddSatU => execute_i8x16_add_sat_u(inputs),
@@ -347,33 +391,53 @@ impl SimdProvider for AssilCompliantSimdProvider {
             I16x8AddSatU => execute_i16x8_add_sat_u(inputs),
             I16x8SubSatS => execute_i16x8_sub_sat_s(inputs),
             I16x8SubSatU => execute_i16x8_sub_sat_u(inputs),
-            
+
             // Dot Product
             I32x4DotI16x8S => simd_additional_ops::execute_i32x4_dot_i16x8_s(inputs),
-            
+
             // Extended Multiplication
             I16x8ExtMulLowI8x16S => simd_additional_ops::execute_i16x8_ext_mul_low_i8x16_s(inputs),
-            I16x8ExtMulHighI8x16S => simd_additional_ops::execute_i16x8_ext_mul_high_i8x16_s(inputs),
+            I16x8ExtMulHighI8x16S => {
+                simd_additional_ops::execute_i16x8_ext_mul_high_i8x16_s(inputs)
+            },
             I16x8ExtMulLowI8x16U => simd_additional_ops::execute_i16x8_ext_mul_low_i8x16_u(inputs),
-            I16x8ExtMulHighI8x16U => simd_additional_ops::execute_i16x8_ext_mul_high_i8x16_u(inputs),
+            I16x8ExtMulHighI8x16U => {
+                simd_additional_ops::execute_i16x8_ext_mul_high_i8x16_u(inputs)
+            },
             I32x4ExtMulLowI16x8S => simd_additional_ops::execute_i32x4_ext_mul_low_i16x8_s(inputs),
-            I32x4ExtMulHighI16x8S => simd_additional_ops::execute_i32x4_ext_mul_high_i16x8_s(inputs),
+            I32x4ExtMulHighI16x8S => {
+                simd_additional_ops::execute_i32x4_ext_mul_high_i16x8_s(inputs)
+            },
             I32x4ExtMulLowI16x8U => simd_additional_ops::execute_i32x4_ext_mul_low_i16x8_u(inputs),
-            I32x4ExtMulHighI16x8U => simd_additional_ops::execute_i32x4_ext_mul_high_i16x8_u(inputs),
+            I32x4ExtMulHighI16x8U => {
+                simd_additional_ops::execute_i32x4_ext_mul_high_i16x8_u(inputs)
+            },
             I64x2ExtMulLowI32x4S => simd_additional_ops::execute_i64x2_ext_mul_low_i32x4_s(inputs),
-            I64x2ExtMulHighI32x4S => simd_additional_ops::execute_i64x2_ext_mul_high_i32x4_s(inputs),
+            I64x2ExtMulHighI32x4S => {
+                simd_additional_ops::execute_i64x2_ext_mul_high_i32x4_s(inputs)
+            },
             I64x2ExtMulLowI32x4U => simd_additional_ops::execute_i64x2_ext_mul_low_i32x4_u(inputs),
-            I64x2ExtMulHighI32x4U => simd_additional_ops::execute_i64x2_ext_mul_high_i32x4_u(inputs),
-            
+            I64x2ExtMulHighI32x4U => {
+                simd_additional_ops::execute_i64x2_ext_mul_high_i32x4_u(inputs)
+            },
+
             // Pairwise Addition
-            I16x8ExtAddPairwiseI8x16S => simd_additional_ops::execute_i16x8_ext_add_pairwise_i8x16_s(inputs),
-            I16x8ExtAddPairwiseI8x16U => simd_additional_ops::execute_i16x8_ext_add_pairwise_i8x16_u(inputs),
-            I32x4ExtAddPairwiseI16x8S => simd_additional_ops::execute_i32x4_ext_add_pairwise_i16x8_s(inputs),
-            I32x4ExtAddPairwiseI16x8U => simd_additional_ops::execute_i32x4_ext_add_pairwise_i16x8_u(inputs),
-            
+            I16x8ExtAddPairwiseI8x16S => {
+                simd_additional_ops::execute_i16x8_ext_add_pairwise_i8x16_s(inputs)
+            },
+            I16x8ExtAddPairwiseI8x16U => {
+                simd_additional_ops::execute_i16x8_ext_add_pairwise_i8x16_u(inputs)
+            },
+            I32x4ExtAddPairwiseI16x8S => {
+                simd_additional_ops::execute_i32x4_ext_add_pairwise_i16x8_s(inputs)
+            },
+            I32x4ExtAddPairwiseI16x8U => {
+                simd_additional_ops::execute_i32x4_ext_add_pairwise_i16x8_u(inputs)
+            },
+
             // Q15 Multiplication
             I16x8Q15MulrSatS => simd_additional_ops::execute_i16x8_q15_mulr_sat_s(inputs),
-            
+
             // Relaxed SIMD Operations (placeholders for now)
             F32x4RelaxedMin => execute_f32x4_min(inputs), // Use regular min for now
             F32x4RelaxedMax => execute_f32x4_max(inputs), // Use regular max for now
@@ -384,7 +448,7 @@ impl SimdProvider for AssilCompliantSimdProvider {
             I32x4RelaxedTruncF32x4U => execute_i32x4_trunc_sat_f32x4_u(inputs), // Use saturating truncation for now
             I32x4RelaxedTruncF64x2SZero => execute_i32x4_trunc_sat_f64x2_s_zero(inputs), // Use saturating truncation for now
             I32x4RelaxedTruncF64x2UZero => execute_i32x4_trunc_sat_f64x2_u_zero(inputs), // Use saturating truncation for now
-            
+
             // Remaining relaxed operations as placeholders
             F32x4RelaxedMadd => execute_f32x4_add(inputs), // Placeholder
             F32x4RelaxedNmadd => execute_f32x4_sub(inputs), // Placeholder
@@ -410,8 +474,10 @@ impl SimdProvider for AssilCompliantSimdProvider {
 fn extract_v128(value: &Value) -> Result<[u8; 16]> {
     match value {
         Value::V128(bytes) => Ok(*bytes),
-        _ => Err(Error::runtime_execution_error("Expected v128 value, got {:?}")
-        ))
+        _ => Err(Error::runtime_execution_error(
+            "Expected v128 value, got {:?}",
+            value,
+        )),
     }
 }
 
@@ -420,8 +486,10 @@ fn extract_v128(value: &Value) -> Result<[u8; 16]> {
 fn extract_i32(value: &Value) -> Result<i32> {
     match value {
         Value::I32(val) => Ok(*val),
-        _ => Err(Error::runtime_execution_error("Expected i32 value, got {:?}")
-        ))
+        _ => Err(Error::runtime_execution_error(
+            "Expected i32 value, got {:?}",
+            value,
+        )),
     }
 }
 
@@ -430,8 +498,10 @@ fn extract_i32(value: &Value) -> Result<i32> {
 fn extract_i64(value: &Value) -> Result<i64> {
     match value {
         Value::I64(val) => Ok(*val),
-        _ => Err(Error::runtime_execution_error("Expected i64 value, got {:?}")
-        ))
+        _ => Err(Error::runtime_execution_error(
+            "Expected i64 value, got {:?}",
+            value,
+        )),
     }
 }
 
@@ -440,8 +510,10 @@ fn extract_i64(value: &Value) -> Result<i64> {
 fn extract_f32(value: &Value) -> Result<f32> {
     match value {
         Value::F32(val) => Ok(*val),
-        _ => Err(Error::runtime_execution_error("Expected f32 value, got {:?}")
-        ))
+        _ => Err(Error::runtime_execution_error(
+            "Expected f32 value, got {:?}",
+            value,
+        )),
     }
 }
 
@@ -450,8 +522,10 @@ fn extract_f32(value: &Value) -> Result<f32> {
 fn extract_f64(value: &Value) -> Result<f64> {
     match value {
         Value::F64(val) => Ok(*val),
-        _ => Err(Error::runtime_execution_error("Expected f64 value, got {:?}")
-        ))
+        _ => Err(Error::runtime_execution_error(
+            "Expected f64 value, got {:?}",
+            value,
+        )),
     }
 }
 
@@ -588,11 +662,11 @@ fn execute_i8x16_add(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = a[i].wrapping_add(b[i]);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -600,39 +674,39 @@ fn execute_i8x16_sub(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = a[i].wrapping_sub(b[i]);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_i8x16_neg(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = (a[i] as i8).wrapping_neg() as u8;
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_i8x16_abs(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         let signed = a[i] as i8;
-        result[i] = if signed == i8::MIN { 
+        result[i] = if signed == i8::MIN {
             // Handle overflow case for ASIL compliance
             0x80u8
         } else {
             signed.abs() as u8
         };
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -640,13 +714,13 @@ fn execute_i8x16_min_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         let a_signed = a[i] as i8;
         let b_signed = b[i] as i8;
         result[i] = core::cmp::min(a_signed, b_signed) as u8;
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -654,11 +728,11 @@ fn execute_i8x16_min_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = core::cmp::min(a[i], b[i]);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -666,13 +740,13 @@ fn execute_i8x16_max_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         let a_signed = a[i] as i8;
         let b_signed = b[i] as i8;
         result[i] = core::cmp::max(a_signed, b_signed) as u8;
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -680,11 +754,11 @@ fn execute_i8x16_max_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = core::cmp::max(a[i], b[i]);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -692,13 +766,13 @@ fn execute_i8x16_avgr_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         // Rounding average: (a + b + 1) / 2
         let sum = a[i] as u16 + b[i] as u16 + 1;
         result[i] = (sum / 2) as u8;
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -710,16 +784,16 @@ fn execute_i16x8_add(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]);
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]);
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]);
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]);
         let res_val = a_val.wrapping_add(b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -727,16 +801,16 @@ fn execute_i16x8_sub(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]);
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]);
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]);
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]);
         let res_val = a_val.wrapping_sub(b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -744,40 +818,40 @@ fn execute_i16x8_mul(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]);
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]);
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]);
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]);
         let res_val = a_val.wrapping_mul(b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_i16x8_neg(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]) as i16;
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
         let res_val = a_val.wrapping_neg() as u16;
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_i16x8_abs(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]) as i16;
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
         let res_val = if a_val == i16::MIN {
             // Handle overflow case for ASIL compliance
             0x8000u16
@@ -785,10 +859,10 @@ fn execute_i16x8_abs(inputs: &[Value]) -> Result<Value> {
             a_val.abs() as u16
         };
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -796,16 +870,16 @@ fn execute_i16x8_min_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]) as i16;
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]) as i16;
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]) as i16;
         let res_val = core::cmp::min(a_val, b_val) as u16;
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -813,16 +887,16 @@ fn execute_i16x8_min_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]);
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]);
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]);
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]);
         let res_val = core::cmp::min(a_val, b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -830,16 +904,16 @@ fn execute_i16x8_max_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]) as i16;
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]) as i16;
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]) as i16;
         let res_val = core::cmp::max(a_val, b_val) as u16;
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -847,16 +921,16 @@ fn execute_i16x8_max_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]);
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]);
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]);
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]);
         let res_val = core::cmp::max(a_val, b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -864,18 +938,18 @@ fn execute_i16x8_avgr_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]);
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]);
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]);
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]);
         // Rounding average: (a + b + 1) / 2
         let sum = a_val as u32 + b_val as u32 + 1;
         let res_val = (sum / 2) as u16;
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -887,15 +961,15 @@ fn execute_i32x4_add(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = u32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
-        let b_val = u32::from_le_bytes([b[i*4], b[i*4+1], b[i*4+2], b[i*4+3]]);
+        let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
+        let b_val = u32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]);
         let res_val = a_val.wrapping_add(b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -903,15 +977,15 @@ fn execute_i32x4_sub(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = u32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
-        let b_val = u32::from_le_bytes([b[i*4], b[i*4+1], b[i*4+2], b[i*4+3]]);
+        let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
+        let b_val = u32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]);
         let res_val = a_val.wrapping_sub(b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -919,38 +993,38 @@ fn execute_i32x4_mul(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = u32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
-        let b_val = u32::from_le_bytes([b[i*4], b[i*4+1], b[i*4+2], b[i*4+3]]);
+        let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
+        let b_val = u32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]);
         let res_val = a_val.wrapping_mul(b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_i32x4_neg(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = u32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]) as i32;
+        let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]) as i32;
         let res_val = a_val.wrapping_neg() as u32;
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_i32x4_abs(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = u32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]) as i32;
+        let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]) as i32;
         let res_val = if a_val == i32::MIN {
             // Handle overflow case for ASIL compliance
             0x80000000u32
@@ -958,9 +1032,9 @@ fn execute_i32x4_abs(inputs: &[Value]) -> Result<Value> {
             a_val.abs() as u32
         };
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -968,15 +1042,15 @@ fn execute_i32x4_min_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = u32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]) as i32;
-        let b_val = u32::from_le_bytes([b[i*4], b[i*4+1], b[i*4+2], b[i*4+3]]) as i32;
+        let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]) as i32;
+        let b_val = u32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]) as i32;
         let res_val = core::cmp::min(a_val, b_val) as u32;
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -984,15 +1058,15 @@ fn execute_i32x4_min_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = u32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
-        let b_val = u32::from_le_bytes([b[i*4], b[i*4+1], b[i*4+2], b[i*4+3]]);
+        let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
+        let b_val = u32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]);
         let res_val = core::cmp::min(a_val, b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1000,15 +1074,15 @@ fn execute_i32x4_max_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = u32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]) as i32;
-        let b_val = u32::from_le_bytes([b[i*4], b[i*4+1], b[i*4+2], b[i*4+3]]) as i32;
+        let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]) as i32;
+        let b_val = u32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]) as i32;
         let res_val = core::cmp::max(a_val, b_val) as u32;
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1016,15 +1090,15 @@ fn execute_i32x4_max_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = u32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
-        let b_val = u32::from_le_bytes([b[i*4], b[i*4+1], b[i*4+2], b[i*4+3]]);
+        let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
+        let b_val = u32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]);
         let res_val = core::cmp::max(a_val, b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1036,19 +1110,23 @@ fn execute_i64x2_add(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let b_bytes = &b[i*8..i*8+8];
-        let a_val = u64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]);
-        let b_val = u64::from_le_bytes([b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], 
-                                        b_bytes[4], b_bytes[5], b_bytes[6], b_bytes[7]]);
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let b_bytes = &b[i * 8..i * 8 + 8];
+        let a_val = u64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]);
+        let b_val = u64::from_le_bytes([
+            b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], b_bytes[4], b_bytes[5], b_bytes[6],
+            b_bytes[7],
+        ]);
         let res_val = a_val.wrapping_add(b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1056,19 +1134,23 @@ fn execute_i64x2_sub(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let b_bytes = &b[i*8..i*8+8];
-        let a_val = u64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]);
-        let b_val = u64::from_le_bytes([b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], 
-                                        b_bytes[4], b_bytes[5], b_bytes[6], b_bytes[7]]);
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let b_bytes = &b[i * 8..i * 8 + 8];
+        let a_val = u64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]);
+        let b_val = u64::from_le_bytes([
+            b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], b_bytes[4], b_bytes[5], b_bytes[6],
+            b_bytes[7],
+        ]);
         let res_val = a_val.wrapping_sub(b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1076,46 +1158,54 @@ fn execute_i64x2_mul(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let b_bytes = &b[i*8..i*8+8];
-        let a_val = u64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]);
-        let b_val = u64::from_le_bytes([b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], 
-                                        b_bytes[4], b_bytes[5], b_bytes[6], b_bytes[7]]);
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let b_bytes = &b[i * 8..i * 8 + 8];
+        let a_val = u64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]);
+        let b_val = u64::from_le_bytes([
+            b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], b_bytes[4], b_bytes[5], b_bytes[6],
+            b_bytes[7],
+        ]);
         let res_val = a_val.wrapping_mul(b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_i64x2_neg(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let a_val = u64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]) as i64;
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let a_val = u64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]) as i64;
         let res_val = a_val.wrapping_neg() as u64;
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_i64x2_abs(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let a_val = u64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]) as i64;
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let a_val = u64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]) as i64;
         let res_val = if a_val == i64::MIN {
             // Handle overflow case for ASIL compliance
             0x8000000000000000u64
@@ -1123,29 +1213,29 @@ fn execute_i64x2_abs(inputs: &[Value]) -> Result<Value> {
             a_val.abs() as u64
         };
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 // ================================================================================================
-// f32x4 Arithmetic Operations 
+// f32x4 Arithmetic Operations
 // ================================================================================================
 
 fn execute_f32x4_add(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = f32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
-        let b_val = f32::from_le_bytes([b[i*4], b[i*4+1], b[i*4+2], b[i*4+3]]);
+        let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
+        let b_val = f32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]);
         let res_val = a_val + b_val;
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1153,15 +1243,15 @@ fn execute_f32x4_sub(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = f32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
-        let b_val = f32::from_le_bytes([b[i*4], b[i*4+1], b[i*4+2], b[i*4+3]]);
+        let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
+        let b_val = f32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]);
         let res_val = a_val - b_val;
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1169,15 +1259,15 @@ fn execute_f32x4_mul(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = f32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
-        let b_val = f32::from_le_bytes([b[i*4], b[i*4+1], b[i*4+2], b[i*4+3]]);
+        let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
+        let b_val = f32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]);
         let res_val = a_val * b_val;
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1185,57 +1275,57 @@ fn execute_f32x4_div(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = f32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
-        let b_val = f32::from_le_bytes([b[i*4], b[i*4+1], b[i*4+2], b[i*4+3]]);
+        let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
+        let b_val = f32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]);
         let res_val = a_val / b_val;
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_f32x4_neg(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = f32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
+        let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
         let res_val = -a_val;
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_f32x4_sqrt(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = f32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
+        let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
         let res_val = a_val.sqrt();
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_f32x4_abs(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = f32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
+        let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
         let res_val = a_val.abs();
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1243,15 +1333,15 @@ fn execute_f32x4_min(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = f32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
-        let b_val = f32::from_le_bytes([b[i*4], b[i*4+1], b[i*4+2], b[i*4+3]]);
+        let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
+        let b_val = f32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]);
         let res_val = a_val.min(b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1259,15 +1349,15 @@ fn execute_f32x4_max(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = f32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
-        let b_val = f32::from_le_bytes([b[i*4], b[i*4+1], b[i*4+2], b[i*4+3]]);
+        let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
+        let b_val = f32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]);
         let res_val = a_val.max(b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1275,22 +1365,26 @@ fn execute_f32x4_pmin(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = f32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
-        let b_val = f32::from_le_bytes([b[i*4], b[i*4+1], b[i*4+2], b[i*4+3]]);
+        let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
+        let b_val = f32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]);
         // Pseudo-minimum: IEEE 754-2008 compliant
         let res_val = if a_val.is_nan() || b_val.is_nan() {
             f32::NAN
         } else if a_val == 0.0 && b_val == 0.0 {
-            if a_val.is_sign_negative() { a_val } else { b_val }
+            if a_val.is_sign_negative() {
+                a_val
+            } else {
+                b_val
+            }
         } else {
             a_val.min(b_val)
         };
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1298,22 +1392,26 @@ fn execute_f32x4_pmax(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let a_val = f32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
-        let b_val = f32::from_le_bytes([b[i*4], b[i*4+1], b[i*4+2], b[i*4+3]]);
+        let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
+        let b_val = f32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]);
         // Pseudo-maximum: IEEE 754-2008 compliant
         let res_val = if a_val.is_nan() || b_val.is_nan() {
             f32::NAN
         } else if a_val == 0.0 && b_val == 0.0 {
-            if a_val.is_sign_positive() { a_val } else { b_val }
+            if a_val.is_sign_positive() {
+                a_val
+            } else {
+                b_val
+            }
         } else {
             a_val.max(b_val)
         };
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1325,19 +1423,23 @@ fn execute_f64x2_add(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let b_bytes = &b[i*8..i*8+8];
-        let a_val = f64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]);
-        let b_val = f64::from_le_bytes([b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], 
-                                        b_bytes[4], b_bytes[5], b_bytes[6], b_bytes[7]]);
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let b_bytes = &b[i * 8..i * 8 + 8];
+        let a_val = f64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]);
+        let b_val = f64::from_le_bytes([
+            b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], b_bytes[4], b_bytes[5], b_bytes[6],
+            b_bytes[7],
+        ]);
         let res_val = a_val + b_val;
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1345,19 +1447,23 @@ fn execute_f64x2_sub(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let b_bytes = &b[i*8..i*8+8];
-        let a_val = f64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]);
-        let b_val = f64::from_le_bytes([b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], 
-                                        b_bytes[4], b_bytes[5], b_bytes[6], b_bytes[7]]);
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let b_bytes = &b[i * 8..i * 8 + 8];
+        let a_val = f64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]);
+        let b_val = f64::from_le_bytes([
+            b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], b_bytes[4], b_bytes[5], b_bytes[6],
+            b_bytes[7],
+        ]);
         let res_val = a_val - b_val;
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1365,19 +1471,23 @@ fn execute_f64x2_mul(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let b_bytes = &b[i*8..i*8+8];
-        let a_val = f64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]);
-        let b_val = f64::from_le_bytes([b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], 
-                                        b_bytes[4], b_bytes[5], b_bytes[6], b_bytes[7]]);
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let b_bytes = &b[i * 8..i * 8 + 8];
+        let a_val = f64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]);
+        let b_val = f64::from_le_bytes([
+            b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], b_bytes[4], b_bytes[5], b_bytes[6],
+            b_bytes[7],
+        ]);
         let res_val = a_val * b_val;
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1385,67 +1495,77 @@ fn execute_f64x2_div(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let b_bytes = &b[i*8..i*8+8];
-        let a_val = f64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]);
-        let b_val = f64::from_le_bytes([b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], 
-                                        b_bytes[4], b_bytes[5], b_bytes[6], b_bytes[7]]);
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let b_bytes = &b[i * 8..i * 8 + 8];
+        let a_val = f64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]);
+        let b_val = f64::from_le_bytes([
+            b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], b_bytes[4], b_bytes[5], b_bytes[6],
+            b_bytes[7],
+        ]);
         let res_val = a_val / b_val;
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_f64x2_neg(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let a_val = f64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]);
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let a_val = f64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]);
         let res_val = -a_val;
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_f64x2_sqrt(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let a_val = f64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]);
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let a_val = f64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]);
         let res_val = a_val.sqrt();
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_f64x2_abs(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let a_val = f64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]);
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let a_val = f64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]);
         let res_val = a_val.abs();
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1453,19 +1573,23 @@ fn execute_f64x2_min(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let b_bytes = &b[i*8..i*8+8];
-        let a_val = f64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]);
-        let b_val = f64::from_le_bytes([b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], 
-                                        b_bytes[4], b_bytes[5], b_bytes[6], b_bytes[7]]);
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let b_bytes = &b[i * 8..i * 8 + 8];
+        let a_val = f64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]);
+        let b_val = f64::from_le_bytes([
+            b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], b_bytes[4], b_bytes[5], b_bytes[6],
+            b_bytes[7],
+        ]);
         let res_val = a_val.min(b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1473,19 +1597,23 @@ fn execute_f64x2_max(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let b_bytes = &b[i*8..i*8+8];
-        let a_val = f64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]);
-        let b_val = f64::from_le_bytes([b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], 
-                                        b_bytes[4], b_bytes[5], b_bytes[6], b_bytes[7]]);
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let b_bytes = &b[i * 8..i * 8 + 8];
+        let a_val = f64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]);
+        let b_val = f64::from_le_bytes([
+            b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], b_bytes[4], b_bytes[5], b_bytes[6],
+            b_bytes[7],
+        ]);
         let res_val = a_val.max(b_val);
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1493,26 +1621,34 @@ fn execute_f64x2_pmin(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let b_bytes = &b[i*8..i*8+8];
-        let a_val = f64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]);
-        let b_val = f64::from_le_bytes([b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], 
-                                        b_bytes[4], b_bytes[5], b_bytes[6], b_bytes[7]]);
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let b_bytes = &b[i * 8..i * 8 + 8];
+        let a_val = f64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]);
+        let b_val = f64::from_le_bytes([
+            b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], b_bytes[4], b_bytes[5], b_bytes[6],
+            b_bytes[7],
+        ]);
         // Pseudo-minimum: IEEE 754-2008 compliant
         let res_val = if a_val.is_nan() || b_val.is_nan() {
             f64::NAN
         } else if a_val == 0.0 && b_val == 0.0 {
-            if a_val.is_sign_negative() { a_val } else { b_val }
+            if a_val.is_sign_negative() {
+                a_val
+            } else {
+                b_val
+            }
         } else {
             a_val.min(b_val)
         };
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1520,26 +1656,34 @@ fn execute_f64x2_pmax(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let b_bytes = &b[i*8..i*8+8];
-        let a_val = f64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]);
-        let b_val = f64::from_le_bytes([b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], 
-                                        b_bytes[4], b_bytes[5], b_bytes[6], b_bytes[7]]);
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let b_bytes = &b[i * 8..i * 8 + 8];
+        let a_val = f64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]);
+        let b_val = f64::from_le_bytes([
+            b_bytes[0], b_bytes[1], b_bytes[2], b_bytes[3], b_bytes[4], b_bytes[5], b_bytes[6],
+            b_bytes[7],
+        ]);
         // Pseudo-maximum: IEEE 754-2008 compliant
         let res_val = if a_val.is_nan() || b_val.is_nan() {
             f64::NAN
         } else if a_val == 0.0 && b_val == 0.0 {
-            if a_val.is_sign_positive() { a_val } else { b_val }
+            if a_val.is_sign_positive() {
+                a_val
+            } else {
+                b_val
+            }
         } else {
             a_val.max(b_val)
         };
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1550,11 +1694,11 @@ fn execute_f64x2_pmax(inputs: &[Value]) -> Result<Value> {
 fn execute_v128_not(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = !a[i];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1562,11 +1706,11 @@ fn execute_v128_and(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = a[i] & b[i];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1574,11 +1718,11 @@ fn execute_v128_or(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = a[i] | b[i];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1586,11 +1730,11 @@ fn execute_v128_xor(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = a[i] ^ b[i];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1598,11 +1742,11 @@ fn execute_v128_andnot(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = a[i] & !b[i];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1611,11 +1755,11 @@ fn execute_v128_bitselect(inputs: &[Value]) -> Result<Value> {
     let b = extract_v128(&inputs[1])?;
     let mask = extract_v128(&inputs[2])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = (a[i] & mask[i]) | (b[i] & !mask[i]);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1625,23 +1769,23 @@ fn execute_v128_bitselect(inputs: &[Value]) -> Result<Value> {
 
 fn execute_v128_any_true(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
-    
+
     let any_true = a.iter().any(|&byte| byte != 0);
     Ok(Value::I32(if any_true { 1 } else { 0 }))
 }
 
 fn execute_i8x16_all_true(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
-    
+
     let all_true = a.iter().all(|&byte| byte != 0);
     Ok(Value::I32(if all_true { 1 } else { 0 }))
 }
 
 fn execute_i16x8_all_true(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
-    
+
     let all_true = (0..8).all(|i| {
-        let val = u16::from_le_bytes([a[i*2], a[i*2+1]]);
+        let val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]);
         val != 0
     });
     Ok(Value::I32(if all_true { 1 } else { 0 }))
@@ -1649,9 +1793,9 @@ fn execute_i16x8_all_true(inputs: &[Value]) -> Result<Value> {
 
 fn execute_i32x4_all_true(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
-    
+
     let all_true = (0..4).all(|i| {
-        let val = u32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
+        let val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
         val != 0
     });
     Ok(Value::I32(if all_true { 1 } else { 0 }))
@@ -1659,11 +1803,12 @@ fn execute_i32x4_all_true(inputs: &[Value]) -> Result<Value> {
 
 fn execute_i64x2_all_true(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
-    
+
     let all_true = (0..2).all(|i| {
-        let bytes = &a[i*8..i*8+8];
-        let val = u64::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3], 
-                                      bytes[4], bytes[5], bytes[6], bytes[7]]);
+        let bytes = &a[i * 8..i * 8 + 8];
+        let val = u64::from_le_bytes([
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+        ]);
         val != 0
     });
     Ok(Value::I32(if all_true { 1 } else { 0 }))
@@ -1677,11 +1822,11 @@ fn execute_i8x16_eq(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = if a[i] == b[i] { 0xFF } else { 0x00 };
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1689,11 +1834,11 @@ fn execute_i8x16_ne(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = if a[i] != b[i] { 0xFF } else { 0x00 };
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1701,13 +1846,13 @@ fn execute_i8x16_lt_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         let a_signed = a[i] as i8;
         let b_signed = b[i] as i8;
         result[i] = if a_signed < b_signed { 0xFF } else { 0x00 };
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1715,11 +1860,11 @@ fn execute_i8x16_lt_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = if a[i] < b[i] { 0xFF } else { 0x00 };
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1727,13 +1872,13 @@ fn execute_i8x16_gt_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         let a_signed = a[i] as i8;
         let b_signed = b[i] as i8;
         result[i] = if a_signed > b_signed { 0xFF } else { 0x00 };
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1741,11 +1886,11 @@ fn execute_i8x16_gt_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = if a[i] > b[i] { 0xFF } else { 0x00 };
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1753,13 +1898,13 @@ fn execute_i8x16_le_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         let a_signed = a[i] as i8;
         let b_signed = b[i] as i8;
         result[i] = if a_signed <= b_signed { 0xFF } else { 0x00 };
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1767,11 +1912,11 @@ fn execute_i8x16_le_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = if a[i] <= b[i] { 0xFF } else { 0x00 };
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1779,13 +1924,13 @@ fn execute_i8x16_ge_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         let a_signed = a[i] as i8;
         let b_signed = b[i] as i8;
         result[i] = if a_signed >= b_signed { 0xFF } else { 0x00 };
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1793,11 +1938,11 @@ fn execute_i8x16_ge_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..16 {
         result[i] = if a[i] >= b[i] { 0xFF } else { 0x00 };
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1809,16 +1954,16 @@ fn execute_i16x8_eq(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]);
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]);
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]);
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]);
         let res_val = if a_val == b_val { 0xFFFFu16 } else { 0x0000u16 };
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1826,16 +1971,16 @@ fn execute_i16x8_ne(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]);
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]);
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]);
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]);
         let res_val = if a_val != b_val { 0xFFFFu16 } else { 0x0000u16 };
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1843,16 +1988,16 @@ fn execute_i16x8_lt_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]) as i16;
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]) as i16;
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]) as i16;
         let res_val = if a_val < b_val { 0xFFFFu16 } else { 0x0000u16 };
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1860,16 +2005,16 @@ fn execute_i16x8_lt_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]);
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]);
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]);
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]);
         let res_val = if a_val < b_val { 0xFFFFu16 } else { 0x0000u16 };
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1877,16 +2022,16 @@ fn execute_i16x8_gt_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]) as i16;
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]) as i16;
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]) as i16;
         let res_val = if a_val > b_val { 0xFFFFu16 } else { 0x0000u16 };
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1894,16 +2039,16 @@ fn execute_i16x8_gt_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]);
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]);
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]);
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]);
         let res_val = if a_val > b_val { 0xFFFFu16 } else { 0x0000u16 };
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1911,16 +2056,16 @@ fn execute_i16x8_le_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]) as i16;
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]) as i16;
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]) as i16;
         let res_val = if a_val <= b_val { 0xFFFFu16 } else { 0x0000u16 };
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1928,16 +2073,16 @@ fn execute_i16x8_le_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]);
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]);
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]);
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]);
         let res_val = if a_val <= b_val { 0xFFFFu16 } else { 0x0000u16 };
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1945,16 +2090,16 @@ fn execute_i16x8_ge_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]) as i16;
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]) as i16;
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]) as i16;
         let res_val = if a_val >= b_val { 0xFFFFu16 } else { 0x0000u16 };
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1962,16 +2107,16 @@ fn execute_i16x8_ge_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]);
-        let b_val = u16::from_le_bytes([b[i*2], b[i*2+1]]);
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]);
+        let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]);
         let res_val = if a_val >= b_val { 0xFFFFu16 } else { 0x0000u16 };
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1983,14 +2128,14 @@ fn execute_i8x16_shl(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let shift = extract_i32(&inputs[1])? as u32;
     let mut result = [0u8; 16];
-    
+
     // WebAssembly spec: shift amount is masked to element bit width
     let shift_masked = shift & 7; // i8 has 8 bits, so mask with 7
-    
+
     for i in 0..16 {
         result[i] = a[i] << shift_masked;
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -1998,13 +2143,13 @@ fn execute_i8x16_shr_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let shift = extract_i32(&inputs[1])? as u32;
     let mut result = [0u8; 16];
-    
+
     let shift_masked = shift & 7;
-    
+
     for i in 0..16 {
         result[i] = ((a[i] as i8) >> shift_masked) as u8;
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -2012,13 +2157,13 @@ fn execute_i8x16_shr_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let shift = extract_i32(&inputs[1])? as u32;
     let mut result = [0u8; 16];
-    
+
     let shift_masked = shift & 7;
-    
+
     for i in 0..16 {
         result[i] = a[i] >> shift_masked;
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -2026,17 +2171,17 @@ fn execute_i16x8_shl(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let shift = extract_i32(&inputs[1])? as u32;
     let mut result = [0u8; 16];
-    
+
     let shift_masked = shift & 15; // i16 has 16 bits
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]);
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]);
         let res_val = a_val << shift_masked;
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -2044,17 +2189,17 @@ fn execute_i16x8_shr_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let shift = extract_i32(&inputs[1])? as u32;
     let mut result = [0u8; 16];
-    
+
     let shift_masked = shift & 15;
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]) as i16;
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
         let res_val = (a_val >> shift_masked) as u16;
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -2062,17 +2207,17 @@ fn execute_i16x8_shr_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let shift = extract_i32(&inputs[1])? as u32;
     let mut result = [0u8; 16];
-    
+
     let shift_masked = shift & 15;
-    
+
     for i in 0..8 {
-        let a_val = u16::from_le_bytes([a[i*2], a[i*2+1]]);
+        let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]);
         let res_val = a_val >> shift_masked;
         let res_bytes = res_val.to_le_bytes();
-        result[i*2] = res_bytes[0];
-        result[i*2+1] = res_bytes[1];
+        result[i * 2] = res_bytes[0];
+        result[i * 2 + 1] = res_bytes[1];
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -2080,16 +2225,16 @@ fn execute_i32x4_shl(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let shift = extract_i32(&inputs[1])? as u32;
     let mut result = [0u8; 16];
-    
+
     let shift_masked = shift & 31; // i32 has 32 bits
-    
+
     for i in 0..4 {
-        let a_val = u32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
+        let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
         let res_val = a_val << shift_masked;
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -2097,16 +2242,16 @@ fn execute_i32x4_shr_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let shift = extract_i32(&inputs[1])? as u32;
     let mut result = [0u8; 16];
-    
+
     let shift_masked = shift & 31;
-    
+
     for i in 0..4 {
-        let a_val = u32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]) as i32;
+        let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]) as i32;
         let res_val = (a_val >> shift_masked) as u32;
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -2114,16 +2259,16 @@ fn execute_i32x4_shr_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let shift = extract_i32(&inputs[1])? as u32;
     let mut result = [0u8; 16];
-    
+
     let shift_masked = shift & 31;
-    
+
     for i in 0..4 {
-        let a_val = u32::from_le_bytes([a[i*4], a[i*4+1], a[i*4+2], a[i*4+3]]);
+        let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]);
         let res_val = a_val >> shift_masked;
         let res_bytes = res_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&res_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -2131,18 +2276,20 @@ fn execute_i64x2_shl(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let shift = extract_i32(&inputs[1])? as u32;
     let mut result = [0u8; 16];
-    
+
     let shift_masked = shift & 63; // i64 has 64 bits
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let a_val = u64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]);
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let a_val = u64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]);
         let res_val = a_val << shift_masked;
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -2150,18 +2297,20 @@ fn execute_i64x2_shr_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let shift = extract_i32(&inputs[1])? as u32;
     let mut result = [0u8; 16];
-    
+
     let shift_masked = shift & 63;
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let a_val = u64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]) as i64;
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let a_val = u64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]) as i64;
         let res_val = (a_val >> shift_masked) as u64;
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -2169,18 +2318,20 @@ fn execute_i64x2_shr_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let shift = extract_i32(&inputs[1])? as u32;
     let mut result = [0u8; 16];
-    
+
     let shift_masked = shift & 63;
-    
+
     for i in 0..2 {
-        let a_bytes = &a[i*8..i*8+8];
-        let a_val = u64::from_le_bytes([a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], 
-                                        a_bytes[4], a_bytes[5], a_bytes[6], a_bytes[7]]);
+        let a_bytes = &a[i * 8..i * 8 + 8];
+        let a_val = u64::from_le_bytes([
+            a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
+            a_bytes[7],
+        ]);
         let res_val = a_val >> shift_masked;
         let res_bytes = res_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&res_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -2190,22 +2341,28 @@ fn execute_i64x2_shr_u(inputs: &[Value]) -> Result<Value> {
 
 fn execute_i8x16_extract_lane_s(inputs: &[Value], lane: u8) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
-    
+
     if lane >= 16 {
-        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i8x16"));
+        return Err(Error::runtime_execution_error(
+            "Lane index {} out of bounds for i8x16",
+            lane,
+        ));
     }
-    
+
     let val = a[lane as usize] as i8;
     Ok(Value::I32(val as i32))
 }
 
 fn execute_i8x16_extract_lane_u(inputs: &[Value], lane: u8) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
-    
+
     if lane >= 16 {
-        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i8x16"));
+        return Err(Error::runtime_execution_error(
+            "Lane index {} out of bounds for i8x16",
+            lane,
+        ));
     }
-    
+
     let val = a[lane as usize];
     Ok(Value::I32(val as i32))
 }
@@ -2213,159 +2370,221 @@ fn execute_i8x16_extract_lane_u(inputs: &[Value], lane: u8) -> Result<Value> {
 fn execute_i8x16_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let mut a = extract_v128(&inputs[0])?;
     let val = extract_i32(&inputs[1])?;
-    
+
     if lane >= 16 {
-        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i8x16"));
+        return Err(Error::runtime_execution_error(
+            "Lane index {} out of bounds for i8x16",
+            lane,
+        ));
     }
-    
+
     a[lane as usize] = val as u8;
     Ok(Value::V128(a))
 }
 
 fn execute_i16x8_extract_lane_s(inputs: &[Value], lane: u8) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
-    
+
     if lane >= 8 {
-        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i16x8"));
+        return Err(Error::runtime_execution_error(
+            "Lane index {} out of bounds for i16x8",
+            lane,
+        ));
     }
-    
+
     let lane_idx = lane as usize;
-    let val = u16::from_le_bytes([a[lane_idx*2], a[lane_idx*2+1]]) as i16;
+    let val = u16::from_le_bytes([a[lane_idx * 2], a[lane_idx * 2 + 1]]) as i16;
     Ok(Value::I32(val as i32))
 }
 
 fn execute_i16x8_extract_lane_u(inputs: &[Value], lane: u8) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
-    
+
     if lane >= 8 {
-        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i16x8"));
+        return Err(Error::runtime_execution_error(
+            "Lane index {} out of bounds for i16x8",
+            lane,
+        ));
     }
-    
+
     let lane_idx = lane as usize;
-    let val = u16::from_le_bytes([a[lane_idx*2], a[lane_idx*2+1]]);
+    let val = u16::from_le_bytes([a[lane_idx * 2], a[lane_idx * 2 + 1]]);
     Ok(Value::I32(val as i32))
 }
 
 fn execute_i16x8_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let mut a = extract_v128(&inputs[0])?;
     let val = extract_i32(&inputs[1])?;
-    
+
     if lane >= 8 {
-        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i16x8"));
+        return Err(Error::runtime_execution_error(
+            "Lane index {} out of bounds for i16x8",
+            lane,
+        ));
     }
-    
+
     let lane_idx = lane as usize;
     let val_bytes = (val as u16).to_le_bytes();
-    a[lane_idx*2] = val_bytes[0];
-    a[lane_idx*2+1] = val_bytes[1];
+    a[lane_idx * 2] = val_bytes[0];
+    a[lane_idx * 2 + 1] = val_bytes[1];
     Ok(Value::V128(a))
 }
 
 fn execute_i32x4_extract_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
-    
+
     if lane >= 4 {
-        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i32x4"));
+        return Err(Error::runtime_execution_error(
+            "Lane index {} out of bounds for i32x4",
+            lane,
+        ));
     }
-    
+
     let lane_idx = lane as usize;
-    let val = u32::from_le_bytes([a[lane_idx*4], a[lane_idx*4+1], a[lane_idx*4+2], a[lane_idx*4+3]]);
+    let val = u32::from_le_bytes([
+        a[lane_idx * 4],
+        a[lane_idx * 4 + 1],
+        a[lane_idx * 4 + 2],
+        a[lane_idx * 4 + 3],
+    ]);
     Ok(Value::I32(val as i32))
 }
 
 fn execute_i32x4_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let mut a = extract_v128(&inputs[0])?;
     let val = extract_i32(&inputs[1])?;
-    
+
     if lane >= 4 {
-        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i32x4"));
+        return Err(Error::runtime_execution_error(
+            "Lane index {} out of bounds for i32x4",
+            lane,
+        ));
     }
-    
+
     let lane_idx = lane as usize;
     let val_bytes = (val as u32).to_le_bytes();
-    a[lane_idx*4..lane_idx*4+4].copy_from_slice(&val_bytes);
+    a[lane_idx * 4..lane_idx * 4 + 4].copy_from_slice(&val_bytes);
     Ok(Value::V128(a))
 }
 
 fn execute_i64x2_extract_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
-    
+
     if lane >= 2 {
-        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i64x2"));
+        return Err(Error::runtime_execution_error(
+            "Lane index {} out of bounds for i64x2",
+            lane,
+        ));
     }
-    
+
     let lane_idx = lane as usize;
-    let val_bytes = &a[lane_idx*8..lane_idx*8+8];
-    let val = u64::from_le_bytes([val_bytes[0], val_bytes[1], val_bytes[2], val_bytes[3], 
-                                  val_bytes[4], val_bytes[5], val_bytes[6], val_bytes[7]]);
+    let val_bytes = &a[lane_idx * 8..lane_idx * 8 + 8];
+    let val = u64::from_le_bytes([
+        val_bytes[0],
+        val_bytes[1],
+        val_bytes[2],
+        val_bytes[3],
+        val_bytes[4],
+        val_bytes[5],
+        val_bytes[6],
+        val_bytes[7],
+    ]);
     Ok(Value::I64(val as i64))
 }
 
 fn execute_i64x2_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let mut a = extract_v128(&inputs[0])?;
     let val = extract_i64(&inputs[1])?;
-    
+
     if lane >= 2 {
-        return Err(Error::runtime_execution_error("Lane index {} out of bounds for i64x2"));
+        return Err(Error::runtime_execution_error(
+            "Lane index {} out of bounds for i64x2",
+            lane,
+        ));
     }
-    
+
     let lane_idx = lane as usize;
     let val_bytes = (val as u64).to_le_bytes();
-    a[lane_idx*8..lane_idx*8+8].copy_from_slice(&val_bytes);
+    a[lane_idx * 8..lane_idx * 8 + 8].copy_from_slice(&val_bytes);
     Ok(Value::V128(a))
 }
 
 fn execute_f32x4_extract_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
-    
+
     if lane >= 4 {
-        return Err(Error::runtime_execution_error("Lane index {} out of bounds for f32x4"));
+        return Err(Error::runtime_execution_error(
+            "Lane index {} out of bounds for f32x4",
+            lane,
+        ));
     }
-    
+
     let lane_idx = lane as usize;
-    let val = f32::from_le_bytes([a[lane_idx*4], a[lane_idx*4+1], a[lane_idx*4+2], a[lane_idx*4+3]]);
+    let val = f32::from_le_bytes([
+        a[lane_idx * 4],
+        a[lane_idx * 4 + 1],
+        a[lane_idx * 4 + 2],
+        a[lane_idx * 4 + 3],
+    ]);
     Ok(Value::F32(val))
 }
 
 fn execute_f32x4_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let mut a = extract_v128(&inputs[0])?;
     let val = extract_f32(&inputs[1])?;
-    
+
     if lane >= 4 {
-        return Err(Error::runtime_execution_error("Lane index {} out of bounds for f32x4"));
+        return Err(Error::runtime_execution_error(
+            "Lane index {} out of bounds for f32x4",
+            lane,
+        ));
     }
-    
+
     let lane_idx = lane as usize;
     let val_bytes = val.to_le_bytes();
-    a[lane_idx*4..lane_idx*4+4].copy_from_slice(&val_bytes);
+    a[lane_idx * 4..lane_idx * 4 + 4].copy_from_slice(&val_bytes);
     Ok(Value::V128(a))
 }
 
 fn execute_f64x2_extract_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
-    
+
     if lane >= 2 {
-        return Err(Error::runtime_execution_error("Lane index {} out of bounds for f64x2"));
+        return Err(Error::runtime_execution_error(
+            "Lane index {} out of bounds for f64x2",
+            lane,
+        ));
     }
-    
+
     let lane_idx = lane as usize;
-    let val_bytes = &a[lane_idx*8..lane_idx*8+8];
-    let val = f64::from_le_bytes([val_bytes[0], val_bytes[1], val_bytes[2], val_bytes[3], 
-                                  val_bytes[4], val_bytes[5], val_bytes[6], val_bytes[7]]);
+    let val_bytes = &a[lane_idx * 8..lane_idx * 8 + 8];
+    let val = f64::from_le_bytes([
+        val_bytes[0],
+        val_bytes[1],
+        val_bytes[2],
+        val_bytes[3],
+        val_bytes[4],
+        val_bytes[5],
+        val_bytes[6],
+        val_bytes[7],
+    ]);
     Ok(Value::F64(val))
 }
 
 fn execute_f64x2_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     let mut a = extract_v128(&inputs[0])?;
     let val = extract_f64(&inputs[1])?;
-    
+
     if lane >= 2 {
-        return Err(Error::runtime_execution_error("Lane index {} out of bounds for f64x2"));
+        return Err(Error::runtime_execution_error(
+            "Lane index {} out of bounds for f64x2",
+            lane,
+        ));
     }
-    
+
     let lane_idx = lane as usize;
     let val_bytes = val.to_le_bytes();
-    a[lane_idx*8..lane_idx*8+8].copy_from_slice(&val_bytes);
+    a[lane_idx * 8..lane_idx * 8 + 8].copy_from_slice(&val_bytes);
     Ok(Value::V128(a))
 }
 
@@ -2376,11 +2595,11 @@ fn execute_f64x2_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
 fn execute_i32x4_trunc_sat_f32x4_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let f_bytes = &a[i*4..i*4+4];
+        let f_bytes = &a[i * 4..i * 4 + 4];
         let f_val = f32::from_le_bytes([f_bytes[0], f_bytes[1], f_bytes[2], f_bytes[3]]);
-        
+
         // Saturating truncation to i32
         let i_val = if f_val.is_nan() {
             0i32
@@ -2391,22 +2610,22 @@ fn execute_i32x4_trunc_sat_f32x4_s(inputs: &[Value]) -> Result<Value> {
         } else {
             f_val as i32
         };
-        
+
         let i_bytes = i_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&i_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&i_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_i32x4_trunc_sat_f32x4_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let f_bytes = &a[i*4..i*4+4];
+        let f_bytes = &a[i * 4..i * 4 + 4];
         let f_val = f32::from_le_bytes([f_bytes[0], f_bytes[1], f_bytes[2], f_bytes[3]]);
-        
+
         // Saturating truncation to u32
         let u_val = if f_val.is_nan() || f_val < 0.0 {
             0u32
@@ -2415,55 +2634,55 @@ fn execute_i32x4_trunc_sat_f32x4_u(inputs: &[Value]) -> Result<Value> {
         } else {
             f_val as u32
         };
-        
+
         let u_bytes = u_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&u_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&u_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_f32x4_convert_i32x4_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let i_bytes = &a[i*4..i*4+4];
+        let i_bytes = &a[i * 4..i * 4 + 4];
         let i_val = i32::from_le_bytes([i_bytes[0], i_bytes[1], i_bytes[2], i_bytes[3]]);
         let f_val = i_val as f32;
         let f_bytes = f_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&f_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&f_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_f32x4_convert_i32x4_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..4 {
-        let u_bytes = &a[i*4..i*4+4];
+        let u_bytes = &a[i * 4..i * 4 + 4];
         let u_val = u32::from_le_bytes([u_bytes[0], u_bytes[1], u_bytes[2], u_bytes[3]]);
         let f_val = u_val as f32;
         let f_bytes = f_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&f_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&f_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_i32x4_trunc_sat_f64x2_s_zero(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let f_bytes = &a[i*8..i*8+8];
+        let f_bytes = &a[i * 8..i * 8 + 8];
         let f_val = f64::from_le_bytes([
-            f_bytes[0], f_bytes[1], f_bytes[2], f_bytes[3],
-            f_bytes[4], f_bytes[5], f_bytes[6], f_bytes[7]
+            f_bytes[0], f_bytes[1], f_bytes[2], f_bytes[3], f_bytes[4], f_bytes[5], f_bytes[6],
+            f_bytes[7],
         ]);
-        
+
         // Saturating truncation to i32
         let i_val = if f_val.is_nan() {
             0i32
@@ -2474,11 +2693,11 @@ fn execute_i32x4_trunc_sat_f64x2_s_zero(inputs: &[Value]) -> Result<Value> {
         } else {
             f_val as i32
         };
-        
+
         let i_bytes = i_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&i_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&i_bytes);
     }
-    
+
     // High lanes are zero (already initialized)
     Ok(Value::V128(result))
 }
@@ -2486,14 +2705,14 @@ fn execute_i32x4_trunc_sat_f64x2_s_zero(inputs: &[Value]) -> Result<Value> {
 fn execute_i32x4_trunc_sat_f64x2_u_zero(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let f_bytes = &a[i*8..i*8+8];
+        let f_bytes = &a[i * 8..i * 8 + 8];
         let f_val = f64::from_le_bytes([
-            f_bytes[0], f_bytes[1], f_bytes[2], f_bytes[3],
-            f_bytes[4], f_bytes[5], f_bytes[6], f_bytes[7]
+            f_bytes[0], f_bytes[1], f_bytes[2], f_bytes[3], f_bytes[4], f_bytes[5], f_bytes[6],
+            f_bytes[7],
         ]);
-        
+
         // Saturating truncation to u32
         let u_val = if f_val.is_nan() || f_val < 0.0 {
             0u32
@@ -2502,11 +2721,11 @@ fn execute_i32x4_trunc_sat_f64x2_u_zero(inputs: &[Value]) -> Result<Value> {
         } else {
             f_val as u32
         };
-        
+
         let u_bytes = u_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&u_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&u_bytes);
     }
-    
+
     // High lanes are zero (already initialized)
     Ok(Value::V128(result))
 }
@@ -2514,48 +2733,54 @@ fn execute_i32x4_trunc_sat_f64x2_u_zero(inputs: &[Value]) -> Result<Value> {
 fn execute_f64x2_convert_low_i32x4_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let i_bytes = &a[i*4..i*4+4];
+        let i_bytes = &a[i * 4..i * 4 + 4];
         let i_val = i32::from_le_bytes([i_bytes[0], i_bytes[1], i_bytes[2], i_bytes[3]]);
         let f_val = i_val as f64;
         let f_bytes = f_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&f_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&f_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_f64x2_convert_low_i32x4_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let u_bytes = &a[i*4..i*4+4];
+        let u_bytes = &a[i * 4..i * 4 + 4];
         let u_val = u32::from_le_bytes([u_bytes[0], u_bytes[1], u_bytes[2], u_bytes[3]]);
         let f_val = u_val as f64;
         let f_bytes = f_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&f_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&f_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
 fn execute_f32x4_demote_f64x2_zero(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let f64_bytes = &a[i*8..i*8+8];
+        let f64_bytes = &a[i * 8..i * 8 + 8];
         let f64_val = f64::from_le_bytes([
-            f64_bytes[0], f64_bytes[1], f64_bytes[2], f64_bytes[3],
-            f64_bytes[4], f64_bytes[5], f64_bytes[6], f64_bytes[7]
+            f64_bytes[0],
+            f64_bytes[1],
+            f64_bytes[2],
+            f64_bytes[3],
+            f64_bytes[4],
+            f64_bytes[5],
+            f64_bytes[6],
+            f64_bytes[7],
         ]);
         let f32_val = f64_val as f32;
         let f32_bytes = f32_val.to_le_bytes();
-        result[i*4..i*4+4].copy_from_slice(&f32_bytes);
+        result[i * 4..i * 4 + 4].copy_from_slice(&f32_bytes);
     }
-    
+
     // High lanes are zero (already initialized)
     Ok(Value::V128(result))
 }
@@ -2563,15 +2788,15 @@ fn execute_f32x4_demote_f64x2_zero(inputs: &[Value]) -> Result<Value> {
 fn execute_f64x2_promote_low_f32x4(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let mut result = [0u8; 16];
-    
+
     for i in 0..2 {
-        let f32_bytes = &a[i*4..i*4+4];
+        let f32_bytes = &a[i * 4..i * 4 + 4];
         let f32_val = f32::from_le_bytes([f32_bytes[0], f32_bytes[1], f32_bytes[2], f32_bytes[3]]);
         let f64_val = f32_val as f64;
         let f64_bytes = f64_val.to_le_bytes();
-        result[i*8..i*8+8].copy_from_slice(&f64_bytes);
+        result[i * 8..i * 8 + 8].copy_from_slice(&f64_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -2583,23 +2808,35 @@ fn execute_i8x16_narrow_i16x8_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     // Narrow a (8 i16 values to 8 i8 values)
     for i in 0..8 {
-        let i16_bytes = &a[i*2..i*2+2];
+        let i16_bytes = &a[i * 2..i * 2 + 2];
         let i16_val = i16::from_le_bytes([i16_bytes[0], i16_bytes[1]]);
-        let i8_val = if i16_val > 127 { 127i8 } else if i16_val < -128 { -128i8 } else { i16_val as i8 };
+        let i8_val = if i16_val > 127 {
+            127i8
+        } else if i16_val < -128 {
+            -128i8
+        } else {
+            i16_val as i8
+        };
         result[i] = i8_val as u8;
     }
-    
+
     // Narrow b (8 i16 values to 8 i8 values)
     for i in 0..8 {
-        let i16_bytes = &b[i*2..i*2+2];
+        let i16_bytes = &b[i * 2..i * 2 + 2];
         let i16_val = i16::from_le_bytes([i16_bytes[0], i16_bytes[1]]);
-        let i8_val = if i16_val > 127 { 127i8 } else if i16_val < -128 { -128i8 } else { i16_val as i8 };
+        let i8_val = if i16_val > 127 {
+            127i8
+        } else if i16_val < -128 {
+            -128i8
+        } else {
+            i16_val as i8
+        };
         result[i + 8] = i8_val as u8;
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -2607,23 +2844,35 @@ fn execute_i8x16_narrow_i16x8_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     // Narrow a (8 i16 values to 8 u8 values)
     for i in 0..8 {
-        let i16_bytes = &a[i*2..i*2+2];
+        let i16_bytes = &a[i * 2..i * 2 + 2];
         let i16_val = i16::from_le_bytes([i16_bytes[0], i16_bytes[1]]);
-        let u8_val = if i16_val > 255 { 255u8 } else if i16_val < 0 { 0u8 } else { i16_val as u8 };
+        let u8_val = if i16_val > 255 {
+            255u8
+        } else if i16_val < 0 {
+            0u8
+        } else {
+            i16_val as u8
+        };
         result[i] = u8_val;
     }
-    
+
     // Narrow b (8 i16 values to 8 u8 values)
     for i in 0..8 {
-        let i16_bytes = &b[i*2..i*2+2];
+        let i16_bytes = &b[i * 2..i * 2 + 2];
         let i16_val = i16::from_le_bytes([i16_bytes[0], i16_bytes[1]]);
-        let u8_val = if i16_val > 255 { 255u8 } else if i16_val < 0 { 0u8 } else { i16_val as u8 };
+        let u8_val = if i16_val > 255 {
+            255u8
+        } else if i16_val < 0 {
+            0u8
+        } else {
+            i16_val as u8
+        };
         result[i + 8] = u8_val;
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -2631,25 +2880,37 @@ fn execute_i16x8_narrow_i32x4_s(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     // Narrow a (4 i32 values to 4 i16 values)
     for i in 0..4 {
-        let i32_bytes = &a[i*4..i*4+4];
+        let i32_bytes = &a[i * 4..i * 4 + 4];
         let i32_val = i32::from_le_bytes([i32_bytes[0], i32_bytes[1], i32_bytes[2], i32_bytes[3]]);
-        let i16_val = if i32_val > 32767 { 32767i16 } else if i32_val < -32768 { -32768i16 } else { i32_val as i16 };
+        let i16_val = if i32_val > 32767 {
+            32767i16
+        } else if i32_val < -32768 {
+            -32768i16
+        } else {
+            i32_val as i16
+        };
         let i16_bytes = i16_val.to_le_bytes();
-        result[i*2..i*2+2].copy_from_slice(&i16_bytes);
+        result[i * 2..i * 2 + 2].copy_from_slice(&i16_bytes);
     }
-    
+
     // Narrow b (4 i32 values to 4 i16 values)
     for i in 0..4 {
-        let i32_bytes = &b[i*4..i*4+4];
+        let i32_bytes = &b[i * 4..i * 4 + 4];
         let i32_val = i32::from_le_bytes([i32_bytes[0], i32_bytes[1], i32_bytes[2], i32_bytes[3]]);
-        let i16_val = if i32_val > 32767 { 32767i16 } else if i32_val < -32768 { -32768i16 } else { i32_val as i16 };
+        let i16_val = if i32_val > 32767 {
+            32767i16
+        } else if i32_val < -32768 {
+            -32768i16
+        } else {
+            i32_val as i16
+        };
         let i16_bytes = i16_val.to_le_bytes();
-        result[8 + i*2..8 + i*2+2].copy_from_slice(&i16_bytes);
+        result[8 + i * 2..8 + i * 2 + 2].copy_from_slice(&i16_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }
 
@@ -2657,24 +2918,36 @@ fn execute_i16x8_narrow_i32x4_u(inputs: &[Value]) -> Result<Value> {
     let a = extract_v128(&inputs[0])?;
     let b = extract_v128(&inputs[1])?;
     let mut result = [0u8; 16];
-    
+
     // Narrow a (4 i32 values to 4 u16 values)
     for i in 0..4 {
-        let i32_bytes = &a[i*4..i*4+4];
+        let i32_bytes = &a[i * 4..i * 4 + 4];
         let i32_val = i32::from_le_bytes([i32_bytes[0], i32_bytes[1], i32_bytes[2], i32_bytes[3]]);
-        let u16_val = if i32_val > 65535 { 65535u16 } else if i32_val < 0 { 0u16 } else { i32_val as u16 };
+        let u16_val = if i32_val > 65535 {
+            65535u16
+        } else if i32_val < 0 {
+            0u16
+        } else {
+            i32_val as u16
+        };
         let u16_bytes = u16_val.to_le_bytes();
-        result[i*2..i*2+2].copy_from_slice(&u16_bytes);
+        result[i * 2..i * 2 + 2].copy_from_slice(&u16_bytes);
     }
-    
+
     // Narrow b (4 i32 values to 4 u16 values)
     for i in 0..4 {
-        let i32_bytes = &b[i*4..i*4+4];
+        let i32_bytes = &b[i * 4..i * 4 + 4];
         let i32_val = i32::from_le_bytes([i32_bytes[0], i32_bytes[1], i32_bytes[2], i32_bytes[3]]);
-        let u16_val = if i32_val > 65535 { 65535u16 } else if i32_val < 0 { 0u16 } else { i32_val as u16 };
+        let u16_val = if i32_val > 65535 {
+            65535u16
+        } else if i32_val < 0 {
+            0u16
+        } else {
+            i32_val as u16
+        };
         let u16_bytes = u16_val.to_le_bytes();
-        result[8 + i*2..8 + i*2+2].copy_from_slice(&u16_bytes);
+        result[8 + i * 2..8 + i * 2 + 2].copy_from_slice(&u16_bytes);
     }
-    
+
     Ok(Value::V128(result))
 }

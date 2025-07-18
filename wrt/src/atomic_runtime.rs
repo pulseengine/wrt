@@ -23,13 +23,13 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use wrt_error::{Result, Error, ErrorCategory, codes};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::values::Value;
 use wrt_instructions::atomic_ops::{
-    AtomicOp, AtomicLoadOp, AtomicStoreOp, AtomicRMWInstr, AtomicCmpxchgInstr,
-    AtomicWaitNotifyOp, AtomicFence, MemoryOrdering
+    AtomicCmpxchgInstr, AtomicFence, AtomicLoadOp, AtomicOp, AtomicRMWInstr, AtomicStoreOp,
+    AtomicWaitNotifyOp, MemoryOrdering,
 };
-use wrt_runtime::atomic_execution_safe::{SafeAtomicMemoryContext, AtomicExecutionStats};
+use wrt_runtime::atomic_execution_safe::{AtomicExecutionStats, SafeAtomicMemoryContext};
 use wrt_runtime::thread_manager::ThreadId;
 
 #[cfg(not(feature = "std"))]
@@ -38,7 +38,13 @@ use alloc::format;
 /// Provider trait for atomic operations across ASIL levels
 pub trait AtomicProvider {
     /// Execute atomic operation with provider-specific optimizations
-    fn execute_with_provider(&self, op: &AtomicOp, inputs: &[Value], context: &mut SafeAtomicMemoryContext, thread_id: ThreadId) -> Result<Option<Value>>;
+    fn execute_with_provider(
+        &self,
+        op: &AtomicOp,
+        inputs: &[Value],
+        context: &mut SafeAtomicMemoryContext,
+        thread_id: ThreadId,
+    ) -> Result<Option<Value>>;
 }
 
 /// Execute an atomic operation with ASIL-compliant implementation
@@ -69,13 +75,13 @@ pub fn execute_atomic_operation(
 ) -> Result<Option<Value>> {
     // Validate input count
     validate_input_count(&op, inputs)?;
-    
+
     // Execute operation using provider-specific implementation
     let result = provider.execute_with_provider(&op, inputs, context, thread_id)?;
-    
+
     // Validate result
     validate_atomic_result(&op, &result)?;
-    
+
     Ok(result)
 }
 
@@ -84,11 +90,13 @@ pub fn execute_atomic_operation(
 fn validate_input_count(op: &AtomicOp, inputs: &[Value]) -> Result<()> {
     let expected = op.input_count();
     let actual = inputs.len();
-    
+
     if actual != expected {
-        return Err(Error::runtime_execution_error("Atomic operation {:?} expects {} inputs, got {}"));
+        return Err(Error::runtime_execution_error(
+            "Atomic operation {:?} expects {} inputs, got {}",
+        ));
     }
-    
+
     Ok(())
 }
 
@@ -97,15 +105,19 @@ fn validate_input_count(op: &AtomicOp, inputs: &[Value]) -> Result<()> {
 fn validate_atomic_result(op: &AtomicOp, result: &Option<Value>) -> Result<()> {
     let expects_result = op.produces_result();
     let has_result = result.is_some();
-    
+
     if expects_result && !has_result {
-        return Err(Error::runtime_execution_error("Atomic operation {:?} should produce a result but didn't"));
+        return Err(Error::runtime_execution_error(
+            "Atomic operation {:?} should produce a result but didn't",
+        ));
     }
-    
+
     if !expects_result && has_result {
-        return Err(Error::runtime_execution_error("Atomic operation {:?} should not produce a result but did"));
+        return Err(Error::runtime_execution_error(
+            "Atomic operation {:?} should not produce a result but did",
+        ));
     }
-    
+
     Ok(())
 }
 
@@ -113,10 +125,10 @@ impl AtomicOp {
     /// Get the number of input values this operation expects
     pub fn input_count(&self) -> usize {
         match self {
-            AtomicOp::Load(_) => 0,      // Address is in memarg
-            AtomicOp::Store(_) => 1,     // Value to store
-            AtomicOp::RMW(_) => 1,       // Value for RMW operation
-            AtomicOp::Cmpxchg(_) => 2,   // Expected and replacement values
+            AtomicOp::Load(_) => 0,    // Address is in memarg
+            AtomicOp::Store(_) => 1,   // Value to store
+            AtomicOp::RMW(_) => 1,     // Value for RMW operation
+            AtomicOp::Cmpxchg(_) => 2, // Expected and replacement values
             AtomicOp::WaitNotify(wait_notify) => {
                 match wait_notify {
                     AtomicWaitNotifyOp::MemoryAtomicWait32 { .. } => 2, // Expected value and timeout
@@ -124,10 +136,10 @@ impl AtomicOp {
                     AtomicWaitNotifyOp::MemoryAtomicNotify { .. } => 1, // Count
                 }
             },
-            AtomicOp::Fence(_) => 0,     // No inputs
+            AtomicOp::Fence(_) => 0, // No inputs
         }
     }
-    
+
     /// Check if this operation produces a result value
     pub fn produces_result(&self) -> bool {
         match self {
@@ -146,66 +158,70 @@ pub struct ASILCompliantAtomicProvider;
 
 impl AtomicProvider for ASILCompliantAtomicProvider {
     fn execute_with_provider(
-        &self, 
-        op: &AtomicOp, 
-        inputs: &[Value], 
+        &self,
+        op: &AtomicOp,
+        inputs: &[Value],
         context: &mut SafeAtomicMemoryContext,
-        thread_id: ThreadId
+        thread_id: ThreadId,
     ) -> Result<Option<Value>> {
         // Convert inputs to internal format expected by SafeAtomicMemoryContext
         let result = context.execute_atomic(thread_id, op.clone())?;
-        
+
         // Convert result vector to single Value
         match op {
-            AtomicOp::Load(load_op) => {
-                match load_op {
-                    AtomicLoadOp::I32AtomicLoad { .. } |
-                    AtomicLoadOp::I32AtomicLoad8U { .. } |
-                    AtomicLoadOp::I32AtomicLoad16U { .. } => {
-                        if result.len() == 1 {
-                            Ok(Some(Value::I32(result[0] as i32)))
-                        } else {
-                            Err(Error::runtime_execution_error("Invalid result length for i32 load"))
-                        }
-                    },
-                    AtomicLoadOp::I64AtomicLoad { .. } |
-                    AtomicLoadOp::I64AtomicLoad8U { .. } |
-                    AtomicLoadOp::I64AtomicLoad16U { .. } |
-                    AtomicLoadOp::I64AtomicLoad32U { .. } => {
-                        if result.len() == 2 {
-                            let value = (result[0] as u64) | ((result[1] as u64) << 32);
-                            Ok(Some(Value::I64(value as i64)))
-                        } else {
-                            Err(Error::runtime_execution_error("Invalid result length for i64 load"))
-                        }
-                    },
-                }
+            AtomicOp::Load(load_op) => match load_op {
+                AtomicLoadOp::I32AtomicLoad { .. }
+                | AtomicLoadOp::I32AtomicLoad8U { .. }
+                | AtomicLoadOp::I32AtomicLoad16U { .. } => {
+                    if result.len() == 1 {
+                        Ok(Some(Value::I32(result[0] as i32)))
+                    } else {
+                        Err(Error::runtime_execution_error(
+                            "Invalid result length for i32 load",
+                        ))
+                    }
+                },
+                AtomicLoadOp::I64AtomicLoad { .. }
+                | AtomicLoadOp::I64AtomicLoad8U { .. }
+                | AtomicLoadOp::I64AtomicLoad16U { .. }
+                | AtomicLoadOp::I64AtomicLoad32U { .. } => {
+                    if result.len() == 2 {
+                        let value = (result[0] as u64) | ((result[1] as u64) << 32);
+                        Ok(Some(Value::I64(value as i64)))
+                    } else {
+                        Err(Error::runtime_execution_error(
+                            "Invalid result length for i64 load",
+                        ))
+                    }
+                },
             },
             AtomicOp::Store(_) => Ok(None),
             AtomicOp::RMW(rmw_op) => {
                 match rmw_op {
-                    AtomicRMWInstr::I32AtomicRmwAdd { .. } |
-                    AtomicRMWInstr::I32AtomicRmwSub { .. } |
-                    AtomicRMWInstr::I32AtomicRmwAnd { .. } |
-                    AtomicRMWInstr::I32AtomicRmwOr { .. } |
-                    AtomicRMWInstr::I32AtomicRmwXor { .. } |
-                    AtomicRMWInstr::I32AtomicRmwXchg { .. } |
-                    AtomicRMWInstr::I32AtomicRmw8AddU { .. } |
-                    AtomicRMWInstr::I32AtomicRmw16AddU { .. } |
-                    AtomicRMWInstr::I32AtomicRmw8SubU { .. } |
-                    AtomicRMWInstr::I32AtomicRmw16SubU { .. } |
-                    AtomicRMWInstr::I32AtomicRmw8AndU { .. } |
-                    AtomicRMWInstr::I32AtomicRmw16AndU { .. } |
-                    AtomicRMWInstr::I32AtomicRmw8OrU { .. } |
-                    AtomicRMWInstr::I32AtomicRmw16OrU { .. } |
-                    AtomicRMWInstr::I32AtomicRmw8XorU { .. } |
-                    AtomicRMWInstr::I32AtomicRmw16XorU { .. } |
-                    AtomicRMWInstr::I32AtomicRmw8XchgU { .. } |
-                    AtomicRMWInstr::I32AtomicRmw16XchgU { .. } => {
+                    AtomicRMWInstr::I32AtomicRmwAdd { .. }
+                    | AtomicRMWInstr::I32AtomicRmwSub { .. }
+                    | AtomicRMWInstr::I32AtomicRmwAnd { .. }
+                    | AtomicRMWInstr::I32AtomicRmwOr { .. }
+                    | AtomicRMWInstr::I32AtomicRmwXor { .. }
+                    | AtomicRMWInstr::I32AtomicRmwXchg { .. }
+                    | AtomicRMWInstr::I32AtomicRmw8AddU { .. }
+                    | AtomicRMWInstr::I32AtomicRmw16AddU { .. }
+                    | AtomicRMWInstr::I32AtomicRmw8SubU { .. }
+                    | AtomicRMWInstr::I32AtomicRmw16SubU { .. }
+                    | AtomicRMWInstr::I32AtomicRmw8AndU { .. }
+                    | AtomicRMWInstr::I32AtomicRmw16AndU { .. }
+                    | AtomicRMWInstr::I32AtomicRmw8OrU { .. }
+                    | AtomicRMWInstr::I32AtomicRmw16OrU { .. }
+                    | AtomicRMWInstr::I32AtomicRmw8XorU { .. }
+                    | AtomicRMWInstr::I32AtomicRmw16XorU { .. }
+                    | AtomicRMWInstr::I32AtomicRmw8XchgU { .. }
+                    | AtomicRMWInstr::I32AtomicRmw16XchgU { .. } => {
                         if result.len() == 1 {
                             Ok(Some(Value::I32(result[0] as i32)))
                         } else {
-                            Err(Error::runtime_execution_error("Invalid result length for i32 RMW"))
+                            Err(Error::runtime_execution_error(
+                                "Invalid result length for i32 RMW",
+                            ))
                         }
                     },
                     _ => {
@@ -214,20 +230,24 @@ impl AtomicProvider for ASILCompliantAtomicProvider {
                             let value = (result[0] as u64) | ((result[1] as u64) << 32);
                             Ok(Some(Value::I64(value as i64)))
                         } else {
-                            Err(Error::runtime_execution_error("Invalid result length for i64 RMW"))
+                            Err(Error::runtime_execution_error(
+                                "Invalid result length for i64 RMW",
+                            ))
                         }
-                    }
+                    },
                 }
             },
             AtomicOp::Cmpxchg(cmpxchg_op) => {
                 match cmpxchg_op {
-                    AtomicCmpxchgInstr::I32AtomicRmwCmpxchg { .. } |
-                    AtomicCmpxchgInstr::I32AtomicRmw8CmpxchgU { .. } |
-                    AtomicCmpxchgInstr::I32AtomicRmw16CmpxchgU { .. } => {
+                    AtomicCmpxchgInstr::I32AtomicRmwCmpxchg { .. }
+                    | AtomicCmpxchgInstr::I32AtomicRmw8CmpxchgU { .. }
+                    | AtomicCmpxchgInstr::I32AtomicRmw16CmpxchgU { .. } => {
                         if result.len() == 1 {
                             Ok(Some(Value::I32(result[0] as i32)))
                         } else {
-                            Err(Error::runtime_execution_error("Invalid result length for i32 cmpxchg"))
+                            Err(Error::runtime_execution_error(
+                                "Invalid result length for i32 cmpxchg",
+                            ))
                         }
                     },
                     _ => {
@@ -236,16 +256,20 @@ impl AtomicProvider for ASILCompliantAtomicProvider {
                             let value = (result[0] as u64) | ((result[1] as u64) << 32);
                             Ok(Some(Value::I64(value as i64)))
                         } else {
-                            Err(Error::runtime_execution_error("Invalid result length for i64 cmpxchg"))
+                            Err(Error::runtime_execution_error(
+                                "Invalid result length for i64 cmpxchg",
+                            ))
                         }
-                    }
+                    },
                 }
             },
             AtomicOp::WaitNotify(_) => {
                 if result.len() == 1 {
                     Ok(Some(Value::I32(result[0] as i32)))
                 } else {
-                    Err(Error::runtime_execution_error("Invalid result length for wait/notify"))
+                    Err(Error::runtime_execution_error(
+                        "Invalid result length for wait/notify",
+                    ))
                 }
             },
             AtomicOp::Fence(_) => Ok(None),
@@ -263,16 +287,19 @@ pub fn atomic_i32_load(
     thread_id: ThreadId,
     addr: u32,
 ) -> Result<i32> {
-    let memarg = wrt_foundation::MemArg { offset: addr, align: 2 }; // 2^2 = 4-byte alignment
+    let memarg = wrt_foundation::MemArg {
+        offset: addr,
+        align: 2,
+    }; // 2^2 = 4-byte alignment
     let load_op = AtomicLoadOp::I32AtomicLoad { memarg };
     let op = AtomicOp::Load(load_op);
-    
+
     let provider = ASILCompliantAtomicProvider;
     let result = execute_atomic_operation(op, &[], context, thread_id, &provider)?;
-    
+
     match result {
         Some(Value::I32(value)) => Ok(value),
-        _ => Err(Error::type_error("atomic_i32_load should return i32"))
+        _ => Err(Error::type_error("atomic_i32_load should return i32")),
     }
 }
 
@@ -283,13 +310,16 @@ pub fn atomic_i32_store(
     addr: u32,
     value: i32,
 ) -> Result<()> {
-    let memarg = wrt_foundation::MemArg { offset: addr, align: 2 }; // 2^2 = 4-byte alignment
+    let memarg = wrt_foundation::MemArg {
+        offset: addr,
+        align: 2,
+    }; // 2^2 = 4-byte alignment
     let store_op = AtomicStoreOp::I32AtomicStore { memarg };
     let op = AtomicOp::Store(store_op);
-    
+
     let provider = ASILCompliantAtomicProvider;
     execute_atomic_operation(op, &[Value::I32(value)], context, thread_id, &provider)?;
-    
+
     Ok(())
 }
 
@@ -301,22 +331,27 @@ pub fn atomic_i32_compare_and_swap(
     expected: i32,
     replacement: i32,
 ) -> Result<i32> {
-    let memarg = wrt_foundation::MemArg { offset: addr, align: 2 }; // 2^2 = 4-byte alignment
+    let memarg = wrt_foundation::MemArg {
+        offset: addr,
+        align: 2,
+    }; // 2^2 = 4-byte alignment
     let cmpxchg_op = AtomicCmpxchgInstr::I32AtomicRmwCmpxchg { memarg };
     let op = AtomicOp::Cmpxchg(cmpxchg_op);
-    
+
     let provider = ASILCompliantAtomicProvider;
     let result = execute_atomic_operation(
-        op, 
-        &[Value::I32(expected), Value::I32(replacement)], 
-        context, 
-        thread_id, 
-        &provider
+        op,
+        &[Value::I32(expected), Value::I32(replacement)],
+        context,
+        thread_id,
+        &provider,
     )?;
-    
+
     match result {
         Some(Value::I32(old_value)) => Ok(old_value),
-        _ => Err(Error::type_error("atomic_i32_compare_and_swap should return i32"))
+        _ => Err(Error::type_error(
+            "atomic_i32_compare_and_swap should return i32",
+        )),
     }
 }
 
@@ -327,16 +362,19 @@ pub fn atomic_i32_fetch_add(
     addr: u32,
     value: i32,
 ) -> Result<i32> {
-    let memarg = wrt_foundation::MemArg { offset: addr, align: 2 }; // 2^2 = 4-byte alignment
+    let memarg = wrt_foundation::MemArg {
+        offset: addr,
+        align: 2,
+    }; // 2^2 = 4-byte alignment
     let rmw_op = AtomicRMWInstr::I32AtomicRmwAdd { memarg };
     let op = AtomicOp::RMW(rmw_op);
-    
+
     let provider = ASILCompliantAtomicProvider;
     let result = execute_atomic_operation(op, &[Value::I32(value)], context, thread_id, &provider)?;
-    
+
     match result {
         Some(Value::I32(old_value)) => Ok(old_value),
-        _ => Err(Error::type_error("atomic_i32_fetch_add should return i32"))
+        _ => Err(Error::type_error("atomic_i32_fetch_add should return i32")),
     }
 }
 

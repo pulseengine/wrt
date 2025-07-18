@@ -322,7 +322,7 @@ impl VirtualizationManager {
         }
 
         let instance_id =
-            ComponentInstanceId::new(self.next_virtual_id.fetch_add(1, Ordering::SeqCst);
+            ComponentInstanceId::new(self.next_virtual_id.fetch_add(1, Ordering::SeqCst));
 
         let virtual_component = VirtualComponent {
             instance_id,
@@ -425,7 +425,7 @@ impl VirtualizationManager {
             })?;
         }
 
-        Ok(()
+        Ok(())
     }
 
     pub fn check_capability(
@@ -434,7 +434,7 @@ impl VirtualizationManager {
         capability: &Capability,
     ) -> bool {
         if let Some(component) = self.virtual_components.get(&instance_id) {
-            component.capabilities.iter().any(|cap| self.capability_matches(cap, capability)
+            component.capabilities.iter().any(|cap| self.capability_matches(cap, capability))
         } else {
             false
         }
@@ -457,7 +457,7 @@ impl VirtualizationManager {
             message: "Too many virtual imports".to_string(),
         })?;
 
-        Ok(()
+        Ok(())
     }
 
     pub fn add_virtual_export(
@@ -477,7 +477,7 @@ impl VirtualizationManager {
             message: "Export already exists or too many exports".to_string(),
         })?;
 
-        Ok(()
+        Ok(())
     }
 
     pub fn allocate_virtual_memory(
@@ -586,7 +586,7 @@ impl VirtualizationManager {
                 self.check_resource_limits(component, &sandbox_state.resource_usage)?;
             }
         }
-        Ok(()
+        Ok(())
     }
 
     fn capability_matches(&self, granted: &Capability, requested: &Capability) -> bool {
@@ -721,7 +721,7 @@ impl VirtualizationManager {
             });
         }
 
-        Ok(()
+        Ok(())
     }
 }
 
@@ -762,7 +762,7 @@ mod tests {
     #[test]
     fn test_virtualization_manager_creation() {
         let manager = VirtualizationManager::new().unwrap();
-        assert!(manager.is_virtualization_enabled();
+        assert!(manager.is_virtualization_enabled());
     }
 
     #[test]
@@ -770,7 +770,7 @@ mod tests {
         let mut manager = VirtualizationManager::new().unwrap();
         let result =
             manager.create_virtual_component("test-component", None, IsolationLevel::Basic);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -782,8 +782,8 @@ mod tests {
 
         let capability = create_memory_capability(1024);
         let result = manager.grant_capability(instance_id, capability.clone(), None, true);
-        assert!(result.is_ok();
-        assert!(manager.check_capability(instance_id, &capability);
+        assert!(result.is_ok());
+        assert!(manager.check_capability(instance_id, &capability));
     }
 
     #[test]
@@ -799,6 +799,6 @@ mod tests {
         let permissions = MemoryPermissions { read: true, write: true, execute: false };
 
         let result = manager.allocate_virtual_memory(instance_id, 1024, permissions);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 }
