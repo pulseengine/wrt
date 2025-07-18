@@ -77,7 +77,8 @@ jobs:
 
     timeout-minutes: ${{ matrix.timeout }}
     outputs:
-      asil-${{ matrix.asil_level }}-status: ${{ steps.verify.outputs.status }}
+      verification-status: ${{ steps.verify.outputs.status }}
+      asil-level: ${{ matrix.asil_level }}
 
     steps:
     - name: Checkout repository
