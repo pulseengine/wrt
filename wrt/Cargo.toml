@@ -213,7 +213,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [[test]]
 name = "test_rounding"
-path = "tests/rounding_test.rs"
+path = "tests/rounding_tests.rs"
 
 [[example]]
 name = "checkpoint"

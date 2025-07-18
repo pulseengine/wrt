@@ -1,6 +1,9 @@
 #[cfg(feature = "wat-parsing")]
 use wrt::execute_test_with_stackless;
-use wrt::{Error as WrtError, Result};
+use wrt::{
+    Error as WrtError,
+    Result,
+};
 
 #[test]
 #[cfg(feature = "wat-parsing")]

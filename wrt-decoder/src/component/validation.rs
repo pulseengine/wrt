@@ -8,12 +8,25 @@
 //! It verifies that components conform to the Component Model specification.
 
 #[cfg(feature = "std")]
-use std::{collections::HashMap, vec::Vec};
+use std::{
+    collections::HashMap,
+    vec::Vec,
+};
 
 #[cfg(feature = "std")]
 use wrt_format::component::{
-    Alias, AliasTarget, Canon, CanonOperation, Component, ComponentType, ComponentTypeDefinition,
-    Export, ExternType, Import, Instance, Sort,
+    Alias,
+    AliasTarget,
+    Canon,
+    CanonOperation,
+    Component,
+    ComponentType,
+    ComponentTypeDefinition,
+    Export,
+    ExternType,
+    Import,
+    Instance,
+    Sort,
 };
 
 // Import component model types from crate
@@ -23,7 +36,11 @@ use wrt_format::component::{
 // recursive types
 #[cfg(feature = "std")]
 mod component_validation {
-    use wrt_error::{codes, Error, ErrorCategory};
+    use wrt_error::{
+        codes,
+        Error,
+        ErrorCategory,
+    };
 
     use super::*;
 
@@ -41,7 +58,7 @@ mod component_validation {
     #[derive(Debug, Clone)]
     pub struct ValidationConfig {
         /// Enable value section validation (🪙)
-        pub enable_value_section: bool,
+        pub enable_value_section:  bool,
         /// Enable resource types validation (🔧)
         pub enable_resource_types: bool,
     }
@@ -49,7 +66,7 @@ mod component_validation {
     impl Default for ValidationConfig {
         fn default() -> Self {
             Self {
-                enable_value_section: true,
+                enable_value_section:  true,
                 enable_resource_types: true,
             }
         }
@@ -64,7 +81,7 @@ mod component_validation {
         /// Create a validation config with all features enabled
         pub fn all_enabled() -> Self {
             Self {
-                enable_value_section: true,
+                enable_value_section:  true,
                 enable_resource_types: true,
             }
         }
@@ -72,7 +89,7 @@ mod component_validation {
         /// Create a validation config with only MVP features enabled
         pub fn mvp_only() -> Self {
             Self {
-                enable_value_section: false,
+                enable_value_section:  false,
                 enable_resource_types: false,
             }
         }
@@ -81,24 +98,24 @@ mod component_validation {
     /// Validation context for tracking component structure during validation
     struct ValidationContext<'a> {
         /// Component being validated
-        component: &'a Component,
+        component:         &'a Component,
         /// Configuration for validation
-        config: &'a ValidationConfig,
+        config:            &'a ValidationConfig,
         /// Track defined type indices
         #[cfg(not(any(feature = "std",)))]
-        defined_types: BoundedVec<u32, 1000>,
+        defined_types:     BoundedVec<u32, 1000>,
         #[cfg(feature = "std")]
-        defined_types: Vec<u32>,
+        defined_types:     Vec<u32>,
         /// Track defined import names to detect duplicates
         #[cfg(not(any(feature = "std",)))]
-        import_names: HashMap<WasmName, u32, 100>,
+        import_names:      HashMap<WasmName, u32, 100>,
         #[cfg(feature = "std")]
-        import_names: HashMap<String, u32>,
+        import_names:      HashMap<String, u32>,
         /// Track defined export names to detect duplicates
         #[cfg(not(any(feature = "std",)))]
-        export_names: HashMap<WasmName, u32, 100>,
+        export_names:      HashMap<WasmName, u32, 100>,
         #[cfg(feature = "std")]
-        export_names: HashMap<String, u32>,
+        export_names:      HashMap<String, u32>,
         /// Track defined instance indices
         #[cfg(not(any(feature = "std",)))]
         defined_instances: BoundedVec<u32, 1000>,
@@ -517,13 +534,20 @@ mod component_validation {
 // Re-export public APIs when std feature is enabled
 #[cfg(feature = "std")]
 pub use component_validation::{
-    validate_component, validate_component_with_config, ValidationConfig,
+    validate_component,
+    validate_component_with_config,
+    ValidationConfig,
 };
 
 // No-std stub implementations
 #[cfg(not(feature = "std"))]
 pub mod no_std_stubs {
-    use wrt_error::{codes, Error, ErrorCategory, Result};
+    use wrt_error::{
+        codes,
+        Error,
+        ErrorCategory,
+        Result,
+    };
 
     /// Validation configuration stub for no_std environments
     #[derive(Debug, Clone)]

@@ -1,9 +1,13 @@
 use wrt_foundation::{
-    bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
+    bounded::{
+        BoundedVec,
+        MAX_DWARF_FILE_TABLE,
+    },
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
-    BoundedCapacity, Result,
+    BoundedCapacity,
+    Result,
 };
 
 /// File table support for resolving file indices to paths
@@ -14,23 +18,23 @@ use crate::strings::DebugString;
 #[derive(Debug, Clone)]
 pub struct FileEntry<'a> {
     /// File path (may be relative or absolute)
-    pub path: DebugString<'a>,
+    pub path:      DebugString<'a>,
     /// Directory index (0 = current directory)
     pub dir_index: u32,
     /// Last modification time (0 = unknown)
-    pub mod_time: u64,
+    pub mod_time:  u64,
     /// File size in bytes (0 = unknown)
-    pub size: u64,
+    pub size:      u64,
 }
 
 // Implement required traits for BoundedVec compatibility
 impl<'a> Default for FileEntry<'a> {
     fn default() -> Self {
         Self {
-            path: DebugString::default(),
+            path:      DebugString::default(),
             dir_index: 0,
-            mod_time: 0,
-            size: 0,
+            mod_time:  0,
+            size:      0,
         }
     }
 }
@@ -75,10 +79,10 @@ impl<'a> wrt_foundation::traits::FromBytes for FileEntry<'a> {
         provider: &P,
     ) -> wrt_foundation::Result<Self> {
         Ok(Self {
-            path: DebugString::from_bytes_with_provider(reader, provider)?,
+            path:      DebugString::from_bytes_with_provider(reader, provider)?,
             dir_index: reader.read_u32_le()?,
-            mod_time: reader.read_u64_le()?,
-            size: reader.read_u64_le()?,
+            mod_time:  reader.read_u64_le()?,
+            size:      reader.read_u64_le()?,
         })
     }
 }
@@ -163,14 +167,14 @@ impl<'a> FileTable<'a> {
             // File is relative to compilation directory
             Some(FilePath {
                 directory: None,
-                filename: file.path,
+                filename:  file.path,
             })
         } else {
             // File has explicit directory
             let directory = self.get_directory(file.dir_index)?;
             Some(FilePath {
                 directory: Some(directory),
-                filename: file.path,
+                filename:  file.path,
             })
         }
     }
@@ -192,7 +196,7 @@ pub struct FilePath<'a> {
     /// Directory component (None = relative to compilation directory)
     pub directory: Option<DebugString<'a>>,
     /// Filename component
-    pub filename: DebugString<'a>,
+    pub filename:  DebugString<'a>,
 }
 
 impl<'a> FilePath<'a> {
@@ -246,17 +250,17 @@ mod tests {
 
         // Add files
         let main_rs = FileEntry {
-            path: string_table.get_string(9).unwrap(),
+            path:      string_table.get_string(9).unwrap(),
             dir_index: 1,
-            mod_time: 0,
-            size: 0,
+            mod_time:  0,
+            size:      0,
         };
 
         let utils_rs = FileEntry {
-            path: string_table.get_string(17).unwrap(),
+            path:      string_table.get_string(17).unwrap(),
             dir_index: 1,
-            mod_time: 0,
-            size: 0,
+            mod_time:  0,
+            size:      0,
         };
 
         assert_eq!(file_table.add_file(main_rs), Ok(1));
@@ -283,7 +287,7 @@ mod tests {
 
         let path = FilePath {
             directory: Some(string_table.get_string(1).unwrap()),
-            filename: string_table.get_string(5).unwrap(),
+            filename:  string_table.get_string(5).unwrap(),
         };
 
         let mut output = String::new();

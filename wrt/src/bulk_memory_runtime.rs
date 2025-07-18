@@ -1,7 +1,8 @@
 //! Bulk Memory Operations Runtime Implementation with ASIL Compliance
 //!
-//! This module provides the complete execution logic for WebAssembly bulk memory operations
-//! with support for all ASIL levels (QM, ASIL-A, ASIL-B, ASIL-C, ASIL-D).
+//! This module provides the complete execution logic for WebAssembly bulk
+//! memory operations with support for all ASIL levels (QM, ASIL-A, ASIL-B,
+//! ASIL-C, ASIL-D).
 //!
 //! # Operations Supported
 //! - memory.fill - Fill memory region with a byte value
@@ -22,15 +23,26 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_foundation::values::Value;
-use wrt_instructions::memory_ops::{
-    DataDrop, DataSegmentOperations, MemoryCopy, MemoryFill, MemoryGrow, MemoryInit,
-    MemoryOperations, MemorySize,
-};
-
 #[cfg(not(feature = "std"))]
 use alloc::format;
+
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
+use wrt_foundation::values::Value;
+use wrt_instructions::memory_ops::{
+    DataDrop,
+    DataSegmentOperations,
+    MemoryCopy,
+    MemoryFill,
+    MemoryGrow,
+    MemoryInit,
+    MemoryOperations,
+    MemorySize,
+};
 
 /// Provider trait for bulk memory management across ASIL levels
 pub trait BulkMemoryProvider {
@@ -70,7 +82,8 @@ pub enum BulkMemoryOp {
 /// * `op` - The bulk memory operation to execute
 /// * `inputs` - Input values for the operation
 /// * `memory` - Memory instance for the operation
-/// * `data_segments` - Data segments (optional, only needed for init/drop operations)
+/// * `data_segments` - Data segments (optional, only needed for init/drop
+///   operations)
 /// * `provider` - Memory provider for ASIL compliance
 ///
 /// # Returns
@@ -416,7 +429,8 @@ pub fn memory_size(memory: &dyn MemoryOperations) -> Result<u32> {
     let size_op = MemorySize::new(0); // Memory index 0 for MVP
 
     let provider = AssilCompliantBulkMemoryProvider;
-    // Use a mutable reference for the trait object, even though we don't mutate for size
+    // Use a mutable reference for the trait object, even though we don't mutate for
+    // size
     let mut dummy_memory = EmptyMemory;
     let result = execute_bulk_memory_operation(
         BulkMemoryOp::Size(size_op),

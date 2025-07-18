@@ -7,10 +7,18 @@ use anyhow::Result;
 use colored::Colorize;
 use wrt_build_core::BuildSystem;
 
-use crate::helpers::{ErrorContext, GlobalArgs};
-
+use crate::helpers::{
+    ErrorContext,
+    GlobalArgs,
+};
 #[cfg(test)]
-use crate::testing::{ProjectFeature, TestConfig, TestContext, TestValidator, WorkspaceType};
+use crate::testing::{
+    ProjectFeature,
+    TestConfig,
+    TestContext,
+    TestValidator,
+    WorkspaceType,
+};
 
 /// Test validation command arguments
 #[derive(Debug, Clone)]
@@ -110,7 +118,8 @@ async fn run_component_validation(
         "output" => validate_output_system(args, global).await?,
         _ => {
             return Err(anyhow::anyhow!(
-                "Unknown component '{}'. Available: progress, suggestions, performance, errors, output",
+                "Unknown component '{}'. Available: progress, suggestions, performance, errors, \
+                 output",
                 component
             ));
         },
@@ -135,8 +144,12 @@ async fn run_basic_validation(args: &TestValidateArgs, global: &mut GlobalArgs) 
 
 /// Validate progress system
 async fn validate_progress_system(_args: &TestValidateArgs, global: &mut GlobalArgs) -> Result<()> {
-    use crate::helpers::{MultiStepProgress, ProgressIndicator};
     use std::time::Duration;
+
+    use crate::helpers::{
+        MultiStepProgress,
+        ProgressIndicator,
+    };
 
     let output = global.output.clone();
     output.info("Validating progress indicators...");
@@ -262,8 +275,9 @@ async fn validate_performance_system(
     _args: &TestValidateArgs,
     global: &mut GlobalArgs,
 ) -> Result<()> {
-    use crate::helpers::PerformanceOptimizer;
     use std::time::Duration;
+
+    use crate::helpers::PerformanceOptimizer;
 
     let output = global.output.clone();
     output.info("Validating performance monitoring system...");
@@ -318,7 +332,12 @@ async fn validate_performance_system(
 
 /// Validate error handling
 async fn validate_error_handling(_args: &TestValidateArgs, global: &mut GlobalArgs) -> Result<()> {
-    use crate::helpers::{build_errors, config_errors, CategorizedError, ErrorCategory};
+    use crate::helpers::{
+        build_errors,
+        config_errors,
+        CategorizedError,
+        ErrorCategory,
+    };
 
     let output = global.output.clone();
     output.info("Validating error handling system...");
@@ -359,8 +378,12 @@ async fn validate_error_handling(_args: &TestValidateArgs, global: &mut GlobalAr
 
 /// Validate output system
 async fn validate_output_system(_args: &TestValidateArgs, global: &mut GlobalArgs) -> Result<()> {
-    use crate::helpers::{OutputManager, SimpleResponse};
     use wrt_build_core::formatters::OutputFormat;
+
+    use crate::helpers::{
+        OutputManager,
+        SimpleResponse,
+    };
 
     let output = global.output.clone();
     output.info("Validating output system...");

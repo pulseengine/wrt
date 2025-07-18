@@ -33,8 +33,14 @@
 
 use std::collections::HashMap;
 
-use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
+use anyhow::{
+    Context,
+    Result,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Configuration for containerized builds
 #[derive(Debug, Clone, Serialize, Deserialize)]

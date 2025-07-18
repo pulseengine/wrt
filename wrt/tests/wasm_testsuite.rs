@@ -1,6 +1,15 @@
-use std::{fs, path::Path};
+use std::{
+    fs,
+    path::Path,
+};
 
-use wrt::{Error as WrtError, Module, Result, StacklessEngine, Value};
+use wrt::{
+    Error as WrtError,
+    Module,
+    Result,
+    StacklessEngine,
+    Value,
+};
 
 /// Utility function to get the test suite path from environment variables
 fn get_testsuite_path() -> Option<String> {

@@ -11,28 +11,58 @@
 use std::{
     collections::HashMap,
     fs,
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
 };
 
 use wast::{
-    core::{NanPattern, WastArgCore, WastRetCore},
-    parser::{self, ParseBuffer},
-    Wast, WastArg, WastDirective, WastExecute, WastRet,
+    core::{
+        NanPattern,
+        WastArgCore,
+        WastRetCore,
+    },
+    parser::{
+        self,
+        ParseBuffer,
+    },
+    Wast,
+    WastArg,
+    WastDirective,
+    WastExecute,
+    WastRet,
 };
-use wrt::{Error, Module, Result, StacklessEngine, Value};
+use wrt::{
+    Error,
+    Module,
+    Result,
+    StacklessEngine,
+    Value,
+};
 #[cfg(not(feature = "std"))]
-use wrt_foundation::bounded::{BoundedHashMap as HashMap, BoundedVec};
-use wrt_test_registry::{TestCase, TestConfig, TestRegistry, TestResult, TestRunner, TestSuite};
+use wrt_foundation::bounded::{
+    BoundedHashMap as HashMap,
+    BoundedVec,
+};
+use wrt_test_registry::{
+    TestCase,
+    TestConfig,
+    TestRegistry,
+    TestResult,
+    TestRunner,
+    TestSuite,
+};
 
 /// WAST Test Runner that integrates with the existing test infrastructure
 pub struct WastTestRunner {
     /// Module registry for linking tests (std only)
     #[cfg(feature = "std")]
-    module_registry: HashMap<String, Module>,
+    module_registry:     HashMap<String, Module>,
     /// Current active module for testing
-    current_module: Option<Module>,
+    current_module:      Option<Module>,
     /// Test statistics
-    pub stats: WastTestStats,
+    pub stats:           WastTestStats,
     /// Resource limits for exhaustion testing
     pub resource_limits: ResourceLimits,
 }
@@ -41,32 +71,32 @@ pub struct WastTestRunner {
 #[derive(Debug, Default, Clone)]
 pub struct WastTestStats {
     /// Number of assert_return tests executed
-    pub assert_return_count: usize,
+    pub assert_return_count:     usize,
     /// Number of assert_trap tests executed
-    pub assert_trap_count: usize,
+    pub assert_trap_count:       usize,
     /// Number of assert_invalid tests executed
-    pub assert_invalid_count: usize,
+    pub assert_invalid_count:    usize,
     /// Number of assert_malformed tests executed
-    pub assert_malformed_count: usize,
+    pub assert_malformed_count:  usize,
     /// Number of assert_unlinkable tests executed
     pub assert_unlinkable_count: usize,
     /// Number of assert_exhaustion tests executed
     pub assert_exhaustion_count: usize,
     /// Number of module registration operations
-    pub register_count: usize,
+    pub register_count:          usize,
     /// Number of successful tests
-    pub passed: usize,
+    pub passed:                  usize,
     /// Number of failed tests
-    pub failed: usize,
+    pub failed:                  usize,
 }
 
 /// Resource limits for testing exhaustion scenarios
 #[derive(Debug, Clone)]
 pub struct ResourceLimits {
     /// Maximum stack depth
-    pub max_stack_depth: usize,
+    pub max_stack_depth:     usize,
     /// Maximum memory size in bytes
-    pub max_memory_size: usize,
+    pub max_memory_size:     usize,
     /// Maximum execution steps
     pub max_execution_steps: u64,
 }
@@ -74,8 +104,8 @@ pub struct ResourceLimits {
 impl Default for ResourceLimits {
     fn default() -> Self {
         Self {
-            max_stack_depth: 1024,
-            max_memory_size: 64 * 1024 * 1024, // 64MB
+            max_stack_depth:     1024,
+            max_memory_size:     64 * 1024 * 1024, // 64MB
             max_execution_steps: 1_000_000,
         }
     }
@@ -98,9 +128,9 @@ pub enum WastTestType {
 #[derive(Debug, Clone)]
 pub struct WastDirectiveInfo {
     /// Type of test
-    pub test_type: WastTestType,
+    pub test_type:             WastTestType,
     /// Name of the directive
-    pub directive_name: String,
+    pub directive_name:        String,
     /// Whether the test requires module state
     pub requires_module_state: bool,
     /// Whether the test modifies the engine state
@@ -173,8 +203,8 @@ impl WastTestRunner {
             _ => {
                 // Handle any other directive types
                 Ok(WastDirectiveInfo {
-                    test_type: WastTestType::Correctness,
-                    directive_name: "unknown".to_string(),
+                    test_type:             WastTestType::Correctness,
+                    directive_name:        "unknown".to_string(),
                     requires_module_state: false,
                     modifies_engine_state: false,
                 })
@@ -202,8 +232,8 @@ impl WastTestRunner {
         engine.instantiate(loaded_module)?;
 
         Ok(WastDirectiveInfo {
-            test_type: WastTestType::Integration,
-            directive_name: "module".to_string(),
+            test_type:             WastTestType::Integration,
+            directive_name:        "module".to_string(),
             requires_module_state: false,
             modifies_engine_state: true,
         })
@@ -253,8 +283,8 @@ impl WastTestRunner {
 
                 self.stats.passed += 1;
                 Ok(WastDirectiveInfo {
-                    test_type: WastTestType::Correctness,
-                    directive_name: "assert_return".to_string(),
+                    test_type:             WastTestType::Correctness,
+                    directive_name:        "assert_return".to_string(),
                     requires_module_state: true,
                     modifies_engine_state: false,
                 })
@@ -302,8 +332,8 @@ impl WastTestRunner {
                         {
                             self.stats.passed += 1;
                             Ok(WastDirectiveInfo {
-                                test_type: WastTestType::ErrorHandling,
-                                directive_name: "assert_trap".to_string(),
+                                test_type:             WastTestType::ErrorHandling,
+                                directive_name:        "assert_trap".to_string(),
                                 requires_module_state: true,
                                 modifies_engine_state: false,
                             })
@@ -355,8 +385,8 @@ impl WastTestRunner {
                         {
                             self.stats.passed += 1;
                             Ok(WastDirectiveInfo {
-                                test_type: WastTestType::ErrorHandling,
-                                directive_name: "assert_invalid".to_string(),
+                                test_type:             WastTestType::ErrorHandling,
+                                directive_name:        "assert_invalid".to_string(),
                                 requires_module_state: false,
                                 modifies_engine_state: false,
                             })
@@ -380,8 +410,8 @@ impl WastTestRunner {
                 {
                     self.stats.passed += 1;
                     Ok(WastDirectiveInfo {
-                        test_type: WastTestType::ErrorHandling,
-                        directive_name: "assert_invalid".to_string(),
+                        test_type:             WastTestType::ErrorHandling,
+                        directive_name:        "assert_invalid".to_string(),
                         requires_module_state: false,
                         modifies_engine_state: false,
                     })
@@ -422,8 +452,8 @@ impl WastTestRunner {
                 {
                     self.stats.passed += 1;
                     Ok(WastDirectiveInfo {
-                        test_type: WastTestType::ErrorHandling,
-                        directive_name: "assert_malformed".to_string(),
+                        test_type:             WastTestType::ErrorHandling,
+                        directive_name:        "assert_malformed".to_string(),
                         requires_module_state: false,
                         modifies_engine_state: false,
                     })
@@ -470,8 +500,8 @@ impl WastTestRunner {
                                 {
                                     self.stats.passed += 1;
                                     Ok(WastDirectiveInfo {
-                                        test_type: WastTestType::ErrorHandling,
-                                        directive_name: "assert_unlinkable".to_string(),
+                                        test_type:             WastTestType::ErrorHandling,
+                                        directive_name:        "assert_unlinkable".to_string(),
                                         requires_module_state: false,
                                         modifies_engine_state: false,
                                     })
@@ -495,8 +525,8 @@ impl WastTestRunner {
                         {
                             self.stats.passed += 1;
                             Ok(WastDirectiveInfo {
-                                test_type: WastTestType::ErrorHandling,
-                                directive_name: "assert_unlinkable".to_string(),
+                                test_type:             WastTestType::ErrorHandling,
+                                directive_name:        "assert_unlinkable".to_string(),
                                 requires_module_state: false,
                                 modifies_engine_state: false,
                             })
@@ -556,8 +586,8 @@ impl WastTestRunner {
                         {
                             self.stats.passed += 1;
                             Ok(WastDirectiveInfo {
-                                test_type: WastTestType::Resource,
-                                directive_name: "assert_exhaustion".to_string(),
+                                test_type:             WastTestType::Resource,
+                                directive_name:        "assert_exhaustion".to_string(),
                                 requires_module_state: true,
                                 modifies_engine_state: false,
                             })
@@ -594,8 +624,8 @@ impl WastTestRunner {
             self.module_registry.insert(name.to_string(), module.clone());
             self.stats.passed += 1;
             return Ok(WastDirectiveInfo {
-                test_type: WastTestType::Integration,
-                directive_name: "register".to_string(),
+                test_type:             WastTestType::Integration,
+                directive_name:        "register".to_string(),
                 requires_module_state: true,
                 modifies_engine_state: true,
             });
@@ -608,8 +638,8 @@ impl WastTestRunner {
             if self.current_module.is_some() {
                 self.stats.passed += 1;
                 return Ok(WastDirectiveInfo {
-                    test_type: WastTestType::Integration,
-                    directive_name: "register".to_string(),
+                    test_type:             WastTestType::Integration,
+                    directive_name:        "register".to_string(),
                     requires_module_state: true,
                     modifies_engine_state: true,
                 });
@@ -639,8 +669,8 @@ impl WastTestRunner {
 
                 self.stats.passed += 1;
                 Ok(WastDirectiveInfo {
-                    test_type: WastTestType::Correctness,
-                    directive_name: "invoke".to_string(),
+                    test_type:             WastTestType::Correctness,
+                    directive_name:        "invoke".to_string(),
                     requires_module_state: true,
                     modifies_engine_state: true,
                 })
@@ -877,14 +907,14 @@ pub fn register_wast_tests() {
 
     // Register a test suite for WAST file execution
     let test_case = wrt_test_registry::TestCaseImpl {
-        name: "wast_testsuite_runner",
-        category: "wast",
+        name:         "wast_testsuite_runner",
+        category:     "wast",
         requires_std: true,
-        features: wrt_foundation::bounded::BoundedVec::new(),
-        test_fn: Box::new(|_config: &TestConfig| -> wrt_test_registry::TestResult {
+        features:     wrt_foundation::bounded::BoundedVec::new(),
+        test_fn:      Box::new(|_config: &TestConfig| -> wrt_test_registry::TestResult {
             run_wast_testsuite_tests()
         }),
-        description: "Execute WAST files from the external WebAssembly testsuite",
+        description:  "Execute WAST files from the external WebAssembly testsuite",
     };
 
     if let Err(e) = registry.register(Box::new(test_case)) {

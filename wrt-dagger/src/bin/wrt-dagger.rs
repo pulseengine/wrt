@@ -6,9 +6,20 @@
 //! This tool provides a convenient way to execute cargo-wrt commands
 //! in isolated, reproducible container environments.
 
-use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
-use wrt_dagger::{utils, ContainerConfig, ContainerConfigBuilder, DaggerPipeline};
+use anyhow::{
+    Context,
+    Result,
+};
+use clap::{
+    Parser,
+    Subcommand,
+};
+use wrt_dagger::{
+    utils,
+    ContainerConfig,
+    ContainerConfigBuilder,
+    DaggerPipeline,
+};
 
 #[derive(Parser)]
 #[command(name = "wrt-dagger")]

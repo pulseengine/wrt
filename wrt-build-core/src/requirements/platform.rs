@@ -1,41 +1,58 @@
 //! Platform verification with external limit integration for cargo-wrt
 //!
-//! Provides verification capabilities that integrate with CLI args, environment variables,
-//! configuration files, and container discovery. Integrated with cargo-wrt's diagnostic system.
+//! Provides verification capabilities that integrate with CLI args, environment
+//! variables, configuration files, and container discovery. Integrated with
+//! cargo-wrt's diagnostic system.
 
 use std::{
     collections::HashMap,
-    env, fs,
-    path::{Path, PathBuf},
+    env,
+    fs,
+    path::{
+        Path,
+        PathBuf,
+    },
 };
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::{
     config::AsilLevel,
-    diagnostics::{Diagnostic, DiagnosticCollection, Position, Range, Severity},
-    error::{BuildError, BuildResult},
+    diagnostics::{
+        Diagnostic,
+        DiagnosticCollection,
+        Position,
+        Range,
+        Severity,
+    },
+    error::{
+        BuildError,
+        BuildResult,
+    },
     formatters::OutputFormat,
 };
 
 /// Platform limits discovered from the system
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComprehensivePlatformLimits {
-    pub max_total_memory: usize,
+    pub max_total_memory:       usize,
     pub max_wasm_linear_memory: usize,
-    pub max_stack_bytes: usize,
-    pub max_components: usize,
-    pub platform_id: PlatformId,
+    pub max_stack_bytes:        usize,
+    pub max_components:         usize,
+    pub platform_id:            PlatformId,
 }
 
 impl Default for ComprehensivePlatformLimits {
     fn default() -> Self {
         Self {
-            max_total_memory: 1024 * 1024 * 1024,      // 1GB
-            max_wasm_linear_memory: 256 * 1024 * 1024, // 256MB
-            max_stack_bytes: 1024 * 1024,              // 1MB
-            max_components: 256,
-            platform_id: PlatformId::Unknown,
+            max_total_memory:       1024 * 1024 * 1024, // 1GB
+            max_wasm_linear_memory: 256 * 1024 * 1024,  // 256MB
+            max_stack_bytes:        1024 * 1024,        // 1MB
+            max_components:         256,
+            platform_id:            PlatformId::Unknown,
         }
     }
 }
@@ -74,11 +91,11 @@ impl std::fmt::Display for PlatformId {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExternalLimitSources {
     /// CLI arguments
-    pub cli_args: Vec<String>,
+    pub cli_args:          Vec<String>,
     /// Environment variables
-    pub env_vars: HashMap<String, String>,
+    pub env_vars:          HashMap<String, String>,
     /// Configuration file path
-    pub config_file: Option<String>,
+    pub config_file:       Option<String>,
     /// Container runtime detection
     pub container_runtime: ContainerRuntime,
 }
@@ -86,9 +103,9 @@ pub struct ExternalLimitSources {
 impl Default for ExternalLimitSources {
     fn default() -> Self {
         Self {
-            cli_args: Vec::new(),
-            env_vars: HashMap::new(),
-            config_file: None,
+            cli_args:          Vec::new(),
+            env_vars:          HashMap::new(),
+            config_file:       None,
             container_runtime: ContainerRuntime::None,
         }
     }
@@ -128,31 +145,31 @@ impl std::fmt::Display for ContainerRuntime {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlatformVerificationConfig {
     /// Maximum memory override from external sources
-    pub max_memory_override: Option<usize>,
+    pub max_memory_override:      Option<usize>,
     /// Maximum WASM memory override
     pub max_wasm_memory_override: Option<usize>,
     /// Maximum stack override
-    pub max_stack_override: Option<usize>,
+    pub max_stack_override:       Option<usize>,
     /// Maximum components override
-    pub max_components_override: Option<usize>,
+    pub max_components_override:  Option<usize>,
     /// Debug level override
-    pub debug_level_override: Option<String>,
+    pub debug_level_override:     Option<String>,
     /// Strict validation mode
-    pub strict_validation: bool,
+    pub strict_validation:        bool,
     /// External sources used
-    pub sources: ExternalLimitSources,
+    pub sources:                  ExternalLimitSources,
 }
 
 impl Default for PlatformVerificationConfig {
     fn default() -> Self {
         Self {
-            max_memory_override: None,
+            max_memory_override:      None,
             max_wasm_memory_override: None,
-            max_stack_override: None,
-            max_components_override: None,
-            debug_level_override: None,
-            strict_validation: false,
-            sources: ExternalLimitSources::default(),
+            max_stack_override:       None,
+            max_components_override:  None,
+            debug_level_override:     None,
+            strict_validation:        false,
+            sources:                  ExternalLimitSources::default(),
         }
     }
 }
@@ -161,13 +178,13 @@ impl Default for PlatformVerificationConfig {
 #[derive(Debug)]
 pub struct PlatformVerificationEngine {
     /// Configuration
-    config: PlatformVerificationConfig,
+    config:          PlatformVerificationConfig,
     /// Discovered platform limits
     platform_limits: Option<ComprehensivePlatformLimits>,
     /// Final verified limits
     verified_limits: Option<ComprehensivePlatformLimits>,
     /// Workspace root for file operations
-    workspace_root: PathBuf,
+    workspace_root:  PathBuf,
 }
 
 impl PlatformVerificationEngine {
@@ -266,14 +283,14 @@ impl PlatformVerificationEngine {
         if limits.max_total_memory < asil_requirements.min_total_memory {
             let violation = PlatformViolation {
                 violation_type: PlatformViolationType::InsufficientMemory,
-                severity: ViolationSeverity::High,
-                description: format!(
+                severity:       ViolationSeverity::High,
+                description:    format!(
                     "Total memory {}MB below ASIL {} requirement of {}MB",
                     limits.max_total_memory / (1024 * 1024),
                     asil_level,
                     asil_requirements.min_total_memory / (1024 * 1024)
                 ),
-                current_value: limits.max_total_memory,
+                current_value:  limits.max_total_memory,
                 required_value: asil_requirements.min_total_memory,
             };
             violations.push(violation);
@@ -294,12 +311,12 @@ impl PlatformVerificationEngine {
         if limits.max_components < asil_requirements.min_components {
             let violation = PlatformViolation {
                 violation_type: PlatformViolationType::InsufficientComponents,
-                severity: ViolationSeverity::Medium,
-                description: format!(
+                severity:       ViolationSeverity::Medium,
+                description:    format!(
                     "Component limit {} below ASIL {} requirement of {}",
                     limits.max_components, asil_level, asil_requirements.min_components
                 ),
-                current_value: limits.max_components,
+                current_value:  limits.max_components,
                 required_value: asil_requirements.min_components,
             };
             violations.push(violation);
@@ -312,12 +329,12 @@ impl PlatformVerificationEngine {
         {
             let violation = PlatformViolation {
                 violation_type: PlatformViolationType::UnsupportedContainerRuntime,
-                severity: ViolationSeverity::High,
-                description: format!(
+                severity:       ViolationSeverity::High,
+                description:    format!(
                     "Container runtime {} not allowed for ASIL {}",
                     self.config.sources.container_runtime, asil_level
                 ),
-                current_value: 0,
+                current_value:  0,
                 required_value: 0,
             };
             violations.push(violation);
@@ -784,8 +801,8 @@ impl PlatformVerificationEngine {
     fn get_asil_requirements(&self, asil_level: AsilLevel) -> AsilPlatformRequirements {
         match asil_level {
             AsilLevel::QM => AsilPlatformRequirements {
-                min_total_memory: 64 * 1024 * 1024, // 64MB
-                min_components: 16,
+                min_total_memory:           64 * 1024 * 1024, // 64MB
+                min_components:             16,
                 allowed_container_runtimes: vec![
                     ContainerRuntime::None,
                     ContainerRuntime::Docker,
@@ -796,8 +813,8 @@ impl PlatformVerificationEngine {
                 ],
             },
             AsilLevel::A => AsilPlatformRequirements {
-                min_total_memory: 128 * 1024 * 1024, // 128MB
-                min_components: 32,
+                min_total_memory:           128 * 1024 * 1024, // 128MB
+                min_components:             32,
                 allowed_container_runtimes: vec![
                     ContainerRuntime::None,
                     ContainerRuntime::Docker,
@@ -805,18 +822,18 @@ impl PlatformVerificationEngine {
                 ],
             },
             AsilLevel::B => AsilPlatformRequirements {
-                min_total_memory: 256 * 1024 * 1024, // 256MB
-                min_components: 64,
+                min_total_memory:           256 * 1024 * 1024, // 256MB
+                min_components:             64,
                 allowed_container_runtimes: vec![ContainerRuntime::None, ContainerRuntime::Docker],
             },
             AsilLevel::C => AsilPlatformRequirements {
-                min_total_memory: 512 * 1024 * 1024, // 512MB
-                min_components: 128,
+                min_total_memory:           512 * 1024 * 1024, // 512MB
+                min_components:             128,
                 allowed_container_runtimes: vec![ContainerRuntime::None],
             },
             AsilLevel::D => AsilPlatformRequirements {
-                min_total_memory: 1024 * 1024 * 1024, // 1GB
-                min_components: 256,
+                min_total_memory:           1024 * 1024 * 1024, // 1GB
+                min_components:             256,
                 allowed_container_runtimes: vec![
                     ContainerRuntime::None, // Only native execution for ASIL-D
                 ],
@@ -828,30 +845,30 @@ impl PlatformVerificationEngine {
 /// ASIL-specific platform requirements
 #[derive(Debug, Clone)]
 struct AsilPlatformRequirements {
-    min_total_memory: usize,
-    min_components: usize,
+    min_total_memory:           usize,
+    min_components:             usize,
     allowed_container_runtimes: Vec<ContainerRuntime>,
 }
 
 /// Platform verification result
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlatformVerificationResult {
-    pub asil_level: AsilLevel,
-    pub platform_limits: ComprehensivePlatformLimits,
-    pub violations: Vec<PlatformViolation>,
-    pub compliance_score: f64,
-    pub is_compliant: bool,
+    pub asil_level:        AsilLevel,
+    pub platform_limits:   ComprehensivePlatformLimits,
+    pub violations:        Vec<PlatformViolation>,
+    pub compliance_score:  f64,
+    pub is_compliant:      bool,
     pub container_runtime: ContainerRuntime,
-    pub platform_id: PlatformId,
+    pub platform_id:       PlatformId,
 }
 
 /// Platform violation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlatformViolation {
     pub violation_type: PlatformViolationType,
-    pub severity: ViolationSeverity,
-    pub description: String,
-    pub current_value: usize,
+    pub severity:       ViolationSeverity,
+    pub description:    String,
+    pub current_value:  usize,
     pub required_value: usize,
 }
 
@@ -1016,8 +1033,9 @@ fn parse_memory_string(value: &str) -> Result<usize, BuildError> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::path::PathBuf;
+
+    use super::*;
 
     #[test]
     fn test_memory_string_parsing() {

@@ -7,28 +7,37 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use wrt_format::module::{Function, Module as WrtModule};
-use wrt_foundation::{bounded::BoundedVec, safe_memory::NoStdProvider};
+use wrt_format::module::{
+    Function,
+    Module as WrtModule,
+};
+use wrt_foundation::{
+    bounded::BoundedVec,
+    safe_memory::NoStdProvider,
+};
 
 use crate::{
     prelude::*,
-    streaming_validator::{ComprehensivePlatformLimits, StreamingWasmValidator},
+    streaming_validator::{
+        ComprehensivePlatformLimits,
+        StreamingWasmValidator,
+    },
 };
 
 /// Streaming decoder that processes WebAssembly modules section by section
 pub struct StreamingDecoder<'a> {
     /// The WebAssembly binary data
-    binary: &'a [u8],
+    binary:          &'a [u8],
     /// Current offset in the binary
-    offset: usize,
+    offset:          usize,
     /// Platform limits for validation
     platform_limits: ComprehensivePlatformLimits,
     /// The module being built (std version)
     #[cfg(feature = "std")]
-    module: WrtModule,
+    module:          WrtModule,
     /// The module being built (no_std version)
     #[cfg(not(feature = "std"))]
-    module: WrtModule<NoStdProvider<8192>>,
+    module:          WrtModule<NoStdProvider<8192>>,
 }
 
 impl<'a> StreamingDecoder<'a> {
@@ -219,8 +228,9 @@ impl<'a> StreamingDecoder<'a> {
 
     /// Process export section
     fn process_export_section(&mut self, data: &[u8]) -> Result<()> {
-        use crate::optimized_string::parse_utf8_string_inplace;
         use wrt_format::binary::read_leb128_u32;
+
+        use crate::optimized_string::parse_utf8_string_inplace;
 
         let (count, mut offset) = read_leb128_u32(data, 0)?;
 

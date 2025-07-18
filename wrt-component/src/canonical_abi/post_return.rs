@@ -142,7 +142,7 @@ impl Default for PostReturnContext {
     fn default() -> Self {
         // For Default trait, we prefer to panic rather than return invalid state
         // This ensures capability-based allocation is always properly initialized
-        Self::new().expect("Failed to create PostReturnContext with proper capability allocationMissing message")
+        Self::new().expect("Failed to create PostReturnContext with proper capability allocation")
     }
 }
 
@@ -504,8 +504,8 @@ mod tests {
 
     #[test]
     fn test_resource_type_display() {
-        assert_eq!(ResourceType::Memory.to_string(), "memoryMissing message");
-        assert_eq!(ResourceType::File.to_string(), "fileMissing message");
-        assert_eq!(ResourceType::Stream.to_string(), "streamMissing message");
+        assert_eq!(ResourceType::Memory.to_string(), "memory");
+        assert_eq!(ResourceType::File.to_string(), "file");
+        assert_eq!(ResourceType::Stream.to_string(), "stream");
     }
 }

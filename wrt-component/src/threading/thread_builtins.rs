@@ -554,13 +554,13 @@ mod tests {
         // This will fail because thread 0 doesn't exist, but priority validation should pass
         // The error should be about invalid thread, not invalid priority
         if let Err(e) = result {
-            assert!(e.to_string().contains("Thread not foundMissing messageMissing messageMissing message");
+            assert!(e.to_string().contains("Thread not found"));
         }
         
         // Test invalid priority
         let result = builtins.thread_set_priority(0, 150);
         if let Err(e) = result {
-            assert!(e.to_string().contains("priority must be between 0 and 100Missing messageMissing messageMissing message");
+            assert!(e.to_string().contains("priority must be between 0 and 100"));
         }
     }
 }

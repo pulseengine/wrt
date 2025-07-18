@@ -1,8 +1,14 @@
 //! Tests for WebAssembly Component Model value encoding and decoding
 
-use wrt_decoder::component::{decode_component, encode_component};
+use wrt_decoder::component::{
+    decode_component,
+    encode_component,
+};
 use wrt_error::Result;
-use wrt_format::component::{FormatValType, Value};
+use wrt_format::component::{
+    FormatValType,
+    Value,
+};
 
 /// Create a simple component with values of different types
 fn create_test_component() -> Result<wrt_format::component::Component> {
@@ -12,36 +18,36 @@ fn create_test_component() -> Result<wrt_format::component::Component> {
     component.values = vec![
         // Boolean value (true)
         Value {
-            ty: FormatValType::Bool,
-            data: vec![0x01],
+            ty:         FormatValType::Bool,
+            data:       vec![0x01],
             expression: None,
-            name: None,
+            name:       None,
         },
         // Boolean value (false)
         Value {
-            ty: FormatValType::Bool,
-            data: vec![0x00],
+            ty:         FormatValType::Bool,
+            data:       vec![0x00],
             expression: None,
-            name: None,
+            name:       None,
         },
         // S32 value (42)
         Value {
-            ty: FormatValType::S32,
-            data: vec![0x2A, 0x00, 0x00, 0x00],
+            ty:         FormatValType::S32,
+            data:       vec![0x2A, 0x00, 0x00, 0x00],
             expression: None,
-            name: None,
+            name:       None,
         },
         // String value ("Hello, WebAssembly!")
         Value {
-            ty: FormatValType::String,
-            data: "Hello, WebAssembly!".as_bytes().to_vec(),
+            ty:         FormatValType::String,
+            data:       "Hello, WebAssembly!".as_bytes().to_vec(),
             expression: None,
-            name: None,
+            name:       None,
         },
         // List of S32 values
         Value {
-            ty: FormatValType::List(Box::new(FormatValType::S32)),
-            data: {
+            ty:         FormatValType::List(Box::new(FormatValType::S32)),
+            data:       {
                 // List with 3 items: [1, 2, 3]
                 let mut data = vec![];
 
@@ -58,12 +64,12 @@ fn create_test_component() -> Result<wrt_format::component::Component> {
                 data
             },
             expression: None,
-            name: None,
+            name:       None,
         },
         // Option type (Some(42))
         Value {
-            ty: FormatValType::Option(Box::new(FormatValType::S32)),
-            data: {
+            ty:         FormatValType::Option(Box::new(FormatValType::S32)),
+            data:       {
                 // Some variant (tag = 1)
                 let mut data = vec![0x01];
                 // Value (42)
@@ -71,19 +77,19 @@ fn create_test_component() -> Result<wrt_format::component::Component> {
                 data
             },
             expression: None,
-            name: None,
+            name:       None,
         },
         // Option type (None)
         Value {
-            ty: FormatValType::Option(Box::new(FormatValType::S32)),
-            data: vec![0x00], // None variant (tag = 0)
+            ty:         FormatValType::Option(Box::new(FormatValType::S32)),
+            data:       vec![0x00], // None variant (tag = 0)
             expression: None,
-            name: None,
+            name:       None,
         },
         // Result type (Ok(42))
         Value {
-            ty: FormatValType::Result(Box::new(FormatValType::S32)),
-            data: {
+            ty:         FormatValType::Result(Box::new(FormatValType::S32)),
+            data:       {
                 // Ok variant (tag = 0)
                 let mut data = vec![0x00];
                 // Value (42)
@@ -91,14 +97,14 @@ fn create_test_component() -> Result<wrt_format::component::Component> {
                 data
             },
             expression: None,
-            name: None,
+            name:       None,
         },
         // Result type (Error)
         Value {
-            ty: FormatValType::Result(Box::new(FormatValType::S32)),
-            data: vec![0x01], // Error variant (tag = 1)
+            ty:         FormatValType::Result(Box::new(FormatValType::S32)),
+            data:       vec![0x01], // Error variant (tag = 1)
             expression: None,
-            name: None,
+            name:       None,
         },
     ];
 

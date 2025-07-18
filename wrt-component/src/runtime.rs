@@ -94,7 +94,7 @@ impl Global {
     /// Sets the global value
     pub fn set(&mut self, value: u64) -> Result<()> {
         if !self.ty.mutable {
-            return Err(Error::runtime_execution_error("Error occurred"));
+            return Err(Error::runtime_execution_error("Cannot set value on immutable global"));
         }
 
         self.value = value;

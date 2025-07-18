@@ -725,7 +725,7 @@ impl HandleRepresentationManager {
 
 impl Default for HandleRepresentationManager {
     fn default() -> Self {
-        Self::new().expect("Failed to create default HandleRepresentationManagerMissing message")
+        Self::new().expect("Failed to create default HandleRepresentationManager")
     }
 }
 
@@ -808,7 +808,7 @@ mod tests {
         let component_id = ComponentInstanceId::new(1);
 
         let resource_type =
-            manager.type_registry.create_resource_type(component_id, "test-resourceMissing message").unwrap();
+            manager.type_registry.create_resource_type(component_id, "test-resource").unwrap();
 
         let handle = manager
             .create_handle(component_id, resource_type, AccessRights::full_access()

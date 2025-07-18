@@ -24,10 +24,10 @@ fn create_component_provider() -> Result<CapabilityAwareProvider<wrt_foundation:
     use wrt_foundation::memory_init::get_global_capability_context;
     
     let context = get_global_capability_context()
-        .map_err(|_| Error::initialization_error("Error occurred"))?;
+        .map_err(|_| Error::initialization_error("Failed to get global capability context for component provider"))?
     
     context.create_provider(CrateId::Component, 4096)
-        .map_err(|_| Error::memory_out_of_bounds("Error occurred"))?
+        .map_err(|_| Error::memory_out_of_bounds("Failed to create component provider with 4096 bytes"))?
 }
 
 /// Map of export names to exports using bounded collections
@@ -49,7 +49,7 @@ impl<P: MemoryProvider + Default + Clone> Default for ExportMap<P> {
 }
 
 /// Map of export names to exports using SafeMemory
-#[cfg(feature = "safe-memoryMissing message")]
+#[cfg(feature = "safe-memory")]
 #[derive(Debug)]
 pub struct SafeExportMap {
     /// Name-to-export mapping with safe memory guarantees
@@ -117,7 +117,7 @@ impl<P: MemoryProvider + Default + Clone> ExportMap<P> {
     }
 
     /// Convert this export map to one using SafeMemory containers
-    #[cfg(feature = "safe-memoryMissing message")]
+    #[cfg(feature = "safe-memory")]
     pub fn to_safe_memory(&self) -> Result<SafeExportMap> {
         let mut result = SafeExportMap::new();
         for (name, export) in self.exports.iter() {
@@ -128,7 +128,7 @@ impl<P: MemoryProvider + Default + Clone> ExportMap<P> {
     }
 }
 
-#[cfg(feature = "safe-memoryMissing message")]
+#[cfg(feature = "safe-memory")]
 impl SafeExportMap {
     /// Create a new empty export map
     pub fn new() -> Self {

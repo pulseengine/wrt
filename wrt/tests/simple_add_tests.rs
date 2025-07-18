@@ -1,4 +1,9 @@
-use wrt::{Error, ExecutionEngine, Module, Value};
+use wrt::{
+    Error,
+    ExecutionEngine,
+    Module,
+    Value,
+};
 
 #[test]
 fn test_simple_add() -> Result<(), Error> {

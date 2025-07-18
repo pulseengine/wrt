@@ -226,7 +226,7 @@ pub struct ResourceLifetimeManager {
     /// Total fuel consumed
     total_fuel_consumed: AtomicU64,
     /// Cleanup callbacks
-    cleanup_callbacks: BoundedVec<Box<dyn FnOnce() + Send>, MAX_RESOURCES_PER_COMPONENT>,
+    cleanup_callbacks: BoundedVec<Box<dyn FnOnce() + Send, 256, crate::bounded_component_infra::ComponentProvider>, MAX_RESOURCES_PER_COMPONENT>,
 }
 
 impl ResourceLifetimeManager {

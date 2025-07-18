@@ -106,7 +106,7 @@ pub struct FuelHandleTable<T> {
     /// Table identifier
     pub table_id: u64,
     /// Entries in the table
-    entries: BoundedVec<HandleEntry<T>, MAX_HANDLES_PER_TABLE>,
+    entries: BoundedVec<HandleEntry<T, 256, crate::bounded_component_infra::ComponentProvider>, MAX_HANDLES_PER_TABLE>,
     /// Free list for handle reuse
     free_list: BoundedVec<u32, MAX_HANDLES_PER_TABLE>,
     /// Next generation counter

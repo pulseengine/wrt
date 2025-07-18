@@ -342,7 +342,7 @@ impl ComponentExecutionEngine {
             #[cfg(not(any(feature = "std", )))]
             {
                 let mut name = wrt_foundation::bounded::BoundedString::new();
-                let _ = name.push_str("func_Missing message");
+                let _ = name.push_str("func_");
                 name
             }
         };
@@ -611,7 +611,7 @@ impl ComponentExecutionEngine {
 
 impl Default for ComponentExecutionEngine {
     fn default() -> Self {
-        Self::new().expect("Failed to create default ComponentExecutionEngineMissing message")
+        Self::new().expect("Failed to create default ComponentExecutionEngine")
     }
 }
 
@@ -733,11 +733,11 @@ mod tests {
 
     #[test]
     fn test_execution_state_display() {
-        assert_eq!(ExecutionState::Ready.to_string(), "ReadyMissing message");
-        assert_eq!(ExecutionState::Running.to_string(), "RunningMissing message");
-        assert_eq!(ExecutionState::Completed.to_string(), "CompletedMissing message");
-        assert_eq!(ExecutionState::Failed.to_string(), "FailedMissing message");
-        assert_eq!(ExecutionState::Suspended.to_string(), "SuspendedMissing message");
+        assert_eq!(ExecutionState::Ready.to_string(), "Ready");
+        assert_eq!(ExecutionState::Running.to_string(), "Running");
+        assert_eq!(ExecutionState::Completed.to_string(), "Completed");
+        assert_eq!(ExecutionState::Failed.to_string(), "Failed");
+        assert_eq!(ExecutionState::Suspended.to_string(), "Suspended");
     }
 
     #[cfg(not(any(feature = "std", )))]

@@ -28,37 +28,85 @@ pub mod validation;
 
 #[cfg(feature = "std")]
 pub use analysis::{
-    analyze_component, analyze_component_extended, extract_embedded_modules, extract_inline_module,
-    extract_module_info, is_valid_module, AliasInfo, ComponentSummary, CoreInstanceInfo,
-    CoreModuleInfo, ExtendedExportInfo, ExtendedImportInfo, ModuleExportInfo, ModuleImportInfo,
+    analyze_component,
+    analyze_component_extended,
+    extract_embedded_modules,
+    extract_inline_module,
+    extract_module_info,
+    is_valid_module,
+    AliasInfo,
+    ComponentSummary,
+    CoreInstanceInfo,
+    CoreModuleInfo,
+    ExtendedExportInfo,
+    ExtendedImportInfo,
+    ModuleExportInfo,
+    ModuleImportInfo,
 };
 pub use binary_parser::{
-    parse_component_binary, parse_component_binary_with_validation, ComponentBinaryParser,
-    ComponentHeader, ComponentSectionId, ValidationLevel,
+    parse_component_binary,
+    parse_component_binary_with_validation,
+    ComponentBinaryParser,
+    ComponentHeader,
+    ComponentSectionId,
+    ValidationLevel,
 };
 pub use component_name_section::{
-    generate_component_name_section, parse_component_name_section, ComponentNameSection,
+    generate_component_name_section,
+    parse_component_name_section,
+    ComponentNameSection,
 };
 #[cfg(feature = "std")]
 pub use decode::decode_component as decode_component_internal;
 #[cfg(feature = "std")]
 pub use encode::encode_component;
 #[cfg(feature = "std")]
-pub use name_section::{NameMap, NameMapEntry, SortIdentifier};
+pub use name_section::{
+    NameMap,
+    NameMapEntry,
+    SortIdentifier,
+};
 #[cfg(feature = "std")]
-pub use types::{Component, Export, Import};
 pub use types::{
-    ComponentAnalyzer, ComponentMetadata, ComponentType, CoreExternType, CoreInstance, CoreType,
-    ExportInfo, ExternType, ImportInfo, Instance, ModuleInfo, Start, ValType,
+    Component,
+    Export,
+    Import,
+};
+pub use types::{
+    ComponentAnalyzer,
+    ComponentMetadata,
+    ComponentType,
+    CoreExternType,
+    CoreInstance,
+    CoreType,
+    ExportInfo,
+    ExternType,
+    ImportInfo,
+    Instance,
+    ModuleInfo,
+    Start,
+    ValType,
 };
 #[cfg(feature = "std")]
 pub use utils::*;
 pub use val_type::encode_val_type;
 #[cfg(feature = "std")]
-pub use validation::{validate_component, validate_component_with_config, ValidationConfig};
+pub use validation::{
+    validate_component,
+    validate_component_with_config,
+    ValidationConfig,
+};
 #[cfg(not(feature = "std"))]
-pub use validation::{validate_component, ValidationConfig};
-use wrt_error::{codes, Error, ErrorCategory, Result};
+pub use validation::{
+    validate_component,
+    ValidationConfig,
+};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 
 #[cfg(not(feature = "std"))]
 use crate::prelude::*;

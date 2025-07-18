@@ -185,9 +185,9 @@ where
         Err(e) => {
             // Extract error kind from the error message
             let error_msg = e.to_string());
-            if error_msg.contains("time limit exceededMissing message") || error_msg.contains("timeoutMissing message") {
+            if error_msg.contains("time limit exceeded") || error_msg.contains("timeout") {
                 TimeBoundedOutcome::TimedOut
-            } else if error_msg.contains("terminatedMissing message") || error_msg.contains("limit exceededMissing message") {
+            } else if error_msg.contains("terminated") || error_msg.contains("limit exceeded") {
                 TimeBoundedOutcome::Terminated
             } else {
                 TimeBoundedOutcome::Error(Arc::new(e.clone())

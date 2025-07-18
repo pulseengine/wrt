@@ -3,11 +3,16 @@
 //! This module contains the remaining SIMD operation implementations that
 //! complete the WebAssembly SIMD specification coverage.
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_foundation::values::Value;
-
 #[cfg(not(feature = "std"))]
 use alloc::format;
+
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
+use wrt_foundation::values::Value;
 
 /// Extract v128 bytes from a Value with validation
 #[inline]

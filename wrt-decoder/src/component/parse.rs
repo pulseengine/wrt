@@ -5,12 +5,25 @@
 // Component parsing requires std for Box and complex recursive structures
 #[cfg(feature = "std")]
 mod std_parsing {
-    use wrt_error::{kinds, Error, Result};
+    use wrt_error::{
+        kinds,
+        Error,
+        Result,
+    };
     use wrt_format::{
         binary,
         component::{
-            Alias, Canon, Component, ComponentType, CoreInstance, CoreType, Export, Import,
-            Instance, Start, Value,
+            Alias,
+            Canon,
+            Component,
+            ComponentType,
+            CoreInstance,
+            CoreType,
+            Export,
+            Import,
+            Instance,
+            Start,
+            Value,
         },
         module::Module,
     };
@@ -419,7 +432,7 @@ mod std_parsing {
                     };
                     Ok((
                         wrt_format::component::CoreExternType::Function {
-                            params: empty_params.to_vec(),
+                            params:  empty_params.to_vec(),
                             results: empty_results.to_vec(),
                         },
                         offset,
@@ -884,11 +897,11 @@ mod std_parsing {
 
         Ok((
             wrt_format::component::LiftOptions {
-                memory_idx: Some(memory_idx.unwrap_or(0)),
-                string_encoding: Some(string_encoding_value),
-                realloc_func_idx: None,
+                memory_idx:           Some(memory_idx.unwrap_or(0)),
+                string_encoding:      Some(string_encoding_value),
+                realloc_func_idx:     None,
                 post_return_func_idx: None,
-                is_async: false,
+                is_async:             false,
             },
             offset,
         ))
@@ -946,11 +959,11 @@ mod std_parsing {
 
         Ok((
             wrt_format::component::LowerOptions {
-                memory_idx: Some(memory_idx.unwrap_or(0)),
-                string_encoding: Some(string_encoding_value),
+                memory_idx:       Some(memory_idx.unwrap_or(0)),
+                string_encoding:  Some(string_encoding_value),
                 realloc_func_idx: None,
-                is_async: false,
-                error_mode: None,
+                is_async:         false,
+                error_mode:       None,
             },
             offset,
         ))
@@ -1150,7 +1163,7 @@ mod std_parsing {
 
                 Ok((
                     wrt_format::component::ComponentTypeDefinition::Function {
-                        params: params
+                        params:  params
                             .into_iter()
                             .map(|(name, ty)| {
                                 let name_str = core::str::from_utf8(name)
@@ -1266,7 +1279,9 @@ mod std_parsing {
                 #[cfg(feature = "std")]
                 let bounded_fields = {
                     use wrt_foundation::{
-                        resource::MAX_RESOURCE_FIELD_NAME_LEN, BoundedString, BoundedVec,
+                        resource::MAX_RESOURCE_FIELD_NAME_LEN,
+                        BoundedString,
+                        BoundedVec,
                         NoStdProvider,
                     };
                     let provider = wrt_foundation::safe_managed_alloc!(
@@ -1331,13 +1346,14 @@ mod std_parsing {
                 let mut indices = Vec::with_capacity(index_count as usize);
                 for _i in 0..index_count {
                     // Read type index
-                    let (idx, bytes_read) =
-                        match binary::read_leb128_u32(bytes, offset) {
-                            Ok(result) => result,
-                            Err(_e) => return Err(Error::parse_error(
+                    let (idx, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
+                        Ok(result) => result,
+                        Err(_e) => {
+                            return Err(Error::parse_error(
                                 "Failed to read type index in resource aggregate representation",
-                            )),
-                        };
+                            ))
+                        },
+                    };
                     offset += bytes_read;
 
                     indices.push(idx);
@@ -1345,7 +1361,10 @@ mod std_parsing {
 
                 #[cfg(feature = "std")]
                 let repr = {
-                    use wrt_foundation::{BoundedVec, NoStdProvider};
+                    use wrt_foundation::{
+                        BoundedVec,
+                        NoStdProvider,
+                    };
                     let provider = wrt_foundation::safe_managed_alloc!(
                         4096,
                         wrt_foundation::budget_aware_provider::CrateId::Decoder
@@ -1417,7 +1436,7 @@ mod std_parsing {
 
                 Ok((
                     wrt_format::component::ExternType::Function {
-                        params: params
+                        params:  params
                             .into_iter()
                             .map(|(name, ty)| {
                                 let name_str = core::str::from_utf8(name)
@@ -1879,7 +1898,7 @@ mod std_parsing {
                     nested,
                     package,
                 },
-                ty: extern_type,
+                ty:   extern_type,
             });
         }
 
@@ -2569,8 +2588,16 @@ mod std_parsing {
 // No_std implementation with bounded alternatives following functional safety guidelines
 #[cfg(not(feature = "std"))]
 mod no_std_parsing {
-    use wrt_error::{codes, Error, ErrorCategory, Result};
-    use wrt_foundation::{BoundedVec, NoStdProvider};
+    use wrt_error::{
+        codes,
+        Error,
+        ErrorCategory,
+        Result,
+    };
+    use wrt_foundation::{
+        BoundedVec,
+        NoStdProvider,
+    };
     // Define local stub types for no_std parsing
     #[derive(Debug, Clone, Default, PartialEq, Eq)]
     pub struct Component;

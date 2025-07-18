@@ -1,7 +1,10 @@
 #![cfg(feature = "runtime-variables")]
 
 use wrt_foundation::{
-    bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
+    bounded::{
+        BoundedVec,
+        MAX_DWARF_FILE_TABLE,
+    },
     NoStdProvider,
 };
 
@@ -9,8 +12,17 @@ use crate::bounded_debug_infra;
 /// Runtime variable inspection implementation
 /// Provides the ability to read variable values from runtime state
 use crate::{
-    parameter::{BasicType, Parameter},
-    runtime_api::{DebugMemory, DwarfLocation, LiveVariable, RuntimeState, VariableValue},
+    parameter::{
+        BasicType,
+        Parameter,
+    },
+    runtime_api::{
+        DebugMemory,
+        DwarfLocation,
+        LiveVariable,
+        RuntimeState,
+        VariableValue,
+    },
     strings::DebugString,
 };
 
@@ -20,26 +32,26 @@ pub struct VariableScope {
     /// PC range start (inclusive)
     pub start_pc: u32,
     /// PC range end (exclusive)
-    pub end_pc: u32,
+    pub end_pc:   u32,
     /// Lexical scope depth
-    pub depth: u16,
+    pub depth:    u16,
 }
 
 /// Variable definition from DWARF
 #[derive(Debug)]
 pub struct VariableDefinition<'a> {
     /// Variable name
-    pub name: Option<DebugString<'a>>,
+    pub name:       Option<DebugString<'a>>,
     /// Variable type
-    pub var_type: BasicType,
+    pub var_type:   BasicType,
     /// DWARF location description
-    pub location: DwarfLocation,
+    pub location:   DwarfLocation,
     /// Scope information
-    pub scope: VariableScope,
+    pub scope:      VariableScope,
     /// Source file
     pub file_index: u16,
     /// Source line
-    pub line: u32,
+    pub line:       u32,
 }
 
 /// Runtime variable inspector
@@ -333,10 +345,10 @@ mod tests {
     fn test_value_formatting() {
         // Test integer formatting
         let mut value = VariableValue {
-            bytes: [42, 0, 0, 0, 0, 0, 0, 0],
-            size: 4,
+            bytes:    [42, 0, 0, 0, 0, 0, 0, 0],
+            size:     4,
             var_type: BasicType::SignedInt(4),
-            address: None,
+            address:  None,
         };
 
         let mut output = String::new();
@@ -370,16 +382,16 @@ mod tests {
         let mut inspector = VariableInspector::new();
 
         let var = VariableDefinition {
-            name: None,
-            var_type: BasicType::SignedInt(4),
-            location: DwarfLocation::Register(0),
-            scope: VariableScope {
+            name:       None,
+            var_type:   BasicType::SignedInt(4),
+            location:   DwarfLocation::Register(0),
+            scope:      VariableScope {
                 start_pc: 0x1000,
-                end_pc: 0x2000,
-                depth: 0,
+                end_pc:   0x2000,
+                depth:    0,
             },
             file_index: 0,
-            line: 0,
+            line:       0,
         };
 
         inspector.add_variable(var).unwrap();

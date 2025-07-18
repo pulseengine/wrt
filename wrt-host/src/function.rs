@@ -8,7 +8,7 @@
 //! that can be called from WebAssembly components.
 
 // Use the prelude for consistent imports
-use crate::prelude::{Any, Eq, PartialEq, Result, Value, Error, ErrorCategory};
+use crate::prelude::{Any, Eq, Error, ErrorCategory, PartialEq, Result, Value};
 
 // Value vectors for function parameters/returns
 #[cfg(feature = "std")]
@@ -177,7 +177,7 @@ impl CloneableFn {
         Err(Error::new(
             ErrorCategory::Runtime,
             wrt_error::codes::NOT_IMPLEMENTED,
-            "Dynamic function calls not supported in pure no_std mode"
+            "Dynamic function calls not supported in pure no_std mode",
         ))
     }
 }
@@ -188,7 +188,7 @@ impl Clone for CloneableFn {
         {
             Self(self.0.clone_box())
         }
-        
+
         #[cfg(not(feature = "std"))]
         {
             // In no_std mode, create a default function
@@ -242,37 +242,43 @@ impl wrt_foundation::traits::FromBytes for CloneableFn {
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         // Function pointers can't be deserialized, return a dummy function
-        Ok(CloneableFn::new(|_| Err(wrt_error::Error::new(
-            wrt_error::ErrorCategory::Runtime,
-            wrt_error::codes::RUNTIME_ERROR,
-            "Deserialized function not implemented",
-        ))))
+        Ok(CloneableFn::new(|_| {
+            Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Runtime,
+                wrt_error::codes::RUNTIME_ERROR,
+                "Deserialized function not implemented",
+            ))
+        }))
     }
 }
 
 #[cfg(not(feature = "std"))]
 impl Default for CloneableFn {
     fn default() -> Self {
-        CloneableFn::new(|_| Err(wrt_error::Error::new(
-            wrt_error::ErrorCategory::Runtime,
-            wrt_error::codes::RUNTIME_ERROR,
-            "Default function not implemented",
-        )))
+        CloneableFn::new(|_| {
+            Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Runtime,
+                wrt_error::codes::RUNTIME_ERROR,
+                "Default function not implemented",
+            ))
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-use wrt_foundation::{safe_memory::NoStdProvider, capabilities::context::get_global_capability_context};
-use wrt_foundation::allocator::CrateId;
+    use wrt_foundation::allocator::CrateId;
+    use wrt_foundation::{
+        capabilities::context::get_global_capability_context, safe_memory::NoStdProvider,
+    };
 
     #[test]
     fn test_cloneable_fn() {
         let f = CloneableFn::new(|_| {
             #[cfg(feature = "std")]
             return Ok(vec![Value::I32(42)]);
-            
+
             #[cfg(not(feature = "std"))]
             {
                 // Use capability-aware allocation for safety-critical code
@@ -285,7 +291,7 @@ use wrt_foundation::allocator::CrateId;
         let f2 = f.clone();
 
         let mut target = ();
-        
+
         #[cfg(feature = "std")]
         let empty_args = vec![];
         #[cfg(not(feature = "std"))]
@@ -293,7 +299,7 @@ use wrt_foundation::allocator::CrateId;
             let provider = safe_managed_alloc!(8192, CrateId::Host)?;
             ValueVec::new(provider).unwrap()
         };
-        
+
         let result = f.call(&mut target, empty_args.clone());
         let result2 = f2.call(&mut target, empty_args);
 
@@ -313,7 +319,7 @@ use wrt_foundation::allocator::CrateId;
         let handler = HostFunctionHandler::new(|_| {
             #[cfg(feature = "std")]
             return Ok(vec![Value::I32(42)]);
-            
+
             #[cfg(not(feature = "std"))]
             {
                 // Use capability-aware allocation for safety-critical code
@@ -325,7 +331,7 @@ use wrt_foundation::allocator::CrateId;
         });
 
         let mut target = ();
-        
+
         #[cfg(feature = "std")]
         let empty_args = vec![];
         #[cfg(not(feature = "std"))]
@@ -333,7 +339,7 @@ use wrt_foundation::allocator::CrateId;
             let provider = safe_managed_alloc!(8192, CrateId::Host)?;
             ValueVec::new(provider).unwrap()
         };
-        
+
         let result = handler.call(&mut target, empty_args);
 
         assert!(result.is_ok());

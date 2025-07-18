@@ -3,11 +3,20 @@
 //! This module provides support for loading test configuration from TOML files,
 //! allowing users to customize test execution without command-line arguments.
 
-use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
+use std::{
+    collections::HashMap,
+    fs,
+    path::Path,
+};
+
+use anyhow::{
+    Context,
+    Result,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use wrt_build_core::config::AsilLevel;
 
 /// Main test configuration structure
@@ -109,10 +118,10 @@ pub struct PackageTestConfig {
 impl Default for GlobalTestSettings {
     fn default() -> Self {
         Self {
-            test_threads: default_test_threads(),
-            timeout_seconds: default_timeout(),
-            parallel: default_parallel(),
-            include_no_std: false,
+            test_threads:     default_test_threads(),
+            timeout_seconds:  default_timeout(),
+            parallel:         default_parallel(),
+            include_no_std:   false,
             exclude_patterns: vec![],
         }
     }
@@ -122,9 +131,9 @@ impl Default for WrtTestConfig {
     fn default() -> Self {
         Self {
             default_asil: default_asil_level(),
-            global: GlobalTestSettings::default(),
-            asil: HashMap::new(),
-            packages: HashMap::new(),
+            global:       GlobalTestSettings::default(),
+            asil:         HashMap::new(),
+            packages:     HashMap::new(),
         }
     }
 }
@@ -188,10 +197,10 @@ impl WrtTestConfig {
                 AsilLevel::QM => AsilTestConfig {
                     required_packages: vec![],
                     optional_packages: vec![],
-                    include_patterns: vec![],
-                    exclude_patterns: vec![],
-                    require_no_std: false,
-                    min_coverage: None,
+                    include_patterns:  vec![],
+                    exclude_patterns:  vec![],
+                    require_no_std:    false,
+                    min_coverage:      None,
                 },
                 AsilLevel::B => AsilTestConfig {
                     required_packages: vec![
@@ -200,10 +209,10 @@ impl WrtTestConfig {
                         "wrt-platform".to_string(),
                     ],
                     optional_packages: vec!["wrt-runtime".to_string()],
-                    include_patterns: vec![],
-                    exclude_patterns: vec!["*integration*".to_string()],
-                    require_no_std: true,
-                    min_coverage: Some(85.0),
+                    include_patterns:  vec![],
+                    exclude_patterns:  vec!["*integration*".to_string()],
+                    require_no_std:    true,
+                    min_coverage:      Some(85.0),
                 },
                 AsilLevel::D => AsilTestConfig {
                     required_packages: vec![
@@ -213,18 +222,18 @@ impl WrtTestConfig {
                         "wrt-sync".to_string(),
                     ],
                     optional_packages: vec![],
-                    include_patterns: vec!["*safety*".to_string(), "*verification*".to_string()],
-                    exclude_patterns: vec!["*integration*".to_string(), "*example*".to_string()],
-                    require_no_std: true,
-                    min_coverage: Some(95.0),
+                    include_patterns:  vec!["*safety*".to_string(), "*verification*".to_string()],
+                    exclude_patterns:  vec!["*integration*".to_string(), "*example*".to_string()],
+                    require_no_std:    true,
+                    min_coverage:      Some(95.0),
                 },
                 _ => AsilTestConfig {
                     required_packages: vec!["wrt-error".to_string(), "wrt-foundation".to_string()],
                     optional_packages: vec![],
-                    include_patterns: vec![],
-                    exclude_patterns: vec![],
-                    require_no_std: false,
-                    min_coverage: Some(75.0),
+                    include_patterns:  vec![],
+                    exclude_patterns:  vec![],
+                    require_no_std:    false,
+                    min_coverage:      Some(75.0),
                 },
             }
         })
@@ -236,7 +245,7 @@ impl WrtTestConfig {
             // Provide sensible defaults based on package name
             PackageTestConfig {
                 supports_no_std: !package.contains("wrtd") && !package.contains("std"),
-                asil_levels: match package {
+                asil_levels:     match package {
                     p if p.starts_with("wrt-error") || p.starts_with("wrt-foundation") => {
                         vec![AsilLevel::QM, AsilLevel::B, AsilLevel::D]
                     },
@@ -245,9 +254,9 @@ impl WrtTestConfig {
                     },
                     _ => vec![AsilLevel::QM],
                 },
-                test_args: vec![],
+                test_args:       vec![],
                 timeout_seconds: None,
-                serial: false,
+                serial:          false,
             }
         })
     }
@@ -266,10 +275,10 @@ impl WrtTestConfig {
                     "wrt-platform".to_string(),
                 ],
                 optional_packages: vec!["wrt-sync".to_string()],
-                include_patterns: vec!["*safety*".to_string()],
-                exclude_patterns: vec!["*integration*".to_string()],
-                require_no_std: true,
-                min_coverage: Some(95.0),
+                include_patterns:  vec!["*safety*".to_string()],
+                exclude_patterns:  vec!["*integration*".to_string()],
+                require_no_std:    true,
+                min_coverage:      Some(95.0),
             },
         );
 
@@ -278,10 +287,10 @@ impl WrtTestConfig {
             "wrt-foundation".to_string(),
             PackageTestConfig {
                 supports_no_std: true,
-                asil_levels: vec![AsilLevel::QM, AsilLevel::B, AsilLevel::D],
-                test_args: vec!["--".to_string(), "--test-threads=1".to_string()],
+                asil_levels:     vec![AsilLevel::QM, AsilLevel::B, AsilLevel::D],
+                test_args:       vec!["--".to_string(), "--test-threads=1".to_string()],
                 timeout_seconds: Some(300),
-                serial: false,
+                serial:          false,
             },
         );
 
@@ -312,8 +321,9 @@ fn default_true() -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::TempDir;
+
+    use super::*;
 
     #[test]
     fn test_default_config() {

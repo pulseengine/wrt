@@ -16,8 +16,16 @@ mod component_binary_parser {
 
     use core::fmt;
 
-    use wrt_error::{codes, Error, ErrorCategory, Result};
-    use wrt_format::{component::Component, Validatable};
+    use wrt_error::{
+        codes,
+        Error,
+        ErrorCategory,
+        Result,
+    };
+    use wrt_format::{
+        component::Component,
+        Validatable,
+    };
     // Import ValidationLevel from foundation if available, otherwise define locally
     pub use wrt_foundation::VerificationLevel as ValidationLevel;
 
@@ -39,9 +47,9 @@ mod component_binary_parser {
     #[derive(Debug)]
     pub struct ComponentBinaryParser {
         /// Current offset in the binary data
-        offset: usize,
+        offset:           usize,
         /// Total size of the binary data
-        size: usize,
+        size:             usize,
         /// Validation level for parsing strictness
         validation_level: ValidationLevel,
     }
@@ -56,31 +64,31 @@ mod component_binary_parser {
     #[repr(u8)]
     pub enum ComponentSectionId {
         /// Custom section (0)
-        Custom = 0,
+        Custom       = 0,
         /// Core module section (1)
-        CoreModule = 1,
+        CoreModule   = 1,
         /// Core instance section (2)
         CoreInstance = 2,
         /// Core type section (3)
-        CoreType = 3,
+        CoreType     = 3,
         /// Component section (4)
-        Component = 4,
+        Component    = 4,
         /// Instance section (5)
-        Instance = 5,
+        Instance     = 5,
         /// Alias section (6)
-        Alias = 6,
+        Alias        = 6,
         /// Type section (7)
-        Type = 7,
+        Type         = 7,
         /// Canon section (8)
-        Canon = 8,
+        Canon        = 8,
         /// Start section (9)
-        Start = 9,
+        Start        = 9,
         /// Import section (10)
-        Import = 10,
+        Import       = 10,
         /// Export section (11)
-        Export = 11,
+        Export       = 11,
         /// Value section (12) - Added in Component Model
-        Value = 12,
+        Value        = 12,
     }
 
     impl ComponentSectionId {
@@ -134,11 +142,11 @@ mod component_binary_parser {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct ComponentHeader {
         /// Magic number (must be COMPONENT_MAGIC)
-        pub magic: [u8; 4],
+        pub magic:   [u8; 4],
         /// Version (must be COMPONENT_VERSION)
         pub version: u32,
         /// Layer (must be COMPONENT_LAYER for components)  
-        pub layer: u32,
+        pub layer:   u32,
     }
 
     impl ComponentHeader {
@@ -164,8 +172,8 @@ mod component_binary_parser {
         /// Create a new component binary parser
         pub fn new() -> Self {
             Self {
-                offset: 0,
-                size: 0,
+                offset:           0,
+                size:             0,
                 validation_level: ValidationLevel::default(),
             }
         }
@@ -497,7 +505,7 @@ mod component_binary_parser {
                 // Convert placeholder type to wrt_format type - temporary stub
                 let dummy_comp_type = wrt_format::component::ComponentType {
                     definition: wrt_format::component::ComponentTypeDefinition::Function {
-                        params: Vec::new(),
+                        params:  Vec::new(),
                         results: Vec::new(),
                     },
                 };
@@ -632,30 +640,30 @@ mod component_binary_parser {
         #[test]
         fn test_component_header_validation() {
             let valid_header = ComponentHeader {
-                magic: COMPONENT_MAGIC,
+                magic:   COMPONENT_MAGIC,
                 version: COMPONENT_VERSION,
-                layer: COMPONENT_LAYER,
+                layer:   COMPONENT_LAYER,
             };
             assert!(valid_header.validate().is_ok());
 
             let invalid_magic = ComponentHeader {
-                magic: [0x00, 0x00, 0x00, 0x00],
+                magic:   [0x00, 0x00, 0x00, 0x00],
                 version: COMPONENT_VERSION,
-                layer: COMPONENT_LAYER,
+                layer:   COMPONENT_LAYER,
             };
             assert!(invalid_magic.validate().is_err());
 
             let invalid_version = ComponentHeader {
-                magic: COMPONENT_MAGIC,
+                magic:   COMPONENT_MAGIC,
                 version: 999,
-                layer: COMPONENT_LAYER,
+                layer:   COMPONENT_LAYER,
             };
             assert!(invalid_version.validate().is_err());
 
             let invalid_layer = ComponentHeader {
-                magic: COMPONENT_MAGIC,
+                magic:   COMPONENT_MAGIC,
                 version: COMPONENT_VERSION,
-                layer: 0,
+                layer:   0,
             };
             assert!(invalid_layer.validate().is_err());
         }
@@ -724,14 +732,23 @@ mod component_binary_parser {
 // Re-export public APIs when std feature is enabled
 #[cfg(feature = "std")]
 pub use component_binary_parser::{
-    parse_component_binary, parse_component_binary_with_validation, ComponentBinaryParser,
-    ComponentHeader, ComponentSectionId, ValidationLevel,
+    parse_component_binary,
+    parse_component_binary_with_validation,
+    ComponentBinaryParser,
+    ComponentHeader,
+    ComponentSectionId,
+    ValidationLevel,
 };
 
 // No-std stub implementations
 #[cfg(not(feature = "std"))]
 pub mod no_std_stubs {
-    use wrt_error::{codes, Error, ErrorCategory, Result};
+    use wrt_error::{
+        codes,
+        Error,
+        ErrorCategory,
+        Result,
+    };
 
     /// Validation level stub for no_std environments
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -1,4 +1,8 @@
-use wrt_decoder::instructions::{encode_instruction, parse_instruction, Instruction};
+use wrt_decoder::instructions::{
+    encode_instruction,
+    parse_instruction,
+    Instruction,
+};
 use wrt_format::binary;
 
 #[test]

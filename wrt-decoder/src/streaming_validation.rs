@@ -5,26 +5,35 @@
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
+// Import format! macro for no_std environments
+#[cfg(not(feature = "std"))]
+use alloc::format;
 #[cfg(not(feature = "std"))]
 use alloc::{
     collections::BTreeMap as HashMap,
-    string::{String, ToString},
+    string::{
+        String,
+        ToString,
+    },
     vec::Vec,
 };
-
 // Format macro is available through the prelude
 #[cfg(feature = "std")]
 use std::{
     collections::HashMap,
-    string::{String, ToString},
+    string::{
+        String,
+        ToString,
+    },
     vec::Vec,
 };
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
-
-// Import format! macro for no_std environments
-#[cfg(not(feature = "std"))]
-use alloc::format;
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 
 /// Validation severity levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,13 +52,13 @@ pub enum ValidationSeverity {
 #[derive(Debug, Clone)]
 pub struct ValidationIssue {
     /// Severity level
-    pub severity: ValidationSeverity,
+    pub severity:      ValidationSeverity,
     /// Location in the binary where issue was found
-    pub offset: usize,
+    pub offset:        usize,
     /// Issue description
-    pub message: String,
+    pub message:       String,
     /// Context information
-    pub context: HashMap<String, String>,
+    pub context:       HashMap<String, String>,
     /// Suggested fix if available
     pub suggested_fix: Option<String>,
 }
@@ -91,44 +100,44 @@ impl ValidationIssue {
 #[derive(Debug)]
 pub struct StreamingValidator {
     /// Issues found during validation
-    issues: Vec<ValidationIssue>,
+    issues:        Vec<ValidationIssue>,
     /// Current parsing context
     context_stack: Vec<String>,
     /// Validation rules configuration
-    config: ValidationConfig,
+    config:        ValidationConfig,
     /// Statistics
-    stats: ValidationStats,
+    stats:         ValidationStats,
 }
 
 /// Validation configuration
 #[derive(Debug, Clone)]
 pub struct ValidationConfig {
     /// Maximum number of issues to collect before stopping
-    pub max_issues: usize,
+    pub max_issues:              usize,
     /// Whether to continue parsing after critical errors
     pub continue_after_critical: bool,
     /// Whether to validate section ordering
-    pub validate_section_order: bool,
+    pub validate_section_order:  bool,
     /// Whether to validate type consistency
-    pub validate_types: bool,
+    pub validate_types:          bool,
     /// Whether to validate memory bounds
-    pub validate_memory_bounds: bool,
+    pub validate_memory_bounds:  bool,
     /// Maximum allowed function nesting depth
-    pub max_nesting_depth: u32,
+    pub max_nesting_depth:       u32,
     /// Maximum allowed module size
-    pub max_module_size: usize,
+    pub max_module_size:         usize,
 }
 
 impl Default for ValidationConfig {
     fn default() -> Self {
         Self {
-            max_issues: 100,
+            max_issues:              100,
             continue_after_critical: false,
-            validate_section_order: true,
-            validate_types: true,
-            validate_memory_bounds: true,
-            max_nesting_depth: 1024,
-            max_module_size: 64 * 1024 * 1024, // 64MB
+            validate_section_order:  true,
+            validate_types:          true,
+            validate_memory_bounds:  true,
+            max_nesting_depth:       1024,
+            max_module_size:         64 * 1024 * 1024, // 64MB
         }
     }
 }
@@ -137,27 +146,27 @@ impl Default for ValidationConfig {
 #[derive(Debug, Clone)]
 pub struct ValidationStats {
     /// Total bytes validated
-    pub bytes_validated: usize,
+    pub bytes_validated:     usize,
     /// Number of sections validated
-    pub sections_validated: u32,
+    pub sections_validated:  u32,
     /// Number of functions validated
     pub functions_validated: u32,
     /// Number of type definitions validated
-    pub types_validated: u32,
+    pub types_validated:     u32,
     /// Validation start time (if std feature enabled)
     #[cfg(feature = "std")]
-    pub start_time: std::time::Instant,
+    pub start_time:          std::time::Instant,
 }
 
 impl Default for ValidationStats {
     fn default() -> Self {
         Self {
-            bytes_validated: 0,
-            sections_validated: 0,
-            functions_validated: 0,
-            types_validated: 0,
+            bytes_validated:                    0,
+            sections_validated:                 0,
+            functions_validated:                0,
+            types_validated:                    0,
             #[cfg(feature = "std")]
-            start_time: std::time::Instant::now(),
+            start_time:                         std::time::Instant::now(),
         }
     }
 }
@@ -533,19 +542,19 @@ impl Default for StreamingValidator {
 #[derive(Debug, Clone)]
 pub struct ValidationReport {
     /// Total number of issues found
-    pub total_issues: usize,
+    pub total_issues:      usize,
     /// Number of critical issues
-    pub critical_count: usize,
+    pub critical_count:    usize,
     /// Number of errors
-    pub error_count: usize,
+    pub error_count:       usize,
     /// Number of warnings
-    pub warning_count: usize,
+    pub warning_count:     usize,
     /// Number of info messages
-    pub info_count: usize,
+    pub info_count:        usize,
     /// Whether validation passed overall
     pub validation_passed: bool,
     /// Validation statistics
-    pub stats: ValidationStats,
+    pub stats:             ValidationStats,
 }
 
 impl ValidationReport {

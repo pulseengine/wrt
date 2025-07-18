@@ -6,27 +6,58 @@
 // Core modules
 use core::str;
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use std::{format, string::String};
+use std::{
+    format,
+    string::String,
+};
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-use std::{format, string::String, vec::Vec};
+use std::{
+    format,
+    string::String,
+    vec::Vec,
+};
 
 #[cfg(feature = "std")]
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 // Conditional imports for different environments
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{CrateId, WrtVec};
+use wrt_foundation::allocator::{
+    CrateId,
+    WrtVec,
+};
 #[cfg(not(feature = "std"))]
-use wrt_foundation::bounded::{BoundedString, BoundedVec};
+use wrt_foundation::bounded::{
+    BoundedString,
+    BoundedVec,
+};
 // wrt_error is imported above unconditionally
 #[cfg(feature = "std")]
-use wrt_foundation::{RefType, ValueType};
+use wrt_foundation::{
+    RefType,
+    ValueType,
+};
 
 use crate::error::parse_error;
 #[cfg(feature = "std")]
-use crate::module::{Data, DataMode, Element, ElementInit, Module};
+use crate::module::{
+    Data,
+    DataMode,
+    Element,
+    ElementInit,
+    Module,
+};
 #[cfg(feature = "std")]
 use crate::pure_format_types::{
-    PureDataMode, PureDataSegment, PureElementInit, PureElementMode, PureElementSegment,
+    PureDataMode,
+    PureDataSegment,
+    PureElementInit,
+    PureElementMode,
+    PureElementSegment,
 };
 #[cfg(feature = "std")]
 use crate::types::FormatBlockType;
@@ -1737,9 +1768,9 @@ pub mod with_alloc {
 
         Ok((
             crate::types::Limits {
-                min: min.into(),
-                max: max.map(Into::into),
-                shared: false,
+                min:      min.into(),
+                max:      max.map(Into::into),
+                shared:   false,
                 memory64: false,
             }, // Assuming default shared/memory64
             current_offset,
@@ -2248,10 +2279,10 @@ pub mod with_alloc {
 
                 Ok((
                     Data {
-                        mode: DataMode::Passive,
+                        mode:       DataMode::Passive,
                         memory_idx: 0, // Not applicable for passive, conventionally 0
-                        offset: Vec::new(), // Not applicable for passive
-                        init: init_data,
+                        offset:     Vec::new(), // Not applicable for passive
+                        init:       init_data,
                     },
                     offset,
                 ))
@@ -2324,12 +2355,12 @@ pub mod with_alloc {
 
                 Ok((
                     PureDataSegment {
-                        mode: PureDataMode::Active {
+                        mode:              PureDataMode::Active {
                             memory_index,
                             offset_expr_len: offset_expr.len() as u32,
                         },
                         offset_expr_bytes: offset_expr,
-                        data_bytes: init_data,
+                        data_bytes:        init_data,
                     },
                     offset,
                 ))
@@ -2349,9 +2380,9 @@ pub mod with_alloc {
 
                 Ok((
                     PureDataSegment {
-                        mode: PureDataMode::Passive,
+                        mode:              PureDataMode::Passive,
                         offset_expr_bytes: Vec::new(),
-                        data_bytes: init_data,
+                        data_bytes:        init_data,
                     },
                     offset,
                 ))
@@ -2377,12 +2408,12 @@ pub mod with_alloc {
 
                 Ok((
                     PureDataSegment {
-                        mode: PureDataMode::Active {
+                        mode:              PureDataMode::Active {
                             memory_index,
                             offset_expr_len: offset_expr.len() as u32,
                         },
                         offset_expr_bytes: offset_expr,
-                        data_bytes: init_data,
+                        data_bytes:        init_data,
                     },
                     offset,
                 ))
@@ -2422,15 +2453,17 @@ pub mod with_alloc {
                 let (parsed_offset_expr, next_offset) =
                     parse_init_expr(bytes, offset).map_err(|e| {
                         crate::error::parse_error_dynamic(format!(
-                        "(offset {}): Failed to parse offset_expr for element segment (type 0): {}",
-                        offset, e
-                    ))
+                            "(offset {}): Failed to parse offset_expr for element segment (type \
+                             0): {}",
+                            offset, e
+                        ))
                     })?;
                 offset = next_offset;
                 let (func_indices, next_offset) = read_vector(bytes, offset, read_leb128_u32)
                     .map_err(|e| {
                         crate::error::parse_error_dynamic(format!(
-                            "(offset {}): Failed to read func_indices for element segment (type 0): {}",
+                            "(offset {}): Failed to read func_indices for element segment (type \
+                             0): {}",
                             offset, e
                         ))
                     })?;
@@ -2468,7 +2501,8 @@ pub mod with_alloc {
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
                         crate::error::parse_error_dynamic(format!(
-                            "(offset {}): Failed to read expressions for element segment (type 1): {}",
+                            "(offset {}): Failed to read expressions for element segment (type \
+                             1): {}",
                             offset, e
                         ))
                     })?;
@@ -2498,9 +2532,10 @@ pub mod with_alloc {
                 let (parsed_offset_expr, next_offset) =
                     parse_init_expr(bytes, offset).map_err(|e| {
                         crate::error::parse_error_dynamic(format!(
-                        "(offset {}): Failed to parse offset_expr for element segment (type 2): {}",
-                        offset, e
-                    ))
+                            "(offset {}): Failed to parse offset_expr for element segment (type \
+                             2): {}",
+                            offset, e
+                        ))
                     })?;
                 offset = next_offset;
 
@@ -2518,7 +2553,8 @@ pub mod with_alloc {
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
                         crate::error::parse_error_dynamic(format!(
-                            "(offset {}): Failed to read expressions for element segment (type 2): {}",
+                            "(offset {}): Failed to read expressions for element segment (type \
+                             2): {}",
                             offset, e
                         ))
                     })?;
@@ -2555,7 +2591,8 @@ pub mod with_alloc {
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
                         crate::error::parse_error_dynamic(format!(
-                            "(offset {}): Failed to read expressions for element segment (type 3): {}",
+                            "(offset {}): Failed to read expressions for element segment (type \
+                             3): {}",
                             offset, e
                         ))
                     })?;
@@ -2579,15 +2616,17 @@ pub mod with_alloc {
                 let (parsed_offset_expr, next_offset) =
                     parse_init_expr(bytes, offset).map_err(|e| {
                         crate::error::parse_error_dynamic(format!(
-                        "(offset {}): Failed to parse offset_expr for element segment (type 4): {}",
-                        offset, e
-                    ))
+                            "(offset {}): Failed to parse offset_expr for element segment (type \
+                             4): {}",
+                            offset, e
+                        ))
                     })?;
                 offset = next_offset;
                 let (func_indices, next_offset) = read_vector(bytes, offset, read_leb128_u32)
                     .map_err(|e| {
                         crate::error::parse_error_dynamic(format!(
-                            "(offset {}): Failed to read func_indices for element segment (type 4): {}",
+                            "(offset {}): Failed to read func_indices for element segment (type \
+                             4): {}",
                             offset, e
                         ))
                     })?;
@@ -2628,7 +2667,8 @@ pub mod with_alloc {
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
                         crate::error::parse_error_dynamic(format!(
-                            "(offset {}): Failed to read expressions for element segment (type 5): {}",
+                            "(offset {}): Failed to read expressions for element segment (type \
+                             5): {}",
                             offset, e
                         ))
                     })?;
@@ -2658,9 +2698,10 @@ pub mod with_alloc {
                 let (parsed_offset_expr, next_offset) =
                     parse_init_expr(bytes, offset).map_err(|e| {
                         crate::error::parse_error_dynamic(format!(
-                        "(offset {}): Failed to parse offset_expr for element segment (type 6): {}",
-                        offset, e
-                    ))
+                            "(offset {}): Failed to parse offset_expr for element segment (type \
+                             6): {}",
+                            offset, e
+                        ))
                     })?;
                 offset = next_offset;
 
@@ -2681,7 +2722,8 @@ pub mod with_alloc {
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
                         crate::error::parse_error_dynamic(format!(
-                            "(offset {}): Failed to read expressions for element segment (type 6): {}",
+                            "(offset {}): Failed to read expressions for element segment (type \
+                             6): {}",
                             offset, e
                         ))
                     })?;
@@ -2721,7 +2763,8 @@ pub mod with_alloc {
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
                         crate::error::parse_error_dynamic(format!(
-                            "(offset {}): Failed to read expressions for element segment (type 7): {}",
+                            "(offset {}): Failed to read expressions for element segment (type \
+                             7): {}",
                             offset, e
                         ))
                     })?;
@@ -3175,8 +3218,10 @@ mod tests {
     }
 
     // Re-export pure parsing functions for std builds
-    pub use super::parse_data_pure;
-    pub use super::parse_element_segment_pure;
+    pub use super::{
+        parse_data_pure,
+        parse_element_segment_pure,
+    };
 }
 
 // Additional exports and aliases for compatibility

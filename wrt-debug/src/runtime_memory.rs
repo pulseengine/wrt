@@ -1,7 +1,10 @@
 #![cfg(feature = "runtime-memory")]
 
 use wrt_foundation::{
-    bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
+    bounded::{
+        BoundedVec,
+        MAX_DWARF_FILE_TABLE,
+    },
     budget_aware_provider::CrateId,
     safe_managed_alloc,
 };
@@ -9,21 +12,24 @@ use wrt_foundation::{
 use crate::bounded_debug_infra;
 /// Runtime memory inspection implementation
 /// Provides safe memory access and heap analysis capabilities
-use crate::runtime_api::{DebugMemory, RuntimeState};
+use crate::runtime_api::{
+    DebugMemory,
+    RuntimeState,
+};
 
 /// Memory region information
 #[derive(Debug, Clone)]
 pub struct MemoryRegion {
     /// Start address
-    pub start: u32,
+    pub start:       u32,
     /// Size in bytes
-    pub size: u32,
+    pub size:        u32,
     /// Region type
     pub region_type: MemoryRegionType,
     /// Is writable
-    pub writable: bool,
+    pub writable:    bool,
     /// Human-readable name
-    pub name: &'static str,
+    pub name:        &'static str,
 }
 
 /// Type of memory region
@@ -47,24 +53,24 @@ pub enum MemoryRegionType {
 #[derive(Debug, Clone)]
 pub struct HeapAllocation {
     /// Allocation address
-    pub address: u32,
+    pub address:   u32,
     /// Size in bytes
-    pub size: u32,
+    pub size:      u32,
     /// Binary std/no_std choice
     pub allocated: bool,
     /// Allocation ID (if available)
-    pub id: Option<u32>,
+    pub id:        Option<u32>,
 }
 
 /// Memory inspector for runtime debugging
 pub struct MemoryInspector<'a> {
     /// Memory regions
-    regions: BoundedVec<MemoryRegion, 16, crate::bounded_debug_infra::DebugProvider>,
+    regions:     BoundedVec<MemoryRegion, 16, crate::bounded_debug_infra::DebugProvider>,
     /// Binary std/no_std choice
     allocations:
         BoundedVec<HeapAllocation, MAX_DWARF_FILE_TABLE, crate::bounded_debug_infra::DebugProvider>,
     /// Reference to debug memory interface
-    memory: Option<&'a dyn DebugMemory>,
+    memory:      Option<&'a dyn DebugMemory>,
 }
 
 impl<'a> MemoryInspector<'a> {
@@ -74,13 +80,13 @@ impl<'a> MemoryInspector<'a> {
         let allocations_provider = safe_managed_alloc!(65536, CrateId::Runtime)?;
 
         Ok(Self {
-            regions: BoundedVec::new(regions_provider).map_err(|_| {
+            regions:     BoundedVec::new(regions_provider).map_err(|_| {
                 wrt_foundation::Error::allocation_failed("Failed to create regions vector")
             })?,
             allocations: BoundedVec::new(allocations_provider).map_err(|_| {
                 wrt_foundation::Error::allocation_failed("Failed to create allocations vector")
             })?,
-            memory: None,
+            memory:      None,
         })
     }
 
@@ -154,12 +160,12 @@ impl<'a> MemoryInspector<'a> {
     /// Get heap statistics
     pub fn heap_stats(&self) -> HeapStats {
         let mut stats = HeapStats {
-            total_allocations: 0,
+            total_allocations:  0,
             active_allocations: 0,
-            total_bytes: 0,
-            allocated_bytes: 0,
+            total_bytes:        0,
+            allocated_bytes:    0,
             largest_allocation: 0,
-            fragmentation: 0.0,
+            fragmentation:      0.0,
         };
 
         for alloc in self.allocations.iter() {
@@ -195,8 +201,8 @@ impl<'a> MemoryInspector<'a> {
     pub fn dump_hex(&self, addr: u32, len: usize) -> MemoryDump {
         MemoryDump {
             inspector: self,
-            address: addr,
-            length: len,
+            address:   addr,
+            length:    len,
         }
     }
 
@@ -233,9 +239,9 @@ pub struct MemoryView<'a> {
     /// Start address
     pub address: u32,
     /// Memory data
-    pub data: &'a [u8],
+    pub data:    &'a [u8],
     /// Region containing this memory
-    pub region: Option<&'a MemoryRegion>,
+    pub region:  Option<&'a MemoryRegion>,
 }
 
 /// View of a C-style string
@@ -243,7 +249,7 @@ pub struct CStringView<'a> {
     /// String address
     pub address: u32,
     /// String data (without null terminator)
-    pub data: &'a [u8],
+    pub data:    &'a [u8],
 }
 
 impl<'a> CStringView<'a> {
@@ -257,17 +263,17 @@ impl<'a> CStringView<'a> {
 #[derive(Debug, Clone)]
 pub struct HeapStats {
     /// Binary std/no_std choice
-    pub total_allocations: u32,
+    pub total_allocations:  u32,
     /// Binary std/no_std choice
     pub active_allocations: u32,
     /// Total heap size
-    pub total_bytes: u32,
+    pub total_bytes:        u32,
     /// Binary std/no_std choice
-    pub allocated_bytes: u32,
+    pub allocated_bytes:    u32,
     /// Binary std/no_std choice
     pub largest_allocation: u32,
     /// Fragmentation ratio (0.0 - 1.0)
-    pub fragmentation: f32,
+    pub fragmentation:      f32,
 }
 
 /// Stack usage analysis
@@ -276,13 +282,13 @@ pub struct StackAnalysis {
     /// Current stack pointer
     pub stack_pointer: u32,
     /// Stack base address
-    pub stack_base: u32,
+    pub stack_base:    u32,
     /// Total stack size
-    pub stack_size: u32,
+    pub stack_size:    u32,
     /// Bytes used
-    pub used_bytes: u32,
+    pub used_bytes:    u32,
     /// Bytes free
-    pub free_bytes: u32,
+    pub free_bytes:    u32,
     /// Usage percentage
     pub usage_percent: f32,
 }
@@ -290,8 +296,8 @@ pub struct StackAnalysis {
 /// Memory dump helper
 pub struct MemoryDump<'a> {
     inspector: &'a MemoryInspector<'a>,
-    address: u32,
-    length: usize,
+    address:   u32,
+    length:    usize,
 }
 
 impl<'a> MemoryDump<'a> {
@@ -389,21 +395,21 @@ mod tests {
         // Add memory regions
         inspector
             .add_region(MemoryRegion {
-                start: 0x0,
-                size: 0x10000,
+                start:       0x0,
+                size:        0x10000,
                 region_type: MemoryRegionType::LinearMemory,
-                writable: true,
-                name: "main",
+                writable:    true,
+                name:        "main",
             })
             .unwrap();
 
         inspector
             .add_region(MemoryRegion {
-                start: 0x10000,
-                size: 0x10000,
+                start:       0x10000,
+                size:        0x10000,
                 region_type: MemoryRegionType::Stack,
-                writable: true,
-                name: "stack",
+                writable:    true,
+                name:        "stack",
             })
             .unwrap();
 
@@ -422,28 +428,28 @@ mod tests {
         // Binary std/no_std choice
         inspector
             .add_allocation(HeapAllocation {
-                address: 0x1000,
-                size: 256,
+                address:   0x1000,
+                size:      256,
                 allocated: true,
-                id: Some(1),
+                id:        Some(1),
             })
             .unwrap();
 
         inspector
             .add_allocation(HeapAllocation {
-                address: 0x2000,
-                size: 512,
+                address:   0x2000,
+                size:      512,
                 allocated: true,
-                id: Some(2),
+                id:        Some(2),
             })
             .unwrap();
 
         inspector
             .add_allocation(HeapAllocation {
-                address: 0x3000,
-                size: 128,
+                address:   0x3000,
+                size:      128,
                 allocated: false,
-                id: Some(3),
+                id:        Some(3),
             })
             .unwrap();
 

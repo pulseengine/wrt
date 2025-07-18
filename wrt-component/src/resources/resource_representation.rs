@@ -360,7 +360,7 @@ impl ResourceRepresentationManager {
             
             result
         }
-        #[cfg(not(any(feature = Missing messageMissing messageMissing message")))]
+        #[cfg(not(any(feature = "std")))]
         {
             // Find representation entry
             let repr_entry = self.representations
@@ -428,7 +428,7 @@ impl ResourceRepresentationManager {
             
             result
         }
-        #[cfg(not(any(feature = Missing messageMissing messageMissing message")))]
+        #[cfg(not(any(feature = "std")))]
         {
             // Find representation entry
             let repr_entry = self.representations
@@ -552,7 +552,7 @@ impl ResourceRepresentationManager {
                 })?;
                 })
         }
-        #[cfg(not(any(feature = Missing messageMissing messageMissing message")))]
+        #[cfg(not(any(feature = "std")))]
         {
             self.handle_to_resource
                 .iter()
@@ -574,7 +574,7 @@ impl ResourceRepresentationManager {
                 })?;
                 })
         }
-        #[cfg(not(any(feature = Missing messageMissing messageMissing message")))]
+        #[cfg(not(any(feature = "std")))]
         {
             self.handle_to_resource
                 .iter_mut()
@@ -623,7 +623,7 @@ impl ResourceRepresentation for FileHandleRepresentation {
             
             Ok(RepresentationValue::U32(*fd as u32)
         }
-        #[cfg(not(any(feature = Missing messageMissing messageMissing message")))]
+        #[cfg(not(any(feature = "std")))]
         {
             let fd = self.file_descriptors
                 .iter()

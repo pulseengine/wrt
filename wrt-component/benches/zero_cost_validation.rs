@@ -5,12 +5,23 @@
 
 #![allow(unused_imports)]
 
-use std::collections::HashMap as StdHashMap;
-use std::vec::Vec as StdVec;
+use std::{
+    collections::HashMap as StdHashMap,
+    vec::Vec as StdVec,
+};
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{
+    black_box,
+    criterion_group,
+    criterion_main,
+    Criterion,
+};
 #[cfg(feature = "safety-critical")]
-use wrt_foundation::allocator::{CrateId, WrtHashMap, WrtVec};
+use wrt_foundation::allocator::{
+    CrateId,
+    WrtHashMap,
+    WrtVec,
+};
 
 /// Test that basic operations compile to identical code
 fn bench_zero_cost_push(c: &mut Criterion) {
@@ -144,7 +155,10 @@ fn bench_capacity_overhead(c: &mut Criterion) {
 #[cfg(all(test, feature = "safety-critical"))]
 #[test]
 fn test_memory_layout() {
-    use std::mem::{align_of, size_of};
+    use std::mem::{
+        align_of,
+        size_of,
+    };
 
     // Vec layout comparison
     assert_eq!(

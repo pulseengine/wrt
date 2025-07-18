@@ -10,7 +10,12 @@ use core::str;
 #[cfg(feature = "std")]
 use std::string::String;
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::BoundedString;
 
@@ -50,7 +55,10 @@ pub fn parse_utf8_string_inplace(
         )
     })?;
 
-    use wrt_foundation::{safe_managed_alloc, CrateId};
+    use wrt_foundation::{
+        safe_managed_alloc,
+        CrateId,
+    };
     let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     let bounded_string = wrt_foundation::BoundedString::from_str(string_str, provider)
         .map_err(|_| Error::runtime_execution_error("Failed to create bounded string"))?;

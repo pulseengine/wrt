@@ -1,7 +1,11 @@
 //! Example of using the memory profiling module
 
 use wrt_debug::memory_profiling::{
-    init_profiler, profile_operation, with_profiler, AllocationType, MemoryProfiler,
+    init_profiler,
+    profile_operation,
+    with_profiler,
+    AllocationType,
+    MemoryProfiler,
 };
 use wrt_foundation::budget_aware_provider::CrateId;
 

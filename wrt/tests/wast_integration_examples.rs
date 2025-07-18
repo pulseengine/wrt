@@ -5,11 +5,21 @@
 
 #![cfg(test)]
 
-use wrt::{Error, Module, Result, StacklessEngine, Value};
+use wrt::{
+    Error,
+    Module,
+    Result,
+    StacklessEngine,
+    Value,
+};
 
 // Import the WAST test runner
 mod wast_test_runner;
-use wast_test_runner::{ResourceLimits, WastTestRunner, WastTestStats};
+use wast_test_runner::{
+    ResourceLimits,
+    WastTestRunner,
+    WastTestStats,
+};
 
 /// Example: Basic WAST test execution
 #[test]
@@ -116,8 +126,8 @@ fn example_resource_limit_testing() -> Result<()> {
 
     // Set strict resource limits
     runner.set_resource_limits(ResourceLimits {
-        max_stack_depth: 100,
-        max_memory_size: 1024 * 1024, // 1MB
+        max_stack_depth:     100,
+        max_memory_size:     1024 * 1024, // 1MB
         max_execution_steps: 10000,
     });
 
@@ -449,8 +459,8 @@ fn example_full_workflow() -> Result<()> {
 
     // Configure resource limits
     runner.set_resource_limits(ResourceLimits {
-        max_stack_depth: 1024,
-        max_memory_size: 16 * 1024 * 1024, // 16MB
+        max_stack_depth:     1024,
+        max_memory_size:     16 * 1024 * 1024, // 16MB
         max_execution_steps: 1_000_000,
     });
 

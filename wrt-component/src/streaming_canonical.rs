@@ -186,7 +186,7 @@ impl StreamingCanonicalAbi {
             streams: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    Error::resource_exhausted("Error occurred")
+                    Error::resource_exhausted("Failed to create bounded vector for streaming contexts")
                 })?
             },
             
@@ -196,7 +196,7 @@ impl StreamingCanonicalAbi {
             buffer_pool: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    Error::resource_exhausted("Error occurred")
+                    Error::resource_exhausted("Failed to create bounded vector for buffer pool")
                 })?
             },
             
@@ -224,7 +224,7 @@ impl StreamingCanonicalAbi {
             buffer: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
-                    Error::resource_exhausted("Error occurred")
+                    Error::resource_exhausted("Failed to create bounded vector for stream buffer")
                 })?
             },
             bytes_processed: 0,
@@ -234,7 +234,7 @@ impl StreamingCanonicalAbi {
         };
 
         self.streams.push(context).map_err(|_| {
-            Error::resource_exhausted("Error occurred")
+            Error::resource_exhausted("Failed to add new stream context, maximum concurrent streams reached")
             )
         })?;
 
@@ -370,9 +370,8 @@ impl StreamingCanonicalAbi {
             .iter()
             .position(|ctx| ctx.handle == handle)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Error occurred")
-            })?;
-            })
+                Error::runtime_execution_error("Stream handle not found")
+            })?
     }
 
     #[cfg(feature = "std")]
@@ -534,7 +533,7 @@ impl Default for StreamingCanonicalAbi {
     fn default() -> Self {
         // Use new() which properly handles allocation or panic in development
         // This ensures consistent memory management patterns
-        Self::new().expect("StreamingCanonicalAbi allocation should not fail in default constructionMissing message")
+        Self::new().expect("StreamingCanonicalAbi allocation should not fail in default construction")
     }
 }
 
@@ -679,8 +678,8 @@ mod tests {
 
     #[test]
     fn test_stream_direction_display() {
-        assert_eq!(StreamDirection::Lifting.to_string(), "liftingMissing message");
-        assert_eq!(StreamDirection::Lowering.to_string(), "loweringMissing message");
-        assert_eq!(StreamDirection::Bidirectional.to_string(), "bidirectionalMissing message");
+        assert_eq!(StreamDirection::Lifting.to_string(), "lifting");
+        assert_eq!(StreamDirection::Lowering.to_string(), "lowering");
+        assert_eq!(StreamDirection::Bidirectional.to_string(), "bidirectional");
     }
 }

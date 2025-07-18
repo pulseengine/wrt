@@ -1,22 +1,42 @@
 //! Documentation Verification Framework for cargo-wrt
 //!
-//! This module provides comprehensive documentation verification for safety-critical
-//! systems, ensuring that all requirements, implementations, and tests are properly
-//! documented according to ASIL standards. Integrated with cargo-wrt's diagnostic system.
+//! This module provides comprehensive documentation verification for
+//! safety-critical systems, ensuring that all requirements, implementations,
+//! and tests are properly documented according to ASIL standards. Integrated
+//! with cargo-wrt's diagnostic system.
 
-use std::{collections::HashMap, fmt, path::PathBuf};
+use std::{
+    collections::HashMap,
+    fmt,
+    path::PathBuf,
+};
 
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    config::AsilLevel,
-    diagnostics::{Diagnostic, DiagnosticCollection, Position, Range, Severity},
-    error::{BuildError, BuildResult},
-    formatters::OutputFormat,
+use serde::{
+    Deserialize,
+    Serialize,
 };
 
 use super::model::{
-    RequirementId, RequirementRegistry, RequirementType, SafetyRequirement, VerificationMethod,
+    RequirementId,
+    RequirementRegistry,
+    RequirementType,
+    SafetyRequirement,
+    VerificationMethod,
+};
+use crate::{
+    config::AsilLevel,
+    diagnostics::{
+        Diagnostic,
+        DiagnosticCollection,
+        Position,
+        Range,
+        Severity,
+    },
+    error::{
+        BuildError,
+        BuildResult,
+    },
+    formatters::OutputFormat,
 };
 
 /// Documentation verification framework that ensures proper documentation
@@ -24,13 +44,13 @@ use super::model::{
 #[derive(Debug)]
 pub struct DocumentationVerificationFramework {
     /// Registry of requirements to verify documentation for
-    requirement_registry: RequirementRegistry,
+    requirement_registry:   RequirementRegistry,
     /// Documentation analysis results
     documentation_analysis: Vec<DocumentationAnalysis>,
     /// Configuration for verification standards
-    verification_config: DocumentationVerificationConfig,
+    verification_config:    DocumentationVerificationConfig,
     /// Workspace root for file operations
-    workspace_root: PathBuf,
+    workspace_root:         PathBuf,
 }
 
 impl DocumentationVerificationFramework {
@@ -360,12 +380,12 @@ impl DocumentationVerificationFramework {
             let violation = DocumentationViolation {
                 requirement_id: requirement.id.clone(),
                 violation_type: DocumentationViolationType::MissingDescription,
-                severity: self.get_violation_severity(
+                severity:       self.get_violation_severity(
                     requirement.asil_level,
                     DocumentationViolationType::MissingDescription,
                 ),
-                description: "Requirement lacks detailed description".to_string(),
-                location: DocumentationLocation::Requirement,
+                description:    "Requirement lacks detailed description".to_string(),
+                location:       DocumentationLocation::Requirement,
             };
             violations.push(violation);
         }
@@ -375,16 +395,16 @@ impl DocumentationVerificationFramework {
             let violation = DocumentationViolation {
                 requirement_id: requirement.id.clone(),
                 violation_type: DocumentationViolationType::InsufficientDetail,
-                severity: self.get_violation_severity(
+                severity:       self.get_violation_severity(
                     requirement.asil_level,
                     DocumentationViolationType::InsufficientDetail,
                 ),
-                description: format!(
+                description:    format!(
                     "Description too brief ({}/<{} chars)",
                     requirement.description.len(),
                     required_standards.min_description_length
                 ),
-                location: DocumentationLocation::Requirement,
+                location:       DocumentationLocation::Requirement,
             };
             violations.push(violation);
         }
@@ -394,12 +414,12 @@ impl DocumentationVerificationFramework {
             let violation = DocumentationViolation {
                 requirement_id: requirement.id.clone(),
                 violation_type: DocumentationViolationType::MissingImplementation,
-                severity: self.get_violation_severity(
+                severity:       self.get_violation_severity(
                     requirement.asil_level,
                     DocumentationViolationType::MissingImplementation,
                 ),
-                description: "No implementation references found".to_string(),
-                location: DocumentationLocation::Implementation,
+                description:    "No implementation references found".to_string(),
+                location:       DocumentationLocation::Implementation,
             };
             violations.push(violation);
         } else {
@@ -409,12 +429,15 @@ impl DocumentationVerificationFramework {
                     let violation = DocumentationViolation {
                         requirement_id: requirement.id.clone(),
                         violation_type: DocumentationViolationType::UndocumentedImplementation,
-                        severity: self.get_violation_severity(
+                        severity:       self.get_violation_severity(
                             requirement.asil_level,
                             DocumentationViolationType::UndocumentedImplementation,
                         ),
-                        description: format!("Implementation '{}' lacks documentation", impl_ref),
-                        location: DocumentationLocation::Implementation,
+                        description:    format!(
+                            "Implementation '{}' lacks documentation",
+                            impl_ref
+                        ),
+                        location:       DocumentationLocation::Implementation,
                     };
                     violations.push(violation);
                 }
@@ -426,12 +449,12 @@ impl DocumentationVerificationFramework {
             let violation = DocumentationViolation {
                 requirement_id: requirement.id.clone(),
                 violation_type: DocumentationViolationType::MissingTestDocumentation,
-                severity: self.get_violation_severity(
+                severity:       self.get_violation_severity(
                     requirement.asil_level,
                     DocumentationViolationType::MissingTestDocumentation,
                 ),
-                description: "No test documentation found".to_string(),
-                location: DocumentationLocation::Test,
+                description:    "No test documentation found".to_string(),
+                location:       DocumentationLocation::Test,
             };
             violations.push(violation);
         }
@@ -442,12 +465,12 @@ impl DocumentationVerificationFramework {
             let violation = DocumentationViolation {
                 requirement_id: requirement.id.clone(),
                 violation_type: DocumentationViolationType::MissingVerificationDocument,
-                severity: self.get_violation_severity(
+                severity:       self.get_violation_severity(
                     requirement.asil_level,
                     DocumentationViolationType::MissingVerificationDocument,
                 ),
-                description: "Missing verification documentation".to_string(),
-                location: DocumentationLocation::Verification,
+                description:    "Missing verification documentation".to_string(),
+                location:       DocumentationLocation::Verification,
             };
             violations.push(violation);
         }
@@ -476,44 +499,44 @@ impl DocumentationVerificationFramework {
     ) -> DocumentationStandards {
         match asil_level {
             AsilLevel::QM => DocumentationStandards {
-                min_description_length: 50,
-                requires_implementation_docs: false,
-                requires_test_docs: false,
+                min_description_length:         50,
+                requires_implementation_docs:   false,
+                requires_test_docs:             false,
                 requires_verification_document: false,
-                max_allowed_violations: 10,
-                required_compliance_score: 50.0,
+                max_allowed_violations:         10,
+                required_compliance_score:      50.0,
             },
             AsilLevel::A => DocumentationStandards {
-                min_description_length: 100,
-                requires_implementation_docs: true,
-                requires_test_docs: false,
+                min_description_length:         100,
+                requires_implementation_docs:   true,
+                requires_test_docs:             false,
                 requires_verification_document: false,
-                max_allowed_violations: 5,
-                required_compliance_score: 70.0,
+                max_allowed_violations:         5,
+                required_compliance_score:      70.0,
             },
             AsilLevel::B => DocumentationStandards {
-                min_description_length: 150,
-                requires_implementation_docs: true,
-                requires_test_docs: true,
+                min_description_length:         150,
+                requires_implementation_docs:   true,
+                requires_test_docs:             true,
                 requires_verification_document: false,
-                max_allowed_violations: 3,
-                required_compliance_score: 80.0,
+                max_allowed_violations:         3,
+                required_compliance_score:      80.0,
             },
             AsilLevel::C => DocumentationStandards {
-                min_description_length: 200,
-                requires_implementation_docs: true,
-                requires_test_docs: true,
+                min_description_length:         200,
+                requires_implementation_docs:   true,
+                requires_test_docs:             true,
                 requires_verification_document: true,
-                max_allowed_violations: 1,
-                required_compliance_score: 90.0,
+                max_allowed_violations:         1,
+                required_compliance_score:      90.0,
             },
             AsilLevel::D => DocumentationStandards {
-                min_description_length: 300,
-                requires_implementation_docs: true,
-                requires_test_docs: true,
+                min_description_length:         300,
+                requires_implementation_docs:   true,
+                requires_test_docs:             true,
                 requires_verification_document: true,
-                max_allowed_violations: 0,
-                required_compliance_score: 95.0,
+                max_allowed_violations:         0,
+                required_compliance_score:      95.0,
             },
         }
     }
@@ -702,19 +725,19 @@ impl Default for DocumentationVerificationFramework {
 /// Configuration for documentation verification
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentationVerificationConfig {
-    pub min_certification_compliance: f64,
+    pub min_certification_compliance:      f64,
     pub enable_cross_reference_validation: bool,
-    pub enable_api_documentation_check: bool,
-    pub enable_example_validation: bool,
+    pub enable_api_documentation_check:    bool,
+    pub enable_example_validation:         bool,
 }
 
 impl Default for DocumentationVerificationConfig {
     fn default() -> Self {
         Self {
-            min_certification_compliance: 85.0,
+            min_certification_compliance:      85.0,
             enable_cross_reference_validation: true,
-            enable_api_documentation_check: true,
-            enable_example_validation: false,
+            enable_api_documentation_check:    true,
+            enable_example_validation:         false,
         }
     }
 }
@@ -722,32 +745,32 @@ impl Default for DocumentationVerificationConfig {
 /// Documentation standards for a specific ASIL level
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentationStandards {
-    pub min_description_length: usize,
-    pub requires_implementation_docs: bool,
-    pub requires_test_docs: bool,
+    pub min_description_length:         usize,
+    pub requires_implementation_docs:   bool,
+    pub requires_test_docs:             bool,
     pub requires_verification_document: bool,
-    pub max_allowed_violations: usize,
-    pub required_compliance_score: f64,
+    pub max_allowed_violations:         usize,
+    pub required_compliance_score:      f64,
 }
 
 /// Result of documentation verification
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DocumentationVerificationResult {
-    pub total_requirements: usize,
+    pub total_requirements:     usize,
     pub compliant_requirements: usize,
-    pub compliance_percentage: f64,
-    pub violations: Vec<DocumentationViolation>,
-    pub analysis_results: Vec<DocumentationAnalysis>,
+    pub compliance_percentage:  f64,
+    pub violations:             Vec<DocumentationViolation>,
+    pub analysis_results:       Vec<DocumentationAnalysis>,
     pub is_certification_ready: bool,
 }
 
 /// Analysis of documentation for a single requirement
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentationAnalysis {
-    pub requirement_id: RequirementId,
-    pub asil_level: AsilLevel,
-    pub violations: Vec<DocumentationViolation>,
-    pub compliance_score: f64,
+    pub requirement_id:     RequirementId,
+    pub asil_level:         AsilLevel,
+    pub violations:         Vec<DocumentationViolation>,
+    pub compliance_score:   f64,
     pub required_standards: DocumentationStandards,
     pub analyzed_locations: Vec<DocumentationLocation>,
 }
@@ -765,9 +788,9 @@ impl DocumentationAnalysis {
 pub struct DocumentationViolation {
     pub requirement_id: RequirementId,
     pub violation_type: DocumentationViolationType,
-    pub severity: DocumentationViolationSeverity,
-    pub description: String,
-    pub location: DocumentationLocation,
+    pub severity:       DocumentationViolationSeverity,
+    pub description:    String,
+    pub location:       DocumentationLocation,
 }
 
 /// Types of documentation violations
@@ -861,19 +884,20 @@ impl fmt::Display for DocumentationLocation {
 /// Comprehensive documentation report
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DocumentationReport {
-    pub overall_compliance: f64,
-    pub total_requirements: usize,
-    pub total_violations: usize,
+    pub overall_compliance:  f64,
+    pub total_requirements:  usize,
+    pub total_violations:    usize,
     pub critical_violations: usize,
-    pub asil_compliance: HashMap<AsilLevel, f64>,
-    pub recommendations: Vec<String>,
-    pub analysis_summary: Vec<DocumentationAnalysis>,
+    pub asil_compliance:     HashMap<AsilLevel, f64>,
+    pub recommendations:     Vec<String>,
+    pub analysis_summary:    Vec<DocumentationAnalysis>,
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::path::PathBuf;
+
+    use super::*;
 
     #[test]
     fn test_documentation_verification_framework_creation() {
@@ -929,7 +953,10 @@ mod tests {
         let mut requirement = SafetyRequirement::new(
             RequirementId::new("DOC_TEST_002"),
             "Well Documented Requirement".to_string(),
-            "This is a comprehensive description of a safety requirement that provides detailed information about the expected behavior, constraints, and verification criteria for the implementation.".to_string(),
+            "This is a comprehensive description of a safety requirement that provides detailed \
+             information about the expected behavior, constraints, and verification criteria for \
+             the implementation."
+                .to_string(),
             RequirementType::Safety,
             AsilLevel::A,
         );

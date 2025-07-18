@@ -2,15 +2,30 @@ use std::{
     fs,
     path::Path,
     str::FromStr,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc,
+        Mutex,
+    },
     thread,
 };
 
 use wrt::{
-    behavior::{ControlFlowBehavior, FrameBehavior, NullBehavior, StackBehavior},
+    behavior::{
+        ControlFlowBehavior,
+        FrameBehavior,
+        NullBehavior,
+        StackBehavior,
+    },
     execution::Engine,
-    logging::{LogLevel, LogOperation},
-    Error, Global, Module, StacklessEngine, *,
+    logging::{
+        LogLevel,
+        LogOperation,
+    },
+    Error,
+    Global,
+    Module,
+    StacklessEngine,
+    *,
 };
 
 // Include our WebAssembly spec test modules
@@ -131,8 +146,8 @@ mod tests {
     fn test_table_operations() {
         let table_type = TableType {
             element_type: ValueType::FuncRef,
-            min: 1,
-            max: Some(10),
+            min:          1,
+            max:          Some(10),
         };
         let mut table = new_table(table_type);
 
@@ -160,7 +175,7 @@ mod tests {
     fn test_global_operations() {
         let global_type = GlobalType {
             content_type: ValueType::I32,
-            mutable: true,
+            mutable:      true,
         };
         let mut global = new_global(global_type, Value::I32(42)).unwrap();
 
@@ -178,7 +193,7 @@ mod tests {
         // Test immutable global
         let immutable_type = GlobalType {
             content_type: ValueType::I32,
-            mutable: false,
+            mutable:      false,
         };
         let immutable = new_global(immutable_type, Value::I32(42)).unwrap();
         assert!(!immutable.type_().mutable);
@@ -186,7 +201,7 @@ mod tests {
         // Test type mismatch
         let global_type = GlobalType {
             content_type: ValueType::I32,
-            mutable: true,
+            mutable:      true,
         };
         assert!(new_global(global_type, Value::F64(2.5)).is_err());
     }
@@ -232,21 +247,21 @@ mod tests {
 
         // Add a type
         module.types.push(FuncType {
-            params: vec![ValueType::I32],
+            params:  vec![ValueType::I32],
             results: vec![],
         });
 
         // Add imports
         module.imports.push(Import {
             module: "env".to_string(),
-            name: "func".to_string(),
+            name:   "func".to_string(),
             // Use unwrapped module to access types
-            ty: ExternType::Function(module.types[0].clone()),
+            ty:     ExternType::Function(module.types[0].clone()),
         });
         module.imports.push(Import {
             module: "env".to_string(),
-            name: "memory".to_string(),
-            ty: ExternType::Memory(MemoryType { min: 1, max: None }),
+            name:   "memory".to_string(),
+            ty:     ExternType::Memory(MemoryType { min: 1, max: None }),
         });
 
         // Check imports

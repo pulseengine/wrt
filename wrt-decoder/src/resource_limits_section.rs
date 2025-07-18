@@ -1,30 +1,51 @@
 //! Resource limits custom section for WebAssembly binaries
 //!
-//! This module defines the standard format for embedding execution limits in WebAssembly
-//! binaries via custom sections. The format is designed primarily for ASIL-D safety requirements:
+//! This module defines the standard format for embedding execution limits in
+//! WebAssembly binaries via custom sections. The format is designed primarily
+//! for ASIL-D safety requirements:
 //! - Compile-time bounded capacity limits
-//! - Deterministic memory usage patterns  
+//! - Deterministic memory usage patterns
 //! - No runtime dynamic allocation
 //! - Simple binary format without external dependencies
 //!
-//! Lower ASIL levels (QM/A/B/C) reuse the same format but with relaxed runtime enforcement.
+//! Lower ASIL levels (QM/A/B/C) reuse the same format but with relaxed runtime
+//! enforcement.
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{string::String, vec::Vec};
+use alloc::{
+    string::String,
+    vec::Vec,
+};
 #[cfg(feature = "std")]
-use std::{string::String, vec::Vec};
-
-use wrt_error::{codes, Error, ErrorCategory};
-use wrt_foundation::{
-    safe_managed_alloc,
-    traits::{Checksummable, ReadStream, WriteStream},
-    BoundedMap, BoundedString, BoundedVec, Checksum, CrateId, NoStdProvider, WrtResult,
+use std::{
+    string::String,
+    vec::Vec,
 };
 
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+};
 #[cfg(test)]
 use wrt_foundation::safe_memory::NoStdProvider;
+use wrt_foundation::{
+    safe_managed_alloc,
+    traits::{
+        Checksummable,
+        ReadStream,
+        WriteStream,
+    },
+    BoundedMap,
+    BoundedString,
+    BoundedVec,
+    Checksum,
+    CrateId,
+    NoStdProvider,
+    WrtResult,
+};
 
 /// Standard custom section name for resource limits
 pub const RESOURCE_LIMITS_SECTION_NAME: &str = "wrt.resource_limits";
@@ -32,8 +53,8 @@ pub const RESOURCE_LIMITS_SECTION_NAME: &str = "wrt.resource_limits";
 /// Version of the resource limits format (for future compatibility)
 pub const RESOURCE_LIMITS_VERSION: u32 = 1;
 
-// ASIL-D compile-time capacity limits - chosen for realistic WebAssembly modules
-// while maintaining deterministic behavior
+// ASIL-D compile-time capacity limits - chosen for realistic WebAssembly
+// modules while maintaining deterministic behavior
 /// Maximum number of different resource types (filesystem, network, etc.)
 pub const MAX_RESOURCE_TYPES: usize = 16;
 /// Maximum number of custom limits per resource type  
@@ -132,10 +153,10 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
     fn default() -> Self {
         let provider = P::default();
         Self {
-            max_handles: None,
-            max_memory: None,
+            max_handles:               None,
+            max_memory:                None,
             max_operations_per_second: None,
-            custom_limits: BoundedMap::new(provider)
+            custom_limits:             BoundedMap::new(provider)
                 .expect("ASIL-D: Default map creation must succeed"),
         }
     }
@@ -237,16 +258,16 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
         // Use safe default provider construction for ASIL-D
         let provider = P::default();
         Self {
-            version: RESOURCE_LIMITS_VERSION,
-            max_fuel_per_step: None,
-            max_memory_usage: None,
-            max_call_depth: None,
+            version:                   RESOURCE_LIMITS_VERSION,
+            max_fuel_per_step:         None,
+            max_memory_usage:          None,
+            max_call_depth:            None,
             max_instructions_per_step: None,
-            max_execution_slice_ms: None,
-            resource_type_limits: BoundedMap::new(provider.clone())
+            max_execution_slice_ms:    None,
+            resource_type_limits:      BoundedMap::new(provider.clone())
                 .expect("ASIL-D: Default map creation must succeed"),
-            qualification_hash: None,
-            qualified_asil_level: None,
+            qualification_hash:        None,
+            qualified_asil_level:      None,
         }
     }
 }
@@ -257,17 +278,17 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     /// Create a new resource limits section with provider
     pub fn new(provider: P) -> Result<Self, Error> {
         Ok(Self {
-            version: RESOURCE_LIMITS_VERSION,
-            max_fuel_per_step: None,
-            max_memory_usage: None,
-            max_call_depth: None,
+            version:                   RESOURCE_LIMITS_VERSION,
+            max_fuel_per_step:         None,
+            max_memory_usage:          None,
+            max_call_depth:            None,
             max_instructions_per_step: None,
-            max_execution_slice_ms: None,
-            resource_type_limits: BoundedMap::new(provider.clone()).map_err(|_| {
+            max_execution_slice_ms:    None,
+            resource_type_limits:      BoundedMap::new(provider.clone()).map_err(|_| {
                 Error::runtime_execution_error("Failed to create resource type limits ")
             })?,
-            qualification_hash: None,
-            qualified_asil_level: None,
+            qualification_hash:        None,
+            qualified_asil_level:      None,
         })
     }
 
@@ -319,17 +340,17 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
             .map_err(|_| Error::parse_error("Failed to create ASIL-D string "))?;
 
         Ok(Self {
-            version: RESOURCE_LIMITS_VERSION,
-            max_fuel_per_step: Some(max_fuel_per_step),
-            max_memory_usage: Some(max_memory_usage),
-            max_call_depth: Some(max_call_depth),
+            version:                   RESOURCE_LIMITS_VERSION,
+            max_fuel_per_step:         Some(max_fuel_per_step),
+            max_memory_usage:          Some(max_memory_usage),
+            max_call_depth:            Some(max_call_depth),
             max_instructions_per_step: Some(max_instructions_per_step),
-            max_execution_slice_ms: Some(max_execution_slice_ms),
-            resource_type_limits: BoundedMap::new(provider.clone()).map_err(|_| {
+            max_execution_slice_ms:    Some(max_execution_slice_ms),
+            resource_type_limits:      BoundedMap::new(provider.clone()).map_err(|_| {
                 Error::runtime_execution_error("Failed to create resource type limits ")
             })?,
-            qualification_hash: None,
-            qualified_asil_level: Some(asil_level),
+            qualification_hash:        None,
+            qualified_asil_level:      Some(asil_level),
         })
     }
 
@@ -434,7 +455,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     }
 
     /// Encode to binary format for embedding in WebAssembly custom section
-    /// Uses simple binary format for ASIL-D compatibility (no external dependencies)
+    /// Uses simple binary format for ASIL-D compatibility (no external
+    /// dependencies)
     ///
     /// Returns the encoded data and the actual size used
     pub fn encode_to_buffer(&self, buffer: &mut [u8]) -> Result<usize, Error> {
@@ -461,11 +483,11 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         buffer[offset..offset + 4].copy_from_slice(&resource_count.to_le_bytes());
         offset += 4;
 
-        // TODO: Fix iteration over BoundedMap - need to implement proper key-value iteration
-        // for (name, limits) in self.resource_type_limits.iter() {
+        // TODO: Fix iteration over BoundedMap - need to implement proper key-value
+        // iteration for (name, limits) in self.resource_type_limits.iter() {
         //     offset = self.encode_string_to_buffer(buffer, offset, name.as_str())?;
-        //     offset = self.encode_resource_type_limit_to_buffer(buffer, offset, limits)?;
-        // }
+        //     offset = self.encode_resource_type_limit_to_buffer(buffer, offset,
+        // limits)?; }
 
         // Write optional qualification info
         if let Some(hash) = &self.qualification_hash {
@@ -491,9 +513,11 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     }
 
     /// Encode to binary format for embedding in WebAssembly custom section
-    /// Uses simple binary format for ASIL-D compatibility (no external dependencies)
+    /// Uses simple binary format for ASIL-D compatibility (no external
+    /// dependencies)
     ///
-    /// This method allocates a Vec for compatibility but internally uses bounded encoding
+    /// This method allocates a Vec for compatibility but internally uses
+    /// bounded encoding
     pub fn encode(&self) -> Result<Vec<u8>, Error> {
         let mut encoded = Vec::new();
 
@@ -547,8 +571,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     }
 
     /// Decode from binary format (from WebAssembly custom section data)
-    /// Uses simple binary format for ASIL-D compatibility (no external dependencies)
-    /// TODO: Update for bounded types compatibility
+    /// Uses simple binary format for ASIL-D compatibility (no external
+    /// dependencies) TODO: Update for bounded types compatibility
     #[allow(dead_code)]
     pub fn decode(data: &[u8]) -> Result<Self, Error> {
         // Validate ASIL-D size bounds before decoding
@@ -1101,10 +1125,10 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Resou
     /// Create a new resource type limit
     pub fn new(provider: P) -> Result<Self, Error> {
         Ok(Self {
-            max_handles: None,
-            max_memory: None,
+            max_handles:               None,
+            max_memory:                None,
             max_operations_per_second: None,
-            custom_limits: BoundedMap::new(provider)
+            custom_limits:             BoundedMap::new(provider)
                 .map_err(|_| Error::runtime_execution_error("Failed to create custom limits "))?,
         })
     }

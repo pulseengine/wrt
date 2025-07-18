@@ -1,7 +1,8 @@
 //! Atomic Operations Runtime Implementation with ASIL Compliance
 //!
-//! This module provides the complete unified runtime interface for WebAssembly atomic operations
-//! with support for all ASIL levels (QM, ASIL-A, ASIL-B, ASIL-C, ASIL-D).
+//! This module provides the complete unified runtime interface for WebAssembly
+//! atomic operations with support for all ASIL levels (QM, ASIL-A, ASIL-B,
+//! ASIL-C, ASIL-D).
 //!
 //! # Operations Supported
 //! - Atomic loads (i32, i64, narrow 8/16-bit loads with zero extension)
@@ -12,7 +13,8 @@
 //! - Memory fences for synchronization
 //!
 //! # Safety and Compliance
-//! - No unsafe code in safety-critical configurations (uses safe atomic execution engine)
+//! - No unsafe code in safety-critical configurations (uses safe atomic
+//!   execution engine)
 //! - Deterministic execution across all ASIL levels
 //! - Bounded memory usage with compile-time guarantees
 //! - Comprehensive validation and error handling
@@ -23,17 +25,33 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_foundation::values::Value;
-use wrt_instructions::atomic_ops::{
-    AtomicCmpxchgInstr, AtomicFence, AtomicLoadOp, AtomicOp, AtomicRMWInstr, AtomicStoreOp,
-    AtomicWaitNotifyOp, MemoryOrdering,
-};
-use wrt_runtime::atomic_execution_safe::{AtomicExecutionStats, SafeAtomicMemoryContext};
-use wrt_runtime::thread_manager::ThreadId;
-
 #[cfg(not(feature = "std"))]
 use alloc::format;
+
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
+use wrt_foundation::values::Value;
+use wrt_instructions::atomic_ops::{
+    AtomicCmpxchgInstr,
+    AtomicFence,
+    AtomicLoadOp,
+    AtomicOp,
+    AtomicRMWInstr,
+    AtomicStoreOp,
+    AtomicWaitNotifyOp,
+    MemoryOrdering,
+};
+use wrt_runtime::{
+    atomic_execution_safe::{
+        AtomicExecutionStats,
+        SafeAtomicMemoryContext,
+    },
+    thread_manager::ThreadId,
+};
 
 /// Provider trait for atomic operations across ASIL levels
 pub trait AtomicProvider {
@@ -131,8 +149,9 @@ impl AtomicOp {
             AtomicOp::Cmpxchg(_) => 2, // Expected and replacement values
             AtomicOp::WaitNotify(wait_notify) => {
                 match wait_notify {
-                    AtomicWaitNotifyOp::MemoryAtomicWait32 { .. } => 2, // Expected value and timeout
-                    AtomicWaitNotifyOp::MemoryAtomicWait64 { .. } => 3, // Expected value (i64 = 2 values) and timeout
+                    AtomicWaitNotifyOp::MemoryAtomicWait32 { .. } => 2, // Expected value and
+                    // timeout
+                    AtomicWaitNotifyOp::MemoryAtomicWait64 { .. } => 3, /* Expected value (i64 = 2 values) and timeout */
                     AtomicWaitNotifyOp::MemoryAtomicNotify { .. } => 1, // Count
                 }
             },
@@ -289,7 +308,7 @@ pub fn atomic_i32_load(
 ) -> Result<i32> {
     let memarg = wrt_foundation::MemArg {
         offset: addr,
-        align: 2,
+        align:  2,
     }; // 2^2 = 4-byte alignment
     let load_op = AtomicLoadOp::I32AtomicLoad { memarg };
     let op = AtomicOp::Load(load_op);
@@ -312,7 +331,7 @@ pub fn atomic_i32_store(
 ) -> Result<()> {
     let memarg = wrt_foundation::MemArg {
         offset: addr,
-        align: 2,
+        align:  2,
     }; // 2^2 = 4-byte alignment
     let store_op = AtomicStoreOp::I32AtomicStore { memarg };
     let op = AtomicOp::Store(store_op);
@@ -333,7 +352,7 @@ pub fn atomic_i32_compare_and_swap(
 ) -> Result<i32> {
     let memarg = wrt_foundation::MemArg {
         offset: addr,
-        align: 2,
+        align:  2,
     }; // 2^2 = 4-byte alignment
     let cmpxchg_op = AtomicCmpxchgInstr::I32AtomicRmwCmpxchg { memarg };
     let op = AtomicOp::Cmpxchg(cmpxchg_op);
@@ -364,7 +383,7 @@ pub fn atomic_i32_fetch_add(
 ) -> Result<i32> {
     let memarg = wrt_foundation::MemArg {
         offset: addr,
-        align: 2,
+        align:  2,
     }; // 2^2 = 4-byte alignment
     let rmw_op = AtomicRMWInstr::I32AtomicRmwAdd { memarg };
     let op = AtomicOp::RMW(rmw_op);

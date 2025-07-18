@@ -36,14 +36,20 @@
 
 // Re-export core types for convenience
 #[cfg(feature = "std")]
-pub use std::path::{Path, PathBuf};
+pub use std::path::{
+    Path,
+    PathBuf,
+};
 
 #[cfg(not(feature = "std"))]
 pub type PathBuf = (); // Placeholder for no_std
 #[cfg(not(feature = "std"))]
 pub type Path = (); // Placeholder for no_std
 
-pub use anyhow::{Context, Result};
+pub use anyhow::{
+    Context,
+    Result,
+};
 
 // Core modules
 pub mod build;
@@ -74,8 +80,14 @@ pub mod wast_test_runner;
 
 // Public API
 pub use build::BuildSystem;
-pub use config::{BuildConfig, WorkspaceConfig};
-pub use error::{BuildError, BuildResult};
+pub use config::{
+    BuildConfig,
+    WorkspaceConfig,
+};
+pub use error::{
+    BuildError,
+    BuildResult,
+};
 
 /// Build system version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

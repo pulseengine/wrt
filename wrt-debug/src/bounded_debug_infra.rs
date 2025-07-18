@@ -4,19 +4,30 @@
 //! to ensure static memory allocation throughout the debug system.
 
 // Import standard traits for bounds
-use core::clone::Clone;
 use core::{
-    cmp::{Eq, PartialEq},
+    clone::Clone,
+    cmp::{
+        Eq,
+        PartialEq,
+    },
     default::Default,
 };
 
 use wrt_foundation::{
-    bounded::{BoundedString, BoundedVec},
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
     bounded_collections::BoundedMap as BoundedHashMap,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
-    traits::{Checksummable, FromBytes, ToBytes},
-    CrateId, Result as WrtResult,
+    traits::{
+        Checksummable,
+        FromBytes,
+        ToBytes,
+    },
+    CrateId,
+    Result as WrtResult,
 };
 
 /// Maximum stack trace depth

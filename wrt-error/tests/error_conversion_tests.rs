@@ -2,8 +2,16 @@
 
 use wrt_error::{
     codes,
-    kinds::{ComponentError, ParseError, ResourceError, RuntimeError, ValidationError},
-    Error, ErrorCategory, ErrorSource,
+    kinds::{
+        ComponentError,
+        ParseError,
+        ResourceError,
+        RuntimeError,
+        ValidationError,
+    },
+    Error,
+    ErrorCategory,
+    ErrorSource,
 };
 
 #[test]

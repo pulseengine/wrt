@@ -14,9 +14,8 @@
 // Binary std/no_std choice
 #[cfg(not(feature = "std"))]
 pub use wrt_foundation::{
-    bounded::{BoundedVec as Vec, BoundedString as String},
-    BoundedMap as HashMap,
-    BoundedSet as HashSet,
+    bounded::{BoundedString as String, BoundedVec as Vec},
+    BoundedMap as HashMap, BoundedSet as HashSet,
 };
 
 // Additional imports for pure no_std
@@ -117,6 +116,8 @@ pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 pub use wrt_foundation::{
     // Builtin types
     builtin::BuiltinType,
+    // Memory allocation
+    safe_managed_alloc,
     // SafeMemory types
     safe_memory::{SafeMemoryHandler, SafeSlice, SafeStack},
     // Common types
@@ -124,8 +125,6 @@ pub use wrt_foundation::{
     values::Value,
     // Verification types
     verification::VerificationLevel,
-    // Memory allocation
-    safe_managed_alloc,
     // CrateId for budget allocation
     CrateId,
 };

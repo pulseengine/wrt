@@ -3,9 +3,15 @@
 //! Provides standardized validation functions for common input types
 //! used across cargo-wrt commands with consistent error handling.
 
-use std::path::{Path, PathBuf};
+use std::path::{
+    Path,
+    PathBuf,
+};
 
-use anyhow::{Context, Result};
+use anyhow::{
+    Context,
+    Result,
+};
 use wrt_build_core::config::AsilLevel;
 
 /// Standard error type for validation failures
@@ -36,7 +42,7 @@ pub enum ValidationError {
 pub struct StandardError {
     operation: String,
     #[source]
-    source: anyhow::Error,
+    source:    anyhow::Error,
 }
 
 impl StandardError {
@@ -104,7 +110,7 @@ pub fn validate_file_extension(path: impl AsRef<Path>, expected_ext: &str) -> Re
 
     Err(ValidationError::InvalidExtension {
         expected: expected_ext.to_string(),
-        actual: path.extension().and_then(|ext| ext.to_str()).unwrap_or("none").to_string(),
+        actual:   path.extension().and_then(|ext| ext.to_str()).unwrap_or("none").to_string(),
     }
     .into())
 }

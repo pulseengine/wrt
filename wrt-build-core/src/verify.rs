@@ -2,20 +2,45 @@
 
 use std::{
     collections::HashSet,
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
     process::Command,
 };
 
 use colored::Colorize;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::{
     build::BuildSystem,
     config::AsilLevel,
-    diagnostics::{Diagnostic, DiagnosticCollection, Position, Range, Severity, ToolOutputParser},
-    error::{BuildError, BuildResult},
-    parsers::{CargoAuditOutputParser, CargoOutputParser, KaniOutputParser, MiriOutputParser},
-    text_search::{count_production_matches, SearchMatch, TextSearcher},
+    diagnostics::{
+        Diagnostic,
+        DiagnosticCollection,
+        Position,
+        Range,
+        Severity,
+        ToolOutputParser,
+    },
+    error::{
+        BuildError,
+        BuildResult,
+    },
+    parsers::{
+        CargoAuditOutputParser,
+        CargoOutputParser,
+        KaniOutputParser,
+        MiriOutputParser,
+    },
+    text_search::{
+        count_production_matches,
+        SearchMatch,
+        TextSearcher,
+    },
 };
 
 /// Configuration for allowed unsafe blocks
@@ -29,13 +54,13 @@ pub struct AllowedUnsafeConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AllowedUnsafeBlock {
     /// File path (relative to workspace root)
-    pub file: String,
+    pub file:               String,
     /// Line number (optional, if not specified, allows all unsafe in file)
-    pub line: Option<usize>,
+    pub line:               Option<usize>,
     /// Function name (optional, for better targeting)
-    pub function: Option<String>,
+    pub function:           Option<String>,
     /// Reason why this unsafe block is allowed
-    pub reason: String,
+    pub reason:             String,
     /// ASIL justification (required for ASIL-B and above)
     pub asil_justification: Option<String>,
 }
@@ -75,26 +100,26 @@ impl AllowedUnsafeConfig {
 #[derive(Debug)]
 pub struct VerificationResults {
     /// Overall verification success
-    pub success: bool,
+    pub success:     bool,
     /// ASIL compliance level achieved
-    pub asil_level: AsilLevel,
+    pub asil_level:  AsilLevel,
     /// Individual check results
-    pub checks: Vec<VerificationCheck>,
+    pub checks:      Vec<VerificationCheck>,
     /// Verification duration
     pub duration_ms: u64,
     /// Detailed verification report
-    pub report: String,
+    pub report:      String,
 }
 
 /// Individual verification check result
 #[derive(Debug)]
 pub struct VerificationCheck {
     /// Name of the check
-    pub name: String,
+    pub name:     String,
     /// Whether the check passed
-    pub passed: bool,
+    pub passed:   bool,
     /// Detailed description or error message
-    pub details: String,
+    pub details:  String,
     /// Severity level
     pub severity: VerificationSeverity,
 }
@@ -116,19 +141,19 @@ pub enum VerificationSeverity {
 #[derive(Debug, Clone)]
 pub struct VerificationOptions {
     /// Target ASIL level for verification
-    pub target_asil: AsilLevel,
+    pub target_asil:      AsilLevel,
     /// Include Kani formal verification
-    pub kani: bool,
+    pub kani:             bool,
     /// Include MIRI unsafe code checks
-    pub miri: bool,
+    pub miri:             bool,
     /// Include memory safety checks
-    pub memory_safety: bool,
+    pub memory_safety:    bool,
     /// Include dependency audit
-    pub audit: bool,
+    pub audit:            bool,
     /// Generate detailed reports
     pub detailed_reports: bool,
     /// Allowed unsafe blocks configuration
-    pub allowed_unsafe: Option<AllowedUnsafeConfig>,
+    pub allowed_unsafe:   Option<AllowedUnsafeConfig>,
 }
 
 impl Default for VerificationOptions {
@@ -261,9 +286,9 @@ impl BuildSystem {
                 Ok(mut kani_checks) => checks.append(&mut kani_checks),
                 Err(e) => {
                     checks.push(VerificationCheck {
-                        name: "Kani Verification".to_string(),
-                        passed: false,
-                        details: format!("Kani verification failed: {}", e),
+                        name:     "Kani Verification".to_string(),
+                        passed:   false,
+                        details:  format!("Kani verification failed: {}", e),
                         severity: VerificationSeverity::Major,
                     });
                 },
@@ -276,9 +301,9 @@ impl BuildSystem {
                 Ok(mut miri_checks) => checks.append(&mut miri_checks),
                 Err(e) => {
                     checks.push(VerificationCheck {
-                        name: "MIRI Verification".to_string(),
-                        passed: false,
-                        details: format!("MIRI verification failed: {}", e),
+                        name:     "MIRI Verification".to_string(),
+                        passed:   false,
+                        details:  format!("MIRI verification failed: {}", e),
                         severity: VerificationSeverity::Major,
                     });
                 },
@@ -291,9 +316,9 @@ impl BuildSystem {
                 Ok(mut audit_checks) => checks.append(&mut audit_checks),
                 Err(e) => {
                     checks.push(VerificationCheck {
-                        name: "Security Audit".to_string(),
-                        passed: false,
-                        details: format!("Security audit failed: {}", e),
+                        name:     "Security Audit".to_string(),
+                        passed:   false,
+                        details:  format!("Security audit failed: {}", e),
                         severity: VerificationSeverity::Minor,
                     });
                 },
@@ -399,9 +424,9 @@ impl BuildSystem {
         let unsafe_count = count_production_matches(&filtered_matches);
 
         Ok(VerificationCheck {
-            name: "Unsafe Code Usage".to_string(),
-            passed: unsafe_count == 0,
-            details: if unsafe_count == 0 {
+            name:     "Unsafe Code Usage".to_string(),
+            passed:   unsafe_count == 0,
+            details:  if unsafe_count == 0 {
                 "No unsafe code blocks found (excluding allowed exceptions)".to_string()
             } else {
                 format!(
@@ -420,9 +445,9 @@ impl BuildSystem {
         let panic_count = count_production_matches(&matches);
 
         Ok(VerificationCheck {
-            name: "Panic Usage".to_string(),
-            passed: panic_count == 0,
-            details: if panic_count == 0 {
+            name:     "Panic Usage".to_string(),
+            passed:   panic_count == 0,
+            details:  if panic_count == 0 {
                 "No panic! macros found in production code".to_string()
             } else {
                 format!("Found {} panic! macros in production code", panic_count)
@@ -438,9 +463,9 @@ impl BuildSystem {
         let unwrap_count = count_production_matches(&matches);
 
         Ok(VerificationCheck {
-            name: "Unwrap Usage".to_string(),
-            passed: unwrap_count == 0,
-            details: if unwrap_count == 0 {
+            name:     "Unwrap Usage".to_string(),
+            passed:   unwrap_count == 0,
+            details:  if unwrap_count == 0 {
                 "No .unwrap() calls found in production code".to_string()
             } else {
                 format!("Found {} .unwrap() calls in production code", unwrap_count)
@@ -453,9 +478,9 @@ impl BuildSystem {
     fn check_build_matrix(&self) -> BuildResult<VerificationCheck> {
         // Placeholder for build matrix verification
         Ok(VerificationCheck {
-            name: "Build Matrix Compliance".to_string(),
-            passed: true,
-            details: "Build matrix verification passed".to_string(),
+            name:     "Build Matrix Compliance".to_string(),
+            passed:   true,
+            details:  "Build matrix verification passed".to_string(),
             severity: VerificationSeverity::Info,
         })
     }
@@ -464,9 +489,9 @@ impl BuildSystem {
     fn run_memory_safety_checks(&self) -> BuildResult<Vec<VerificationCheck>> {
         // Placeholder for memory safety verification
         Ok(vec![VerificationCheck {
-            name: "Memory Budget Compliance".to_string(),
-            passed: true,
-            details: "Memory budget verification passed".to_string(),
+            name:     "Memory Budget Compliance".to_string(),
+            passed:   true,
+            details:  "Memory budget verification passed".to_string(),
             severity: VerificationSeverity::Info,
         }])
     }
@@ -475,9 +500,9 @@ impl BuildSystem {
     fn run_kani_verification(&self) -> BuildResult<Vec<VerificationCheck>> {
         // Placeholder for Kani verification
         Ok(vec![VerificationCheck {
-            name: "Kani Formal Verification".to_string(),
-            passed: true,
-            details: "Kani verification proofs passed".to_string(),
+            name:     "Kani Formal Verification".to_string(),
+            passed:   true,
+            details:  "Kani verification proofs passed".to_string(),
             severity: VerificationSeverity::Info,
         }])
     }
@@ -486,9 +511,9 @@ impl BuildSystem {
     fn run_miri_checks(&self) -> BuildResult<Vec<VerificationCheck>> {
         // Placeholder for MIRI verification
         Ok(vec![VerificationCheck {
-            name: "MIRI Undefined Behavior Check".to_string(),
-            passed: true,
-            details: "No undefined behavior detected".to_string(),
+            name:     "MIRI Undefined Behavior Check".to_string(),
+            passed:   true,
+            details:  "No undefined behavior detected".to_string(),
             severity: VerificationSeverity::Info,
         }])
     }
@@ -497,9 +522,9 @@ impl BuildSystem {
     fn run_security_audit(&self) -> BuildResult<Vec<VerificationCheck>> {
         // Placeholder for security audit
         Ok(vec![VerificationCheck {
-            name: "Dependency Security Audit".to_string(),
-            passed: true,
-            details: "No known security vulnerabilities found".to_string(),
+            name:     "Dependency Security Audit".to_string(),
+            passed:   true,
+            details:  "No known security vulnerabilities found".to_string(),
             severity: VerificationSeverity::Info,
         }])
     }
@@ -828,9 +853,9 @@ mod tests {
     #[test]
     fn test_verification_check() {
         let check = VerificationCheck {
-            name: "Test Check".to_string(),
-            passed: true,
-            details: "All good".to_string(),
+            name:     "Test Check".to_string(),
+            passed:   true,
+            details:  "All good".to_string(),
             severity: VerificationSeverity::Info,
         };
 

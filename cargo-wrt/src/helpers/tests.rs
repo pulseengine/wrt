@@ -5,8 +5,9 @@
 
 #[cfg(test)]
 mod output_tests {
-    use super::super::output::*;
     use wrt_build_core::formatters::OutputFormat;
+
+    use super::super::output::*;
 
     #[test]
     fn test_output_manager_creation() {
@@ -41,9 +42,11 @@ mod output_tests {
 
 #[cfg(test)]
 mod progress_tests {
-    use super::super::progress::*;
     use std::time::Duration;
+
     use wrt_build_core::formatters::OutputFormat;
+
+    use super::super::progress::*;
 
     #[test]
     fn test_progress_config_default() {
@@ -104,9 +107,11 @@ mod progress_tests {
 
 #[cfg(test)]
 mod smart_defaults_tests {
-    use super::super::smart_defaults::*;
     use std::fs;
+
     use tempfile::TempDir;
+
+    use super::super::smart_defaults::*;
 
     #[test]
     fn test_project_context_detection() {
@@ -156,11 +161,11 @@ edition = "2021"
     #[test]
     fn test_smart_defaults() {
         let context = ProjectContext {
-            workspace_root: std::path::PathBuf::from("/test"),
-            project_type: ProjectType::WrtWorkspace,
-            features: ProjectFeatures::default(),
-            git_context: None,
-            ci_context: None,
+            workspace_root:  std::path::PathBuf::from("/test"),
+            project_type:    ProjectType::WrtWorkspace,
+            features:        ProjectFeatures::default(),
+            git_context:     None,
+            ci_context:      None,
             recommendations: vec![],
         };
 
@@ -293,8 +298,9 @@ mod command_suggestions_tests {
 
 #[cfg(test)]
 mod performance_tests {
-    use super::super::performance::*;
     use std::time::Duration;
+
+    use super::super::performance::*;
 
     #[test]
     fn test_performance_config_default() {
@@ -401,9 +407,12 @@ mod performance_tests {
 
 #[cfg(test)]
 mod error_handling_tests {
-    use super::super::error_handling::*;
-    use super::super::OutputManager;
     use wrt_build_core::formatters::OutputFormat;
+
+    use super::super::{
+        error_handling::*,
+        OutputManager,
+    };
 
     #[test]
     fn test_error_category() {
@@ -543,16 +552,16 @@ mod help_system_tests {
         let mut help_system = HelpSystem::new();
 
         let test_doc = CommandDoc {
-            name: "test-command",
-            brief: "Test command",
+            name:        "test-command",
+            brief:       "Test command",
             description: "This is a test command for unit testing",
-            examples: vec![CommandExample {
-                command: "cargo-wrt test-command",
-                description: "Run test command",
+            examples:    vec![CommandExample {
+                command:       "cargo-wrt test-command",
+                description:   "Run test command",
                 output_sample: None,
             }],
-            see_also: vec!["help"],
-            category: CommandCategory::Utility,
+            see_also:    vec!["help"],
+            category:    CommandCategory::Utility,
         };
 
         help_system.register_command(test_doc);
@@ -612,8 +621,8 @@ mod help_system_tests {
     #[test]
     fn test_command_example() {
         let example = CommandExample {
-            command: "cargo-wrt test --verbose",
-            description: "Run tests with verbose output",
+            command:       "cargo-wrt test --verbose",
+            description:   "Run tests with verbose output",
             output_sample: Some("Running tests...\ntest result: ok"),
         };
 

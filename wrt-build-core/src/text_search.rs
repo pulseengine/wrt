@@ -5,25 +5,31 @@
 
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
 };
 
 use regex::Regex;
 use walkdir::WalkDir;
 
-use crate::error::{BuildError, BuildResult};
+use crate::error::{
+    BuildError,
+    BuildResult,
+};
 
 /// Text search options
 #[derive(Debug, Clone)]
 pub struct SearchOptions {
     /// File patterns to include (e.g., "*.rs")
-    pub include_patterns: Vec<String>,
+    pub include_patterns:     Vec<String>,
     /// File patterns to exclude
-    pub exclude_patterns: Vec<String>,
+    pub exclude_patterns:     Vec<String>,
     /// Whether to search recursively
-    pub recursive: bool,
+    pub recursive:            bool,
     /// Case sensitive search
-    pub case_sensitive: bool,
+    pub case_sensitive:       bool,
     /// Include line numbers in results
     pub include_line_numbers: bool,
 }
@@ -31,10 +37,10 @@ pub struct SearchOptions {
 impl Default for SearchOptions {
     fn default() -> Self {
         Self {
-            include_patterns: vec!["*.rs".to_string()],
-            exclude_patterns: Vec::new(),
-            recursive: true,
-            case_sensitive: true,
+            include_patterns:     vec!["*.rs".to_string()],
+            exclude_patterns:     Vec::new(),
+            recursive:            true,
+            case_sensitive:       true,
             include_line_numbers: true,
         }
     }
@@ -44,13 +50,13 @@ impl Default for SearchOptions {
 #[derive(Debug, Clone)]
 pub struct SearchMatch {
     /// File path where match was found
-    pub file_path: PathBuf,
+    pub file_path:       PathBuf,
     /// Line number (1-indexed)
-    pub line_number: usize,
+    pub line_number:     usize,
     /// Line content
-    pub line_content: String,
+    pub line_content:    String,
     /// Whether this line appears to be a comment
-    pub is_comment: bool,
+    pub is_comment:      bool,
     /// Whether this line appears to be in a test context
     pub is_test_context: bool,
 }

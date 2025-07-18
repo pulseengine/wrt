@@ -11,8 +11,16 @@
 
 use core::str;
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
+use wrt_foundation::safe_memory::{
+    MemoryProvider,
+    SafeSlice,
+};
 
 use crate::prelude::read_leb128_u32;
 
@@ -23,10 +31,10 @@ pub struct MemoryPool<P: MemoryProvider> {
     instruction_pools: crate::prelude::Vec<crate::prelude::Vec<u8>>,
     /// Pool of string buffers for reuse
     #[cfg(feature = "std")]
-    string_pools: crate::prelude::Vec<crate::prelude::Vec<u8>>,
+    string_pools:      crate::prelude::Vec<crate::prelude::Vec<u8>>,
     /// Memory provider for no_std environments
     #[allow(dead_code)]
-    provider: P,
+    provider:          P,
 }
 
 impl<P: MemoryProvider + Default> Default for MemoryPool<P> {
@@ -134,9 +142,9 @@ pub fn copy_string_to_buffer(source: &str, buffer: &mut [u8]) -> Result<usize> {
 /// Binary std/no_std choice
 pub struct StreamingCollectionParser<'a> {
     #[allow(dead_code)]
-    slice: &'a SafeSlice<'a>,
-    offset: usize,
-    count: u32,
+    slice:     &'a SafeSlice<'a>,
+    offset:    usize,
+    count:     u32,
     processed: u32,
 }
 
@@ -240,8 +248,8 @@ impl ModuleArena {
 
 /// Bounded iterator for safe collection processing
 pub struct BoundedIterator<'a, T> {
-    items: &'a [T],
-    index: usize,
+    items:     &'a [T],
+    index:     usize,
     max_items: usize,
 }
 

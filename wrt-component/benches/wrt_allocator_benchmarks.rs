@@ -8,12 +8,24 @@
 #[cfg(not(feature = "std"))]
 compile_error!("Benchmarks require std feature for criterion");
 
-use std::collections::HashMap as StdHashMap;
-use std::vec::Vec as StdVec;
+use std::{
+    collections::HashMap as StdHashMap,
+    vec::Vec as StdVec,
+};
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{
+    black_box,
+    criterion_group,
+    criterion_main,
+    BenchmarkId,
+    Criterion,
+};
 #[cfg(feature = "safety-critical")]
-use wrt_foundation::allocator::{CrateId, WrtHashMap, WrtVec};
+use wrt_foundation::allocator::{
+    CrateId,
+    WrtHashMap,
+    WrtVec,
+};
 
 // Benchmark sizes
 const SMALL_SIZE: usize = 10;

@@ -3,11 +3,15 @@
 //! Provides consistent error formatting, categorization, and reporting
 //! across all cargo-wrt commands.
 
-use super::OutputManager;
-use anyhow::{Context, Result};
+use anyhow::{
+    Context,
+    Result,
+};
 use colored::Colorize;
 use serde_json;
 use wrt_build_core::formatters::OutputFormat;
+
+use super::OutputManager;
 
 /// Error categories for consistent error handling
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -72,9 +76,9 @@ impl ErrorCategory {
 /// Categorized error with context
 #[derive(Debug)]
 pub struct CategorizedError {
-    pub category: ErrorCategory,
-    pub message: String,
-    pub context: Vec<String>,
+    pub category:    ErrorCategory,
+    pub message:     String,
+    pub context:     Vec<String>,
     pub suggestions: Vec<String>,
 }
 

@@ -10,13 +10,23 @@
 
 use wrt_format::binary;
 #[cfg(feature = "std")]
-use wrt_format::{write_leb128_u32, write_string};
+use wrt_format::{
+    write_leb128_u32,
+    write_string,
+};
 #[cfg(not(feature = "std"))]
-use wrt_format::{write_leb128_u32_bounded, write_string_bounded};
+use wrt_format::{
+    write_leb128_u32_bounded,
+    write_string_bounded,
+};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::traits::BoundedCapacity;
 
-use crate::{prelude::*, Error, Result};
+use crate::{
+    prelude::*,
+    Error,
+    Result,
+};
 
 // Type aliases for generated data to avoid confusion
 #[cfg(feature = "std")]
@@ -35,44 +45,44 @@ pub const COMPONENT_NAME_TYPE: u8 = 5;
 
 /// Component name section subsection identifiers
 pub enum ComponentNameSubsectionId {
-    Module = 0,
-    Function = 1,
+    Module       = 0,
+    Function     = 1,
     CoreFunction = 2,
-    CoreTable = 3,
-    CoreMemory = 4,
-    CoreGlobal = 5,
-    CoreType = 6,
-    Type = 7,
-    Component = 8,
-    Instance = 9,
+    CoreTable    = 3,
+    CoreMemory   = 4,
+    CoreGlobal   = 5,
+    CoreType     = 6,
+    Type         = 7,
+    Component    = 8,
+    Instance     = 9,
     CoreInstance = 10,
 }
 
 /// Core sort identifier for subsections
 pub enum CoreSortIdentifier {
     Function = 0,
-    Table = 1,
-    Memory = 2,
-    Global = 3,
-    Type = 4,
+    Table    = 1,
+    Memory   = 2,
+    Global   = 3,
+    Type     = 4,
 }
 
 /// Sort identifier for subsections
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum SortIdentifier {
     #[default]
-    Module = 0,
-    Function = 1,
+    Module       = 0,
+    Function     = 1,
     CoreFunction = 2,
-    CoreTable = 3,
-    CoreMemory = 4,
-    CoreGlobal = 5,
-    CoreType = 6,
-    Type = 7,
-    Component = 8,
-    Instance = 9,
+    CoreTable    = 3,
+    CoreMemory   = 4,
+    CoreGlobal   = 5,
+    CoreType     = 6,
+    Type         = 7,
+    Component    = 8,
+    Instance     = 9,
     CoreInstance = 10,
-    Value = 11,
+    Value        = 11,
 }
 
 /// Entry in a name map
@@ -80,7 +90,7 @@ pub enum SortIdentifier {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NameMapEntry {
     pub index: u32,
-    pub name: String,
+    pub name:  String,
 }
 
 /// Entry in a name map (no_std version)
@@ -88,7 +98,7 @@ pub struct NameMapEntry {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NameMapEntry {
     pub index: u32,
-    pub name: &'static str,
+    pub name:  &'static str,
 }
 
 // Implement required traits for NameMapEntry
@@ -351,13 +361,13 @@ impl wrt_foundation::traits::Checksummable for NameMap {
 pub struct ComponentNameSection {
     /// Name of the component itself
     #[cfg(feature = "std")]
-    pub component_name: Option<std::string::String>,
+    pub component_name:  Option<std::string::String>,
     #[cfg(not(feature = "std"))]
     pub component_name:
         Option<wrt_foundation::BoundedString<256, wrt_foundation::NoStdProvider<4096>>>,
     /// Map of names for various sorted items (functions, instances, etc.)
     #[cfg(feature = "std")]
-    pub sort_names: std::vec::Vec<(SortIdentifier, NameMap)>,
+    pub sort_names:      std::vec::Vec<(SortIdentifier, NameMap)>,
     #[cfg(not(feature = "std"))]
     pub sort_names: wrt_foundation::BoundedVec<
         (SortIdentifier, NameMap),
@@ -365,13 +375,13 @@ pub struct ComponentNameSection {
         wrt_foundation::NoStdProvider<4096>,
     >,
     /// Map of import names
-    pub import_names: NameMap,
+    pub import_names:    NameMap,
     /// Map of export names
-    pub export_names: NameMap,
+    pub export_names:    NameMap,
     /// Map of canonical names
     pub canonical_names: NameMap,
     /// Map of type names
-    pub type_names: NameMap,
+    pub type_names:      NameMap,
 }
 
 /// Parse a WebAssembly Component Model name section
@@ -952,7 +962,10 @@ fn write_leb128_u32(
         wrt_foundation::CapabilityAwareProvider<wrt_foundation::NoStdProvider<5>>,
     >,
 > {
-    use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
+    use wrt_foundation::{
+        budget_aware_provider::CrateId,
+        safe_managed_alloc,
+    };
     let provider = safe_managed_alloc!(5, CrateId::Decoder)?;
     let mut vec = wrt_foundation::BoundedVec::new(provider)?;
     write_leb128_u32_bounded(value, &mut vec)
@@ -970,7 +983,10 @@ fn write_string(
         wrt_foundation::CapabilityAwareProvider<wrt_foundation::NoStdProvider<512>>,
     >,
 > {
-    use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
+    use wrt_foundation::{
+        budget_aware_provider::CrateId,
+        safe_managed_alloc,
+    };
     let provider = safe_managed_alloc!(512, CrateId::Decoder)?;
     let mut vec = wrt_foundation::BoundedVec::new(provider)?;
     write_string_bounded(value, &mut vec)
@@ -983,12 +999,18 @@ pub fn parse_error(message: &str) -> Error {
 }
 
 pub fn parse_error_with_context(_message: &str, _context: &str) -> Error {
-    use wrt_error::{codes, ErrorCategory};
+    use wrt_error::{
+        codes,
+        ErrorCategory,
+    };
     Error::parse_error("Parse error with context ")
 }
 
 pub fn parse_error_with_position(_message: &str, _position: usize) -> Error {
-    use wrt_error::{codes, ErrorCategory};
+    use wrt_error::{
+        codes,
+        ErrorCategory,
+    };
     Error::parse_error("Parse error at position ")
 }
 
@@ -1036,22 +1058,22 @@ mod tests {
         {
             name_map.entries.push(NameMapEntry {
                 index: 0,
-                name: "func0".to_string(),
+                name:  "func0".to_string(),
             });
             name_map.entries.push(NameMapEntry {
                 index: 1,
-                name: "func1".to_string(),
+                name:  "func1".to_string(),
             });
         }
         #[cfg(not(feature = "std"))]
         {
             let _ = name_map.entries.push(NameMapEntry {
                 index: 0,
-                name: "func0",
+                name:  "func0",
             });
             let _ = name_map.entries.push(NameMapEntry {
                 index: 1,
-                name: "func1",
+                name:  "func1",
             });
         }
 

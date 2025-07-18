@@ -10,12 +10,22 @@
 #[cfg(any(doc, kani))]
 /// Kani verification proofs for error handling.
 pub mod kani_verification {
-    use core::fmt::{self, Debug, Display};
+    use core::fmt::{
+        self,
+        Debug,
+        Display,
+    };
     #[cfg(feature = "std")]
     use std::format;
 
     // Use crate::Error directly, remove ResultExt if it was here.
-    use crate::{codes, Error, ErrorCategory, ErrorSource, Result}; // Added Error, codes
+    use crate::{
+        codes,
+        Error,
+        ErrorCategory,
+        ErrorSource,
+        Result,
+    }; // Added Error, codes
 
     // A simple test error for verification
     #[derive(Debug, Clone, Copy)] // Made it Copy since it's just a &'static str

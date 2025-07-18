@@ -7,10 +7,10 @@ mod runtime_debug_tests {
 
     /// Mock runtime state for testing
     struct MockRuntimeState {
-        pc: u32,
-        sp: u32,
-        locals: Vec<u64>,
-        stack: Vec<u64>,
+        pc:       u32,
+        sp:       u32,
+        locals:   Vec<u64>,
+        stack:    Vec<u64>,
         func_idx: Option<u32>,
     }
 
@@ -67,10 +67,10 @@ mod runtime_debug_tests {
     fn test_variable_inspection() {
         // Create mock runtime state
         let state = MockRuntimeState {
-            pc: 0x1000,
-            sp: 0x8000,
-            locals: vec![42, 100, 0xDEADBEEF],
-            stack: vec![],
+            pc:       0x1000,
+            sp:       0x8000,
+            locals:   vec![42, 100, 0xDEADBEEF],
+            stack:    vec![],
             func_idx: Some(1),
         };
 
@@ -79,29 +79,29 @@ mod runtime_debug_tests {
 
         // Add variable definitions
         let var1 = VariableDefinition {
-            name: None, // Would come from .debug_str
-            var_type: BasicType::SignedInt(4),
-            location: DwarfLocation::Register(0),
-            scope: VariableScope {
+            name:       None, // Would come from .debug_str
+            var_type:   BasicType::SignedInt(4),
+            location:   DwarfLocation::Register(0),
+            scope:      VariableScope {
                 start_pc: 0x1000,
-                end_pc: 0x2000,
-                depth: 0,
+                end_pc:   0x2000,
+                depth:    0,
             },
             file_index: 1,
-            line: 42,
+            line:       42,
         };
 
         let var2 = VariableDefinition {
-            name: None,
-            var_type: BasicType::UnsignedInt(8),
-            location: DwarfLocation::Register(2),
-            scope: VariableScope {
+            name:       None,
+            var_type:   BasicType::UnsignedInt(8),
+            location:   DwarfLocation::Register(2),
+            scope:      VariableScope {
                 start_pc: 0x1000,
-                end_pc: 0x2000,
-                depth: 0,
+                end_pc:   0x2000,
+                depth:    0,
             },
             file_index: 1,
-            line: 43,
+            line:       43,
         };
 
         inspector.add_variable(var1).unwrap();
@@ -147,11 +147,11 @@ mod runtime_debug_tests {
         // Add memory regions
         inspector
             .add_region(MemoryRegion {
-                start: 0x0,
-                size: 0x10000,
+                start:       0x0,
+                size:        0x10000,
                 region_type: MemoryRegionType::LinearMemory,
-                writable: true,
-                name: "main",
+                writable:    true,
+                name:        "main",
             })
             .unwrap();
 
@@ -192,10 +192,10 @@ mod runtime_debug_tests {
 
         // Test hit detection
         let state = MockRuntimeState {
-            pc: 0x1000,
-            sp: 0x8000,
-            locals: vec![],
-            stack: vec![],
+            pc:       0x1000,
+            sp:       0x8000,
+            locals:   vec![],
+            stack:    vec![],
             func_idx: None,
         };
 
@@ -218,10 +218,10 @@ mod runtime_debug_tests {
                 0x1000,
                 0x1010,
                 LineInfo {
-                    file_index: 1,
-                    line: 10,
-                    column: 0,
-                    is_stmt: true,
+                    file_index:   1,
+                    line:         10,
+                    column:       0,
+                    is_stmt:      true,
                     end_sequence: false,
                 },
             )
@@ -232,20 +232,20 @@ mod runtime_debug_tests {
                 0x1010,
                 0x1020,
                 LineInfo {
-                    file_index: 1,
-                    line: 11,
-                    column: 0,
-                    is_stmt: true,
+                    file_index:   1,
+                    line:         11,
+                    column:       0,
+                    is_stmt:      true,
                     end_sequence: false,
                 },
             )
             .unwrap();
 
         let state = MockRuntimeState {
-            pc: 0x1000,
-            sp: 0x8000,
-            locals: vec![],
-            stack: vec![],
+            pc:       0x1000,
+            sp:       0x8000,
+            locals:   vec![],
+            stack:    vec![],
             func_idx: None,
         };
 
@@ -265,10 +265,10 @@ mod runtime_debug_tests {
 
         // 1. Setup runtime state
         let mut state = MockRuntimeState {
-            pc: 0x1000,
-            sp: 0x8000,
-            locals: vec![42, 100, 200],
-            stack: vec![1, 2, 3],
+            pc:       0x1000,
+            sp:       0x8000,
+            locals:   vec![42, 100, 200],
+            stack:    vec![1, 2, 3],
             func_idx: Some(1),
         };
 
@@ -281,16 +281,16 @@ mod runtime_debug_tests {
         let mut var_inspector = VariableInspector::new();
         var_inspector
             .add_variable(VariableDefinition {
-                name: None,
-                var_type: BasicType::SignedInt(4),
-                location: DwarfLocation::Register(0),
-                scope: VariableScope {
+                name:       None,
+                var_type:   BasicType::SignedInt(4),
+                location:   DwarfLocation::Register(0),
+                scope:      VariableScope {
                     start_pc: 0x1000,
-                    end_pc: 0x2000,
-                    depth: 0,
+                    end_pc:   0x2000,
+                    depth:    0,
                 },
                 file_index: 1,
-                line: 42,
+                line:       42,
             })
             .unwrap();
 
@@ -346,10 +346,10 @@ mod runtime_debug_tests {
     #[test]
     fn test_stack_analysis() {
         let state = MockRuntimeState {
-            pc: 0x1000,
-            sp: 0x7000, // Stack pointer
-            locals: vec![],
-            stack: vec![],
+            pc:       0x1000,
+            sp:       0x7000, // Stack pointer
+            locals:   vec![],
+            stack:    vec![],
             func_idx: None,
         };
 
@@ -363,11 +363,11 @@ mod runtime_debug_tests {
         // Add stack region
         inspector
             .add_region(MemoryRegion {
-                start: 0x0,
-                size: 0x10000,
+                start:       0x0,
+                size:        0x10000,
                 region_type: MemoryRegionType::Stack,
-                writable: true,
-                name: "stack",
+                writable:    true,
+                name:        "stack",
             })
             .unwrap();
 

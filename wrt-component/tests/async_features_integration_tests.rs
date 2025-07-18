@@ -29,13 +29,13 @@ mod async_context_tests {
     fn test_context_lifecycle() {
         // Test basic context get/set
         let initial = AsyncContextManager::context_get().unwrap();
-        assert!(initial.is_none();
+        assert!(initial.is_none());
 
         let context = AsyncContext::new();
         AsyncContextManager::context_set(context.clone()).unwrap();
 
         let retrieved = AsyncContextManager::context_get().unwrap();
-        assert!(retrieved.is_some();
+        assert!(retrieved.is_some());
 
         // Clean up
         AsyncContextManager::context_pop().unwrap();
@@ -43,13 +43,13 @@ mod async_context_tests {
 
     #[test]
     fn test_context_values() {
-        let key = ContextKey::new("test_key".to_string();
-        let value = ContextValue::from_component_value(ComponentValue::I32(42);
+        let key = ContextKey::new("test_key".to_string());
+        let value = ContextValue::from_component_value(ComponentValue::I32(42));
 
         AsyncContextManager::set_context_value(key.clone(), value).unwrap();
 
         let retrieved = AsyncContextManager::get_context_value(&key).unwrap();
-        assert!(retrieved.is_some();
+        assert!(retrieved.is_some());
         assert_eq!(
             retrieved.unwrap().as_component_value().unwrap(),
             &ComponentValue::I32(42)
@@ -67,7 +67,7 @@ mod async_context_tests {
         {
             let _scope = AsyncContextScope::enter_empty().unwrap();
             let context = AsyncContextManager::context_get().unwrap();
-            assert!(context.is_some();
+            assert!(context.is_some());
         }
 
         // Context should be popped after scope
@@ -96,7 +96,7 @@ mod async_context_tests {
             let level2_val =
                 AsyncContextManager::get_context_value(&ContextKey::new("level2".to_string())
                     .unwrap();
-            assert!(level2_val.is_some();
+            assert!(level2_val.is_some());
         }
 
         // Back to level 1, level2 key should be gone
@@ -129,7 +129,7 @@ mod task_management_tests {
         assert_eq!(final_status, TaskStatus::Completed);
 
         let result = TaskBuiltins::task_wait(task_id).unwrap();
-        assert!(result.is_some();
+        assert!(result.is_some());
     }
 
     #[test]
@@ -679,7 +679,7 @@ mod cross_feature_integration_tests {
         let group =
             AsyncContextManager::get_context_value(&ContextKey::new("task_group".to_string())
                 .unwrap();
-        assert!(group.is_some();
+        assert!(group.is_some());
 
         // Complete task
         TaskBuiltins::task_return(task_id, TaskReturn::void()).unwrap();
@@ -794,7 +794,7 @@ mod cross_feature_integration_tests {
 
         // Verify stored
         let retrieved = AdvancedThreadingBuiltins::thread_local_get(thread_id, 1).unwrap();
-        assert!(retrieved.is_some();
+        assert!(retrieved.is_some());
     }
 }
 
@@ -841,7 +841,7 @@ mod benchmarks {
     #[bench]
     fn bench_context_get_set(b: &mut Bencher) {
         let key = ContextKey::new("bench_key".to_string();
-        let value = ContextValue::from_component_value(ComponentValue::I32(42);
+        let value = ContextValue::from_component_value(ComponentValue::I32(42));
 
         b.iter(|| {
             AsyncContextManager::set_context_value(key.clone(), value.clone()).unwrap();

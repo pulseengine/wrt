@@ -245,14 +245,14 @@ impl PostReturnRegistry {
             #[cfg(not(any(feature = "std", )))]
             functions: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"))?
+                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Failed to create bounded vector for post-return functions"))?
             },
             #[cfg(feature = "std")]
             pending_cleanups: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
             pending_cleanups: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"))?
+                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Failed to create bounded vector for pending cleanups"))?
             },
             async_engine: None,
             cancellation_manager: None,
@@ -279,14 +279,14 @@ impl PostReturnRegistry {
             #[cfg(not(any(feature = "std", )))]
             functions: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"))?
+                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Failed to create bounded vector for async post-return functions"))?
             },
             #[cfg(feature = "std")]
             pending_cleanups: BTreeMap::new(),
             #[cfg(not(any(feature = "std", )))]
             pending_cleanups: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"))?
+                BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Failed to create bounded vector for async pending cleanups"))?
             },
             async_engine,
             cancellation_manager,
@@ -321,14 +321,12 @@ impl PostReturnRegistry {
         #[cfg(not(any(feature = "std", )))]
         {
             self.functions.push((instance_id, post_return_fn)).map_err(|_| {
-                Error::resource_exhausted("Error occurred")
+                Error::resource_exhausted("Failed to register post-return function, capacity exceeded")
             })?;
-            })?;
-            let provider = safe_managed_alloc!(65536, CrateId::Component).map_err(|_| Error::resource_exhausted("Error occurred"))?;
-            let cleanup_vec = BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Error occurred"))?;
+            let provider = safe_managed_alloc!(65536, CrateId::Component).map_err(|_| Error::resource_exhausted("Failed to allocate memory for cleanup tasks"))?;
+            let cleanup_vec = BoundedVec::new(provider).map_err(|_| Error::resource_exhausted("Failed to create bounded vector for cleanup tasks"))?;
             self.pending_cleanups.push((instance_id, cleanup_vec)).map_err(|_| {
-                Error::resource_exhausted("Error occurred")
-            })?;
+                Error::resource_exhausted("Failed to register cleanup tasks for instance, capacity exceeded")
             })?;
         }
 
@@ -347,8 +345,7 @@ impl PostReturnRegistry {
                 .pending_cleanups
                 .get_mut(&instance_id)
                 .ok_or_else(|| {
-                    Error::runtime_execution_error("Error occurred")
-                })?;
+                    Error::runtime_execution_error("Component instance not found in cleanup registry")
                 })?;
 
             if cleanup_tasks.len() >= self.max_cleanup_tasks {

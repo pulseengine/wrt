@@ -6,7 +6,10 @@ use alloc::boxed::Box;
 use std::boxed::Box;
 
 use wrt_foundation::{
-    bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
+    bounded::{
+        BoundedVec,
+        MAX_DWARF_FILE_TABLE,
+    },
     NoStdProvider,
 };
 
@@ -14,7 +17,10 @@ use crate::bounded_debug_infra;
 /// Runtime debugging API definitions
 /// This module defines the interface between the debug information
 /// and the runtime execution engine for advanced debugging features
-use crate::{BasicType, DebugString};
+use crate::{
+    BasicType,
+    DebugString,
+};
 
 /// Runtime state accessible during debugging
 pub trait RuntimeState {
@@ -65,13 +71,13 @@ pub trait DebugMemory {
 #[derive(Debug, Clone)]
 pub struct VariableValue {
     /// Raw bytes of the value
-    pub bytes: [u8; 8],
+    pub bytes:    [u8; 8],
     /// Size in bytes
-    pub size: u8,
+    pub size:     u8,
     /// Type information
     pub var_type: BasicType,
     /// Memory address (if applicable)
-    pub address: Option<u32>,
+    pub address:  Option<u32>,
 }
 
 impl VariableValue {
@@ -135,16 +141,16 @@ pub enum DwarfLocation {
 #[derive(Debug)]
 pub struct LiveVariable<'a> {
     /// Variable name
-    pub name: Option<DebugString<'a>>,
+    pub name:        Option<DebugString<'a>>,
     /// Variable type
-    pub var_type: BasicType,
+    pub var_type:    BasicType,
     /// DWARF location
-    pub location: DwarfLocation,
+    pub location:    DwarfLocation,
     /// Current value (if available)
-    pub value: Option<VariableValue>,
+    pub value:       Option<VariableValue>,
     /// Scope (PC range where valid)
     pub scope_start: u32,
-    pub scope_end: u32,
+    pub scope_end:   u32,
 }
 
 /// Breakpoint identifier
@@ -155,19 +161,19 @@ pub struct BreakpointId(pub u32);
 #[derive(Debug)]
 pub struct Breakpoint {
     /// Unique ID
-    pub id: BreakpointId,
+    pub id:         BreakpointId,
     /// Address to break at
-    pub address: u32,
+    pub address:    u32,
     /// Source file
     pub file_index: Option<u16>,
     /// Source line
-    pub line: Option<u32>,
+    pub line:       Option<u32>,
     /// Condition (simplified - would need expression evaluator)
-    pub condition: Option<BreakpointCondition>,
+    pub condition:  Option<BreakpointCondition>,
     /// Hit count
-    pub hit_count: u32,
+    pub hit_count:  u32,
     /// Enabled state
-    pub enabled: bool,
+    pub enabled:    bool,
 }
 
 /// Simple breakpoint conditions
@@ -269,10 +275,10 @@ mod integration_example {
 
     /// Example: How WRT interpreter would implement RuntimeState
     struct InterpreterState<'a> {
-        pc: u32,
-        sp: u32,
-        locals: &'a [u64],
-        stack: &'a [u64],
+        pc:       u32,
+        sp:       u32,
+        locals:   &'a [u64],
+        stack:    &'a [u64],
         func_idx: u32,
     }
 

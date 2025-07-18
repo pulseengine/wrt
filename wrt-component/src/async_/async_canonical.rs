@@ -95,15 +95,31 @@ pub mod async_canonical_lifting {
         _values: &[u8],
         _target_types: &[ValType],
         _options: &CanonicalOptions,
-    ) -> Result<Vec<Value>> {
-        Ok(vec![])
+    ) -> Result<ComponentVec<Value>> {
+        #[cfg(feature = "std")]
+        {
+            Ok(vec![])
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let provider = safe_managed_alloc!(1024, CrateId::Component)?;
+            Ok(ComponentVec::new(provider).map_err(|_| Error::runtime_execution_error("Failed to create ComponentVec"))?)
+        }
     }
     
     pub fn async_canonical_lower(
         _values: &[Value],
         _options: &CanonicalOptions,
-    ) -> Result<Vec<u8>> {
-        Ok(vec![])
+    ) -> Result<ComponentVec<u8>> {
+        #[cfg(feature = "std")]
+        {
+            Ok(vec![])
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let provider = safe_managed_alloc!(1024, CrateId::Component)?;
+            Ok(ComponentVec::new(provider).map_err(|_| Error::runtime_execution_error("Failed to create ComponentVec"))?)
+        }
     }
 }
 
@@ -127,9 +143,9 @@ pub struct AsyncOperation {
     pub state: AsyncOperationState,
     /// Associated context
     #[cfg(feature = "std")]
-    pub context: Vec<u8>,
+    pub context: ComponentVec<u8>,
     #[cfg(not(any(feature = "std", )))]
-    pub context: BoundedVec<u8>,
+    pub context: BoundedVec<u8, 4096, crate::bounded_component_infra::ComponentProvider>,
     /// Task handle for cancellation
     pub task_handle: Option<u32>,
 }
@@ -172,7 +188,7 @@ pub enum AsyncOperationState {
 #[derive(Debug, Clone)]
 pub enum AsyncLiftResult {
     /// Values are immediately available
-    Immediate(Vec<Value>),
+    Immediate(ComponentVec<Value>),
     /// Operation needs to wait for async completion
     Pending(AsyncOperation),
     /// Stream for incremental reading
@@ -187,7 +203,7 @@ pub enum AsyncLiftResult {
 #[derive(Debug, Clone)]
 pub enum AsyncLowerResult {
     /// Values were immediately lowered
-    Immediate(Vec<u8>),
+    Immediate(ComponentVec<u8>),
     /// Operation needs async completion
     Pending(AsyncOperation),
     /// Stream for incremental writing
@@ -210,19 +226,19 @@ pub struct AsyncCanonicalAbi {
     #[cfg(feature = "std")]
     streams: BTreeMap<StreamHandle, Box<dyn StreamValue>>,
     #[cfg(not(any(feature = "std", )))]
-    streams: BoundedVec<(StreamHandle, StreamValueEnum)>,
+    streams: BoundedVec<(StreamHandle, StreamValueEnum), 64, crate::bounded_component_infra::ComponentProvider>,
 
     /// Future registry
     #[cfg(feature = "std")]
     futures: BTreeMap<FutureHandle, Box<dyn FutureValue>>,
     #[cfg(not(any(feature = "std", )))]
-    futures: BoundedVec<(FutureHandle, FutureValueEnum)>,
+    futures: BoundedVec<(FutureHandle, FutureValueEnum), 64, crate::bounded_component_infra::ComponentProvider>,
 
     /// Error context registry
     #[cfg(feature = "std")]
     error_contexts: BTreeMap<ErrorContextHandle, ErrorContext>,
     #[cfg(not(any(feature = "std", )))]
-    error_contexts: BoundedVec<(ErrorContextHandle, ErrorContext)>,
+    error_contexts: BoundedVec<(ErrorContextHandle, ErrorContext), 32, crate::bounded_component_infra::ComponentProvider>,
 
     /// Next handle IDs
     next_stream_handle: u32,
@@ -682,7 +698,7 @@ impl AsyncCanonicalAbi {
     }
 
     /// Task return operation
-    pub fn task_return(&mut self, values: Vec<Value>) -> WrtResult<()> {
+    pub fn task_return(&mut self, values: ComponentVec<Value>) -> WrtResult<()> {
         self.task_manager.task_return(values)
     }
 
@@ -841,12 +857,12 @@ impl AsyncCanonicalAbi {
         Ok(true)
     }
 
-    fn lift_immediate(&self, values: &[u8], target_types: &[ValType], options: &CanonicalOptions) -> WrtResult<Vec<Value>> {
+    fn lift_immediate(&self, values: &[u8], target_types: &[ValType], options: &CanonicalOptions) -> WrtResult<ComponentVec<Value>> {
         // Use the stub canonical ABI lifting
         async_canonical_lifting::async_canonical_lift(values, target_types, options)
     }
 
-    fn lower_immediate(&self, values: &[Value], options: &CanonicalOptions) -> WrtResult<Vec<u8>> {
+    fn lower_immediate(&self, values: &[Value], options: &CanonicalOptions) -> WrtResult<ComponentVec<u8>> {
         // Use the stub canonical ABI lowering
         async_canonical_lifting::async_canonical_lower(values, options)
     }

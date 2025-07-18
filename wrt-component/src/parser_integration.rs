@@ -268,19 +268,19 @@ impl ComponentLoader {
     pub fn parse_component(&self, binary_data: &[u8]) -> WrtResult<ParsedComponent> {
         // Validate size
         if binary_data.len() > self.max_component_size {
-            return Err(wrt_error::Error::validation_invalid_input("Error occurred")
+            return Err(wrt_error::Error::validation_invalid_input("Component binary data exceeds maximum allowed size")
             );
         }
 
         // Validate basic structure
         if binary_data.len() < 8 {
-            return Err(wrt_error::Error::validation_invalid_input("Error occurred")
+            return Err(wrt_error::Error::validation_invalid_input("Component binary data too small, minimum 8 bytes required")
             );
         }
 
         // Check magic bytes (simplified - would check actual WASM component magic)
         if &binary_data[0..4] != b"\x00asm" {
-            return Err(wrt_error::Error::validation_invalid_input("Error occurred")
+            return Err(wrt_error::Error::validation_invalid_input("Invalid WebAssembly magic bytes, expected '\\x00asm'")
             );
         }
 
@@ -310,8 +310,8 @@ impl ComponentLoader {
         #[cfg(feature = "std")]
         let import_name = "default".to_string());
         #[cfg(not(any(feature = "std", )))]
-        let import_name = BoundedString::from_str("defaultMissing message")
-            .map_err(|_| wrt_error::Error::validation_invalid_input("Error occurred")
+        let import_name = BoundedString::from_str("default")
+            .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create default import name as bounded string")
             ))?;
 
         parsed.add_import(ParsedImport {
@@ -323,8 +323,8 @@ impl ComponentLoader {
         #[cfg(feature = "std")]
         let export_name = "main".to_string());
         #[cfg(not(any(feature = "std", )))]
-        let export_name = BoundedString::from_str("mainMissing message")
-            .map_err(|_| wrt_error::Error::validation_invalid_input("Error occurred")
+        let export_name = BoundedString::from_str("main")
+            .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create default export name as bounded string")
             ))?;
 
         parsed.add_export(ParsedExport {
@@ -340,7 +340,7 @@ impl ComponentLoader {
         if self.validation_level == ValidationLevel::Basic {
             // Basic validation - check we have at least some content
             if parsed.types.len() == 0 {
-                return Err(wrt_error::Error::runtime_execution_error("Error occurred"
+                return Err(wrt_error::Error::runtime_execution_error("Component validation failed: no types found"
                 );
             }
         } else if self.validation_level == ValidationLevel::Full {
@@ -441,8 +441,8 @@ impl ComponentLoader {
         #[cfg(feature = "std")]
         let name = "Component not found";
         #[cfg(not(any(feature = "std", )))]
-        let name = BoundedString::from_str("moduleMissing message")
-            .map_err(|_| wrt_error::Error::validation_invalid_input("Error occurred")
+        let name = BoundedString::from_str("module")
+            .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create module adapter name as bounded string")
             ))?;
 
         let adapter = CoreModuleAdapter::new(name);
@@ -480,42 +480,42 @@ impl ParsedComponent {
             #[cfg(not(any(feature = "std", )))]
             types: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"))?
+                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component types"))?
             },
             #[cfg(feature = "std")]
             imports: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             imports: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"))?
+                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component imports"))?
             },
             #[cfg(feature = "std")]
             exports: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             exports: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"))?
+                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component exports"))?
             },
             #[cfg(feature = "std")]
             modules: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             modules: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"))?
+                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component modules"))?
             },
             #[cfg(feature = "std")]
             instances: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             instances: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"))?
+                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component instances"))?
             },
             #[cfg(feature = "std")]
             canonicals: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             canonicals: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Error occurred"))?
+                BoundedVec::new(provider).map_err(|_| wrt_error::Error::resource_exhausted("Failed to create bounded vector for component canonicals"))?
             },
         })
     }
@@ -531,7 +531,7 @@ impl ParsedComponent {
         {
             self.types
                 .push(component_type)
-                .map_err(|_| wrt_error::Error::resource_exhausted("Error occurred")
+                .map_err(|_| wrt_error::Error::resource_exhausted("Failed to add type to component, capacity exceeded")
             })?;
         }
     }
@@ -547,7 +547,7 @@ impl ParsedComponent {
         {
             self.imports
                 .push(import)
-                .map_err(|_| wrt_error::Error::resource_exhausted("Error occurred")
+                .map_err(|_| wrt_error::Error::resource_exhausted("Failed to add import to component, capacity exceeded")
             })?;
         }
     }
@@ -563,7 +563,7 @@ impl ParsedComponent {
         {
             self.exports
                 .push(export)
-                .map_err(|_| wrt_error::Error::resource_exhausted("Error occurred")
+                .map_err(|_| wrt_error::Error::resource_exhausted("Failed to add export to component, capacity exceeded")
             })?;
         }
     }
@@ -633,7 +633,7 @@ mod tests {
 
     #[test]
     fn test_parsed_component_creation() {
-        let mut component = ParsedComponent::new().expect("Failed to create ParsedComponentMissing message");
+        let mut component = ParsedComponent::new().expect("Failed to create ParsedComponent");
         assert_eq!(component.types.len(), 0);
         assert_eq!(component.imports.len(), 0);
         assert_eq!(component.exports.len(), 0);
@@ -645,16 +645,16 @@ mod tests {
 
     #[test]
     fn test_validation_level_display() {
-        assert_eq!(ValidationLevel::None.to_string(), "noneMissing message");
-        assert_eq!(ValidationLevel::Basic.to_string(), "basicMissing message");
-        assert_eq!(ValidationLevel::Full.to_string(), "fullMissing message");
+        assert_eq!(ValidationLevel::None.to_string(), "none");
+        assert_eq!(ValidationLevel::Basic.to_string(), "basic");
+        assert_eq!(ValidationLevel::Full.to_string(), "full");
     }
 
     #[test]
     fn test_string_encoding_display() {
-        assert_eq!(StringEncoding::Utf8.to_string(), "utf8Missing message");
-        assert_eq!(StringEncoding::Utf16Le.to_string(), "utf16leMissing message");
-        assert_eq!(StringEncoding::Latin1.to_string(), "latin1Missing message");
+        assert_eq!(StringEncoding::Utf8.to_string(), "utf8");
+        assert_eq!(StringEncoding::Utf16Le.to_string(), "utf16le");
+        assert_eq!(StringEncoding::Latin1.to_string(), "latin1");
     }
 
     #[test]
@@ -675,7 +675,7 @@ mod tests {
         assert!(result.is_err();
 
         // Test invalid magic
-        let result = loader.parse_component(b"invalid_magic_bytesMissing message");
+        let result = loader.parse_component(b"invalid_magic_bytes");
         assert!(result.is_err();
     }
 

@@ -2,7 +2,11 @@
 
 #[cfg(feature = "std")]
 mod memory_tests {
-    use wrt_decoder::memory_optimized::{check_bounds_u32, safe_usize_conversion, MemoryPool};
+    use wrt_decoder::memory_optimized::{
+        check_bounds_u32,
+        safe_usize_conversion,
+        MemoryPool,
+    };
     use wrt_foundation::NoStdProvider;
 
     #[test]

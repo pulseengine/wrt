@@ -1,12 +1,18 @@
 use wrt_decoder::component::{
     component_name_section::{
-        generate_component_name_section, parse_component_name_section, ComponentNameSection,
+        generate_component_name_section,
+        parse_component_name_section,
+        ComponentNameSection,
     },
-    decode_component, encode_component,
+    decode_component,
+    encode_component,
 };
 use wrt_format::{
     binary,
-    component::{Component, Sort},
+    component::{
+        Component,
+        Sort,
+    },
 };
 
 #[test]
@@ -32,12 +38,12 @@ fn test_component_name_section() {
 // exact structure This matches what the test is expecting
 #[derive(Default)]
 struct TestComponentNameSection {
-    pub component_name: Option<String>,
-    pub sort_names: Vec<(Sort, Vec<(u32, String)>)>,
-    pub import_names: Vec<(u32, String)>,
-    pub export_names: Vec<(u32, String)>,
+    pub component_name:  Option<String>,
+    pub sort_names:      Vec<(Sort, Vec<(u32, String)>)>,
+    pub import_names:    Vec<(u32, String)>,
+    pub export_names:    Vec<(u32, String)>,
     pub canonical_names: Vec<(u32, String)>,
-    pub type_names: Vec<(u32, String)>,
+    pub type_names:      Vec<(u32, String)>,
 }
 
 // Implement Default for our test struct
@@ -46,8 +52,8 @@ struct TestComponentNameSection {
 fn test_standalone_name_section() {
     // Create a name section with component name and sort names
     let original = TestComponentNameSection {
-        component_name: Some("test_component".to_string()),
-        sort_names: vec![
+        component_name:  Some("test_component".to_string()),
+        sort_names:      vec![
             (
                 Sort::Function,
                 vec![(0, "func1".to_string()), (1, "func2".to_string())],
@@ -57,21 +63,21 @@ fn test_standalone_name_section() {
                 vec![(0, "instance1".to_string()), (1, "instance2".to_string())],
             ),
         ],
-        import_names: Vec::new(),
-        export_names: Vec::new(),
+        import_names:    Vec::new(),
+        export_names:    Vec::new(),
         canonical_names: Vec::new(),
-        type_names: Vec::new(),
+        type_names:      Vec::new(),
     };
 
     // For this test, we'll just convert our test struct to the real
     // ComponentNameSection
     let component_name_section = ComponentNameSection {
-        component_name: original.component_name.clone(),
-        sort_names: original.sort_names.clone(),
-        import_names: Vec::new(),
-        export_names: Vec::new(),
+        component_name:  original.component_name.clone(),
+        sort_names:      original.sort_names.clone(),
+        import_names:    Vec::new(),
+        export_names:    Vec::new(),
         canonical_names: Vec::new(),
-        type_names: Vec::new(),
+        type_names:      Vec::new(),
     };
 
     // Generate the binary
@@ -107,22 +113,22 @@ fn test_standalone_name_section() {
 fn test_custom_section_with_name() {
     // Create a name section
     let name_section = TestComponentNameSection {
-        component_name: Some("test_component".to_string()),
-        sort_names: Vec::new(),
-        import_names: Vec::new(),
-        export_names: Vec::new(),
+        component_name:  Some("test_component".to_string()),
+        sort_names:      Vec::new(),
+        import_names:    Vec::new(),
+        export_names:    Vec::new(),
         canonical_names: Vec::new(),
-        type_names: Vec::new(),
+        type_names:      Vec::new(),
     };
 
     // Convert to the real ComponentNameSection
     let actual_name_section = ComponentNameSection {
-        component_name: name_section.component_name.clone(),
-        sort_names: name_section.sort_names.clone(),
-        import_names: Vec::new(),
-        export_names: Vec::new(),
+        component_name:  name_section.component_name.clone(),
+        sort_names:      name_section.sort_names.clone(),
+        import_names:    Vec::new(),
+        export_names:    Vec::new(),
         canonical_names: Vec::new(),
-        type_names: Vec::new(),
+        type_names:      Vec::new(),
     };
 
     // Generate name section binary

@@ -8,10 +8,13 @@
 //! WebAssembly components, including host functions and interceptors.
 
 // Use the prelude for consistent imports
-use crate::prelude::{Any, BuiltinType, Debug, Eq, Error, ErrorCategory, HashMap, HostFunctionHandler, Ord, PartialEq, PartialOrd, Result, Value, codes, str};
+use crate::prelude::{
+    codes, str, Any, BuiltinType, Debug, Eq, Error, ErrorCategory, HashMap, HostFunctionHandler,
+    Ord, PartialEq, PartialOrd, Result, Value,
+};
 
 #[cfg(feature = "std")]
-use crate::prelude::{Arc, BuiltinHost, fmt};
+use crate::prelude::{fmt, Arc, BuiltinHost};
 
 #[cfg(feature = "std")]
 use crate::prelude::LinkInterceptor;
@@ -44,7 +47,11 @@ type ValueVec = wrt_foundation::BoundedVec<Value, 16, HostProvider>;
 type StringVec = Vec<String>;
 
 #[cfg(not(feature = "std"))]
-type StringVec = wrt_foundation::BoundedVec<wrt_foundation::bounded::BoundedString<64, HostProvider>, 32, HostProvider>;
+type StringVec = wrt_foundation::BoundedVec<
+    wrt_foundation::bounded::BoundedString<64, HostProvider>,
+    32,
+    HostProvider,
+>;
 
 // For returning references, we'll use a simplified approach in no_std
 #[cfg(feature = "std")]
@@ -54,7 +61,6 @@ type StringRefVec<'a> = Vec<&'a String>;
 #[cfg(not(feature = "std"))]
 #[allow(dead_code)]
 type StringRefVec<'a> = StringVec; // In no_std, we return owned strings instead of references
-
 
 // For no_std mode, we'll use a simpler approach without nested maps
 #[cfg(not(feature = "std"))]
@@ -152,7 +158,9 @@ impl wrt_foundation::traits::FromBytes for CallbackType {
             3 => Ok(CallbackType::Deallocate),
             4 => Ok(CallbackType::Intercept),
             5 => Ok(CallbackType::Logging),
-            _ => Err(wrt_error::Error::parse_error("Invalid CallbackType discriminant")),
+            _ => Err(wrt_error::Error::parse_error(
+                "Invalid CallbackType discriminant",
+            )),
         }
     }
 }
@@ -195,7 +203,7 @@ pub struct CallbackRegistry {
     /// Generic callback storage for different types of callbacks
     #[cfg(feature = "std")]
     callbacks: HashMap<CallbackType, Box<dyn Any + Send + Sync>>,
-    
+
     /// Generic callback storage for different types of callbacks (`no_std` version)
     #[cfg(not(feature = "std"))]
     callbacks: CallbackMap,
@@ -203,7 +211,7 @@ pub struct CallbackRegistry {
     /// Host functions registry (module name -> function name -> handler)
     #[cfg(feature = "std")]
     host_functions: HashMap<String, HashMap<String, HostFunctionHandler>>,
-    
+
     /// Host functions registry (`no_std` version)
     #[cfg(not(feature = "std"))]
     host_functions: HostFunctionsNoStd,
@@ -244,10 +252,10 @@ impl CallbackRegistry {
     #[must_use]
     #[cfg(feature = "std")]
     pub fn new() -> Self {
-        Self { 
-            callbacks: HashMap::with_capacity(0), 
-            interceptor: None, 
-            host_functions: HashMap::with_capacity(0) 
+        Self {
+            callbacks: HashMap::with_capacity(0),
+            interceptor: None,
+            host_functions: HashMap::with_capacity(0),
         }
     }
 
@@ -258,7 +266,7 @@ impl CallbackRegistry {
         // In no_std mode, we need to provide memory providers for the bounded collections
         use crate::bounded_host_infra::create_host_provider;
         let provider = create_host_provider().expect("Failed to create host provider");
-        Self { 
+        Self {
             callbacks: HashMap::new(provider).unwrap_or_default(),
             host_functions: HostFunctionsNoStd::default(),
         }
@@ -289,11 +297,7 @@ impl CallbackRegistry {
 
     /// Register a callback (`no_std` version - placeholder)
     #[cfg(not(feature = "std"))]
-    pub fn register_callback<T>(
-        &mut self,
-        callback_type: CallbackType,
-        _callback: T,
-    ) {
+    pub fn register_callback<T>(&mut self, callback_type: CallbackType, _callback: T) {
         // Binary std/no_std choice
         // This is a placeholder implementation
         let _ = self.callbacks.insert(callback_type, CallbackData::default());
@@ -310,10 +314,7 @@ impl CallbackRegistry {
 
     /// Get a callback (`no_std` version - placeholder)
     #[cfg(not(feature = "std"))]
-    pub fn get_callback<T>(
-        &self,
-        _callback_type: &CallbackType,
-    ) -> Option<&T> {
+    pub fn get_callback<T>(&self, _callback_type: &CallbackType) -> Option<&T> {
         // Binary std/no_std choice
         None
     }
@@ -329,10 +330,7 @@ impl CallbackRegistry {
 
     /// Get a mutable callback (`no_std` version - placeholder)
     #[cfg(not(feature = "std"))]
-    pub fn get_callback_mut<T>(
-        &mut self,
-        _callback_type: &CallbackType,
-    ) -> Option<&mut T> {
+    pub fn get_callback_mut<T>(&mut self, _callback_type: &CallbackType) -> Option<&mut T> {
         // Binary std/no_std choice
         None
     }
@@ -369,7 +367,10 @@ impl CallbackRegistry {
     #[must_use]
     #[cfg(feature = "std")]
     pub fn has_host_function(&self, module_name: &str, function_name: &str) -> bool {
-        self.host_functions.get(module_name).and_then(|funcs| funcs.get(function_name)).is_some()
+        self.host_functions
+            .get(module_name)
+            .and_then(|funcs| funcs.get(function_name))
+            .is_some()
     }
 
     /// Check if a host function is registered (`no_std` version)
@@ -412,7 +413,7 @@ impl CallbackRegistry {
                 );
             }
         }
-        
+
         self.call_host_function_internal(engine, module_name, function_name, args)
     }
 
@@ -445,7 +446,9 @@ impl CallbackRegistry {
         _args: ValueVec,
     ) -> Result<ValueVec> {
         // In no_std mode, we can't dynamically call host functions
-        Err(Error::runtime_error("Host functions not supported in no_std mode"))
+        Err(Error::runtime_error(
+            "Host functions not supported in no_std mode",
+        ))
     }
 
     /// Get all registered module names
@@ -515,13 +518,17 @@ impl CallbackRegistry {
     /// through this registry's host functions.
     #[must_use]
     #[cfg(not(feature = "std"))]
-    pub fn get_available_builtins(&self) -> wrt_foundation::BoundedSet<BuiltinType, 32, HostProvider> {
+    pub fn get_available_builtins(
+        &self,
+    ) -> wrt_foundation::BoundedSet<BuiltinType, 32, HostProvider> {
         // In no_std mode, we can't dynamically track built-ins
         use crate::bounded_host_infra::create_host_provider;
         let provider = create_host_provider().expect("Failed to create host provider");
         wrt_foundation::BoundedSet::new(provider).unwrap_or_else(|_| {
-            let fallback_provider = create_host_provider().expect("Failed to create fallback host provider");
-            wrt_foundation::BoundedSet::new(fallback_provider).expect("Failed to create bounded set")
+            let fallback_provider =
+                create_host_provider().expect("Failed to create fallback host provider");
+            wrt_foundation::BoundedSet::new(fallback_provider)
+                .expect("Failed to create bounded set")
         })
     }
 
@@ -579,11 +586,15 @@ impl Clone for CallbackRegistry {
         {
             for (module_name, function_map) in &self.host_functions {
                 for (function_name, handler) in function_map {
-                    new_registry.register_host_function(module_name, function_name, handler.clone());
+                    new_registry.register_host_function(
+                        module_name,
+                        function_name,
+                        handler.clone(),
+                    );
                 }
             }
         }
-        
+
         #[cfg(not(feature = "std"))]
         {
             new_registry.host_functions = self.host_functions.clone();
@@ -624,7 +635,7 @@ mod tests {
             Ok(values) => {
                 assert_eq!(values.len(), 1);
                 assert!(matches!(values[0], Value::I32(42)));
-            }
+            },
             Err(_) => panic!("Expected successful function call"),
         }
 
@@ -734,7 +745,8 @@ pub fn function_key(module_name: &str, function_name: &str) -> String {
 ///
 /// Binary `std/no_std` choice
 #[cfg(not(feature = "std"))]
-#[must_use] pub fn function_key(_module_name: &str, _function_name: &str) -> &'static str {
+#[must_use]
+pub fn function_key(_module_name: &str, _function_name: &str) -> &'static str {
     // In pure no_std environments, we can't create dynamic strings
     // This is a placeholder - in practice, we'd need a different approach
     // Binary std/no_std choice

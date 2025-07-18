@@ -7,31 +7,62 @@
 //! This module contains parsers for various sections in WebAssembly modules
 //! using bounded collections for static memory allocation.
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 use wrt_format::{
-    binary::{self},
-    module::{ElementInit, Export as WrtExport, ExportKind},
-    pure_format_types::{PureDataMode, PureDataSegment, PureElementMode, PureElementSegment},
-    types::{parse_value_type, RefType},
-    DataSegment as WrtDataSegment, ElementSegment as WrtElementSegment, WasmString,
+    binary::{
+        self,
+    },
+    module::{
+        ElementInit,
+        Export as WrtExport,
+        ExportKind,
+    },
+    pure_format_types::{
+        PureDataMode,
+        PureDataSegment,
+        PureElementMode,
+        PureElementSegment,
+    },
+    types::{
+        parse_value_type,
+        RefType,
+    },
+    DataSegment as WrtDataSegment,
+    ElementSegment as WrtElementSegment,
+    WasmString,
 };
 use wrt_foundation::{
-    bounded::{BoundedVec, WasmName},
+    bounded::{
+        BoundedVec,
+        WasmName,
+    },
     budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
     traits::BoundedCapacity,
     types::{
-        FuncType as WrtFuncType, GlobalType as WrtGlobalType, Import as WrtImport,
-        ImportDesc as WrtImportDesc, MemoryType as WrtMemoryType, TableType as WrtTableType,
+        FuncType as WrtFuncType,
+        GlobalType as WrtGlobalType,
+        Import as WrtImport,
+        ImportDesc as WrtImportDesc,
+        MemoryType as WrtMemoryType,
+        TableType as WrtTableType,
     },
 };
 
 // Import bounded infrastructure
 use crate::bounded_decoder_infra::DecoderProvider;
-use crate::bounded_decoder_infra::*;
 use crate::{
-    memory_optimized::{check_bounds_u32, safe_usize_conversion},
+    bounded_decoder_infra::*,
+    memory_optimized::{
+        check_bounds_u32,
+        safe_usize_conversion,
+    },
     optimized_string::parse_utf8_string_inplace,
 };
 
@@ -145,15 +176,16 @@ fn parse_element_segment(
     offset: usize,
 ) -> Result<(wrt_format::pure_format_types::PureElementSegment, usize)> {
     // For both std and no_std, implement basic element parsing
-    // Create empty vecs using the standard library Vec type that's available in no_std via alloc
+    // Create empty vecs using the standard library Vec type that's available in
+    // no_std via alloc
     #[cfg(not(feature = "std"))]
     use wrt_foundation::prelude::*;
 
     let pure_element = PureElementSegment {
-        element_type: wrt_format::types::RefType::Funcref,
-        mode: PureElementMode::Passive,
+        element_type:      wrt_format::types::RefType::Funcref,
+        mode:              PureElementMode::Passive,
         offset_expr_bytes: Default::default(),
-        init_data: wrt_format::pure_format_types::PureElementInit::FunctionIndices(
+        init_data:         wrt_format::pure_format_types::PureElementInit::FunctionIndices(
             Default::default(),
         ),
     };
@@ -165,14 +197,15 @@ fn parse_data(
     offset: usize,
 ) -> Result<(wrt_format::pure_format_types::PureDataSegment, usize)> {
     // For both std and no_std, implement basic data parsing
-    // Create empty vecs using the standard library Vec type that's available in no_std via alloc
+    // Create empty vecs using the standard library Vec type that's available in
+    // no_std via alloc
     #[cfg(not(feature = "std"))]
     use wrt_foundation::prelude::*;
 
     let pure_data = PureDataSegment {
-        mode: PureDataMode::Passive,
+        mode:              PureDataMode::Passive,
         offset_expr_bytes: Default::default(),
-        data_bytes: Default::default(),
+        data_bytes:        Default::default(),
     };
     Ok((pure_data, offset + 1))
 }
@@ -319,7 +352,7 @@ pub mod parsers {
             }
 
             let func_type = WrtFuncType {
-                params: func_type_params,
+                params:  func_type_params,
                 results: func_type_results,
             };
 
@@ -465,7 +498,7 @@ pub mod parsers {
             // Convert to WrtTableType - needs implementation
             let wrt_table_type = WrtTableType {
                 element_type: table_type.element_type,
-                limits: table_type.limits,
+                limits:       table_type.limits,
             };
 
             tables
@@ -524,7 +557,7 @@ pub mod parsers {
             // Convert to WrtGlobalType
             let wrt_global_type = WrtGlobalType {
                 value_type: global_type.value_type,
-                mutable: global_type.mutable,
+                mutable:    global_type.mutable,
             };
 
             globals

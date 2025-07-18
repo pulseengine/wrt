@@ -85,7 +85,7 @@ fn convert_import_desc(
         wrt_foundation::types::ImportDesc::Global(global_type) => {
             wrt_format::module::ImportDesc::Global(wrt_format::types::FormatGlobalType {
                 value_type: global_type.value_type,
-                mutable: global_type.mutable,
+                mutable:    global_type.mutable,
             })
         },
         wrt_foundation::types::ImportDesc::Extern(_) => {
@@ -106,19 +106,19 @@ fn convert_import_desc(
 #[cfg(feature = "std")]
 fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result<WrtModule> {
     let mut module = WrtModule {
-        types: Vec::new(),
-        functions: Vec::new(),
-        tables: Vec::new(),
-        memories: Vec::new(),
-        globals: Vec::new(),
-        elements: Vec::new(),
-        data: Vec::new(),
-        exports: Vec::new(),
-        imports: Vec::new(),
-        start: None,
-        custom_sections: Vec::new(),
-        binary: None,
-        core_version: wrt_format::types::CoreWasmVersion::default(),
+        types:             Vec::new(),
+        functions:         Vec::new(),
+        tables:            Vec::new(),
+        memories:          Vec::new(),
+        globals:           Vec::new(),
+        elements:          Vec::new(),
+        data:              Vec::new(),
+        exports:           Vec::new(),
+        imports:           Vec::new(),
+        start:             None,
+        custom_sections:   Vec::new(),
+        binary:            None,
+        core_version:      wrt_format::types::CoreWasmVersion::default(),
         type_info_section: None,
     };
 
@@ -128,7 +128,7 @@ fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result
                 for func_type in types {
                     // Convert FuncType to CleanCoreFuncType
                     let clean_func_type = wrt_foundation::CleanCoreFuncType {
-                        params: func_type.params.into_iter().collect(),
+                        params:  func_type.params.into_iter().collect(),
                         results: func_type.results.into_iter().collect(),
                     };
                     module.types.push(clean_func_type);
@@ -139,8 +139,8 @@ fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result
                     // Convert from wrt_foundation Import to wrt_format Import
                     let format_import = wrt_format::module::Import {
                         module: import.module_name.as_str().unwrap_or("").to_string(),
-                        name: import.item_name.as_str().unwrap_or("").to_string(),
-                        desc: convert_import_desc(import.desc),
+                        name:   import.item_name.as_str().unwrap_or("").to_string(),
+                        desc:   convert_import_desc(import.desc),
                     };
                     module.imports.push(format_import);
                 }
@@ -171,10 +171,10 @@ fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result
                     let global = wrt_format::module::Global {
                         global_type: wrt_format::types::FormatGlobalType {
                             value_type: global_type.value_type,
-                            mutable: global_type.mutable,
+                            mutable:    global_type.mutable,
                         },
-                        init: Vec::new(), /* Empty init - should be populated from code
-                                           * section */
+                        init:        Vec::new(), /* Empty init - should be populated from code
+                                                  * section */
                     };
                     module.globals.push(global);
                 }

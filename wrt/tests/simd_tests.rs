@@ -1,9 +1,18 @@
 use std::{
     // path::{Path, PathBuf}, // Remove unused
-    sync::{Arc, Mutex},
+    sync::{
+        Arc,
+        Mutex,
+    },
 };
 
-use wrt::{Error as WrtError, Module, Result, StacklessEngine, Value};
+use wrt::{
+    Error as WrtError,
+    Module,
+    Result,
+    StacklessEngine,
+    Value,
+};
 
 #[test]
 fn test_v128_load_store() -> Result<()> {

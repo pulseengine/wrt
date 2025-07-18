@@ -1,6 +1,12 @@
 use std::path::PathBuf;
 
-use wrt::{Error, Module, Result, StacklessEngine, Value};
+use wrt::{
+    Error,
+    Module,
+    Result,
+    StacklessEngine,
+    Value,
+};
 
 /// Test bitwise operations independently
 #[test]

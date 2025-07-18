@@ -1,4 +1,10 @@
-use wrt::{behavior::NullBehavior, instructions::comparison, Error, Result, Value};
+use wrt::{
+    behavior::NullBehavior,
+    instructions::comparison,
+    Error,
+    Result,
+    Value,
+};
 
 #[test]
 fn test_direct_i64_comparison() -> Result<()> {

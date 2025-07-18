@@ -112,7 +112,11 @@ pub mod macros;
 pub mod verify;
 
 // Re-export key types
-pub use errors::{Error, ErrorCategory, ErrorSource};
+pub use errors::{
+    Error,
+    ErrorCategory,
+    ErrorSource,
+};
 
 /// A specialized `Result` type for WRT operations.
 ///
@@ -123,9 +127,22 @@ pub type Result<T> = core::result::Result<T, Error>;
 
 // Re-export error kinds for convenience
 pub use kinds::{
-    component_error, invalid_type, out_of_bounds_error, parse_error, poisoned_lock_error,
-    resource_error, runtime_error, validation_error, ComponentError, InvalidType, OutOfBoundsError,
-    ParseError, PoisonedLockError, ResourceError, RuntimeError, ValidationError,
+    component_error,
+    invalid_type,
+    out_of_bounds_error,
+    parse_error,
+    poisoned_lock_error,
+    resource_error,
+    runtime_error,
+    validation_error,
+    ComponentError,
+    InvalidType,
+    OutOfBoundsError,
+    ParseError,
+    PoisonedLockError,
+    ResourceError,
+    RuntimeError,
+    ValidationError,
 };
 
 /// Error conversion trait for converting between error types
@@ -154,7 +171,10 @@ pub use asil::validate_error_consistency;
 pub use asil::SafetyMonitor;
 // Re-export ASIL types when enabled
 #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
-pub use asil::{AsilErrorContext, AsilLevel};
+pub use asil::{
+    AsilErrorContext,
+    AsilLevel,
+};
 pub use helpers::*;
 
 /// A placeholder function.

@@ -6,67 +6,79 @@
 use std::{
     collections::HashMap,
     fs,
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
     time::SystemTime,
 };
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::{
-    diagnostics::{Diagnostic, DiagnosticCollection},
-    error::{BuildError, BuildResult},
+    diagnostics::{
+        Diagnostic,
+        DiagnosticCollection,
+    },
+    error::{
+        BuildError,
+        BuildResult,
+    },
 };
 
 /// Cache metadata for a single file
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileCacheEntry {
     /// File path relative to workspace
-    pub file_path: PathBuf,
+    pub file_path:     PathBuf,
     /// Last modification time of the file when cached
     pub last_modified: SystemTime,
     /// File hash for additional verification
-    pub file_hash: String,
+    pub file_hash:     String,
     /// Cached diagnostics for this file
-    pub diagnostics: Vec<Diagnostic>,
+    pub diagnostics:   Vec<Diagnostic>,
     /// When this cache entry was created
-    pub cached_at: SystemTime,
+    pub cached_at:     SystemTime,
 }
 
 /// Diagnostic cache for workspace files
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiagnosticCache {
     /// Cache format version for compatibility
-    pub version: u32,
+    pub version:        u32,
     /// Workspace root path
     pub workspace_root: PathBuf,
     /// Cache entries by file path
-    pub entries: HashMap<PathBuf, FileCacheEntry>,
+    pub entries:        HashMap<PathBuf, FileCacheEntry>,
     /// Global cache metadata
-    pub metadata: CacheMetadata,
+    pub metadata:       CacheMetadata,
 }
 
 /// Cache metadata and statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CacheMetadata {
     /// When the cache was created
-    pub created_at: SystemTime,
+    pub created_at:  SystemTime,
     /// When the cache was last updated
-    pub updated_at: SystemTime,
+    pub updated_at:  SystemTime,
     /// Total number of cached files
     pub total_files: usize,
     /// Cache hit statistics
-    pub stats: CacheStats,
+    pub stats:       CacheStats,
 }
 
 /// Cache usage statistics
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CacheStats {
     /// Number of cache hits
-    pub hits: usize,
+    pub hits:              usize,
     /// Number of cache misses
-    pub misses: usize,
+    pub misses:            usize,
     /// Number of files invalidated due to changes
-    pub invalidations: usize,
+    pub invalidations:     usize,
     /// Total diagnostics cached
     pub total_diagnostics: usize,
 }
@@ -88,13 +100,13 @@ pub struct IncrementalUpdate {
     /// Files that were processed (changed or new)
     pub processed_files: Vec<PathBuf>,
     /// Files that were cached (unchanged)
-    pub cached_files: Vec<PathBuf>,
+    pub cached_files:    Vec<PathBuf>,
     /// New diagnostics from processed files
     pub new_diagnostics: Vec<Diagnostic>,
     /// Total diagnostics (new + cached)
     pub all_diagnostics: Vec<Diagnostic>,
     /// Update statistics
-    pub stats: UpdateStats,
+    pub stats:           UpdateStats,
 }
 
 /// Statistics for an incremental update
@@ -103,9 +115,9 @@ pub struct UpdateStats {
     /// Files processed from scratch
     pub files_processed: usize,
     /// Files served from cache
-    pub files_cached: usize,
+    pub files_cached:    usize,
     /// Time saved by caching (estimated)
-    pub time_saved_ms: u64,
+    pub time_saved_ms:   u64,
 }
 
 impl DiagnosticCache {
@@ -120,10 +132,10 @@ impl DiagnosticCache {
             workspace_root,
             entries: HashMap::new(),
             metadata: CacheMetadata {
-                created_at: now,
-                updated_at: now,
+                created_at:  now,
+                updated_at:  now,
                 total_files: 0,
-                stats: CacheStats::default(),
+                stats:       CacheStats::default(),
             },
         }
     }
@@ -306,9 +318,9 @@ impl DiagnosticCache {
 
 /// Cache manager for handling cache operations
 pub struct CacheManager {
-    cache: DiagnosticCache,
+    cache:      DiagnosticCache,
     cache_path: PathBuf,
-    enabled: bool,
+    enabled:    bool,
 }
 
 impl CacheManager {
@@ -388,15 +400,15 @@ impl CacheManager {
     /// Get cache info for display
     pub fn info(&self) -> CacheInfo {
         CacheInfo {
-            enabled: self.enabled,
-            total_files: self.cache.metadata.total_files,
-            total_diagnostics: self.cache.metadata.stats.total_diagnostics,
-            cache_hits: self.cache.metadata.stats.hits,
-            cache_misses: self.cache.metadata.stats.misses,
-            invalidations: self.cache.metadata.stats.invalidations,
+            enabled:              self.enabled,
+            total_files:          self.cache.metadata.total_files,
+            total_diagnostics:    self.cache.metadata.stats.total_diagnostics,
+            cache_hits:           self.cache.metadata.stats.hits,
+            cache_misses:         self.cache.metadata.stats.misses,
+            invalidations:        self.cache.metadata.stats.invalidations,
             estimated_size_bytes: self.cache.estimated_size_bytes(),
-            created_at: self.cache.metadata.created_at,
-            updated_at: self.cache.metadata.updated_at,
+            created_at:           self.cache.metadata.created_at,
+            updated_at:           self.cache.metadata.updated_at,
         }
     }
 
@@ -405,14 +417,14 @@ impl CacheManager {
         if !self.enabled {
             // If caching is disabled, all diagnostics are "new"
             return DiagnosticDiff {
-                new_diagnostics: current_diagnostics.to_vec(),
-                removed_diagnostics: Vec::new(),
-                changed_diagnostics: Vec::new(),
+                new_diagnostics:       current_diagnostics.to_vec(),
+                removed_diagnostics:   Vec::new(),
+                changed_diagnostics:   Vec::new(),
                 unchanged_diagnostics: Vec::new(),
-                summary: DiffSummary {
-                    new_count: current_diagnostics.len(),
-                    removed_count: 0,
-                    changed_count: 0,
+                summary:               DiffSummary {
+                    new_count:       current_diagnostics.len(),
+                    removed_count:   0,
+                    changed_count:   0,
                     unchanged_count: 0,
                 },
             };
@@ -465,14 +477,14 @@ impl CacheManager {
         }
 
         DiagnosticDiff {
-            new_diagnostics: new_diagnostics.clone(),
-            removed_diagnostics: removed_diagnostics.clone(),
-            changed_diagnostics: changed_diagnostics.clone(),
+            new_diagnostics:       new_diagnostics.clone(),
+            removed_diagnostics:   removed_diagnostics.clone(),
+            changed_diagnostics:   changed_diagnostics.clone(),
             unchanged_diagnostics: unchanged_diagnostics.clone(),
-            summary: DiffSummary {
-                new_count: new_diagnostics.len(),
-                removed_count: removed_diagnostics.len(),
-                changed_count: changed_diagnostics.len(),
+            summary:               DiffSummary {
+                new_count:       new_diagnostics.len(),
+                removed_count:   removed_diagnostics.len(),
+                changed_count:   changed_diagnostics.len(),
                 unchanged_count: unchanged_diagnostics.len(),
             },
         }
@@ -496,49 +508,49 @@ impl CacheManager {
 #[derive(Debug)]
 pub struct CacheInfo {
     /// Whether caching is enabled
-    pub enabled: bool,
+    pub enabled:              bool,
     /// Total number of files in cache
-    pub total_files: usize,
+    pub total_files:          usize,
     /// Total number of diagnostics in cache
-    pub total_diagnostics: usize,
+    pub total_diagnostics:    usize,
     /// Number of cache hits
-    pub cache_hits: usize,
+    pub cache_hits:           usize,
     /// Number of cache misses
-    pub cache_misses: usize,
+    pub cache_misses:         usize,
     /// Number of cache invalidations
-    pub invalidations: usize,
+    pub invalidations:        usize,
     /// Estimated cache size in bytes
     pub estimated_size_bytes: usize,
     /// When cache was created
-    pub created_at: SystemTime,
+    pub created_at:           SystemTime,
     /// When cache was last updated
-    pub updated_at: SystemTime,
+    pub updated_at:           SystemTime,
 }
 
 /// Diagnostic diff result showing changes
 #[derive(Debug, Clone)]
 pub struct DiagnosticDiff {
     /// Diagnostics that are new (not in previous cache)
-    pub new_diagnostics: Vec<Diagnostic>,
+    pub new_diagnostics:       Vec<Diagnostic>,
     /// Diagnostics that were removed (in previous cache but not current)
-    pub removed_diagnostics: Vec<Diagnostic>,
+    pub removed_diagnostics:   Vec<Diagnostic>,
     /// Diagnostics that changed between cache and current
-    pub changed_diagnostics: Vec<(Diagnostic, Diagnostic)>, // (old, new)
+    pub changed_diagnostics:   Vec<(Diagnostic, Diagnostic)>, // (old, new)
     /// Diagnostics that remained the same
     pub unchanged_diagnostics: Vec<Diagnostic>,
     /// Summary of changes
-    pub summary: DiffSummary,
+    pub summary:               DiffSummary,
 }
 
 /// Summary of diagnostic changes
 #[derive(Debug, Clone, Default)]
 pub struct DiffSummary {
     /// Number of new diagnostics
-    pub new_count: usize,
+    pub new_count:       usize,
     /// Number of removed diagnostics
-    pub removed_count: usize,
+    pub removed_count:   usize,
     /// Number of changed diagnostics
-    pub changed_count: usize,
+    pub changed_count:   usize,
     /// Number of unchanged diagnostics
     pub unchanged_count: usize,
 }
@@ -569,7 +581,10 @@ mod tests {
     use tempfile::TempDir;
 
     use super::*;
-    use crate::diagnostics::{Position, Range};
+    use crate::diagnostics::{
+        Position,
+        Range,
+    };
 
     fn create_test_diagnostic(
         file: &str,

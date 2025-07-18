@@ -3,15 +3,23 @@
 //! Provides automated fixes for common diagnostics and issues that can be
 //! safely resolved without manual intervention.
 
-use anyhow::{Context, Result};
 use std::path::Path;
-use wrt_build_core::diagnostics::{Diagnostic, DiagnosticCollection, Severity};
+
+use anyhow::{
+    Context,
+    Result,
+};
+use wrt_build_core::diagnostics::{
+    Diagnostic,
+    DiagnosticCollection,
+    Severity,
+};
 
 use super::OutputManager;
 
 /// Auto-fix manager for applying automated corrections
 pub struct AutoFixManager {
-    output: OutputManager,
+    output:  OutputManager,
     dry_run: bool,
 }
 
@@ -49,22 +57,22 @@ impl AutoFixManager {
             // Formatting issues
             Some("rustfmt") => Some(AutoFix {
                 description: format!("Format {}", diagnostic.file),
-                fix_type: AutoFixType::Format,
-                target: diagnostic.file.clone(),
+                fix_type:    AutoFixType::Format,
+                target:      diagnostic.file.clone(),
             }),
 
             // Missing documentation
             Some("missing_docs") => Some(AutoFix {
                 description: format!("Add documentation to {}", diagnostic.file),
-                fix_type: AutoFixType::AddDocumentation,
-                target: diagnostic.file.clone(),
+                fix_type:    AutoFixType::AddDocumentation,
+                target:      diagnostic.file.clone(),
             }),
 
             // Unused imports
             Some("unused_imports") => Some(AutoFix {
                 description: format!("Remove unused imports in {}", diagnostic.file),
-                fix_type: AutoFixType::RemoveUnusedImports,
-                target: diagnostic.file.clone(),
+                fix_type:    AutoFixType::RemoveUnusedImports,
+                target:      diagnostic.file.clone(),
             }),
 
             // Clippy suggestions with auto-fix
@@ -73,8 +81,8 @@ impl AutoFixManager {
             {
                 Some(AutoFix {
                     description: format!("Apply clippy suggestion in {}", diagnostic.file),
-                    fix_type: AutoFixType::ClippyFix(code.to_string()),
-                    target: diagnostic.file.clone(),
+                    fix_type:    AutoFixType::ClippyFix(code.to_string()),
+                    target:      diagnostic.file.clone(),
                 })
             },
 
@@ -167,15 +175,15 @@ enum AutoFixType {
 #[derive(Debug, Clone)]
 struct AutoFix {
     description: String,
-    fix_type: AutoFixType,
-    target: String,
+    fix_type:    AutoFixType,
+    target:      String,
 }
 
 /// Result of auto-fix operations
 #[derive(Debug, Default)]
 pub struct AutoFixResult {
     pub successful_fixes: usize,
-    pub failed_fixes: usize,
+    pub failed_fixes:     usize,
 }
 
 impl AutoFixResult {

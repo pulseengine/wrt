@@ -1,8 +1,13 @@
 //! Tests for bounded collections in the StacklessEngine implementation
 
 use wrt::{
-    stackless::{StacklessEngine, StacklessExecutionState},
-    Error as WrtError, Module, Result,
+    stackless::{
+        StacklessEngine,
+        StacklessExecutionState,
+    },
+    Error as WrtError,
+    Module,
+    Result,
 };
 use wrt_foundation::VerificationLevel;
 

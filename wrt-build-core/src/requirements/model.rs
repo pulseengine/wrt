@@ -1,12 +1,19 @@
 //! Enhanced requirements model with SCORE-inspired verification framework
 //!
-//! This module provides a comprehensive requirements traceability system inspired by
-//! SCORE's approach to safety-critical system verification. It links requirements to
-//! implementation code, tests, and documentation for full accountability.
+//! This module provides a comprehensive requirements traceability system
+//! inspired by SCORE's approach to safety-critical system verification. It
+//! links requirements to implementation code, tests, and documentation for full
+//! accountability.
 
-use std::{collections::HashMap, fmt};
+use std::{
+    collections::HashMap,
+    fmt,
+};
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::config::AsilLevel;
 
@@ -155,31 +162,31 @@ impl fmt::Display for CoverageLevel {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SafetyRequirement {
     /// Unique identifier
-    pub id: RequirementId,
+    pub id:                  RequirementId,
     /// Human-readable title
-    pub title: String,
+    pub title:               String,
     /// Detailed description
-    pub description: String,
+    pub description:         String,
     /// Requirement type classification
-    pub req_type: RequirementType,
+    pub req_type:            RequirementType,
     /// Required ASIL level
-    pub asil_level: AsilLevel,
+    pub asil_level:          AsilLevel,
     /// Verification method
     pub verification_method: VerificationMethod,
     /// Current verification status
-    pub status: VerificationStatus,
+    pub status:              VerificationStatus,
     /// Coverage level achieved
-    pub coverage: CoverageLevel,
+    pub coverage:            CoverageLevel,
     /// Parent requirement (if this is derived)
-    pub parent: Option<RequirementId>,
+    pub parent:              Option<RequirementId>,
     /// Source document/standard
-    pub source: String,
+    pub source:              String,
     /// Implementation references
-    pub implementations: Vec<String>,
+    pub implementations:     Vec<String>,
     /// Test references
-    pub tests: Vec<String>,
+    pub tests:               Vec<String>,
     /// Documentation references
-    pub documentation: Vec<String>,
+    pub documentation:       Vec<String>,
 }
 
 impl SafetyRequirement {
@@ -393,19 +400,19 @@ impl RequirementRegistry {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ComplianceReport {
     /// Total number of requirements
-    pub total_requirements: usize,
+    pub total_requirements:           usize,
     /// Number of verified requirements
-    pub verified_requirements: usize,
+    pub verified_requirements:        usize,
     /// Overall compliance percentage (0.0 to 1.0)
-    pub overall_compliance: f64,
+    pub overall_compliance:           f64,
     /// ASIL-specific compliance percentages
-    pub asil_compliance: HashMap<AsilLevel, f64>,
+    pub asil_compliance:              HashMap<AsilLevel, f64>,
     /// Number of unverified requirements
-    pub unverified_count: usize,
+    pub unverified_count:             usize,
     /// Number of requirements missing implementation
     pub missing_implementation_count: usize,
     /// Number of requirements missing testing
-    pub missing_testing_count: usize,
+    pub missing_testing_count:        usize,
 }
 
 impl ComplianceReport {

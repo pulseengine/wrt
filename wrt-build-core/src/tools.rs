@@ -4,43 +4,53 @@
 //! provide helpful error messages when tools are missing, and guide users
 //! through the setup process.
 
-use std::{collections::HashMap, process::Command};
+use std::{
+    collections::HashMap,
+    process::Command,
+};
 
 use colored::Colorize;
 
 use crate::{
-    error::{BuildError, BuildResult},
-    tool_versions::{extract_version_from_output, ToolVersionConfig, VersionComparison},
+    error::{
+        BuildError,
+        BuildResult,
+    },
+    tool_versions::{
+        extract_version_from_output,
+        ToolVersionConfig,
+        VersionComparison,
+    },
 };
 
 /// Information about an external tool
 #[derive(Debug, Clone)]
 pub struct ToolInfo {
     /// Name of the tool/command
-    pub name: String,
+    pub name:            String,
     /// Description of what the tool does
-    pub description: String,
+    pub description:     String,
     /// Installation command or instructions
     pub install_command: String,
     /// Whether this tool is required for basic functionality
-    pub required: bool,
+    pub required:        bool,
     /// Which cargo-wrt commands need this tool
-    pub used_by: Vec<String>,
+    pub used_by:         Vec<String>,
 }
 
 /// Tool detection results
 #[derive(Debug)]
 pub struct ToolStatus {
     /// Whether the tool is available
-    pub available: bool,
+    pub available:      bool,
     /// Version string if available
-    pub version: Option<String>,
+    pub version:        Option<String>,
     /// Error message if detection failed
-    pub error: Option<String>,
+    pub error:          Option<String>,
     /// Version compatibility status
     pub version_status: VersionStatus,
     /// Whether tool needs to be installed/updated
-    pub needs_action: bool,
+    pub needs_action:   bool,
 }
 
 /// Version compatibility status
@@ -53,21 +63,21 @@ pub enum VersionStatus {
         /// Currently installed version
         installed: String,
         /// Required version
-        required: String,
+        required:  String,
     },
     /// Version is newer than required (warning)
     Newer {
         /// Currently installed version
         installed: String,
         /// Required version
-        required: String,
+        required:  String,
     },
     /// Exact version mismatch
     Mismatch {
         /// Currently installed version
         installed: String,
         /// Required version
-        required: String,
+        required:  String,
     },
     /// Version could not be determined
     Unknown,
@@ -79,7 +89,7 @@ pub enum VersionStatus {
 #[derive(Debug)]
 pub struct ToolManager {
     /// Map of tool name to tool info
-    tools: HashMap<String, ToolInfo>,
+    tools:          HashMap<String, ToolInfo>,
     /// Version configuration
     version_config: ToolVersionConfig,
 }
@@ -94,11 +104,11 @@ impl ToolManager {
         tools.insert(
             "cargo".to_string(),
             ToolInfo {
-                name: "cargo".to_string(),
-                description: "Rust package manager".to_string(),
+                name:            "cargo".to_string(),
+                description:     "Rust package manager".to_string(),
                 install_command: "Install Rust from https://rustup.rs/".to_string(),
-                required: true,
-                used_by: vec!["build", "test", "check", "clean"]
+                required:        true,
+                used_by:         vec!["build", "test", "check", "clean"]
                     .into_iter()
                     .map(String::from)
                     .collect(),
@@ -108,11 +118,11 @@ impl ToolManager {
         tools.insert(
             "rustc".to_string(),
             ToolInfo {
-                name: "rustc".to_string(),
-                description: "Rust compiler".to_string(),
+                name:            "rustc".to_string(),
+                description:     "Rust compiler".to_string(),
                 install_command: "Install Rust from https://rustup.rs/".to_string(),
-                required: true,
-                used_by: vec!["build", "test"].into_iter().map(String::from).collect(),
+                required:        true,
+                used_by:         vec!["build", "test"].into_iter().map(String::from).collect(),
             },
         );
 
@@ -120,22 +130,22 @@ impl ToolManager {
         tools.insert(
             "clippy".to_string(),
             ToolInfo {
-                name: "clippy".to_string(),
-                description: "Rust linter for code quality checks".to_string(),
+                name:            "clippy".to_string(),
+                description:     "Rust linter for code quality checks".to_string(),
                 install_command: "rustup component add clippy".to_string(),
-                required: false,
-                used_by: vec!["check", "ci"].into_iter().map(String::from).collect(),
+                required:        false,
+                used_by:         vec!["check", "ci"].into_iter().map(String::from).collect(),
             },
         );
 
         tools.insert(
             "rustfmt".to_string(),
             ToolInfo {
-                name: "rustfmt".to_string(),
-                description: "Rust code formatter".to_string(),
+                name:            "rustfmt".to_string(),
+                description:     "Rust code formatter".to_string(),
                 install_command: "rustup component add rustfmt".to_string(),
-                required: false,
-                used_by: vec!["check", "ci"].into_iter().map(String::from).collect(),
+                required:        false,
+                used_by:         vec!["check", "ci"].into_iter().map(String::from).collect(),
             },
         );
 
@@ -143,34 +153,37 @@ impl ToolManager {
         tools.insert(
             "kani".to_string(),
             ToolInfo {
-                name: "kani".to_string(),
-                description: "Formal verification tool for Rust".to_string(),
+                name:            "kani".to_string(),
+                description:     "Formal verification tool for Rust".to_string(),
                 install_command: "cargo install --locked kani-verifier && cargo kani setup"
                     .to_string(),
-                required: false,
-                used_by: vec!["kani-verify", "verify"].into_iter().map(String::from).collect(),
+                required:        false,
+                used_by:         vec!["kani-verify", "verify"]
+                    .into_iter()
+                    .map(String::from)
+                    .collect(),
             },
         );
 
         tools.insert(
             "cargo-fuzz".to_string(),
             ToolInfo {
-                name: "cargo-fuzz".to_string(),
-                description: "Fuzzing tool for Rust".to_string(),
+                name:            "cargo-fuzz".to_string(),
+                description:     "Fuzzing tool for Rust".to_string(),
                 install_command: "cargo install cargo-fuzz".to_string(),
-                required: false,
-                used_by: vec!["fuzz"].into_iter().map(String::from).collect(),
+                required:        false,
+                used_by:         vec!["fuzz"].into_iter().map(String::from).collect(),
             },
         );
 
         tools.insert(
             "git".to_string(),
             ToolInfo {
-                name: "git".to_string(),
-                description: "Version control system".to_string(),
+                name:            "git".to_string(),
+                description:     "Version control system".to_string(),
                 install_command: "Install Git from https://git-scm.com/".to_string(),
-                required: false,
-                used_by: vec!["setup"].into_iter().map(String::from).collect(),
+                required:        false,
+                used_by:         vec!["setup"].into_iter().map(String::from).collect(),
             },
         );
 
@@ -178,24 +191,24 @@ impl ToolManager {
         tools.insert(
             "python3".to_string(),
             ToolInfo {
-                name: "python3".to_string(),
-                description: "Python interpreter for documentation".to_string(),
+                name:            "python3".to_string(),
+                description:     "Python interpreter for documentation".to_string(),
                 install_command: "Install Python from https://python.org or via package manager"
                     .to_string(),
-                required: false,
-                used_by: vec!["docs"].into_iter().map(String::from).collect(),
+                required:        false,
+                used_by:         vec!["docs"].into_iter().map(String::from).collect(),
             },
         );
 
         tools.insert(
             "python-venv".to_string(),
             ToolInfo {
-                name: "python-venv".to_string(),
-                description: "Python virtual environment support".to_string(),
+                name:            "python-venv".to_string(),
+                description:     "Python virtual environment support".to_string(),
                 install_command: "Included with Python 3.8+ - install Python if missing"
                     .to_string(),
-                required: false,
-                used_by: vec!["docs"].into_iter().map(String::from).collect(),
+                required:        false,
+                used_by:         vec!["docs"].into_iter().map(String::from).collect(),
             },
         );
 
@@ -217,14 +230,14 @@ impl ToolManager {
         if let Some(target) = target {
             if !self.version_config.is_target_supported(tool_name, target) {
                 return ToolStatus {
-                    available: false,
-                    version: None,
-                    error: Some(format!(
+                    available:      false,
+                    version:        None,
+                    error:          Some(format!(
                         "Target '{}' not supported for tool '{}'",
                         target, tool_name
                     )),
                     version_status: VersionStatus::Unknown,
-                    needs_action: true,
+                    needs_action:   true,
                 };
             }
         }
@@ -247,11 +260,11 @@ impl ToolManager {
             },
             "riscv64gc-unknown-none-elf" => self.check_rustup_target("riscv64gc-unknown-none-elf"),
             _ => ToolStatus {
-                available: false,
-                version: None,
-                error: Some(format!("Unknown tool: {}", tool_name)),
+                available:      false,
+                version:        None,
+                error:          Some(format!("Unknown tool: {}", tool_name)),
                 version_status: VersionStatus::Unknown,
-                needs_action: true,
+                needs_action:   true,
             },
         };
 
@@ -684,11 +697,11 @@ impl ToolManager {
         if let Some(target) = target {
             if !self.version_config.check_rustup_target_installed(target) {
                 return ToolStatus {
-                    available: false,
-                    version: None,
-                    error: Some(format!("Target '{}' not installed", target)),
+                    available:      false,
+                    version:        None,
+                    error:          Some(format!("Target '{}' not installed", target)),
                     version_status: VersionStatus::Unknown,
-                    needs_action: true,
+                    needs_action:   true,
                 };
             }
         }
@@ -705,11 +718,11 @@ impl ToolManager {
         if let Some(target) = target {
             if !self.version_config.check_rustup_target_installed(target) {
                 return ToolStatus {
-                    available: false,
-                    version: None,
-                    error: Some(format!("Target '{}' not installed for clippy", target)),
+                    available:      false,
+                    version:        None,
+                    error:          Some(format!("Target '{}' not installed for clippy", target)),
                     version_status: VersionStatus::Unknown,
-                    needs_action: true,
+                    needs_action:   true,
                 };
             }
         }
@@ -726,27 +739,27 @@ impl ToolManager {
                     .to_string();
 
                 ToolStatus {
-                    available: true,
-                    version: Some(version),
-                    error: None,
+                    available:      true,
+                    version:        Some(version),
+                    error:          None,
                     version_status: VersionStatus::Unknown, /* Will be set by
                                                              * enhance_with_version_check */
-                    needs_action: false,
+                    needs_action:   false,
                 }
             },
             Ok(output) => ToolStatus {
-                available: false,
-                version: None,
-                error: Some(String::from_utf8_lossy(&output.stderr).to_string()),
+                available:      false,
+                version:        None,
+                error:          Some(String::from_utf8_lossy(&output.stderr).to_string()),
                 version_status: VersionStatus::Unknown,
-                needs_action: true,
+                needs_action:   true,
             },
             Err(e) => ToolStatus {
-                available: false,
-                version: None,
-                error: Some(e.to_string()),
+                available:      false,
+                version:        None,
+                error:          Some(e.to_string()),
                 version_status: VersionStatus::Unknown,
-                needs_action: true,
+                needs_action:   true,
             },
         }
     }
@@ -760,11 +773,11 @@ impl ToolManager {
         if let Some(target) = target {
             if !self.version_config.check_rustup_target_installed(target) {
                 return ToolStatus {
-                    available: false,
-                    version: None,
-                    error: Some(format!("Target '{}' not installed for rustfmt", target)),
+                    available:      false,
+                    version:        None,
+                    error:          Some(format!("Target '{}' not installed for rustfmt", target)),
                     version_status: VersionStatus::Unknown,
-                    needs_action: true,
+                    needs_action:   true,
                 };
             }
         }
@@ -781,27 +794,27 @@ impl ToolManager {
                     .to_string();
 
                 ToolStatus {
-                    available: true,
-                    version: Some(version),
-                    error: None,
+                    available:      true,
+                    version:        Some(version),
+                    error:          None,
                     version_status: VersionStatus::Unknown, /* Will be set by
                                                              * enhance_with_version_check */
-                    needs_action: false,
+                    needs_action:   false,
                 }
             },
             Ok(output) => ToolStatus {
-                available: false,
-                version: None,
-                error: Some(String::from_utf8_lossy(&output.stderr).to_string()),
+                available:      false,
+                version:        None,
+                error:          Some(String::from_utf8_lossy(&output.stderr).to_string()),
                 version_status: VersionStatus::Unknown,
-                needs_action: true,
+                needs_action:   true,
             },
             Err(e) => ToolStatus {
-                available: false,
-                version: None,
-                error: Some(e.to_string()),
+                available:      false,
+                version:        None,
+                error:          Some(e.to_string()),
                 version_status: VersionStatus::Unknown,
-                needs_action: true,
+                needs_action:   true,
             },
         }
     }
@@ -816,25 +829,25 @@ impl ToolManager {
 
         match output {
             Ok(output) if output.status.success() => ToolStatus {
-                available: true,
-                version: Some("available".to_string()),
-                error: None,
+                available:      true,
+                version:        Some("available".to_string()),
+                error:          None,
                 version_status: VersionStatus::Unknown, // Will be enhanced by version check
-                needs_action: false,
+                needs_action:   false,
             },
             Ok(output) => ToolStatus {
-                available: false,
-                version: None,
-                error: Some(String::from_utf8_lossy(&output.stderr).to_string()),
+                available:      false,
+                version:        None,
+                error:          Some(String::from_utf8_lossy(&output.stderr).to_string()),
                 version_status: VersionStatus::Unknown,
-                needs_action: true,
+                needs_action:   true,
             },
             Err(e) => ToolStatus {
-                available: false,
-                version: None,
-                error: Some(e.to_string()),
+                available:      false,
+                version:        None,
+                error:          Some(e.to_string()),
                 version_status: VersionStatus::Unknown,
-                needs_action: true,
+                needs_action:   true,
             },
         }
     }
@@ -852,25 +865,25 @@ impl ToolManager {
 
         match output {
             Ok(output) if output.status.success() => ToolStatus {
-                available: true,
-                version: Some("available".to_string()),
-                error: None,
+                available:      true,
+                version:        Some("available".to_string()),
+                error:          None,
                 version_status: VersionStatus::Unknown, // Will be enhanced by version check
-                needs_action: false,
+                needs_action:   false,
             },
             Ok(output) => ToolStatus {
-                available: false,
-                version: None,
-                error: Some(String::from_utf8_lossy(&output.stderr).to_string()),
+                available:      false,
+                version:        None,
+                error:          Some(String::from_utf8_lossy(&output.stderr).to_string()),
                 version_status: VersionStatus::Unknown,
-                needs_action: true,
+                needs_action:   true,
             },
             Err(e) => ToolStatus {
-                available: false,
-                version: None,
-                error: Some(e.to_string()),
+                available:      false,
+                version:        None,
+                error:          Some(e.to_string()),
                 version_status: VersionStatus::Unknown,
-                needs_action: true,
+                needs_action:   true,
             },
         }
     }
@@ -879,19 +892,19 @@ impl ToolManager {
         // Check if rustup target is installed
         if self.version_config.check_rustup_target_installed(target) {
             ToolStatus {
-                available: true,
-                version: Some("installed".to_string()),
-                error: None,
+                available:      true,
+                version:        Some("installed".to_string()),
+                error:          None,
                 version_status: VersionStatus::Compatible,
-                needs_action: false,
+                needs_action:   false,
             }
         } else {
             ToolStatus {
-                available: false,
-                version: None,
-                error: Some(format!("Target '{}' not installed", target)),
+                available:      false,
+                version:        None,
+                error:          Some(format!("Target '{}' not installed", target)),
                 version_status: VersionStatus::Unknown,
-                needs_action: true,
+                needs_action:   true,
             }
         }
     }
@@ -909,27 +922,27 @@ impl ToolManager {
                     .to_string();
 
                 ToolStatus {
-                    available: true,
-                    version: Some(version),
-                    error: None,
+                    available:      true,
+                    version:        Some(version),
+                    error:          None,
                     version_status: VersionStatus::Unknown, /* Will be set by
                                                              * enhance_with_version_check */
-                    needs_action: false,
+                    needs_action:   false,
                 }
             },
             Ok(output) => ToolStatus {
-                available: false,
-                version: None,
-                error: Some(String::from_utf8_lossy(&output.stderr).to_string()),
+                available:      false,
+                version:        None,
+                error:          Some(String::from_utf8_lossy(&output.stderr).to_string()),
                 version_status: VersionStatus::Unknown,
-                needs_action: true,
+                needs_action:   true,
             },
             Err(e) => ToolStatus {
-                available: false,
-                version: None,
-                error: Some(e.to_string()),
+                available:      false,
+                version:        None,
+                error:          Some(e.to_string()),
                 version_status: VersionStatus::Unknown,
-                needs_action: true,
+                needs_action:   true,
             },
         }
     }

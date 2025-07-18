@@ -64,10 +64,10 @@ extern crate alloc;
 // Binary std/no_std choice
 // All memory management uses bounded collections with NoStdProvider
 
-// Panic handler for no_std builds - temporarily disabled to avoid workspace conflicts
-// Applications using WRT should provide their own panic handler
-// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
-// #[panic_handler]
+// Panic handler for no_std builds - temporarily disabled to avoid workspace
+// conflicts Applications using WRT should provide their own panic handler
+// #[cfg(all(not(feature = "std"), not(test), not(feature =
+// "disable-panic-handler")))] #[panic_handler]
 // fn panic(_info: &core::panic::PanicInfo) -> ! {
 //     // ASIL-B/D compliant panic handling:
 //     // 1. Ensure deterministic behavior (no heap allocations)
@@ -133,7 +133,8 @@ pub mod webassembly_3_runtime;
 // pub mod cfi_integration;
 // pub mod decoder_integration; // Temporarily disabled
 pub mod instructions_adapter;
-// pub mod memory_adapter; // Temporarily disabled due to trait object size issues
+// pub mod memory_adapter; // Temporarily disabled due to trait object size
+// issues
 
 // No_std implementation modules are now handled by wrt-foundation
 
@@ -145,12 +146,11 @@ pub mod resource; // WebAssembly component model resource types with std
 pub mod resource_nostd; // No_std compatible resource implementation
 #[cfg(not(feature = "std"))]
 pub use resource_nostd as resource; // Use resource_nostd as resource when no_std
+// Export the StacklessEngine for direct use
+pub use wrt_runtime::stackless::StacklessEngine;
 
 // Re-export all public types and functionality through the prelude
 pub use crate::prelude::*;
-
-// Export the StacklessEngine for direct use
-pub use wrt_runtime::stackless::StacklessEngine;
 
 /// Version of the WebAssembly Core specification implemented
 pub const CORE_VERSION: &str = "1.0";

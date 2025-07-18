@@ -3,8 +3,14 @@
 //! This module validates that test statistics are accurately reported,
 //! distinguishing between real passes, auto-passes, and expected failures.
 
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::{
+    atomic::{
+        AtomicUsize,
+        Ordering,
+    },
+    Arc,
+};
+
 use wrt::prelude::*;
 
 #[cfg(test)]
@@ -16,13 +22,13 @@ mod statistics_tests {
     struct EnhancedTestStats {
         // Real execution tests
         real_execution_attempted: Arc<AtomicUsize>,
-        real_execution_passed: Arc<AtomicUsize>,
-        real_execution_failed: Arc<AtomicUsize>,
+        real_execution_passed:    Arc<AtomicUsize>,
+        real_execution_failed:    Arc<AtomicUsize>,
 
         // Validation tests
         validation_attempted: Arc<AtomicUsize>,
-        validation_passed: Arc<AtomicUsize>,
-        validation_failed: Arc<AtomicUsize>,
+        validation_passed:    Arc<AtomicUsize>,
+        validation_failed:    Arc<AtomicUsize>,
 
         // Auto-passed tests (not really executed)
         auto_passed: Arc<AtomicUsize>,
@@ -38,14 +44,14 @@ mod statistics_tests {
         fn new() -> Self {
             Self {
                 real_execution_attempted: Arc::new(AtomicUsize::new(0)),
-                real_execution_passed: Arc::new(AtomicUsize::new(0)),
-                real_execution_failed: Arc::new(AtomicUsize::new(0)),
-                validation_attempted: Arc::new(AtomicUsize::new(0)),
-                validation_passed: Arc::new(AtomicUsize::new(0)),
-                validation_failed: Arc::new(AtomicUsize::new(0)),
-                auto_passed: Arc::new(AtomicUsize::new(0)),
-                expected_failures: Arc::new(AtomicUsize::new(0)),
-                skipped: Arc::new(AtomicUsize::new(0)),
+                real_execution_passed:    Arc::new(AtomicUsize::new(0)),
+                real_execution_failed:    Arc::new(AtomicUsize::new(0)),
+                validation_attempted:     Arc::new(AtomicUsize::new(0)),
+                validation_passed:        Arc::new(AtomicUsize::new(0)),
+                validation_failed:        Arc::new(AtomicUsize::new(0)),
+                auto_passed:              Arc::new(AtomicUsize::new(0)),
+                expected_failures:        Arc::new(AtomicUsize::new(0)),
+                skipped:                  Arc::new(AtomicUsize::new(0)),
             }
         }
 
@@ -126,7 +132,10 @@ mod statistics_tests {
             }
 
             if expected_failures == 0 {
-                println!("\n⚠️  Warning: No expected failures detected - test framework may not be catching errors properly");
+                println!(
+                    "\n⚠️  Warning: No expected failures detected - test framework may not be \
+                     catching errors properly"
+                );
             }
 
             if total_real_tests == 0 {

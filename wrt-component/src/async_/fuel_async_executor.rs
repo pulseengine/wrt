@@ -1072,7 +1072,7 @@ pub struct WaitableRegistry {
     /// Registered waitables
     waitables: BoundedMap<WaitableHandle, WaitableState, MAX_ASYNC_TASKS>,
     /// Ready waitables queue
-    ready_waitables: BoundedVec<WaitableHandle, MAX_ASYNC_TASKS>,
+    ready_waitables: BoundedVec<WaitableHandle, MAX_ASYNC_TASKS, crate::bounded_component_infra::ComponentProvider>,
 }
 
 impl WaitableRegistry {
@@ -1142,7 +1142,7 @@ pub struct FuelAsyncExecutor {
     /// Task storage with bounded capacity
     tasks: BoundedMap<TaskId, FuelAsyncTask, MAX_ASYNC_TASKS>,
     /// Ready queue for tasks that can be polled
-    ready_queue: Arc<Mutex<BoundedVec<TaskId, MAX_ASYNC_TASKS>>>,
+    ready_queue: Arc<Mutex<BoundedVec<TaskId, MAX_ASYNC_TASKS, crate::bounded_component_infra::ComponentProvider>>>,
     /// Component instance registry for real module lookup
     component_registry: BoundedMap<ComponentInstanceId, Arc<ComponentInstance>, MAX_ASYNC_TASKS>,
     /// Waitable registry for async operations

@@ -8,12 +8,21 @@ use core::fmt;
 #[cfg(feature = "std")]
 use std::format;
 
-use wrt_error::{Error, Result};
-use wrt_foundation::{BlockType, ValueType};
+use wrt_error::{
+    Error,
+    Result,
+};
+use wrt_foundation::{
+    BlockType,
+    ValueType,
+};
 
 use crate::{
     error::parse_error,
-    types::{FormatBlockType, Limits},
+    types::{
+        FormatBlockType,
+        Limits,
+    },
 };
 
 /// Convert from FormatBlockType to BlockType

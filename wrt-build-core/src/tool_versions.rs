@@ -5,48 +5,51 @@
 
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Tool version requirement specification
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ToolVersion {
     /// Required version (exact, minimum, or range)
-    pub version: String,
+    pub version:            String,
     /// Version requirement type
-    pub requirement_type: VersionRequirement,
+    pub requirement_type:   VersionRequirement,
     /// Installation command with specific version
-    pub install_command: String,
+    pub install_command:    String,
     /// How to check the installed version
     pub version_check_args: Vec<String>,
     /// Expected output pattern to extract version
-    pub version_pattern: Option<String>,
+    pub version_pattern:    Option<String>,
     /// Whether this tool is required for basic functionality
     #[serde(default)]
-    pub required: bool,
+    pub required:           bool,
     /// Which cargo-wrt commands need this tool
     #[serde(default)]
-    pub used_by: Vec<String>,
+    pub used_by:            Vec<String>,
     /// Tool description
     #[serde(default)]
-    pub description: String,
+    pub description:        String,
     /// Target-specific configurations
     #[serde(default)]
-    pub target_specific: HashMap<String, TargetToolConfig>,
+    pub target_specific:    HashMap<String, TargetToolConfig>,
 }
 
 /// Target-specific tool configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TargetToolConfig {
     /// Override version for this target
-    pub version: Option<String>,
+    pub version:            Option<String>,
     /// Override installation command for this target
-    pub install_command: Option<String>,
+    pub install_command:    Option<String>,
     /// Override version check args for this target
     pub version_check_args: Option<Vec<String>>,
     /// Target-specific requirements or constraints
-    pub constraints: Vec<String>,
+    pub constraints:        Vec<String>,
     /// Whether this target is supported
-    pub supported: bool,
+    pub supported:          bool,
 }
 
 /// Version requirement types
@@ -66,9 +69,9 @@ pub enum VersionRequirement {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolVersionConfig {
     /// Map of tool name to version specification
-    pub tools: HashMap<String, ToolVersion>,
+    pub tools:          HashMap<String, ToolVersion>,
     /// Configuration metadata
-    pub metadata: VersionConfigMetadata,
+    pub metadata:       VersionConfigMetadata,
     /// Rust toolchain configuration (read from rust-toolchain.toml)
     pub rust_toolchain: Option<RustToolchainConfig>,
 }
@@ -79,66 +82,66 @@ pub struct ToolVersionsToml {
     /// Configuration metadata
     pub metadata: VersionConfigMetadata,
     /// Tool specifications
-    pub tools: HashMap<String, ToolVersionToml>,
+    pub tools:    HashMap<String, ToolVersionToml>,
 }
 
 /// Rust toolchain configuration from rust-toolchain.toml
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RustToolchainConfig {
     /// Toolchain channel (e.g., "stable", "nightly")
-    pub channel: String,
+    pub channel:    String,
     /// Specific version if pinned
-    pub version: Option<String>,
+    pub version:    Option<String>,
     /// Components to include
     #[serde(default)]
     pub components: Vec<String>,
     /// Targets to include
     #[serde(default)]
-    pub targets: Vec<String>,
+    pub targets:    Vec<String>,
 }
 
 /// Tool version as stored in TOML file
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolVersionToml {
     /// Required version (exact, minimum, or range)
-    pub version: String,
+    pub version:            String,
     /// Version requirement type
-    pub requirement_type: String,
+    pub requirement_type:   String,
     /// Installation command with specific version
-    pub install_command: String,
+    pub install_command:    String,
     /// How to check the installed version
     pub version_check_args: Vec<String>,
     /// Expected output pattern to extract version
-    pub version_pattern: String,
+    pub version_pattern:    String,
     /// Whether this tool is required for basic functionality
     #[serde(default)]
-    pub required: bool,
+    pub required:           bool,
     /// Which cargo-wrt commands need this tool
     #[serde(default)]
-    pub used_by: Vec<String>,
+    pub used_by:            Vec<String>,
     /// Tool description
     #[serde(default)]
-    pub description: String,
+    pub description:        String,
     /// Target-specific configurations
     #[serde(default)]
-    pub target_specific: HashMap<String, TargetToolConfigToml>,
+    pub target_specific:    HashMap<String, TargetToolConfigToml>,
 }
 
 /// Target-specific tool configuration in TOML format
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TargetToolConfigToml {
     /// Override version for this target
-    pub version: Option<String>,
+    pub version:            Option<String>,
     /// Override installation command for this target
-    pub install_command: Option<String>,
+    pub install_command:    Option<String>,
     /// Override version check args for this target
     pub version_check_args: Option<Vec<String>>,
     /// Target-specific requirements or constraints
     #[serde(default)]
-    pub constraints: Vec<String>,
+    pub constraints:        Vec<String>,
     /// Whether this target is supported
     #[serde(default = "default_true")]
-    pub supported: bool,
+    pub supported:          bool,
 }
 
 fn default_true() -> bool {
@@ -151,9 +154,9 @@ pub struct VersionConfigMetadata {
     /// Configuration format version
     pub config_version: String,
     /// Last updated timestamp
-    pub last_updated: String,
+    pub last_updated:   String,
     /// Description
-    pub description: String,
+    pub description:    String,
 }
 
 impl Default for ToolVersionConfig {
@@ -219,11 +222,11 @@ impl ToolVersionConfig {
                 target_specific.insert(
                     target,
                     TargetToolConfig {
-                        version: target_config.version,
-                        install_command: target_config.install_command,
+                        version:            target_config.version,
+                        install_command:    target_config.install_command,
                         version_check_args: target_config.version_check_args,
-                        constraints: target_config.constraints,
-                        supported: target_config.supported,
+                        constraints:        target_config.constraints,
+                        supported:          target_config.supported,
                     },
                 );
             }
@@ -272,22 +275,22 @@ impl ToolVersionConfig {
 
         #[derive(Deserialize)]
         struct RustToolchainSection {
-            channel: String,
-            version: Option<String>,
+            channel:    String,
+            version:    Option<String>,
             #[serde(default)]
             components: Vec<String>,
             #[serde(default)]
-            targets: Vec<String>,
+            targets:    Vec<String>,
         }
 
         let toml_config: RustToolchainToml = toml::from_str(&content)
             .map_err(|e| BuildError::Tool(format!("Failed to parse rust-toolchain.toml: {}", e)))?;
 
         Ok(RustToolchainConfig {
-            channel: toml_config.toolchain.channel,
-            version: toml_config.toolchain.version,
+            channel:    toml_config.toolchain.channel,
+            version:    toml_config.toolchain.version,
             components: toml_config.toolchain.components,
-            targets: toml_config.toolchain.targets,
+            targets:    toml_config.toolchain.targets,
         })
     }
 
@@ -299,17 +302,17 @@ impl ToolVersionConfig {
         tools.insert(
             "kani".to_string(),
             ToolVersion {
-                version: "0.63.0".to_string(),
-                requirement_type: VersionRequirement::Exact,
-                install_command: "cargo install --locked --version 0.63.0 kani-verifier && \
+                version:            "0.63.0".to_string(),
+                requirement_type:   VersionRequirement::Exact,
+                install_command:    "cargo install --locked --version 0.63.0 kani-verifier && \
                                      cargo kani setup"
                     .to_string(),
                 version_check_args: vec!["--version".to_string()],
-                version_pattern: Some(r"kani (\d+\.\d+\.\d+)".to_string()),
-                required: false,
-                used_by: vec!["kani-verify".to_string(), "verify".to_string()],
-                description: "CBMC-based formal verification for Rust".to_string(),
-                target_specific: HashMap::new(),
+                version_pattern:    Some(r"kani (\d+\.\d+\.\d+)".to_string()),
+                required:           false,
+                used_by:            vec!["kani-verify".to_string(), "verify".to_string()],
+                description:        "CBMC-based formal verification for Rust".to_string(),
+                target_specific:    HashMap::new(),
             },
         );
 
@@ -317,15 +320,16 @@ impl ToolVersionConfig {
         tools.insert(
             "cargo-fuzz".to_string(),
             ToolVersion {
-                version: "0.12.0".to_string(),
-                requirement_type: VersionRequirement::Minimum,
-                install_command: "cargo install --locked --version 0.12.0 cargo-fuzz".to_string(),
+                version:            "0.12.0".to_string(),
+                requirement_type:   VersionRequirement::Minimum,
+                install_command:    "cargo install --locked --version 0.12.0 cargo-fuzz"
+                    .to_string(),
                 version_check_args: vec!["fuzz".to_string(), "--version".to_string()],
-                version_pattern: Some(r"cargo-fuzz (\d+\.\d+\.\d+)".to_string()),
-                required: false,
-                used_by: vec!["fuzz".to_string()],
-                description: "Coverage-guided fuzzing for Rust".to_string(),
-                target_specific: HashMap::new(),
+                version_pattern:    Some(r"cargo-fuzz (\d+\.\d+\.\d+)".to_string()),
+                required:           false,
+                used_by:            vec!["fuzz".to_string()],
+                description:        "Coverage-guided fuzzing for Rust".to_string(),
+                target_specific:    HashMap::new(),
             },
         );
 
@@ -333,30 +337,30 @@ impl ToolVersionConfig {
         tools.insert(
             "clippy".to_string(),
             ToolVersion {
-                version: "1.86.0".to_string(),
-                requirement_type: VersionRequirement::Minimum,
-                install_command: "rustup component add clippy".to_string(),
+                version:            "1.86.0".to_string(),
+                requirement_type:   VersionRequirement::Minimum,
+                install_command:    "rustup component add clippy".to_string(),
                 version_check_args: vec!["clippy".to_string(), "--version".to_string()],
-                version_pattern: Some(r"clippy (\d+\.\d+\.\d+)".to_string()),
-                required: false,
-                used_by: vec!["check".to_string(), "ci".to_string()],
-                description: "Rust linter for code quality checks".to_string(),
-                target_specific: HashMap::new(),
+                version_pattern:    Some(r"clippy (\d+\.\d+\.\d+)".to_string()),
+                required:           false,
+                used_by:            vec!["check".to_string(), "ci".to_string()],
+                description:        "Rust linter for code quality checks".to_string(),
+                target_specific:    HashMap::new(),
             },
         );
 
         tools.insert(
             "rustfmt".to_string(),
             ToolVersion {
-                version: "1.86.0".to_string(),
-                requirement_type: VersionRequirement::Minimum,
-                install_command: "rustup component add rustfmt".to_string(),
+                version:            "1.86.0".to_string(),
+                requirement_type:   VersionRequirement::Minimum,
+                install_command:    "rustup component add rustfmt".to_string(),
                 version_check_args: vec!["fmt".to_string(), "--version".to_string()],
-                version_pattern: Some(r"rustfmt (\d+\.\d+\.\d+)".to_string()),
-                required: false,
-                used_by: vec!["check".to_string(), "ci".to_string()],
-                description: "Rust code formatter".to_string(),
-                target_specific: HashMap::new(),
+                version_pattern:    Some(r"rustfmt (\d+\.\d+\.\d+)".to_string()),
+                required:           false,
+                used_by:            vec!["check".to_string(), "ci".to_string()],
+                description:        "Rust code formatter".to_string(),
+                target_specific:    HashMap::new(),
             },
         );
 
@@ -364,15 +368,15 @@ impl ToolVersionConfig {
         tools.insert(
             "git".to_string(),
             ToolVersion {
-                version: "2.30.0".to_string(),
-                requirement_type: VersionRequirement::Minimum,
-                install_command: "Please install Git from https://git-scm.com/".to_string(),
+                version:            "2.30.0".to_string(),
+                requirement_type:   VersionRequirement::Minimum,
+                install_command:    "Please install Git from https://git-scm.com/".to_string(),
                 version_check_args: vec!["--version".to_string()],
-                version_pattern: Some(r"git version (\d+\.\d+\.\d+)".to_string()),
-                required: false,
-                used_by: vec!["setup".to_string()],
-                description: "Distributed version control".to_string(),
-                target_specific: HashMap::new(),
+                version_pattern:    Some(r"git version (\d+\.\d+\.\d+)".to_string()),
+                required:           false,
+                used_by:            vec!["setup".to_string()],
+                description:        "Distributed version control".to_string(),
+                target_specific:    HashMap::new(),
             },
         );
 
@@ -380,15 +384,15 @@ impl ToolVersionConfig {
         tools.insert(
             "llvm-cov".to_string(),
             ToolVersion {
-                version: "1.75.0".to_string(),
-                requirement_type: VersionRequirement::Minimum,
-                install_command: "rustup component add llvm-tools-preview".to_string(),
+                version:            "1.75.0".to_string(),
+                requirement_type:   VersionRequirement::Minimum,
+                install_command:    "rustup component add llvm-tools-preview".to_string(),
                 version_check_args: vec!["--version".to_string()],
-                version_pattern: Some(r"llvm-cov (\d+\.\d+\.\d+)".to_string()),
-                required: false,
-                used_by: vec!["coverage".to_string()],
-                description: "LLVM coverage analysis tools".to_string(),
-                target_specific: HashMap::new(),
+                version_pattern:    Some(r"llvm-cov (\d+\.\d+\.\d+)".to_string()),
+                required:           false,
+                used_by:            vec!["coverage".to_string()],
+                description:        "LLVM coverage analysis tools".to_string(),
+                target_specific:    HashMap::new(),
             },
         );
 
@@ -396,38 +400,39 @@ impl ToolVersionConfig {
         tools.insert(
             "python3".to_string(),
             ToolVersion {
-                version: "3.8.0".to_string(),
-                requirement_type: VersionRequirement::Minimum,
-                install_command: "Install Python from https://python.org or via package manager"
+                version:            "3.8.0".to_string(),
+                requirement_type:   VersionRequirement::Minimum,
+                install_command:    "Install Python from https://python.org or via package manager"
                     .to_string(),
                 version_check_args: vec!["--version".to_string()],
-                version_pattern: Some(r"Python (\d+\.\d+\.\d+)".to_string()),
-                required: false,
-                used_by: vec!["docs".to_string()],
-                description: "Python interpreter for Sphinx documentation generation".to_string(),
-                target_specific: HashMap::new(),
+                version_pattern:    Some(r"Python (\d+\.\d+\.\d+)".to_string()),
+                required:           false,
+                used_by:            vec!["docs".to_string()],
+                description:        "Python interpreter for Sphinx documentation generation"
+                    .to_string(),
+                target_specific:    HashMap::new(),
             },
         );
 
         tools.insert(
             "python-venv".to_string(),
             ToolVersion {
-                version: "3.8.0".to_string(),
-                requirement_type: VersionRequirement::Minimum,
-                install_command: "Included with Python 3.8+ - install Python if missing"
+                version:            "3.8.0".to_string(),
+                requirement_type:   VersionRequirement::Minimum,
+                install_command:    "Included with Python 3.8+ - install Python if missing"
                     .to_string(),
                 version_check_args: vec![
                     "-m".to_string(),
                     "venv".to_string(),
                     "--help".to_string(),
                 ],
-                version_pattern: Some(r"Python (\d+\.\d+\.\d+)".to_string()),
-                required: false,
-                used_by: vec!["docs".to_string()],
-                description: "Python virtual environment support for isolated \
+                version_pattern:    Some(r"Python (\d+\.\d+\.\d+)".to_string()),
+                required:           false,
+                used_by:            vec!["docs".to_string()],
+                description:        "Python virtual environment support for isolated \
                                      documentation dependencies"
                     .to_string(),
-                target_specific: HashMap::new(),
+                target_specific:    HashMap::new(),
             },
         );
 
@@ -435,8 +440,8 @@ impl ToolVersionConfig {
             tools,
             metadata: VersionConfigMetadata {
                 config_version: "1.0.0".to_string(),
-                last_updated: chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string(),
-                description: "WRT build system tool version requirements (fallback)".to_string(),
+                last_updated:   chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string(),
+                description:    "WRT build system tool version requirements (fallback)".to_string(),
             },
             rust_toolchain: None, // Will be loaded from rust-toolchain.toml if available
         }
@@ -559,7 +564,7 @@ impl ToolVersionConfig {
                 } else {
                     Some(VersionComparison::Mismatch {
                         installed: installed_version.to_string(),
-                        required: tool_version.version.clone(),
+                        required:  tool_version.version.clone(),
                     })
                 }
             },
@@ -567,12 +572,12 @@ impl ToolVersionConfig {
                 match compare_versions(installed_version, &tool_version.version) {
                     std::cmp::Ordering::Greater => Some(VersionComparison::Newer {
                         installed: installed_version.to_string(),
-                        required: tool_version.version.clone(),
+                        required:  tool_version.version.clone(),
                     }),
                     std::cmp::Ordering::Equal => Some(VersionComparison::Satisfies),
                     std::cmp::Ordering::Less => Some(VersionComparison::TooOld {
                         installed: installed_version.to_string(),
-                        required: tool_version.version.clone(),
+                        required:  tool_version.version.clone(),
                     }),
                 }
             },
@@ -610,21 +615,21 @@ pub enum VersionComparison {
         /// Currently installed version
         installed: String,
         /// Required version
-        required: String,
+        required:  String,
     },
     /// Installed version is newer than required (warning)
     Newer {
         /// Currently installed version
         installed: String,
         /// Required version
-        required: String,
+        required:  String,
     },
     /// Exact version mismatch
     Mismatch {
         /// Currently installed version
         installed: String,
         /// Required version
-        required: String,
+        required:  String,
     },
 }
 

@@ -5,20 +5,26 @@
 
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
 };
 
 use colored::Colorize;
 
-use crate::error::{BuildError, BuildResult};
+use crate::error::{
+    BuildError,
+    BuildResult,
+};
 
 /// Validation results
 #[derive(Debug)]
 pub struct ValidationResults {
     /// Whether all validations passed
-    pub success: bool,
+    pub success:  bool,
     /// List of errors found
-    pub errors: Vec<ValidationError>,
+    pub errors:   Vec<ValidationError>,
     /// List of warnings
     pub warnings: Vec<String>,
     /// Time taken for validation
@@ -29,8 +35,8 @@ impl ValidationResults {
     /// Create new validation results
     pub fn new() -> Self {
         Self {
-            success: true,
-            errors: Vec::new(),
+            success:  true,
+            errors:   Vec::new(),
             warnings: Vec::new(),
             duration: std::time::Duration::default(),
         }
@@ -43,9 +49,9 @@ pub struct ValidationError {
     /// Error category
     pub category: String,
     /// File path where error occurred
-    pub file: PathBuf,
+    pub file:     PathBuf,
     /// Error message
-    pub message: String,
+    pub message:  String,
     /// Severity level
     pub severity: String,
 }
@@ -65,7 +71,7 @@ impl ValidationError {
 /// Code validator
 pub struct CodeValidator {
     workspace_root: PathBuf,
-    verbose: bool,
+    verbose:        bool,
 }
 
 impl CodeValidator {

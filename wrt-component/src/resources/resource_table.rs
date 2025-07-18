@@ -155,7 +155,7 @@ struct ResourceEntry {
     #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
     borrows: Vec<Weak<Mutex<Resource>>>,
     #[cfg(not(feature = "std"))]
-    borrows: BoundedVec<Weak<Mutex<Resource>>, 32, ComponentProvider>,
+    borrows: BoundedVec<Weak<Mutex<Resource>, 256, crate::bounded_component_infra::ComponentProvider>, 32, ComponentProvider>,
     /// Memory strategy for this resource
     memory_strategy: MemoryStrategy,
     /// Verification level
@@ -274,7 +274,7 @@ pub struct ResourceTable {
     #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
     interceptors: Vec<Arc<dyn ResourceInterceptor>>,
     #[cfg(not(feature = "std"))]
-    interceptors: BoundedVec<Arc<dyn ResourceInterceptor>, 16, ComponentProvider>,
+    interceptors: BoundedVec<Arc<dyn ResourceInterceptor, 256, crate::bounded_component_infra::ComponentProvider>, 16, ComponentProvider>,
     /// Memory budget guard for this resource table
     #[cfg(not(feature = "std"))]
     _memory_guard: ComponentProvider,

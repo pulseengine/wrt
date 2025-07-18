@@ -6,20 +6,36 @@
 //! binary format for embedding in WebAssembly modules.
 
 #[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
-#[cfg(feature = "std")]
 use std::collections::HashMap;
 #[cfg(feature = "std")]
 use std::fs;
 #[cfg(feature = "std")]
 use std::path::Path;
 
-use wrt_error::{codes, Error, ErrorCategory};
-use wrt_foundation::{safe_managed_alloc, BoundedString, CrateId, NoStdProvider};
+#[cfg(feature = "std")]
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+};
+use wrt_foundation::{
+    safe_managed_alloc,
+    BoundedString,
+    CrateId,
+    NoStdProvider,
+};
 
 use crate::resource_limits_section::{
-    ResourceLimitsSection, ResourceTypeLimit, MAX_ASIL_STRING_LEN, MAX_CUSTOM_LIMITS_PER_TYPE,
-    MAX_RESOURCE_NAME_LEN, MAX_RESOURCE_TYPES,
+    ResourceLimitsSection,
+    ResourceTypeLimit,
+    MAX_ASIL_STRING_LEN,
+    MAX_CUSTOM_LIMITS_PER_TYPE,
+    MAX_RESOURCE_NAME_LEN,
+    MAX_RESOURCE_TYPES,
 };
 
 /// TOML configuration structure for resource limits

@@ -1,4 +1,5 @@
 use std::fs;
+
 use wrt_decoder::decoder::decode_module;
 
 fn main() -> wrt_decoder::Result<()> {

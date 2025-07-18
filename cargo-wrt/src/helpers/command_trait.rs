@@ -1,11 +1,13 @@
 //! Standardized command execution trait for cargo-wrt
 //!
 //! Provides a consistent interface for all cargo-wrt commands,
-//! ensuring standardized error handling, output formatting, and argument processing.
+//! ensuring standardized error handling, output formatting, and argument
+//! processing.
 
-use super::GlobalArgs;
 use anyhow::Result;
 use wrt_build_core::BuildSystem;
+
+use super::GlobalArgs;
 
 /// Standard result type for command execution
 pub type CommandResult = Result<()>;
@@ -80,8 +82,8 @@ impl<T: StandardCommand> CommandExt for T {}
 
 /// Standardized command structure for build-related commands
 pub struct BuildCommand {
-    pub package: Option<String>,
-    pub clippy: bool,
+    pub package:   Option<String>,
+    pub clippy:    bool,
     pub fmt_check: bool,
 }
 
@@ -105,10 +107,10 @@ impl StandardCommand for BuildCommand {
 
 /// Standardized command structure for test-related commands
 pub struct TestCommand {
-    pub package: Option<String>,
-    pub filter: Option<String>,
-    pub nocapture: bool,
-    pub unit_only: bool,
+    pub package:      Option<String>,
+    pub filter:       Option<String>,
+    pub nocapture:    bool,
+    pub unit_only:    bool,
     pub no_doc_tests: bool,
 }
 
@@ -118,28 +120,28 @@ impl StandardCommand for TestCommand {
         // Use global args directly instead of creating a CLI instance
         // Create a minimal CLI for compatibility
         let cli = crate::Cli {
-            command: crate::Commands::Test {
-                package: self.package.clone(),
-                filter: self.filter.clone(),
-                nocapture: self.nocapture,
-                unit_only: self.unit_only,
+            command:         crate::Commands::Test {
+                package:      self.package.clone(),
+                filter:       self.filter.clone(),
+                nocapture:    self.nocapture,
+                unit_only:    self.unit_only,
                 no_doc_tests: self.no_doc_tests,
             },
-            verbose: global.verbose,
-            dry_run: global.dry_run,
-            trace_commands: global.trace_commands,
-            profile: crate::ProfileArg::Dev, // Default profile
-            features: None,
-            workspace: global.workspace.clone(),
-            output: crate::OutputFormatArg::Human, // Default format
-            cache: global.cache,
-            clear_cache: global.clear_cache,
-            diff_only: global.diff_only,
+            verbose:         global.verbose,
+            dry_run:         global.dry_run,
+            trace_commands:  global.trace_commands,
+            profile:         crate::ProfileArg::Dev, // Default profile
+            features:        None,
+            workspace:       global.workspace.clone(),
+            output:          crate::OutputFormatArg::Human, // Default format
+            cache:           global.cache,
+            clear_cache:     global.clear_cache,
+            diff_only:       global.diff_only,
             filter_severity: global.filter_severity.clone(),
-            filter_source: global.filter_source.clone(),
-            filter_file: global.filter_file.clone(),
-            group_by: None,
-            limit: global.limit,
+            filter_source:   global.filter_source.clone(),
+            filter_file:     global.filter_file.clone(),
+            group_by:        None,
+            limit:           global.limit,
         };
 
         let output_format = global.output_format.clone();
@@ -168,7 +170,7 @@ impl StandardCommand for TestCommand {
 /// Standardized command structure for check-related commands
 pub struct CheckCommand {
     pub strict: bool,
-    pub fix: bool,
+    pub fix:    bool,
 }
 
 #[async_trait::async_trait]

@@ -1,15 +1,25 @@
 #![cfg(feature = "runtime-stepping")]
 
 use wrt_foundation::{
-    bounded::{BoundedStack, BoundedVec, MAX_DWARF_FILE_TABLE},
-    managed_alloc, safe_managed_alloc, CrateId, NoStdProvider,
+    bounded::{
+        BoundedStack,
+        BoundedVec,
+        MAX_DWARF_FILE_TABLE,
+    },
+    managed_alloc,
+    safe_managed_alloc,
+    CrateId,
+    NoStdProvider,
 };
 
 use crate::bounded_debug_infra;
 /// Runtime stepping logic implementation
 /// Provides single-step, step-over, step-into, and step-out functionality
 use crate::{
-    runtime_api::{DebugAction, RuntimeState},
+    runtime_api::{
+        DebugAction,
+        RuntimeState,
+    },
     LineInfo,
 };
 
@@ -36,43 +46,43 @@ struct StepFrame {
     /// Function index
     function_idx: u32,
     /// Return address
-    return_pc: u32,
+    return_pc:    u32,
     /// Source line at call
-    call_line: Option<u32>,
+    call_line:    Option<u32>,
 }
 
 /// Step controller for debugging
 pub struct StepController {
     /// Current stepping mode
-    mode: StepMode,
+    mode:            StepMode,
     /// Target line for line stepping
-    target_line: Option<u32>,
+    target_line:     Option<u32>,
     /// Target file for line stepping
-    target_file: Option<u16>,
+    target_file:     Option<u16>,
     /// Call stack for step-over/out
-    call_stack: BoundedStack<StepFrame, 64, crate::bounded_debug_infra::DebugProvider>,
+    call_stack:      BoundedStack<StepFrame, 64, crate::bounded_debug_infra::DebugProvider>,
     /// Depth for step-over
     step_over_depth: u32,
     /// Previous PC for detecting loops
-    previous_pc: u32,
+    previous_pc:     u32,
     /// Previous line for line stepping
-    previous_line: Option<u32>,
+    previous_line:   Option<u32>,
 }
 
 impl StepController {
     /// Create a new step controller
     pub fn new() -> Self {
         Self {
-            mode: StepMode::None,
-            target_line: None,
-            target_file: None,
-            call_stack: BoundedStack::new(
+            mode:            StepMode::None,
+            target_line:     None,
+            target_file:     None,
+            call_stack:      BoundedStack::new(
                 safe_managed_alloc!(32768, CrateId::Debug).unwrap().provider().clone(),
             )
             .unwrap(),
             step_over_depth: 0,
-            previous_pc: 0,
-            previous_line: None,
+            previous_pc:     0,
+            previous_line:   None,
         }
     }
 
@@ -268,8 +278,8 @@ pub struct SteppingDebugger {
 
 #[derive(Debug, Clone)]
 struct LineCacheEntry {
-    pc_start: u32,
-    pc_end: u32,
+    pc_start:  u32,
+    pc_end:    u32,
     line_info: LineInfo,
 }
 
@@ -392,18 +402,18 @@ mod tests {
         let state = MockState { pc: 0x1000 };
 
         let line1 = LineInfo {
-            file_index: 1,
-            line: 10,
-            column: 0,
-            is_stmt: true,
+            file_index:   1,
+            line:         10,
+            column:       0,
+            is_stmt:      true,
             end_sequence: false,
         };
 
         let line2 = LineInfo {
-            file_index: 1,
-            line: 11,
-            column: 0,
-            is_stmt: true,
+            file_index:   1,
+            line:         11,
+            column:       0,
+            is_stmt:      true,
             end_sequence: false,
         };
 
@@ -425,10 +435,10 @@ mod tests {
         let state = MockState { pc: 0x1000 };
 
         let line1 = LineInfo {
-            file_index: 1,
-            line: 10,
-            column: 0,
-            is_stmt: true,
+            file_index:   1,
+            line:         10,
+            column:       0,
+            is_stmt:      true,
             end_sequence: false,
         };
 
@@ -447,10 +457,10 @@ mod tests {
 
         // Back at original depth with new line - break
         let line2 = LineInfo {
-            file_index: 1,
-            line: 11,
-            column: 0,
-            is_stmt: true,
+            file_index:   1,
+            line:         11,
+            column:       0,
+            is_stmt:      true,
             end_sequence: false,
         };
         let action = controller.should_break(0x1100, &state, Some(&line2));

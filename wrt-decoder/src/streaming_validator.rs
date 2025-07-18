@@ -3,12 +3,23 @@
 //! Provides single-pass WASM validation with immediate limit checking against
 //! platform capabilities.
 
-use wrt_error::{codes, Error, ErrorCategory};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+};
 use wrt_foundation::{
     bounded::BoundedVec,
-    traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream},
+    traits::{
+        Checksummable,
+        FromBytes,
+        ReadStream,
+        ToBytes,
+        WriteStream,
+    },
     verification::Checksum,
-    NoStdProvider, WrtResult,
+    NoStdProvider,
+    WrtResult,
 };
 
 #[cfg(feature = "std")]
@@ -23,15 +34,15 @@ mod platform_stubs {
     /// modules do not exceed platform capabilities.
     pub struct ComprehensivePlatformLimits {
         /// Maximum total memory available on the platform (bytes)
-        pub max_total_memory: usize,
+        pub max_total_memory:       usize,
         /// Maximum WebAssembly linear memory allowed (bytes)
         pub max_wasm_linear_memory: usize,
         /// Maximum stack size in bytes for function calls
-        pub max_stack_bytes: usize,
+        pub max_stack_bytes:        usize,
         /// Maximum number of components that can be loaded simultaneously
-        pub max_components: usize,
+        pub max_components:         usize,
         /// Platform identifier for platform-specific optimizations
-        pub platform_id: PlatformId,
+        pub platform_id:            PlatformId,
     }
 
     /// Platform identifier enumeration
@@ -61,11 +72,11 @@ mod platform_stubs {
     impl Default for ComprehensivePlatformLimits {
         fn default() -> Self {
             Self {
-                max_total_memory: 1024 * 1024 * 1024,
+                max_total_memory:       1024 * 1024 * 1024,
                 max_wasm_linear_memory: 256 * 1024 * 1024,
-                max_stack_bytes: 1024 * 1024,
-                max_components: 256,
-                platform_id: PlatformId::Unknown,
+                max_stack_bytes:        1024 * 1024,
+                max_components:         256,
+                platform_id:            PlatformId::Unknown,
             }
         }
     }
@@ -80,21 +91,24 @@ mod runtime_stubs {
     #[derive(Debug, Clone)]
     pub struct WasmConfiguration {
         /// Initial memory size in WASM pages (64KB each)
-        pub initial_memory: u32,
+        pub initial_memory:        u32,
         /// Maximum memory size in WASM pages, if specified
-        pub maximum_memory: Option<u32>,
+        pub maximum_memory:        Option<u32>,
         /// Estimated stack usage in bytes for function calls
         pub estimated_stack_usage: u32,
         /// Total number of functions defined in the module
-        pub function_count: u32,
+        pub function_count:        u32,
         /// Total number of imports required by the module
-        pub import_count: u32,
+        pub import_count:          u32,
         /// Total number of exports provided by the module
-        pub export_count: u32,
+        pub export_count:          u32,
     }
 }
 
-pub use platform_stubs::{ComprehensivePlatformLimits, PlatformId};
+pub use platform_stubs::{
+    ComprehensivePlatformLimits,
+    PlatformId,
+};
 pub use runtime_stubs::WasmConfiguration;
 
 /// WASM section types for validation
@@ -253,7 +267,7 @@ pub struct MemorySection {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CodeSection {
     /// Number of functions
-    pub function_count: u32,
+    pub function_count:        u32,
     /// Estimated stack usage based on function analysis
     pub estimated_stack_usage: u32,
 }
@@ -262,15 +276,15 @@ pub struct CodeSection {
 #[derive(Debug, Clone)]
 pub struct WasmRequirements {
     /// Required linear memory in bytes
-    pub required_memory: usize,
+    pub required_memory:        usize,
     /// Estimated stack usage in bytes
-    pub estimated_stack_usage: usize,
+    pub estimated_stack_usage:  usize,
     /// Number of functions
-    pub function_count: u32,
+    pub function_count:         u32,
     /// Number of imports
-    pub import_count: u32,
+    pub import_count:           u32,
     /// Number of exports
-    pub export_count: u32,
+    pub export_count:           u32,
     /// Whether the module uses multiple memories
     pub uses_multiple_memories: bool,
 }
@@ -278,11 +292,11 @@ pub struct WasmRequirements {
 impl Default for WasmRequirements {
     fn default() -> Self {
         Self {
-            required_memory: 0,
-            estimated_stack_usage: 8192, // 8KB default
-            function_count: 0,
-            import_count: 0,
-            export_count: 0,
+            required_memory:        0,
+            estimated_stack_usage:  8192, // 8KB default
+            function_count:         0,
+            import_count:           0,
+            export_count:           0,
             uses_multiple_memories: false,
         }
     }
@@ -293,9 +307,9 @@ pub struct StreamingWasmValidator {
     /// Platform limits to validate against
     platform_limits: ComprehensivePlatformLimits,
     /// Current WASM requirements being built
-    requirements: WasmRequirements,
+    requirements:    WasmRequirements,
     /// Validation state
-    state: ValidationState,
+    state:           ValidationState,
 }
 
 /// Validation state tracking
@@ -345,12 +359,12 @@ impl StreamingWasmValidator {
 
         // Create configuration from validated requirements
         Ok(WasmConfiguration {
-            initial_memory: (self.requirements.required_memory / 65536) as u32,
-            maximum_memory: None, // Will be set based on platform limits
+            initial_memory:        (self.requirements.required_memory / 65536) as u32,
+            maximum_memory:        None, // Will be set based on platform limits
             estimated_stack_usage: self.requirements.estimated_stack_usage as u32,
-            function_count: self.requirements.function_count,
-            import_count: self.requirements.import_count,
-            export_count: self.requirements.export_count,
+            function_count:        self.requirements.function_count,
+            import_count:          self.requirements.import_count,
+            export_count:          self.requirements.export_count,
         })
     }
 
@@ -479,7 +493,7 @@ impl StreamingWasmValidator {
     fn parse_code_section(&self, section_data: &[u8]) -> Result<Section, Error> {
         if section_data.is_empty() {
             return Ok(Section::Code(CodeSection {
-                function_count: 0,
+                function_count:        0,
                 estimated_stack_usage: 0,
             }));
         }
@@ -617,11 +631,11 @@ impl PlatformWasmValidatorFactory {
     /// Create validator for embedded platform
     pub fn create_for_embedded(memory_size: usize) -> StreamingWasmValidator {
         let limits = ComprehensivePlatformLimits {
-            max_total_memory: memory_size,
+            max_total_memory:       memory_size,
             max_wasm_linear_memory: (memory_size * 2) / 3,
-            max_stack_bytes: memory_size / 16,
-            max_components: 16,
-            platform_id: PlatformId::Embedded,
+            max_stack_bytes:        memory_size / 16,
+            max_components:         16,
+            platform_id:            PlatformId::Embedded,
         };
         StreamingWasmValidator::new(limits)
     }

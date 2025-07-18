@@ -61,14 +61,14 @@ mod complete_debug_tests {
 
         // Add an inlined function
         let func = InlinedFunction {
-            name: None,
+            name:            None,
             abstract_origin: 0x1000,
-            low_pc: 0x2000,
-            high_pc: 0x2100,
-            call_file: 1,
-            call_line: 42,
-            call_column: 15,
-            depth: 0,
+            low_pc:          0x2000,
+            high_pc:         0x2100,
+            call_file:       1,
+            call_line:       42,
+            call_column:     15,
+            depth:           0,
         };
 
         inlined.add(func).unwrap();
@@ -100,17 +100,17 @@ mod complete_debug_tests {
 
         // Add files
         let lib_rs = FileEntry {
-            path: string_table.get_string(11).unwrap(),
+            path:      string_table.get_string(11).unwrap(),
             dir_index: 1,
-            mod_time: 0,
-            size: 0,
+            mod_time:  0,
+            size:      0,
         };
 
         let test_rs = FileEntry {
-            path: string_table.get_string(18).unwrap(),
+            path:      string_table.get_string(18).unwrap(),
             dir_index: 2,
-            mod_time: 0,
-            size: 0,
+            mod_time:  0,
+            size:      0,
         };
 
         file_table.add_file(lib_rs).unwrap();
@@ -131,10 +131,10 @@ mod complete_debug_tests {
     fn test_location_display_with_file_table() {
         // Create a line info entry
         let line_info = wrt_debug::LineInfo {
-            file_index: 1,
-            line: 42,
-            column: 8,
-            is_stmt: true,
+            file_index:   1,
+            line:         42,
+            column:       8,
+            is_stmt:      true,
             end_sequence: false,
         };
 
@@ -146,10 +146,10 @@ mod complete_debug_tests {
         file_table.add_directory(string_table.get_string(1).unwrap()).unwrap();
 
         let main_rs = FileEntry {
-            path: string_table.get_string(5).unwrap(),
+            path:      string_table.get_string(5).unwrap(),
             dir_index: 1,
-            mod_time: 0,
-            size: 0,
+            mod_time:  0,
+            size:      0,
         };
         file_table.add_file(main_rs).unwrap();
 
@@ -177,16 +177,16 @@ mod complete_debug_tests {
         // In real usage, parameters would be populated from DWARF
 
         let frame = StackFrame {
-            pc: 0x1234,
-            function: None, // Would be populated in real scenario
+            pc:        0x1234,
+            function:  None, // Would be populated in real scenario
             line_info: Some(wrt_debug::LineInfo {
-                file_index: 1,
-                line: 100,
-                column: 4,
-                is_stmt: true,
+                file_index:   1,
+                line:         100,
+                column:       4,
+                is_stmt:      true,
                 end_sequence: false,
             }),
-            depth: 0,
+            depth:     0,
         };
 
         trace.push_frame(frame).unwrap();
@@ -214,20 +214,20 @@ mod complete_debug_tests {
         let mut params = ParameterList::new();
 
         let param1 = Parameter {
-            name: None,
-            param_type: BasicType::SignedInt(4),
-            file_index: 1,
-            line: 10,
-            position: 0,
+            name:        None,
+            param_type:  BasicType::SignedInt(4),
+            file_index:  1,
+            line:        10,
+            position:    0,
             is_variadic: false,
         };
 
         let param2 = Parameter {
-            name: None,
-            param_type: BasicType::Pointer,
-            file_index: 1,
-            line: 10,
-            position: 1,
+            name:        None,
+            param_type:  BasicType::Pointer,
+            file_index:  1,
+            line:        10,
+            position:    1,
             is_variadic: false,
         };
 
@@ -248,25 +248,25 @@ mod complete_debug_tests {
 
         // Add multiple levels of inlining
         let func1 = InlinedFunction {
-            name: None,
+            name:            None,
             abstract_origin: 0x1000,
-            low_pc: 0x2000,
-            high_pc: 0x2200,
-            call_file: 1,
-            call_line: 10,
-            call_column: 0,
-            depth: 0,
+            low_pc:          0x2000,
+            high_pc:         0x2200,
+            call_file:       1,
+            call_line:       10,
+            call_column:     0,
+            depth:           0,
         };
 
         let func2 = InlinedFunction {
-            name: None,
+            name:            None,
             abstract_origin: 0x1100,
-            low_pc: 0x2050,
-            high_pc: 0x2150,
-            call_file: 1,
-            call_line: 15,
-            call_column: 0,
-            depth: 1,
+            low_pc:          0x2050,
+            high_pc:         0x2150,
+            call_file:       1,
+            call_line:       15,
+            call_column:     0,
+            depth:           1,
         };
 
         inlined.add(func1).unwrap();

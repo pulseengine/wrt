@@ -3,15 +3,12 @@
 //! This module provides bounded alternatives for host collections
 //! to ensure static memory allocation throughout the host interface.
 
-
 use wrt_foundation::{
-    bounded::{BoundedVec, BoundedString},
+    bounded::{BoundedString, BoundedVec},
     bounded_collections::BoundedMap as BoundedHashMap,
-    managed_alloc, CrateId,
+    capability_context, managed_alloc, safe_capability_alloc, safe_managed_alloc,
     safe_memory::NoStdProvider,
-    WrtResult,
-    safe_capability_alloc, capability_context,
-    safe_managed_alloc,
+    CrateId, WrtResult,
 };
 
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -101,19 +98,15 @@ pub type BoundedArgsVec<T> = BoundedVec<T, MAX_FUNCTION_ARGS, HostProvider>;
 pub type BoundedResultsVec<T> = BoundedVec<T, MAX_FUNCTION_RESULTS, HostProvider>;
 
 /// Bounded map for host functions
-pub type BoundedHostFunctionMap<V> = BoundedHashMap<
-    BoundedHostFunctionName,
-    V,
-    MAX_HOST_FUNCTIONS,
-    HostProvider
->;
+pub type BoundedHostFunctionMap<V> =
+    BoundedHashMap<BoundedHostFunctionName, V, MAX_HOST_FUNCTIONS, HostProvider>;
 
 /// Bounded map for callbacks
 pub type BoundedCallbackMap<V> = BoundedHashMap<
     u32, // Callback ID
     V,
     MAX_CALLBACKS,
-    HostProvider
+    HostProvider,
 >;
 
 /// Bounded map for environment variables
@@ -121,7 +114,7 @@ pub type BoundedEnvMap = BoundedHashMap<
     BoundedString<MAX_ENV_VAR_NAME_LEN, HostProvider>,
     BoundedString<MAX_ENV_VAR_VALUE_LEN, HostProvider>,
     MAX_ENV_VARS,
-    HostProvider
+    HostProvider,
 >;
 
 /// Bounded vector for host resource handles
@@ -133,7 +126,13 @@ pub type BoundedFunctionPointerVec<T> = BoundedVec<T, MAX_FUNCTION_POINTERS, Hos
 /// Create a new bounded host function vector
 pub fn new_host_function_vec<T>() -> WrtResult<BoundedHostFunctionVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = create_host_provider()?;
     BoundedVec::new(provider)
@@ -142,7 +141,13 @@ where
 /// Create a new bounded callback vector
 pub fn new_callback_vec<T>() -> WrtResult<BoundedCallbackVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = create_host_provider()?;
     BoundedVec::new(provider)
@@ -151,7 +156,13 @@ where
 /// Create a new bounded host module vector
 pub fn new_host_module_vec<T>() -> WrtResult<BoundedHostModuleVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = create_host_provider()?;
     BoundedVec::new(provider)
@@ -160,9 +171,13 @@ where
 /// Create a new bounded host function name
 pub fn new_host_function_name() -> WrtResult<BoundedHostFunctionName> {
     let provider = create_host_provider()?;
-    BoundedString::<MAX_HOST_FUNCTION_NAME_LEN, HostProvider>::from_str("", provider).map_err(|_| {
-        wrt_error::Error::platform_memory_allocation_failed("Failed to create empty bounded string")
-    })
+    BoundedString::<MAX_HOST_FUNCTION_NAME_LEN, HostProvider>::from_str("", provider).map_err(
+        |_| {
+            wrt_error::Error::platform_memory_allocation_failed(
+                "Failed to create empty bounded string",
+            )
+        },
+    )
 }
 
 /// Create a bounded host function name from str
@@ -200,15 +215,20 @@ pub fn new_host_id() -> WrtResult<BoundedHostId> {
 /// Create a bounded host ID from str
 pub fn bounded_host_id_from_str(s: &str) -> WrtResult<BoundedHostId> {
     let provider = create_host_provider()?;
-    BoundedString::<MAX_HOST_ID_LEN, HostProvider>::from_str(s, provider).map_err(|_| {
-        wrt_error::Error::validation_error("String too long for bounded host ID")
-    })
+    BoundedString::<MAX_HOST_ID_LEN, HostProvider>::from_str(s, provider)
+        .map_err(|_| wrt_error::Error::validation_error("String too long for bounded host ID"))
 }
 
 /// Create a new bounded host instance vector
 pub fn new_host_instance_vec<T>() -> WrtResult<BoundedHostInstanceVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = create_host_provider()?;
     BoundedVec::new(provider)
@@ -217,7 +237,13 @@ where
 /// Create a new bounded args vector
 pub fn new_args_vec<T>() -> WrtResult<BoundedArgsVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = create_host_provider()?;
     BoundedVec::new(provider)
@@ -226,7 +252,13 @@ where
 /// Create a new bounded results vector
 pub fn new_results_vec<T>() -> WrtResult<BoundedResultsVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = create_host_provider()?;
     BoundedVec::new(provider)
@@ -235,7 +267,13 @@ where
 /// Create a new bounded host function map
 pub fn new_host_function_map<V>() -> WrtResult<BoundedHostFunctionMap<V>>
 where
-    V: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    V: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = create_host_provider()?;
     BoundedHashMap::new(provider)
@@ -244,7 +282,13 @@ where
 /// Create a new bounded callback map
 pub fn new_callback_map<V>() -> WrtResult<BoundedCallbackMap<V>>
 where
-    V: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    V: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = create_host_provider()?;
     BoundedHashMap::new(provider)
@@ -259,7 +303,13 @@ pub fn new_env_map() -> WrtResult<BoundedEnvMap> {
 /// Create a new bounded host resource vector
 pub fn new_host_resource_vec<T>() -> WrtResult<BoundedHostResourceVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = create_host_provider()?;
     BoundedVec::new(provider)
@@ -268,7 +318,13 @@ where
 /// Create a new bounded function pointer vector
 pub fn new_function_pointer_vec<T>() -> WrtResult<BoundedFunctionPointerVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = create_host_provider()?;
     BoundedVec::new(provider)

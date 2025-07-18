@@ -4,7 +4,10 @@
 //! of WebAssembly parsing, component models, and runtime operations.
 
 use std::{
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
     process::Command,
 };
 
@@ -12,7 +15,10 @@ use colored::Colorize;
 
 use crate::{
     build::BuildSystem,
-    error::{BuildError, BuildResult},
+    error::{
+        BuildError,
+        BuildResult,
+    },
 };
 
 /// Fuzzing configuration options
@@ -21,11 +27,11 @@ pub struct FuzzOptions {
     /// Duration to run each fuzzer (in seconds)
     pub duration: u64,
     /// Number of worker threads
-    pub workers: usize,
+    pub workers:  usize,
     /// Maximum number of runs (overrides duration if set)
-    pub runs: Option<u64>,
+    pub runs:     Option<u64>,
     /// Specific targets to run (if empty, runs all)
-    pub targets: Vec<String>,
+    pub targets:  Vec<String>,
     /// Generate corpus coverage report
     pub coverage: bool,
 }
@@ -34,9 +40,9 @@ impl Default for FuzzOptions {
     fn default() -> Self {
         Self {
             duration: 60,
-            workers: 4,
-            runs: None,
-            targets: Vec::new(),
+            workers:  4,
+            runs:     None,
+            targets:  Vec::new(),
             coverage: false,
         }
     }
@@ -46,15 +52,15 @@ impl Default for FuzzOptions {
 #[derive(Debug)]
 pub struct FuzzResults {
     /// Whether fuzzing completed successfully
-    pub success: bool,
+    pub success:         bool,
     /// List of targets that were run
-    pub targets_run: Vec<String>,
+    pub targets_run:     Vec<String>,
     /// List of targets that found crashes
     pub crashed_targets: Vec<String>,
     /// Total duration of fuzzing
-    pub duration_ms: u64,
+    pub duration_ms:     u64,
     /// Detailed fuzzing report
-    pub report: String,
+    pub report:          String,
 }
 
 /// List available fuzzing targets implementation
@@ -318,11 +324,11 @@ mod tests {
     #[test]
     fn test_fuzz_results() {
         let results = FuzzResults {
-            success: true,
-            targets_run: vec!["test_target".to_string()],
+            success:         true,
+            targets_run:     vec!["test_target".to_string()],
             crashed_targets: vec![],
-            duration_ms: 1000,
-            report: "Test report".to_string(),
+            duration_ms:     1000,
+            report:          "Test report".to_string(),
         };
 
         assert!(results.success);

@@ -1,8 +1,8 @@
 //! WebAssembly 3.0 Multi-Memory Runtime Implementation with ASIL Compliance
 //!
-//! This module provides the complete runtime implementation for WebAssembly multi-memory
-//! proposal supporting multiple linear memory instances per module across
-//! all ASIL levels (QM, ASIL-A, ASIL-B, ASIL-C, ASIL-D).
+//! This module provides the complete runtime implementation for WebAssembly
+//! multi-memory proposal supporting multiple linear memory instances per module
+//! across all ASIL levels (QM, ASIL-A, ASIL-B, ASIL-C, ASIL-D).
 //!
 //! # Features Supported
 //! - Multiple linear memory instances per module (up to 16)
@@ -23,27 +23,52 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+#[cfg(not(feature = "std"))]
+use alloc::format;
+#[cfg(not(feature = "std"))]
+use alloc::{
+    boxed::Box,
+    collections::BTreeMap as HashMap,
+    sync::Arc,
+};
+#[cfg(feature = "std")]
+use std::{
+    collections::HashMap,
+    sync::Arc,
+};
+
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 use wrt_foundation::{
-    traits::BoundedCapacity, types::ValueType, values::Value, ComponentMemoryType,
+    traits::BoundedCapacity,
+    types::ValueType,
+    values::Value,
+    ComponentMemoryType,
 };
 use wrt_instructions::{
-    memory_ops::{DataSegmentOperations, MemoryOperations},
+    memory_ops::{
+        DataSegmentOperations,
+        MemoryOperations,
+    },
     multi_memory::{
-        MultiMemoryBulk, MultiMemoryCrossCopy, MultiMemoryGrow, MultiMemoryLoad, MultiMemorySize,
-        MultiMemoryStore, MAX_MEMORIES,
+        MultiMemoryBulk,
+        MultiMemoryCrossCopy,
+        MultiMemoryGrow,
+        MultiMemoryLoad,
+        MultiMemorySize,
+        MultiMemoryStore,
+        MAX_MEMORIES,
     },
 };
 use wrt_runtime::memory::Memory;
-use wrt_sync::{SafeAtomicCounter, WrtMutex};
-
-#[cfg(not(feature = "std"))]
-use alloc::{boxed::Box, collections::BTreeMap as HashMap, sync::Arc};
-#[cfg(feature = "std")]
-use std::{collections::HashMap, sync::Arc};
-
-#[cfg(not(feature = "std"))]
-use alloc::format;
+use wrt_sync::{
+    SafeAtomicCounter,
+    WrtMutex,
+};
 
 /// Provider trait for multi-memory management across ASIL levels
 pub trait MultiMemoryProvider {
@@ -70,34 +95,34 @@ pub enum MultiMemoryOperation {
     /// Load from specific memory instance
     Load {
         memory_index: u32,
-        load_op: MultiMemoryLoad,
-        address: Value,
+        load_op:      MultiMemoryLoad,
+        address:      Value,
     },
     /// Store to specific memory instance
     Store {
         memory_index: u32,
-        store_op: MultiMemoryStore,
-        address: Value,
-        value: Value,
+        store_op:     MultiMemoryStore,
+        address:      Value,
+        value:        Value,
     },
     /// Bulk operation on specific memory
     Bulk {
         memory_index: u32,
-        bulk_op: MultiMemoryBulk,
-        args: Vec<Value>,
+        bulk_op:      MultiMemoryBulk,
+        args:         Vec<Value>,
     },
     /// Cross-memory copy operation
     CrossCopy {
         cross_copy_op: MultiMemoryCrossCopy,
-        dest_addr: Value,
-        src_addr: Value,
-        size: Value,
+        dest_addr:     Value,
+        src_addr:      Value,
+        size:          Value,
     },
     /// Get memory size
     Size { size_op: MultiMemorySize },
     /// Grow memory
     Grow {
-        grow_op: MultiMemoryGrow,
+        grow_op:     MultiMemoryGrow,
         delta_pages: Value,
     },
 }
@@ -108,11 +133,11 @@ pub struct MultiMemoryInstance {
     /// Memory index within the module
     pub memory_index: u32,
     /// Memory type specification
-    pub memory_type: ComponentMemoryType,
+    pub memory_type:  ComponentMemoryType,
     /// Underlying memory implementation
-    memory: Arc<WrtMutex<Memory>>,
+    memory:           Arc<WrtMutex<Memory>>,
     /// Access statistics
-    pub stats: Arc<WrtMutex<MultiMemoryStats>>,
+    pub stats:        Arc<WrtMutex<MultiMemoryStats>>,
 }
 
 impl MultiMemoryInstance {
@@ -179,7 +204,8 @@ impl MultiMemoryInstance {
             .lock()
             .map_err(|_| Error::runtime_execution_error("Failed to acquire memory lock"))?;
 
-        // Dummy data segments for now - in real implementation would be provided by module
+        // Dummy data segments for now - in real implementation would be provided by
+        // module
         let mut dummy_data_segments = DummyDataSegments;
         bulk_op.execute_with_memory(&mut *memory, &mut dummy_data_segments, args)?;
 
@@ -422,7 +448,10 @@ impl MultiMemoryContext {
             wrt_foundation::safe_memory::NoStdProvider<1024>,
         >,
     > {
-        use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc};
+        use wrt_foundation::{
+            budget_aware_provider::CrateId,
+            safe_managed_alloc,
+        };
         let provider = safe_managed_alloc!(1024, CrateId::Runtime)?;
         let mut indices = wrt_foundation::bounded::BoundedVec::new(provider).map_err(|_| {
             Error::runtime_execution_error("Failed to create memory indices vector")
@@ -528,31 +557,31 @@ impl ASILCompliantMultiMemoryProvider {
 #[derive(Debug, Clone)]
 pub struct MultiMemoryStats {
     /// Number of registered memory instances
-    pub registered_memories: u64,
+    pub registered_memories:     u64,
     /// Total load operations performed
-    pub load_operations: u64,
+    pub load_operations:         u64,
     /// Total store operations performed
-    pub store_operations: u64,
+    pub store_operations:        u64,
     /// Total bulk operations performed
-    pub bulk_operations: u64,
+    pub bulk_operations:         u64,
     /// Total cross-memory operations performed
     pub cross_memory_operations: u64,
     /// Total memory grow operations performed
-    pub grow_operations: u64,
+    pub grow_operations:         u64,
     /// Total memory access violations detected
-    pub access_violations: u64,
+    pub access_violations:       u64,
 }
 
 impl MultiMemoryStats {
     fn new() -> Self {
         Self {
-            registered_memories: 0,
-            load_operations: 0,
-            store_operations: 0,
-            bulk_operations: 0,
+            registered_memories:     0,
+            load_operations:         0,
+            store_operations:        0,
+            bulk_operations:         0,
             cross_memory_operations: 0,
-            grow_operations: 0,
-            access_violations: 0,
+            grow_operations:         0,
+            access_violations:       0,
         }
     }
 

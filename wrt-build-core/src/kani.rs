@@ -6,31 +6,40 @@
 use std::{
     collections::HashMap,
     fs,
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
     process::Command,
     time::Instant,
 };
 
 use chrono::Local;
 use colored::Colorize;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::{
     config::AsilLevel,
-    error::{BuildError, BuildResult},
+    error::{
+        BuildError,
+        BuildResult,
+    },
 };
 
 /// KANI verification configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KaniConfig {
     /// ASIL profile for verification
-    pub profile: AsilLevel,
+    pub profile:    AsilLevel,
     /// Specific package to verify (None = all packages)
-    pub package: Option<String>,
+    pub package:    Option<String>,
     /// Specific harness to run (None = all harnesses)
-    pub harness: Option<String>,
+    pub harness:    Option<String>,
     /// Enable verbose output
-    pub verbose: bool,
+    pub verbose:    bool,
     /// Additional KANI arguments
     pub extra_args: Vec<String>,
 }
@@ -38,10 +47,10 @@ pub struct KaniConfig {
 impl Default for KaniConfig {
     fn default() -> Self {
         Self {
-            profile: AsilLevel::C,
-            package: None,
-            harness: None,
-            verbose: false,
+            profile:    AsilLevel::C,
+            package:    None,
+            harness:    None,
+            verbose:    false,
             extra_args: Vec::new(),
         }
     }
@@ -51,42 +60,42 @@ impl Default for KaniConfig {
 #[derive(Debug, Serialize)]
 pub struct PackageVerificationResult {
     /// Package name
-    pub package: String,
+    pub package:       String,
     /// Whether verification passed
-    pub passed: bool,
+    pub passed:        bool,
     /// Total number of checks
-    pub total_checks: usize,
+    pub total_checks:  usize,
     /// Number of passed checks
     pub passed_checks: usize,
     /// Verification duration in milliseconds
-    pub duration_ms: u64,
+    pub duration_ms:   u64,
     /// Failure messages
-    pub failures: Vec<String>,
+    pub failures:      Vec<String>,
     /// Log file path
-    pub log_file: PathBuf,
+    pub log_file:      PathBuf,
     /// Raw output
-    pub output: String,
+    pub output:        String,
 }
 
 /// Complete KANI verification results
 #[derive(Debug, Serialize)]
 pub struct KaniVerificationResults {
     /// Timestamp of verification
-    pub timestamp: String,
+    pub timestamp:       String,
     /// ASIL profile used
-    pub profile: AsilLevel,
+    pub profile:         AsilLevel,
     /// System information
-    pub system_info: String,
+    pub system_info:     String,
     /// Results per package
     pub package_results: Vec<PackageVerificationResult>,
     /// Overall statistics
-    pub total_packages: usize,
+    pub total_packages:  usize,
     /// Number of packages that passed
     pub passed_packages: usize,
     /// Success rate percentage
-    pub success_rate: f64,
+    pub success_rate:    f64,
     /// Report file path
-    pub report_file: PathBuf,
+    pub report_file:     PathBuf,
     /// Coverage report (if generated)
     pub coverage_report: Option<String>,
 }
@@ -94,9 +103,9 @@ pub struct KaniVerificationResults {
 /// KANI verifier
 pub struct KaniVerifier {
     workspace_root: PathBuf,
-    config: KaniConfig,
-    report_dir: PathBuf,
-    timestamp: String,
+    config:         KaniConfig,
+    report_dir:     PathBuf,
+    timestamp:      String,
 }
 
 impl KaniVerifier {

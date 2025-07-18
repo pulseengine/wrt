@@ -4,7 +4,12 @@
 
 //! DWARF line number program implementation
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 
 use crate::cursor::DwarfCursor;
 
@@ -12,13 +17,13 @@ use crate::cursor::DwarfCursor;
 #[derive(Clone, Copy, Debug)]
 pub struct LineInfo {
     /// Index into file table
-    pub file_index: u16,
+    pub file_index:   u16,
     /// Source line number
-    pub line: u32,
+    pub line:         u32,
     /// Source column number
-    pub column: u16,
+    pub column:       u16,
     /// Is a statement boundary
-    pub is_stmt: bool,
+    pub is_stmt:      bool,
     /// Marks end of a sequence
     pub end_sequence: bool,
 }
@@ -39,7 +44,7 @@ impl LineInfo {
 
 /// Helper for displaying line information with resolved file paths
 pub struct LocationDisplay<'a> {
-    line_info: &'a LineInfo,
+    line_info:  &'a LineInfo,
     file_table: &'a crate::FileTable<'a>,
 }
 
@@ -116,25 +121,25 @@ mod opcodes {
 /// Line number program state machine
 pub struct LineNumberState {
     // Standard registers
-    address: u32,
-    file: u16,
-    line: u32,
-    column: u16,
-    is_stmt: bool,
-    basic_block: bool,
-    end_sequence: bool,
-    prologue_end: bool,
+    address:        u32,
+    file:           u16,
+    line:           u32,
+    column:         u16,
+    is_stmt:        bool,
+    basic_block:    bool,
+    end_sequence:   bool,
+    prologue_end:   bool,
     epilogue_begin: bool,
-    isa: u32,
-    discriminator: u32,
+    isa:            u32,
+    discriminator:  u32,
 
     // Header configuration
-    minimum_instruction_length: u8,
+    minimum_instruction_length:  u8,
     maximum_ops_per_instruction: u8,
-    default_is_stmt: bool,
-    line_base: i8,
-    line_range: u8,
-    opcode_base: u8,
+    default_is_stmt:             bool,
+    line_base:                   i8,
+    line_range:                  u8,
+    opcode_base:                 u8,
 
     // Standard opcode lengths (we'll store a few)
     standard_opcode_lengths: [u8; 12],
@@ -369,10 +374,10 @@ impl LineNumberState {
             // Check if we've found the target
             if self.address <= target_pc && !self.end_sequence {
                 last_line_info = Some(LineInfo {
-                    file_index: self.file,
-                    line: self.line,
-                    column: self.column,
-                    is_stmt: self.is_stmt,
+                    file_index:   self.file,
+                    line:         self.line,
+                    column:       self.column,
+                    is_stmt:      self.is_stmt,
                     end_sequence: self.end_sequence,
                 });
             } else if self.address > target_pc {

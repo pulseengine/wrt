@@ -3,14 +3,31 @@
 //! This command reads a TOML configuration file and embeds the resource
 //! limits as a custom section in a WebAssembly binary.
 
-use anyhow::{Context, Result};
-use clap::Args;
-use std::fs;
-use std::path::{Path, PathBuf};
-use wrt_decoder::resource_limits_section::RESOURCE_LIMITS_SECTION_NAME;
-use wrt_decoder::toml_config::{TomlQualification, TomlResourceLimits};
+use std::{
+    fs,
+    path::{
+        Path,
+        PathBuf,
+    },
+};
 
-use crate::helpers::{output_result, OutputManager};
+use anyhow::{
+    Context,
+    Result,
+};
+use clap::Args;
+use wrt_decoder::{
+    resource_limits_section::RESOURCE_LIMITS_SECTION_NAME,
+    toml_config::{
+        TomlQualification,
+        TomlResourceLimits,
+    },
+};
+
+use crate::helpers::{
+    output_result,
+    OutputManager,
+};
 
 /// Arguments for the embed-limits command
 #[derive(Debug, Args)]
@@ -78,7 +95,8 @@ pub fn execute(args: EmbedLimitsArgs, output: &OutputManager) -> Result<()> {
     // Override ASIL level if specified
     if let Some(asil_level) = &args.asil_level {
         if let Some(ref mut qual) = config.qualification {
-            // Note: TomlQualification structure may need updating to match actual fields
+            // Note: TomlQualification structure may need updating to match
+            // actual fields
         } else {
             // Note: TomlQualification structure may need updating
             // config.qualification = Some(TomlQualification::default());
@@ -88,7 +106,8 @@ pub fn execute(args: EmbedLimitsArgs, output: &OutputManager) -> Result<()> {
     // Override binary hash if specified
     if let Some(binary_hash) = &args.binary_hash {
         if let Some(ref mut qual) = config.qualification {
-            // Note: TomlQualification structure may need updating to match actual fields
+            // Note: TomlQualification structure may need updating to match
+            // actual fields
         } else {
             // Note: TomlQualification structure may need updating
             // config.qualification = Some(TomlQualification::default());

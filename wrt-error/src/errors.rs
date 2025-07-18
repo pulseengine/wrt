@@ -15,68 +15,75 @@
 use core::fmt;
 
 use crate::{
-    codes, kinds,
-    prelude::{str, Debug, Eq, PartialEq},
-    FromError, ToErrorCategory,
+    codes,
+    kinds,
+    prelude::{
+        str,
+        Debug,
+        Eq,
+        PartialEq,
+    },
+    FromError,
+    ToErrorCategory,
 };
 
 /// `Error` categories for WRT operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ErrorCategory {
     /// Core WebAssembly errors
-    Core = 1,
+    Core              = 1,
     /// Component model errors
-    Component = 2,
+    Component         = 2,
     /// Resource errors (memory, tables, etc.)
-    Resource = 3,
+    Resource          = 3,
     /// Memory errors
-    Memory = 4,
+    Memory            = 4,
     /// Validation errors
-    Validation = 5,
+    Validation        = 5,
     /// Type errors
-    Type = 6,
+    Type              = 6,
     /// Runtime errors (general)
-    Runtime = 7,
+    Runtime           = 7,
     /// System errors
-    System = 8,
+    System            = 8,
     /// I/O errors
-    Io = 20,
+    Io                = 20,
     /// Unknown errors
-    Unknown = 9,
+    Unknown           = 9,
     /// Parse errors
-    Parse = 10,
+    Parse             = 10,
     /// Concurrency errors
-    Concurrency = 11,
+    Concurrency       = 11,
     /// Capacity errors
-    Capacity = 12,
+    Capacity          = 12,
     /// WebAssembly trap errors (specific runtime errors defined by Wasm spec)
-    RuntimeTrap = 13,
+    RuntimeTrap       = 13,
     /// Initialization errors
-    Initialization = 14,
+    Initialization    = 14,
     /// Not supported operation errors
-    NotSupported = 15,
+    NotSupported      = 15,
     /// Safety-related errors (ASIL violations, integrity checks, etc.)
-    Safety = 16,
+    Safety            = 16,
     /// Security-related errors (access control, permissions, etc.)
-    Security = 17,
+    Security          = 17,
     /// Parameter-related errors (invalid arguments, missing parameters, etc.)
-    Parameter = 18,
+    Parameter         = 18,
     /// Verification errors (proofs, checksums, integrity, etc.)
-    Verification = 19,
+    Verification      = 19,
     /// Component model runtime operations (threading, resource management)
-    ComponentRuntime = 24,
+    ComponentRuntime  = 24,
     /// Platform-specific runtime failures (hardware, real-time constraints)
-    PlatformRuntime = 25,
+    PlatformRuntime   = 25,
     /// Foundation runtime constraint violations (bounded collections, safety)
     FoundationRuntime = 26,
     /// Async/threading runtime errors
-    AsyncRuntime = 27,
+    AsyncRuntime      = 27,
     /// Platform-specific errors
-    Platform = 28,
+    Platform          = 28,
     /// Invalid state errors
-    InvalidState = 29,
+    InvalidState      = 29,
     /// Not implemented errors
-    NotImplemented = 30,
+    NotImplemented    = 30,
 }
 
 /// Base trait for all error types - `no_std` version
@@ -100,9 +107,9 @@ pub struct Error {
     /// `Error` category
     pub category: ErrorCategory,
     /// `Error` code
-    pub code: u16,
+    pub code:     u16,
     /// `Error` message
-    pub message: &'static str,
+    pub message:  &'static str,
 }
 
 impl Error {
@@ -305,13 +312,14 @@ impl Error {
     #[must_use]
     pub const fn asil_level(&self) -> &'static str {
         match self.category {
-            ErrorCategory::Safety | ErrorCategory::FoundationRuntime => "ASIL-D", // Safety and foundation errors require highest level
+            ErrorCategory::Safety | ErrorCategory::FoundationRuntime => "ASIL-D", /* Safety and foundation errors require highest level */
             ErrorCategory::Memory
             | ErrorCategory::RuntimeTrap
-            | ErrorCategory::ComponentRuntime => "ASIL-C", /* Memory/trap/component runtime errors are ASIL-C */
+            | ErrorCategory::ComponentRuntime => "ASIL-C", /* Memory/trap/component runtime */
+            // errors are ASIL-C
             ErrorCategory::Validation | ErrorCategory::Type | ErrorCategory::PlatformRuntime => {
                 "ASIL-B"
-            }, /* Type safety and platform runtime is ASIL-B */
+            }, // Type safety and platform runtime is ASIL-B
             ErrorCategory::AsyncRuntime => "ASIL-B", // Async runtime errors are ASIL-B
             _ => "QM",                               // Other errors are Quality Management level
         }

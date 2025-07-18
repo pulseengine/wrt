@@ -10,7 +10,10 @@ use colored::Colorize;
 use serde::Serialize;
 use wrt_build_core::{
     diagnostics::DiagnosticCollection,
-    formatters::{FormatterFactory, OutputFormat},
+    formatters::{
+        FormatterFactory,
+        OutputFormat,
+    },
 };
 
 /// Standard result formatting for any serializable + displayable type
@@ -114,7 +117,7 @@ impl Display for SimpleResponse {
 /// Centralized output manager for consistent formatting across commands
 #[derive(Clone, Debug)]
 pub struct OutputManager {
-    format: OutputFormat,
+    format:  OutputFormat,
     colored: bool,
 }
 

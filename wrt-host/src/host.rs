@@ -8,7 +8,7 @@
 //! as defined in the WebAssembly Component Model.
 
 // Use the prelude for consistent imports
-use crate::prelude::{Any, BuiltinType, Error, ErrorCategory, HashMap, Result, Value, codes, str};
+use crate::prelude::{codes, str, Any, BuiltinType, Error, ErrorCategory, HashMap, Result, Value};
 
 #[cfg(feature = "std")]
 use crate::prelude::Arc;
@@ -28,7 +28,7 @@ use crate::bounded_host_infra::{HostProvider, HOST_MEMORY_SIZE};
 #[cfg(not(feature = "std"))]
 fn create_host_provider() -> Result<HostProvider> {
     use crate::bounded_host_infra;
-    
+
     bounded_host_infra::create_host_provider()
         .map_err(|_| Error::memory_out_of_bounds("Failed to create host provider"))
 }
@@ -92,11 +92,11 @@ impl wrt_foundation::traits::FromBytes for HandlerData {
 
 // Conditional imports for WRT allocator
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{WrtHashMap, CrateId};
+use wrt_foundation::allocator::{CrateId, WrtHashMap};
 
 // Handler map type for different configurations
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-type HandlerMap = WrtHashMap<String, HandlerFn, {CrateId::Host as u8}, 128>;
+type HandlerMap = WrtHashMap<String, HandlerFn, { CrateId::Host as u8 }, 128>;
 
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
 type HandlerMap = HashMap<String, HandlerFn>;
@@ -106,7 +106,7 @@ type HandlerMap = HashMap<HostString, HandlerData, 32, HostProvider>;
 
 // Critical builtins map type for different configurations
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-type CriticalBuiltinsMap = WrtHashMap<BuiltinType, HandlerFn, {CrateId::Host as u8}, 32>;
+type CriticalBuiltinsMap = WrtHashMap<BuiltinType, HandlerFn, { CrateId::Host as u8 }, 32>;
 
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
 type CriticalBuiltinsMap = HashMap<BuiltinType, HandlerFn>;
@@ -122,7 +122,9 @@ type CriticalBuiltinsMap = HashMap<BuiltinType, HandlerData, 32, HostProvider>;
 #[cfg(feature = "std")]
 fn convert_to_component_values(
     values: &[Value],
-) -> Vec<wrt_foundation::component_value::ComponentValue<wrt_foundation::safe_memory::NoStdProvider<64>>> {
+) -> Vec<
+    wrt_foundation::component_value::ComponentValue<wrt_foundation::safe_memory::NoStdProvider<64>>,
+> {
     values
         .iter()
         .map(|v| match v {
@@ -143,7 +145,9 @@ fn convert_to_component_values(
 /// with support for both std and no_std environments.
 #[cfg(feature = "std")]
 fn convert_from_component_values(
-    values: &[wrt_foundation::component_value::ComponentValue<wrt_foundation::safe_memory::NoStdProvider<64>>],
+    values: &[wrt_foundation::component_value::ComponentValue<
+        wrt_foundation::safe_memory::NoStdProvider<64>,
+    >],
 ) -> ValueVec {
     values
         .iter()
@@ -185,7 +189,7 @@ impl Default for BuiltinHost {
         {
             let string_provider = create_host_provider().expect("Failed to create host provider");
             let map_provider = create_host_provider().expect("Failed to create host provider");
-            
+
             Self {
                 component_name: HostString::from_str("", string_provider.clone())
                     .expect("Failed to create empty string"),
@@ -197,7 +201,7 @@ impl Default for BuiltinHost {
                     .expect("Failed to create CriticalBuiltinsMap"),
             }
         }
-        
+
         #[cfg(feature = "std")]
         {
             Self {
@@ -235,14 +239,15 @@ impl BuiltinHost {
 
     /// Create a new built-in host (`no_std` version)
     #[cfg(not(feature = "std"))]
-    #[must_use] pub fn new(component_name: &str, host_id: &str) -> Self {
+    #[must_use]
+    pub fn new(component_name: &str, host_id: &str) -> Self {
         let string_provider = create_host_provider().expect("Failed to create host provider");
         let map_provider = create_host_provider().expect("Failed to create host provider");
         let comp_name = HostString::from_str(component_name, string_provider.clone())
             .expect("Failed to create component name");
-        let host_name = HostString::from_str(host_id, string_provider)
-            .expect("Failed to create host id");
-        
+        let host_name =
+            HostString::from_str(host_id, string_provider).expect("Failed to create host id");
+
         Self {
             component_name: comp_name,
             host_id: host_name,
@@ -326,7 +331,7 @@ impl BuiltinHost {
         {
             self.handlers.contains_key(builtin_type.name())
         }
-        
+
         #[cfg(not(feature = "std"))]
         {
             // In no_std mode, check if we have any handlers registered
@@ -351,7 +356,7 @@ impl BuiltinHost {
         {
             self.critical_builtins.contains_key(&builtin_type)
         }
-        
+
         #[cfg(not(feature = "std"))]
         {
             self.critical_builtins.contains_key(&builtin_type).unwrap_or(false)
@@ -405,17 +410,17 @@ impl BuiltinHost {
                     let modified_result =
                         interceptor.after_builtin(&context, &component_args, component_result)?;
                     Ok(convert_from_component_values(&modified_result))
-                }
+                },
                 BeforeBuiltinResult::Bypass(result) => {
                     // Skip execution and use provided result
                     Ok(convert_from_component_values(&result))
-                }
+                },
             }
         } else {
             // No interceptor, just execute
             self.execute_builtin_internal(engine, builtin_type, args)
         }
-        
+
         // Binary std/no_std choice
         #[cfg(not(feature = "std"))]
         {
@@ -442,7 +447,7 @@ impl BuiltinHost {
         if let Some(fallback) = self.critical_builtins.get(&builtin_type) {
             return fallback(engine, args);
         }
-        
+
         // No handler or fallback found
         Err(Error::runtime_error("Built-in function not implemented"))
     }
@@ -456,7 +461,9 @@ impl BuiltinHost {
         _args: ValueVec,
     ) -> Result<ValueVec> {
         // In no_std mode, built-in functions are not supported
-        Err(Error::runtime_error("Built-in functions not supported in no_std mode"))
+        Err(Error::runtime_error(
+            "Built-in functions not supported in no_std mode",
+        ))
     }
 }
 
@@ -474,15 +481,17 @@ impl Clone for BuiltinHost {
                 critical_builtins: CriticalBuiltinsMap::new(),
             }
         }
-        
+
         #[cfg(not(feature = "std"))]
         {
             let provider = create_host_provider().expect("Failed to create host provider");
             Self {
                 component_name: self.component_name.clone(),
                 host_id: self.host_id.clone(),
-                handlers: HashMap::new(provider.clone()).expect("HashMap creation should never fail with valid provider"),
-                critical_builtins: HashMap::new(provider).expect("HashMap creation should never fail with valid provider"),
+                handlers: HashMap::new(provider.clone())
+                    .expect("HashMap creation should never fail with valid provider"),
+                critical_builtins: HashMap::new(provider)
+                    .expect("HashMap creation should never fail with valid provider"),
             }
         }
     }

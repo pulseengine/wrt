@@ -14,27 +14,60 @@
 pub use core::result::Result as StdResult;
 pub use core::{
     any::Any,
-    cmp::{Eq, Ord, PartialEq, PartialOrd},
-    convert::{From, Into, TryFrom, TryInto},
+    cmp::{
+        Eq,
+        Ord,
+        PartialEq,
+        PartialOrd,
+    },
+    convert::{
+        From,
+        Into,
+        TryFrom,
+        TryInto,
+    },
     fmt,
-    fmt::{Debug, Display},
+    fmt::{
+        Debug,
+        Display,
+    },
     marker::PhantomData,
     mem,
-    ops::{Deref, DerefMut},
-    slice, str,
+    ops::{
+        Deref,
+        DerefMut,
+    },
+    slice,
+    str,
 };
 // Re-export from std when the std feature is enabled
 #[cfg(feature = "std")]
 pub use std::{
     borrow::Cow,
     boxed::Box,
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
-    format, io,
-    io::{Read, Write},
+    collections::{
+        BTreeMap,
+        BTreeSet,
+        HashMap,
+        HashSet,
+    },
+    format,
+    io,
+    io::{
+        Read,
+        Write,
+    },
     rc::Rc,
     result::Result as StdResult,
-    string::{String, ToString},
-    sync::{Arc, Mutex, RwLock},
+    string::{
+        String,
+        ToString,
+    },
+    sync::{
+        Arc,
+        Mutex,
+        RwLock,
+    },
     vec,
     vec::Vec,
 };
@@ -44,36 +77,72 @@ pub use std::{
 // pub use wrt_sync::{Mutex, RwLock};
 
 // Re-export from wrt-error
-pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
+pub use wrt_error::{
+    codes,
+    kinds,
+    Error,
+    ErrorCategory,
+    Result,
+};
 // Re-export format module for compatibility
 pub use wrt_format as wrt_format_module;
 // Re-export from wrt-format
 pub use wrt_format::{
     // Conversion utilities
     conversion::{
-        block_type_to_format_block_type, format_block_type_to_block_type,
-        format_value_type as value_type_to_byte, parse_value_type,
+        block_type_to_format_block_type,
+        format_block_type_to_block_type,
+        format_value_type as value_type_to_byte,
+        parse_value_type,
     },
     // Module types
     module::{
-        Data, Element, Export, ExportKind, Function, Global, Import, ImportDesc, Memory, Table,
+        Data,
+        Element,
+        Export,
+        ExportKind,
+        Function,
+        Global,
+        Import,
+        ImportDesc,
+        Memory,
+        Table,
     },
     // Pure format types (recommended over deprecated module types)
-    pure_format_types::{PureDataMode, PureDataSegment, PureElementMode, PureElementSegment},
+    pure_format_types::{
+        PureDataMode,
+        PureDataSegment,
+        PureElementMode,
+        PureElementSegment,
+    },
     // Section types
-    section::{CustomSection, Section, SectionId},
+    section::{
+        CustomSection,
+        Section,
+        SectionId,
+    },
     // Format-specific types
-    types::{FormatBlockType, Limits, MemoryIndexType},
+    types::{
+        FormatBlockType,
+        Limits,
+        MemoryIndexType,
+    },
 };
 // Binary std/no_std choice
 #[cfg(feature = "std")]
 // pub use wrt_format::state::{create_state_section, extract_state_section, StateSection};
 // Binary std/no_std choice
 #[cfg(feature = "std")]
-pub use wrt_foundation::component_value::{ComponentValue, ValType};
+pub use wrt_foundation::component_value::{
+    ComponentValue,
+    ValType,
+};
 // Conversion utilities from wrt-foundation
 #[cfg(feature = "conversion")]
-pub use wrt_foundation::conversion::{ref_type_to_val_type, val_type_to_ref_type};
+pub use wrt_foundation::conversion::{
+    ref_type_to_val_type,
+    val_type_to_ref_type,
+};
 // No_std equivalents - use wrt-foundation types (Vec and String defined below with specific
 // providers)
 #[cfg(not(feature = "std"))]
@@ -81,21 +150,38 @@ pub use wrt_foundation::BoundedMap as HashMap;
 // Re-export clean types from wrt-foundation
 pub use wrt_foundation::{
     // SafeMemory types
-    safe_memory::{SafeMemoryHandler, SafeSlice, SafeStack},
+    safe_memory::{
+        SafeMemoryHandler,
+        SafeSlice,
+        SafeStack,
+    },
     // Legacy types for compatibility
-    types::{BlockType, RefType, ValueType},
+    types::{
+        BlockType,
+        RefType,
+        ValueType,
+    },
     values::Value,
 };
 // Use our unified memory management system
 #[cfg(not(feature = "std"))]
 pub use wrt_foundation::{
-    unified_types_simple::{DefaultTypes, EmbeddedTypes},
-    BoundedString, BoundedVec,
+    unified_types_simple::{
+        DefaultTypes,
+        EmbeddedTypes,
+    },
+    BoundedString,
+    BoundedVec,
 };
 // Re-export clean types only when allocation is available
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use wrt_foundation::{
-    CleanFuncType, CleanGlobalType, CleanMemoryType, CleanTableType, CleanValType, CleanValue,
+    CleanFuncType,
+    CleanGlobalType,
+    CleanMemoryType,
+    CleanTableType,
+    CleanValType,
+    CleanValue,
 };
 
 // Most re-exports temporarily disabled for demo
@@ -118,7 +204,10 @@ pub type DecoderString = String;
 #[cfg(not(feature = "std"))]
 pub fn create_decoder_provider<const N: usize>(
 ) -> wrt_foundation::WrtResult<wrt_foundation::NoStdProvider<N>> {
-    use wrt_foundation::{capabilities::MemoryFactory, CrateId};
+    use wrt_foundation::{
+        capabilities::MemoryFactory,
+        CrateId,
+    };
     MemoryFactory::create::<N>(CrateId::Decoder)
 }
 
@@ -126,7 +215,10 @@ pub fn create_decoder_provider<const N: usize>(
 #[cfg(feature = "std")]
 pub fn create_decoder_provider<const N: usize>(
 ) -> wrt_foundation::WrtResult<wrt_foundation::NoStdProvider<N>> {
-    use wrt_foundation::{capabilities::MemoryFactory, CrateId};
+    use wrt_foundation::{
+        capabilities::MemoryFactory,
+        CrateId,
+    };
     MemoryFactory::create::<N>(CrateId::Decoder)
 }
 
@@ -156,7 +248,10 @@ impl ToString for &str {
 macro_rules! format {
     ($($arg:tt)*) => {{
         // In pure no_std, return a simple bounded string
-        use wrt_foundation::{BoundedString, NoStdProvider};
+        use wrt_foundation::{
+            BoundedString,
+            NoStdProvider,
+        };
         if let Ok(provider) = $crate::prelude::create_decoder_provider::<512>() {
             $crate::prelude::DecoderString::from_str("formatted_string", provider)
                 .unwrap_or_default()
@@ -182,7 +277,10 @@ pub mod binary {
 /// Binary utilities for no_std environments
 #[cfg(not(feature = "std"))]
 pub mod binary {
-    use wrt_foundation::{BoundedVec, NoStdProvider};
+    use wrt_foundation::{
+        BoundedVec,
+        NoStdProvider,
+    };
 
     use super::create_decoder_provider;
 
@@ -285,10 +383,19 @@ pub mod binary {
 // wrt_format directly)
 // For no_std mode, provide the missing functions locally
 #[cfg(not(feature = "std"))]
-pub use binary::{read_name, write_leb128_u32, write_string};
+pub use binary::{
+    read_name,
+    write_leb128_u32,
+    write_string,
+};
 pub use wrt_format::read_leb128_u32;
 #[cfg(feature = "std")]
-pub use wrt_format::{read_name, read_string, write_leb128_u32, write_string};
+pub use wrt_format::{
+    read_name,
+    read_string,
+    write_leb128_u32,
+    write_string,
+};
 
 /// Extension trait to add missing methods to BoundedVec
 pub trait BoundedVecExt<T, const N: usize, P: wrt_foundation::MemoryProvider> {

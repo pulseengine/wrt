@@ -12,8 +12,12 @@
 //! to protect WebAssembly execution against ROP/JOP attacks.
 
 use wrt::{
-    execute_with_cfi_protection, new_cfi_protected_engine, CfiConfiguration, CfiHardwareFeatures,
-    CfiProtectionLevel, CfiViolationPolicy,
+    execute_with_cfi_protection,
+    new_cfi_protected_engine,
+    CfiConfiguration,
+    CfiHardwareFeatures,
+    CfiProtectionLevel,
+    CfiViolationPolicy,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -43,15 +47,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n2. Executing with custom CFI configuration...");
 
     let custom_config = CfiConfiguration {
-        protection_level: CfiProtectionLevel::Hardware,
-        max_shadow_stack_depth: 2048,
-        landing_pad_timeout_ns: Some(500_000), // 0.5ms
-        violation_policy: CfiViolationPolicy::LogAndContinue,
+        protection_level:           CfiProtectionLevel::Hardware,
+        max_shadow_stack_depth:     2048,
+        landing_pad_timeout_ns:     Some(500_000), // 0.5ms
+        violation_policy:           CfiViolationPolicy::LogAndContinue,
         enable_temporal_validation: true,
-        hardware_features: CfiHardwareFeatures {
-            arm_bti: true,
-            riscv_cfi: true,
-            x86_cet: true,
+        hardware_features:          CfiHardwareFeatures {
+            arm_bti:     true,
+            riscv_cfi:   true,
+            x86_cet:     true,
             auto_detect: false, // Use explicit settings
         },
     };

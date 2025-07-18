@@ -4,24 +4,37 @@
 //! the WebAssembly Component Model resource types, including resource tables
 //! and lifetime management.
 
-use core::{fmt, marker::PhantomData};
-
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
+use core::{
+    fmt,
+    marker::PhantomData,
+};
 #[cfg(feature = "std")]
 use std::boxed::Box;
 
-use wrt_error::{codes, Error, Result};
+use wrt_error::{
+    codes,
+    Error,
+    Result,
+};
 use wrt_foundation::{
-    safe_managed_alloc,
-    {
-        bounded::{BoundedStack, BoundedString, BoundedVec, WasmName},
-        budget_aware_provider::CrateId,
-        managed_alloc,
-        resource::{ResourceId, ResourceItem, ResourceType},
-        verification::VerificationLevel,
-        MemoryProvider,
+    bounded::{
+        BoundedStack,
+        BoundedString,
+        BoundedVec,
+        WasmName,
     },
+    budget_aware_provider::CrateId,
+    managed_alloc,
+    resource::{
+        ResourceId,
+        ResourceItem,
+        ResourceType,
+    },
+    safe_managed_alloc,
+    verification::VerificationLevel,
+    MemoryProvider,
 };
 
 // Constants for bounded collection limits
@@ -33,29 +46,29 @@ const MAX_RESOURCE_TYPE_COUNT: usize = 32;
 #[derive(Debug)]
 pub struct BoundedResource<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     /// Resource identifier
-    pub id: ResourceId,
+    pub id:            ResourceId,
     /// Resource type
     pub resource_type: ResourceType<P>,
     /// Optional name for the resource
-    pub name: Option<WasmName<MAX_RESOURCE_NAME_LENGTH, P>>,
+    pub name:          Option<WasmName<MAX_RESOURCE_NAME_LENGTH, P>>,
     /// Whether this resource has been dropped
-    pub is_dropped: bool,
+    pub is_dropped:    bool,
 }
 
 /// Binary std/no_std choice
 #[derive(Debug)]
 pub struct BoundedResourceTable<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     /// Resources stored in this table
-    resources: BoundedVec<BoundedResource<P>, MAX_RESOURCE_COUNT, P>,
+    resources:           BoundedVec<BoundedResource<P>, MAX_RESOURCE_COUNT, P>,
     /// Resource types in this table
-    resource_types: BoundedVec<ResourceType<P>, MAX_RESOURCE_TYPE_COUNT, P>,
+    resource_types:      BoundedVec<ResourceType<P>, MAX_RESOURCE_TYPE_COUNT, P>,
     /// Track counts manually
-    resource_count: usize,
+    resource_count:      usize,
     resource_type_count: usize,
     /// Memory provider
-    provider: P,
+    provider:            P,
     /// Verification level
-    verification_level: VerificationLevel,
+    verification_level:  VerificationLevel,
 }
 
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<P> {
@@ -167,7 +180,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
             }
         }
 
-        // Mark as dropped - need to get and recreate since we can't get mutable reference
+        // Mark as dropped - need to get and recreate since we can't get mutable
+        // reference
         if let Ok(mut resource) = self.resources.get(idx) {
             resource.is_dropped = true;
             // Would need to set it back, but BoundedVec doesn't have set method
@@ -266,12 +280,14 @@ mod tests {
         // Drop the resource
         table.drop_resource(resource_id).expect("Failed to drop resource");
 
-        // Note: Due to API limitations, we can't properly test that the resource is marked as dropped
-        // since BoundedVec doesn't expose a way to update elements in place
+        // Note: Due to API limitations, we can't properly test that the resource is
+        // marked as dropped since BoundedVec doesn't expose a way to update
+        // elements in place
 
         // Check counts
         assert_eq!(table.resource_count(), 1);
-        // active_resource_count might still return 1 due to the limitation mentioned above
+        // active_resource_count might still return 1 due to the limitation mentioned
+        // above
         assert_eq!(table.resource_type_count(), 1);
     }
 }

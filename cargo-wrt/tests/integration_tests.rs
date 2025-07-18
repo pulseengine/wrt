@@ -3,19 +3,32 @@
 //! Comprehensive tests for all cargo-wrt functionality including
 //! command execution, helper modules, and workflow scenarios.
 
-use cargo_wrt::testing::{ProjectFeature, TestConfig, TestContext, TestValidator, WorkspaceType};
 use std::time::Duration;
+
+use cargo_wrt::testing::{
+    ProjectFeature,
+    TestConfig,
+    TestContext,
+    TestValidator,
+    WorkspaceType,
+};
 use tempfile::TempDir;
 use wrt_build_core::formatters::OutputFormat;
 
 /// Test helper module functionality
 #[cfg(test)]
 mod helper_tests {
-    use super::*;
     use cargo_wrt::helpers::{
-        CategorizedError, CommandSuggestionEngine, ContextDetector, ErrorCategory, OutputManager,
-        PerformanceOptimizer, ProgressIndicator,
+        CategorizedError,
+        CommandSuggestionEngine,
+        ContextDetector,
+        ErrorCategory,
+        OutputManager,
+        PerformanceOptimizer,
+        ProgressIndicator,
     };
+
+    use super::*;
 
     #[test]
     fn test_output_manager_human_format() {
@@ -314,8 +327,9 @@ mod workspace_tests {
 /// Test mock build system
 #[cfg(test)]
 mod mock_build_tests {
-    use super::*;
     use cargo_wrt::testing::MockBuildResult;
+
+    use super::*;
 
     #[test]
     fn test_mock_build_system() -> anyhow::Result<()> {
@@ -331,10 +345,10 @@ mod mock_build_tests {
         mock_system.set_result(
             "custom_operation",
             MockBuildResult {
-                success: true,
+                success:  true,
                 duration: Duration::from_millis(1000),
                 warnings: vec!["test warning".to_string()],
-                errors: vec![],
+                errors:   vec![],
             },
         );
 
@@ -398,8 +412,10 @@ mod performance_tests {
 
     #[test]
     fn test_concurrent_progress_indicators() {
-        use std::sync::Arc;
-        use std::thread;
+        use std::{
+            sync::Arc,
+            thread,
+        };
 
         let handles: Vec<_> = (0..5)
             .map(|i| {

@@ -10,8 +10,8 @@ mod cfi_build_tests {
         // Minimal CFI configuration structure
         #[derive(Debug, Clone)]
         pub struct TestCfiConfiguration {
-            pub protection_level: TestProtectionLevel,
-            pub max_shadow_stack_depth: usize,
+            pub protection_level:           TestProtectionLevel,
+            pub max_shadow_stack_depth:     usize,
             pub enable_temporal_validation: bool,
         }
 
@@ -25,8 +25,8 @@ mod cfi_build_tests {
         impl Default for TestCfiConfiguration {
             fn default() -> Self {
                 Self {
-                    protection_level: TestProtectionLevel::Hybrid,
-                    max_shadow_stack_depth: 1024,
+                    protection_level:           TestProtectionLevel::Hybrid,
+                    max_shadow_stack_depth:     1024,
                     enable_temporal_validation: true,
                 }
             }
@@ -45,8 +45,8 @@ mod cfi_build_tests {
         #[derive(Debug, Clone, Default)]
         pub struct TestCfiStatistics {
             pub instructions_protected: u64,
-            pub violations_detected: u64,
-            pub validations_performed: u64,
+            pub violations_detected:    u64,
+            pub validations_performed:  u64,
         }
 
         let stats = TestCfiStatistics::default();
@@ -81,9 +81,9 @@ mod cfi_build_tests {
     fn test_cfi_hardware_features_syntax() {
         #[derive(Debug, Clone, Default)]
         pub struct TestCfiHardwareFeatures {
-            pub arm_bti: bool,
-            pub riscv_cfi: bool,
-            pub x86_cet: bool,
+            pub arm_bti:     bool,
+            pub riscv_cfi:   bool,
+            pub x86_cet:     bool,
             pub auto_detect: bool,
         }
 

@@ -13,19 +13,35 @@ extern crate alloc;
 
 #[cfg(feature = "std")]
 use alloc::collections::BTreeMap;
-use core::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering};
+use core::sync::atomic::{
+    AtomicBool,
+    AtomicU32,
+    AtomicUsize,
+    Ordering,
+};
 #[cfg(feature = "std")]
-use std::sync::{Mutex, OnceLock};
+use std::sync::{
+    Mutex,
+    OnceLock,
+};
 
 #[cfg(not(feature = "std"))]
 use wrt_foundation::no_std_hashmap::BoundedHashMap;
 use wrt_foundation::{
-    bounded::{BoundedString, BoundedVec},
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
     verification::Checksum,
-    wrt_provider, CrateId, Result as WrtResult,
+    wrt_provider,
+    CrateId,
+    Result as WrtResult,
 };
 
-use crate::{bounded_debug_infra, runtime_memory::MemoryInspector};
+use crate::{
+    bounded_debug_infra,
+    runtime_memory::MemoryInspector,
+};
 
 /// Maximum number of allocation records to track
 const MAX_ALLOCATION_RECORDS: usize = 512;
@@ -44,22 +60,22 @@ static ALLOCATION_TRACKING_ENABLED: AtomicBool = AtomicBool::new(false);
 #[derive(Debug, Clone, PartialEq)]
 pub struct AllocationRecord {
     /// Unique allocation ID
-    pub id: u32,
+    pub id:         u32,
     /// Crate that made the allocation
-    pub crate_id: CrateId,
+    pub crate_id:   CrateId,
     /// Size of allocation in bytes
-    pub size: usize,
+    pub size:       usize,
     /// Timestamp when allocated (microseconds since start)
-    pub timestamp: u64,
+    pub timestamp:  u64,
     /// Call stack at allocation time (simplified)
     pub call_stack:
         BoundedVec<u64, MAX_CALL_STACK_DEPTH, NoStdProvider<{ MAX_CALL_STACK_DEPTH * 8 }>>,
     /// Allocation type
     pub alloc_type: AllocationType,
     /// Whether this allocation is still active
-    pub active: bool,
+    pub active:     bool,
     /// Tag for custom categorization
-    pub tag: BoundedString<32, crate::bounded_debug_infra::DebugProvider>,
+    pub tag:        BoundedString<32, crate::bounded_debug_infra::DebugProvider>,
 }
 
 /// Type of memory allocation
@@ -135,15 +151,15 @@ impl wrt_foundation::traits::FromBytes for AllocationType {
 #[derive(Debug, Clone)]
 pub struct AccessRecord {
     /// Memory location accessed
-    pub address: usize,
+    pub address:     usize,
     /// Access type
     pub access_type: AccessType,
     /// Size of access
-    pub size: usize,
+    pub size:        usize,
     /// Timestamp
-    pub timestamp: u64,
+    pub timestamp:   u64,
     /// Crate that performed access
-    pub crate_id: CrateId,
+    pub crate_id:    CrateId,
 }
 
 /// Type of memory access
@@ -161,17 +177,17 @@ pub enum AccessType {
 #[derive(Debug, Clone)]
 pub struct PerformanceSample {
     /// Operation being profiled
-    pub operation: BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
+    pub operation:        BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
     /// Start timestamp (microseconds)
-    pub start_time: u64,
+    pub start_time:       u64,
     /// Duration (microseconds)
-    pub duration: u64,
+    pub duration:         u64,
     /// Memory allocated during operation
     pub memory_allocated: usize,
     /// Memory freed during operation
-    pub memory_freed: usize,
+    pub memory_freed:     usize,
     /// Crate performing operation
-    pub crate_id: CrateId,
+    pub crate_id:         CrateId,
 }
 
 /// Memory leak detection information
@@ -182,7 +198,7 @@ pub struct LeakInfo {
     /// Confidence score (0-100)
     pub confidence: u8,
     /// Reason for suspicion
-    pub reason: BoundedString<128, crate::bounded_debug_infra::DebugProvider>,
+    pub reason:     BoundedString<128, crate::bounded_debug_infra::DebugProvider>,
 }
 
 /// Memory profiler for runtime debugging
@@ -194,27 +210,27 @@ pub struct MemoryProfiler<'a> {
         NoStdProvider<{ MAX_ALLOCATION_RECORDS * 128 }>,
     >,
     /// Access pattern records
-    access_records: BoundedVec<AccessRecord, 256, NoStdProvider<{ 256 * 32 }>>,
+    access_records:      BoundedVec<AccessRecord, 256, NoStdProvider<{ 256 * 32 }>>,
     /// Performance samples
     perf_samples:
         BoundedVec<PerformanceSample, MAX_PERF_SAMPLES, NoStdProvider<{ MAX_PERF_SAMPLES * 128 }>>,
     /// Next allocation ID
-    next_alloc_id: AtomicU32,
+    next_alloc_id:       AtomicU32,
     /// Start timestamp for relative timing
-    start_time: u64,
+    start_time:          u64,
     /// Total allocations tracked
-    total_allocations: AtomicUsize,
+    total_allocations:   AtomicUsize,
     /// Total deallocations tracked
     total_deallocations: AtomicUsize,
     /// Reference to memory inspector for integration
-    memory_inspector: Option<&'a MemoryInspector<'a>>,
+    memory_inspector:    Option<&'a MemoryInspector<'a>>,
 }
 
 impl<'a> MemoryProfiler<'a> {
     /// Create a new memory profiler
     pub fn new() -> Self {
         Self {
-            allocations: BoundedVec::new(
+            allocations:         BoundedVec::new(
                 wrt_provider!(
                     {
                         {
@@ -226,7 +242,7 @@ impl<'a> MemoryProfiler<'a> {
                 .unwrap_or_default(),
             )
             .expect("Failed to create allocations vector"),
-            access_records: BoundedVec::new(
+            access_records:      BoundedVec::new(
                 wrt_provider!(
                     {
                         {
@@ -238,7 +254,7 @@ impl<'a> MemoryProfiler<'a> {
                 .unwrap_or_default(),
             )
             .expect("Failed to create access records vector"),
-            perf_samples: BoundedVec::new(
+            perf_samples:        BoundedVec::new(
                 wrt_provider!(
                     {
                         {
@@ -250,11 +266,11 @@ impl<'a> MemoryProfiler<'a> {
                 .unwrap_or_default(),
             )
             .expect("Failed to create perf samples vector"),
-            next_alloc_id: AtomicU32::new(1),
-            start_time: Self::get_timestamp(),
-            total_allocations: AtomicUsize::new(0),
+            next_alloc_id:       AtomicU32::new(1),
+            start_time:          Self::get_timestamp(),
+            total_allocations:   AtomicUsize::new(0),
             total_deallocations: AtomicUsize::new(0),
-            memory_inspector: None,
+            memory_inspector:    None,
         }
     }
 
@@ -510,16 +526,16 @@ impl<'a> MemoryProfiler<'a> {
         let perf_analysis = self.analyze_performance()?;
 
         Ok(ProfileReport {
-            timestamp: self.get_relative_timestamp(),
-            total_allocations: self.total_allocations.load(Ordering::SeqCst),
+            timestamp:           self.get_relative_timestamp(),
+            total_allocations:   self.total_allocations.load(Ordering::SeqCst),
             total_deallocations: self.total_deallocations.load(Ordering::SeqCst),
-            active_allocations: self.allocations.iter().filter(|a| a.active).count(),
-            crate_breakdown: crate_stats,
-            type_breakdown: type_stats,
-            access_patterns: access_pattern,
-            memory_hotspots: hotspots,
+            active_allocations:  self.allocations.iter().filter(|a| a.active).count(),
+            crate_breakdown:     crate_stats,
+            type_breakdown:      type_stats,
+            access_patterns:     access_pattern,
+            memory_hotspots:     hotspots,
             performance_metrics: perf_analysis,
-            detected_leaks: self.detect_leaks()?,
+            detected_leaks:      self.detect_leaks()?,
         })
     }
 
@@ -564,11 +580,15 @@ impl<'a> MemoryProfiler<'a> {
         }
 
         Ok(AccessPatternSummary {
-            total_reads: read_count,
-            total_writes: write_count,
+            total_reads:         read_count,
+            total_writes:        write_count,
             sequential_accesses: sequential_count,
-            random_accesses: random_count,
-            read_write_ratio: if write_count > 0 { (read_count * 100) / write_count } else { 100 },
+            random_accesses:     random_count,
+            read_write_ratio:    if write_count > 0 {
+                (read_count * 100) / write_count
+            } else {
+                100
+            },
         })
     }
 
@@ -613,9 +633,9 @@ impl<'a> MemoryProfiler<'a> {
             if let Some(&(region, count)) = sorted.get(i) {
                 let hotspot = MemoryHotspot {
                     address_range_start: region * 4096,
-                    address_range_end: (region + 1) * 4096,
-                    access_count: count,
-                    predominant_type: AccessType::Read, // Simplified
+                    address_range_end:   (region + 1) * 4096,
+                    access_count:        count,
+                    predominant_type:    AccessType::Read, // Simplified
                 };
                 let _ = hotspots.push(hotspot);
             }
@@ -681,7 +701,7 @@ impl<'a> MemoryProfiler<'a> {
             } else {
                 0
             },
-            memory_churn_rate: (total_allocations + total_deallocations) as u64
+            memory_churn_rate:  (total_allocations + total_deallocations) as u64
                 / total_duration.max(1),
             slowest_operations: slowest_ops,
         })
@@ -737,57 +757,57 @@ impl<'a> MemoryProfiler<'a> {
 
 /// Handle for profiling operations
 pub struct ProfilingHandle {
-    operation: BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
-    start_time: u64,
-    initial_allocations: usize,
+    operation:             BoundedString<64, crate::bounded_debug_infra::DebugProvider>,
+    start_time:            u64,
+    initial_allocations:   usize,
     initial_deallocations: usize,
-    crate_id: CrateId,
+    crate_id:              CrateId,
 }
 
 /// Memory profiling report
 #[derive(Debug, Clone)]
 pub struct ProfileReport {
     /// Report timestamp
-    pub timestamp: u64,
+    pub timestamp:           u64,
     /// Total allocations made
-    pub total_allocations: usize,
+    pub total_allocations:   usize,
     /// Total deallocations made
     pub total_deallocations: usize,
     /// Currently active allocations
-    pub active_allocations: usize,
+    pub active_allocations:  usize,
     /// Memory usage by crate
     #[cfg(feature = "std")]
-    pub crate_breakdown: BTreeMap<CrateId, usize>,
+    pub crate_breakdown:     BTreeMap<CrateId, usize>,
     #[cfg(not(feature = "std"))]
-    pub crate_breakdown: BoundedHashMap<CrateId, usize, 32, NoStdProvider<{ 32 * 64 }>>,
+    pub crate_breakdown:     BoundedHashMap<CrateId, usize, 32, NoStdProvider<{ 32 * 64 }>>,
     /// Memory usage by type
     #[cfg(feature = "std")]
-    pub type_breakdown: BTreeMap<AllocationType, usize>,
+    pub type_breakdown:      BTreeMap<AllocationType, usize>,
     #[cfg(not(feature = "std"))]
-    pub type_breakdown: BoundedHashMap<AllocationType, usize, 16, NoStdProvider<{ 16 * 64 }>>,
+    pub type_breakdown:      BoundedHashMap<AllocationType, usize, 16, NoStdProvider<{ 16 * 64 }>>,
     /// Access pattern analysis
-    pub access_patterns: AccessPatternSummary,
+    pub access_patterns:     AccessPatternSummary,
     /// Memory hotspots
-    pub memory_hotspots: BoundedVec<MemoryHotspot, 8, NoStdProvider<{ 8 * 32 }>>,
+    pub memory_hotspots:     BoundedVec<MemoryHotspot, 8, NoStdProvider<{ 8 * 32 }>>,
     /// Performance metrics
     pub performance_metrics: PerformanceAnalysis,
     /// Detected memory leaks
-    pub detected_leaks: BoundedVec<LeakInfo, 16, NoStdProvider<{ 16 * 256 }>>,
+    pub detected_leaks:      BoundedVec<LeakInfo, 16, NoStdProvider<{ 16 * 256 }>>,
 }
 
 /// Access pattern summary
 #[derive(Debug, Clone)]
 pub struct AccessPatternSummary {
     /// Total read operations
-    pub total_reads: usize,
+    pub total_reads:         usize,
     /// Total write operations
-    pub total_writes: usize,
+    pub total_writes:        usize,
     /// Sequential access count
     pub sequential_accesses: usize,
     /// Random access count
-    pub random_accesses: usize,
+    pub random_accesses:     usize,
     /// Read/write ratio percentage
-    pub read_write_ratio: usize,
+    pub read_write_ratio:    usize,
 }
 
 /// Memory hotspot information
@@ -796,11 +816,11 @@ pub struct MemoryHotspot {
     /// Start of address range
     pub address_range_start: usize,
     /// End of address range
-    pub address_range_end: usize,
+    pub address_range_end:   usize,
     /// Number of accesses
-    pub access_count: usize,
+    pub access_count:        usize,
     /// Most common access type
-    pub predominant_type: AccessType,
+    pub predominant_type:    AccessType,
 }
 
 /// Performance analysis results
@@ -809,7 +829,7 @@ pub struct PerformanceAnalysis {
     /// Average operation time in microseconds
     pub avg_operation_time: u64,
     /// Memory allocation/deallocation rate per microsecond
-    pub memory_churn_rate: u64,
+    pub memory_churn_rate:  u64,
     /// Slowest operations by average time
     pub slowest_operations: BoundedVec<
         (

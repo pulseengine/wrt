@@ -445,7 +445,7 @@ mod tests {
                 let async_store = store.lock().unwrap();
                 assert!(async_store.has_async(*id));
             }
-            _ => panic!("Expected U32 resultMissing message"),
+            _ => panic!("Expected U32 result"),
         }
 
         // Test with invalid args
@@ -478,7 +478,7 @@ mod tests {
             ComponentValue::U32(value) => {
                 assert_eq!(*value, 42);
             }
-            _ => panic!("Expected U32 resultMissing message"),
+            _ => panic!("Expected U32 result"),
         }
     }
 
@@ -544,7 +544,7 @@ mod tests {
             ComponentValue::U32(value) => {
                 assert_eq!(*value, 42);
             }
-            _ => panic!("Expected U32 resultMissing message"),
+            _ => panic!("Expected U32 result"),
         }
     }
 

@@ -4,15 +4,25 @@
 //! the fuel system for WCET analysis.
 
 use wrt::{
-    instructions::{instruction_type::Instruction as InstructionType, Instruction},
+    instructions::{
+        instruction_type::Instruction as InstructionType,
+        Instruction,
+    },
     module::Module,
-    types::{FuncType, ValueType},
+    types::{
+        FuncType,
+        ValueType,
+    },
     values::Value,
     StacklessEngine,
 };
 use wrt_foundation::{
-    global_operation_summary, record_global_operation, reset_global_operations, BoundedVec,
-    OperationType, VerificationLevel,
+    global_operation_summary,
+    record_global_operation,
+    reset_global_operations,
+    BoundedVec,
+    OperationType,
+    VerificationLevel,
 };
 
 #[test]
@@ -22,7 +32,7 @@ fn test_operation_tracking_in_fuel_system() {
 
     // Create a function type
     let func_type = FuncType {
-        params: vec![ValueType::I32],
+        params:  vec![ValueType::I32],
         results: vec![ValueType::I32],
     };
     module.types.push(func_type);
@@ -45,8 +55,8 @@ fn test_operation_tracking_in_fuel_system() {
 
     // Create an export entry for the function
     module.exports.push(wrt::module::Export {
-        name: "calc".to_string(),
-        kind: wrt::module::ExportKind::Function,
+        name:  "calc".to_string(),
+        kind:  wrt::module::ExportKind::Function,
         index: 0,
     });
 
@@ -102,7 +112,7 @@ fn test_fuel_exhaustion_from_operations() {
 
     // Add function type
     let func_type = FuncType {
-        params: vec![ValueType::I32],  // Loop counter
+        params:  vec![ValueType::I32], // Loop counter
         results: vec![ValueType::I32], // Final result
     };
     module.types.push(func_type);
@@ -146,8 +156,8 @@ fn test_fuel_exhaustion_from_operations() {
 
     // Create an export entry for the function
     module.exports.push(wrt::module::Export {
-        name: "loop".to_string(),
-        kind: wrt::module::ExportKind::Function,
+        name:  "loop".to_string(),
+        kind:  wrt::module::ExportKind::Function,
         index: 0,
     });
 

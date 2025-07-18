@@ -61,7 +61,11 @@ fn demonstrate_source_spans() {
 }
 
 fn demonstrate_primitive_types() {
-    use wrt_format::ast::{PrimitiveKind, PrimitiveType, SourceSpan};
+    use wrt_format::ast::{
+        PrimitiveKind,
+        PrimitiveType,
+        SourceSpan,
+    };
 
     println!("\n--- Primitive Type System ---");
 
@@ -93,7 +97,12 @@ fn demonstrate_primitive_types() {
 }
 
 fn demonstrate_type_expressions() {
-    use wrt_format::ast::{PrimitiveKind, PrimitiveType, SourceSpan, TypeExpr};
+    use wrt_format::ast::{
+        PrimitiveKind,
+        PrimitiveType,
+        SourceSpan,
+        TypeExpr,
+    };
 
     println!("\n--- Type Expression System ---");
 
@@ -126,7 +135,13 @@ fn demonstrate_type_expressions() {
 }
 
 fn demonstrate_function_results() {
-    use wrt_format::ast::{FunctionResults, PrimitiveKind, PrimitiveType, SourceSpan, TypeExpr};
+    use wrt_format::ast::{
+        FunctionResults,
+        PrimitiveKind,
+        PrimitiveType,
+        SourceSpan,
+        TypeExpr,
+    };
 
     println!("\n--- Function Results System ---");
 

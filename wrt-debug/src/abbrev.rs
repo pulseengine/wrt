@@ -4,13 +4,24 @@
 
 //! DWARF abbreviation table parsing
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 use wrt_foundation::{
-    bounded::{BoundedVec, MAX_DWARF_ABBREV_CACHE},
+    bounded::{
+        BoundedVec,
+        MAX_DWARF_ABBREV_CACHE,
+    },
     NoStdProvider,
 };
 
-use crate::{bounded_debug_infra, cursor::DwarfCursor};
+use crate::{
+    bounded_debug_infra,
+    cursor::DwarfCursor,
+};
 /// DWARF attribute form constants
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AttributeForm {
@@ -89,13 +100,13 @@ pub struct AttributeSpec {
 #[derive(Debug, Clone)]
 pub struct Abbreviation {
     /// Abbreviation code
-    pub code: u32,
+    pub code:         u32,
     /// DIE tag
-    pub tag: u16,
+    pub tag:          u16,
     /// Has children flag
     pub has_children: bool,
     /// Attribute specifications
-    pub attributes: BoundedVec<AttributeSpec, 32, crate::bounded_debug_infra::DebugProvider>,
+    pub attributes:   BoundedVec<AttributeSpec, 32, crate::bounded_debug_infra::DebugProvider>,
 }
 
 /// DWARF abbreviation table

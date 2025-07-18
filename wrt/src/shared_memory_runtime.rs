@@ -1,12 +1,12 @@
 //! WebAssembly 3.0 Shared Memory Runtime Implementation with ASIL Compliance
 //!
-//! This module provides the complete runtime implementation for WebAssembly shared memory
-//! supporting multi-threaded applications with proper atomic synchronization across
-//! all ASIL levels (QM, ASIL-A, ASIL-B, ASIL-C, ASIL-D).
+//! This module provides the complete runtime implementation for WebAssembly
+//! shared memory supporting multi-threaded applications with proper atomic
+//! synchronization across all ASIL levels (QM, ASIL-A, ASIL-B, ASIL-C, ASIL-D).
 //!
 //! # Features Supported
 //! - Shared linear memory instances accessible by multiple threads
-//! - Thread-safe memory access with capability-based verification  
+//! - Thread-safe memory access with capability-based verification
 //! - Atomic operations on shared memory regions
 //! - Memory wait/notify operations for thread coordination
 //! - Cross-thread memory synchronization with proper ordering
@@ -23,29 +23,59 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+#[cfg(not(feature = "std"))]
+use alloc::{
+    collections::BTreeMap as HashMap,
+    sync::Arc,
+};
+#[cfg(not(feature = "std"))]
+use core::time::Duration;
+#[cfg(feature = "std")]
+use std::{
+    collections::HashMap,
+    sync::Arc,
+    time::Duration,
+};
+
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 use wrt_foundation::{
     shared_memory::{
-        MemoryType, SharedMemoryAccess, SharedMemoryManager, SharedMemorySegment, SharedMemoryStats,
+        MemoryType,
+        SharedMemoryAccess,
+        SharedMemoryManager,
+        SharedMemorySegment,
+        SharedMemoryStats,
     },
     traits::BoundedCapacity,
     values::Value,
     MemArg,
 };
-use wrt_instructions::atomic_ops::{AtomicWaitNotifyOp, MemoryOrdering};
-use wrt_runtime::{
-    atomic_execution_safe::{AtomicExecutionStats, SafeAtomicMemoryContext},
-    memory::MemoryOperations,
-    thread_manager::{ThreadExecutionContext, ThreadId, ThreadManager},
+use wrt_instructions::atomic_ops::{
+    AtomicWaitNotifyOp,
+    MemoryOrdering,
 };
-use wrt_sync::{SafeAtomicCounter, WrtMutex, WrtRwLock};
-
-#[cfg(not(feature = "std"))]
-use alloc::{collections::BTreeMap as HashMap, sync::Arc};
-#[cfg(not(feature = "std"))]
-use core::time::Duration;
-#[cfg(feature = "std")]
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use wrt_runtime::{
+    atomic_execution_safe::{
+        AtomicExecutionStats,
+        SafeAtomicMemoryContext,
+    },
+    memory::MemoryOperations,
+    thread_manager::{
+        ThreadExecutionContext,
+        ThreadId,
+        ThreadManager,
+    },
+};
+use wrt_sync::{
+    SafeAtomicCounter,
+    WrtMutex,
+    WrtRwLock,
+};
 
 /// Maximum number of shared memory instances per module
 pub const MAX_SHARED_MEMORIES: usize = 16;
@@ -77,37 +107,40 @@ pub trait SharedMemoryProvider {
 pub enum SharedMemoryOperation {
     /// Initialize shared memory instance
     Initialize {
-        memory_type: MemoryType,
+        memory_type:  MemoryType,
         initial_data: Option<Vec<u8>>,
     },
     /// Load from shared memory with atomic semantics
     AtomicLoad {
         memory_index: u32,
-        address: u32,
-        ordering: MemoryOrdering,
+        address:      u32,
+        ordering:     MemoryOrdering,
     },
     /// Store to shared memory with atomic semantics
     AtomicStore {
         memory_index: u32,
-        address: u32,
-        value: Value,
-        ordering: MemoryOrdering,
+        address:      u32,
+        value:        Value,
+        ordering:     MemoryOrdering,
     },
     /// Wait on shared memory location
     AtomicWait {
         memory_index: u32,
-        address: u32,
-        expected: Value,
-        timeout: Option<Duration>,
+        address:      u32,
+        expected:     Value,
+        timeout:      Option<Duration>,
     },
     /// Notify threads waiting on shared memory location
     AtomicNotify {
         memory_index: u32,
-        address: u32,
-        count: u32,
+        address:      u32,
+        count:        u32,
     },
     /// Grow shared memory
-    Grow { memory_index: u32, delta_pages: u32 },
+    Grow {
+        memory_index: u32,
+        delta_pages:  u32,
+    },
 }
 
 /// Thread-safe shared memory instance
@@ -116,13 +149,13 @@ pub struct SharedMemoryInstance {
     /// Memory type specification
     pub memory_type: MemoryType,
     /// Underlying memory implementation
-    memory: Arc<WrtRwLock<Box<dyn MemoryOperations + Send + Sync>>>,
+    memory:          Arc<WrtRwLock<Box<dyn MemoryOperations + Send + Sync>>>,
     /// Shared memory manager for access control
-    manager: Arc<WrtMutex<SharedMemoryManager>>,
+    manager:         Arc<WrtMutex<SharedMemoryManager>>,
     /// Atomic context for atomic operations
-    atomic_context: Arc<WrtMutex<SafeAtomicMemoryContext>>,
+    atomic_context:  Arc<WrtMutex<SafeAtomicMemoryContext>>,
     /// Access statistics
-    pub stats: Arc<WrtMutex<SharedMemoryStats>>,
+    pub stats:       Arc<WrtMutex<SharedMemoryStats>>,
 }
 
 impl SharedMemoryInstance {
@@ -180,7 +213,7 @@ impl SharedMemoryInstance {
                 // Execute atomic load
                 let memarg = MemArg {
                     offset: address,
-                    align: 2,
+                    align:  2,
                 }; // Assume 4-byte alignment
                 let load_op = wrt_instructions::atomic_ops::AtomicLoadOp::I32AtomicLoad { memarg };
                 let atomic_op = wrt_instructions::atomic_ops::AtomicOp::Load(load_op);
@@ -204,7 +237,7 @@ impl SharedMemoryInstance {
                 // Execute atomic store
                 let memarg = MemArg {
                     offset: address,
-                    align: 2,
+                    align:  2,
                 }; // Assume 4-byte alignment
                 let store_op =
                     wrt_instructions::atomic_ops::AtomicStoreOp::I32AtomicStore { memarg };
@@ -230,7 +263,7 @@ impl SharedMemoryInstance {
                 // Execute atomic wait
                 let memarg = MemArg {
                     offset: address,
-                    align: 2,
+                    align:  2,
                 };
                 let wait_op = match expected {
                     Value::I32(_) => AtomicWaitNotifyOp::MemoryAtomicWait32 { memarg },
@@ -258,7 +291,7 @@ impl SharedMemoryInstance {
                 // Execute atomic notify
                 let memarg = MemArg {
                     offset: address,
-                    align: 2,
+                    align:  2,
                 };
                 let notify_op = AtomicWaitNotifyOp::MemoryAtomicNotify { memarg };
                 let atomic_op = wrt_instructions::atomic_ops::AtomicOp::WaitNotify(notify_op);
@@ -504,8 +537,8 @@ pub fn create_shared_memory(
     // Create memory instance - simplified for demonstration
     let memory_impl = wrt_runtime::memory::Memory::new(wrt_foundation::ComponentMemoryType {
         memory_type: memory_type.clone(),
-        initial: vec![],
-        maximum: memory_type.max_pages(),
+        initial:     vec![],
+        maximum:     memory_type.max_pages(),
     })
     .map_err(|_| Error::runtime_execution_error("Failed to create memory instance"))?;
 

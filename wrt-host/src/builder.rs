@@ -9,7 +9,10 @@
 //! interceptors, and other configuration options.
 
 // Use the prelude for consistent imports
-use crate::prelude::{Any, BuiltinType, CallbackRegistry, CallbackType, Error, HashSet, HostFunctionHandler, Result, Value, str};
+use crate::prelude::{
+    str, Any, BuiltinType, CallbackRegistry, CallbackType, Error, HashSet, HostFunctionHandler,
+    Result, Value,
+};
 
 #[cfg(feature = "std")]
 use crate::prelude::{Arc, BuiltinHost, BuiltinInterceptor, LinkInterceptor};
@@ -37,7 +40,7 @@ pub struct HostBuilder {
     /// Built-in types that are required by the component
     #[cfg(feature = "std")]
     required_builtins: HashSet<BuiltinType>,
-    
+
     /// Built-in types that are required by the component (`no_std` version)
     #[cfg(not(feature = "std"))]
     required_builtins: wrt_foundation::BoundedSet<BuiltinType, 32, HostProvider>,
@@ -82,17 +85,19 @@ impl Default for HostBuilder {
                 fallback_handlers: Vec::with_capacity(0),
             }
         }
-        
+
         #[cfg(not(feature = "std"))]
         {
             use crate::bounded_host_infra::create_host_provider;
-            
+
             let provider = create_host_provider().expect("Failed to create host provider");
             Self {
                 registry: CallbackRegistry::new(),
                 required_builtins: wrt_foundation::BoundedSet::new(provider).unwrap_or_else(|_| {
-                    let fallback_provider = create_host_provider().expect("Failed to create fallback host provider");
-                    wrt_foundation::BoundedSet::new(fallback_provider).expect("Failed to create bounded set")
+                    let fallback_provider =
+                        create_host_provider().expect("Failed to create fallback host provider");
+                    wrt_foundation::BoundedSet::new(fallback_provider)
+                        .expect("Failed to create bounded set")
                 }),
                 strict_validation: false,
             }
@@ -186,7 +191,8 @@ impl HostBuilder {
             let args: ValueVec = {
                 use crate::bounded_host_infra::create_host_provider;
                 let provider = create_host_provider().expect("Failed to create host provider");
-                ValueVec::new(provider).expect("ValueVec creation should never fail with valid provider")
+                ValueVec::new(provider)
+                    .expect("ValueVec creation should never fail with valid provider")
             };
             handler(target, args)
         });
@@ -214,7 +220,7 @@ impl HostBuilder {
         {
             self.required_builtins.contains(&builtin_type)
         }
-        
+
         #[cfg(not(feature = "std"))]
         {
             self.required_builtins.contains(&builtin_type).unwrap_or(false)
@@ -246,7 +252,7 @@ impl HostBuilder {
                     }
                 }
             }
-            
+
             #[cfg(not(feature = "std"))]
             {
                 // In no_std mode, we can't easily iterate over BoundedSet
@@ -318,7 +324,8 @@ impl HostBuilder {
             let args: ValueVec = {
                 use crate::bounded_host_infra::create_host_provider;
                 let provider = create_host_provider().expect("Failed to create host provider");
-                ValueVec::new(provider).expect("ValueVec creation should never fail with valid provider")
+                ValueVec::new(provider)
+                    .expect("ValueVec creation should never fail with valid provider")
             };
             handler(target, args)
         });
@@ -408,7 +415,9 @@ mod tests {
     #[test]
     fn test_builtin_registration() {
         let builder = HostBuilder::new()
-            .with_builtin_handler(BuiltinType::ResourceCreate, |_, _| Ok(vec![Value::I64(123)]));
+            .with_builtin_handler(BuiltinType::ResourceCreate, |_, _| {
+                Ok(vec![Value::I64(123)])
+            });
 
         let registry = builder.build().expect("Failed to build registry");
 
@@ -429,7 +438,9 @@ mod tests {
         let builder = HostBuilder::new()
             .require_builtin(BuiltinType::ResourceCreate)
             .with_strict_validation(true)
-            .with_builtin_handler(BuiltinType::ResourceCreate, |_, _| Ok(vec![Value::I64(123)]));
+            .with_builtin_handler(BuiltinType::ResourceCreate, |_, _| {
+                Ok(vec![Value::I64(123)])
+            });
 
         // Should succeed now
         let result = builder.build();
@@ -540,12 +551,12 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_builder_with_interceptor() {
-        use wrt_foundation::component_value::ComponentValue;
-        use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor, InterceptContext};
         #[cfg(feature = "std")]
         use std::sync::Arc;
         #[cfg(all(not(feature = "std")))]
         use std::sync::Arc;
+        use wrt_foundation::component_value::ComponentValue;
+        use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor, InterceptContext};
 
         struct TestInterceptor;
 
@@ -553,18 +564,36 @@ mod tests {
             fn before_builtin(
                 &self,
                 _context: &InterceptContext,
-                _args: &[wrt_foundation::component_value::ComponentValue<wrt_foundation::safe_memory::NoStdProvider<64>>],
+                _args: &[wrt_foundation::component_value::ComponentValue<
+                    wrt_foundation::safe_memory::NoStdProvider<64>,
+                >],
             ) -> Result<BeforeBuiltinResult> {
                 // Bypass normal execution and return our own result
-                Ok(BeforeBuiltinResult::Bypass(vec![wrt_foundation::component_value::ComponentValue::s32(777)]))
+                Ok(BeforeBuiltinResult::Bypass(vec![
+                    wrt_foundation::component_value::ComponentValue::s32(777),
+                ]))
             }
 
             fn after_builtin(
                 &self,
                 _context: &InterceptContext,
-                _args: &[wrt_foundation::component_value::ComponentValue<wrt_foundation::safe_memory::NoStdProvider<64>>],
-                result: Result<Vec<wrt_foundation::component_value::ComponentValue<wrt_foundation::safe_memory::NoStdProvider<64>>>>,
-            ) -> Result<Vec<wrt_foundation::component_value::ComponentValue<wrt_foundation::safe_memory::NoStdProvider<64>>>> {
+                _args: &[wrt_foundation::component_value::ComponentValue<
+                    wrt_foundation::safe_memory::NoStdProvider<64>,
+                >],
+                result: Result<
+                    Vec<
+                        wrt_foundation::component_value::ComponentValue<
+                            wrt_foundation::safe_memory::NoStdProvider<64>,
+                        >,
+                    >,
+                >,
+            ) -> Result<
+                Vec<
+                    wrt_foundation::component_value::ComponentValue<
+                        wrt_foundation::safe_memory::NoStdProvider<64>,
+                    >,
+                >,
+            > {
                 // Just pass through the result
                 result
             }
@@ -596,14 +625,16 @@ mod tests {
 /// Create a runtime error with the specified message
 ///
 /// This function properly handles both std and `no_std` environments
-#[must_use] pub fn runtime_error(message: &'static str) -> Error {
+#[must_use]
+pub fn runtime_error(message: &'static str) -> Error {
     Error::runtime_error(message)
 }
 
 /// Create a runtime error with a context string
 ///
 /// This function properly handles both std and `no_std` environments
-#[must_use] pub fn runtime_error_with_context(_message: &str, _context: &str) -> Error {
+#[must_use]
+pub fn runtime_error_with_context(_message: &str, _context: &str) -> Error {
     // In no_std environments, we use a static error message
     Error::runtime_error("Runtime error with context")
 }

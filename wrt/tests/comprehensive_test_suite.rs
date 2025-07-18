@@ -8,9 +8,12 @@ use wrt::prelude::*;
 
 #[cfg(test)]
 mod comprehensive_tests {
+    use std::{
+        fs,
+        path::Path,
+    };
+
     use super::*;
-    use std::fs;
-    use std::path::Path;
 
     /// Test category for tracking different types of tests
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,32 +27,32 @@ mod comprehensive_tests {
 
     /// Test result with detailed information
     struct DetailedTestResult {
-        name: String,
-        category: TestCategory,
-        passed: bool,
-        message: Option<String>,
+        name:                String,
+        category:            TestCategory,
+        passed:              bool,
+        message:             Option<String>,
         is_expected_failure: bool,
     }
 
     /// Test suite statistics
     struct TestSuiteStats {
-        total_tests: usize,
-        real_passes: usize,
-        expected_failures: usize,
+        total_tests:         usize,
+        real_passes:         usize,
+        expected_failures:   usize,
         unexpected_failures: usize,
-        auto_passes: usize,
-        by_category: std::collections::HashMap<TestCategory, (usize, usize)>, // (passed, failed)
+        auto_passes:         usize,
+        by_category:         std::collections::HashMap<TestCategory, (usize, usize)>, /* (passed, failed) */
     }
 
     impl TestSuiteStats {
         fn new() -> Self {
             Self {
-                total_tests: 0,
-                real_passes: 0,
-                expected_failures: 0,
+                total_tests:         0,
+                real_passes:         0,
+                expected_failures:   0,
                 unexpected_failures: 0,
-                auto_passes: 0,
-                by_category: std::collections::HashMap::new(),
+                auto_passes:         0,
+                by_category:         std::collections::HashMap::new(),
             }
         }
 
@@ -114,10 +117,10 @@ mod comprehensive_tests {
                 match engine.load_module(Some("invalid"), &bytes) {
                     Ok(_) => {
                         results.push(DetailedTestResult {
-                            name: "invalid_module_missing_return".to_string(),
-                            category: TestCategory::IntentionalFailure,
-                            passed: false,
-                            message: Some(
+                            name:                "invalid_module_missing_return".to_string(),
+                            category:            TestCategory::IntentionalFailure,
+                            passed:              false,
+                            message:             Some(
                                 "Module should have failed validation but passed".to_string(),
                             ),
                             is_expected_failure: false,
@@ -125,10 +128,10 @@ mod comprehensive_tests {
                     },
                     Err(e) => {
                         results.push(DetailedTestResult {
-                            name: "invalid_module_missing_return".to_string(),
-                            category: TestCategory::IntentionalFailure,
-                            passed: false,
-                            message: Some(format!("Expected failure: {}", e)),
+                            name:                "invalid_module_missing_return".to_string(),
+                            category:            TestCategory::IntentionalFailure,
+                            passed:              false,
+                            message:             Some(format!("Expected failure: {}", e)),
                             is_expected_failure: true,
                         });
                     },
@@ -136,10 +139,10 @@ mod comprehensive_tests {
             },
             Err(e) => {
                 results.push(DetailedTestResult {
-                    name: "invalid_module_missing_return".to_string(),
-                    category: TestCategory::IntentionalFailure,
-                    passed: false,
-                    message: Some(format!("WAT parsing failed: {}", e)),
+                    name:                "invalid_module_missing_return".to_string(),
+                    category:            TestCategory::IntentionalFailure,
+                    passed:              false,
+                    message:             Some(format!("WAT parsing failed: {}", e)),
                     is_expected_failure: true,
                 });
             },
@@ -161,19 +164,21 @@ mod comprehensive_tests {
             match engine.load_module(Some("type_mismatch"), &bytes) {
                 Ok(_) => {
                     results.push(DetailedTestResult {
-                        name: "type_mismatch_i32_to_f64".to_string(),
-                        category: TestCategory::IntentionalFailure,
-                        passed: false,
-                        message: Some("Type mismatch should have failed but passed".to_string()),
+                        name:                "type_mismatch_i32_to_f64".to_string(),
+                        category:            TestCategory::IntentionalFailure,
+                        passed:              false,
+                        message:             Some(
+                            "Type mismatch should have failed but passed".to_string(),
+                        ),
                         is_expected_failure: false,
                     });
                 },
                 Err(e) => {
                     results.push(DetailedTestResult {
-                        name: "type_mismatch_i32_to_f64".to_string(),
-                        category: TestCategory::IntentionalFailure,
-                        passed: false,
-                        message: Some(format!("Expected failure: {}", e)),
+                        name:                "type_mismatch_i32_to_f64".to_string(),
+                        category:            TestCategory::IntentionalFailure,
+                        passed:              false,
+                        message:             Some(format!("Expected failure: {}", e)),
                         is_expected_failure: true,
                     });
                 },
@@ -216,19 +221,19 @@ mod comprehensive_tests {
                 match engine.load_module(Some("simd_test"), &bytes) {
                     Ok(_) => {
                         results.push(DetailedTestResult {
-                            name: "simd_v128_operations".to_string(),
-                            category: TestCategory::UnimplementedFeature,
-                            passed: true,
-                            message: Some("SIMD support implemented".to_string()),
+                            name:                "simd_v128_operations".to_string(),
+                            category:            TestCategory::UnimplementedFeature,
+                            passed:              true,
+                            message:             Some("SIMD support implemented".to_string()),
                             is_expected_failure: false,
                         });
                     },
                     Err(e) => {
                         results.push(DetailedTestResult {
-                            name: "simd_v128_operations".to_string(),
-                            category: TestCategory::UnimplementedFeature,
-                            passed: false,
-                            message: Some(format!("SIMD not implemented: {}", e)),
+                            name:                "simd_v128_operations".to_string(),
+                            category:            TestCategory::UnimplementedFeature,
+                            passed:              false,
+                            message:             Some(format!("SIMD not implemented: {}", e)),
                             is_expected_failure: true,
                         });
                     },
@@ -236,10 +241,10 @@ mod comprehensive_tests {
             },
             Err(e) => {
                 results.push(DetailedTestResult {
-                    name: "simd_v128_operations".to_string(),
-                    category: TestCategory::UnimplementedFeature,
-                    passed: false,
-                    message: Some(format!("SIMD parsing failed: {}", e)),
+                    name:                "simd_v128_operations".to_string(),
+                    category:            TestCategory::UnimplementedFeature,
+                    passed:              false,
+                    message:             Some(format!("SIMD parsing failed: {}", e)),
                     is_expected_failure: true,
                 });
             },
@@ -262,19 +267,22 @@ mod comprehensive_tests {
             match engine.load_module(Some("ref_types"), &bytes) {
                 Ok(_) => {
                     results.push(DetailedTestResult {
-                        name: "reference_types".to_string(),
-                        category: TestCategory::UnimplementedFeature,
-                        passed: true,
-                        message: Some("Reference types implemented".to_string()),
+                        name:                "reference_types".to_string(),
+                        category:            TestCategory::UnimplementedFeature,
+                        passed:              true,
+                        message:             Some("Reference types implemented".to_string()),
                         is_expected_failure: false,
                     });
                 },
                 Err(e) => {
                     results.push(DetailedTestResult {
-                        name: "reference_types".to_string(),
-                        category: TestCategory::UnimplementedFeature,
-                        passed: false,
-                        message: Some(format!("Reference types not implemented: {}", e)),
+                        name:                "reference_types".to_string(),
+                        category:            TestCategory::UnimplementedFeature,
+                        passed:              false,
+                        message:             Some(format!(
+                            "Reference types not implemented: {}",
+                            e
+                        )),
                         is_expected_failure: true,
                     });
                 },
@@ -325,19 +333,19 @@ mod comprehensive_tests {
             match engine.load_module(Some("max_params"), &bytes) {
                 Ok(_) => {
                     results.push(DetailedTestResult {
-                        name: "maximum_function_parameters".to_string(),
-                        category: TestCategory::EdgeCase,
-                        passed: true,
-                        message: Some("Handled many parameters".to_string()),
+                        name:                "maximum_function_parameters".to_string(),
+                        category:            TestCategory::EdgeCase,
+                        passed:              true,
+                        message:             Some("Handled many parameters".to_string()),
                         is_expected_failure: false,
                     });
                 },
                 Err(e) => {
                     results.push(DetailedTestResult {
-                        name: "maximum_function_parameters".to_string(),
-                        category: TestCategory::EdgeCase,
-                        passed: false,
-                        message: Some(format!("Failed with many parameters: {}", e)),
+                        name:                "maximum_function_parameters".to_string(),
+                        category:            TestCategory::EdgeCase,
+                        passed:              false,
+                        message:             Some(format!("Failed with many parameters: {}", e)),
                         is_expected_failure: false,
                     });
                 },
@@ -371,19 +379,19 @@ mod comprehensive_tests {
             match engine.load_module(Some("deep_nesting"), &bytes) {
                 Ok(_) => {
                     results.push(DetailedTestResult {
-                        name: "deep_block_nesting".to_string(),
-                        category: TestCategory::EdgeCase,
-                        passed: true,
-                        message: Some("Handled deep nesting".to_string()),
+                        name:                "deep_block_nesting".to_string(),
+                        category:            TestCategory::EdgeCase,
+                        passed:              true,
+                        message:             Some("Handled deep nesting".to_string()),
                         is_expected_failure: false,
                     });
                 },
                 Err(e) => {
                     results.push(DetailedTestResult {
-                        name: "deep_block_nesting".to_string(),
-                        category: TestCategory::EdgeCase,
-                        passed: false,
-                        message: Some(format!("Failed with deep nesting: {}", e)),
+                        name:                "deep_block_nesting".to_string(),
+                        category:            TestCategory::EdgeCase,
+                        passed:              false,
+                        message:             Some(format!("Failed with deep nesting: {}", e)),
                         is_expected_failure: false,
                     });
                 },

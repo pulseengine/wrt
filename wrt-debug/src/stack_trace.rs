@@ -8,23 +8,23 @@ pub const MAX_STACK_FRAMES: usize = 256;
 #[derive(Debug, Clone, Copy)]
 pub struct StackFrame<'a> {
     /// Program counter for this frame
-    pub pc: u32,
+    pub pc:        u32,
     /// Function information (if available)
     #[cfg(feature = "debug-info")]
-    pub function: Option<&'a crate::FunctionInfo<'a>>,
+    pub function:  Option<&'a crate::FunctionInfo<'a>>,
     /// Line information (if available)
     pub line_info: Option<crate::LineInfo>,
     /// Frame depth (0 = current frame)
-    pub depth: u16,
+    pub depth:     u16,
     /// Phantom data to ensure lifetime is used
     #[cfg(not(feature = "debug-info"))]
-    _phantom: core::marker::PhantomData<&'a ()>,
+    _phantom:      core::marker::PhantomData<&'a ()>,
 }
 
 /// Stack trace builder using fixed-size array for no_std compatibility
 pub struct StackTrace<'a> {
     /// Collection of stack frames
-    frames: [Option<StackFrame<'a>>; MAX_STACK_FRAMES],
+    frames:      [Option<StackFrame<'a>>; MAX_STACK_FRAMES],
     /// Number of valid frames
     frame_count: usize,
 }
@@ -33,7 +33,7 @@ impl<'a> StackTrace<'a> {
     /// Create a new empty stack trace
     pub fn new() -> Self {
         Self {
-            frames: [None; MAX_STACK_FRAMES],
+            frames:      [None; MAX_STACK_FRAMES],
             frame_count: 0,
         }
     }
@@ -234,10 +234,10 @@ mod tests {
 
         // Add a frame with no debug info
         let frame1 = StackFrame {
-            pc: 0x1000,
-            function: None,
+            pc:        0x1000,
+            function:  None,
             line_info: None,
-            depth: 0,
+            depth:     0,
         };
 
         trace.push_frame(frame1).unwrap();

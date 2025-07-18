@@ -3,21 +3,36 @@
 //! Provides functions for integrating cargo-wrt reports with GitHub
 //! workflows, including PR comments and issue creation.
 
-use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
 use std::env;
 
-use crate::formatters::html::{DocumentationReportData, RequirementData, SafetyReportData};
-use crate::formatters::{create_github_pr_comment, MarkdownFormatter, MarkdownReportGenerator};
+use anyhow::{
+    Context,
+    Result,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
+use crate::formatters::{
+    create_github_pr_comment,
+    html::{
+        DocumentationReportData,
+        RequirementData,
+        SafetyReportData,
+    },
+    MarkdownFormatter,
+    MarkdownReportGenerator,
+};
 
 /// GitHub context information from environment variables
 #[derive(Debug, Clone)]
 pub struct GitHubContext {
-    pub token: String,
+    pub token:      String,
     pub repository: String,
-    pub pr_number: Option<u32>,
-    pub sha: Option<String>,
-    pub workflow: Option<String>,
+    pub pr_number:  Option<u32>,
+    pub sha:        Option<String>,
+    pub workflow:   Option<String>,
 }
 
 impl GitHubContext {

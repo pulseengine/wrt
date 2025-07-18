@@ -5,15 +5,29 @@
 
 #[cfg(test)]
 mod example {
-    use std::sync::{Arc, RwLock};
+    use std::sync::{
+        Arc,
+        RwLock,
+    };
 
     use wrt_foundation::prelude::*;
-    use wrt_runtime::{Instance, Memory, Module};
+    use wrt_runtime::{
+        Instance,
+        Memory,
+        Module,
+    };
 
     use crate::{
         canonical::CanonicalABI,
-        canonical_options::{CanonicalLiftContext, CanonicalLowerContext, CanonicalOptions},
-        canonical_realloc::{ReallocManager, StringEncoding},
+        canonical_options::{
+            CanonicalLiftContext,
+            CanonicalLowerContext,
+            CanonicalOptions,
+        },
+        canonical_realloc::{
+            ReallocManager,
+            StringEncoding,
+        },
         types::ComponentInstanceId,
     };
 
@@ -78,7 +92,7 @@ mod example {
 
         // Binary std/no_std choice
         let allocations = lower_context.finish()?;
-        println!("Made {} allocations during lowering", allocations.len();
+        println!("Made {} allocations during lowering", allocations.len());
 
         Ok(())
     }
@@ -160,7 +174,7 @@ mod example {
 
         // Binary std/no_std choice
         let options = CanonicalOptions::new(0, instance_id)
-            .with_realloc(42, realloc_manager.clone()
+            .with_realloc(42, realloc_manager.clone())
             .with_post_return(43); // post-return function index
 
         // Create lift context

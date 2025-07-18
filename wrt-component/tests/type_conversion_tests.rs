@@ -2,12 +2,17 @@
 
 use wrt_component::type_conversion::bidirectional::*;
 use wrt_format::component::{
-    ExternType as FormatExternType, ResourceRepresentation, ValType as FormatValType,
+    ExternType as FormatExternType,
+    ResourceRepresentation,
+    ValType as FormatValType,
 };
 use wrt_foundation::{
     component::ResourceType,
     component_value::ValType as TypesValType,
-    types::{FuncType as TypesFuncType, ValueType},
+    types::{
+        FuncType as TypesFuncType,
+        ValueType,
+    },
     ExternType as TypesExternType,
 };
 
@@ -33,8 +38,8 @@ fn test_value_type_to_format_val_type() {
     );
 
     // Test reference types that should return errors
-    assert!(value_type_to_format_val_type(&ValueType::FuncRef).is_err();
-    assert!(value_type_to_format_val_type(&ValueType::ExternRef).is_err();
+    assert!(value_type_to_format_val_type(&ValueType::FuncRef).is_err());
+    assert!(value_type_to_format_val_type(&ValueType::ExternRef).is_err());
 }
 
 /// Test conversion from format ValType to core ValueType
@@ -59,9 +64,9 @@ fn test_format_val_type_to_value_type() {
     );
 
     // Test complex types that should return errors
-    assert!(format_val_type_to_value_type(&FormatValType::String).is_err();
-    assert!(format_val_type_to_value_type(&FormatValType::Bool).is_err();
-    assert!(format_val_type_to_value_type(&FormatValType::Char).is_err();
+    assert!(format_val_type_to_value_type(&FormatValType::String).is_err());
+    assert!(format_val_type_to_value_type(&FormatValType::Bool).is_err());
+    assert!(format_val_type_to_value_type(&FormatValType::Char).is_err());
 }
 
 /// Test conversion from core ValueType to TypesValType
@@ -137,8 +142,8 @@ fn test_format_valtype_to_types_valtype() {
     );
 
     // Test compound types
-    let list_type = FormatValType::List(Box::new(FormatValType::S32);
-    let expected_list_type = TypesValType::List(Box::new(TypesValType::S32);
+    let list_type = FormatValType::List(Box::new(FormatValType::S32));
+    let expected_list_type = TypesValType::List(Box::new(TypesValType::S32));
     assert_eq!(
         format_valtype_to_types_valtype(&list_type),
         expected_list_type
@@ -245,7 +250,7 @@ fn test_format_valtype_roundtrip() {
 fn test_format_to_runtime_extern_type() {
     // Test function type conversion
     let format_func = FormatExternType::Function {
-        params: vec![("arg".to_string(), FormatValType::S32)],
+        params:  vec![("arg".to_string(), FormatValType::S32)],
         results: vec![FormatValType::S32],
     };
 
@@ -264,7 +269,7 @@ fn test_format_to_runtime_extern_type() {
         exports: vec![(
             "func".to_string(),
             FormatExternType::Function {
-                params: vec![],
+                params:  vec![],
                 results: vec![],
             },
         )],
@@ -281,7 +286,7 @@ fn test_format_to_runtime_extern_type() {
 
     // Test resource type conversion
     let resource_extern_type = FormatExternType::Resource {
-        rep: ResourceRepresentation::Handle32,
+        rep:      ResourceRepresentation::Handle32,
         nullable: false,
     };
 
@@ -359,12 +364,12 @@ fn test_common_conversion_utilities() {
 fn test_conversion_traits() {
     // Test IntoRuntimeType for FormatExternType
     let format_func = FormatExternType::Function {
-        params: vec![("arg".to_string(), FormatValType::S32)],
+        params:  vec![("arg".to_string(), FormatValType::S32)],
         results: vec![FormatValType::S32],
     };
 
     let runtime_func: Result<TypesExternType, _> = format_func.clone().into_runtime_type();
-    assert!(runtime_func.is_ok();
+    assert!(runtime_func.is_ok());
 
     // Test IntoFormatType for TypesExternType
     let func_type = TypesFuncType::new(vec![ValueType::I32], vec![ValueType::F32]);

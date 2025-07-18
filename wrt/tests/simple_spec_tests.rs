@@ -1,9 +1,18 @@
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
 };
 
-use wrt::{Error as WrtError, Module, Result, StacklessEngine, Value};
+use wrt::{
+    Error as WrtError,
+    Module,
+    Result,
+    StacklessEngine,
+    Value,
+};
 
 #[test]
 fn test_i32_add() -> Result<()> {

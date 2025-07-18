@@ -1,4 +1,7 @@
-use super::error::{DebugError, DebugResult};
+use super::error::{
+    DebugError,
+    DebugResult,
+};
 /// String extraction from DWARF .debug_str section
 /// Binary std/no_std choice
 use crate::cursor::DwarfCursor;
@@ -91,7 +94,7 @@ impl<'a> StringTable<'a> {
     /// Iterator over all strings in the table
     pub fn strings(&self) -> StringTableIterator<'a> {
         StringTableIterator {
-            data: self.data,
+            data:   self.data,
             offset: 0,
         }
     }
@@ -141,7 +144,7 @@ impl<'a> DebugString<'a> {
 
 /// Iterator over strings in a string table
 pub struct StringTableIterator<'a> {
-    data: &'a [u8],
+    data:   &'a [u8],
     offset: usize,
 }
 

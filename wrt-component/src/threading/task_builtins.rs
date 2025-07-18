@@ -569,7 +569,7 @@ pub mod task_helpers {
     }
 
     #[cfg(not(any(feature = "std", )))]
-    pub fn wait_for_tasks(task_ids: &[TaskId]) -> Result<BoundedVec<Option<TaskReturn>, MAX_TASKS, NoStdProvider<65536>>> {
+    pub fn wait_for_tasks(task_ids: &[TaskId]) -> Result<BoundedVec<Option<TaskReturn, 256, crate::bounded_component_infra::ComponentProvider>, MAX_TASKS, NoStdProvider<65536>>> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let mut results = BoundedVec::new(provider).map_err(|_| {
             Error::runtime_execution_error("Error occurred")

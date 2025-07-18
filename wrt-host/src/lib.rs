@@ -83,9 +83,10 @@ pub use prelude::*;
 
 // Re-export Agent C deliverables
 pub use bounded_host_integration::{
+    create_echo_function, create_memory_info_function, create_safety_check_function,
     BoundedCallContext, BoundedCallResult, BoundedHostFunction, BoundedHostIntegrationManager,
     ComponentInstanceId, HostFunctionId, HostIntegrationLimits, HostIntegrationStatistics,
-    SimpleBoundedHostFunction, create_echo_function, create_memory_info_function, create_safety_check_function,
+    SimpleBoundedHostFunction,
 };
 
 // Panic handler disabled in library crates to avoid conflicts during workspace builds

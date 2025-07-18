@@ -46,7 +46,7 @@ pub struct AsyncResourceCleanupManager {
     #[cfg(feature = "std")]
     cleanup_entries: BTreeMap<ComponentInstanceId, Vec<AsyncCleanupEntry>>,
     #[cfg(not(any(feature = "std", )))]
-    cleanup_entries: BoundedVec<(ComponentInstanceId, BoundedVec<AsyncCleanupEntry, MAX_ASYNC_RESOURCES_PER_INSTANCE>), MAX_CLEANUP_ENTRIES>,
+    cleanup_entries: BoundedVec<(ComponentInstanceId, BoundedVec<AsyncCleanupEntry, MAX_ASYNC_RESOURCES_PER_INSTANCE, crate::bounded_component_infra::ComponentProvider>), MAX_CLEANUP_ENTRIES, crate::bounded_component_infra::ComponentProvider>,
     
     /// Global cleanup statistics
     stats: AsyncCleanupStats,

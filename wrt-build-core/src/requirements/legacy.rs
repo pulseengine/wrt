@@ -7,30 +7,43 @@
 //! - Certification readiness assessment
 //! - Enhanced safety requirement modeling
 
-use super::model;
-
 use std::{
     collections::HashMap,
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
 };
 
 use colored::Colorize;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use self::model::{
-    CoverageLevel, RequirementId, RequirementRegistry, RequirementType, SafetyRequirement,
-    VerificationMethod, VerificationStatus,
+    CoverageLevel,
+    RequirementId,
+    RequirementRegistry,
+    RequirementType,
+    SafetyRequirement,
+    VerificationMethod,
+    VerificationStatus,
 };
+use super::model;
 use crate::{
     config::AsilLevel,
-    error::{BuildError, BuildResult},
+    error::{
+        BuildError,
+        BuildResult,
+    },
 };
 
 /// Requirements file structure
 #[derive(Debug, Deserialize)]
 pub struct Requirements {
     /// Requirements metadata
-    pub metadata: RequirementsMetadata,
+    pub metadata:    RequirementsMetadata,
     /// List of requirements
     pub requirement: Vec<Requirement>,
 }
@@ -39,11 +52,11 @@ pub struct Requirements {
 #[derive(Debug, Deserialize)]
 pub struct RequirementsMetadata {
     /// Project name
-    pub project: String,
+    pub project:             String,
     /// Project version
-    pub version: String,
+    pub version:             String,
     /// ASIL level for the project
-    pub asil_level: String,
+    pub asil_level:          String,
     /// Verification method used
     pub verification_method: String,
 }
@@ -52,38 +65,38 @@ pub struct RequirementsMetadata {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Requirement {
     /// Unique requirement ID
-    pub id: String,
+    pub id:                  String,
     /// Requirement name
-    pub name: String,
+    pub name:                String,
     /// Detailed description
-    pub description: String,
+    pub description:         String,
     /// ASIL level for this requirement
-    pub asil_level: String,
+    pub asil_level:          String,
     /// Requirement category
-    pub category: String,
+    pub category:            String,
     /// Verification method for this requirement
     pub verification_method: String,
     /// Source files implementing this requirement
-    pub source_files: Vec<String>,
+    pub source_files:        Vec<String>,
     /// Test files verifying this requirement
-    pub test_files: Vec<String>,
+    pub test_files:          Vec<String>,
     /// Documentation files for this requirement
     pub documentation_files: Vec<String>,
     /// Current implementation status
-    pub status: String,
+    pub status:              String,
     /// Target platforms for this requirement
-    pub platform: Vec<String>,
+    pub platform:            Vec<String>,
 }
 
 /// Requirements verification results
 #[derive(Debug, Serialize)]
 pub struct RequirementsVerificationResult {
     /// Total number of requirements
-    pub total_requirements: usize,
+    pub total_requirements:      usize,
     /// Number of verified requirements
-    pub verified_requirements: usize,
+    pub verified_requirements:   usize,
     /// List of missing files
-    pub missing_files: Vec<String>,
+    pub missing_files:           Vec<String>,
     /// List of incomplete requirements
     pub incomplete_requirements: Vec<String>,
     /// Certification readiness percentage
@@ -342,7 +355,7 @@ pub struct EnhancedRequirementsVerifier {
     /// Path to workspace root
     workspace_root: PathBuf,
     /// Requirements registry
-    registry: RequirementRegistry,
+    registry:       RequirementRegistry,
 }
 
 impl EnhancedRequirementsVerifier {

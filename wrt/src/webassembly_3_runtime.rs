@@ -1,13 +1,16 @@
 //! WebAssembly 3.0 Features Integration Runtime
 //!
-//! This module provides a unified runtime interface for all WebAssembly 3.0 features
-//! implemented in WRT, integrating threads, multi-memory, tail calls, and exception handling
-//! across all ASIL levels (QM, ASIL-A, ASIL-B, ASIL-C, ASIL-D).
+//! This module provides a unified runtime interface for all WebAssembly 3.0
+//! features implemented in WRT, integrating threads, multi-memory, tail calls,
+//! and exception handling across all ASIL levels (QM, ASIL-A, ASIL-B, ASIL-C,
+//! ASIL-D).
 //!
 //! # WebAssembly 3.0 Features Supported
-//! - **Threads specification**: Shared memory with atomic operations and thread coordination
+//! - **Threads specification**: Shared memory with atomic operations and thread
+//!   coordination
 //! - **Multi-memory proposal**: Multiple linear memory instances per module
-//! - **Tail calls proposal**: Proper tail call optimization for functional programming
+//! - **Tail calls proposal**: Proper tail call optimization for functional
+//!   programming
 //! - **Exception handling proposal**: try/catch/throw instructions (partial)
 //!
 //! # Architecture
@@ -20,35 +23,53 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_foundation::values::Value;
-
-// Import all WebAssembly 3.0 runtime modules
-use crate::{
-    atomic_runtime::{execute_atomic_operation, ASILCompliantAtomicProvider},
-    multi_memory_runtime::{
-        ASILCompliantMultiMemoryProvider, MultiMemoryContext, MultiMemoryOperation,
-    },
-    shared_memory_runtime::{
-        ASILCompliantSharedMemoryProvider, SharedMemoryContext, SharedMemoryOperation,
-    },
-};
-
-use wrt_runtime::{
-    atomic_execution_safe::SafeAtomicMemoryContext,
-    stackless::{tail_call::TailCallContext, StacklessEngine},
-    thread_manager::{ThreadId, ThreadManager},
-};
-
-use wrt_instructions::{atomic_ops::AtomicOp, control_ops::ControlOp};
-
+#[cfg(not(feature = "std"))]
+use alloc::format;
 #[cfg(not(feature = "std"))]
 use alloc::sync::Arc;
 #[cfg(feature = "std")]
 use std::sync::Arc;
 
-#[cfg(not(feature = "std"))]
-use alloc::format;
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
+use wrt_foundation::values::Value;
+use wrt_instructions::{
+    atomic_ops::AtomicOp,
+    control_ops::ControlOp,
+};
+use wrt_runtime::{
+    atomic_execution_safe::SafeAtomicMemoryContext,
+    stackless::{
+        tail_call::TailCallContext,
+        StacklessEngine,
+    },
+    thread_manager::{
+        ThreadId,
+        ThreadManager,
+    },
+};
+
+// Import all WebAssembly 3.0 runtime modules
+use crate::{
+    atomic_runtime::{
+        execute_atomic_operation,
+        ASILCompliantAtomicProvider,
+    },
+    multi_memory_runtime::{
+        ASILCompliantMultiMemoryProvider,
+        MultiMemoryContext,
+        MultiMemoryOperation,
+    },
+    shared_memory_runtime::{
+        ASILCompliantSharedMemoryProvider,
+        SharedMemoryContext,
+        SharedMemoryOperation,
+    },
+};
 
 /// WebAssembly 3.0 feature types
 #[derive(Debug, Clone)]
@@ -73,7 +94,7 @@ pub enum ThreadsOperation {
     /// Thread spawn operation
     ThreadSpawn {
         function_index: u32,
-        args: Vec<Value>,
+        args:           Vec<Value>,
     },
     /// Thread join operation
     ThreadJoin { thread_id: ThreadId },
@@ -85,14 +106,14 @@ pub enum TailCallOperation {
     /// Direct tail call
     ReturnCall {
         function_index: u32,
-        args: Vec<Value>,
+        args:           Vec<Value>,
     },
     /// Indirect tail call via table
     ReturnCallIndirect {
-        table_index: u32,
-        type_index: u32,
+        table_index:        u32,
+        type_index:         u32,
         function_reference: Value,
-        args: Vec<Value>,
+        args:               Vec<Value>,
     },
 }
 
@@ -101,7 +122,7 @@ pub enum TailCallOperation {
 pub enum ExceptionOperation {
     /// Try block
     Try {
-        block_type: wrt_instructions::control_ops::ControlBlockType,
+        block_type:   wrt_instructions::control_ops::ControlBlockType,
         instructions: Vec<u8>, // Simplified - would be proper instruction sequence
     },
     /// Catch block
@@ -109,7 +130,10 @@ pub enum ExceptionOperation {
     /// Catch all block
     CatchAll,
     /// Throw exception
-    Throw { tag_index: u32, args: Vec<Value> },
+    Throw {
+        tag_index: u32,
+        args:      Vec<Value>,
+    },
     /// Rethrow exception
     Rethrow { relative_depth: u32 },
 }
@@ -118,26 +142,26 @@ pub enum ExceptionOperation {
 #[derive(Debug)]
 pub struct WebAssembly3Runtime {
     /// Shared memory context for threads
-    shared_memory: SharedMemoryContext,
+    shared_memory:    SharedMemoryContext,
     /// Multi-memory context
-    multi_memory: MultiMemoryContext,
+    multi_memory:     MultiMemoryContext,
     /// Thread manager for thread operations
-    thread_manager: ThreadManager,
+    thread_manager:   ThreadManager,
     /// Stackless engine for tail calls
     stackless_engine: StacklessEngine,
     /// Runtime statistics
-    pub stats: WebAssembly3Stats,
+    pub stats:        WebAssembly3Stats,
 }
 
 impl WebAssembly3Runtime {
     /// Create new WebAssembly 3.0 runtime
     pub fn new() -> Result<Self> {
         Ok(Self {
-            shared_memory: SharedMemoryContext::new(),
-            multi_memory: MultiMemoryContext::new(),
-            thread_manager: ThreadManager::new()?,
+            shared_memory:    SharedMemoryContext::new(),
+            multi_memory:     MultiMemoryContext::new(),
+            thread_manager:   ThreadManager::new()?,
             stackless_engine: StacklessEngine::new(),
-            stats: WebAssembly3Stats::new(),
+            stats:            WebAssembly3Stats::new(),
         })
     }
 
@@ -314,37 +338,37 @@ impl Default for WebAssembly3Runtime {
 #[derive(Debug, Clone)]
 pub struct WebAssembly3Stats {
     /// Total WebAssembly 3.0 operations executed
-    pub total_operations: u64,
+    pub total_operations:        u64,
     /// Threads-related operations
-    pub threads_operations: u64,
+    pub threads_operations:      u64,
     /// Multi-memory operations
     pub multi_memory_operations: u64,
     /// Tail call operations
-    pub tail_call_operations: u64,
+    pub tail_call_operations:    u64,
     /// Exception handling operations
-    pub exception_operations: u64,
+    pub exception_operations:    u64,
 
     // Detailed thread statistics
     /// Number of threads spawned
     pub threads_spawned: u64,
     /// Number of threads joined
-    pub threads_joined: u64,
+    pub threads_joined:  u64,
 
     // Detailed tail call statistics
     /// Direct tail calls executed
-    pub direct_tail_calls: u64,
+    pub direct_tail_calls:   u64,
     /// Indirect tail calls executed
     pub indirect_tail_calls: u64,
 
     // Detailed exception handling statistics
     /// Try blocks entered
-    pub try_blocks: u64,
+    pub try_blocks:         u64,
     /// Catch blocks executed
-    pub catch_blocks: u64,
+    pub catch_blocks:       u64,
     /// Catch-all blocks executed
-    pub catch_all_blocks: u64,
+    pub catch_all_blocks:   u64,
     /// Throw operations executed
-    pub throw_operations: u64,
+    pub throw_operations:   u64,
     /// Rethrow operations executed
     pub rethrow_operations: u64,
 }
@@ -352,20 +376,20 @@ pub struct WebAssembly3Stats {
 impl WebAssembly3Stats {
     fn new() -> Self {
         Self {
-            total_operations: 0,
-            threads_operations: 0,
+            total_operations:        0,
+            threads_operations:      0,
             multi_memory_operations: 0,
-            tail_call_operations: 0,
-            exception_operations: 0,
-            threads_spawned: 0,
-            threads_joined: 0,
-            direct_tail_calls: 0,
-            indirect_tail_calls: 0,
-            try_blocks: 0,
-            catch_blocks: 0,
-            catch_all_blocks: 0,
-            throw_operations: 0,
-            rethrow_operations: 0,
+            tail_call_operations:    0,
+            exception_operations:    0,
+            threads_spawned:         0,
+            threads_joined:          0,
+            direct_tail_calls:       0,
+            indirect_tail_calls:     0,
+            try_blocks:              0,
+            catch_blocks:            0,
+            catch_all_blocks:        0,
+            throw_operations:        0,
+            rethrow_operations:      0,
         }
     }
 
@@ -434,7 +458,7 @@ pub fn webassembly3_atomic_cas(
         wrt_instructions::atomic_ops::AtomicCmpxchgInstr::I32AtomicRmwCmpxchg {
             memarg: wrt_foundation::MemArg {
                 offset: address,
-                align: 2,
+                align:  2,
             },
         },
     );

@@ -1,7 +1,8 @@
 //! SIMD Runtime Implementation with ASIL Compliance
 //!
-//! This module provides the complete execution logic for WebAssembly SIMD operations
-//! with support for all ASIL levels (QM, ASIL-A, ASIL-B, ASIL-C, ASIL-D).
+//! This module provides the complete execution logic for WebAssembly SIMD
+//! operations with support for all ASIL levels (QM, ASIL-A, ASIL-B, ASIL-C,
+//! ASIL-D).
 //!
 //! # Safety and Compliance
 //! - No unsafe code in safety-critical configurations
@@ -13,12 +14,17 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_foundation::values::Value;
-use wrt_instructions::simd_ops::SimdOp;
-
 #[cfg(not(feature = "std"))]
 use alloc::format;
+
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
+use wrt_foundation::values::Value;
+use wrt_instructions::simd_ops::SimdOp;
 
 // Import additional SIMD operations
 mod simd_additional_ops;
@@ -444,23 +450,27 @@ impl SimdProvider for AssilCompliantSimdProvider {
             F64x2RelaxedMin => execute_f64x2_min(inputs), // Use regular min for now
             F64x2RelaxedMax => execute_f64x2_max(inputs), // Use regular max for now
             I8x16RelaxedSwizzle => execute_i8x16_swizzle(inputs), // Use regular swizzle for now
-            I32x4RelaxedTruncF32x4S => execute_i32x4_trunc_sat_f32x4_s(inputs), // Use saturating truncation for now
-            I32x4RelaxedTruncF32x4U => execute_i32x4_trunc_sat_f32x4_u(inputs), // Use saturating truncation for now
-            I32x4RelaxedTruncF64x2SZero => execute_i32x4_trunc_sat_f64x2_s_zero(inputs), // Use saturating truncation for now
-            I32x4RelaxedTruncF64x2UZero => execute_i32x4_trunc_sat_f64x2_u_zero(inputs), // Use saturating truncation for now
+            I32x4RelaxedTruncF32x4S => execute_i32x4_trunc_sat_f32x4_s(inputs), /* Use saturating truncation for now */
+            I32x4RelaxedTruncF32x4U => execute_i32x4_trunc_sat_f32x4_u(inputs), /* Use saturating truncation for now */
+            I32x4RelaxedTruncF64x2SZero => execute_i32x4_trunc_sat_f64x2_s_zero(inputs), /* Use saturating truncation for now */
+            I32x4RelaxedTruncF64x2UZero => execute_i32x4_trunc_sat_f64x2_u_zero(inputs), /* Use saturating truncation for now */
 
             // Remaining relaxed operations as placeholders
             F32x4RelaxedMadd => execute_f32x4_add(inputs), // Placeholder
             F32x4RelaxedNmadd => execute_f32x4_sub(inputs), // Placeholder
             F64x2RelaxedMadd => execute_f64x2_add(inputs), // Placeholder
             F64x2RelaxedNmadd => execute_f64x2_sub(inputs), // Placeholder
-            I8x16RelaxedLaneselect => execute_v128_bitselect(inputs), // Use bitselect as placeholder
-            I16x8RelaxedLaneselect => execute_v128_bitselect(inputs), // Use bitselect as placeholder
-            I32x4RelaxedLaneselect => execute_v128_bitselect(inputs), // Use bitselect as placeholder
-            I64x2RelaxedLaneselect => execute_v128_bitselect(inputs), // Use bitselect as placeholder
-            I16x8RelaxedQ15MulrS => simd_additional_ops::execute_i16x8_q15_mulr_sat_s(inputs), // Use regular Q15 operation
-            I16x8RelaxedDotI8x16I7x16S => simd_additional_ops::execute_i32x4_dot_i16x8_s(inputs), // Use regular dot product as placeholder
-            I32x4RelaxedDotI8x16I7x16AddS => simd_additional_ops::execute_i32x4_dot_i16x8_s(inputs), // Use regular dot product as placeholder
+            I8x16RelaxedLaneselect => execute_v128_bitselect(inputs), // Use bitselect as
+            // placeholder
+            I16x8RelaxedLaneselect => execute_v128_bitselect(inputs), // Use bitselect as
+            // placeholder
+            I32x4RelaxedLaneselect => execute_v128_bitselect(inputs), // Use bitselect as
+            // placeholder
+            I64x2RelaxedLaneselect => execute_v128_bitselect(inputs), // Use bitselect as
+            // placeholder
+            I16x8RelaxedQ15MulrS => simd_additional_ops::execute_i16x8_q15_mulr_sat_s(inputs), /* Use regular Q15 operation */
+            I16x8RelaxedDotI8x16I7x16S => simd_additional_ops::execute_i32x4_dot_i16x8_s(inputs), /* Use regular dot product as placeholder */
+            I32x4RelaxedDotI8x16I7x16AddS => simd_additional_ops::execute_i32x4_dot_i16x8_s(inputs), /* Use regular dot product as placeholder */
         }
     }
 }
@@ -530,7 +540,8 @@ fn extract_f64(value: &Value) -> Result<f64> {
 }
 
 // ================================================================================================
-// Load Operations (Memory operations would need memory context - placeholder for now)
+// Load Operations (Memory operations would need memory context - placeholder
+// for now)
 // ================================================================================================
 
 fn execute_v128_load(_inputs: &[Value]) -> Result<Value> {

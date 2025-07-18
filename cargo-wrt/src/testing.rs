@@ -3,39 +3,53 @@
 //! Provides comprehensive testing infrastructure including mocks,
 //! test helpers, and validation frameworks for all cargo-wrt functionality.
 
+use std::{
+    collections::HashMap,
+    path::{
+        Path,
+        PathBuf,
+    },
+};
+
 use anyhow::Result;
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 use tempfile::TempDir;
-use wrt_build_core::formatters::OutputFormat;
-use wrt_build_core::{BuildConfig, BuildSystem};
+use wrt_build_core::{
+    formatters::OutputFormat,
+    BuildConfig,
+    BuildSystem,
+};
 
 use crate::helpers::{
-    CommandSuggestionEngine, GlobalArgs, OutputManager, PerformanceOptimizer, ProgressIndicator,
-    ProjectContext, ProjectType,
+    CommandSuggestionEngine,
+    GlobalArgs,
+    OutputManager,
+    PerformanceOptimizer,
+    ProgressIndicator,
+    ProjectContext,
+    ProjectType,
 };
 
 /// Test context for cargo-wrt operations
 pub struct TestContext {
     /// Temporary directory for test workspace
-    pub temp_dir: TempDir,
+    pub temp_dir:     TempDir,
     /// Mock build system
     pub build_system: MockBuildSystem,
     /// Test configuration
-    pub config: TestConfig,
+    pub config:       TestConfig,
     /// Global arguments for testing
-    pub global_args: GlobalArgs,
+    pub global_args:  GlobalArgs,
 }
 
 /// Configuration for test scenarios
 #[derive(Debug, Clone)]
 pub struct TestConfig {
-    pub workspace_type: WorkspaceType,
-    pub enable_git: bool,
-    pub enable_ci: bool,
+    pub workspace_type:   WorkspaceType,
+    pub enable_git:       bool,
+    pub enable_ci:        bool,
     pub project_features: Vec<ProjectFeature>,
-    pub output_format: OutputFormat,
-    pub use_colors: bool,
+    pub output_format:    OutputFormat,
+    pub use_colors:       bool,
 }
 
 /// Types of test workspaces
@@ -70,12 +84,12 @@ pub enum ProjectFeature {
 impl Default for TestConfig {
     fn default() -> Self {
         Self {
-            workspace_type: WorkspaceType::WrtWorkspace,
-            enable_git: false,
-            enable_ci: false,
+            workspace_type:   WorkspaceType::WrtWorkspace,
+            enable_git:       false,
+            enable_ci:        false,
             project_features: vec![],
-            output_format: OutputFormat::Human,
-            use_colors: false,
+            output_format:    OutputFormat::Human,
+            use_colors:       false,
         }
     }
 }
@@ -299,7 +313,8 @@ edition = "2021"
                     fs::create_dir_all(workspace_root.join(".github").join("workflows"))?;
                     fs::write(
                         workspace_root.join(".github").join("workflows").join("ci.yml"),
-                        "name: CI\non: [push, pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n"
+                        "name: CI\non: [push, pull_request]\njobs:\n  test:\n    runs-on: \
+                         ubuntu-latest\n",
                     )?;
                 },
                 ProjectFeature::SafetyVerification => {
@@ -353,17 +368,17 @@ edition = "2021"
 /// Mock build system for testing
 pub struct MockBuildSystem {
     workspace_root: PathBuf,
-    results: HashMap<String, MockBuildResult>,
-    pub call_log: Vec<String>,
+    results:        HashMap<String, MockBuildResult>,
+    pub call_log:   Vec<String>,
 }
 
 /// Mock build result
 #[derive(Debug, Clone)]
 pub struct MockBuildResult {
-    pub success: bool,
+    pub success:  bool,
     pub duration: std::time::Duration,
     pub warnings: Vec<String>,
-    pub errors: Vec<String>,
+    pub errors:   Vec<String>,
 }
 
 impl MockBuildSystem {
@@ -378,20 +393,20 @@ impl MockBuildSystem {
         system.results.insert(
             "build_all".to_string(),
             MockBuildResult {
-                success: true,
+                success:  true,
                 duration: std::time::Duration::from_millis(1500),
                 warnings: vec!["unused variable `x`".to_string()],
-                errors: vec![],
+                errors:   vec![],
             },
         );
 
         system.results.insert(
             "test_all".to_string(),
             MockBuildResult {
-                success: true,
+                success:  true,
                 duration: std::time::Duration::from_millis(2000),
                 warnings: vec![],
-                errors: vec![],
+                errors:   vec![],
             },
         );
 
@@ -408,10 +423,10 @@ impl MockBuildSystem {
         self.results.insert(
             operation.to_string(),
             MockBuildResult {
-                success: false,
+                success:  false,
                 duration: std::time::Duration::from_millis(500),
                 warnings: vec![],
-                errors: vec![error.to_string()],
+                errors:   vec![error.to_string()],
             },
         );
     }
@@ -556,19 +571,19 @@ impl TestValidator {
 /// Validation report for test results
 #[derive(Debug, Clone)]
 pub struct ValidationReport {
-    pub name: String,
+    pub name:      String,
     pub successes: Vec<String>,
-    pub failures: Vec<String>,
-    pub warnings: Vec<String>,
+    pub failures:  Vec<String>,
+    pub warnings:  Vec<String>,
 }
 
 impl ValidationReport {
     pub fn new(name: impl Into<String>) -> Self {
         Self {
-            name: name.into(),
+            name:      name.into(),
             successes: Vec::new(),
-            failures: Vec::new(),
-            warnings: Vec::new(),
+            failures:  Vec::new(),
+            warnings:  Vec::new(),
         }
     }
 

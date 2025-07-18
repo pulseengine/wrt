@@ -90,10 +90,11 @@ pub use wrt_foundation::component_value::ValType;
 
 // Unified type aliases for std/no_std compatibility
 #[cfg(not(feature = "std"))]
-pub type ComponentVec<T> = wrt_foundation::bounded::BoundedVec<T, 64, wrt_foundation::safe_memory::NoStdProvider<8192, NoStdProvider<65536>>>;
+pub type ComponentVec<T> = wrt_foundation::bounded::BoundedVec<T, 64, crate::bounded_component_infra::ComponentProvider>;
 
 #[cfg(feature = "std")]
 pub type ComponentVec<T> = Vec<T>;
+
 // Re-export from wrt-foundation
 pub use wrt_foundation::{
     bounded::{BoundedStack, MAX_WASM_NAME_LENGTH},

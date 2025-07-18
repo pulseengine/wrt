@@ -4,8 +4,15 @@
 //! WebAssembly execution scenarios.
 
 use wrt_component::{
-    AgentConfiguration, AgentCreationOptions, AgentRegistry, ExecutionMode, HybridModeFlags,
-    PreferredAgentType, UnifiedExecutionAgent, UnifiedExecutionState, Value,
+    AgentConfiguration,
+    AgentCreationOptions,
+    AgentRegistry,
+    ExecutionMode,
+    HybridModeFlags,
+    PreferredAgentType,
+    UnifiedExecutionAgent,
+    UnifiedExecutionState,
+    Value,
 };
 
 fn main() {
@@ -49,8 +56,8 @@ fn demo_synchronous_execution() {
         Ok(result) => {
             println!("Function executed successfully!");
             println!("Result: {:?}", result);
-            println!("State: {:?}", engine.state();
-            println!("Statistics: {:?}", engine.statistics();
+            println!("State: {:?}", engine.state());
+            println!("Statistics: {:?}", engine.statistics());
         },
         Err(e) => println!("Execution failed: {:?}", e),
     }
@@ -158,9 +165,9 @@ fn demo_hybrid_execution() {
 
     // Create engine with multiple capabilities enabled
     let flags = HybridModeFlags {
-        async_enabled: cfg!(feature = "async"),
+        async_enabled:     cfg!(feature = "async"),
         stackless_enabled: true,
-        cfi_enabled: cfg!(feature = "cfi"),
+        cfi_enabled:       cfg!(feature = "cfi"),
     };
 
     let mut engine = UnifiedExecutionAgent::new_hybrid(flags);
@@ -204,7 +211,7 @@ fn demo_engine_registry() {
 
     // Create multiple engines with different configurations
     let sync_engine_id = registry
-        .create_unified_engine(AgentConfiguration::default()
+        .create_unified_engine(AgentConfiguration::default())
         .expect("Failed to create sync engine");
 
     let stackless_config = AgentConfiguration {

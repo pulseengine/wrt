@@ -1,25 +1,40 @@
 //! Performance benchmarks for real WASM execution capability
 //!
-//! These benchmarks validate the performance characteristics of the WRT framework's
-//! real WebAssembly execution engine, measuring instruction parsing, execution,
-//! and memory management performance under QM and ASIL-B safety levels.
+//! These benchmarks validate the performance characteristics of the WRT
+//! framework's real WebAssembly execution engine, measuring instruction
+//! parsing, execution, and memory management performance under QM and ASIL-B
+//! safety levels.
 
 #![allow(unused_imports)]
 
 #[cfg(not(feature = "std"))]
 compile_error!("Benchmarks require std feature for criterion");
 
-use std::fs;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::{
+    fs,
+    sync::Arc,
+    time::{
+        Duration,
+        Instant,
+    },
+};
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-
+use criterion::{
+    black_box,
+    criterion_group,
+    criterion_main,
+    BenchmarkId,
+    Criterion,
+};
 // Import the execution components
 use wrt_decoder::decoder::decode_module;
 use wrt_error::Result;
 use wrt_foundation::values::Value;
-use wrt_runtime::{module::Module, module_instance::ModuleInstance, stackless::StacklessEngine};
+use wrt_runtime::{
+    module::Module,
+    module_instance::ModuleInstance,
+    stackless::StacklessEngine,
+};
 
 // Benchmark sizes for different test scenarios
 const SMALL_ITERATION: usize = 10;

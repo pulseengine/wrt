@@ -1,8 +1,11 @@
-//! Test suite to verify that StacklessEngine actually executes WASM instructions
-//! rather than returning default values or simulating execution.
+//! Test suite to verify that StacklessEngine actually executes WASM
+//! instructions rather than returning default values or simulating execution.
 
-use wrt::prelude::*;
-use wrt::{Module, StacklessEngine};
+use wrt::{
+    prelude::*,
+    Module,
+    StacklessEngine,
+};
 
 #[cfg(test)]
 mod real_execution_tests {

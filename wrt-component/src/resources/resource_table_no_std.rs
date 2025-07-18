@@ -137,7 +137,7 @@ pub trait BufferPoolTrait {
 #[derive(Debug)]
 pub struct ResourceTable {
     /// Storage for resources
-    resources: BoundedVec<Option<Resource>, MAX_RESOURCES>,
+    resources: BoundedVec<Option<Resource, 256, crate::bounded_component_infra::ComponentProvider>, MAX_RESOURCES>,
     /// Next available resource ID
     next_id: u32,
     /// Memory strategy

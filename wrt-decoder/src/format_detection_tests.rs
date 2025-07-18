@@ -4,22 +4,36 @@
 //! ensuring robust identification of Core Modules vs Component Model binaries.
 
 use wrt_error::Result;
-use wrt_foundation::{safe_managed_alloc, traits::BoundedCapacity, BoundedVec, CrateId};
+use wrt_foundation::{
+    safe_managed_alloc,
+    traits::BoundedCapacity,
+    BoundedVec,
+    CrateId,
+};
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
+// Import assert macros for no_std
+#[cfg(not(feature = "std"))]
+use core::{
+    assert,
+    assert_eq,
+};
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-// Import assert macros for no_std
-#[cfg(not(feature = "std"))]
-use core::{assert, assert_eq};
-
 use crate::{
-    lazy_detection::{ComponentDetection, DetectionConfig, LazyDetector},
-    unified_loader::{load_wasm_unified, WasmFormat},
+    lazy_detection::{
+        ComponentDetection,
+        DetectionConfig,
+        LazyDetector,
+    },
+    unified_loader::{
+        load_wasm_unified,
+        WasmFormat,
+    },
 };
 
 // Type alias for test data - using a reasonably sized bounded vector
@@ -45,7 +59,8 @@ fn bounded_to_slice(bounded: &TestData) -> Result<Vec<u8>> {
     Ok(vec)
 }
 
-// Helper function for no_std mode (creates a new bounded vec with the same data)
+// Helper function for no_std mode (creates a new bounded vec with the same
+// data)
 #[cfg(not(feature = "std"))]
 fn bounded_to_vec(bounded: &TestData) -> Result<TestData> {
     let provider = safe_managed_alloc!(1024, CrateId::Decoder)?;

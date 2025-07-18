@@ -5,23 +5,49 @@
 //! of justfile, xtask, and shell scripts with a single, AI-friendly tool.
 
 // Standard library imports
-use std::{path::PathBuf, process};
+use std::{
+    path::PathBuf,
+    process,
+};
 
 // External crates
-use anyhow::{Context, Result};
+use anyhow::{
+    Context,
+    Result,
+};
 use chrono;
-use clap::{Parser, Subcommand};
+use clap::{
+    Parser,
+    Subcommand,
+};
 use colored::Colorize;
-
 // Internal crates (wrt_* imports)
 use wrt_build_core::{
     cache::CacheManager,
-    config::{AsilLevel, BuildProfile},
-    diagnostics::{DiagnosticCollection, Severity},
-    filtering::{FilterOptionsBuilder, GroupBy, SortBy, SortDirection},
-    formatters::{FormatterFactory, OutputFormat},
-    kani::{KaniConfig, KaniVerifier},
-    BuildConfig, BuildSystem,
+    config::{
+        AsilLevel,
+        BuildProfile,
+    },
+    diagnostics::{
+        DiagnosticCollection,
+        Severity,
+    },
+    filtering::{
+        FilterOptionsBuilder,
+        GroupBy,
+        SortBy,
+        SortDirection,
+    },
+    formatters::{
+        FormatterFactory,
+        OutputFormat,
+    },
+    kani::{
+        KaniConfig,
+        KaniVerifier,
+    },
+    BuildConfig,
+    BuildSystem,
 };
 
 // Local helper modules
@@ -33,10 +59,19 @@ mod test_config;
 #[cfg(test)]
 mod testing;
 
-use commands::{cmd_embed_limits, execute_test_validate, TestValidateArgs};
+use commands::{
+    cmd_embed_limits,
+    execute_test_validate,
+    TestValidateArgs,
+};
 use helpers::{
-    output_diagnostics, run_asil_tests, run_no_std_tests, AutoFixManager, GlobalArgs,
-    OutputManager, TestConfig,
+    output_diagnostics,
+    run_asil_tests,
+    run_no_std_tests,
+    AutoFixManager,
+    GlobalArgs,
+    OutputManager,
+    TestConfig,
 };
 
 /// WRT Build System - Unified tool for building, testing, and verifying WRT
@@ -1213,7 +1248,8 @@ async fn main() -> Result<()> {
     // when creating engines or using capability-based memory
     if let Err(e) = wrt_foundation::memory_init::MemoryInitializer::initialize() {
         eprintln!("Warning: Failed to initialize memory system: {}", e);
-        // Continue execution - the system should still work with default providers
+        // Continue execution - the system should still work with default
+        // providers
     }
 
     // Handle special help cases before parsing
@@ -1546,13 +1582,13 @@ async fn main() -> Result<()> {
             replace,
         } => {
             let args = commands::embed_limits::EmbedLimitsArgs {
-                wasm_file: wasm_file.clone(),
+                wasm_file:   wasm_file.clone(),
                 config_file: config_file.clone(),
                 output_file: output_file.clone(),
-                asil_level: asil_level.clone(),
+                asil_level:  asil_level.clone(),
                 binary_hash: binary_hash.clone(),
-                validate: *validate,
-                replace: *replace,
+                validate:    *validate,
+                replace:     *replace,
             };
             cmd_embed_limits(args, &global.output)
         },
@@ -1666,7 +1702,10 @@ async fn cmd_build(
         },
         OutputFormat::Human => {
             // Use enhanced progress indicators for human format
-            use helpers::{MultiStepProgress, ProgressIndicator};
+            use helpers::{
+                MultiStepProgress,
+                ProgressIndicator,
+            };
 
             if let Some(pkg) = package {
                 let mut progress = ProgressIndicator::spinner(
@@ -2452,7 +2491,10 @@ async fn cmd_ci(build_system: &BuildSystem, fail_fast: bool, json: bool) -> Resu
 
 /// Clean command implementation
 async fn cmd_clean(build_system: &BuildSystem, all: bool, global: &mut GlobalArgs) -> Result<()> {
-    use helpers::{build_errors, ErrorContext};
+    use helpers::{
+        build_errors,
+        ErrorContext,
+    };
 
     let output = &global.output;
     output.progress("Cleaning build artifacts...");
@@ -2556,7 +2598,10 @@ async fn cmd_kani_verify(
     verbose: bool,
     extra_args: Vec<String>,
 ) -> Result<()> {
-    use wrt_build_core::kani::{KaniConfig, KaniVerifier};
+    use wrt_build_core::kani::{
+        KaniConfig,
+        KaniVerifier,
+    };
 
     // Check if KANI is available
     if !wrt_build_core::kani::is_kani_available() {
@@ -2681,7 +2726,10 @@ async fn cmd_setup(
     check: bool,
     install: bool,
 ) -> Result<()> {
-    use std::{fs, process::Command};
+    use std::{
+        fs,
+        process::Command,
+    };
 
     println!(
         "{} Setting up development environment...",
@@ -2768,7 +2816,10 @@ async fn cmd_setup(
 
 /// Tool versions command implementation  
 async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionCommand) -> Result<()> {
-    use wrt_build_core::{tool_versions::ToolVersionConfig, tools::ToolManager};
+    use wrt_build_core::{
+        tool_versions::ToolVersionConfig,
+        tools::ToolManager,
+    };
 
     match command {
         ToolVersionCommand::Generate { force, all } => {
@@ -3031,7 +3082,11 @@ async fn cmd_testsuite(
     }
 
     if run_wast {
-        use wrt_build_core::wast::{ReportFormat, WastConfig, WastTestRunner};
+        use wrt_build_core::wast::{
+            ReportFormat,
+            WastConfig,
+            WastTestRunner,
+        };
 
         eprintln!("DEBUG: run_wast is true, starting WAST test suite...");
 
@@ -3223,8 +3278,12 @@ async fn cmd_requirements(
     cli: &Cli,
 ) -> Result<()> {
     use wrt_build_core::requirements::{
-        model::{ComplianceReport, RequirementType},
-        EnhancedRequirementsVerifier, Requirements,
+        model::{
+            ComplianceReport,
+            RequirementType,
+        },
+        EnhancedRequirementsVerifier,
+        Requirements,
     };
 
     let workspace_root = build_system.workspace_root();
@@ -3402,7 +3461,10 @@ async fn cmd_requirements(
                 },
                 "html" => {
                     // Generate HTML requirements matrix
-                    use crate::formatters::{HtmlFormatter, HtmlReportGenerator};
+                    use crate::formatters::{
+                        HtmlFormatter,
+                        HtmlReportGenerator,
+                    };
 
                     let formatter = HtmlFormatter::new();
                     let registry = requirements.to_registry();
@@ -3412,14 +3474,14 @@ async fn cmd_requirements(
                         .requirements
                         .iter()
                         .map(|req| crate::formatters::html::RequirementData {
-                            id: req.id.to_string(),
-                            title: req.title.clone(),
-                            asil_level: req.asil_level.to_string(),
-                            req_type: req.req_type.to_string(),
-                            status: req.status.to_string(),
+                            id:              req.id.to_string(),
+                            title:           req.title.clone(),
+                            asil_level:      req.asil_level.to_string(),
+                            req_type:        req.req_type.to_string(),
+                            status:          req.status.to_string(),
                             implementations: req.implementations.clone(),
-                            tests: req.tests.clone(),
-                            documentation: req.documentation.clone(),
+                            tests:           req.tests.clone(),
+                            documentation:   req.documentation.clone(),
                         })
                         .collect();
 
@@ -3427,7 +3489,10 @@ async fn cmd_requirements(
                 },
                 "markdown" | "md" => {
                     // Generate Markdown requirements matrix
-                    use crate::formatters::{MarkdownFormatter, MarkdownReportGenerator};
+                    use crate::formatters::{
+                        MarkdownFormatter,
+                        MarkdownReportGenerator,
+                    };
 
                     let formatter = MarkdownFormatter::new();
                     let registry = requirements.to_registry();
@@ -3437,14 +3502,14 @@ async fn cmd_requirements(
                         .requirements
                         .iter()
                         .map(|req| crate::formatters::html::RequirementData {
-                            id: req.id.to_string(),
-                            title: req.title.clone(),
-                            asil_level: req.asil_level.to_string(),
-                            req_type: req.req_type.to_string(),
-                            status: req.status.to_string(),
+                            id:              req.id.to_string(),
+                            title:           req.title.clone(),
+                            asil_level:      req.asil_level.to_string(),
+                            req_type:        req.req_type.to_string(),
+                            status:          req.status.to_string(),
                             implementations: req.implementations.clone(),
-                            tests: req.tests.clone(),
-                            documentation: req.documentation.clone(),
+                            tests:           req.tests.clone(),
+                            documentation:   req.documentation.clone(),
                         })
                         .collect();
 
@@ -3452,7 +3517,10 @@ async fn cmd_requirements(
                 },
                 "github" => {
                     // Generate GitHub-flavored Markdown
-                    use crate::formatters::{MarkdownFormatter, MarkdownReportGenerator};
+                    use crate::formatters::{
+                        MarkdownFormatter,
+                        MarkdownReportGenerator,
+                    };
 
                     let formatter = MarkdownFormatter::github();
                     let registry = requirements.to_registry();
@@ -3462,14 +3530,14 @@ async fn cmd_requirements(
                         .requirements
                         .iter()
                         .map(|req| crate::formatters::html::RequirementData {
-                            id: req.id.to_string(),
-                            title: req.title.clone(),
-                            asil_level: req.asil_level.to_string(),
-                            req_type: req.req_type.to_string(),
-                            status: req.status.to_string(),
+                            id:              req.id.to_string(),
+                            title:           req.title.clone(),
+                            asil_level:      req.asil_level.to_string(),
+                            req_type:        req.req_type.to_string(),
+                            status:          req.status.to_string(),
                             implementations: req.implementations.clone(),
-                            tests: req.tests.clone(),
-                            documentation: req.documentation.clone(),
+                            tests:           req.tests.clone(),
+                            documentation:   req.documentation.clone(),
                         })
                         .collect();
 
@@ -3594,7 +3662,11 @@ async fn cmd_wasm(
     use_colors: bool,
     cli: &Cli,
 ) -> Result<()> {
-    use wrt_build_core::wasm::{create_minimal_module, verify_modules, WasmVerifier};
+    use wrt_build_core::wasm::{
+        create_minimal_module,
+        verify_modules,
+        WasmVerifier,
+    };
 
     let workspace_root = build_system.workspace_root();
 
@@ -3888,7 +3960,10 @@ async fn cmd_safety(
             let asil_level = wrt_build_core::config::AsilLevel::from(asil);
 
             // Import the safety verification framework
-            use wrt_build_core::requirements::{Requirements, SafetyVerificationFramework};
+            use wrt_build_core::requirements::{
+                Requirements,
+                SafetyVerificationFramework,
+            };
 
             let mut framework = SafetyVerificationFramework::new(workspace_root.clone());
 
@@ -3988,7 +4063,10 @@ async fn cmd_safety(
         } => {
             let asil_level = wrt_build_core::config::AsilLevel::from(asil);
 
-            use wrt_build_core::requirements::{Requirements, SafetyVerificationFramework};
+            use wrt_build_core::requirements::{
+                Requirements,
+                SafetyVerificationFramework,
+            };
 
             let mut framework = SafetyVerificationFramework::new(workspace_root.clone());
 
@@ -4078,7 +4156,10 @@ async fn cmd_safety(
             output,
             format,
         } => {
-            use wrt_build_core::requirements::{Requirements, SafetyVerificationFramework};
+            use wrt_build_core::requirements::{
+                Requirements,
+                SafetyVerificationFramework,
+            };
 
             let mut framework = SafetyVerificationFramework::new(workspace_root.clone());
 
@@ -4100,8 +4181,12 @@ async fn cmd_safety(
                 "json" => serde_json::to_string_pretty(&safety_report)?,
                 "html" => {
                     // Generate HTML safety report
-                    use crate::formatters::{HtmlFormatter, HtmlReportGenerator};
                     use std::collections::HashMap;
+
+                    use crate::formatters::{
+                        HtmlFormatter,
+                        HtmlReportGenerator,
+                    };
 
                     let formatter = HtmlFormatter::new();
 
@@ -4116,9 +4201,9 @@ async fn cmd_safety(
                         overall_compliance: safety_report.overall_compliance * 100.0,
                         asil_compliance,
                         test_summary: crate::formatters::html::TestSummaryData {
-                            total_tests: safety_report.test_summary.total_tests,
-                            passed_tests: safety_report.test_summary.passed_tests,
-                            failed_tests: safety_report.test_summary.failed_tests,
+                            total_tests:         safety_report.test_summary.total_tests,
+                            passed_tests:        safety_report.test_summary.passed_tests,
+                            failed_tests:        safety_report.test_summary.failed_tests,
                             coverage_percentage: safety_report.test_summary.coverage_percentage,
                         },
                         recommendations: safety_report.recommendations.clone(),
@@ -4128,8 +4213,12 @@ async fn cmd_safety(
                 },
                 "markdown" | "md" => {
                     // Generate Markdown safety report
-                    use crate::formatters::{MarkdownFormatter, MarkdownReportGenerator};
                     use std::collections::HashMap;
+
+                    use crate::formatters::{
+                        MarkdownFormatter,
+                        MarkdownReportGenerator,
+                    };
 
                     let formatter = MarkdownFormatter::new();
 
@@ -4144,9 +4233,9 @@ async fn cmd_safety(
                         overall_compliance: safety_report.overall_compliance * 100.0,
                         asil_compliance,
                         test_summary: crate::formatters::html::TestSummaryData {
-                            total_tests: safety_report.test_summary.total_tests,
-                            passed_tests: safety_report.test_summary.passed_tests,
-                            failed_tests: safety_report.test_summary.failed_tests,
+                            total_tests:         safety_report.test_summary.total_tests,
+                            passed_tests:        safety_report.test_summary.passed_tests,
+                            failed_tests:        safety_report.test_summary.failed_tests,
                             coverage_percentage: safety_report.test_summary.coverage_percentage,
                         },
                         recommendations: safety_report.recommendations.clone(),
@@ -4156,8 +4245,12 @@ async fn cmd_safety(
                 },
                 "github" => {
                     // Generate GitHub-flavored Markdown safety report
-                    use crate::formatters::{MarkdownFormatter, MarkdownReportGenerator};
                     use std::collections::HashMap;
+
+                    use crate::formatters::{
+                        MarkdownFormatter,
+                        MarkdownReportGenerator,
+                    };
 
                     let formatter = MarkdownFormatter::github();
 
@@ -4172,9 +4265,9 @@ async fn cmd_safety(
                         overall_compliance: safety_report.overall_compliance * 100.0,
                         asil_compliance,
                         test_summary: crate::formatters::html::TestSummaryData {
-                            total_tests: safety_report.test_summary.total_tests,
-                            passed_tests: safety_report.test_summary.passed_tests,
-                            failed_tests: safety_report.test_summary.failed_tests,
+                            total_tests:         safety_report.test_summary.total_tests,
+                            passed_tests:        safety_report.test_summary.passed_tests,
+                            failed_tests:        safety_report.test_summary.failed_tests,
                             coverage_percentage: safety_report.test_summary.coverage_percentage,
                         },
                         recommendations: safety_report.recommendations.clone(),
@@ -4271,7 +4364,10 @@ async fn cmd_safety(
             failure_reason,
         } => {
             use wrt_build_core::requirements::{
-                RequirementId, SafetyVerificationFramework, TestCoverageType, TestResult,
+                RequirementId,
+                SafetyVerificationFramework,
+                TestCoverageType,
+                TestResult,
             };
 
             let mut framework = SafetyVerificationFramework::new(workspace_root.clone());
@@ -4333,7 +4429,10 @@ async fn cmd_safety(
             function_coverage,
             coverage_file,
         } => {
-            use wrt_build_core::requirements::{CoverageData, FileCoverage};
+            use wrt_build_core::requirements::{
+                CoverageData,
+                FileCoverage,
+            };
 
             let coverage_data = if let Some(file) = coverage_file {
                 // TODO: Load from JSON file
@@ -4341,10 +4440,10 @@ async fn cmd_safety(
                 CoverageData::new()
             } else {
                 CoverageData {
-                    line_coverage: line_coverage.unwrap_or(0.0),
-                    branch_coverage: branch_coverage.unwrap_or(0.0),
+                    line_coverage:     line_coverage.unwrap_or(0.0),
+                    branch_coverage:   branch_coverage.unwrap_or(0.0),
                     function_coverage: function_coverage.unwrap_or(0.0),
-                    file_coverages: Vec::new(),
+                    file_coverages:    Vec::new(),
                 }
             };
 
@@ -4383,11 +4482,11 @@ async fn cmd_safety(
                 .collect();
 
             let verification = PlatformVerification {
-                platform_name: platform.clone(),
+                platform_name:       platform.clone(),
                 verification_passed: passed,
-                verified_features: verified,
-                failed_features: failed,
-                asil_compliance: asil_level,
+                verified_features:   verified,
+                failed_features:     failed,
+                asil_compliance:     asil_level,
             };
 
             if passed {
@@ -4476,7 +4575,9 @@ async fn cmd_safety(
             check_api,
         } => {
             use wrt_build_core::requirements::{
-                DocumentationVerificationConfig, DocumentationVerificationFramework, Requirements,
+                DocumentationVerificationConfig,
+                DocumentationVerificationFramework,
+                Requirements,
             };
 
             let mut framework = DocumentationVerificationFramework::new(workspace_root.clone());
@@ -4558,7 +4659,10 @@ async fn cmd_safety(
             output,
             format,
         } => {
-            use wrt_build_core::requirements::{DocumentationVerificationFramework, Requirements};
+            use wrt_build_core::requirements::{
+                DocumentationVerificationFramework,
+                Requirements,
+            };
 
             let mut framework = DocumentationVerificationFramework::new(workspace_root.clone());
 
@@ -4580,8 +4684,12 @@ async fn cmd_safety(
                 "json" => serde_json::to_string_pretty(&doc_report)?,
                 "html" => {
                     // Generate HTML documentation report
-                    use crate::formatters::{HtmlFormatter, HtmlReportGenerator};
                     use std::collections::HashMap;
+
+                    use crate::formatters::{
+                        HtmlFormatter,
+                        HtmlReportGenerator,
+                    };
 
                     let formatter = HtmlFormatter::new();
 
@@ -4604,8 +4712,12 @@ async fn cmd_safety(
                 },
                 "markdown" | "md" => {
                     // Generate Markdown documentation report
-                    use crate::formatters::{MarkdownFormatter, MarkdownReportGenerator};
                     use std::collections::HashMap;
+
+                    use crate::formatters::{
+                        MarkdownFormatter,
+                        MarkdownReportGenerator,
+                    };
 
                     let formatter = MarkdownFormatter::new();
 
@@ -4628,8 +4740,12 @@ async fn cmd_safety(
                 },
                 "github" => {
                     // Generate GitHub-flavored Markdown documentation report
-                    use crate::formatters::{MarkdownFormatter, MarkdownReportGenerator};
                     use std::collections::HashMap;
+
+                    use crate::formatters::{
+                        MarkdownFormatter,
+                        MarkdownReportGenerator,
+                    };
 
                     let formatter = MarkdownFormatter::github();
 

@@ -6,36 +6,54 @@
 
 #[cfg(not(feature = "std"))]
 use alloc::sync::Arc;
-#[cfg(feature = "std")]
-use std::sync::Arc;
-#[cfg(feature = "std")]
-use std::{
-    any::Any,
-    cmp::{Eq, PartialEq},
-    fmt,
-};
-
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
 #[cfg(not(feature = "std"))]
 use core::{
     any::Any,
-    cmp::{Eq, PartialEq},
+    cmp::{
+        Eq,
+        PartialEq,
+    },
+    fmt,
+};
+#[cfg(feature = "std")]
+use std::sync::Arc;
+#[cfg(all(feature = "std", not(feature = "safety-critical")))]
+use std::vec::Vec;
+#[cfg(feature = "std")]
+use std::{
+    any::Any,
+    cmp::{
+        Eq,
+        PartialEq,
+    },
     fmt,
 };
 
 // Conditional imports for WRT allocator
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{CrateId, WrtVec};
-
-#[cfg(all(feature = "std", not(feature = "safety-critical")))]
-use std::vec::Vec;
-
-#[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
+use wrt_foundation::allocator::{
+    CrateId,
+    WrtVec,
+};
 
 use crate::{
-    bounded_wrt_infra::{new_loaded_module_vec, BoundedLoadedModuleVec, WrtProvider},
-    error::{kinds, Error, Result},
-    prelude::{format, Mutex, String},
+    bounded_wrt_infra::{
+        new_loaded_module_vec,
+        BoundedLoadedModuleVec,
+        WrtProvider,
+    },
+    error::{
+        kinds,
+        Error,
+        Result,
+    },
+    prelude::{
+        format,
+        Mutex,
+        String,
+    },
 };
 
 /// A unique identifier for a resource instance
@@ -46,13 +64,13 @@ pub struct ResourceId(pub u32);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResourceType {
     /// Name of the resource type
-    pub name: String,
+    pub name:           String,
     /// Resource representation type (typically a handle or other data)
     pub representation: ResourceRepresentation,
     /// Whether the resource is nullable
-    pub nullable: bool,
+    pub nullable:       bool,
     /// Whether the resource is borrowable
-    pub borrowable: bool,
+    pub borrowable:     bool,
 }
 
 /// Resource representation types
@@ -109,11 +127,11 @@ pub struct Resource {
     /// Resource type
     pub resource_type: ResourceType,
     /// Resource ID
-    pub id: ResourceId,
+    pub id:            ResourceId,
     /// Resource data (implementation-specific)
-    pub data: Arc<dyn ResourceData>,
+    pub data:          Arc<dyn ResourceData>,
     /// Reference count
-    ref_count: usize,
+    ref_count:         usize,
 }
 
 /// Trait for resource data
@@ -128,7 +146,7 @@ pub struct ResourceTable {
     /// Resources indexed by ID using bounded collections
     resources: BoundedLoadedModuleVec<Option<Resource>>,
     /// Next available resource ID
-    next_id: u32,
+    next_id:   u32,
 }
 
 impl ResourceRepresentation {
@@ -203,7 +221,7 @@ impl ResourceTable {
     pub fn new() -> Self {
         Self {
             resources: new_loaded_module_vec(),
-            next_id: 1, // Start at 1, 0 can be used as a null handle
+            next_id:   1, // Start at 1, 0 can be used as a null handle
         }
     }
 
@@ -315,10 +333,10 @@ mod tests {
 
     fn create_test_resource_type() -> ResourceType {
         ResourceType {
-            name: String::from("test:resource"),
+            name:           String::from("test:resource"),
             representation: ResourceRepresentation::Handle32,
-            nullable: false,
-            borrowable: true,
+            nullable:       false,
+            borrowable:     true,
         }
     }
 

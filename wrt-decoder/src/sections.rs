@@ -6,15 +6,26 @@
 //!
 //! This module contains parsers for various sections in WebAssembly modules.
 
-use wrt_error::{codes, Error, ErrorCategory, ErrorSource, Result};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    ErrorSource,
+    Result,
+};
 use wrt_format::{
-    binary::{self},
+    binary::{
+        self,
+    },
     types::ValueType as FormatValueType,
 };
 // Note: These functions should be available if they're exported by wrt_format
 // If not, we'll need to implement alternatives or define them locally
 use wrt_foundation::types::{
-    FuncType, GlobalType as WrtGlobalType, Import as WrtImport, MemoryType as WrtMemoryType,
+    FuncType,
+    GlobalType as WrtGlobalType,
+    Import as WrtImport,
+    MemoryType as WrtMemoryType,
     TableType as WrtTableType,
 };
 use wrt_foundation::NoStdProvider;
@@ -25,11 +36,16 @@ type WrtFoundationImport = WrtImport<wrt_foundation::NoStdProvider<65536>>;
 
 // Import segment types from wrt-format
 use wrt_format::{
-    module::Export as WrtExport, DataSegment as WrtDataSegment, ElementSegment as WrtElementSegment,
+    module::Export as WrtExport,
+    DataSegment as WrtDataSegment,
+    ElementSegment as WrtElementSegment,
 };
 
 use crate::{
-    memory_optimized::{check_bounds_u32, safe_usize_conversion},
+    memory_optimized::{
+        check_bounds_u32,
+        safe_usize_conversion,
+    },
     optimized_string::parse_utf8_string_inplace,
 };
 // Type aliases to make Vec/String usage explicit
@@ -91,10 +107,12 @@ fn parse_element_segment(
     // For both std and no_std, implement basic element parsing
     // This is a simplified version that creates passive elements
     let pure_element = wrt_format::pure_format_types::PureElementSegment {
-        element_type: wrt_format::types::RefType::Funcref,
-        mode: wrt_format::pure_format_types::PureElementMode::Passive,
+        element_type:      wrt_format::types::RefType::Funcref,
+        mode:              wrt_format::pure_format_types::PureElementMode::Passive,
         offset_expr_bytes: Vec::new(),
-        init_data: wrt_format::pure_format_types::PureElementInit::FunctionIndices(Vec::new()),
+        init_data:         wrt_format::pure_format_types::PureElementInit::FunctionIndices(
+            Vec::new(),
+        ),
     };
     Ok((pure_element, offset + 1))
 }
@@ -106,9 +124,9 @@ fn parse_data(
     // For both std and no_std, implement basic data parsing
     // This is a simplified version that creates passive data segments
     let pure_data = wrt_format::pure_format_types::PureDataSegment {
-        mode: wrt_format::pure_format_types::PureDataMode::Passive,
+        mode:              wrt_format::pure_format_types::PureDataMode::Passive,
         offset_expr_bytes: Vec::new(),
-        data_bytes: Vec::new(),
+        data_bytes:        Vec::new(),
     };
     Ok((pure_data, offset + 1))
 }
@@ -308,8 +326,8 @@ pub mod parsers {
 
             format_imports.push(wrt_format::module::Import {
                 module: module_string,
-                name: field_string,
-                desc: format_desc,
+                name:   field_string,
+                desc:   format_desc,
             });
         }
 
@@ -429,7 +447,7 @@ pub mod parsers {
         Ok((
             wrt_foundation::TableType {
                 element_type: ref_type,
-                limits: foundation_limits,
+                limits:       foundation_limits,
             },
             offset,
         ))
@@ -555,14 +573,14 @@ pub mod parsers {
 
             let _format_global = wrt_format::module::Global {
                 global_type: format_global_type,
-                init: init_expr_bytes.to_vec(),
+                init:        init_expr_bytes.to_vec(),
             };
 
             // Convert FormatGlobalType to wrt_foundation::GlobalType
             // Both types have the same structure (value_type and mutable)
             let wrt_global = WrtGlobalType {
                 value_type: format_global_type.value_type,
-                mutable: format_global_type.mutable,
+                mutable:    format_global_type.mutable,
             };
 
             wrt_globals.push(wrt_global);

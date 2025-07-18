@@ -613,7 +613,7 @@ impl Default for HostIntegrationManager {
     fn default() -> Self {
         // The Default trait must not fail, so we panic if allocation fails.
         // This is acceptable for Default as it's typically used during initialization.
-        Self::new().expect("Failed to create default HostIntegrationManagerMissing message")
+        Self::new().expect("Failed to create default HostIntegrationManager")
     }
 }
 
@@ -621,7 +621,7 @@ impl Default for HostResourceManager {
     fn default() -> Self {
         // The Default trait must not fail, so we panic if allocation fails.
         // This is acceptable for Default as it's typically used during initialization.
-        Self::new().expect("Failed to create default HostResourceManagerMissing message")
+        Self::new().expect("Failed to create default HostResourceManager")
     }
 }
 
@@ -671,7 +671,7 @@ impl Default for SecurityPolicy {
     fn default() -> Self {
         // The Default trait must not fail, so we panic if allocation fails.
         // This is acceptable for Default as it's typically used during initialization.
-        Self::new().expect("Failed to create default SecurityPolicyMissing message")
+        Self::new().expect("Failed to create default SecurityPolicy")
     }
 }
 
@@ -753,23 +753,23 @@ mod tests {
 
     #[test]
     fn test_event_type_display() {
-        assert_eq!(EventType::FunctionCalled.to_string(), "function_calledMissing message");
-        assert_eq!(EventType::ResourceCreated.to_string(), "resource_createdMissing message");
-        assert_eq!(EventType::Error.to_string(), "errorMissing message");
+        assert_eq!(EventType::FunctionCalled.to_string(), "function_called");
+        assert_eq!(EventType::ResourceCreated.to_string(), "resource_created");
+        assert_eq!(EventType::Error.to_string(), "error");
     }
 
     #[test]
     fn test_host_resource_type_display() {
-        assert_eq!(HostResourceType::File.to_string(), "fileMissing message");
-        assert_eq!(HostResourceType::Socket.to_string(), "socketMissing message");
-        assert_eq!(HostResourceType::Custom(42).to_string(), "custom_42Missing message");
+        assert_eq!(HostResourceType::File.to_string(), "file");
+        assert_eq!(HostResourceType::Socket.to_string(), "socket");
+        assert_eq!(HostResourceType::Custom(42).to_string(), "custom_42");
     }
 
     #[test]
     fn test_resource_sharing_mode_display() {
-        assert_eq!(ResourceSharingMode::ReadOnly.to_string(), "readonlyMissing message");
-        assert_eq!(ResourceSharingMode::ReadWrite.to_string(), "readwriteMissing message");
-        assert_eq!(ResourceSharingMode::Exclusive.to_string(), "exclusiveMissing message");
+        assert_eq!(ResourceSharingMode::ReadOnly.to_string(), "readonly");
+        assert_eq!(ResourceSharingMode::ReadWrite.to_string(), "readwrite");
+        assert_eq!(ResourceSharingMode::Exclusive.to_string(), "exclusive");
     }
 
     #[test]

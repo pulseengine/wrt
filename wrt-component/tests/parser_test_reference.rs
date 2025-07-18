@@ -15,7 +15,10 @@
 mod tests {
     #[test]
     fn parser_tests_moved_to_centralized_location() {
-        println!("Parser tests for wrt-component are now in wrt-tests/integration/parser/Missing message");
+        println!(
+            "Parser tests for wrt-component are now in wrt-tests/integration/parser/Missing \
+             message"
+        );
         println!("Run: cargo test -p wrt-tests parserMissing message");
         println!(
             "Consolidated tests provide better coverage and eliminate duplicationMissing message"

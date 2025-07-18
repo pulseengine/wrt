@@ -74,8 +74,8 @@ impl GenerativeTypeRegistry {
         let instance_types =
             self.instance_types.entry(instance_id).or_insert_with(|| {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
-                    .expect("Failed to allocate memory for instance typesMissing message");
-                BoundedVec::new(provider).expect("Failed to create BoundedVecMissing message")
+                    .expect("Failed to allocate memory for instance types");
+                BoundedVec::new(provider).expect("Failed to create BoundedVec")
             });
 
         instance_types
@@ -100,8 +100,8 @@ impl GenerativeTypeRegistry {
     ) -> core::result::Result<(), ComponentError> {
         let bounds = self.type_bounds.entry(type_id).or_insert_with(|| {
             let provider = safe_managed_alloc!(65536, CrateId::Component)
-                .expect("Failed to allocate memory for type boundsMissing message");
-            BoundedVec::new(provider).expect("Failed to create BoundedVecMissing message")
+                .expect("Failed to allocate memory for type bounds");
+            BoundedVec::new(provider).expect("Failed to create BoundedVec")
         });
 
         bounds.push(bound.clone()).map_err(|_| ComponentError::TooManyTypeBounds)?;

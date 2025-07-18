@@ -4,7 +4,10 @@
 //! to ensure static memory allocation throughout the format structures.
 
 use wrt_foundation::{
-    bounded::{BoundedString, BoundedVec},
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
     no_std_hashmap::BoundedHashMap,
     safe_memory::NoStdProvider,
     WrtResult,

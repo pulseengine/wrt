@@ -4,34 +4,46 @@
 //! binary modules, including format verification, import/export analysis, and
 //! performance benchmarking.
 
-use std::{path::Path, time::Instant};
+use std::{
+    path::Path,
+    time::Instant,
+};
 
 use colored::Colorize;
 
 use crate::{
-    diagnostics::{Diagnostic, DiagnosticCollection, Position, Range, Severity},
-    error::{BuildError, BuildResult},
+    diagnostics::{
+        Diagnostic,
+        DiagnosticCollection,
+        Position,
+        Range,
+        Severity,
+    },
+    error::{
+        BuildError,
+        BuildResult,
+    },
 };
 
 /// WebAssembly module verification results
 #[derive(Debug, serde::Serialize)]
 pub struct WasmVerificationResult {
     /// Whether the module is valid
-    pub valid: bool,
+    pub valid:           bool,
     /// Module format version
-    pub version: u32,
+    pub version:         u32,
     /// Number of sections
-    pub section_count: usize,
+    pub section_count:   usize,
     /// Module imports
-    pub imports: Vec<WasmImport>,
+    pub imports:         Vec<WasmImport>,
     /// Module exports
-    pub exports: Vec<WasmExport>,
+    pub exports:         Vec<WasmExport>,
     /// Builtin imports (wasi_builtin)
     pub builtin_imports: Vec<String>,
     /// Verification errors
-    pub errors: Vec<String>,
+    pub errors:          Vec<String>,
     /// Performance metrics
-    pub performance: Option<PerformanceMetrics>,
+    pub performance:     Option<PerformanceMetrics>,
 }
 
 /// WebAssembly import information
@@ -40,9 +52,9 @@ pub struct WasmImport {
     /// Module name
     pub module: String,
     /// Import name
-    pub name: String,
+    pub name:   String,
     /// Import kind (function, table, memory, global)
-    pub kind: String,
+    pub kind:   String,
 }
 
 /// WebAssembly export information
@@ -58,9 +70,9 @@ pub struct WasmExport {
 #[derive(Debug, serde::Serialize)]
 pub struct PerformanceMetrics {
     /// Time to parse the module (milliseconds)
-    pub parse_time_ms: u128,
+    pub parse_time_ms:   u128,
     /// Module size in bytes
-    pub module_size: usize,
+    pub module_size:     usize,
     /// Parsing throughput (MB/s)
     pub throughput_mbps: f64,
 }
@@ -108,8 +120,8 @@ impl WasmVerifier {
                         for import in &module_info.imports {
                             let wasm_import = WasmImport {
                                 module: import.module.clone(),
-                                name: import.name.clone(),
-                                kind: format!("{:?}", import.import_type),
+                                name:   import.name.clone(),
+                                kind:   format!("{:?}", import.import_type),
                             };
 
                             if import.module == "wasi_builtin" {
@@ -277,9 +289,11 @@ pub fn create_minimal_module() -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::io::Write;
+
     use tempfile::NamedTempFile;
+
+    use super::*;
 
     #[test]
     fn test_minimal_module_verification() {

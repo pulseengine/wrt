@@ -1,18 +1,40 @@
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
 };
 
 use wast::{
-    core::{NanPattern, WastArgCore, WastRetCore},
-    parser::{self, ParseBuffer},
-    Wast, WastArg, WastDirective, WastExecute, WastRet,
+    core::{
+        NanPattern,
+        WastArgCore,
+        WastRetCore,
+    },
+    parser::{
+        self,
+        ParseBuffer,
+    },
+    Wast,
+    WastArg,
+    WastDirective,
+    WastExecute,
+    WastRet,
 };
-use wrt::{Error, Module, StacklessEngine, Value};
+use wrt::{
+    Error,
+    Module,
+    StacklessEngine,
+    Value,
+};
 
 // Import the new WAST test runner
 mod wast_test_runner;
-use wast_test_runner::{WastTestRunner, WastTestStats};
+use wast_test_runner::{
+    WastTestRunner,
+    WastTestStats,
+};
 
 fn convert_wast_arg_core(arg: &WastArg) -> Result<Value, Error> {
     match arg {

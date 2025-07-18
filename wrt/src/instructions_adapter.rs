@@ -8,23 +8,48 @@
 
 /// Re-export instruction types and traits from wrt-instructions
 pub use wrt_instructions::{
-    aggregate_ops::{AggregateOp, AggregateOperations},
+    aggregate_ops::{
+        AggregateOp,
+        AggregateOperations,
+    },
     behavior::{
-        ControlFlow, ControlFlowBehavior, FrameBehavior, InstructionExecutor, StackBehavior,
+        ControlFlow,
+        ControlFlowBehavior,
+        FrameBehavior,
+        InstructionExecutor,
+        StackBehavior,
     },
     calls::CallInstruction,
     control::ControlInstruction,
-    execution::{ExecutionContext as InstructionExecutionContext, PureExecutionContext},
-    memory_ops::{MemoryArg, MemoryLoad, MemoryOperations, MemoryStore},
+    execution::{
+        ExecutionContext as InstructionExecutionContext,
+        PureExecutionContext,
+    },
+    memory_ops::{
+        MemoryArg,
+        MemoryLoad,
+        MemoryOperations,
+        MemoryStore,
+    },
     numeric::NumericInstruction,
-    simd_ops::{SimdContext, SimdExecutionContext, SimdInstruction, SimdOp},
-    Instruction, InstructionExecutable,
+    simd_ops::{
+        SimdContext,
+        SimdExecutionContext,
+        SimdInstruction,
+        SimdOp,
+    },
+    Instruction,
+    InstructionExecutable,
 };
-use wrt_runtime::stackless::{StacklessEngine, StacklessFrame};
+use wrt_runtime::stackless::{
+    StacklessEngine,
+    StacklessFrame,
+};
 
 use crate::prelude::*;
 
-/// Comprehensive execution context trait that combines stack and memory operations
+/// Comprehensive execution context trait that combines stack and memory
+/// operations
 ///
 /// This trait provides the interface that the WRT execution adapter implements
 /// to bridge between the wrt runtime and the wrt-instructions implementations.
@@ -64,11 +89,11 @@ use wrt_platform::simd::SimdRuntime;
 /// implementations.
 pub struct WrtExecutionContextAdapter<'a> {
     /// The stack used for execution
-    stack: &'a mut dyn StackLike,
+    stack:        &'a mut dyn StackLike,
     /// The current frame
-    frame: &'a mut StacklessFrame,
+    frame:        &'a mut StacklessFrame,
     /// The engine
-    engine: &'a mut StacklessEngine,
+    engine:       &'a mut StacklessEngine,
     /// SIMD runtime for SIMD operations
     #[cfg(feature = "platform")]
     simd_runtime: SimdRuntime,
@@ -216,7 +241,8 @@ impl<'a> AggregateOperations for WrtExecutionContextAdapter<'a> {
     }
 
     fn validate_struct_type(&self, type_index: u32) -> Result<()> {
-        // In a full implementation, this would validate against the module's type section
+        // In a full implementation, this would validate against the module's type
+        // section
         if type_index < 100 {
             Ok(())
         } else {
@@ -227,7 +253,8 @@ impl<'a> AggregateOperations for WrtExecutionContextAdapter<'a> {
     }
 
     fn validate_array_type(&self, type_index: u32) -> Result<()> {
-        // In a full implementation, this would validate against the module's type section
+        // In a full implementation, this would validate against the module's type
+        // section
         if type_index < 100 {
             Ok(())
         } else {

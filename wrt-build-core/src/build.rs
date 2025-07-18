@@ -4,20 +4,34 @@
 use std::os::unix::process::ExitStatusExt;
 #[cfg(all(feature = "std", windows))]
 use std::os::windows::process::ExitStatusExt;
-
 #[cfg(feature = "std")]
 use std::{
     io::Write,
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
     process::Command,
 };
 
 use colored::Colorize;
 
 use crate::{
-    config::{BuildConfig, WorkspaceConfig},
-    diagnostics::{Diagnostic, DiagnosticCollection, Range, Severity, ToolOutputParser},
-    error::{BuildError, BuildResult},
+    config::{
+        BuildConfig,
+        WorkspaceConfig,
+    },
+    diagnostics::{
+        Diagnostic,
+        DiagnosticCollection,
+        Range,
+        Severity,
+        ToolOutputParser,
+    },
+    error::{
+        BuildError,
+        BuildResult,
+    },
     parsers::CargoOutputParser,
 };
 
@@ -813,7 +827,7 @@ pub struct BuildSystem {
     /// Workspace configuration
     pub workspace: WorkspaceConfig,
     /// Build configuration
-    pub config: BuildConfig,
+    pub config:    BuildConfig,
 }
 
 /// Build results and artifacts
@@ -821,13 +835,13 @@ pub struct BuildSystem {
 #[derive(Debug)]
 pub struct BuildResults {
     /// Whether the build succeeded
-    pub success: bool,
+    pub success:     bool,
     /// List of built artifacts
-    pub artifacts: Vec<PathBuf>,
+    pub artifacts:   Vec<PathBuf>,
     /// Build duration in milliseconds
     pub duration_ms: u64,
     /// Any warnings or notices
-    pub warnings: Vec<String>,
+    pub warnings:    Vec<String>,
 }
 
 #[cfg(feature = "std")]
@@ -1668,10 +1682,10 @@ mod tests {
     #[test]
     fn test_build_results() {
         let results = BuildResults {
-            success: true,
-            artifacts: vec![PathBuf::from("target/debug/wrt")],
+            success:     true,
+            artifacts:   vec![PathBuf::from("target/debug/wrt")],
             duration_ms: 1000,
-            warnings: vec!["warning: unused variable".to_string()],
+            warnings:    vec!["warning: unused variable".to_string()],
         };
 
         assert!(results.is_success());

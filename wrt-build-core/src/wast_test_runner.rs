@@ -5,24 +5,39 @@
 
 #![cfg(feature = "std")]
 
-use anyhow::{Context, Result};
-use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
-use wast::parser::{self, ParseBuffer};
-use wast::{Wast, WastDirective};
+use std::{
+    collections::HashMap,
+    fs,
+    path::Path,
+};
 
-use crate::wast_execution::{run_simple_wast_test, WastEngine};
+use anyhow::{
+    Context,
+    Result,
+};
+use wast::{
+    parser::{
+        self,
+        ParseBuffer,
+    },
+    Wast,
+    WastDirective,
+};
+
+use crate::wast_execution::{
+    run_simple_wast_test,
+    WastEngine,
+};
 
 /// Statistics for WAST test execution
 #[derive(Debug, Default)]
 pub struct WastTestStats {
-    pub total_files: usize,
+    pub total_files:      usize,
     pub total_directives: usize,
-    pub passed: usize,
-    pub failed: usize,
-    pub skipped: usize,
-    pub errors: Vec<String>,
+    pub passed:           usize,
+    pub failed:           usize,
+    pub skipped:          usize,
+    pub errors:           Vec<String>,
 }
 
 impl WastTestStats {
@@ -38,26 +53,26 @@ impl WastTestStats {
 /// Complete WAST Test Runner
 pub struct WastTestRunner {
     /// Test execution statistics
-    stats: WastTestStats,
+    stats:               WastTestStats,
     /// Test file filter patterns
-    include_patterns: Vec<String>,
+    include_patterns:    Vec<String>,
     /// Test file exclusion patterns  
-    exclude_patterns: Vec<String>,
+    exclude_patterns:    Vec<String>,
     /// Whether to continue on test failures
     continue_on_failure: bool,
     /// Maximum number of failures before stopping
-    max_failures: Option<usize>,
+    max_failures:        Option<usize>,
 }
 
 impl WastTestRunner {
     /// Create a new WAST test runner
     pub fn new() -> Self {
         Self {
-            stats: WastTestStats::default(),
-            include_patterns: vec!["*.wast".to_string()],
-            exclude_patterns: vec![],
+            stats:               WastTestStats::default(),
+            include_patterns:    vec!["*.wast".to_string()],
+            exclude_patterns:    vec![],
             continue_on_failure: true,
-            max_failures: None,
+            max_failures:        None,
         }
     }
 
@@ -276,7 +291,8 @@ impl WastTestRunner {
             _ => {
                 // Skip unsupported directives
                 self.stats.skipped += 1;
-                self.stats.total_directives -= 1; // Don't count skipped in total
+                self.stats.total_directives -= 1; // Don't count skipped in
+                                                  // total
             },
         }
 
@@ -403,10 +419,14 @@ fn format_results_for_wast(results: &[wast::WastRet]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use std::fs::File;
-    use std::io::Write;
+    use std::{
+        fs::File,
+        io::Write,
+    };
+
     use tempfile::tempdir;
+
+    use super::*;
 
     #[test]
     fn test_wast_runner_creation() {

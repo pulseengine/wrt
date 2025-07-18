@@ -1,13 +1,25 @@
 //! Test execution and management
 
-use std::{path::Path, process::Command};
+use std::{
+    path::Path,
+    process::Command,
+};
 
 use colored::Colorize;
 
 use crate::{
     build::BuildSystem,
-    diagnostics::{Diagnostic, DiagnosticCollection, Range, Severity, ToolOutputParser},
-    error::{BuildError, BuildResult},
+    diagnostics::{
+        Diagnostic,
+        DiagnosticCollection,
+        Range,
+        Severity,
+        ToolOutputParser,
+    },
+    error::{
+        BuildError,
+        BuildResult,
+    },
     parsers::CargoOutputParser,
 };
 
@@ -15,42 +27,42 @@ use crate::{
 #[derive(Debug)]
 pub struct TestResults {
     /// Whether all tests passed
-    pub success: bool,
+    pub success:     bool,
     /// Total number of tests run
     pub total_tests: usize,
     /// Number of passed tests
-    pub passed: usize,
+    pub passed:      usize,
     /// Number of failed tests
-    pub failed: usize,
+    pub failed:      usize,
     /// Test execution duration
     pub duration_ms: u64,
     /// Test output and failures
-    pub output: String,
+    pub output:      String,
 }
 
 /// Test execution options
 #[derive(Debug, Clone)]
 pub struct TestOptions {
     /// Run only specific test filter
-    pub filter: Option<String>,
+    pub filter:      Option<String>,
     /// Include integration tests
     pub integration: bool,
     /// Include doc tests
-    pub doc_tests: bool,
+    pub doc_tests:   bool,
     /// Run tests with --nocapture
-    pub nocapture: bool,
+    pub nocapture:   bool,
     /// Parallel test execution
-    pub parallel: bool,
+    pub parallel:    bool,
 }
 
 impl Default for TestOptions {
     fn default() -> Self {
         Self {
-            filter: None,
+            filter:      None,
             integration: true,
-            doc_tests: true,
-            nocapture: false,
-            parallel: true,
+            doc_tests:   true,
+            nocapture:   false,
+            parallel:    true,
         }
     }
 }
@@ -261,12 +273,12 @@ impl BuildSystem {
         let integration_path = self.workspace.root.join("tests");
         if !integration_path.exists() {
             return Ok(TestResults {
-                success: true,
+                success:     true,
                 total_tests: 0,
-                passed: 0,
-                failed: 0,
+                passed:      0,
+                failed:      0,
                 duration_ms: 0,
-                output: "No integration tests found\n".to_string(),
+                output:      "No integration tests found\n".to_string(),
             });
         }
 
@@ -408,12 +420,12 @@ mod tests {
     #[test]
     fn test_results_success() {
         let results = TestResults {
-            success: true,
+            success:     true,
             total_tests: 10,
-            passed: 10,
-            failed: 0,
+            passed:      10,
+            failed:      0,
             duration_ms: 1000,
-            output: "All tests passed".to_string(),
+            output:      "All tests passed".to_string(),
         };
 
         assert!(results.is_success());

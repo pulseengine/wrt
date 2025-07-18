@@ -32,7 +32,10 @@ mod tests {
 
     #[test]
     fn test_memory_optimization_integration() {
-        use wrt_decoder::memory_optimized::{check_bounds_u32, safe_usize_conversion};
+        use wrt_decoder::memory_optimized::{
+            check_bounds_u32,
+            safe_usize_conversion,
+        };
 
         // Simulate parsing a section with bounds checking
         let alleged_count = 1000u32;

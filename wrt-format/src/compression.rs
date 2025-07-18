@@ -10,9 +10,19 @@ use core::cmp;
 use std::cmp;
 
 #[cfg(feature = "std")]
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 #[cfg(not(any(feature = "std")))]
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 #[cfg(not(any(feature = "std")))]
 use wrt_foundation::MemoryProvider;
 
@@ -27,7 +37,7 @@ pub enum CompressionType {
     /// No compression
     None = 0,
     /// Run-length encoding
-    RLE = 1,
+    RLE  = 1,
 }
 
 impl CompressionType {

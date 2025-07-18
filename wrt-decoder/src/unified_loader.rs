@@ -8,9 +8,17 @@
 extern crate alloc;
 
 #[cfg(not(feature = "std"))]
-use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
+use alloc::{
+    collections::BTreeMap as HashMap,
+    string::String,
+    vec::Vec,
+};
 #[cfg(feature = "std")]
-use std::{collections::HashMap, string::String, vec::Vec};
+use std::{
+    collections::HashMap,
+    string::String,
+    vec::Vec,
+};
 
 use wrt_format::module::Module as WrtModule;
 
@@ -33,11 +41,11 @@ pub struct ModuleInfo {
     /// Function type signatures
     pub function_types: Vec<String>,
     /// Import requirements
-    pub imports: Vec<ImportInfo>,
+    pub imports:        Vec<ImportInfo>,
     /// Export declarations
-    pub exports: Vec<ExportInfo>,
+    pub exports:        Vec<ExportInfo>,
     /// Memory requirements
-    pub memory_pages: Option<(u32, Option<u32>)>, // (min, max)
+    pub memory_pages:   Option<(u32, Option<u32>)>, // (min, max)
     /// Start function index
     pub start_function: Option<u32>,
 }
@@ -46,22 +54,22 @@ pub struct ModuleInfo {
 #[derive(Debug, Clone)]
 pub struct ComponentInfo {
     /// Component type definitions
-    pub component_types: Vec<String>,
+    pub component_types:   Vec<String>,
     /// Interface imports
     pub interface_imports: Vec<String>,
     /// Interface exports
     pub interface_exports: Vec<String>,
     /// Instance declarations
-    pub instances: Vec<String>,
+    pub instances:         Vec<String>,
 }
 
 /// Import information
 #[derive(Debug, Clone)]
 pub struct ImportInfo {
     /// Module name
-    pub module: String,
+    pub module:      String,
     /// Import name
-    pub name: String,
+    pub name:        String,
     /// Import type
     pub import_type: ImportType,
 }
@@ -70,11 +78,11 @@ pub struct ImportInfo {
 #[derive(Debug, Clone)]
 pub struct ExportInfo {
     /// Export name
-    pub name: String,
+    pub name:        String,
     /// Export type
     pub export_type: ExportType,
     /// Index in respective namespace
-    pub index: u32,
+    pub index:       u32,
 }
 
 /// Import type classification
@@ -107,15 +115,15 @@ pub enum ExportType {
 #[derive(Debug, Clone)]
 pub struct WasmInfo {
     /// Detected format type
-    pub format_type: WasmFormat,
+    pub format_type:     WasmFormat,
     /// Module information (if core module)
-    pub module_info: Option<ModuleInfo>,
+    pub module_info:     Option<ModuleInfo>,
     /// Component information (if component)
-    pub component_info: Option<ComponentInfo>,
+    pub component_info:  Option<ComponentInfo>,
     /// Built-in imports found in the binary
     pub builtin_imports: Vec<String>,
     /// Raw binary size for memory planning
-    pub binary_size: usize,
+    pub binary_size:     usize,
 }
 
 impl WasmInfo {
@@ -246,9 +254,9 @@ fn detect_component_format(binary: &[u8]) -> Result<bool> {
 fn extract_module_info(binary: &[u8]) -> Result<ModuleInfo> {
     let mut info = ModuleInfo {
         function_types: Vec::new(),
-        imports: Vec::new(),
-        exports: Vec::new(),
-        memory_pages: None,
+        imports:        Vec::new(),
+        exports:        Vec::new(),
+        memory_pages:   None,
         start_function: None,
     };
 
@@ -519,10 +527,10 @@ fn extract_component_info(_binary: &[u8]) -> Result<ComponentInfo> {
     // Placeholder implementation for component parsing
     // In a full implementation, this would parse component-specific sections
     Ok(ComponentInfo {
-        component_types: Vec::new(),
+        component_types:   Vec::new(),
         interface_imports: Vec::new(),
         interface_exports: Vec::new(),
-        instances: Vec::new(),
+        instances:         Vec::new(),
     })
 }
 

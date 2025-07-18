@@ -4,7 +4,10 @@
 //! to ensure static memory allocation throughout the decoder.
 
 use wrt_foundation::{
-    bounded::{BoundedString, BoundedVec},
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
     budget_aware_provider::CrateId,
     generic_memory_guard::MemoryGuard,
     no_std_hashmap::BoundedHashMap,
@@ -135,7 +138,8 @@ pub fn new_type_vec() -> WrtResult<BoundedTypeVec<wrt_foundation::types::FuncTyp
     BoundedVec::new(provider)
 }
 
-/// Create a new bounded type vector (generic version) using capability-based allocation
+/// Create a new bounded type vector (generic version) using capability-based
+/// allocation
 pub fn new_type_vec_generic<T>() -> WrtResult<BoundedTypeVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
@@ -157,7 +161,8 @@ pub fn new_import_vec(
     BoundedVec::new(provider)
 }
 
-/// Create a new bounded import vector (generic version) using capability-based allocation
+/// Create a new bounded import vector (generic version) using capability-based
+/// allocation
 pub fn new_import_vec_generic<T>() -> WrtResult<BoundedImportVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
@@ -178,7 +183,8 @@ pub fn new_export_vec() -> WrtResult<BoundedExportVec<wrt_format::module::Export
     BoundedVec::new(provider)
 }
 
-/// Create a new bounded export vector (generic version) using capability-based allocation
+/// Create a new bounded export vector (generic version) using capability-based
+/// allocation
 pub fn new_export_vec_generic<T>() -> WrtResult<BoundedExportVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
@@ -199,7 +205,8 @@ pub fn new_function_vec() -> WrtResult<BoundedFunctionVec<u32>> {
     BoundedVec::new(provider)
 }
 
-/// Create a new bounded function vector (generic version) using capability-based allocation
+/// Create a new bounded function vector (generic version) using
+/// capability-based allocation
 pub fn new_function_vec_generic<T>() -> WrtResult<BoundedFunctionVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
@@ -310,7 +317,8 @@ pub const MAX_INSTANCES_PER_COMPONENT: usize = 128;
 /// Maximum number of aliases in a component
 pub const MAX_ALIASES_PER_COMPONENT: usize = 256;
 
-// Component-specific factory functions use direct allocation instead of type aliases
+// Component-specific factory functions use direct allocation instead of type
+// aliases
 
 /// Create a decoder provider with the specified size  
 pub fn create_decoder_provider<const N: usize>() -> WrtResult<NoStdProvider<N>> {

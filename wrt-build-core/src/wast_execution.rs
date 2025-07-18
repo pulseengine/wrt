@@ -1,20 +1,39 @@
 //! Minimal WAST Test Execution Engine
 //!
-//! This module provides a simplified bridge between the WAST test framework and the WRT runtime,
-//! focusing on basic functionality with real WebAssembly execution using StacklessEngine directly.
+//! This module provides a simplified bridge between the WAST test framework and
+//! the WRT runtime, focusing on basic functionality with real WebAssembly
+//! execution using StacklessEngine directly.
 
 #![cfg(feature = "std")]
 
 use std::collections::HashMap;
 
-use anyhow::{Context, Result};
-use wast::core::{V128Pattern, WastArgCore, WastRetCore};
-use wast::{WastArg, WastExecute, WastInvoke, WastRet};
-
+use anyhow::{
+    Context,
+    Result,
+};
+use wast::{
+    core::{
+        V128Pattern,
+        WastArgCore,
+        WastRetCore,
+    },
+    WastArg,
+    WastExecute,
+    WastInvoke,
+    WastRet,
+};
 use wrt_decoder::decoder::decode_module;
-use wrt_foundation::values::{FloatBits32, FloatBits64, Value, V128};
-use wrt_runtime::module::Module;
-use wrt_runtime::stackless::StacklessEngine;
+use wrt_foundation::values::{
+    FloatBits32,
+    FloatBits64,
+    Value,
+    V128,
+};
+use wrt_runtime::{
+    module::Module,
+    stackless::StacklessEngine,
+};
 
 /// Minimal WAST execution engine for testing
 ///
@@ -24,9 +43,9 @@ use wrt_runtime::stackless::StacklessEngine;
 /// - Basic assert_return directive support
 pub struct WastEngine {
     /// The underlying WRT execution engine
-    engine: StacklessEngine,
+    engine:         StacklessEngine,
     /// Registry of loaded modules by name for multi-module tests
-    modules: HashMap<String, Module>,
+    modules:        HashMap<String, Module>,
     /// Current active module for execution
     current_module: Option<Module>,
 }
@@ -35,8 +54,8 @@ impl WastEngine {
     /// Create a new WAST execution engine
     pub fn new() -> Result<Self> {
         Ok(Self {
-            engine: StacklessEngine::new(),
-            modules: HashMap::new(),
+            engine:         StacklessEngine::new(),
+            modules:        HashMap::new(),
             current_module: None,
         })
     }
@@ -318,8 +337,14 @@ pub fn execute_wast_execute(engine: &mut WastEngine, execute: &WastExecute) -> R
 
 /// Simple WAST runner for basic testing
 pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
-    use wast::parser::{self, ParseBuffer};
-    use wast::{Wast, WastDirective};
+    use wast::{
+        parser::{
+            self,
+            ParseBuffer,
+        },
+        Wast,
+        WastDirective,
+    };
 
     let buf = ParseBuffer::new(wast_content).context("Failed to create parse buffer")?;
 
@@ -388,15 +413,15 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
             } => {
                 // Test that module is invalid
                 match module.encode() {
-                    Ok(binary) => {
-                        match engine.load_module(None, &binary) {
-                            Err(_) => {
-                                eprintln!("AssertInvalid: Module correctly rejected - PASS");
-                            },
-                            Ok(_) => {
-                                return Err(anyhow::anyhow!("AssertInvalid: Expected invalid module but it loaded successfully"));
-                            },
-                        }
+                    Ok(binary) => match engine.load_module(None, &binary) {
+                        Err(_) => {
+                            eprintln!("AssertInvalid: Module correctly rejected - PASS");
+                        },
+                        Ok(_) => {
+                            return Err(anyhow::anyhow!(
+                                "AssertInvalid: Expected invalid module but it loaded successfully"
+                            ));
+                        },
                     },
                     Err(_) => {
                         // Module encoding failed, which is expected for invalid modules
@@ -415,7 +440,10 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                         eprintln!("AssertMalformed: Module correctly rejected - PASS");
                     },
                     Ok(_) => {
-                        return Err(anyhow::anyhow!("AssertMalformed: Expected malformed module but it encoded successfully"));
+                        return Err(anyhow::anyhow!(
+                            "AssertMalformed: Expected malformed module but it encoded \
+                             successfully"
+                        ));
                     },
                 }
             },
@@ -431,7 +459,10 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                             eprintln!("AssertUnlinkable: Module correctly failed to link - PASS");
                         },
                         Ok(_) => {
-                            return Err(anyhow::anyhow!("AssertUnlinkable: Expected unlinkable module but it loaded successfully"));
+                            return Err(anyhow::anyhow!(
+                                "AssertUnlinkable: Expected unlinkable module but it loaded \
+                                 successfully"
+                            ));
                         },
                     },
                     Err(e) => {
@@ -473,10 +504,16 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                         let args = convert_wast_args_to_values(&args)?;
                         match engine.invoke_function(None, name, &args) {
                             Err(_) => {
-                                eprintln!("AssertExhaustion: Expected resource exhaustion occurred - PASS");
+                                eprintln!(
+                                    "AssertExhaustion: Expected resource exhaustion occurred - \
+                                     PASS"
+                                );
                             },
                             Ok(_) => {
-                                return Err(anyhow::anyhow!("AssertExhaustion: Expected resource exhaustion but execution succeeded"));
+                                return Err(anyhow::anyhow!(
+                                    "AssertExhaustion: Expected resource exhaustion but execution \
+                                     succeeded"
+                                ));
                             },
                         }
                     },
@@ -607,6 +644,7 @@ mod tests {
             Ok(_) => println!("Simple WAST test passed"),
             Err(e) => println!("Simple WAST test failed: {}", e),
         }
-        // Note: We don't assert success yet since the engine may not be fully implemented
+        // Note: We don't assert success yet since the engine may not be fully
+        // implemented
     }
 }

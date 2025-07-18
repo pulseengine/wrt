@@ -7,7 +7,10 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use crate::{prelude::*, unified_loader::WasmFormat};
+use crate::{
+    prelude::*,
+    unified_loader::WasmFormat,
+};
 
 /// Component detection result
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,7 +56,7 @@ pub struct DetectionConfig {
     /// Maximum bytes to scan for detection
     pub max_scan_bytes: usize,
     /// Maximum sections to examine
-    pub max_sections: usize,
+    pub max_sections:   usize,
     /// Whether to use heuristic detection
     pub use_heuristics: bool,
 }
@@ -62,7 +65,7 @@ impl Default for DetectionConfig {
     fn default() -> Self {
         Self {
             max_scan_bytes: 4096, // Scan first 4KB
-            max_sections: 10,     // Examine first 10 sections
+            max_sections:   10,   // Examine first 10 sections
             use_heuristics: true,
         }
     }
@@ -380,7 +383,7 @@ enum SectionHint {
 pub fn create_fast_detector() -> LazyDetector {
     LazyDetector::with_config(DetectionConfig {
         max_scan_bytes: 1024,  // Scan only first 1KB
-        max_sections: 5,       // Examine only first 5 sections
+        max_sections:   5,     // Examine only first 5 sections
         use_heuristics: false, // Skip content analysis
     })
 }
@@ -389,7 +392,7 @@ pub fn create_fast_detector() -> LazyDetector {
 pub fn create_thorough_detector() -> LazyDetector {
     LazyDetector::with_config(DetectionConfig {
         max_scan_bytes: 16384, // Scan first 16KB
-        max_sections: 20,      // Examine first 20 sections
+        max_sections:   20,    // Examine first 20 sections
         use_heuristics: true,  // Use full content analysis
     })
 }

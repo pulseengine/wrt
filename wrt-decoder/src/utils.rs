@@ -7,13 +7,26 @@
 //! This module contains shared functionality used by both the core WebAssembly
 //! module parser and the Component Model parser.
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 use wrt_format::{
-    binary::{WASM_MAGIC, WASM_VERSION},
-    COMPONENT_MAGIC, COMPONENT_VERSION,
+    binary::{
+        WASM_MAGIC,
+        WASM_VERSION,
+    },
+    COMPONENT_MAGIC,
+    COMPONENT_VERSION,
 };
 
-use crate::prelude::{is_valid_wasm_header, read_name, String};
+use crate::prelude::{
+    is_valid_wasm_header,
+    read_name,
+    String,
+};
 
 /// Read a WebAssembly name string from binary data
 #[cfg(feature = "std")]

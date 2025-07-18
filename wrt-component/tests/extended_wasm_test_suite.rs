@@ -1,18 +1,28 @@
 //! Extended WASM test suite for real execution validation
 //!
 //! This test suite provides comprehensive validation of the WRT framework's
-//! real WebAssembly execution capabilities, covering edge cases, error conditions,
-//! and production-level scenarios for both QM and ASIL-B safety levels.
+//! real WebAssembly execution capabilities, covering edge cases, error
+//! conditions, and production-level scenarios for both QM and ASIL-B safety
+//! levels.
 
 #![cfg(test)]
 
-use std::fs;
-use std::sync::Arc;
+use std::{
+    fs,
+    sync::Arc,
+};
 
 use wrt_decoder::decoder::decode_module;
-use wrt_error::{Error, Result};
+use wrt_error::{
+    Error,
+    Result,
+};
 use wrt_foundation::values::Value;
-use wrt_runtime::{module::Module, module_instance::ModuleInstance, stackless::StacklessEngine};
+use wrt_runtime::{
+    module::Module,
+    module_instance::ModuleInstance,
+    stackless::StacklessEngine,
+};
 
 /// Helper function to load test WASM module
 fn load_test_module() -> Result<Module> {
@@ -528,7 +538,8 @@ fn test_asil_b_compliance_validation() -> Result<()> {
         }
     }
 
-    // Analyze execution time consistency (ASIL-B requirement for deterministic behavior)
+    // Analyze execution time consistency (ASIL-B requirement for deterministic
+    // behavior)
     let min_time = execution_times.iter().min().unwrap();
     let max_time = execution_times.iter().max().unwrap();
     let avg_time =

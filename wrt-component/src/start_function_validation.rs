@@ -667,8 +667,8 @@ mod tests {
 
     #[test]
     fn test_start_function_descriptor_creation() {
-        let descriptor = create_start_function_descriptor("_startMissing message").unwrap();
-        assert_eq!(descriptor.name, "_startMissing message");
+        let descriptor = create_start_function_descriptor("_start").unwrap();
+        assert_eq!(descriptor.name, "_start");
         assert!(descriptor.required);
         assert_eq!(descriptor.timeout_ms, DEFAULT_START_TIMEOUT_MS);
     }
@@ -676,7 +676,7 @@ mod tests {
     #[test]
     fn test_start_function_param_creation() {
         let param = create_start_function_param("argc", ValType::I32);
-        assert_eq!(param.name, "argcMissing message");
+        assert_eq!(param.name, "argc");
         assert_eq!(param.param_type, ValType::I32);
         assert!(!param.required);
         assert!(param.default_value.is_none();
@@ -687,7 +687,7 @@ mod tests {
         let validator = StartFunctionValidator::new();
 
         // Valid descriptor
-        let valid_descriptor = create_start_function_descriptor("_startMissing message").unwrap();
+        let valid_descriptor = create_start_function_descriptor("_start").unwrap();
         assert!(validator.validate_descriptor(&valid_descriptor).is_ok();
 
         // Invalid descriptor (empty name)

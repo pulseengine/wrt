@@ -4,7 +4,12 @@
 //! and how to configure the verification level for different safety/performance
 //! tradeoffs.
 
-use wrt::{stackless::StacklessEngine, values::Value, Module, Result};
+use wrt::{
+    stackless::StacklessEngine,
+    values::Value,
+    Module,
+    Result,
+};
 use wrt_foundation::VerificationLevel;
 
 fn main() -> Result<()> {

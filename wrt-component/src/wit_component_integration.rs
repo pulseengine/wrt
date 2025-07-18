@@ -403,7 +403,7 @@ impl WitComponentContext {
                 if let Some(mapping) = self.type_mappings.get(type_name) {
                     Ok(mapping.component_type.clone()
                 } else {
-                    Err(Error::parse_error(&"Component not foundMissing messageMissing messageMissing message")
+                    Err(Error::parse_error(&"Component not found")
                 }
             }
             TypeExpr::List(inner) => {

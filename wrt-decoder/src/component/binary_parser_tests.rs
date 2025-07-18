@@ -322,33 +322,33 @@ mod tests {
     fn test_component_header_validation() {
         // Valid header
         let valid_header = ComponentHeader {
-            magic: [0x00, 0x61, 0x73, 0x6D],
+            magic:   [0x00, 0x61, 0x73, 0x6D],
             version: 1,
-            layer: 1,
+            layer:   1,
         };
         assert!(valid_header.validate().is_ok());
 
         // Invalid magic
         let invalid_magic_header = ComponentHeader {
-            magic: [0xFF, 0xFF, 0xFF, 0xFF],
+            magic:   [0xFF, 0xFF, 0xFF, 0xFF],
             version: 1,
-            layer: 1,
+            layer:   1,
         };
         assert!(invalid_magic_header.validate().is_err());
 
         // Invalid version
         let invalid_version_header = ComponentHeader {
-            magic: [0x00, 0x61, 0x73, 0x6D],
+            magic:   [0x00, 0x61, 0x73, 0x6D],
             version: 999,
-            layer: 1,
+            layer:   1,
         };
         assert!(invalid_version_header.validate().is_err());
 
         // Invalid layer
         let invalid_layer_header = ComponentHeader {
-            magic: [0x00, 0x61, 0x73, 0x6D],
+            magic:   [0x00, 0x61, 0x73, 0x6D],
             version: 1,
-            layer: 0, // Should be 1 for components
+            layer:   0, // Should be 1 for components
         };
         assert!(invalid_layer_header.validate().is_err());
     }

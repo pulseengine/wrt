@@ -8,7 +8,10 @@ use wrt_format::binary;
 #[cfg(feature = "std")]
 use wrt_format::{
     binary,
-    component::{CoreSort, Sort},
+    component::{
+        CoreSort,
+        Sort,
+    },
 };
 #[cfg(not(feature = "std"))]
 use wrt_foundation::BoundedCapacity;
@@ -169,12 +172,12 @@ pub fn extract_module_info(bytes: &[u8]) -> Result<ModuleInfo> {
     // the module to count functions, memories, etc.
 
     Ok(ModuleInfo {
-        idx: 0,
-        size: bytes.len(),
+        idx:            0,
+        size:           bytes.len(),
         function_count: 0,
-        memory_count: 0,
-        table_count: 0,
-        global_count: 0,
+        memory_count:   0,
+        table_count:    0,
+        global_count:   0,
     })
 }
 
@@ -226,15 +229,15 @@ pub fn analyze_component(bytes: &[u8]) -> Result<ComponentSummary> {
             wrt_foundation::budget_aware_provider::CrateId::Decoder
         )?;
         ComponentSummary {
-            name: "",
-            core_modules_count: 0,
+            name:                 "",
+            core_modules_count:   0,
             core_instances_count: 0,
-            imports_count: 0,
-            exports_count: 0,
-            aliases_count: 0,
-            module_info: wrt_foundation::BoundedVec::new(provider)?,
-            export_info: (),
-            import_info: (),
+            imports_count:        0,
+            exports_count:        0,
+            aliases_count:        0,
+            module_info:          wrt_foundation::BoundedVec::new(provider)?,
+            export_info:          (),
+            import_info:          (),
         }
     };
 
@@ -297,18 +300,18 @@ pub struct ExtendedImportInfo {
     /// Import namespace
     pub namespace: AnalysisString,
     /// Import name
-    pub name: AnalysisString,
+    pub name:      AnalysisString,
     /// Kind of import (as string representation)
-    pub kind: AnalysisString,
+    pub kind:      AnalysisString,
 }
 
 /// Extended export information
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ExtendedExportInfo {
     /// Export name
-    pub name: AnalysisString,
+    pub name:  AnalysisString,
     /// Kind of export (as string representation)
-    pub kind: AnalysisString,
+    pub kind:  AnalysisString,
     /// Export index
     pub index: u32,
 }
@@ -317,13 +320,13 @@ pub struct ExtendedExportInfo {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ModuleImportInfo {
     /// Module name (namespace)
-    pub module: AnalysisString,
+    pub module:     AnalysisString,
     /// Import name
-    pub name: AnalysisString,
+    pub name:       AnalysisString,
     /// Kind of import (as string representation)
-    pub kind: AnalysisString,
+    pub kind:       AnalysisString,
     /// Index within the type
-    pub index: u32,
+    pub index:      u32,
     /// Module index that contains this import
     pub module_idx: u32,
 }
@@ -332,11 +335,11 @@ pub struct ModuleImportInfo {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ModuleExportInfo {
     /// Export name
-    pub name: AnalysisString,
+    pub name:       AnalysisString,
     /// Kind of export (as string representation)
-    pub kind: AnalysisString,
+    pub kind:       AnalysisString,
     /// Index within the type
-    pub index: u32,
+    pub index:      u32,
     /// Module index that contains this export
     pub module_idx: u32,
 }
@@ -345,7 +348,7 @@ pub struct ModuleExportInfo {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CoreModuleInfo {
     /// Module index
-    pub idx: u32,
+    pub idx:  u32,
     /// Module size in bytes
     pub size: usize,
 }
@@ -356,18 +359,18 @@ pub struct CoreInstanceInfo {
     /// Index of the module instantiated
     pub module_idx: u32,
     /// Arguments passed to the instantiation
-    pub args: AnalysisVec<AnalysisString>,
+    pub args:       AnalysisVec<AnalysisString>,
 }
 
 /// Alias information
 #[derive(Debug, Clone)]
 pub struct AliasInfo {
     /// Kind of alias
-    pub kind: AnalysisString,
+    pub kind:         AnalysisString,
     /// Index of the instance being aliased
     pub instance_idx: u32,
     /// Name of the export being aliased
-    pub export_name: AnalysisString,
+    pub export_name:  AnalysisString,
 }
 
 /// Analyze a component with extended information
@@ -405,7 +408,7 @@ pub fn analyze_component_extended(
             summary,
             wrt_foundation::BoundedVec::new(provider.clone()).unwrap_or_default(), // Import info
             wrt_foundation::BoundedVec::new(provider.clone()).unwrap_or_default(), // Export info
-            wrt_foundation::BoundedVec::new(provider.clone()).unwrap_or_default(), // Module import info
+            wrt_foundation::BoundedVec::new(provider.clone()).unwrap_or_default(), /* Module import info */
             wrt_foundation::BoundedVec::new(provider).unwrap_or_default(), // Module export info
         ))
     }
@@ -445,23 +448,23 @@ fn sort_to_string(sort: &wrt_format::component::Sort) -> String {
 #[derive(Debug, Clone)]
 pub struct ComponentSummary {
     /// Component name
-    pub name: String,
+    pub name:                 String,
     /// Number of core modules in the component
-    pub core_modules_count: u32,
+    pub core_modules_count:   u32,
     /// Number of core instances in the component
     pub core_instances_count: u32,
     /// Number of imports in the component
-    pub imports_count: u32,
+    pub imports_count:        u32,
     /// Number of exports in the component
-    pub exports_count: u32,
+    pub exports_count:        u32,
     /// Number of aliases in the component
-    pub aliases_count: u32,
+    pub aliases_count:        u32,
     /// Information about modules in the component
-    pub module_info: Vec<CoreModuleInfo>,
+    pub module_info:          Vec<CoreModuleInfo>,
     /// Information about exports in the component
-    pub export_info: Vec<ExtendedExportInfo>,
+    pub export_info:          Vec<ExtendedExportInfo>,
     /// Information about imports in the component
-    pub import_info: Vec<ExtendedImportInfo>,
+    pub import_info:          Vec<ExtendedImportInfo>,
 }
 
 /// Component analysis summary (no_std version)
@@ -469,17 +472,17 @@ pub struct ComponentSummary {
 #[derive(Debug, Clone)]
 pub struct ComponentSummary {
     /// Component name (empty in no_std mode)
-    pub name: &'static str,
+    pub name:                 &'static str,
     /// Number of core modules in the component
-    pub core_modules_count: u32,
+    pub core_modules_count:   u32,
     /// Number of core instances in the component
     pub core_instances_count: u32,
     /// Number of imports in the component
-    pub imports_count: u32,
+    pub imports_count:        u32,
     /// Number of exports in the component
-    pub exports_count: u32,
+    pub exports_count:        u32,
     /// Number of aliases in the component
-    pub aliases_count: u32,
+    pub aliases_count:        u32,
     /// Information about modules in the component
     pub module_info: wrt_foundation::BoundedVec<
         CoreModuleInfo,
@@ -487,9 +490,9 @@ pub struct ComponentSummary {
         wrt_foundation::safe_memory::NoStdProvider<8192>,
     >,
     /// Extended information disabled in no_std mode
-    pub export_info: (),
+    pub export_info:          (),
     /// Extended information disabled in no_std mode
-    pub import_info: (),
+    pub import_info:          (),
 }
 
 #[cfg(not(feature = "std"))]

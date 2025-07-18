@@ -5,24 +5,54 @@
 //! binary level.
 
 #[cfg(not(feature = "std"))]
-use alloc::{boxed::Box, collections::BTreeMap, format, vec::Vec};
+use alloc::{
+    boxed::Box,
+    collections::BTreeMap,
+    format,
+    vec::Vec,
+};
 #[cfg(feature = "std")]
-use std::{boxed::Box, collections::BTreeMap, format, vec::Vec};
+use std::{
+    boxed::Box,
+    collections::BTreeMap,
+    format,
+    vec::Vec,
+};
 
-use wrt_error::{Error, Result};
-use wrt_foundation::{prelude::*, safe_managed_alloc, BoundedString, CrateId, NoStdProvider};
+use wrt_error::{
+    Error,
+    Result,
+};
+use wrt_foundation::{
+    prelude::*,
+    safe_managed_alloc,
+    BoundedString,
+    CrateId,
+    NoStdProvider,
+};
 
 use crate::bounded_debug_infra;
 // Import WIT source mapping
 #[cfg(any(feature = "wit-integration", feature = "std"))]
 use crate::wit_source_map::{
-    ComponentBoundary, ComponentId, FunctionId, SourceSpan, TypeId, WitDiagnostic, WitSourceMap,
+    ComponentBoundary,
+    ComponentId,
+    FunctionId,
+    SourceSpan,
+    TypeId,
+    WitDiagnostic,
+    WitSourceMap,
     WitTypeInfo,
 };
 // Import from existing modules
 #[cfg(feature = "runtime-debug")]
 use crate::{
-    Breakpoint, DebugAction, DebugError, DebugMemory, DebuggableRuntime, RuntimeDebugger,
+    Breakpoint,
+    DebugAction,
+    DebugError,
+    DebugMemory,
+    DebuggableRuntime,
+    RuntimeDebugger,
     RuntimeState,
 };
 
@@ -30,13 +60,13 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct ComponentError {
     /// Error message
-    pub message: BoundedString<512, crate::bounded_debug_infra::DebugProvider>,
+    pub message:       BoundedString<512, crate::bounded_debug_infra::DebugProvider>,
     /// Binary offset where error occurred
     pub binary_offset: Option<u32>,
     /// Component that generated the error
-    pub component_id: Option<ComponentId>,
+    pub component_id:  Option<ComponentId>,
     /// Function that generated the error
-    pub function_id: Option<FunctionId>,
+    pub function_id:   Option<FunctionId>,
 }
 
 /// WIT-aware debugger trait that extends RuntimeDebugger
@@ -201,13 +231,13 @@ impl WitDebugger {
     /// Create a new WIT-aware debugger
     pub fn new() -> Self {
         Self {
-            source_map: WitSourceMap::new(),
-            components: BTreeMap::new(),
-            functions: BTreeMap::new(),
-            types: BTreeMap::new(),
-            current_component: None,
+            source_map:         WitSourceMap::new(),
+            components:         BTreeMap::new(),
+            functions:          BTreeMap::new(),
+            types:              BTreeMap::new(),
+            current_component:  None,
             source_breakpoints: BTreeMap::new(),
-            step_mode: WitStepMode::Continue,
+            step_mode:          WitStepMode::Continue,
         }
     }
 
@@ -416,9 +446,9 @@ impl WitAwareDebugger for WitDebugger {
                 let provider = guard.provider().clone();
 
                 return Some(WitTypeInfo {
-                    id: *type_id,
-                    name: metadata.name.clone(),
-                    kind: match metadata.kind {
+                    id:              *type_id,
+                    name:            metadata.name.clone(),
+                    kind:            match metadata.kind {
                         WitTypeKind::Primitive => crate::wit_source_map::WitTypeKind::Primitive(
                             BoundedString::from_str("primitive", provider).unwrap(),
                         ),
@@ -432,7 +462,7 @@ impl WitAwareDebugger for WitDebugger {
                         WitTypeKind::World => crate::wit_source_map::WitTypeKind::World,
                     },
                     definition_span: *type_span,
-                    usage_spans: Vec::new(),
+                    usage_spans:     Vec::new(),
                 });
             }
         }
@@ -445,11 +475,11 @@ impl WitAwareDebugger for WitDebugger {
         let metadata = self.components.get(&component_id)?;
 
         Some(ComponentBoundary {
-            id: component_id,
-            name: Some(metadata.name.clone()),
-            start_offset: metadata.binary_start,
-            end_offset: metadata.binary_end,
-            source_span: metadata.source_span,
+            id:             component_id,
+            name:           Some(metadata.name.clone()),
+            start_offset:   metadata.binary_start,
+            end_offset:     metadata.binary_end,
+            source_span:    metadata.source_span,
             memory_regions: Vec::new(), // Could be populated from component metadata
         })
     }
@@ -505,12 +535,12 @@ mod tests {
         let provider = guard.provider().clone();
 
         let metadata = ComponentMetadata {
-            name: BoundedString::from_str("test-component", provider).unwrap(),
-            source_span: SourceSpan::new(0, 100, 0),
+            name:         BoundedString::from_str("test-component", provider).unwrap(),
+            source_span:  SourceSpan::new(0, 100, 0),
             binary_start: 1000,
-            binary_end: 2000,
-            exports: Vec::new(),
-            imports: Vec::new(),
+            binary_end:   2000,
+            exports:      Vec::new(),
+            imports:      Vec::new(),
         };
 
         let id = ComponentId(1);
@@ -529,12 +559,12 @@ mod tests {
         let provider = guard.provider().clone();
 
         let metadata = FunctionMetadata {
-            name: BoundedString::from_str("test-function", provider).unwrap(),
-            source_span: SourceSpan::new(10, 50, 0),
+            name:          BoundedString::from_str("test-function", provider).unwrap(),
+            source_span:   SourceSpan::new(10, 50, 0),
             binary_offset: 1200,
-            param_types: Vec::new(),
-            return_types: Vec::new(),
-            is_async: false,
+            param_types:   Vec::new(),
+            return_types:  Vec::new(),
+            is_async:      false,
         };
 
         let id = FunctionId(1);

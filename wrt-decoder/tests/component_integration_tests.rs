@@ -32,12 +32,12 @@ mod tests {
         component.imports.push(wrt_format::component::Import {
             name: wrt_format::component::ImportName {
                 namespace: "env".to_string(),
-                name: "import_func".to_string(),
-                nested: Vec::new(),
-                package: None,
+                name:      "import_func".to_string(),
+                nested:    Vec::new(),
+                package:   None,
             },
-            ty: wrt_format::component::ExternType::Function {
-                params: vec![("param".to_string(), FormatValType::S32)],
+            ty:   wrt_format::component::ExternType::Function {
+                params:  vec![("param".to_string(), FormatValType::S32)],
                 results: vec![FormatValType::S32],
             },
         });
@@ -45,16 +45,16 @@ mod tests {
         // Add a simple function export
         component.exports.push(wrt_format::component::Export {
             name: wrt_format::component::ExportName {
-                name: "export_func".to_string(),
+                name:        "export_func".to_string(),
                 is_resource: false,
-                semver: None,
-                integrity: None,
-                nested: Vec::new(),
+                semver:      None,
+                integrity:   None,
+                nested:      Vec::new(),
             },
             sort: wrt_format::component::Sort::Function,
-            idx: 0,
-            ty: Some(wrt_format::component::ExternType::Function {
-                params: vec![("param".to_string(), FormatValType::S32)],
+            idx:  0,
+            ty:   Some(wrt_format::component::ExternType::Function {
+                params:  vec![("param".to_string(), FormatValType::S32)],
                 results: vec![FormatValType::S32],
             }),
         });
