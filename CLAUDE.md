@@ -226,6 +226,23 @@ When encountering "prefix is unknown" or "unterminated double quote string" erro
    - `#[cfg(feature = ")]` (incomplete feature flag)
 4. **Fix at the source** - Add the missing error message, don't just add spaces at the reported line
 
+## ⚠️ CRITICAL: NO MASS CHANGES WITH sed/awk/python
+
+**NEVER use sed, awk, python scripts, or any mass text replacement tools on this codebase.**
+
+This codebase has previously suffered from systematic corruption caused by faulty sed replacements that broke syntax across hundreds of files. The damage included:
+- Missing closing parentheses (`;` instead of `);`)
+- Malformed struct initializations (`;` instead of `};`) 
+- Broken function calls and array syntax
+- Corrupted assert macros and error constructors
+
+**ONLY use direct Edit/MultiEdit tools for code changes.** Each change must be:
+- Carefully reviewed and tested on individual files
+- Applied with precise context to avoid unintended replacements
+- Verified through compilation before proceeding
+
+**If you encounter systematic issues, fix them one file at a time using Edit commands, never with mass replacement tools.**
+
 ## Code Style Guidelines
 
 ### General Formatting
