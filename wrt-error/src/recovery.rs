@@ -411,18 +411,18 @@ mod tests {
         let mut manager = ErrorRecoveryManager::new();
 
         // Test setting and getting strategies
-        manager.set_strategy(ErrorCategory::Parse, RecoveryStrategy::Skip;
+        manager.set_strategy(ErrorCategory::Parse, RecoveryStrategy::Skip);
         assert_eq!(
             manager.get_strategy(&ErrorCategory::Parse),
             RecoveryStrategy::Skip
-        ;
+        );
 
         // Test error recording
-        let error = Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Test error";
-        let context = ErrorContext::new("test_location";
-        manager.record_error(error, context;
+        let error = Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Test error");
+        let context = ErrorContext::new("test_location");
+        manager.record_error(error, context);
 
-        assert_eq!(manager.error_history.len(), 1;
+        assert_eq!(manager.error_history.len(), 1);
     }
 
     #[test]
@@ -430,12 +430,12 @@ mod tests {
         let context = ErrorContext::new("test_function")
             .with_context("param", "value")
             .with_stack_frame("frame1")
-            .with_recovery(RecoveryStrategy::Skip;
+            .with_recovery(RecoveryStrategy::Skip);
 
-        assert_eq!(context.location, "test_function";
-        assert_eq!(context.context.get("param"), Some(&"value".to_string();
-        assert_eq!(context.stack_trace.len(), 1;
-        assert_eq!(context.recovery_strategy, RecoveryStrategy::Skip;
+        assert_eq!(context.location, "test_function");
+        assert_eq!(context.context.get("param"), Some(&"value".to_string()));
+        assert_eq!(context.stack_trace.len(), 1);
+        assert_eq!(context.recovery_strategy, RecoveryStrategy::Skip);
     }
 
     #[test]
@@ -444,16 +444,16 @@ mod tests {
 
         // Add multiple errors
         for i in 0..5 {
-            let error = Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Test error";
-            let context = ErrorContext::new(format!("location_{}", i % 2;
-            manager.record_error(error, context;
+            let error = Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Test error");
+            let context = ErrorContext::new(format!("location_{}", i % 2));
+            manager.record_error(error, context);
         }
 
-        let analysis = manager.analyze_patterns);
-        assert_eq!(analysis.total_errors, 5;
+        let analysis = manager.analyze_patterns();
+        assert_eq!(analysis.total_errors, 5);
         assert_eq!(
             analysis.category_counts.get(&ErrorCategory::Parse),
             Some(&5)
-        ;
+        );
     }
 }
