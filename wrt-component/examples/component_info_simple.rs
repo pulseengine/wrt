@@ -33,7 +33,7 @@ use wrt_format::{
 
 /// Displays a hexadecimal dump of a portion of a binary slice.
 fn hex_dump(data: &[u8], offset: usize, len: usize) {
-    let end = std::cmp::min(offset + len, data.len);
+    let end = std::cmp::min(offset + len, data.len());
     let chunk = &data[offset..end];
 
     for (i, bytes) in chunk.chunks(16).enumerate() {
@@ -394,11 +394,11 @@ fn parse_name_section(module: &Module) -> Result<()> {
 
 /// Analyzes memory usage in a WebAssembly module.
 fn analyze_memory_usage(module: &Module) -> Result<()> {
-    println!("\n=== Memory Usage Analysis ===";
+    println!("\n=== Memory Usage Analysis ===");
 
     // Check for memory definitions
-    let memory_count = module.memories().len);
-    println!("Memory definitions: {}", memory_count;
+    let memory_count = module.memories().len();
+    println!("Memory definitions: {}", memory_count);
 
     for (i, memory) in module.memories().iter().enumerate() {
         println!(

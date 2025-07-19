@@ -502,7 +502,7 @@ pub mod parking_impl {
         ///
         /// ```
         /// use wrt_sync::parking_impl::WrtParkingRwLock;
-        /// let lock = WrtParkingRwLock::new(0;
+        /// let lock = WrtParkingRwLock::new(0);
         /// ```
         pub fn new(data: T) -> Self {
             WrtParkingRwLock {

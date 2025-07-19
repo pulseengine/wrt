@@ -36,22 +36,22 @@ impl MemoryOperations for MockMemory {
         let start = offset as usize;
         let end = start + len as usize;
         if end > self.data.len() {
-            return Err(wrt_error::Error::memory_error("Read out of bounds";
+            return Err(wrt_error::Error::memory_error("Read out of bounds"));
         }
         Ok(self.data[start..end].to_vec())
     }
 
     fn write_bytes(&mut self, offset: u32, bytes: &[u8]) -> Result<()> {
         let start = offset as usize;
-        let end = start + bytes.len);
+        let end = start + bytes.len();
         
         // Extend data if necessary
         if end > self.data.len() {
-            self.data.resize(end, 0;
+            self.data.resize(end, 0);
         }
         
         // Copy bytes
-        self.data[start..end].copy_from_slice(bytes;
+        self.data[start..end].copy_from_slice(bytes);
         Ok(())
     }
 
@@ -61,7 +61,7 @@ impl MemoryOperations for MockMemory {
 
     fn grow(&mut self, bytes: usize) -> Result<()> {
         let new_size = self.data.len() + bytes;
-        self.data.resize(new_size, 0;
+        self.data.resize(new_size, 0);
         Ok(())
     }
 
@@ -71,7 +71,7 @@ impl MemoryOperations for MockMemory {
         
         // Extend data if necessary
         if end > self.data.len() {
-            self.data.resize(end, 0;
+            self.data.resize(end, 0);
         }
         
         // Fill with value

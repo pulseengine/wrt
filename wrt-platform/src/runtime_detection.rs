@@ -165,7 +165,7 @@ impl PlatformDetector {
                 hardware_tagging: false,     // Focus on isolation, not tagging
                 max_memory: Some(16 * 1024), // Very limited embedded memory
                 allocation_granularity: 32,  // MPU alignment requirement
-            };
+            });
         }
 
         #[cfg(not(any(
@@ -184,7 +184,7 @@ impl PlatformDetector {
                 hardware_tagging: false,
                 max_memory: Some(4096),
                 allocation_granularity: 1,
-            };
+            });
         }
 
         // Unreachable but needed for exhaustiveness
@@ -208,7 +208,7 @@ impl PlatformDetector {
                 timeout_support: true,
                 hardware_atomics: true,
                 max_waiters: None, // Typically unlimited
-            };
+            });
         }
 
         #[cfg(feature = "platform-zephyr")]
@@ -220,7 +220,7 @@ impl PlatformDetector {
                 timeout_support: true,
                 hardware_atomics: self.detect_embedded_atomics(),
                 max_waiters: Some(32), // Limited by memory
-            };
+            });
         }
 
         #[cfg(feature = "platform-tock")]
@@ -232,7 +232,7 @@ impl PlatformDetector {
                 timeout_support: true,    // Timer-based
                 hardware_atomics: self.detect_embedded_atomics(),
                 max_waiters: Some(8), // Very limited
-            };
+            });
         }
 
         #[cfg(not(any(
@@ -250,7 +250,7 @@ impl PlatformDetector {
                 timeout_support: false,
                 hardware_atomics: false,
                 max_waiters: Some(1),
-            };
+            });
         }
 
         // Unreachable but needed for exhaustiveness
@@ -540,13 +540,13 @@ mod tests {
 
     #[test]
     fn test_platform_detector_creation() {
-        let detector = PlatformDetector::new);
-        assert!(detector.cached_capabilities.is_none();
+        let detector = PlatformDetector::new();
+        assert!(detector.cached_capabilities.is_none());
     }
 
     #[test]
     fn test_capability_detection() {
-        let mut detector = PlatformDetector::new);
+        let mut detector = PlatformDetector::new();
         let capabilities = detector.detect().unwrap();
 
         // Basic sanity checks
@@ -557,37 +557,37 @@ mod tests {
         assert_eq!(
             capabilities.memory.allocation_granularity,
             capabilities2.memory.allocation_granularity
-        ;
+        );
     }
 
     #[test]
     fn test_wasm_runtime_support() {
-        let mut detector = PlatformDetector::new);
+        let mut detector = PlatformDetector::new();
         let capabilities = detector.detect().unwrap();
 
         // Should support WebAssembly runtime on any reasonable platform
-        assert!(capabilities.supports_wasm_runtime();
+        assert!(capabilities.supports_wasm_runtime());
     }
 
     #[test]
     fn test_paradigm_recommendation() {
-        let mut detector = PlatformDetector::new);
+        let mut detector = PlatformDetector::new();
         let capabilities = detector.detect().unwrap();
 
-        let paradigm = capabilities.recommended_paradigm);
+        let paradigm = capabilities.recommended_paradigm();
         assert!(paradigm == "SecurityFirst" || paradigm == "RealTime" || paradigm == "Posix");
     }
 
     #[test]
     fn test_refresh_detection() {
-        let mut detector = PlatformDetector::new);
+        let mut detector = PlatformDetector::new();
 
         // Initial detection
         let _caps1 = detector.detect().unwrap();
-        assert!(detector.cached_capabilities.is_some();
+        assert!(detector.cached_capabilities.is_some());
 
         // Refresh should work
         let _caps2 = detector.refresh().unwrap();
-        assert!(detector.cached_capabilities.is_some();
+        assert!(detector.cached_capabilities.is_some());
     }
 }
