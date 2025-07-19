@@ -1712,7 +1712,7 @@ async fn cmd_build(
                     format!("Building package: {}", pkg),
                     global.output_format.clone(),
                     output.is_colored(),
-                ;
+                );
                 progress.start();
 
                 let results = build_system.build_package(&pkg).context("Package build failed")?;
@@ -1802,7 +1802,7 @@ async fn cmd_test(
     match output_format {
         OutputFormat::Json | OutputFormat::JsonLines => {
             // Use diagnostic-based test output with caching and filtering
-            let mut test_options = wrt_build_core::test::TestOptions::default(;
+            let mut test_options = wrt_build_core::test::TestOptions::default();
             test_options.filter = filter;
             test_options.nocapture = nocapture;
             test_options.integration = !unit_only;
@@ -1890,7 +1890,7 @@ async fn cmd_test(
                 return Ok(());
             }
 
-            let mut test_options = wrt_build_core::test::TestOptions::default(;
+            let mut test_options = wrt_build_core::test::TestOptions::default();
             test_options.filter = filter;
             test_options.nocapture = nocapture;
             test_options.integration = !unit_only;
@@ -2003,7 +2003,7 @@ async fn cmd_verify(
     cli: &Cli,
     global: &mut GlobalArgs,
 ) -> Result<()> {
-    let mut options = wrt_build_core::verify::VerificationOptions::default(;
+    let mut options = wrt_build_core::verify::VerificationOptions::default);
     options.target_asil = asil.into();
     options.kani = !no_kani;
     options.miri = !no_miri;
@@ -2181,7 +2181,7 @@ async fn cmd_docs(
     }
 
     // Check documentation dependencies first
-    let tool_manager = ToolManager::new(;
+    let tool_manager = ToolManager::new);
     let python_status = tool_manager.check_tool("python3";
     let venv_status = tool_manager.check_tool("python-venv";
 
@@ -2412,7 +2412,7 @@ async fn cmd_wrtd(
 async fn cmd_ci(build_system: &BuildSystem, fail_fast: bool, json: bool) -> Result<()> {
     println!("{} Running comprehensive CI checks...", "🤖".bright_blue();
 
-    let mut errors = Vec::new(;
+    let mut errors = Vec::new);
 
     // 1. Build
     println!("  {} Building...", "🔨".bright_cyan();
@@ -2499,7 +2499,7 @@ async fn cmd_clean(build_system: &BuildSystem, all: bool, global: &mut GlobalArg
     let output = &global.output;
     output.progress("Cleaning build artifacts...";
 
-    let workspace_root = build_system.workspace_root(;
+    let workspace_root = build_system.workspace_root);
 
     if all {
         // Remove all target directories
@@ -2736,15 +2736,15 @@ async fn cmd_setup(
         "🔧".bright_blue()
     ;
 
-    let workspace_root = build_system.workspace_root(;
+    let workspace_root = build_system.workspace_root);
 
     // Handle tool status check
     if all || check {
         println!("{} Checking tool availability...", "🔍".bright_cyan();
 
         use wrt_build_core::tools::ToolManager;
-        let tool_manager = ToolManager::new(;
-        tool_manager.print_tool_status(;
+        let tool_manager = ToolManager::new);
+        tool_manager.print_tool_status);
         println!();
 
         if check && !all && !hooks && !install {
@@ -2757,7 +2757,7 @@ async fn cmd_setup(
         println!("{} Installing optional tools...", "💿".bright_cyan();
 
         use wrt_build_core::tools::ToolManager;
-        let tool_manager = ToolManager::new(;
+        let tool_manager = ToolManager::new);
 
         if let Err(e) = tool_manager.install_all_needed_tools() {
             println!("    ⚠️ Some tools failed to install: {}", e;
@@ -2823,7 +2823,7 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
 
     match command {
         ToolVersionCommand::Generate { force, all } => {
-            let workspace_root = build_system.workspace_root(;
+            let workspace_root = build_system.workspace_root);
             let config_path = workspace_root.join("tool-versions.toml";
 
             if config_path.exists() && !force {
@@ -2864,7 +2864,7 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
         ToolVersionCommand::Check { verbose, tool } => {
             println!("{} Checking tool versions...", "🔍".bright_blue();
 
-            let tool_manager = ToolManager::new(;
+            let tool_manager = ToolManager::new);
 
             if let Some(tool_name) = tool {
                 // Check specific tool
@@ -2893,9 +2893,9 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
             } else {
                 // Check all tools
                 if verbose {
-                    tool_manager.print_tool_status(;
+                    tool_manager.print_tool_status);
                 } else {
-                    let results = tool_manager.check_all_tools(;
+                    let results = tool_manager.check_all_tools);
                     for (tool_name, status) in results {
                         let icon =
                             if status.available && !status.needs_action { "✅" } else { "❌" };
@@ -2908,7 +2908,7 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
         ToolVersionCommand::Update { tool, all } => {
             println!("{} Updating tool-versions.toml...", "🔄".bright_blue();
 
-            let workspace_root = build_system.workspace_root(;
+            let workspace_root = build_system.workspace_root);
             let config_path = workspace_root.join("tool-versions.toml";
 
             if !config_path.exists() {
@@ -3098,7 +3098,7 @@ async fn cmd_testsuite(
 
         println!("{} Running WAST test suite...", "🧪".bright_blue();
 
-        let workspace_root = build_system.workspace_root(;
+        let workspace_root = build_system.workspace_root);
         eprintln!("DEBUG: workspace_root = {:?}", workspace_root;
         eprintln!("DEBUG: wast_dir = {:?}", wast_dir;
         let test_directory = workspace_root.join(&wast_dir;
@@ -3130,11 +3130,11 @@ async fn cmd_testsuite(
         let mut runner =
             WastTestRunner::new(config).context("Failed to create WAST test runner")?;
         eprintln!("DEBUG: WastTestRunner created successfully";
-        let start_time = std::time::Instant::now(;
+        let start_time = std::time::Instant::now);
 
         match runner.run_all_tests() {
             Ok(results) => {
-                let total_time = start_time.elapsed(;
+                let total_time = start_time.elapsed);
 
                 // Generate output based on format
                 match global.output_format {
@@ -3188,15 +3188,15 @@ async fn cmd_testsuite(
                         }
 
                         // Show overall results
-                        let total_files = results.len(;
+                        let total_files = results.len);
                         let passed_files = results
                             .iter()
                             .filter(|r| r.status == wrt_build_core::wast::TestResult::Passed)
-                            .count(;
+                            .count);
                         let failed_files = results
                             .iter()
                             .filter(|r| r.status == wrt_build_core::wast::TestResult::Failed)
-                            .count(;
+                            .count);
 
                         println!("\n{} Overall Results:", "📈".bright_blue();
                         println!(
@@ -3231,7 +3231,7 @@ async fn cmd_testsuite(
                         std::path::PathBuf::from("."),
                         "wast-test".to_string(),
                     ;
-                    collection.diagnostics = runner.diagnostics().to_vec(;
+                    collection.diagnostics = runner.diagnostics().to_vec);
                     print!("{}", formatter.format_collection(&collection);
                 }
 
@@ -3286,7 +3286,7 @@ async fn cmd_requirements(
         Requirements,
     };
 
-    let workspace_root = build_system.workspace_root(;
+    let workspace_root = build_system.workspace_root);
 
     match command {
         RequirementsCommand::Init { path, force } => {
@@ -3321,8 +3321,8 @@ async fn cmd_requirements(
                 verifier.load_requirements(&req_path)?;
                 verifier.verify_all()?;
 
-                let registry = verifier.registry(;
-                let report = registry.generate_compliance_report(;
+                let registry = verifier.registry);
+                let report = registry.generate_compliance_report);
 
                 match output_format {
                     OutputFormat::Json | OutputFormat::JsonLines => {
@@ -3391,8 +3391,8 @@ async fn cmd_requirements(
         } => {
             let req_path = workspace_root.join(&path;
             let requirements = Requirements::load(&req_path)?;
-            let registry = requirements.to_registry(;
-            let report = registry.generate_compliance_report(;
+            let registry = requirements.to_registry);
+            let report = registry.generate_compliance_report);
 
             match output_format {
                 OutputFormat::Json | OutputFormat::JsonLines => {
@@ -3456,7 +3456,7 @@ async fn cmd_requirements(
 
             let matrix = match format.as_str() {
                 "json" => {
-                    let registry = requirements.to_registry(;
+                    let registry = requirements.to_registry);
                     serde_json::to_string_pretty(&registry)?
                 },
                 "html" => {
@@ -3466,8 +3466,8 @@ async fn cmd_requirements(
                         HtmlReportGenerator,
                     };
 
-                    let formatter = HtmlFormatter::new(;
-                    let registry = requirements.to_registry(;
+                    let formatter = HtmlFormatter::new);
+                    let registry = requirements.to_registry);
 
                     // Convert to HTML data format
                     let req_data: Vec<_> = registry
@@ -3494,8 +3494,8 @@ async fn cmd_requirements(
                         MarkdownReportGenerator,
                     };
 
-                    let formatter = MarkdownFormatter::new(;
-                    let registry = requirements.to_registry(;
+                    let formatter = MarkdownFormatter::new);
+                    let registry = requirements.to_registry);
 
                     // Convert to data format
                     let req_data: Vec<_> = registry
@@ -3522,8 +3522,8 @@ async fn cmd_requirements(
                         MarkdownReportGenerator,
                     };
 
-                    let formatter = MarkdownFormatter::github(;
-                    let registry = requirements.to_registry(;
+                    let formatter = MarkdownFormatter::github);
+                    let registry = requirements.to_registry);
 
                     // Convert to data format
                     let req_data: Vec<_> = registry
@@ -3571,12 +3571,12 @@ async fn cmd_requirements(
         } => {
             let req_path = workspace_root.join(&path;
             let requirements = Requirements::load(&req_path)?;
-            let registry = requirements.to_registry(;
+            let registry = requirements.to_registry);
 
             let show_all = all || (!implementation && !tests && !docs;
 
             if show_all || implementation {
-                let missing_impl = registry.get_requirements_needing_implementation(;
+                let missing_impl = registry.get_requirements_needing_implementation);
                 if !missing_impl.is_empty() {
                     println!("{} Requirements Missing Implementation:", "⚠️ ".yellow();
                     for req in missing_impl {
@@ -3587,7 +3587,7 @@ async fn cmd_requirements(
             }
 
             if show_all || tests {
-                let missing_tests = registry.get_requirements_needing_testing(;
+                let missing_tests = registry.get_requirements_needing_testing);
                 if !missing_tests.is_empty() {
                     println!("{} Requirements Missing Tests:", "⚠️ ".yellow();
                     for req in missing_tests {
@@ -3668,7 +3668,7 @@ async fn cmd_wasm(
         WasmVerifier,
     };
 
-    let workspace_root = build_system.workspace_root(;
+    let workspace_root = build_system.workspace_root);
 
     match command {
         WasmCommand::Verify {
@@ -3819,7 +3819,7 @@ async fn cmd_wasm(
             summary,
             performance,
         } => {
-            let mut wasm_paths = Vec::new(;
+            let mut wasm_paths = Vec::new);
 
             // Expand glob patterns
             for pattern in &files {
@@ -3889,9 +3889,9 @@ async fn cmd_wasm(
                         if result.valid {
                             total_valid += 1;
                         }
-                        total_imports += result.imports.len(;
-                        total_exports += result.exports.len(;
-                        total_builtins += result.builtin_imports.len(;
+                        total_imports += result.imports.len);
+                        total_exports += result.exports.len);
+                        total_builtins += result.builtin_imports.len);
                     }
 
                     if summary {
@@ -3975,7 +3975,7 @@ async fn cmd_safety(
             let requirements_path = workspace_root.join(&requirements;
             if requirements_path.exists() {
                 let reqs = Requirements::load(&requirements_path)?;
-                let registry = reqs.to_registry(;
+                let registry = reqs.to_registry);
                 for req in registry.requirements {
                     framework.add_requirement(req;
                 }
@@ -3986,7 +3986,7 @@ async fn cmd_safety(
                 framework.verify_asil_compliance(asil_level)?;
 
             // Generate safety report
-            let (safety_report, report_diagnostics) = framework.generate_safety_report(;
+            let (safety_report, report_diagnostics) = framework.generate_safety_report);
 
             // Combine all diagnostics manually
             let mut all_diagnostics = load_diagnostics;
@@ -4074,7 +4074,7 @@ async fn cmd_safety(
             let requirements_path = workspace_root.join(&requirements;
             if requirements_path.exists() {
                 let reqs = Requirements::load(&requirements_path)?;
-                let registry = reqs.to_registry(;
+                let registry = reqs.to_registry);
                 for req in registry.requirements {
                     framework.add_requirement(req;
                 }
@@ -4167,14 +4167,14 @@ async fn cmd_safety(
             let requirements_path = workspace_root.join(&requirements;
             if requirements_path.exists() {
                 let reqs = Requirements::load(&requirements_path)?;
-                let registry = reqs.to_registry(;
+                let registry = reqs.to_registry);
                 for req in registry.requirements {
                     framework.add_requirement(req;
                 }
             }
 
             // Generate comprehensive safety report
-            let (safety_report, diagnostics) = framework.generate_safety_report(;
+            let (safety_report, diagnostics) = framework.generate_safety_report);
 
             // Format output based on requested format
             let report_content = match format.as_str() {
@@ -4188,7 +4188,7 @@ async fn cmd_safety(
                         HtmlReportGenerator,
                     };
 
-                    let formatter = HtmlFormatter::new(;
+                    let formatter = HtmlFormatter::new);
 
                     // Convert to HTML data format
                     let asil_compliance: HashMap<String, f64> = safety_report
@@ -4220,7 +4220,7 @@ async fn cmd_safety(
                         MarkdownReportGenerator,
                     };
 
-                    let formatter = MarkdownFormatter::new(;
+                    let formatter = MarkdownFormatter::new);
 
                     // Convert to data format
                     let asil_compliance: HashMap<String, f64> = safety_report
@@ -4252,7 +4252,7 @@ async fn cmd_safety(
                         MarkdownReportGenerator,
                     };
 
-                    let formatter = MarkdownFormatter::github(;
+                    let formatter = MarkdownFormatter::github);
 
                     // Convert to data format
                     let asil_compliance: HashMap<String, f64> = safety_report
@@ -4277,7 +4277,7 @@ async fn cmd_safety(
                 },
                 _ => {
                     // Human-readable format
-                    let mut content = String::new(;
+                    let mut content = String::new);
                     content.push_str(&format!("🛡️  WRT Safety Verification Report\n");
                     content.push_str(&format!("════════════════════════════════\n\n");
                     content.push_str(&format!(
@@ -4583,7 +4583,7 @@ async fn cmd_safety(
             let mut framework = DocumentationVerificationFramework::new(workspace_root.clone();
 
             // Configure the framework based on options
-            let mut config = DocumentationVerificationConfig::default(;
+            let mut config = DocumentationVerificationConfig::default);
             config.enable_api_documentation_check = check_api;
             framework = framework.with_config(config;
 
@@ -4591,7 +4591,7 @@ async fn cmd_safety(
             let requirements_path = workspace_root.join(&requirements;
             if requirements_path.exists() {
                 let reqs = Requirements::load(&requirements_path)?;
-                let registry = reqs.to_registry(;
+                let registry = reqs.to_registry);
                 for req in registry.requirements {
                     framework.add_requirement(req;
                 }
@@ -4670,14 +4670,14 @@ async fn cmd_safety(
             let requirements_path = workspace_root.join(&requirements;
             if requirements_path.exists() {
                 let reqs = Requirements::load(&requirements_path)?;
-                let registry = reqs.to_registry(;
+                let registry = reqs.to_registry);
                 for req in registry.requirements {
                     framework.add_requirement(req;
                 }
             }
 
             // Generate comprehensive documentation report
-            let (doc_report, diagnostics) = framework.generate_report(;
+            let (doc_report, diagnostics) = framework.generate_report);
 
             // Format output based on requested format
             let report_content = match format.as_str() {
@@ -4691,7 +4691,7 @@ async fn cmd_safety(
                         HtmlReportGenerator,
                     };
 
-                    let formatter = HtmlFormatter::new(;
+                    let formatter = HtmlFormatter::new);
 
                     // Convert to HTML data format
                     let asil_compliance: HashMap<String, f64> = doc_report
@@ -4719,7 +4719,7 @@ async fn cmd_safety(
                         MarkdownReportGenerator,
                     };
 
-                    let formatter = MarkdownFormatter::new(;
+                    let formatter = MarkdownFormatter::new);
 
                     // Convert to data format
                     let asil_compliance: HashMap<String, f64> = doc_report
@@ -4747,7 +4747,7 @@ async fn cmd_safety(
                         MarkdownReportGenerator,
                     };
 
-                    let formatter = MarkdownFormatter::github(;
+                    let formatter = MarkdownFormatter::github);
 
                     // Convert to data format
                     let asil_compliance: HashMap<String, f64> = doc_report
@@ -4768,7 +4768,7 @@ async fn cmd_safety(
                 },
                 _ => {
                     // Human-readable format
-                    let mut content = String::new(;
+                    let mut content = String::new);
                     content.push_str(&format!("📚 WRT Documentation Compliance Report\n");
                     content.push_str(&format!("═══════════════════════════════════════\n\n");
                     content.push_str(&format!(
@@ -5007,7 +5007,7 @@ fn generate_markdown_report(
     results: &[wrt_build_core::wast::WastFileResult],
     total_time: std::time::Duration,
 ) -> String {
-    let mut report = String::new(;
+    let mut report = String::new);
 
     report.push_str("# WAST Test Suite Report\n\n";
     report.push_str(&format!(
